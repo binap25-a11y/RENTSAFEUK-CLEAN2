@@ -49,7 +49,7 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { expenses, annualSummary, rentStatement } from '@/data/mock-data';
+import { expenses, annualSummary, rentStatement, properties } from '@/data/mock-data';
 import { Label } from '@/components/ui/label';
 
 const expenseSchema = z.object({
@@ -297,9 +297,23 @@ export default function ExpensesPage() {
           <Card>
             <CardHeader>
               <CardTitle>Annual Rent Statement</CardTitle>
-              <CardDescription>A record of monthly rent payments received.</CardDescription>
+              <CardDescription>A record of monthly rent payments received for a selected property.</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="space-y-4">
+                <div className="flex justify-start">
+                <Select>
+                  <SelectTrigger className="w-full md:w-[300px]">
+                    <SelectValue placeholder="Select a property" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {properties.map((prop) => (
+                      <SelectItem key={prop.id} value={prop.address}>
+                        {prop.address}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
               <Table>
                 <TableHeader>
                   <TableRow>
