@@ -85,7 +85,7 @@ export default function DocumentsPage() {
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="flex justify-end">
+          <div className="flex justify-start">
             <Button asChild className='w-full md:w-auto'>
               <Link href="/dashboard/documents/upload">
                 <Upload className="mr-2 h-4 w-4" /> Upload Document
