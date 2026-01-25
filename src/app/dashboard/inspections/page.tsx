@@ -46,7 +46,7 @@ const inspectionSchema = z.object({
   property: z.string({ required_error: 'Please select a property.' }),
   inspectionType: z.string({ required_error: 'Please select an inspection type.' }),
   status: z.string({ required_error: 'Please select a status.' }),
-  scheduledDate: z.date(),
+  scheduledDate: z.date({ required_error: 'Please select a scheduled date.' }),
   completedDate: z.date().optional(),
   inspectorName: z.string().optional(),
   tenantPresentName: z.string().optional(),
@@ -194,6 +194,10 @@ export default function InspectionsPage() {
     resolver: zodResolver(inspectionSchema),
   });
 
+  useEffect(() => {
+    form.setValue('scheduledDate', new Date());
+  }, [form]);
+
   function onSubmit(data: InspectionFormValues) {
     toast({
       title: 'Inspection Saved',
@@ -302,7 +306,7 @@ export default function InspectionsPage() {
                             <Popover>
                             <PopoverTrigger asChild>
                                 <FormControl>
-                                <Button variant={'outline'} className={cn('pl-3 text-left font-normal',!field.value && 'text-muted-foreground')}>
+                                <Button suppressHydrationWarning variant={'outline'} className={cn('pl-3 text-left font-normal',!field.value && 'text-muted-foreground')}>
                                     {field.value ? (format(field.value, 'PPP')) : (<span>Pick a date</span>)}
                                     <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                 </Button>
@@ -325,7 +329,7 @@ export default function InspectionsPage() {
                             <Popover>
                             <PopoverTrigger asChild>
                                 <FormControl>
-                                <Button variant={'outline'} className={cn('pl-3 text-left font-normal',!field.value && 'text-muted-foreground')}>
+                                <Button suppressHydrationWarning variant={'outline'} className={cn('pl-3 text-left font-normal',!field.value && 'text-muted-foreground')}>
                                     {field.value ? (format(field.value, 'PPP')) : (<span>Pick a date</span>)}
                                     <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
                                 </Button>
