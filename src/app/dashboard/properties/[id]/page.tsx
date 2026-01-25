@@ -7,7 +7,7 @@ import { properties as allProperties } from '@/data/mock-data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Bed, Bath, User, Mail, Phone, Calendar as CalendarIcon, ShieldCheck } from 'lucide-react';
+import { ArrowLeft, Bed, Bath, User, Mail, Phone, Calendar as CalendarIcon, ShieldCheck, Edit, Trash2, UserPlus } from 'lucide-react';
 import { notFound } from 'next/navigation';
 import { format } from 'date-fns';
 
@@ -59,28 +59,17 @@ export default function PropertyDetailPage() {
                     </div>
                 </CardHeader>
             </Card>
-            <Card>
-                <CardHeader>
-                    <CardTitle>Location</CardTitle>
-                </CardHeader>
-                <CardContent>
-                    <div className="rounded-lg overflow-hidden h-[400px]">
-                        <iframe
-                        width="100%"
-                        height="100%"
-                        style={{ border: 0 }}
-                        loading="lazy"
-                        allowFullScreen
-                        src={mapUrl}>
-                        </iframe>
-                    </div>
-                </CardContent>
-            </Card>
-        </div>
-        <div className="space-y-6">
-            <Card>
+             <Card>
             <CardHeader>
-                <CardTitle>Tenant & Financials</CardTitle>
+                <div className="flex justify-between items-center">
+                    <CardTitle>Tenant & Financials</CardTitle>
+                     {property.tenant && (
+                        <div className="flex items-center gap-2">
+                            <Button size="sm" variant="outline"><Edit className="mr-2 h-4 w-4" /> Edit Tenant</Button>
+                            <Button size="sm" variant="destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete Tenant</Button>
+                        </div>
+                    )}
+                </div>
             </CardHeader>
             <CardContent>
                 {property.tenant && property.tenancy ? (
@@ -137,9 +126,31 @@ export default function PropertyDetailPage() {
                     </div>
                 </div>
                 ) : (
-                <p className="text-muted-foreground">This property is currently vacant.</p>
+                <div className="text-center py-8">
+                    <p className="text-muted-foreground mb-4">This property is currently vacant.</p>
+                    <Button><UserPlus className="mr-2 h-4 w-4" /> Add Tenant</Button>
+                </div>
                 )}
             </CardContent>
+            </Card>
+        </div>
+        <div className="space-y-6">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Location</CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <div className="rounded-lg overflow-hidden h-[400px]">
+                        <iframe
+                        width="100%"
+                        height="100%"
+                        style={{ border: 0 }}
+                        loading="lazy"
+                        allowFullScreen
+                        src={mapUrl}>
+                        </iframe>
+                    </div>
+                </CardContent>
             </Card>
         </div>
       </div>
