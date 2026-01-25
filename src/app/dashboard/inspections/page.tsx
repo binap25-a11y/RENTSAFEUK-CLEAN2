@@ -194,12 +194,6 @@ export default function InspectionsPage() {
     resolver: zodResolver(inspectionSchema),
   });
 
-  useEffect(() => {
-    form.reset({
-        scheduledDate: new Date(),
-    });
-  }, [form]);
-
   function onSubmit(data: InspectionFormValues) {
     toast({
       title: 'Inspection Saved',

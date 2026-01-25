@@ -75,11 +75,8 @@ export default function ExpensesPage() {
 
   useEffect(() => {
     // Set client-side-only default values to avoid hydration mismatch
-    form.reset({
-        date: new Date()
-    });
     setSelectedYear(new Date().getFullYear().toString());
-  }, [form]);
+  }, []);
   
   function onSubmit(data: ExpenseFormValues) {
     toast({

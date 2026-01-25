@@ -71,12 +71,6 @@ export default function MaintenancePage() {
     resolver: zodResolver(maintenanceSchema),
   });
 
-  useEffect(() => {
-    form.reset({
-        reportedDate: new Date(),
-    });
-  }, [form]);
-
   function onSubmit(data: MaintenanceFormValues) {
     toast({
       title: 'Maintenance Logged',
