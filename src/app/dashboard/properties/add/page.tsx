@@ -41,6 +41,8 @@ import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import Image from 'next/image';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import Link from 'next/link';
 
 const propertySchema = z.object({
   address: z.string().min(5, 'Address is too short'),
@@ -53,6 +55,9 @@ const propertySchema = z.object({
   tenantPhone: z.string().optional(),
   tenancyStartDate: z.date().optional(),
   tenancyEndDate: z.date().optional(),
+  monthlyRent: z.coerce.number().optional(),
+  depositAmount: z.coerce.number().optional(),
+  depositScheme: z.string().optional(),
   notes: z.string().optional(),
   propertyImage: z.any().optional(),
 });
@@ -208,7 +213,7 @@ export default function AddPropertyPage() {
             {/* Tenant Details Section */}
             <Card>
               <CardHeader>
-                <CardTitle className="text-xl">Tenant Details</CardTitle>
+                <CardTitle className="text-xl">Tenancy & Financials</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
                 <FormField
@@ -268,6 +273,7 @@ export default function AddPropertyPage() {
                                   'pl-3 text-left font-normal',
                                   !field.value && 'text-muted-foreground'
                                 )}
+                                suppressHydrationWarning
                               >
                                 {field.value ? (
                                   format(field.value, 'PPP')
@@ -309,6 +315,7 @@ export default function AddPropertyPage() {
                                   'pl-3 text-left font-normal',
                                   !field.value && 'text-muted-foreground'
                                 )}
+                                suppressHydrationWarning
                               >
                                 {field.value ? (
                                   format(field.value, 'PPP')
@@ -336,6 +343,76 @@ export default function AddPropertyPage() {
                     )}
                   />
                 </div>
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField
+                    control={form.control}
+                    name="monthlyRent"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Monthly Rent (£)</FormLabel>
+                        <FormControl>
+                          <Input type="number" placeholder="1200" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                  <FormField
+                    control={form.control}
+                    name="depositAmount"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Deposit Amount (£)</FormLabel>
+                        <FormControl>
+                          <Input type="number" placeholder="1500" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+                <FormField
+                  control={form.control}
+                  name="depositScheme"
+                  render={({ field }) => (
+                    <FormItem className="space-y-3">
+                      <FormLabel>Deposit Scheme</FormLabel>
+                      <FormControl>
+                        <RadioGroup
+                          onValueChange={field.onChange}
+                          defaultValue={field.value}
+                          className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-6"
+                        >
+                          <FormItem className="flex items-center space-x-3 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="DPS" />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              DPS (The Deposit Protection Service)
+                            </FormLabel>
+                          </FormItem>
+                          <FormItem className="flex items-center space-x-3 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="TDS" />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              TDS (Tenancy Deposit Scheme)
+                            </FormLabel>
+                          </FormItem>
+                           <FormItem className="flex items-center space-x-3 space-y-0">
+                            <FormControl>
+                              <RadioGroupItem value="MyDeposits" />
+                            </FormControl>
+                            <FormLabel className="font-normal">
+                              MyDeposits
+                            </FormLabel>
+                          </FormItem>
+                        </RadioGroup>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </CardContent>
             </Card>
 
@@ -406,8 +483,8 @@ export default function AddPropertyPage() {
             </Card>
 
             <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline">
-                Cancel
+              <Button type="button" variant="outline" asChild>
+                <Link href="/dashboard/properties">Cancel</Link>
               </Button>
               <Button type="submit">Save Property</Button>
             </div>

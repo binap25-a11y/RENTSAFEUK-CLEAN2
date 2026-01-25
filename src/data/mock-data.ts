@@ -37,6 +37,9 @@ export const properties = [
     tenancy: {
       startDate: '2023-08-01',
       endDate: '2024-07-31',
+      monthlyRent: 1200,
+      depositAmount: 1500,
+      depositScheme: 'DPS',
     },
     location: {
         lat: 51.5156,
@@ -74,6 +77,9 @@ export const properties = [
     tenancy: {
       startDate: '2024-01-15',
       endDate: '2025-01-14',
+      monthlyRent: 950,
+      depositAmount: 1100,
+      depositScheme: 'MyDeposits',
     },
     location: {
         lat: 51.4545,
