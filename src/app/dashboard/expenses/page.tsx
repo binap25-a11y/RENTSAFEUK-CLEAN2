@@ -66,23 +66,28 @@ type ExpenseFormValues = z.infer<typeof expenseSchema>;
 
 export default function ExpensesPage() {
   const [selectedProperty, setSelectedProperty] = useState<string | null>(null);
-  const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
+  const [selectedYear, setSelectedYear] = useState<string>();
   const [summaryNotes, setSummaryNotes] = useState('');
 
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseSchema),
-    defaultValues: {
-      date: new Date(),
-    },
   });
 
+  useEffect(() => {
+    // Set client-side-only default values to avoid hydration mismatch
+    form.reset({
+        date: new Date()
+    });
+    setSelectedYear(new Date().getFullYear().toString());
+  }, [form]);
+  
   function onSubmit(data: ExpenseFormValues) {
     toast({
       title: 'Expense Logged',
       description: 'The new expense has been successfully logged.',
     });
     console.log(data);
-    form.reset();
+    form.reset({ date: new Date() });
   }
 
   // Data for Annual Summary

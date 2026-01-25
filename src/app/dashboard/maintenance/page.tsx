@@ -39,6 +39,7 @@ import { CalendarIcon, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
+import { useEffect } from 'react';
 
 const maintenanceSchema = z.object({
   property: z.string({ required_error: 'Please select a property.' }),
@@ -68,10 +69,13 @@ const properties = [
 export default function MaintenancePage() {
   const form = useForm<MaintenanceFormValues>({
     resolver: zodResolver(maintenanceSchema),
-    defaultValues: {
-        reportedDate: new Date(),
-    },
   });
+
+  useEffect(() => {
+    form.reset({
+        reportedDate: new Date(),
+    });
+  }, [form]);
 
   function onSubmit(data: MaintenanceFormValues) {
     toast({

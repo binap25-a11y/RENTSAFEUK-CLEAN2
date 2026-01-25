@@ -40,6 +40,7 @@ import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
+import { useEffect } from 'react';
 
 const inspectionSchema = z.object({
   property: z.string({ required_error: 'Please select a property.' }),
@@ -191,10 +192,13 @@ const NotesField = ({ form, name, placeholder }: { form: any, name: any, placeho
 export default function InspectionsPage() {
   const form = useForm<InspectionFormValues>({
     resolver: zodResolver(inspectionSchema),
-    defaultValues: {
-        scheduledDate: new Date(),
-    },
   });
+
+  useEffect(() => {
+    form.reset({
+        scheduledDate: new Date(),
+    });
+  }, [form]);
 
   function onSubmit(data: InspectionFormValues) {
     toast({
