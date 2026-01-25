@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -199,6 +200,15 @@ export default function MaintenancePage() {
                     )}
                   />
                  </div>
+              </CardContent>
+            </Card>
+
+            {/* Reporting Information Section */}
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-xl">Reporting Information</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                         control={form.control}
