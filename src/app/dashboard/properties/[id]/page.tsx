@@ -58,6 +58,23 @@ export default function PropertyDetailPage() {
                 </div>
             </CardHeader>
         </Card>
+        <Card>
+            <CardHeader>
+                <CardTitle>Location</CardTitle>
+            </CardHeader>
+            <CardContent>
+                <div className="rounded-lg overflow-hidden h-[400px]">
+                    <iframe
+                    width="100%"
+                    height="100%"
+                    style={{ border: 0 }}
+                    loading="lazy"
+                    allowFullScreen
+                    src={mapUrl}>
+                    </iframe>
+                </div>
+            </CardContent>
+        </Card>
          <Card>
         <CardHeader>
             <div className="flex justify-between items-center">
@@ -131,23 +148,6 @@ export default function PropertyDetailPage() {
             </div>
             )}
         </CardContent>
-        </Card>
-        <Card>
-            <CardHeader>
-                <CardTitle>Location</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <div className="rounded-lg overflow-hidden h-[400px]">
-                    <iframe
-                    width="100%"
-                    height="100%"
-                    style={{ border: 0 }}
-                    loading="lazy"
-                    allowFullScreen
-                    src={mapUrl}>
-                    </iframe>
-                </div>
-            </CardContent>
         </Card>
       </div>
     </div>
