@@ -20,8 +20,6 @@ import { Badge } from '@/components/ui/badge';
 import { Download } from 'lucide-react';
 import { documents, upcomingTasks } from '@/data/mock-data';
 import { format } from 'date-fns';
-import jsPDF from 'jspdf';
-import 'jspdf-autotable';
 
 // Extend the autoTable interface in jsPDF
 declare module 'jspdf' {
@@ -68,7 +66,10 @@ export default function RemindersPage() {
     (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
   );
 
-  const exportToPDF = () => {
+  const exportToPDF = async () => {
+    const { default: jsPDF } = await import('jspdf');
+    await import('jspdf-autotable');
+    
     const doc = new jsPDF();
 
     doc.setFontSize(18);
