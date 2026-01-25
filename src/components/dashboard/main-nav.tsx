@@ -30,6 +30,7 @@ const menuItems = [
     label: 'Properties', 
     icon: Home,
     subItems: [
+        { href: '/dashboard/properties', label: 'All Properties' },
         { href: '/dashboard/properties/add', label: 'Add Property' },
     ],
   },
@@ -40,6 +41,7 @@ const menuItems = [
     label: 'Documents', 
     icon: Files,
     subItems: [
+        { href: '/dashboard/documents', label: 'All Documents' },
         { href: '/dashboard/documents/upload', label: 'Upload Document' },
     ],
   },
@@ -71,7 +73,7 @@ export function MainNav() {
              <Collapsible open={openItems.includes(href)} onOpenChange={() => handleToggle(href)}>
                 <CollapsibleTrigger asChild>
                     <SidebarMenuButton
-                        isActive={pathname.startsWith(href) && !subItems.some(sub => pathname === sub.href)}
+                        isActive={pathname.startsWith(href)}
                         className='justify-between'
                     >
                         <div className='flex items-center gap-2'>

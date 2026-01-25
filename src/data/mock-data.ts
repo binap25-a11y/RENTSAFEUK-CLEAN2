@@ -19,3 +19,65 @@ export const documents = [
   { id: 4, title: 'EPC Certificate', property: '789 Pine Ln', type: 'EPC', status: 'Valid', expiryDate: '2028-05-20' },
   { id: 5, title: 'Deposit Protection Certificate', property: '456 Maple Rd', type: 'Deposit Protection', status: 'Valid', expiryDate: '2025-02-10' },
 ];
+
+export const properties = [
+  {
+    id: '1',
+    address: '123 Oakhaven St, London, W1A 1AA',
+    propertyType: 'Flat',
+    status: 'Occupied',
+    bedrooms: 2,
+    bathrooms: 1,
+    imageUrl: 'https://picsum.photos/seed/prop1/800/500',
+    tenant: {
+      name: 'John Doe',
+      email: 'john.doe@example.com',
+      phone: '07123 456789',
+    },
+    tenancy: {
+      startDate: '2023-08-01',
+      endDate: '2024-07-31',
+    },
+    location: {
+        lat: 51.5156,
+        lng: -0.1419,
+    }
+  },
+  {
+    id: '2',
+    address: '456 Maple Rd, Manchester, M1 1AA',
+    propertyType: 'House',
+    status: 'Vacant',
+    bedrooms: 3,
+    bathrooms: 2,
+    imageUrl: 'https://picsum.photos/seed/prop2/800/500',
+    tenant: null,
+    tenancy: null,
+    location: {
+        lat: 53.4808,
+        lng: -2.2426,
+    }
+  },
+  {
+    id: '3',
+    address: '789 Pine Ln, Bristol, BS1 1AA',
+    propertyType: 'Studio',
+    status: 'Occupied',
+    bedrooms: 1,
+    bathrooms: 1,
+    imageUrl: 'https://picsum.photos/seed/prop3/800/500',
+    tenant: {
+      name: 'Jane Smith',
+      email: 'jane.smith@example.com',
+      phone: '07987 654321',
+    },
+    tenancy: {
+      startDate: '2024-01-15',
+      endDate: '2025-01-14',
+    },
+    location: {
+        lat: 51.4545,
+        lng: -2.5879,
+    }
+  }
+];
