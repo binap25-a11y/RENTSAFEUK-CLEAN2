@@ -11,3 +11,11 @@ export const upcomingTasks = [
     { id: 3, task: 'Gas Safety Certificate', property: '789 Pine Ln', status: 'Due', dueDate: '2024-08-20' },
     { id: 4, task: 'Garden Tidy Up', property: '123 Oakhaven St', status: 'Scheduled', dueDate: '2024-09-01' },
 ];
+
+export const documents = [
+  { id: 1, title: 'Gas Safety Certificate 2023', property: '123 Oakhaven St', type: 'Gas Safety Certificate', status: 'Expired', expiryDate: '2024-06-01' },
+  { id: 2, title: 'Tenancy Agreement - J. Doe', property: '456 Maple Rd', type: 'Tenancy Agreement', status: 'Valid', expiryDate: '2025-01-31' },
+  { id: 3, title: 'EICR Report', property: '123 Oakhaven St', type: 'Electrical Certificate', status: 'Expiring Soon', expiryDate: '2024-09-15' },
+  { id: 4, title: 'EPC Certificate', property: '789 Pine Ln', type: 'EPC', status: 'Valid', expiryDate: '2028-05-20' },
+  { id: 5, title: 'Deposit Protection Certificate', property: '456 Maple Rd', type: 'Deposit Protection', status: 'Valid', expiryDate: '2025-02-10' },
+];
