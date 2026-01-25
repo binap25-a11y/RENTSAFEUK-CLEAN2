@@ -56,6 +56,17 @@ export default function LoginPage() {
               Sign up
             </Link>
           </div>
+           <div className="mt-2 text-center text-xs text-muted-foreground">
+            By continuing, you agree to our{' '}
+            <Link href="/terms-of-service" className="underline hover:text-primary">
+              Terms of Service
+            </Link>
+            {' '}and{' '}
+            <Link href="/privacy-policy" className="underline hover:text-primary">
+              Privacy Policy
+            </Link>
+            .
+          </div>
         </div>
       </div>
       <div className="hidden bg-muted lg:block">
