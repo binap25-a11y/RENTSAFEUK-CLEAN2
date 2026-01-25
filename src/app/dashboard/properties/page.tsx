@@ -9,7 +9,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Bed, Bath } from 'lucide-react';
+import { PlusCircle, Bed, Bath, Trash2 } from 'lucide-react';
 import { properties } from '@/data/mock-data';
 
 export default function PropertiesPage() {
@@ -61,11 +61,15 @@ export default function PropertiesPage() {
                     <span className='flex items-center gap-1'><Bath className="h-4 w-4" /> {property.bathrooms}</span>
                 </div>
             </CardContent>
-            <CardFooter>
+            <CardFooter className="flex items-center gap-2">
                  <Button asChild variant="outline" className="w-full">
                     <Link href={`/dashboard/properties/${property.id}`}>
                         View Details
                     </Link>
+                </Button>
+                <Button variant="destructive" size="icon">
+                    <Trash2 className="h-4 w-4" />
+                    <span className="sr-only">Delete Property</span>
                 </Button>
             </CardFooter>
           </Card>
