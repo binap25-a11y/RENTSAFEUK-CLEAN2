@@ -128,6 +128,13 @@ const inspectionSchema = z.object({
       notes: z.string().optional()
   }).optional(),
 
+  followUpActions: z.object({
+    repairsRequired: z.boolean().default(false),
+    urgentSafetyIssues: z.boolean().default(false),
+    maintenanceScheduled: z.boolean().default(false),
+    notes: z.string().optional(),
+  }).optional(),
+
   report: z.any().optional(),
 });
 
@@ -495,6 +502,30 @@ export default function InspectionsPage() {
                             )}
                         />
                         <NotesField form={form} name="tenantResponsibilities.notes" placeholder="General notes on tenant responsibilities..." />
+                    </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="followUp" className='border rounded-lg px-4'>
+                <AccordionTrigger className='text-lg font-semibold'>Follow-up Actions</AccordionTrigger>
+                <AccordionContent className='pt-4'>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <ChecklistItem form={form} name="followUpActions.repairsRequired" label="Repairs Required" />
+                        <ChecklistItem form={form} name="followUpActions.urgentSafetyIssues" label="Urgent Safety Issues" />
+                        <ChecklistItem form={form} name="followUpActions.maintenanceScheduled" label="Maintenance Scheduled" />
+                        <FormField
+                            control={form.control}
+                            name="followUpActions.notes"
+                            render={({ field }) => (
+                                <FormItem className="md:col-span-2">
+                                    <FormLabel>Notes for Landlord/Agent</FormLabel>
+                                    <FormControl>
+                                        <Textarea placeholder="Detail any required follow-up actions..." {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
                     </div>
                 </AccordionContent>
               </AccordionItem>
