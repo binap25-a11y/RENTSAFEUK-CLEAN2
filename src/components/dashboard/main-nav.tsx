@@ -17,7 +17,8 @@ import {
   CalendarCheck,
   Files,
   Settings,
-  ChevronRight
+  ChevronRight,
+  CreditCard,
 } from 'lucide-react';
 import * as React from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -45,6 +46,7 @@ const menuItems = [
         { href: '/dashboard/documents/upload', label: 'Upload Document' },
     ],
   },
+  { href: '/dashboard/expenses', label: 'Expenses', icon: CreditCard },
 ];
 
 export function MainNav() {

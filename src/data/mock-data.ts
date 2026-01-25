@@ -81,3 +81,26 @@ export const properties = [
     }
   }
 ];
+
+export const expenses = [
+    { id: 1, date: '2024-07-01', type: 'Repairs and Maintenance', paidBy: 'Landlord', amount: 150.00, notes: 'Fix leaky pipe in kitchen.' },
+    { id: 2, date: '2024-07-05', type: 'Letting Agent Fees', paidBy: 'Landlord', amount: 300.00, notes: 'Management fee for July.' },
+    { id: 3, date: '2024-07-10', type: 'Insurance', paidBy: 'Landlord', amount: 45.50, notes: 'Monthly building insurance.' },
+];
+
+export const annualSummary = {
+    year: 2024,
+    totalRentalIncome: 12000,
+    notes: 'Consider redecorating the main bedroom next year. Look into getting a better deal on insurance.',
+};
+
+export const rentStatement = [
+    { month: 'January', rent: 1000, paid: true, notes: '' },
+    { month: 'February', rent: 1000, paid: true, notes: '' },
+    { month: 'March', rent: 1000, paid: true, notes: '' },
+    { month: 'April', rent: 1000, paid: true, notes: '' },
+    { month: 'May', rent: 1000, paid: true, notes: 'Tenant paid 5 days late.' },
+    { month: 'June', rent: 1000, paid: true, notes: '' },
+    { month: 'July', rent: 1000, paid: true, notes: '' },
+    { month: 'August', rent: 1000, paid: false, notes: 'Pending' },
+];
