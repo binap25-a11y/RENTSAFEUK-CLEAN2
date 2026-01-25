@@ -38,6 +38,8 @@ import { CalendarIcon, Upload } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
+import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const inspectionSchema = z.object({
   property: z.string({ required_error: 'Please select a property.' }),
@@ -46,12 +48,86 @@ const inspectionSchema = z.object({
   scheduledDate: z.date(),
   completedDate: z.date().optional(),
   inspectorName: z.string().optional(),
-  inspectorCompany: z.string().optional(),
-  overallCondition: z.string().optional(),
-  certificateNumber: z.string().optional(),
-  certificateExpiryDate: z.date().optional(),
-  cost: z.coerce.number().optional(),
-  notes: z.string().optional(),
+  tenantPresentName: z.string().optional(),
+
+  exterior: z.object({
+    roofCondition: z.boolean().default(false),
+    walls: z.boolean().default(false),
+    windowsAndDoors: z.boolean().default(false),
+    garden: z.boolean().default(false),
+    pathways: z.boolean().default(false),
+    bins: z.boolean().default(false),
+    notes: z.string().optional()
+  }).optional(),
+  
+  safety: z.object({
+      smokeAlarms: z.boolean().default(false),
+      coAlarm: z.boolean().default(false),
+      electricalSockets: z.boolean().default(false),
+      gasCert: z.boolean().default(false),
+      eicr: z.boolean().default(false),
+      patCert: z.boolean().default(false),
+      noTampering: z.boolean().default(false),
+      notes: z.string().optional()
+  }).optional(),
+
+  interior: z.object({
+      wallsCeilingsFloors: z.boolean().default(false),
+      noDamp: z.boolean().default(false),
+      windows: z.boolean().default(false),
+      doors: z.boolean().default(false),
+      ventilation: z.boolean().default(false),
+      cleanliness: z.boolean().default(false),
+      notes: z.string().optional()
+  }).optional(),
+
+  kitchen: z.object({
+      worktops: z.boolean().default(false),
+      sink: z.boolean().default(false),
+      oven: z.boolean().default(false),
+      fridge: z.boolean().default(false),
+      washingMachine: z.boolean().default(false),
+      ventilation: z.boolean().default(false),
+      notes: z.string().optional()
+  }).optional(),
+  
+  bathrooms: z.object({
+      toilet: z.boolean().default(false),
+      shower: z.boolean().default(false),
+      noLeaks: z.boolean().default(false),
+      extractor: z.boolean().default(false),
+      sealant: z.boolean().default(false),
+      noMould: z.boolean().default(false),
+      notes: z.string().optional()
+  }).optional(),
+
+  heating: z.object({
+      boiler: z.boolean().default(false),
+      radiators: z.boolean().default(false),
+      thermostat: z.boolean().default(false),
+      hotWater: z.boolean().default(false),
+      notes: z.string().optional()
+  }).optional(),
+
+  bedrooms: z.object({
+      windows: z.boolean().default(false),
+      heating: z.boolean().default(false),
+      noDamp: z.boolean().default(false),
+      flooring: z.boolean().default(false),
+      furniture: z.boolean().default(false),
+      notes: z.string().optional()
+  }).optional(),
+
+  tenantResponsibilities: z.object({
+      clean: z.boolean().default(false),
+      noOccupants: z.boolean().default(false),
+      noPets: z.boolean().default(false),
+      noSmoking: z.boolean().default(false),
+      noAlterations: z.boolean().default(false),
+      concerns: z.string().optional(),
+      notes: z.string().optional()
+  }).optional(),
+
   report: z.any().optional(),
 });
 
@@ -63,6 +139,47 @@ const properties = [
   { id: '2', address: '456 Maple Rd' },
   { id: '3', address: '789 Pine Ln' },
 ];
+
+const ChecklistItem = ({ form, name, label }: { form: any, name: any, label: string }) => {
+    return (
+        <FormField
+            control={form.control}
+            name={name}
+            render={({ field }) => (
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+                     <FormControl>
+                        <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                        />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                        <FormLabel className="font-normal">{label}</FormLabel>
+                    </div>
+                </FormItem>
+            )}
+        />
+    )
+}
+
+const NotesField = ({ form, name, placeholder }: { form: any, name: any, placeholder: string }) => {
+     return (
+        <FormField
+            control={form.control}
+            name={name}
+            render={({ field }) => (
+                <FormItem className="mt-4 col-span-1 md:col-span-2">
+                    <FormLabel>Notes</FormLabel>
+                    <FormControl>
+                        <Textarea placeholder={placeholder} {...field} />
+                    </FormControl>
+                    <FormMessage />
+                </FormItem>
+            )}
+        />
+     )
+}
+
 
 export default function InspectionsPage() {
   const form = useForm<InspectionFormValues>({
@@ -84,22 +201,21 @@ export default function InspectionsPage() {
   return (
     <Card>
       <CardHeader>
-        <CardTitle>Schedule Inspection</CardTitle>
+        <CardTitle>Record Inspection</CardTitle>
         <CardDescription>
-          Fill in the details to schedule or record an inspection.
+          Fill in the details to record a property inspection.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             
-            {/* Inspection Details Section */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-xl">Inspection Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <FormField
+                 <FormField
                   control={form.control}
                   name="property"
                   render={({ field }) => (
@@ -124,7 +240,7 @@ export default function InspectionsPage() {
                   )}
                 />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField
+                  <FormField
                     control={form.control}
                     name="inspectionType"
                     render={({ field }) => (
@@ -170,9 +286,9 @@ export default function InspectionsPage() {
                         </FormItem>
                     )}
                     />
-                    </div>
-                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField
+                </div>
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                     <FormField
                         control={form.control}
                         name="scheduledDate"
                         render={({ field }) => (
@@ -218,73 +334,16 @@ export default function InspectionsPage() {
                         </FormItem>
                         )}
                     />
-                    </div>
-                    <FormField
-                    control={form.control}
-                    name="inspectorName"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Inspector Name</FormLabel>
-                        <FormControl>
-                            <Input placeholder="e.g., Jane Smith" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                    <FormField
-                    control={form.control}
-                    name="inspectorCompany"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Company</FormLabel>
-                        <FormControl>
-                            <Input placeholder="e.g., SafeHouse Inspections" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-              </CardContent>
-            </Card>
-
-            {/* Results Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-xl">Results</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                    <FormField
-                    control={form.control}
-                    name="overallCondition"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Overall Condition</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl>
-                            <SelectTrigger>
-                                <SelectValue placeholder="Select condition" />
-                            </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                            {['Excellent', 'Good', 'Fair', 'Poor'].map((p) => (
-                                <SelectItem key={p} value={p}>{p}</SelectItem>
-                            ))}
-                            </SelectContent>
-                        </Select>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                 </div>
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                         control={form.control}
-                        name="certificateNumber"
+                        name="inspectorName"
                         render={({ field }) => (
                             <FormItem>
-                            <FormLabel>Certificate Number</FormLabel>
+                            <FormLabel>Inspector Name</FormLabel>
                             <FormControl>
-                                <Input placeholder="e.g., GAS123456" {...field} />
+                                <Input placeholder="e.g., Jane Smith" {...field} />
                             </FormControl>
                             <FormMessage />
                             </FormItem>
@@ -292,48 +351,159 @@ export default function InspectionsPage() {
                     />
                     <FormField
                         control={form.control}
-                        name="certificateExpiryDate"
+                        name="tenantPresentName"
                         render={({ field }) => (
-                        <FormItem className="flex flex-col">
-                            <FormLabel>Certificate Expiry</FormLabel>
-                            <Popover>
-                            <PopoverTrigger asChild>
-                                <FormControl>
-                                <Button variant={'outline'} className={cn('pl-3 text-left font-normal',!field.value && 'text-muted-foreground')}>
-                                    {field.value ? (format(field.value, 'PPP')) : (<span>Pick a date</span>)}
-                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                                </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus/>
-                            </PopoverContent>
-                            </Popover>
+                            <FormItem>
+                            <FormLabel>Tenant Present Name</FormLabel>
+                            <FormControl>
+                                <Input placeholder="e.g., John Doe" {...field} />
+                            </FormControl>
                             <FormMessage />
-                        </FormItem>
+                            </FormItem>
                         )}
                     />
-                </div>
-                    <FormField
-                    control={form.control}
-                    name="cost"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Cost (£)</FormLabel>
-                        <FormControl>
-                            <Input type="number" placeholder="90" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
+                 </div>
               </CardContent>
             </Card>
+
+            <h2 className="text-xl font-semibold border-b pb-2">Inspection Checklist</h2>
+
+            <Accordion type="multiple" className="w-full space-y-4">
+              <AccordionItem value="exterior" className='border rounded-lg px-4'>
+                <AccordionTrigger className='text-lg font-semibold'>Exterior</AccordionTrigger>
+                <AccordionContent className='pt-4'>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <ChecklistItem form={form} name="exterior.roofCondition" label="Roof condition" />
+                        <ChecklistItem form={form} name="exterior.walls" label="Walls, brickwork" />
+                        <ChecklistItem form={form} name="exterior.windowsAndDoors" label="Windows and external doors secure/undamaged" />
+                        <ChecklistItem form={form} name="exterior.garden" label="Garden maintained" />
+                        <ChecklistItem form={form} name="exterior.pathways" label="Pathways safe and clear" />
+                        <ChecklistItem form={form} name="exterior.bins" label="Bins accessible and not overflowing" />
+                        <NotesField form={form} name="exterior.notes" placeholder="Notes on exterior..." />
+                    </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="safety" className='border rounded-lg px-4'>
+                <AccordionTrigger className='text-lg font-semibold'>Safety & Compliance</AccordionTrigger>
+                <AccordionContent className='pt-4'>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <ChecklistItem form={form} name="safety.smokeAlarms" label="Smoke alarms tested and working" />
+                        <ChecklistItem form={form} name="safety.coAlarm" label="Carbon monoxide alarm present and working" />
+                        <ChecklistItem form={form} name="safety.electricalSockets" label="Electrical sockets and switches safe" />
+                        <ChecklistItem form={form} name="safety.gasCert" label="Gas safety certificate valid" />
+                        <ChecklistItem form={form} name="safety.eicr" label="EICR valid" />
+                        <ChecklistItem form={form} name="safety.patCert" label="PAT Certificate if portable appliances supplied" />
+                        <ChecklistItem form={form} name="safety.noTampering" label="No signs of tampering with safety equipment" />
+                        <NotesField form={form} name="safety.notes" placeholder="Notes on safety..." />
+                    </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="interior" className='border rounded-lg px-4'>
+                <AccordionTrigger className='text-lg font-semibold'>Interior General Condition</AccordionTrigger>
+                <AccordionContent className='pt-4'>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <ChecklistItem form={form} name="interior.wallsCeilingsFloors" label="Walls, ceilings, floors" />
+                        <ChecklistItem form={form} name="interior.noDamp" label="No signs of damp, mould, or condensation" />
+                        <ChecklistItem form={form} name="interior.windows" label="Windows open and close correctly" />
+                        <ChecklistItem form={form} name="interior.doors" label="Internal doors and locks functioning" />
+                        <ChecklistItem form={form} name="interior.ventilation" label="Adequate ventilation throughout" />
+                        <ChecklistItem form={form} name="interior.cleanliness" label="Cleanliness and general upkeep acceptable" />
+                        <NotesField form={form} name="interior.notes" placeholder="Notes on interior..." />
+                    </div>
+                </AccordionContent>
+              </AccordionItem>
+              
+               <AccordionItem value="kitchen" className='border rounded-lg px-4'>
+                <AccordionTrigger className='text-lg font-semibold'>Kitchen</AccordionTrigger>
+                <AccordionContent className='pt-4'>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <ChecklistItem form={form} name="kitchen.worktops" label="Worktops, cupboards and flooring" />
+                        <ChecklistItem form={form} name="kitchen.sink" label="Sink and taps working" />
+                        <ChecklistItem form={form} name="kitchen.oven" label="Oven and hob, extractor functioning" />
+                        <ChecklistItem form={form} name="kitchen.fridge" label="Fridge freezer working" />
+                        <ChecklistItem form={form} name="kitchen.washingMachine" label="Washing machine working (if supplied)" />
+                        <ChecklistItem form={form} name="kitchen.ventilation" label="Adequate ventilation" />
+                        <NotesField form={form} name="kitchen.notes" placeholder="Notes on kitchen..." />
+                    </div>
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="bathrooms" className='border rounded-lg px-4'>
+                <AccordionTrigger className='text-lg font-semibold'>Bathrooms</AccordionTrigger>
+                <AccordionContent className='pt-4'>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <ChecklistItem form={form} name="bathrooms.toilet" label="Toilet flushing" />
+                        <ChecklistItem form={form} name="bathrooms.shower" label="Shower/bath working" />
+                        <ChecklistItem form={form} name="bathrooms.noLeaks" label="No leaks from taps, pipes, seals" />
+                        <ChecklistItem form={form} name="bathrooms.extractor" label="Extractor fan working" />
+                        <ChecklistItem form={form} name="bathrooms.sealant" label="Sealant and grout intact" />
+                        <ChecklistItem form={form} name="bathrooms.noMould" label="No mould or damp" />
+                        <NotesField form={form} name="bathrooms.notes" placeholder="Notes on bathrooms..." />
+                    </div>
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="heating" className='border rounded-lg px-4'>
+                <AccordionTrigger className='text-lg font-semibold'>Heating</AccordionTrigger>
+                <AccordionContent className='pt-4'>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <ChecklistItem form={form} name="heating.boiler" label="Boiler functioning" />
+                        <ChecklistItem form={form} name="heating.radiators" label="Radiators heating properly" />
+                        <ChecklistItem form={form} name="heating.thermostat" label="Thermostat working" />
+                        <ChecklistItem form={form} name="heating.hotWater" label="Hot water supply consistent" />
+                        <NotesField form={form} name="heating.notes" placeholder="Notes on heating..." />
+                    </div>
+                </AccordionContent>
+              </AccordionItem>
+              
+              <AccordionItem value="bedrooms" className='border rounded-lg px-4'>
+                <AccordionTrigger className='text-lg font-semibold'>Bedrooms</AccordionTrigger>
+                <AccordionContent className='pt-4'>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <ChecklistItem form={form} name="bedrooms.windows" label="Windows and locks working" />
+                        <ChecklistItem form={form} name="bedrooms.heating" label="Heating operational" />
+                        <ChecklistItem form={form} name="bedrooms.noDamp" label="No damp or mould" />
+                        <ChecklistItem form={form} name="bedrooms.flooring" label="Flooring and walls in good condition" />
+                        <ChecklistItem form={form} name="bedrooms.furniture" label="Furniture safe and undamaged (if provided)" />
+                        <NotesField form={form} name="bedrooms.notes" placeholder="Notes on bedrooms..." />
+                    </div>
+                </AccordionContent>
+              </AccordionItem>
+
+              <AccordionItem value="tenant" className='border rounded-lg px-4'>
+                <AccordionTrigger className='text-lg font-semibold'>Tenant Responsibilities</AccordionTrigger>
+                <AccordionContent className='pt-4'>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <ChecklistItem form={form} name="tenantResponsibilities.clean" label="Property kept reasonably clean" />
+                        <ChecklistItem form={form} name="tenantResponsibilities.noOccupants" label="No unauthorised occupants" />
+                        <ChecklistItem form={form} name="tenantResponsibilities.noPets" label="No unauthorised pets" />
+                        <ChecklistItem form={form} name="tenantResponsibilities.noSmoking" label="No evidence of smoking indoors" />
+                        <ChecklistItem form={form} name="tenantResponsibilities.noAlterations" label="No alterations without permission" />
+                        <FormField
+                            control={form.control}
+                            name="tenantResponsibilities.concerns"
+                            render={({ field }) => (
+                                <FormItem className="md:col-span-2">
+                                    <FormLabel>Tenant's Concerns Recorded</FormLabel>
+                                    <FormControl>
+                                        <Textarea placeholder="Record any concerns raised by the tenant" {...field} />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                            )}
+                        />
+                        <NotesField form={form} name="tenantResponsibilities.notes" placeholder="General notes on tenant responsibilities..." />
+                    </div>
+                </AccordionContent>
+              </AccordionItem>
+
+            </Accordion>
             
-            {/* Report & Notes Section */}
             <Card>
                 <CardHeader>
-                <CardTitle className="text-xl">Upload Certificate/Report</CardTitle>
+                <CardTitle className="text-xl">Upload Report</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                 <FormField
@@ -347,34 +517,9 @@ export default function InspectionsPage() {
                             <label className="cursor-pointer">
                                 <Upload className="mr-2 h-4 w-4" />
                                 Choose File
-                                <Input type="file" className="sr-only" {...field} />
+                                <Input type="file" className="sr-only" onChange={(e) => field.onChange(e.target.files)} />
                             </label>
                         </Button>
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader>
-                <CardTitle className='text-xl'>Findings / Notes</CardTitle>
-                </CardHeader>
-                <CardContent>
-                <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormControl>
-                        <Textarea
-                            placeholder="Summarize findings or any notes..."
-                            className="resize-none"
-                            rows={5}
-                            {...field}
-                        />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
