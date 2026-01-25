@@ -26,6 +26,7 @@ import {
 import { Badge } from '@/components/ui/badge';
 import { Search, Upload, FileWarning, Clock, ShieldCheck } from 'lucide-react';
 import { documents } from '@/data/mock-data';
+import { format } from 'date-fns';
 
 const getStatusVariant = (status: string) => {
   switch (status) {
@@ -143,7 +144,7 @@ export default function DocumentsPage() {
                     <TableCell>
                       <Badge variant={getStatusVariant(doc.status)}>{doc.status}</Badge>
                     </TableCell>
-                    <TableCell className="text-right">{doc.expiryDate}</TableCell>
+                    <TableCell className="text-right">{format(new Date(doc.expiryDate), 'dd/MM/yyyy')}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>
