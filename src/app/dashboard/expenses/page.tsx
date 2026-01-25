@@ -49,9 +49,9 @@ import {
 } from '@/components/ui/table';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
-import { expenses, annualSummary, rentStatement, properties } from '@/data/mock-data';
+import { expenses, annualSummaries, rentStatement, properties } from '@/data/mock-data';
 import { Label } from '@/components/ui/label';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 const expenseSchema = z.object({
   property: z.string({ required_error: 'Please select a property.' }),
@@ -66,6 +66,8 @@ type ExpenseFormValues = z.infer<typeof expenseSchema>;
 
 export default function ExpensesPage() {
   const [selectedProperty, setSelectedProperty] = useState<string | null>(null);
+  const [selectedYear, setSelectedYear] = useState<string>(new Date().getFullYear().toString());
+  const [summaryNotes, setSummaryNotes] = useState('');
 
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseSchema),
@@ -83,9 +85,29 @@ export default function ExpensesPage() {
     form.reset();
   }
 
+  // Data for Annual Summary
+  const summaryForYear = annualSummaries.find(s => s.year.toString() === selectedYear);
+  const totalRentalIncome = summaryForYear?.totalRentalIncome || 0;
+  const totalExpensesForYear = expenses
+    .filter(expense => new Date(expense.date).getFullYear().toString() === selectedYear)
+    .reduce((acc, expense) => acc + expense.amount, 0);
+  const netIncome = totalRentalIncome - totalExpensesForYear;
+
+  useEffect(() => {
+    setSummaryNotes(summaryForYear?.notes || '');
+  }, [selectedYear, summaryForYear]);
+  
+  function handleSaveNotes() {
+    toast({
+      title: 'Notes Saved',
+      description: `Your notes for ${selectedYear} have been saved.`,
+    });
+    // In a real app, you'd save this to a database
+    console.log(`Saving notes for ${selectedYear}:`, summaryNotes);
+  }
+
+  // Total expenses for the tracker tab footer
   const totalExpenses = expenses.reduce((acc, expense) => acc + expense.amount, 0);
-  const totalRentalIncome = annualSummary.totalRentalIncome;
-  const netIncome = totalRentalIncome - totalExpenses;
 
   return (
     <div className="flex flex-col gap-6">
@@ -282,19 +304,19 @@ export default function ExpensesPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex justify-start">
-                <Select defaultValue="2024">
+                 <Select value={selectedYear} onValueChange={setSelectedYear}>
                   <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Select year" />
                   </SelectTrigger>
                   <SelectContent>
-                    <SelectItem value="2025">2025</SelectItem>
-                    <SelectItem value="2024">2024</SelectItem>
-                    <SelectItem value="2023">2023</SelectItem>
+                    {annualSummaries.map((s) => (
+                        <SelectItem key={s.year} value={s.year.toString()}>{s.year}</SelectItem>
+                    ))}
                   </SelectContent>
                 </Select>
               </div>
               <div className="grid gap-4 md:grid-cols-3">
-                <Card>
+                <Card className='h-full'>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
                       Total Rental Income
@@ -304,7 +326,7 @@ export default function ExpensesPage() {
                     <div className="text-2xl font-bold">£{totalRentalIncome.toFixed(2)}</div>
                   </CardContent>
                 </Card>
-                <Card>
+                <Card className='h-full'>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">
                       Total Expenses
@@ -312,11 +334,11 @@ export default function ExpensesPage() {
                   </CardHeader>
                   <CardContent>
                     <div className="text-2xl font-bold text-destructive">
-                      £{totalExpenses.toFixed(2)}
+                      £{totalExpensesForYear.toFixed(2)}
                     </div>
                   </CardContent>
                 </Card>
-                <Card>
+                <Card className='h-full'>
                   <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                     <CardTitle className="text-sm font-medium">Net Income</CardTitle>
                   </CardHeader>
@@ -333,7 +355,16 @@ export default function ExpensesPage() {
               </div>
               <div>
                 <Label htmlFor="notes" className="text-lg font-semibold">Notes / Improvements</Label>
-                <Textarea id="notes" rows={5} className="mt-2" defaultValue={annualSummary.notes} />
+                <Textarea 
+                    id="notes" 
+                    rows={5} 
+                    className="mt-2" 
+                    value={summaryNotes}
+                    onChange={(e) => setSummaryNotes(e.target.value)}
+                />
+                 <div className="flex justify-end pt-4">
+                    <Button onClick={handleSaveNotes}>Save Notes</Button>
+                </div>
               </div>
             </CardContent>
           </Card>

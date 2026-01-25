@@ -83,16 +83,34 @@ export const properties = [
 ];
 
 export const expenses = [
+    // 2024
     { id: 1, property: '123 Oakhaven St, London, W1A 1AA', date: '2024-07-01', type: 'Repairs and Maintenance', paidBy: 'Landlord', amount: 150.00, notes: 'Fix leaky pipe in kitchen.' },
     { id: 2, property: '456 Maple Rd, Manchester, M1 1AA', date: '2024-07-05', type: 'Letting Agent Fees', paidBy: 'Landlord', amount: 300.00, notes: 'Management fee for July.' },
     { id: 3, property: '123 Oakhaven St, London, W1A 1AA', date: '2024-07-10', type: 'Insurance', paidBy: 'Landlord', amount: 45.50, notes: 'Monthly building insurance.' },
+    // 2023
+    { id: 4, property: '789 Pine Ln, Bristol, BS1 1AA', date: '2023-11-20', type: 'Cleaning', paidBy: 'Landlord', amount: 80.00, notes: 'End of tenancy clean.' },
+    { id: 5, property: '123 Oakhaven St, London, W1A 1AA', date: '2023-08-15', type: 'Mortgage Interest', paidBy: 'Landlord', amount: 550.00, notes: 'August mortgage payment.' },
+    // 2025
+    { id: 6, property: '456 Maple Rd, Manchester, M1 1AA', date: '2025-01-15', type: 'Gardening', paidBy: 'Landlord', amount: 60.00, notes: 'Winter tidy up.' },
 ];
 
-export const annualSummary = {
-    year: 2024,
-    totalRentalIncome: 12000,
-    notes: 'Consider redecorating the main bedroom next year. Look into getting a better deal on insurance.',
-};
+export const annualSummaries = [
+    {
+        year: 2023,
+        totalRentalIncome: 11500,
+        notes: 'Initial setup year. Several one-off purchases for property furnishings.',
+    },
+    {
+        year: 2024,
+        totalRentalIncome: 12000,
+        notes: 'Consider redecorating the main bedroom next year. Look into getting a better deal on insurance.',
+    },
+    {
+        year: 2025,
+        totalRentalIncome: 12500,
+        notes: 'Planned rent increase in Q3. Budget for external painting.',
+    }
+];
 
 export const rentStatement = [
     { month: 'January', rent: 1000, paid: true, notes: '' },
@@ -103,4 +121,8 @@ export const rentStatement = [
     { month: 'June', rent: 1000, paid: true, notes: '' },
     { month: 'July', rent: 1000, paid: true, notes: '' },
     { month: 'August', rent: 1000, paid: false, notes: 'Pending' },
+    { month: 'September', rent: 1000, paid: false, notes: 'Pending' },
+    { month: 'October', rent: 1000, paid: false, notes: 'Pending' },
+    { month: 'November', rent: 1000, paid: false, notes: 'Pending' },
+    { month: 'December', rent: 1000, paid: false, notes: 'Pending' },
 ];
