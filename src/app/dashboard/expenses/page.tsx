@@ -282,11 +282,12 @@ export default function ExpensesPage() {
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="flex justify-start">
-                <Select defaultValue={annualSummary.year.toString()}>
+                <Select defaultValue="2024">
                   <SelectTrigger className="w-[180px]">
                     <SelectValue placeholder="Select year" />
                   </SelectTrigger>
                   <SelectContent>
+                    <SelectItem value="2025">2025</SelectItem>
                     <SelectItem value="2024">2024</SelectItem>
                     <SelectItem value="2023">2023</SelectItem>
                   </SelectContent>
@@ -294,24 +295,40 @@ export default function ExpensesPage() {
               </div>
               <div className="grid gap-4 md:grid-cols-3">
                 <Card>
-                  <CardHeader className="pb-2">
-                    <CardDescription>Total Rental Income</CardDescription>
-                    <CardTitle className="text-2xl font-bold">£{totalRentalIncome.toFixed(2)}</CardTitle>
-                  </CardHeader>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardDescription>Total Expenses</CardDescription>
-                    <CardTitle className="text-2xl font-bold text-destructive">£{totalExpenses.toFixed(2)}</CardTitle>
-                  </CardHeader>
-                </Card>
-                <Card>
-                  <CardHeader className="pb-2">
-                    <CardDescription>Net Income</CardDescription>
-                    <CardTitle className={`text-2xl font-bold ${netIncome >= 0 ? 'text-green-600' : 'text-destructive'}`}>
-                      £{netIncome.toFixed(2)}
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Total Rental Income
                     </CardTitle>
                   </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold">£{totalRentalIncome.toFixed(2)}</div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">
+                      Total Expenses
+                    </CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div className="text-2xl font-bold text-destructive">
+                      £{totalExpenses.toFixed(2)}
+                    </div>
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                    <CardTitle className="text-sm font-medium">Net Income</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <div
+                      className={`text-2xl font-bold ${
+                        netIncome >= 0 ? 'text-green-600' : 'text-destructive'
+                      }`}
+                    >
+                      £{netIncome.toFixed(2)}
+                    </div>
+                  </CardContent>
                 </Card>
               </div>
               <div>
