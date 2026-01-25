@@ -563,6 +563,7 @@ const SidebarMenuButton = React.forwardRef<
         data-size={size}
         data-active={isActive}
         className={cn(sidebarMenuButtonVariants({ variant, size }), className)}
+        suppressHydrationWarning
         {...props}
       />
     )
