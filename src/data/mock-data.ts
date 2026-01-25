@@ -83,9 +83,9 @@ export const properties = [
 ];
 
 export const expenses = [
-    { id: 1, date: '2024-07-01', type: 'Repairs and Maintenance', paidBy: 'Landlord', amount: 150.00, notes: 'Fix leaky pipe in kitchen.' },
-    { id: 2, date: '2024-07-05', type: 'Letting Agent Fees', paidBy: 'Landlord', amount: 300.00, notes: 'Management fee for July.' },
-    { id: 3, date: '2024-07-10', type: 'Insurance', paidBy: 'Landlord', amount: 45.50, notes: 'Monthly building insurance.' },
+    { id: 1, property: '123 Oakhaven St, London, W1A 1AA', date: '2024-07-01', type: 'Repairs and Maintenance', paidBy: 'Landlord', amount: 150.00, notes: 'Fix leaky pipe in kitchen.' },
+    { id: 2, property: '456 Maple Rd, Manchester, M1 1AA', date: '2024-07-05', type: 'Letting Agent Fees', paidBy: 'Landlord', amount: 300.00, notes: 'Management fee for July.' },
+    { id: 3, property: '123 Oakhaven St, London, W1A 1AA', date: '2024-07-10', type: 'Insurance', paidBy: 'Landlord', amount: 45.50, notes: 'Monthly building insurance.' },
 ];
 
 export const annualSummary = {

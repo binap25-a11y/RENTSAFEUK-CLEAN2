@@ -51,8 +51,10 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Badge } from '@/components/ui/badge';
 import { expenses, annualSummary, rentStatement, properties } from '@/data/mock-data';
 import { Label } from '@/components/ui/label';
+import { useState } from 'react';
 
 const expenseSchema = z.object({
+  property: z.string({ required_error: 'Please select a property.' }),
   date: z.date({ required_error: 'Please select a date.' }),
   expenseType: z.string({ required_error: 'Please select an expense type.' }),
   amount: z.coerce.number().min(0.01, 'Amount must be greater than 0.'),
@@ -63,6 +65,8 @@ const expenseSchema = z.object({
 type ExpenseFormValues = z.infer<typeof expenseSchema>;
 
 export default function ExpensesPage() {
+  const [selectedProperty, setSelectedProperty] = useState<string | null>(null);
+
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseSchema),
     defaultValues: {
@@ -102,6 +106,30 @@ export default function ExpensesPage() {
             <CardContent>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  <FormField
+                    control={form.control}
+                    name="property"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Property</FormLabel>
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <FormControl>
+                            <SelectTrigger>
+                              <SelectValue placeholder="Select a property" />
+                            </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                            {properties.map((prop) => (
+                              <SelectItem key={prop.id} value={prop.address}>
+                                {prop.address}
+                              </SelectItem>
+                            ))}
+                          </SelectContent>
+                        </Select>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}
@@ -215,6 +243,7 @@ export default function ExpensesPage() {
                 <TableHeader>
                   <TableRow>
                     <TableHead>Date</TableHead>
+                    <TableHead>Property</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Paid By</TableHead>
                     <TableHead className="text-right">Amount (£)</TableHead>
@@ -224,6 +253,7 @@ export default function ExpensesPage() {
                   {expenses.map((expense) => (
                     <TableRow key={expense.id}>
                       <TableCell>{format(new Date(expense.date), 'dd/MM/yyyy')}</TableCell>
+                      <TableCell>{expense.property}</TableCell>
                       <TableCell>{expense.type}</TableCell>
                       <TableCell>{expense.paidBy}</TableCell>
                       <TableCell className="text-right font-medium">{expense.amount.toFixed(2)}</TableCell>
@@ -301,7 +331,7 @@ export default function ExpensesPage() {
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="flex justify-start">
-                <Select>
+                <Select onValueChange={setSelectedProperty}>
                   <SelectTrigger className="w-full md:w-[300px]">
                     <SelectValue placeholder="Select a property" />
                   </SelectTrigger>
@@ -314,30 +344,32 @@ export default function ExpensesPage() {
                   </SelectContent>
                 </Select>
               </div>
-              <Table>
-                <TableHeader>
-                  <TableRow>
-                    <TableHead>Month</TableHead>
-                    <TableHead>Rent Due (£)</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Notes</TableHead>
-                  </TableRow>
-                </TableHeader>
-                <TableBody>
-                  {rentStatement.map((item) => (
-                    <TableRow key={item.month}>
-                      <TableCell className="font-medium">{item.month}</TableCell>
-                      <TableCell>{item.rent.toFixed(2)}</TableCell>
-                      <TableCell>
-                        <Badge variant={item.paid ? 'default' : 'destructive'}>
-                          {item.paid ? 'Paid' : 'Unpaid'}
-                        </Badge>
-                      </TableCell>
-                      <TableCell>{item.notes}</TableCell>
+              {selectedProperty && (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Month</TableHead>
+                      <TableHead>Rent Due (£)</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Notes</TableHead>
                     </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
+                  </TableHeader>
+                  <TableBody>
+                    {rentStatement.map((item) => (
+                      <TableRow key={item.month}>
+                        <TableCell className="font-medium">{item.month}</TableCell>
+                        <TableCell>{item.rent.toFixed(2)}</TableCell>
+                        <TableCell>
+                          <Badge variant={item.paid ? 'default' : 'destructive'}>
+                            {item.paid ? 'Paid' : 'Unpaid'}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>{item.notes}</TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              )}
             </CardContent>
           </Card>
         </TabsContent>
