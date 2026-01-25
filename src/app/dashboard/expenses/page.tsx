@@ -266,19 +266,19 @@ export default function ExpensesPage() {
                 <Card>
                   <CardHeader className="pb-2">
                     <CardDescription>Total Rental Income</CardDescription>
-                    <CardTitle className="text-3xl">£{totalRentalIncome.toFixed(2)}</CardTitle>
+                    <CardTitle className="text-2xl font-bold">£{totalRentalIncome.toFixed(2)}</CardTitle>
                   </CardHeader>
                 </Card>
                 <Card>
                   <CardHeader className="pb-2">
                     <CardDescription>Total Expenses</CardDescription>
-                    <CardTitle className="text-3xl text-destructive">£{totalExpenses.toFixed(2)}</CardTitle>
+                    <CardTitle className="text-2xl font-bold text-destructive">£{totalExpenses.toFixed(2)}</CardTitle>
                   </CardHeader>
                 </Card>
                 <Card>
                   <CardHeader className="pb-2">
                     <CardDescription>Net Income</CardDescription>
-                    <CardTitle className={`text-3xl ${netIncome >= 0 ? 'text-green-600' : 'text-destructive'}`}>
+                    <CardTitle className={`text-2xl font-bold ${netIncome >= 0 ? 'text-green-600' : 'text-destructive'}`}>
                       £{netIncome.toFixed(2)}
                     </CardTitle>
                   </CardHeader>
