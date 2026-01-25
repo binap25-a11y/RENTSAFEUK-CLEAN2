@@ -33,6 +33,7 @@ const menuItems = [
     subItems: [
         { href: '/dashboard/properties', label: 'All Properties' },
         { href: '/dashboard/properties/add', label: 'Add Property' },
+        { href: '/dashboard/properties/deleted', label: 'Deleted Properties' },
     ],
   },
   { href: '/dashboard/maintenance', label: 'Maintenance', icon: Wrench },

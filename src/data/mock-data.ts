@@ -85,6 +85,21 @@ export const properties = [
         lat: 51.4545,
         lng: -2.5879,
     }
+  },
+   {
+    id: '4',
+    address: '101 Willow Creek, Birmingham, B1 1AA',
+    propertyType: 'House',
+    status: 'Deleted',
+    bedrooms: 4,
+    bathrooms: 2,
+    imageUrl: 'https://picsum.photos/seed/prop4/800/500',
+    tenant: null,
+    tenancy: null,
+    location: {
+        lat: 52.4862,
+        lng: -1.8904,
+    }
   }
 ];
 
