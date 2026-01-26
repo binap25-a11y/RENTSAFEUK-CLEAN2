@@ -48,7 +48,7 @@ export default function PropertiesPage() {
     return query(
       collection(firestore, 'properties'),
       where('ownerId', '==', user.uid),
-      where('status', '!=', 'Deleted')
+      where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
     );
   }, [firestore, user]);
 
@@ -203,4 +203,3 @@ export default function PropertiesPage() {
     </div>
   );
 }
-    
