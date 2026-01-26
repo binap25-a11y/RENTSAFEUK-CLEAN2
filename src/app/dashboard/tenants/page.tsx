@@ -161,8 +161,10 @@ export default function TenantsPage() {
                     <TableCell>{tenant.email}</TableCell>
                     <TableCell>{tenant.telephone}</TableCell>
                     <TableCell className="text-right">
-                        <Button variant="ghost" size="icon" disabled>
-                           <Edit className="h-4 w-4" />
+                        <Button asChild variant="ghost" size="icon">
+                           <Link href={`/dashboard/tenants/${tenant.id}/edit`}>
+                             <Edit className="h-4 w-4" />
+                           </Link>
                         </Button>
                         <Button variant="ghost" size="icon" onClick={() => handleDelete(tenant.id, tenant.name)}>
                            <Trash2 className="h-4 w-4" />
