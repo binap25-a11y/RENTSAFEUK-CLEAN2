@@ -1,27 +1,71 @@
 'use client';
 
-import { useParams } from 'next/navigation';
+import { useParams, notFound } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { properties as allProperties } from '@/data/mock-data';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Bed, Bath, User, Mail, Phone, Calendar as CalendarIcon, ShieldCheck, Edit, Trash2, UserPlus } from 'lucide-react';
-import { notFound } from 'next/navigation';
+import { ArrowLeft, Bed, Bath, User, Mail, Phone, Calendar as CalendarIcon, ShieldCheck, Edit, Trash2, UserPlus, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { doc } from 'firebase/firestore';
+
+// Define types for sub-objects to keep the main interface clean
+interface Tenant {
+    name: string;
+    email: string;
+    phone: string;
+}
+
+interface Tenancy {
+    startDate: string | Date;
+    endDate: string | Date;
+    monthlyRent: number;
+    depositAmount: number;
+    depositScheme: string;
+}
+
+// Main interface for a Property document from Firestore
+interface Property {
+    address: string;
+    propertyType: string;
+    status: string;
+    bedrooms: number;
+    bathrooms: number;
+    imageUrl: string;
+    tenant?: Tenant;
+    tenancy?: Tenancy;
+    // location is not used on this page, but keeping it for future use
+}
 
 export default function PropertyDetailPage() {
   const params = useParams();
   const id = params.id as string;
-  const property = allProperties.find((p) => p.id === id);
+  const firestore = useFirestore();
 
+  const propertyRef = useMemoFirebase(() => {
+    if (!firestore || !id) return null;
+    return doc(firestore, 'properties', id);
+  }, [firestore, id]);
+
+  const { data: property, isLoading, error } = useDoc<Property>(propertyRef);
+
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error) {
+    return <p className='text-destructive'>Error: {error.message}</p>
+  }
+  
   if (!property) {
     return notFound();
   }
-
-  const mapBbox = `${property.location.lng - 0.002},${property.location.lat - 0.001},${property.location.lng + 0.002},${property.location.lat + 0.001}`;
-  const mapUrl = `https://www.openstreetmap.org/export/embed.html?bbox=${mapBbox}&layer=mapnik&marker=${property.location.lat},${property.location.lng}`;
 
   return (
     <div className="flex flex-col gap-6">
@@ -58,23 +102,7 @@ export default function PropertyDetailPage() {
                 </div>
             </CardHeader>
         </Card>
-        <Card>
-            <CardHeader>
-                <CardTitle>Location</CardTitle>
-            </CardHeader>
-            <CardContent>
-                <div className="rounded-lg overflow-hidden h-[400px]">
-                    <iframe
-                    width="100%"
-                    height="100%"
-                    style={{ border: 0 }}
-                    loading="lazy"
-                    allowFullScreen
-                    src={mapUrl}>
-                    </iframe>
-                </div>
-            </CardContent>
-        </Card>
+        
          <Card>
         <CardHeader>
             <div className="flex justify-between items-center">
@@ -153,3 +181,5 @@ export default function PropertyDetailPage() {
     </div>
   );
 }
+
+    

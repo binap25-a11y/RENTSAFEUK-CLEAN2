@@ -13,21 +13,16 @@
  * Key Security Decisions:
  * - User data in `/users/{userId}` is strictly private to the owner. User listing
  *   is disabled to protect privacy.
- * - CRITICAL: The 'Property' and 'Tenant' entities are missing a required `ownerId`
- *   field. Without this field, it is impossible to securely determine which user
- *   is authorized to read, write, or delete these documents. As a result, all
- *   access to `/properties` and `/tenants` (and their sub-collections) is
- *   denied by default. This is a deliberate, secure-by-default posture that
- *   must be resolved by updating the data model.
+ * - The 'Property' and 'Tenant' entities now require an `ownerId` field. This field is
+ *   critical for securely determining which user is authorized to read, write, or
+ *   delete these documents.
  * - Writes to sub-collections (e.g., creating a maintenance log) must validate
  *   that the `propertyId` within the document data matches the ID in the path,
  *   enforcing relational integrity.
  *
- * Denormalization for Authorization: To enable secure and performant rules, it is
- * essential to denormalize an `ownerId` (the user's auth UID) field onto every
- * document in the `/properties` and `/tenants` collections. This avoids slow and
- * costly `get()` calls across collections and allows for simple, direct
- * ownership checks.
+ * Denormalization for Authorization: The denormalized `ownerId` (the user's auth UID)
+ * field on every document in the `/properties` and `/tenants` collections allows for
+ * simple, direct ownership checks and avoids slow, costly `get()` calls.
  *
  * Structural Segregation: N/A in this model.
  */
@@ -62,14 +57,21 @@ service cloud.firestore {
     }
 
     /**
-     * Checks if the user is the owner of a specific Property document.
-     * This relies on a denormalized `ownerId` field on the property document.
-     * CRITICAL: This function will fail until the `Property` entity is updated
-     * with an `ownerId` field.
+     * Checks if the user is the owner of a specific Property document by reading
+     * the denormalized `ownerId` field from the document itself.
      */
     function isPropertyOwner(propertyId) {
-      let propertyData = get(/databases/$(database)/documents/properties/$(propertyId)).data;
-      return isSignedIn() && propertyData.ownerId == request.auth.uid;
+      let propertyDoc = get(/databases/$(database)/documents/properties/$(propertyId));
+      return isSignedIn() && propertyDoc.data.ownerId == request.auth.uid;
+    }
+    
+    /**
+     * Checks if the user is the owner of a specific Tenant document by reading
+     * the denormalized `ownerId` field from the document itself.
+     */
+    function isTenantOwner(tenantId) {
+      let tenantDoc = get(/databases/$(database)/documents/tenants/$(tenantId));
+      return isSignedIn() && tenantDoc.data.ownerId == request.auth.uid;
     }
 
     //-------------------------------------------------------------------------
@@ -85,11 +87,9 @@ service cloud.firestore {
      * @principle Restricts access to a user's own data tree.
      */
     match /users/{userId} {
-      allow get: if isOwner(userId);
+      allow get, update, delete: if isOwner(userId) && isExistingDoc();
       allow list: if false;
       allow create: if isOwner(userId);
-      allow update: if isOwner(userId) && isExistingDoc();
-      allow delete: if isOwner(userId) && isExistingDoc();
     }
 
     //-------------------------------------------------------------------------
@@ -99,19 +99,15 @@ service cloud.firestore {
     /**
      * @description Manages rental property information.
      * @path /properties/{propertyId}
-     * @allow (none) Access is currently blocked.
-     * @deny (create) a property because ownership cannot be verified.
-     * @principle Enforces a secure-by-default posture. Authorization cannot be
-     * implemented without an ownership field on the document.
+     * @allow (create) a property if the user is signed in and sets themselves as the owner.
+     * @allow (list) properties if signed in (client-side query must enforce owner).
+     * @allow (get, update, delete) a property if the user is the owner.
+     * @principle Enforces owner-based access control.
      */
     match /properties/{propertyId} {
-      // CRITICAL: Cannot implement owner-only rules. The 'Property' entity is missing an 'ownerId' field.
-      // All access is denied until the data model is updated.
-      allow get: if false; // TODO: Change to `isPropertyOwner(propertyId)` after adding `ownerId` to Property schema.
-      allow list: if false; // TODO: Secure list queries based on a user's `ownerId`.
-      allow create: if false; // TODO: Add owner validation once the schema is updated with an ownership field. e.g., `isSignedIn() && request.resource.data.ownerId == request.auth.uid`
-      allow update: if false; // TODO: Change to `isPropertyOwner(propertyId) && isExistingDoc()`
-      allow delete: if false; // TODO: Change to `isPropertyOwner(propertyId) && isExistingDoc()`
+      allow get, update, delete: if isPropertyOwner(propertyId) && isExistingDoc();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
 
       //-------------------------------------------------------------------------
       // Maintenance Log Sub-collection Rules
@@ -125,8 +121,7 @@ service cloud.firestore {
        * @principle Enforces derived permissions from the parent document and validates relational integrity.
        */
       match /maintenanceLogs/{maintenanceLogId} {
-        allow get: if isPropertyOwner(propertyId);
-        allow list: if isPropertyOwner(propertyId);
+        allow get, list: if isPropertyOwner(propertyId);
         allow create: if isPropertyOwner(propertyId) && request.resource.data.propertyId == propertyId;
         allow update: if isPropertyOwner(propertyId) && isExistingDoc() && request.resource.data.propertyId == resource.data.propertyId;
         allow delete: if isPropertyOwner(propertyId) && isExistingDoc();
@@ -144,8 +139,7 @@ service cloud.firestore {
        * @principle Enforces derived permissions from the parent document and validates relational integrity.
        */
       match /inspections/{inspectionId} {
-        allow get: if isPropertyOwner(propertyId);
-        allow list: if isPropertyOwner(propertyId);
+        allow get, list: if isPropertyOwner(propertyId);
         allow create: if isPropertyOwner(propertyId) && request.resource.data.propertyId == propertyId;
         allow update: if isPropertyOwner(propertyId) && isExistingDoc() && request.resource.data.propertyId == resource.data.propertyId;
         allow delete: if isPropertyOwner(propertyId) && isExistingDoc();
@@ -163,8 +157,7 @@ service cloud.firestore {
        * @principle Enforces derived permissions from the parent document and validates relational integrity.
        */
       match /documents/{documentId} {
-        allow get: if isPropertyOwner(propertyId);
-        allow list: if isPropertyOwner(propertyId);
+        allow get, list: if isPropertyOwner(propertyId);
         allow create: if isPropertyOwner(propertyId) && request.resource.data.propertyId == propertyId;
         allow update: if isPropertyOwner(propertyId) && isExistingDoc() && request.resource.data.propertyId == resource.data.propertyId;
         allow delete: if isPropertyOwner(propertyId) && isExistingDoc();
@@ -178,19 +171,16 @@ service cloud.firestore {
     /**
      * @description Manages tenant information.
      * @path /tenants/{tenantId}
-     * @allow (none) Access is currently blocked.
-     * @deny (create) a tenant because ownership cannot be verified.
-     * @principle Enforces a secure-by-default posture. Authorization cannot be
-     * implemented without an ownership field on the document.
+     * @allow (create) a tenant if the user is signed in and sets themselves as the owner.
+     * @allow (list) tenants if signed in (client-side query must enforce owner).
+     * @allow (get, update, delete) a tenant if the user is the owner.
+     * @principle Enforces owner-based access control.
      */
     match /tenants/{tenantId} {
-      // CRITICAL: Cannot implement owner-only rules. The 'Tenant' entity is missing an 'ownerId' field
-      // to link it to the managing user. All access is denied until the data model is updated.
-      allow get: if false; // TODO: Add owner validation once the schema is updated.
-      allow list: if false; // TODO: Add owner validation once the schema is updated.
-      allow create: if false; // TODO: Add owner validation once the schema is updated.
-      allow update: if false; // TODO: Add owner validation once the schema is updated.
-      allow delete: if false; // TODO: Add owner validation once the schema is updated.
+      allow get, update, delete: if isTenantOwner(tenantId) && isExistingDoc();
+      allow list: if isSignedIn();
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
   }
 }
+    

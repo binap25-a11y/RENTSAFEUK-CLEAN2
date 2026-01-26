@@ -3,46 +3,19 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import {
-  Card,
-  CardContent,
-  CardDescription,
-  CardHeader,
-  CardTitle,
-} from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import {
-  Form,
-  FormControl,
-  FormDescription,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
-import { Textarea } from '@/components/ui/textarea';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Upload } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
-import { toast } from '@/hooks/use-toast';
-import Image from 'next/image';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Textarea } from '@/components/ui/textarea';
+import { toast } from '@/hooks/use-toast';
+import { useUser, useFirestore } from '@/firebase';
+import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
+import { collection } from 'firebase/firestore';
 
 const propertySchema = z.object({
   address: z.string().min(5, 'Address is too short'),
@@ -50,38 +23,58 @@ const propertySchema = z.object({
   status: z.string({ required_error: 'Please select a status.' }),
   bedrooms: z.coerce.number().min(0, 'Cannot be negative'),
   bathrooms: z.coerce.number().min(0, 'Cannot be negative'),
-  tenantName: z.string().optional(),
-  tenantEmail: z.string().email('Invalid email address').optional().or(z.literal('')),
-  tenantPhone: z.string().optional(),
-  tenancyStartDate: z.date().optional(),
-  tenancyEndDate: z.date().optional(),
-  monthlyRent: z.coerce.number().optional(),
-  depositAmount: z.coerce.number().optional(),
-  depositScheme: z.string().optional(),
   notes: z.string().optional(),
-  propertyImage: z.any().optional(),
 });
 
 type PropertyFormValues = z.infer<typeof propertySchema>;
 
 export default function AddPropertyPage() {
-  const propertyImage = PlaceHolderImages.find((img) => img.id === 'property-placeholder');
+  const router = useRouter();
+  const { user } = useUser();
+  const firestore = useFirestore();
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
     defaultValues: {
       bedrooms: 1,
       bathrooms: 1,
+      status: 'Vacant',
     },
   });
 
-  function onSubmit(data: PropertyFormValues) {
-    toast({
-      title: 'Property Saved',
-      description: 'The new property has been added to your portfolio.',
-    });
-    console.log(data);
-    form.reset();
+  async function onSubmit(data: PropertyFormValues) {
+    if (!user || !firestore) {
+      toast({
+        variant: 'destructive',
+        title: 'Authentication Error',
+        description: 'You must be logged in to add a property.',
+      });
+      return;
+    }
+
+    const newProperty = {
+      ...data,
+      ownerId: user.uid,
+      imageUrl: `https://picsum.photos/seed/${Math.random()}/800/500`, // Add a random placeholder image
+    };
+
+    try {
+      const propertiesCollection = collection(firestore, 'properties');
+      await addDocumentNonBlocking(propertiesCollection, newProperty);
+      
+      toast({
+        title: 'Property Saved',
+        description: 'The new property has been added to your portfolio.',
+      });
+      router.push('/dashboard/properties');
+    } catch (error) {
+        console.error('Failed to add property', error);
+        toast({
+            variant: 'destructive',
+            title: 'Save Failed',
+            description: 'There was an error saving the property. Please try again.',
+        });
+    }
   }
 
   return (
@@ -95,7 +88,6 @@ export default function AddPropertyPage() {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            {/* Property Details Section */}
             <Card>
               <CardHeader>
                 <CardTitle className="text-xl">Property Details</CardTitle>
@@ -210,253 +202,6 @@ export default function AddPropertyPage() {
               </CardContent>
             </Card>
 
-            {/* Tenant Details Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-xl">Tenancy & Financials</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="tenantName"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Tenant Name</FormLabel>
-                      <FormControl>
-                        <Input placeholder="John Doe" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="tenantEmail"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tenant Email</FormLabel>
-                        <FormControl>
-                          <Input placeholder="john.doe@example.com" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="tenantPhone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Tenant Telephone</FormLabel>
-                        <FormControl>
-                          <Input placeholder="07123456789" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="tenancyStartDate"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Tenancy Start Date</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant={'outline'}
-                                className={cn(
-                                  'pl-3 text-left font-normal',
-                                  !field.value && 'text-muted-foreground'
-                                )}
-                                suppressHydrationWarning
-                              >
-                                {field.value ? (
-                                  format(field.value, 'PPP')
-                                ) : (
-                                  <span>Pick a date</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent
-                            className="w-auto p-0"
-                            align="start"
-                          >
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="tenancyEndDate"
-                    render={({ field }) => (
-                      <FormItem className="flex flex-col">
-                        <FormLabel>Tenancy End Date</FormLabel>
-                        <Popover>
-                          <PopoverTrigger asChild>
-                            <FormControl>
-                              <Button
-                                variant={'outline'}
-                                className={cn(
-                                  'pl-3 text-left font-normal',
-                                  !field.value && 'text-muted-foreground'
-                                )}
-                                suppressHydrationWarning
-                              >
-                                {field.value ? (
-                                  format(field.value, 'PPP')
-                                ) : (
-                                  <span>Pick a date</span>
-                                )}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                              </Button>
-                            </FormControl>
-                          </PopoverTrigger>
-                          <PopoverContent
-                            className="w-auto p-0"
-                            align="start"
-                          >
-                            <Calendar
-                              mode="single"
-                              selected={field.value}
-                              onSelect={field.onChange}
-                              initialFocus
-                            />
-                          </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="monthlyRent"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Monthly Rent (£)</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="1200" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="depositAmount"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Deposit Amount (£)</FormLabel>
-                        <FormControl>
-                          <Input type="number" placeholder="1500" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
-                <FormField
-                  control={form.control}
-                  name="depositScheme"
-                  render={({ field }) => (
-                    <FormItem className="space-y-3">
-                      <FormLabel>Deposit Scheme</FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          className="flex flex-col sm:flex-row space-y-2 sm:space-y-0 sm:space-x-6"
-                        >
-                          <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="DPS" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              DPS (The Deposit Protection Service)
-                            </FormLabel>
-                          </FormItem>
-                          <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="TDS" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              TDS (Tenancy Deposit Scheme)
-                            </FormLabel>
-                          </FormItem>
-                           <FormItem className="flex items-center space-x-3 space-y-0">
-                            <FormControl>
-                              <RadioGroupItem value="MyDeposits" />
-                            </FormControl>
-                            <FormLabel className="font-normal">
-                              MyDeposits
-                            </FormLabel>
-                          </FormItem>
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-            </Card>
-
-            {/* Image & Notes Section */}
-            <Card>
-              <CardHeader>
-                <CardTitle className="text-xl">Property Image</CardTitle>
-              </CardHeader>
-              <CardContent className="space-y-4">
-                {propertyImage && (
-                  <Image
-                    src={propertyImage.imageUrl}
-                    alt={propertyImage.description}
-                    width={600}
-                    height={400}
-                    className="rounded-lg object-cover aspect-[3/2]"
-                    data-ai-hint={propertyImage.imageHint}
-                  />
-                )}
-                <FormField
-                  control={form.control}
-                  name="propertyImage"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Upload Image</FormLabel>
-                      <FormControl>
-                        <Button asChild variant="outline" className="w-full">
-                          <label className="cursor-pointer">
-                            <Upload className="mr-2 h-4 w-4" />
-                            Choose File
-                            <Input
-                              type="file"
-                              className="sr-only"
-                              {...field}
-                            />
-                          </label>
-                        </Button>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </CardContent>
-            </Card>
             <Card>
               <CardHeader>
                 <CardTitle className="text-xl">Notes</CardTitle>
@@ -469,7 +214,7 @@ export default function AddPropertyPage() {
                     <FormItem>
                       <FormControl>
                         <Textarea
-                          placeholder="Any additional notes about the property or tenant..."
+                          placeholder="Any additional notes about the property..."
                           className="resize-none"
                           rows={5}
                           {...field}
@@ -494,3 +239,5 @@ export default function AddPropertyPage() {
     </Card>
   );
 }
+
+    

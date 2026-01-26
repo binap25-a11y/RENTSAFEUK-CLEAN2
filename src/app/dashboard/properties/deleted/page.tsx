@@ -17,28 +17,49 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { properties } from '@/data/mock-data';
-import { ArrowLeft, RefreshCw } from 'lucide-react';
-import { useState } from 'react';
-import { toast } from '@/hooks/use-toast';
+import { ArrowLeft, RefreshCw, Loader2 } from 'lucide-react';
+import { useToast } from '@/hooks/use-toast';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
+
+interface Property {
+  address: string;
+  propertyType: string;
+}
 
 export default function DeletedPropertiesPage() {
-    const [deletedProperties, setDeletedProperties] = useState(properties.filter(p => p.status === 'Deleted'));
+    const { toast } = useToast();
+    const { user } = useUser();
+    const firestore = useFirestore();
 
-    const handleRestore = (propertyId: string) => {
-        // In a real app, you would update the property status in your database.
-        // For this mock data, we'll just filter it out from the local state.
-        setDeletedProperties(prev => prev.filter(p => p.id !== propertyId));
-        
-        const property = properties.find(p => p.id === propertyId);
-        if (property) {
-            property.status = 'Vacant';
+    const deletedPropertiesQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(
+            collection(firestore, 'properties'),
+            where('ownerId', '==', user.uid),
+            where('status', '==', 'Deleted')
+        );
+    }, [firestore, user]);
+
+    const { data: deletedProperties, isLoading, error } = useCollection<Property>(deletedPropertiesQuery);
+
+    const handleRestore = async (propertyId: string, address: string) => {
+        if (!firestore) return;
+        try {
+            const docRef = doc(firestore, 'properties', propertyId);
+            await updateDoc(docRef, { status: 'Vacant' });
+            toast({
+                title: 'Property Restored',
+                description: `${address} has been restored to your portfolio.`,
+            });
+        } catch (e) {
+            console.error('Error restoring property:', e);
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Could not restore the property. Please try again.',
+            });
         }
-        
-        toast({
-            title: 'Property Restored',
-            description: `${property?.address} has been restored to your portfolio.`,
-        });
     };
 
   return (
@@ -72,24 +93,40 @@ export default function DeletedPropertiesPage() {
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            {deletedProperties.length > 0 ? (
+                            {isLoading && (
+                                <TableRow>
+                                    <TableCell colSpan={3} className="h-24 text-center">
+                                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                             {!isLoading && error && (
+                                <TableRow>
+                                    <TableCell colSpan={3} className="h-24 text-center text-destructive">
+                                        Error: {error.message}
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                            {!isLoading && deletedProperties && deletedProperties.length > 0 ? (
                                 deletedProperties.map((property) => (
                                 <TableRow key={property.id}>
                                     <TableCell className="font-medium">{property.address}</TableCell>
                                     <TableCell>{property.propertyType}</TableCell>
                                     <TableCell className="text-right">
-                                    <Button size="sm" onClick={() => handleRestore(property.id)}>
+                                    <Button size="sm" onClick={() => handleRestore(property.id, property.address)}>
                                         <RefreshCw className="mr-2 h-4 w-4" /> Restore
                                     </Button>
                                     </TableCell>
                                 </TableRow>
                                 ))
                             ) : (
-                                <TableRow>
-                                    <TableCell colSpan={3} className="h-24 text-center">
-                                        No deleted properties.
-                                    </TableCell>
-                                </TableRow>
+                                !isLoading && (
+                                    <TableRow>
+                                        <TableCell colSpan={3} className="h-24 text-center">
+                                            No deleted properties.
+                                        </TableCell>
+                                    </TableRow>
+                                )
                             )}
                         </TableBody>
                     </Table>
@@ -99,3 +136,5 @@ export default function DeletedPropertiesPage() {
     </div>
   );
 }
+
+    
