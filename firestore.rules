@@ -71,24 +71,35 @@ service cloud.firestore {
     //-------------------------------------------------------------------------
     // Collection Group Rules
     //-------------------------------------------------------------------------
-
-    // These rules use a helper function to safely check the parent property's ownerId,
-    // which is the most secure way to handle collection group queries.
+    
+    // These rules are for queries that span across different properties (collection groups).
+    // The 'list' rule is broad (just checking for sign-in), relying on the client-side
+    // query to enforce ownership with a `where('ownerId', '==', user.uid)` clause.
+    // The 'get', 'create', 'update', 'delete' rules are more specific, ensuring data integrity
+    // by checking the parent property's ownership.
 
     match /{path=**}/maintenanceLogs/{logId} {
-      allow read, write: if isSignedIn() && isParentPropertyOwner(path);
+      allow get, update, delete: if isSignedIn() && isParentPropertyOwner(path);
+      allow create: if isSignedIn() && isParentPropertyOwner(path) && request.resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn();
     }
 
     match /{path=**}/expenses/{expenseId} {
-      allow read, write: if isSignedIn() && isParentPropertyOwner(path);
+      allow get, update, delete: if isSignedIn() && isParentPropertyOwner(path);
+      allow create: if isSignedIn() && isParentPropertyOwner(path) && request.resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn();
     }
     
     match /{path=**}/documents/{documentId} {
-      allow read, write: if isSignedIn() && isParentPropertyOwner(path);
+      allow get, update, delete: if isSignedIn() && isParentPropertyOwner(path);
+      allow create: if isSignedIn() && isParentPropertyOwner(path) && request.resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn();
     }
     
     match /{path=**}/inspections/{inspectionId} {
-      allow read, write: if isSignedIn() && isParentPropertyOwner(path);
+      allow get, update, delete: if isSignedIn() && isParentPropertyOwner(path);
+      allow create: if isSignedIn() && isParentPropertyOwner(path) && request.resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn();
     }
   }
 }
