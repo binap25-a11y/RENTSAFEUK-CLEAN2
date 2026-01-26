@@ -48,6 +48,28 @@ service cloud.firestore {
     }
 
     //-------------------------------------------------------------------------
+    // Collection Group Rules (for read operations)
+    //-------------------------------------------------------------------------
+    /**
+     * @description Allows reading from any subcollection via a collection group query
+     * if the user is the owner. This is essential for features like the Reminders
+     * page that query across all properties.
+     * The query MUST include `where('ownerId', '==', request.auth.uid)`.
+     */
+    match /{path=**}/documents/{documentId} {
+      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+    }
+    match /{path=**}/inspections/{inspectionId} {
+      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+    }
+      match /{path=**}/maintenanceLogs/{maintenanceLogId} {
+      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+    }
+      match /{path=**}/expenses/{expenseId} {
+      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+    }
+
+    //-------------------------------------------------------------------------
     // User Rules
     //-------------------------------------------------------------------------
 
@@ -87,12 +109,11 @@ service cloud.firestore {
       /**
        * @description Manages maintenance logs for a specific property.
        * @path /properties/{propertyId}/maintenanceLogs/{maintenanceLogId}
-       * @allow (read, update, delete) if the user owns the log.
-       * @allow (create) if user owns the log and propertyId is consistent.
-       * @principle Enforces owner-based access and relational integrity.
+       * @allow (write) if the user owns the log and propertyId is consistent.
+       * @principle Enforces owner-based access and relational integrity. Read is handled by collection group rule.
        */
       match /maintenanceLogs/{maintenanceLogId} {
-        allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+        allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
         allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.propertyId == propertyId;
       }
 
@@ -103,12 +124,11 @@ service cloud.firestore {
       /**
        * @description Manages inspection records for a specific property.
        * @path /properties/{propertyId}/inspections/{inspectionId}
-       * @allow (read, update, delete) if the user owns the inspection.
-       * @allow (create) if user owns the inspection and propertyId is consistent.
-       * @principle Enforces owner-based access and relational integrity.
+       * @allow (write) if user owns the inspection and propertyId is consistent.
+       * @principle Enforces owner-based access and relational integrity. Read is handled by collection group rule.
        */
       match /inspections/{inspectionId} {
-        allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+        allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
         allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.propertyId == propertyId;
       }
 
@@ -119,12 +139,11 @@ service cloud.firestore {
       /**
        * @description Manages documents (e.g., contracts) for a specific property.
        * @path /properties/{propertyId}/documents/{documentId}
-       * @allow (read, update, delete) if the user owns the document.
-       * @allow (create) if user owns the document and propertyId is consistent.
-       * @principle Enforces owner-based access and relational integrity.
+       * @allow (write) if user owns the document and propertyId is consistent.
+       * @principle Enforces owner-based access and relational integrity. Read is handled by collection group rule.
        */
       match /documents/{documentId} {
-        allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+        allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
         allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.propertyId == propertyId;
       }
       
@@ -134,12 +153,11 @@ service cloud.firestore {
       /**
        * @description Manages expenses for a specific property.
        * @path /properties/{propertyId}/expenses/{expenseId}
-       * @allow (read, update, delete) if the user owns the expense.
-       * @allow (create) if user owns the expense and propertyId is consistent.
-       * @principle Enforces owner-based access and relational integrity.
+       * @allow (write) if user owns the expense and propertyId is consistent.
+       * @principle Enforces owner-based access and relational integrity. Read is handled by collection group rule.
        */
       match /expenses/{expenseId} {
-        allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+        allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
         allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.propertyId == propertyId;
       }
     }

@@ -27,6 +27,8 @@ import {
   useMemoFirebase,
 } from '@/firebase';
 import { collection, collectionGroup, query, where } from 'firebase/firestore';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
 
 // Extend the autoTable interface in jsPDF
 declare module 'jspdf' {
@@ -181,9 +183,6 @@ export default function RemindersPage() {
     isLoadingProperties || isLoadingDocuments || isLoadingInspections;
 
   const exportToPDF = async () => {
-    const { default: jsPDF } = await import('jspdf');
-    await import('jspdf-autotable');
-
     const doc = new jsPDF();
 
     doc.setFontSize(18);
