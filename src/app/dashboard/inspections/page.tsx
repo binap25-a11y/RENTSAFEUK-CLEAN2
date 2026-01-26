@@ -84,7 +84,8 @@ export default function InspectionsPage() {
   const inspectionsQuery = useMemoFirebase(() => {
     if (!user || !selectedPropertyId) return null;
     return query(
-      collection(firestore, 'properties', selectedPropertyId, 'inspections')
+      collection(firestore, 'properties', selectedPropertyId, 'inspections'),
+      where('ownerId', '==', user.uid)
     );
   }, [firestore, user, selectedPropertyId]);
 

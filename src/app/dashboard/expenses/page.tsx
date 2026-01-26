@@ -115,7 +115,8 @@ export default function ExpensesPage() {
   const expensesQuery = useMemoFirebase(() => {
     if (!user || !firestore || !selectedProperty) return null;
     return query(
-      collection(firestore, 'properties', selectedProperty, 'expenses')
+      collection(firestore, 'properties', selectedProperty, 'expenses'),
+      where('ownerId', '==', user.uid)
     );
   }, [firestore, user, selectedProperty]);
   const { data: expenses, isLoading: isLoadingExpenses } =

@@ -99,7 +99,10 @@ export default function DocumentsPage() {
     // Fetch documents for the selected property
     const documentsQuery = useMemoFirebase(() => {
         if (!user || !selectedPropertyId) return null;
-        return query(collection(firestore, 'properties', selectedPropertyId, 'documents'));
+        return query(
+          collection(firestore, 'properties', selectedPropertyId, 'documents'),
+          where('ownerId', '==', user.uid)
+        );
     }, [firestore, user, selectedPropertyId]);
 
     const { data: documents, isLoading: isLoadingDocuments } = useCollection<Document>(documentsQuery);

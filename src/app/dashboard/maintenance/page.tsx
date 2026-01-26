@@ -124,7 +124,8 @@ export default function MaintenancePage() {
   const maintenanceQuery = useMemoFirebase(() => {
     if (!user || !selectedPropertyFilter) return null;
     return query(
-        collection(firestore, 'properties', selectedPropertyFilter, 'maintenanceLogs')
+        collection(firestore, 'properties', selectedPropertyFilter, 'maintenanceLogs'),
+        where('ownerId', '==', user.uid)
     );
   }, [firestore, user, selectedPropertyFilter]);
 
