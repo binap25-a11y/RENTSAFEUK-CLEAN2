@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { useState, useMemo } from 'react';
 import {
   Card,
   CardHeader,
@@ -24,9 +27,46 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Search, Upload, FileWarning, Clock, ShieldCheck } from 'lucide-react';
-import { documents } from '@/data/mock-data';
-import { format } from 'date-fns';
+import { Search, Upload, FileWarning, Clock, ShieldCheck, Loader2 } from 'lucide-react';
+import { format, isBefore, addDays } from 'date-fns';
+import {
+  useUser,
+  useFirestore,
+  useCollection,
+  useMemoFirebase,
+} from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+import { Label } from '@/components/ui/label';
+
+// Type for property documents from Firestore
+interface Property {
+  address: string;
+  ownerId: string;
+}
+
+// Type for document logs from Firestore
+interface Document {
+    id: string;
+    title: string;
+    propertyId: string;
+    documentType: string;
+    issueDate: { seconds: number; nanoseconds: number; } | Date;
+    expiryDate: { seconds: number; nanoseconds: number; } | Date;
+    propertyAddress?: string; // For display
+}
+
+const getDocumentStatus = (expiryDate: Date) => {
+    const today = new Date();
+    const ninetyDaysFromNow = addDays(today, 90);
+    
+    if (isBefore(expiryDate, today)) {
+        return 'Expired';
+    }
+    if (isBefore(expiryDate, ninetyDaysFromNow)) {
+        return 'Expiring Soon';
+    }
+    return 'Valid';
+};
 
 const getStatusVariant = (status: string) => {
   switch (status) {
@@ -40,9 +80,56 @@ const getStatusVariant = (status: string) => {
 };
 
 export default function DocumentsPage() {
-  const expiredCount = documents.filter(d => d.status === 'Expired').length;
-  const expiringSoonCount = documents.filter(d => d.status === 'Expiring Soon').length;
-  const validCount = documents.filter(d => d.status === 'Valid').length;
+    const { user } = useUser();
+    const firestore = useFirestore();
+    const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
+    const [searchTerm, setSearchTerm] = useState('');
+    const [statusFilter, setStatusFilter] = useState('All');
+
+    // Fetch properties for the filter dropdown
+    const propertiesQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(
+            collection(firestore, 'properties'),
+            where('ownerId', '==', user.uid)
+        );
+    }, [firestore, user]);
+    const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
+    
+    // Fetch documents for the selected property
+    const documentsQuery = useMemoFirebase(() => {
+        if (!user || !selectedPropertyId) return null;
+        return query(collection(firestore, 'properties', selectedPropertyId, 'documents'));
+    }, [firestore, user, selectedPropertyId]);
+
+    const { data: documents, isLoading: isLoadingDocuments } = useCollection<Document>(documentsQuery);
+
+    const documentsWithStatus = useMemo(() => {
+        return documents?.map(doc => {
+            const expiry = doc.expiryDate instanceof Date ? doc.expiryDate : new Date(doc.expiryDate.seconds * 1000);
+            return {
+                ...doc,
+                status: getDocumentStatus(expiry),
+                expiryDate: expiry
+            };
+        }) ?? [];
+    }, [documents]);
+    
+    const filteredDocuments = useMemo(() => {
+        return documentsWithStatus.filter(doc => {
+            const matchesSearch = doc.title.toLowerCase().includes(searchTerm.toLowerCase());
+            const matchesStatus = statusFilter === 'All' || doc.status === statusFilter;
+            return matchesSearch && matchesStatus;
+        });
+    }, [documentsWithStatus, searchTerm, statusFilter]);
+    
+    const expiredCount = documentsWithStatus.filter(d => d.status === 'Expired').length;
+    const expiringSoonCount = documentsWithStatus.filter(d => d.status === 'Expiring Soon').length;
+    const validCount = documentsWithStatus.filter(d => d.status === 'Valid').length;
+    
+    const getPropertyAddress = (propertyId: string) => {
+        return properties?.find(p => p.id === propertyId)?.address || 'Unknown Property';
+    };
 
   return (
     <div className="flex flex-col gap-6">
@@ -53,7 +140,7 @@ export default function DocumentsPage() {
                <FileWarning className="h-4 w-4 text-destructive" />
             </CardHeader>
             <CardContent>
-               <div className="text-2xl font-bold text-destructive">{expiredCount}</div>
+               <div className="text-2xl font-bold text-destructive">{selectedPropertyId ? expiredCount : '-'}</div>
                <p className="text-xs text-muted-foreground">Needs immediate attention</p>
             </CardContent>
          </Card>
@@ -63,7 +150,7 @@ export default function DocumentsPage() {
                <Clock className="h-4 w-4 text-yellow-500" />
             </CardHeader>
             <CardContent>
-               <div className="text-2xl font-bold">{expiringSoonCount}</div>
+               <div className="text-2xl font-bold">{selectedPropertyId ? expiringSoonCount : '-'}</div>
                <p className="text-xs text-muted-foreground">Action required within 90 days</p>
             </CardContent>
          </Card>
@@ -73,7 +160,7 @@ export default function DocumentsPage() {
                <ShieldCheck className="h-4 w-4 text-green-500" />
             </CardHeader>
             <CardContent>
-               <div className="text-2xl font-bold">{validCount}</div>
+               <div className="text-2xl font-bold">{selectedPropertyId ? validCount : '-'}</div>
                <p className="text-xs text-muted-foreground">All documents up to date</p>
             </CardContent>
          </Card>
@@ -95,22 +182,27 @@ export default function DocumentsPage() {
           </div>
 
           <div className="flex flex-col gap-4">
+            <div className='flex flex-col sm:flex-row gap-2 items-center'>
+                 <div className="w-full md:w-auto">
+                    <Label htmlFor="property-filter" className="sr-only">Filter by Property</Label>
+                    <Select onValueChange={setSelectedPropertyId} value={selectedPropertyId}>
+                        <SelectTrigger id="property-filter" className="w-full md:w-[300px]">
+                            <SelectValue placeholder={isLoadingProperties ? 'Loading...' : 'Select a property to view documents'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {properties?.map(prop => (
+                                <SelectItem key={prop.id} value={prop.id}>{prop.address}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                 </div>
+            </div>
             <div className="relative w-full md:max-w-sm">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search by title or property..." className="pl-8" />
+              <Input placeholder="Search by title..." className="pl-8" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
             </div>
             <div className="flex gap-2 flex-wrap">
-               <Select>
-                  <SelectTrigger className="w-full md:w-[180px]">
-                     <SelectValue placeholder="Filter by type" />
-                  </SelectTrigger>
-                  <SelectContent>
-                    {[
-                        'Tenancy Agreement', 'Inventory', 'Gas Safety Certificate', 'Electrical Certificate', 'EPC', 'Insurance', 'Deposit Protection', 'Licence', 'Correspondence', 'Invoice'
-                    ].map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
-                  </SelectContent>
-               </Select>
-               <Select>
+               <Select onValueChange={setStatusFilter} value={statusFilter}>
                   <SelectTrigger className="w-full md:w-[180px]">
                      <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
@@ -136,15 +228,29 @@ export default function DocumentsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {documents.map((doc) => (
+                {isLoadingDocuments && (
+                    <TableRow>
+                        <TableCell colSpan={5} className="h-24 text-center">
+                            <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+                        </TableCell>
+                    </TableRow>
+                )}
+                {!isLoadingDocuments && documents?.length === 0 && (
+                     <TableRow>
+                        <TableCell colSpan={5} className="h-24 text-center">
+                            {selectedPropertyId ? 'No documents found for this property.' : 'Select a property to see documents.'}
+                        </TableCell>
+                    </TableRow>
+                )}
+                {filteredDocuments.map((doc) => (
                   <TableRow key={doc.id}>
                     <TableCell className="font-medium">{doc.title}</TableCell>
-                    <TableCell>{doc.property}</TableCell>
-                    <TableCell>{doc.type}</TableCell>
+                    <TableCell>{getPropertyAddress(doc.propertyId)}</TableCell>
+                    <TableCell>{doc.documentType}</TableCell>
                     <TableCell>
                       <Badge variant={getStatusVariant(doc.status)}>{doc.status}</Badge>
                     </TableCell>
-                    <TableCell className="text-right">{format(new Date(doc.expiryDate), 'dd/MM/yyyy')}</TableCell>
+                    <TableCell className="text-right">{format(doc.expiryDate, 'dd/MM/yyyy')}</TableCell>
                   </TableRow>
                 ))}
               </TableBody>

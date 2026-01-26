@@ -186,31 +186,50 @@
           "type": "string",
           "description": "Unique identifier for the Document entity."
         },
+        "ownerId": {
+          "type": "string",
+          "description": "The UID of the user who owns this document."
+        },
         "propertyId": {
           "type": "string",
           "description": "Reference to Property. (Relationship: Property 1:N Document)"
         },
-        "documentName": {
+        "title": {
           "type": "string",
-          "description": "Name of the document."
+          "description": "Title of the document."
+        },
+        "documentType": {
+          "type": "string",
+          "description": "Type of the document (e.g. Tenancy Agreement, EPC)."
+        },
+        "issueDate": {
+          "type": "string",
+          "description": "Date the document was issued.",
+          "format": "date-time"
+        },
+        "expiryDate": {
+          "type": "string",
+          "description": "Date the document expires.",
+          "format": "date-time"
         },
         "fileUri": {
           "type": "string",
           "description": "URI of the document file.",
           "format": "uri"
         },
-        "uploadDate": {
+        "notes": {
           "type": "string",
-          "description": "Date when the document was uploaded.",
-          "format": "date-time"
+          "description": "Additional notes about the document."
         }
       },
       "required": [
         "id",
+        "ownerId",
         "propertyId",
-        "documentName",
-        "fileUri",
-        "uploadDate"
+        "title",
+        "documentType",
+        "issueDate",
+        "expiryDate"
       ]
     }
   },
@@ -335,4 +354,3 @@
     "reasoning": "The Firestore structure is designed to manage rental properties, tenants, maintenance logs, inspections, and documents. The top-level collections are `properties`, `tenants` and `users/{userId}`. The subcollections `maintenanceLogs`, `inspections`, and `documents` are nested under each `property` to ensure data locality and facilitate querying related information. This structure leverages path-based ownership for user-specific data (e.g., properties owned by a user), which simplifies security rules. The design prioritizes Authorization Independence (CRITICAL) by avoiding hierarchical authorization dependencies (`get()`).  All collections are designed to support QAPs, as listing operations will be secured by path-based rules and potentially by filtering on denormalized fields, ensuring that users can only access data they are authorized to view."
   }
 }
-    

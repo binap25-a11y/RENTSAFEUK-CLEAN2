@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -39,38 +40,88 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
+import {
+  useUser,
+  useFirestore,
+  useCollection,
+  useMemoFirebase,
+  addDocumentNonBlocking,
+} from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
 
+// Schema for the form
 const documentSchema = z.object({
   title: z.string().min(3, 'Title is too short'),
-  property: z.string({ required_error: 'Please select a property.' }),
+  propertyId: z.string({ required_error: 'Please select a property.' }),
   documentType: z.string({ required_error: 'Please select a document type.' }),
   issueDate: z.date({ required_error: 'Please select an issue date.' }),
   expiryDate: z.date({ required_error: 'Please select an expiry date.' }),
-  documentFile: z.any().refine(files => files?.length > 0, 'File is required.'),
+  documentFile: z.any().optional(), // Ignoring file upload for now
   notes: z.string().optional(),
 });
 
 type DocumentFormValues = z.infer<typeof documentSchema>;
 
-// Mock properties data
-const properties = [
-  { id: '1', address: '123 Oakhaven St' },
-  { id: '2', address: '456 Maple Rd' },
-  { id: '3', address: '789 Pine Ln' },
-];
+// Type for property documents from Firestore
+interface Property {
+  address: string;
+  ownerId: string;
+}
 
 export default function UploadDocumentPage() {
+  const router = useRouter();
+  const { user } = useUser();
+  const firestore = useFirestore();
+
   const form = useForm<DocumentFormValues>({
     resolver: zodResolver(documentSchema),
   });
+  
+  // Fetch properties for the dropdown
+  const propertiesQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+      collection(firestore, 'properties'),
+      where('ownerId', '==', user.uid),
+      where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
+    );
+  }, [firestore, user]);
 
-  function onSubmit(data: DocumentFormValues) {
-    toast({
-      title: 'Document Uploaded',
-      description: 'The document has been successfully uploaded.',
-    });
-    console.log(data);
-    form.reset();
+  const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
+
+  async function onSubmit(data: DocumentFormValues) {
+    if (!user || !firestore) {
+      toast({
+        variant: 'destructive',
+        title: 'Authentication Error',
+        description: 'You must be logged in.',
+      });
+      return;
+    }
+
+    const newDocument = {
+      ...data,
+      ownerId: user.uid,
+      // fileUri will be added when we implement file storage
+    };
+
+    try {
+      const documentsCollection = collection(firestore, 'properties', data.propertyId, 'documents');
+      await addDocumentNonBlocking(documentsCollection, newDocument);
+      
+      toast({
+        title: 'Document Details Saved',
+        description: 'The document details have been successfully saved.',
+      });
+      router.push('/dashboard/documents');
+    } catch (error) {
+        console.error('Failed to save document', error);
+        toast({
+            variant: 'destructive',
+            title: 'Save Failed',
+            description: 'There was an error saving the document. Please try again.',
+        });
+    }
   }
 
   return (
@@ -100,19 +151,19 @@ export default function UploadDocumentPage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                 control={form.control}
-                name="property"
+                name="propertyId"
                 render={({ field }) => (
                     <FormItem>
                     <FormLabel>Property</FormLabel>
                     <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                         <SelectTrigger>
-                            <SelectValue placeholder="Select a property" />
+                            <SelectValue placeholder={isLoadingProperties ? 'Loading...' : "Select a property"} />
                         </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                        {properties.map((prop) => (
-                            <SelectItem key={prop.id} value={prop.address}>
+                        {properties?.map((prop) => (
+                            <SelectItem key={prop.id} value={prop.id}>
                             {prop.address}
                             </SelectItem>
                         ))}
@@ -209,6 +260,9 @@ export default function UploadDocumentPage() {
                     </Button>
                   </FormControl>
                   <FormMessage />
+                  <p className="text-sm text-muted-foreground pt-1">
+                    Note: File upload is not yet implemented. This is a placeholder.
+                  </p>
                 </FormItem>
               )}
             />
