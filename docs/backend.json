@@ -116,6 +116,10 @@
           "type": "string",
           "description": "Unique identifier for the MaintenanceLog entity."
         },
+        "ownerId": {
+          "type": "string",
+          "description": "The UID of the user who owns this maintenance log."
+        },
         "propertyId": {
           "type": "string",
           "description": "Reference to Property. (Relationship: Property 1:N MaintenanceLog)"
@@ -140,6 +144,7 @@
       },
       "required": [
         "id",
+        "ownerId",
         "propertyId",
         "description",
         "urgency",

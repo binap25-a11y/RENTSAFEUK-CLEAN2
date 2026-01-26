@@ -65,15 +65,13 @@ service cloud.firestore {
 
     match /{path=**}/documents/{documentId} {
       // This single rule block securely handles all access to 'documents' collections.
-      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
     
     match /{path=**}/inspections/{inspectionId} {
       // This single rule block securely handles all access to 'inspections' collections.
-      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
   }
