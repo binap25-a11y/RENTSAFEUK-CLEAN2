@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   Card,
   CardHeader,
@@ -26,7 +26,7 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, collectionGroup, query, where } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -87,6 +87,11 @@ export default function RemindersPage() {
   const { user } = useUser();
   const firestore = useFirestore();
 
+  // State for data fetched from subcollections
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [inspections, setInspections] = useState<Inspection[]>([]);
+  const [isLoadingSubcollections, setIsLoadingSubcollections] = useState(true);
+  
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
@@ -94,30 +99,48 @@ export default function RemindersPage() {
       where('ownerId', '==', user.uid)
     );
   }, [firestore, user]);
-  const { data: properties, isLoading: isLoadingProperties } =
-    useCollection<Property>(propertiesQuery);
+  const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
 
-  const documentsQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    return query(
-      collectionGroup(firestore, 'documents'),
-      where('ownerId', '==', user.uid)
-    );
-  }, [firestore, user]);
-  const { data: documents, isLoading: isLoadingDocuments } =
-    useCollection<Document>(documentsQuery);
+  useEffect(() => {
+    if (!properties || !firestore) {
+        setIsLoadingSubcollections(!properties);
+        return;
+    };
+    
+    if(properties.length === 0) {
+        setDocuments([]);
+        setInspections([]);
+        setIsLoadingSubcollections(false);
+        return;
+    }
 
-  const inspectionsQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    // Query is simplified to avoid needing a composite index.
-    // Filtering by status is now handled on the client side.
-    return query(
-      collectionGroup(firestore, 'inspections'),
-      where('ownerId', '==', user.uid)
-    );
-  }, [firestore, user]);
-  const { data: inspections, isLoading: isLoadingInspections } =
-    useCollection<Inspection>(inspectionsQuery);
+    const fetchSubcollections = async () => {
+      setIsLoadingSubcollections(true);
+      try {
+        const documentPromises = properties.map(prop =>
+          getDocs(collection(firestore, 'properties', prop.id, 'documents'))
+        );
+        const inspectionPromises = properties.map(prop =>
+          getDocs(collection(firestore, 'properties', prop.id, 'inspections'))
+        );
+
+        const documentSnapshots = await Promise.all(documentPromises);
+        const inspectionSnapshots = await Promise.all(inspectionPromises);
+
+        const allDocs = documentSnapshots.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Document)));
+        const allInspections = inspectionSnapshots.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Inspection)));
+
+        setDocuments(allDocs);
+        setInspections(allInspections);
+      } catch (e) {
+        console.error("Error fetching reminders subcollections: ", e);
+      } finally {
+        setIsLoadingSubcollections(false);
+      }
+    };
+
+    fetchSubcollections();
+  }, [properties, firestore]);
 
   const propertyMap = useMemo(() => {
     return (
@@ -161,7 +184,7 @@ export default function RemindersPage() {
             insp.scheduledDate instanceof Date
               ? insp.scheduledDate
               : new Date(insp.scheduledDate.seconds * 1000);
-          // Client-side filtering for 'Scheduled' status
+          // Client-side filtering for 'Scheduled' status and is in the future
           return insp.status === 'Scheduled' && isFuture(scheduled);
         })
         .map((insp) => ({
@@ -181,8 +204,7 @@ export default function RemindersPage() {
     );
   }, [documents, inspections, propertyMap]);
 
-  const isLoading =
-    isLoadingProperties || isLoadingDocuments || isLoadingInspections;
+  const isLoading = isLoadingProperties || isLoadingSubcollections;
 
   const exportToPDF = async () => {
     const doc = new jsPDF();
