@@ -46,7 +46,7 @@ import {
   useMemoFirebase,
   addDocumentNonBlocking,
 } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
 import {
   Table,
   TableBody,
@@ -86,6 +86,7 @@ interface Property {
 
 // Type for maintenance log documents from Firestore
 interface MaintenanceLog {
+    id: string;
     propertyId: string;
     title: string;
     priority: string;
@@ -169,6 +170,32 @@ export default function MaintenancePage() {
         });
     }
   }
+
+  const handleStatusChange = async (logId: string, propertyId: string, newStatus: string) => {
+    if (!firestore) {
+      toast({
+        variant: 'destructive',
+        title: 'Database Error',
+        description: 'Firestore not available.',
+      });
+      return;
+    }
+    try {
+      const logRef = doc(firestore, 'properties', propertyId, 'maintenanceLogs', logId);
+      await updateDoc(logRef, { status: newStatus });
+      toast({
+        title: 'Status Updated',
+        description: 'The maintenance log status has been updated.',
+      });
+    } catch (error) {
+      console.error('Failed to update status:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Update Failed',
+        description: 'There was an error updating the status. Please try again.',
+      });
+    }
+  };
 
   const getPriorityVariant = (priority: string) => {
     switch (priority) {
@@ -538,7 +565,22 @@ export default function MaintenancePage() {
                         {maintenanceLogs?.map(log => (
                             <TableRow key={log.id}>
                                 <TableCell className="font-medium">{log.title}</TableCell>
-                                <TableCell><Badge>{log.status}</Badge></TableCell>
+                                <TableCell>
+                                    <Select
+                                        value={log.status}
+                                        onValueChange={(newStatus) => handleStatusChange(log.id, log.propertyId, newStatus)}
+                                    >
+                                        <SelectTrigger className="w-[150px]">
+                                            <SelectValue placeholder="Set status" />
+                                        </SelectTrigger>
+                                        <SelectContent>
+                                            <SelectItem value="Open">Open</SelectItem>
+                                            <SelectItem value="In Progress">In Progress</SelectItem>
+                                            <SelectItem value="Completed">Completed</SelectItem>
+                                            <SelectItem value="Cancelled">Cancelled</SelectItem>
+                                        </SelectContent>
+                                    </Select>
+                                </TableCell>
                                 <TableCell><Badge variant={getPriorityVariant(log.priority)}>{log.priority}</Badge></TableCell>
                                 <TableCell className="text-right">
                                     {log.reportedDate instanceof Date ? format(log.reportedDate, 'dd/MM/yyyy') : format(new Date(log.reportedDate.seconds * 1000), 'dd/MM/yyyy')}
