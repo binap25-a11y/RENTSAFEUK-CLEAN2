@@ -1,30 +1,3 @@
-/**
- * Core Philosophy: This ruleset establishes a security model based on user ownership.
- * All primary data entities, such as properties and tenants, are intended to be
- * owned and managed by a specific authenticated user. Access to sub-collections
- * (like maintenance logs or documents) is derived from ownership of the parent
- * property.
- *
- * Data Structure: The data is organized into top-level collections for 'users',
- * 'properties', and 'tenants'. The 'properties' collection contains nested
- * sub-collections for 'maintenanceLogs', 'inspections', 'documents', and 'expenses',
- * creating a clear hierarchical relationship.
- *
- * Key Security Decisions:
- * - User data in `/users/{userId}` is strictly private to the owner. User listing
- *   is disabled to protect privacy.
- * - All primary and sub-collection documents require an `ownerId` field. This field is
- *   critical for securely and efficiently determining which user is authorized to
- *   read, write, or delete documents.
- * - Writes to sub-collections (e.g., creating a maintenance log) must validate
- *   that the `propertyId` within the document data matches the ID in the path,
- *   enforcing relational integrity.
- *
- * Denormalization for Authorization: The denormalized `ownerId` (the user's auth UID)
- * field on every document allows for simple, direct ownership checks and avoids
- * slow, costly, and non-scalable `get()` calls in rules. This is essential for
- * supporting collection group queries.
- */
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -58,14 +31,14 @@ service cloud.firestore {
     }
 
     //-------------------------------------------------------------------------
-    // Property & Sub-collection Rules
+    // Property & Non-Grouped Sub-collection Rules
     //-------------------------------------------------------------------------
 
     match /properties/{propertyId} {
       allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
 
-      // Rules for sub-collections that do NOT require collection group queries
+      // These sub-collections do not require collection group queries.
       match /maintenanceLogs/{maintenanceLogId} {
         allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
         allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.propertyId == propertyId;
@@ -75,9 +48,6 @@ service cloud.firestore {
         allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
         allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.propertyId == propertyId;
       }
-
-      // NOTE: 'documents' and 'inspections' subcollections are now secured
-      // exclusively by the collection group rules below to avoid conflicts.
     }
 
     //-------------------------------------------------------------------------
@@ -90,19 +60,18 @@ service cloud.firestore {
     }
 
     //-------------------------------------------------------------------------
-    // Collection Group Rules for Cross-Property Queries (e.g., Reminders Page)
+    // Collection Group Rules for Reminders Page & Direct Access
     //-------------------------------------------------------------------------
 
     match /{path=**}/documents/{documentId} {
-      // This single rule block handles all access to 'documents' collections,
-      // whether through a direct path or a collection group query.
+      // This single rule block securely handles all access to 'documents' collections.
       allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
     
     match /{path=**}/inspections/{inspectionId} {
-      // This single rule block handles all access to 'inspections' collections.
+      // This single rule block securely handles all access to 'inspections' collections.
       allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
