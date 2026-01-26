@@ -25,14 +25,34 @@ service cloud.firestore {
     }
 
     match /properties/{propertyId} {
-      // Users can CUD their own properties.
-      // Reading/listing is constrained by queries on the 'ownerId' field.
-      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      // A user can GET a specific property document if they are the owner.
+      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      
+      // A user can LIST (query) properties.
+      // SECURITY: Client-side queries MUST enforce security by including
+      // a "where('ownerId', '==', request.auth.uid)" clause.
+      allow list: if isSignedIn();
+
+      // Users can update or delete their own properties.
+      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      
+      // Users can create new properties, ensuring they set themselves as the owner.
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
 
     match /tenants/{tenantId} {
-      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      // A user can GET a specific tenant document if they are the owner.
+      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+
+      // A user can LIST (query) tenants.
+      // SECURITY: Client-side queries MUST enforce security by including
+      // a "where('ownerId', '==', request.auth.uid)" clause.
+      allow list: if isSignedIn();
+
+      // Users can update or delete their own tenant records.
+      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      
+      // Users can create new tenant records, ensuring they set themselves as the owner.
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
 
