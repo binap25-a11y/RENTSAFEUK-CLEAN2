@@ -48,28 +48,6 @@ service cloud.firestore {
     }
 
     //-------------------------------------------------------------------------
-    // Collection Group Rules (for Reminders page)
-    //-------------------------------------------------------------------------
-
-    /**
-     * @description Allows reading from the 'documents' collection group if the user is the owner.
-     * This is required for the Reminders page to find expiring documents.
-     * The query MUST include `where('ownerId', '==', request.auth.uid)`.
-     */
-    match /{path=**}/documents/{documentId} {
-      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-    }
-
-    /**
-     * @description Allows reading from the 'inspections' collection group if the user is the owner.
-     * This is required for the Reminders page to find scheduled inspections.
-     * The query MUST include `where('ownerId', '==', request.auth.uid)`.
-     */
-    match /{path=**}/inspections/{inspectionId} {
-      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-    }
-
-    //-------------------------------------------------------------------------
     // User Rules
     //-------------------------------------------------------------------------
 
@@ -125,10 +103,10 @@ service cloud.firestore {
        * @description Manages documents (e.g., contracts) for a specific property.
        * @path /properties/{propertyId}/documents/{documentId}
        * @allow (write) if user owns the document and propertyId is consistent.
-       * @principle Enforces owner-based access and relational integrity. Read is handled by collection group rule.
+       * @principle Enforces owner-based access and relational integrity.
        */
       match /documents/{documentId} {
-        allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+        allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
         allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.propertyId == propertyId;
       }
       
@@ -154,10 +132,10 @@ service cloud.firestore {
        * @description Manages inspection records for a specific property.
        * @path /properties/{propertyId}/inspections/{inspectionId}
        * @allow (write) if user owns the inspection and propertyId is consistent.
-       * @principle Enforces owner-based access and relational integrity. Read is handled by collection group rule.
+       * @principle Enforces owner-based access and relational integrity.
        */
       match /inspections/{inspectionId} {
-        allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+        allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
         allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.propertyId == propertyId;
       }
     }
