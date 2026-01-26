@@ -1,0 +1,196 @@
+/**
+ * Core Philosophy: This ruleset establishes a security model based on user ownership.
+ * All primary data entities, such as properties and tenants, are intended to be
+ * owned and managed by a specific authenticated user. Access to sub-collections
+ * (like maintenance logs or documents) is derived from ownership of the parent
+ * property.
+ *
+ * Data Structure: The data is organized into top-level collections for 'users',
+ * 'properties', and 'tenants'. The 'properties' collection contains nested
+ * sub-collections for 'maintenanceLogs', 'inspections', and 'documents',
+ * creating a clear hierarchical relationship.
+ *
+ * Key Security Decisions:
+ * - User data in `/users/{userId}` is strictly private to the owner. User listing
+ *   is disabled to protect privacy.
+ * - CRITICAL: The 'Property' and 'Tenant' entities are missing a required `ownerId`
+ *   field. Without this field, it is impossible to securely determine which user
+ *   is authorized to read, write, or delete these documents. As a result, all
+ *   access to `/properties` and `/tenants` (and their sub-collections) is
+ *   denied by default. This is a deliberate, secure-by-default posture that
+ *   must be resolved by updating the data model.
+ * - Writes to sub-collections (e.g., creating a maintenance log) must validate
+ *   that the `propertyId` within the document data matches the ID in the path,
+ *   enforcing relational integrity.
+ *
+ * Denormalization for Authorization: To enable secure and performant rules, it is
+ * essential to denormalize an `ownerId` (the user's auth UID) field onto every
+ * document in the `/properties` and `/tenants` collections. This avoids slow and
+ * costly `get()` calls across collections and allows for simple, direct
+ * ownership checks.
+ *
+ * Structural Segregation: N/A in this model.
+ */
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    //-------------------------------------------------------------------------
+    // Helper Functions
+    //-------------------------------------------------------------------------
+
+    /**
+     * Checks if the user is authenticated.
+     */
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    /**
+     * Checks if the currently authenticated user's UID matches the provided userId.
+     */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * A reusable check for state-changing operations (update, delete) to ensure
+     * the document being modified actually exists.
+     */
+    function isExistingDoc() {
+      return resource != null;
+    }
+
+    /**
+     * Checks if the user is the owner of a specific Property document.
+     * This relies on a denormalized `ownerId` field on the property document.
+     * CRITICAL: This function will fail until the `Property` entity is updated
+     * with an `ownerId` field.
+     */
+    function isPropertyOwner(propertyId) {
+      let propertyData = get(/databases/$(database)/documents/properties/$(propertyId)).data;
+      return isSignedIn() && propertyData.ownerId == request.auth.uid;
+    }
+
+    //-------------------------------------------------------------------------
+    // User Rules
+    //-------------------------------------------------------------------------
+
+    /**
+     * @description Manages user profile data. A user can create their own
+     * profile, and can only read or write their own data.
+     * @path /users/{userId}
+     * @allow (create) a new user document if `userId` matches `auth.uid`.
+     * @deny (get) another user's profile document.
+     * @principle Restricts access to a user's own data tree.
+     */
+    match /users/{userId} {
+      allow get: if isOwner(userId);
+      allow list: if false;
+      allow create: if isOwner(userId);
+      allow update: if isOwner(userId) && isExistingDoc();
+      allow delete: if isOwner(userId) && isExistingDoc();
+    }
+
+    //-------------------------------------------------------------------------
+    // Property Rules
+    //-------------------------------------------------------------------------
+
+    /**
+     * @description Manages rental property information.
+     * @path /properties/{propertyId}
+     * @allow (none) Access is currently blocked.
+     * @deny (create) a property because ownership cannot be verified.
+     * @principle Enforces a secure-by-default posture. Authorization cannot be
+     * implemented without an ownership field on the document.
+     */
+    match /properties/{propertyId} {
+      // CRITICAL: Cannot implement owner-only rules. The 'Property' entity is missing an 'ownerId' field.
+      // All access is denied until the data model is updated.
+      allow get: if false; // TODO: Change to `isPropertyOwner(propertyId)` after adding `ownerId` to Property schema.
+      allow list: if false; // TODO: Secure list queries based on a user's `ownerId`.
+      allow create: if false; // TODO: Add owner validation once the schema is updated with an ownership field. e.g., `isSignedIn() && request.resource.data.ownerId == request.auth.uid`
+      allow update: if false; // TODO: Change to `isPropertyOwner(propertyId) && isExistingDoc()`
+      allow delete: if false; // TODO: Change to `isPropertyOwner(propertyId) && isExistingDoc()`
+
+      //-------------------------------------------------------------------------
+      // Maintenance Log Sub-collection Rules
+      //-------------------------------------------------------------------------
+
+      /**
+       * @description Manages maintenance logs for a specific property.
+       * @path /properties/{propertyId}/maintenanceLogs/{maintenanceLogId}
+       * @allow (create) a maintenance log if you own the parent property.
+       * @deny (update) a log for a property you do not own.
+       * @principle Enforces derived permissions from the parent document and validates relational integrity.
+       */
+      match /maintenanceLogs/{maintenanceLogId} {
+        allow get: if isPropertyOwner(propertyId);
+        allow list: if isPropertyOwner(propertyId);
+        allow create: if isPropertyOwner(propertyId) && request.resource.data.propertyId == propertyId;
+        allow update: if isPropertyOwner(propertyId) && isExistingDoc() && request.resource.data.propertyId == resource.data.propertyId;
+        allow delete: if isPropertyOwner(propertyId) && isExistingDoc();
+      }
+
+      //-------------------------------------------------------------------------
+      // Inspection Sub-collection Rules
+      //-------------------------------------------------------------------------
+
+      /**
+       * @description Manages inspection records for a specific property.
+       * @path /properties/{propertyId}/inspections/{inspectionId}
+       * @allow (create) an inspection record if you own the parent property.
+       * @deny (list) inspections for a property you do not own.
+       * @principle Enforces derived permissions from the parent document and validates relational integrity.
+       */
+      match /inspections/{inspectionId} {
+        allow get: if isPropertyOwner(propertyId);
+        allow list: if isPropertyOwner(propertyId);
+        allow create: if isPropertyOwner(propertyId) && request.resource.data.propertyId == propertyId;
+        allow update: if isPropertyOwner(propertyId) && isExistingDoc() && request.resource.data.propertyId == resource.data.propertyId;
+        allow delete: if isPropertyOwner(propertyId) && isExistingDoc();
+      }
+
+      //-------------------------------------------------------------------------
+      // Document Sub-collection Rules
+      //-------------------------------------------------------------------------
+
+      /**
+       * @description Manages documents (e.g., contracts) for a specific property.
+       * @path /properties/{propertyId}/documents/{documentId}
+       * @allow (create) a document if you own the parent property.
+       * @deny (get) a document for a property you do not own.
+       * @principle Enforces derived permissions from the parent document and validates relational integrity.
+       */
+      match /documents/{documentId} {
+        allow get: if isPropertyOwner(propertyId);
+        allow list: if isPropertyOwner(propertyId);
+        allow create: if isPropertyOwner(propertyId) && request.resource.data.propertyId == propertyId;
+        allow update: if isPropertyOwner(propertyId) && isExistingDoc() && request.resource.data.propertyId == resource.data.propertyId;
+        allow delete: if isPropertyOwner(propertyId) && isExistingDoc();
+      }
+    }
+
+    //-------------------------------------------------------------------------
+    // Tenant Rules
+    //-------------------------------------------------------------------------
+
+    /**
+     * @description Manages tenant information.
+     * @path /tenants/{tenantId}
+     * @allow (none) Access is currently blocked.
+     * @deny (create) a tenant because ownership cannot be verified.
+     * @principle Enforces a secure-by-default posture. Authorization cannot be
+     * implemented without an ownership field on the document.
+     */
+    match /tenants/{tenantId} {
+      // CRITICAL: Cannot implement owner-only rules. The 'Tenant' entity is missing an 'ownerId' field
+      // to link it to the managing user. All access is denied until the data model is updated.
+      allow get: if false; // TODO: Add owner validation once the schema is updated.
+      allow list: if false; // TODO: Add owner validation once the schema is updated.
+      allow create: if false; // TODO: Add owner validation once the schema is updated.
+      allow update: if false; // TODO: Add owner validation once the schema is updated.
+      allow delete: if false; // TODO: Add owner validation once the schema is updated.
+    }
+  }
+}

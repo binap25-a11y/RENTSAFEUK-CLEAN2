@@ -1,0 +1,326 @@
+{
+  "entities": {
+    "Property": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Property",
+      "type": "object",
+      "description": "Represents a rental property managed within the application.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Property entity."
+        },
+        "address": {
+          "type": "string",
+          "description": "Full address of the property."
+        },
+        "propertyType": {
+          "type": "string",
+          "description": "Type of property (e.g., flat, house, bungalow, maisonette, studio, HMO)."
+        },
+        "status": {
+          "type": "string",
+          "description": "Status of the property (e.g., vacant, occupied, under maintenance)."
+        },
+        "bedrooms": {
+          "type": "number",
+          "description": "Number of bedrooms in the property."
+        },
+        "bathrooms": {
+          "type": "number",
+          "description": "Number of bathrooms in the property."
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "Reference to Tenant. (Relationship: Tenant 1:N Property)"
+        },
+        "imageUri": {
+          "type": "string",
+          "description": "URI of the property image.",
+          "format": "uri"
+        }
+      },
+      "required": [
+        "id",
+        "address",
+        "propertyType",
+        "status",
+        "bedrooms",
+        "bathrooms"
+      ]
+    },
+    "Tenant": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Tenant",
+      "type": "object",
+      "description": "Represents a tenant renting a property.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Tenant entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "Name of the tenant."
+        },
+        "email": {
+          "type": "string",
+          "description": "Email address of the tenant.",
+          "format": "email"
+        },
+        "telephone": {
+          "type": "string",
+          "description": "Telephone number of the tenant."
+        },
+        "tenancyStartDate": {
+          "type": "string",
+          "description": "Start date of the tenancy.",
+          "format": "date-time"
+        },
+        "tenancyEndDate": {
+          "type": "string",
+          "description": "End date of the tenancy.",
+          "format": "date-time"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional notes about the tenant or tenancy."
+        }
+      },
+      "required": [
+        "id",
+        "name",
+        "email",
+        "telephone",
+        "tenancyStartDate",
+        "tenancyEndDate"
+      ]
+    },
+    "MaintenanceLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "MaintenanceLog",
+      "type": "object",
+      "description": "Represents a maintenance log entry for a property.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the MaintenanceLog entity."
+        },
+        "propertyId": {
+          "type": "string",
+          "description": "Reference to Property. (Relationship: Property 1:N MaintenanceLog)"
+        },
+        "description": {
+          "type": "string",
+          "description": "Description of the maintenance issue."
+        },
+        "urgency": {
+          "type": "string",
+          "description": "Urgency level of the maintenance issue."
+        },
+        "dateLogged": {
+          "type": "string",
+          "description": "Date when the maintenance issue was logged.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the maintenance task (e.g., Open, In Progress, Complete)."
+        }
+      },
+      "required": [
+        "id",
+        "propertyId",
+        "description",
+        "urgency",
+        "dateLogged"
+      ]
+    },
+    "Inspection": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Inspection",
+      "type": "object",
+      "description": "Represents a scheduled inspection for a property.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Inspection entity."
+        },
+        "propertyId": {
+          "type": "string",
+          "description": "Reference to Property. (Relationship: Property 1:N Inspection)"
+        },
+        "scheduledDate": {
+          "type": "string",
+          "description": "Date and time the inspection is scheduled for.",
+          "format": "date-time"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Notes about the inspection"
+        }
+      },
+      "required": [
+        "id",
+        "propertyId",
+        "scheduledDate"
+      ]
+    },
+    "Document": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Document",
+      "type": "object",
+      "description": "Represents a document associated with a property.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Document entity."
+        },
+        "propertyId": {
+          "type": "string",
+          "description": "Reference to Property. (Relationship: Property 1:N Document)"
+        },
+        "documentName": {
+          "type": "string",
+          "description": "Name of the document."
+        },
+        "fileUri": {
+          "type": "string",
+          "description": "URI of the document file.",
+          "format": "uri"
+        },
+        "uploadDate": {
+          "type": "string",
+          "description": "Date when the document was uploaded.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "propertyId",
+        "documentName",
+        "fileUri",
+        "uploadDate"
+      ]
+    }
+  },
+  "auth": {
+    "providers": [
+      "password",
+      "anonymous"
+    ]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/users/{userId}",
+        "definition": {
+          "entityName": "user",
+          "schema": {
+            "$ref": "#/backend/entities/User"
+          },
+          "description": "Collection to store user-related data.  Security rules will enforce that only the authenticated user can access their own document. This path contains user profile information.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/properties/{propertyId}",
+        "definition": {
+          "entityName": "Property",
+          "schema": {
+            "$ref": "#/backend/entities/Property"
+          },
+          "description": "Collection to store rental property information. This collection contains properties that are managed within the application.",
+          "params": [
+            {
+              "name": "propertyId",
+              "description": "The unique identifier for the property."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/properties/{propertyId}/maintenanceLogs/{maintenanceLogId}",
+        "definition": {
+          "entityName": "MaintenanceLog",
+          "schema": {
+            "$ref": "#/backend/entities/MaintenanceLog"
+          },
+          "description": "Subcollection to store maintenance logs for each property. This provides a clear hierarchy for managing maintenance records related to a specific property.",
+          "params": [
+            {
+              "name": "propertyId",
+              "description": "The unique identifier for the property."
+            },
+            {
+              "name": "maintenanceLogId",
+              "description": "The unique identifier for the maintenance log entry."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/properties/{propertyId}/inspections/{inspectionId}",
+        "definition": {
+          "entityName": "Inspection",
+          "schema": {
+            "$ref": "#/backend/entities/Inspection"
+          },
+          "description": "Subcollection to store inspection schedules for each property.  Maintains inspection records specific to a property, aiding in organized tracking.",
+          "params": [
+            {
+              "name": "propertyId",
+              "description": "The unique identifier for the property."
+            },
+            {
+              "name": "inspectionId",
+              "description": "The unique identifier for the inspection."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/properties/{propertyId}/documents/{documentId}",
+        "definition": {
+          "entityName": "Document",
+          "schema": {
+            "$ref": "#/backend/entities/Document"
+          },
+          "description": "Subcollection to store documents related to each property. Provides structured storage for property-related documents.",
+          "params": [
+            {
+              "name": "propertyId",
+              "description": "The unique identifier for the property."
+            },
+            {
+              "name": "documentId",
+              "description": "The unique identifier for the document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/tenants/{tenantId}",
+        "definition": {
+          "entityName": "Tenant",
+          "schema": {
+            "$ref": "#/backend/entities/Tenant"
+          },
+          "description": "Collection to store tenant information.  Stores details about tenants renting properties managed within the application.",
+          "params": [
+            {
+              "name": "tenantId",
+              "description": "The unique identifier for the tenant."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The Firestore structure is designed to manage rental properties, tenants, maintenance logs, inspections, and documents. The top-level collections are `properties`, `tenants` and `users/{userId}`. The subcollections `maintenanceLogs`, `inspections`, and `documents` are nested under each `property` to ensure data locality and facilitate querying related information. This structure leverages path-based ownership for user-specific data (e.g., properties owned by a user), which simplifies security rules. The design prioritizes Authorization Independence (CRITICAL) by avoiding hierarchical authorization dependencies (`get()`).  All collections are designed to support QAPs, as listing operations will be secured by path-based rules and potentially by filtering on denormalized fields, ensuring that users can only access data they are authorized to view."
+  }
+}
