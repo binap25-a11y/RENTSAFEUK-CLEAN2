@@ -58,7 +58,8 @@ service cloud.firestore {
 
     /**
      * Checks if the user is the owner of a specific Property document by reading
-     * the denormalized `ownerId` field from the document itself.
+     * the denormalized `ownerId` field from the document itself. This is intended
+     * for use in sub-collection rules to check the parent's ownership.
      */
     function isPropertyOwner(propertyId) {
       let propertyDoc = get(/databases/$(database)/documents/properties/$(propertyId));
@@ -105,7 +106,7 @@ service cloud.firestore {
      * @principle Enforces owner-based access control.
      */
     match /properties/{propertyId} {
-      allow get, update, delete: if isPropertyOwner(propertyId) && isExistingDoc();
+      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow list: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
 
@@ -177,10 +178,9 @@ service cloud.firestore {
      * @principle Enforces owner-based access control.
      */
     match /tenants/{tenantId} {
-      allow get, update, delete: if isTenantOwner(tenantId) && isExistingDoc();
+      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow list: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
   }
 }
-    
