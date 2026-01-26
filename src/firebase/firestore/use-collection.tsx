@@ -25,15 +25,14 @@ export interface UseCollectionResult<T> {
   error: FirestoreError | Error | null; // Error object, or null.
 }
 
-/* Internal implementation of Query:
-  https://github.com/firebase/firebase-js-sdk/blob/c5f08a9bc5da0d2b0207802c972d53724ccef055/packages/firestore/src/lite-api/reference.ts#L143
-*/
+/* Internal implementation of Query used for error reporting. */
 export interface InternalQuery extends Query<DocumentData> {
   _query: {
     path: {
       canonicalString(): string;
       toString(): string;
     }
+    collectionGroup?: string;
   }
 }
 
@@ -85,11 +84,19 @@ export function useCollection<T = any>(
         setIsLoading(false);
       },
       (error: FirestoreError) => {
-        // This logic extracts the path from either a ref or a query
-        const path: string =
-          memoizedTargetRefOrQuery.type === 'collection'
-            ? (memoizedTargetRefOrQuery as CollectionReference).path
-            : (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.path.canonicalString()
+        // This logic extracts the path from either a ref or a query for better error reporting
+        let path: string;
+        const internalQuery = memoizedTargetRefOrQuery as unknown as InternalQuery;
+
+        if (memoizedTargetRefOrQuery.type === 'collection') {
+            path = (memoizedTargetRefOrQuery as CollectionReference).path;
+        } else if (internalQuery._query.collectionGroup) {
+            // For collection group queries, the "path" is the collection ID
+            path = internalQuery._query.collectionGroup;
+        } else {
+            // For regular queries on a collection
+            path = internalQuery._query.path.canonicalString();
+        }
 
         const contextualError = new FirestorePermissionError({
           operation: 'list',
