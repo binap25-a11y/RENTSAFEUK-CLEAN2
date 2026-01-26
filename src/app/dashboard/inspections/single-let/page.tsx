@@ -380,7 +380,7 @@ export default function SingleLetInspectionPage() {
 
             <Accordion type="multiple" className="w-full space-y-4">
               <AccordionItem value="exterior" className='border rounded-lg px-4'>
-                <AccordionTrigger className='text-lg font-semibold'>Exterior</AccordionTrigger>
+                <AccordionTrigger suppressHydrationWarning className='text-lg font-semibold'>Exterior</AccordionTrigger>
                 <AccordionContent className='pt-4'>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <ChecklistItem form={form} name="exterior.roofCondition" label="Roof condition" />
@@ -395,7 +395,7 @@ export default function SingleLetInspectionPage() {
               </AccordionItem>
 
               <AccordionItem value="safety" className='border rounded-lg px-4'>
-                <AccordionTrigger className='text-lg font-semibold'>Safety & Compliance</AccordionTrigger>
+                <AccordionTrigger suppressHydrationWarning className='text-lg font-semibold'>Safety & Compliance</AccordionTrigger>
                 <AccordionContent className='pt-4'>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <ChecklistItem form={form} name="safety.smokeAlarms" label="Smoke alarms tested and working" />
@@ -411,7 +411,7 @@ export default function SingleLetInspectionPage() {
               </AccordionItem>
 
               <AccordionItem value="interior" className='border rounded-lg px-4'>
-                <AccordionTrigger className='text-lg font-semibold'>Interior General Condition</AccordionTrigger>
+                <AccordionTrigger suppressHydrationWarning className='text-lg font-semibold'>Interior General Condition</AccordionTrigger>
                 <AccordionContent className='pt-4'>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <ChecklistItem form={form} name="interior.wallsCeilingsFloors" label="Walls, ceilings, floors" />
@@ -426,7 +426,7 @@ export default function SingleLetInspectionPage() {
               </AccordionItem>
               
                <AccordionItem value="kitchen" className='border rounded-lg px-4'>
-                <AccordionTrigger className='text-lg font-semibold'>Kitchen</AccordionTrigger>
+                <AccordionTrigger suppressHydrationWarning className='text-lg font-semibold'>Kitchen</AccordionTrigger>
                 <AccordionContent className='pt-4'>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <ChecklistItem form={form} name="kitchen.worktops" label="Worktops, cupboards and flooring" />
@@ -441,7 +441,7 @@ export default function SingleLetInspectionPage() {
               </AccordionItem>
               
               <AccordionItem value="bathrooms" className='border rounded-lg px-4'>
-                <AccordionTrigger className='text-lg font-semibold'>Bathrooms</AccordionTrigger>
+                <AccordionTrigger suppressHydrationWarning className='text-lg font-semibold'>Bathrooms</AccordionTrigger>
                 <AccordionContent className='pt-4'>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <ChecklistItem form={form} name="bathrooms.toilet" label="Toilet flushing" />
@@ -456,7 +456,7 @@ export default function SingleLetInspectionPage() {
               </AccordionItem>
               
               <AccordionItem value="heating" className='border rounded-lg px-4'>
-                <AccordionTrigger className='text-lg font-semibold'>Heating</AccordionTrigger>
+                <AccordionTrigger suppressHydrationWarning className='text-lg font-semibold'>Heating</AccordionTrigger>
                 <AccordionContent className='pt-4'>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <ChecklistItem form={form} name="heating.boiler" label="Boiler functioning" />
@@ -469,7 +469,7 @@ export default function SingleLetInspectionPage() {
               </AccordionItem>
               
               <AccordionItem value="bedrooms" className='border rounded-lg px-4'>
-                <AccordionTrigger className='text-lg font-semibold'>Bedrooms</AccordionTrigger>
+                <AccordionTrigger suppressHydrationWarning className='text-lg font-semibold'>Bedrooms</AccordionTrigger>
                 <AccordionContent className='pt-4'>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <ChecklistItem form={form} name="bedrooms.windows" label="Windows and locks working" />
@@ -483,7 +483,7 @@ export default function SingleLetInspectionPage() {
               </AccordionItem>
 
               <AccordionItem value="tenant" className='border rounded-lg px-4'>
-                <AccordionTrigger className='text-lg font-semibold'>Tenant Responsibilities</AccordionTrigger>
+                <AccordionTrigger suppressHydrationWarning className='text-lg font-semibold'>Tenant Responsibilities</AccordionTrigger>
                 <AccordionContent className='pt-4'>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <ChecklistItem form={form} name="tenantResponsibilities.clean" label="Property kept reasonably clean" />
@@ -510,7 +510,7 @@ export default function SingleLetInspectionPage() {
               </AccordionItem>
 
               <AccordionItem value="followUp" className='border rounded-lg px-4'>
-                <AccordionTrigger className='text-lg font-semibold'>Follow-up Actions</AccordionTrigger>
+                <AccordionTrigger suppressHydrationWarning className='text-lg font-semibold'>Follow-up Actions</AccordionTrigger>
                 <AccordionContent className='pt-4'>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         <ChecklistItem form={form} name="followUpActions.repairsRequired" label="Repairs Required" />
