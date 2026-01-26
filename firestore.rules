@@ -62,10 +62,10 @@ service cloud.firestore {
     match /{path=**}/inspections/{inspectionId} {
       allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
-      match /{path=**}/maintenanceLogs/{maintenanceLogId} {
+    match /{path=**}/maintenanceLogs/{maintenanceLogId} {
       allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
-      match /{path=**}/expenses/{expenseId} {
+    match /{path=**}/expenses/{expenseId} {
       allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
 
