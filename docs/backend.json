@@ -231,6 +231,56 @@
         "issueDate",
         "expiryDate"
       ]
+    },
+    "Expense": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Expense",
+      "type": "object",
+      "description": "Represents an expense related to a property.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Expense entity."
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "The UID of the user who owns this expense log."
+        },
+        "propertyId": {
+          "type": "string",
+          "description": "Reference to Property. (Relationship: Property 1:N Expense)"
+        },
+        "date": {
+          "type": "string",
+          "description": "Date the expense was incurred.",
+          "format": "date-time"
+        },
+        "expenseType": {
+          "type": "string",
+          "description": "Category of the expense (e.g., Repairs, Utilities)."
+        },
+        "amount": {
+          "type": "number",
+          "description": "The cost of the expense."
+        },
+        "paidBy": {
+          "type": "string",
+          "description": "Who paid for the expense (e.g., Landlord, Tenant)."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional notes about the expense."
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "propertyId",
+        "date",
+        "expenseType",
+        "amount",
+        "paidBy"
+      ]
     }
   },
   "auth": {
@@ -330,6 +380,26 @@
             {
               "name": "documentId",
               "description": "The unique identifier for the document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/properties/{propertyId}/expenses/{expenseId}",
+        "definition": {
+          "entityName": "Expense",
+          "schema": {
+            "$ref": "#/backend/entities/Expense"
+          },
+          "description": "Subcollection to store expenses for each property.",
+          "params": [
+            {
+              "name": "propertyId",
+              "description": "The unique identifier for the property."
+            },
+            {
+              "name": "expenseId",
+              "description": "The unique identifier for the expense."
             }
           ]
         }

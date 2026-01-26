@@ -162,6 +162,16 @@ service cloud.firestore {
         allow update: if isPropertyOwner(propertyId) && isExistingDoc() && request.resource.data.propertyId == resource.data.propertyId;
         allow delete: if isPropertyOwner(propertyId) && isExistingDoc();
       }
+      
+      //-------------------------------------------------------------------------
+      // Expense Sub-collection Rules
+      //-------------------------------------------------------------------------
+      match /expenses/{expenseId} {
+        allow get, list: if isPropertyOwner(propertyId);
+        allow create: if isPropertyOwner(propertyId) && request.resource.data.propertyId == propertyId;
+        allow update: if isPropertyOwner(propertyId) && isExistingDoc() && request.resource.data.propertyId == resource.data.propertyId;
+        allow delete: if isPropertyOwner(propertyId) && isExistingDoc();
+      }
     }
 
     //-------------------------------------------------------------------------
