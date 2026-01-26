@@ -76,17 +76,8 @@ service cloud.firestore {
         allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.propertyId == propertyId;
       }
 
-      // Rules for sub-collections that DO require collection group queries.
-      // `list` permissions for these are handled by the collection group rules below.
-      match /documents/{documentId} {
-        allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-        allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.propertyId == propertyId;
-      }
-
-      match /inspections/{inspectionId} {
-        allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-        allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.propertyId == propertyId;
-      }
+      // NOTE: 'documents' and 'inspections' subcollections are now secured
+      // exclusively by the collection group rules below to avoid conflicts.
     }
 
     //-------------------------------------------------------------------------
@@ -103,15 +94,18 @@ service cloud.firestore {
     //-------------------------------------------------------------------------
 
     match /{path=**}/documents/{documentId} {
-      // Allows `list` (queries) across all 'documents' collections.
-      // The client query MUST include `where('ownerId', '==', request.auth.uid)`.
-      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      // This single rule block handles all access to 'documents' collections,
+      // whether through a direct path or a collection group query.
+      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
     
     match /{path=**}/inspections/{inspectionId} {
-      // Allows `list` (queries) across all 'inspections' collections.
-      // The client query MUST include `where('ownerId', '==', request.auth.uid)`.
-      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      // This single rule block handles all access to 'inspections' collections.
+      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
   }
 }
