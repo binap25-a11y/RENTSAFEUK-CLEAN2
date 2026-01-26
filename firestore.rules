@@ -101,13 +101,12 @@ service cloud.firestore {
      * @description Manages rental property information.
      * @path /properties/{propertyId}
      * @allow (create) a property if the user is signed in and sets themselves as the owner.
-     * @allow (list) properties if signed in (client-side query must enforce owner).
+     * @allow (list) properties if the query filters by the user's ownerId.
      * @allow (get, update, delete) a property if the user is the owner.
      * @principle Enforces owner-based access control.
      */
     match /properties/{propertyId} {
-      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn();
+      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
 
       //-------------------------------------------------------------------------
@@ -173,13 +172,12 @@ service cloud.firestore {
      * @description Manages tenant information.
      * @path /tenants/{tenantId}
      * @allow (create) a tenant if the user is signed in and sets themselves as the owner.
-     * @allow (list) tenants if signed in (client-side query must enforce owner).
+     * @allow (list) tenants if the query filters by the user's ownerId.
      * @allow (get, update, delete) a tenant if the user is the owner.
      * @principle Enforces owner-based access control.
      */
     match /tenants/{tenantId} {
-      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn();
+      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
   }
