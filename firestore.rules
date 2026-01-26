@@ -15,10 +15,15 @@ service cloud.firestore {
     }
     
     // Checks if the user owns the parent property document.
-    // It safely checks for the existence of the parent document first.
-    function isParentPropertyOwner(propertyPath) {
-      let parentDoc = get(propertyPath);
-      return parentDoc.data != null && parentDoc.data.ownerId == request.auth.uid;
+    // It safely checks for the existence of the parent document and a valid path structure.
+    function isParentPropertyOwner(pathSegments) {
+      // Ensure we have a valid path structure: /properties/{propertyId}
+      if (pathSegments.size() != 2 || pathSegments[0] != 'properties') {
+        return false;
+      }
+      let propertyId = pathSegments[1];
+      let parentDoc = get(/databases/$(database)/documents/properties/$(propertyId));
+      return parentDoc.data != null && 'ownerId' in parentDoc.data && parentDoc.data.ownerId == request.auth.uid;
     }
 
     //-------------------------------------------------------------------------
@@ -33,7 +38,7 @@ service cloud.firestore {
 
     match /properties/{propertyId} {
       // A user can GET a specific property document if they are the owner.
-      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow get: if isSignedIn() && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid;
       
       // A user can LIST (query) properties.
       // SECURITY: Client-side queries MUST enforce security by including
@@ -41,15 +46,15 @@ service cloud.firestore {
       allow list: if isSignedIn();
 
       // Users can update or delete their own properties.
-      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isSignedIn() && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid;
       
       // Users can create new properties, ensuring they set themselves as the owner.
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && 'ownerId' in request.resource.data && request.resource.data.ownerId == request.auth.uid;
     }
 
     match /tenants/{tenantId} {
       // A user can GET a specific tenant document if they are the owner.
-      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow get: if isSignedIn() && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid;
 
       // A user can LIST (query) tenants.
       // SECURITY: Client-side queries MUST enforce security by including
@@ -57,33 +62,33 @@ service cloud.firestore {
       allow list: if isSignedIn();
 
       // Users can update or delete their own tenant records.
-      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isSignedIn() && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid;
       
       // Users can create new tenant records, ensuring they set themselves as the owner.
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && 'ownerId' in request.resource.data && request.resource.data.ownerId == request.auth.uid;
     }
 
     //-------------------------------------------------------------------------
     // Collection Group Rules
     //-------------------------------------------------------------------------
 
-    // These rules use `get()` to check the parent property's ownerId,
+    // These rules use a helper function to safely check the parent property's ownerId,
     // which is the most secure way to handle collection group queries.
 
     match /{path=**}/maintenanceLogs/{logId} {
-      allow read, write: if isSignedIn() && isParentPropertyOwner(/databases/$(database)/documents/properties/$(path[1]));
+      allow read, write: if isSignedIn() && isParentPropertyOwner(path);
     }
 
     match /{path=**}/expenses/{expenseId} {
-      allow read, write: if isSignedIn() && isParentPropertyOwner(/databases/$(database)/documents/properties/$(path[1]));
+      allow read, write: if isSignedIn() && isParentPropertyOwner(path);
     }
     
     match /{path=**}/documents/{documentId} {
-      allow read, write: if isSignedIn() && isParentPropertyOwner(/databases/$(database)/documents/properties/$(path[1]));
+      allow read, write: if isSignedIn() && isParentPropertyOwner(path);
     }
     
     match /{path=**}/inspections/{inspectionId} {
-      allow read, write: if isSignedIn() && isParentPropertyOwner(/databases/$(database)/documents/properties/$(path[1]));
+      allow read, write: if isSignedIn() && isParentPropertyOwner(path);
     }
   }
 }
