@@ -109,10 +109,11 @@ export default function RemindersPage() {
 
   const inspectionsQuery = useMemoFirebase(() => {
     if (!user) return null;
+    // Query is simplified to avoid needing a composite index.
+    // Filtering by status is now handled on the client side.
     return query(
       collectionGroup(firestore, 'inspections'),
-      where('ownerId', '==', user.uid),
-      where('status', '==', 'Scheduled')
+      where('ownerId', '==', user.uid)
     );
   }, [firestore, user]);
   const { data: inspections, isLoading: isLoadingInspections } =
@@ -160,7 +161,8 @@ export default function RemindersPage() {
             insp.scheduledDate instanceof Date
               ? insp.scheduledDate
               : new Date(insp.scheduledDate.seconds * 1000);
-          return isFuture(scheduled);
+          // Client-side filtering for 'Scheduled' status
+          return insp.status === 'Scheduled' && isFuture(scheduled);
         })
         .map((insp) => ({
           id: `insp-${insp.id}`,
