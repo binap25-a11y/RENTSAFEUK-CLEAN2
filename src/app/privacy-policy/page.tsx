@@ -27,7 +27,7 @@ export default function PrivacyPolicyPage() {
 
           <h2 className="font-semibold text-lg pt-4">1. Introduction</h2>
           <p>
-            Welcome to RentSafe. We are committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our application. Please read this privacy policy carefully. If you do not agree with the terms of this privacy policy, please do not access the application.
+            Welcome to RentSafeUK. We are committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our application. Please read this privacy policy carefully. If you do not agree with the terms of this privacy policy, please do not access the application.
           </p>
 
           <h2 className="font-semibold text-lg pt-4">2. Collection of Your Information</h2>

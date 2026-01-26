@@ -4,7 +4,7 @@ import './globals.css';
 import { FirebaseClientProvider } from '@/firebase';
 
 export const metadata: Metadata = {
-  title: 'RentSafe',
+  title: 'RentSafeUK',
   description: 'Property Management App',
 };
 

@@ -27,7 +27,7 @@ export default function TermsOfServicePage() {
 
           <h2 className="font-semibold text-lg pt-4">1. Agreement to Terms</h2>
           <p>
-            By creating an account and using the RentSafe application ("Service"), you agree to be bound by these Terms of Service ("Terms"). If you disagree with any part of the terms, then you may not access the Service.
+            By creating an account and using the RentSafeUK application ("Service"), you agree to be bound by these Terms of Service ("Terms"). If you disagree with any part of the terms, then you may not access the Service.
           </p>
 
           <h2 className="font-semibold text-lg pt-4">2. Your Account</h2>
@@ -52,7 +52,7 @@ export default function TermsOfServicePage() {
 
           <h2 className="font-semibold text-lg pt-4">6. Limitation of Liability</h2>
           <p>
-            In no event shall RentSafe, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from (i) your access to or use of or inability to access or use the Service; (ii) any conduct or content of any third party on the Service; (iii) any content obtained from the Service; and (iv) unauthorized access, use or alteration of your transmissions or content, whether based on warranty, contract, tort (including negligence) or any other legal theory, whether or not we have been informed of the possibility of such damage.
+            In no event shall RentSafeUK, nor its directors, employees, partners, agents, suppliers, or affiliates, be liable for any indirect, incidental, special, consequential or punitive damages, including without limitation, loss of profits, data, use, goodwill, or other intangible losses, resulting from (i) your access to or use of or inability to access or use the Service; (ii) any conduct or content of any third party on the Service; (iii) any content obtained from the Service; and (iv) unauthorized access, use or alteration of your transmissions or content, whether based on warranty, contract, tort (including negligence) or any other legal theory, whether or not we have been informed of the possibility of such damage.
           </p>
 
           <h2 className="font-semibold text-lg pt-4">7. Governing Law</h2>

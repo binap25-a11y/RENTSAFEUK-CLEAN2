@@ -48,7 +48,7 @@ export default function DashboardLayout({
         <SidebarHeader>
           <Link href="/dashboard" className="flex items-center gap-2">
             <Logo className="w-8 h-8 text-primary" />
-            <span className="font-bold text-lg font-headline">RentSafe</span>
+            <span className="font-bold text-lg font-headline">RentSafeUK</span>
           </Link>
         </SidebarHeader>
         <SidebarContent>
