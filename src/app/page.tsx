@@ -15,7 +15,7 @@ export default function LoginPage() {
         <div className="mx-auto grid w-[350px] gap-6">
           <div className="grid gap-2 text-center">
             <Logo className="w-16 h-16 mx-auto" />
-            <h1 className="text-3xl font-bold font-headline mt-2">Maintain UK</h1>
+            <h1 className="text-3xl font-bold font-headline mt-2">RentSafe</h1>
             <p className="text-balance text-muted-foreground">
               Sign in to manage your properties
             </p>
