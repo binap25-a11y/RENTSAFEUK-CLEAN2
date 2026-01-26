@@ -13,6 +13,13 @@ service cloud.firestore {
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
+    
+    // Checks if the user owns the parent property document.
+    // It safely checks for the existence of the parent document first.
+    function isParentPropertyOwner(propertyPath) {
+      let parentDoc = get(propertyPath);
+      return parentDoc.data != null && parentDoc.data.ownerId == request.auth.uid;
+    }
 
     //-------------------------------------------------------------------------
     // Top-Level Collection Rules
@@ -64,19 +71,19 @@ service cloud.firestore {
     // which is the most secure way to handle collection group queries.
 
     match /{path=**}/maintenanceLogs/{logId} {
-      allow read, write: if isSignedIn() && get(/databases/$(database)/documents/properties/$(path[1])).data.ownerId == request.auth.uid;
+      allow read, write: if isSignedIn() && isParentPropertyOwner(/databases/$(database)/documents/properties/$(path[1]));
     }
 
     match /{path=**}/expenses/{expenseId} {
-      allow read, write: if isSignedIn() && get(/databases/$(database)/documents/properties/$(path[1])).data.ownerId == request.auth.uid;
+      allow read, write: if isSignedIn() && isParentPropertyOwner(/databases/$(database)/documents/properties/$(path[1]));
     }
     
     match /{path=**}/documents/{documentId} {
-      allow read, write: if isSignedIn() && get(/databases/$(database)/documents/properties/$(path[1])).data.ownerId == request.auth.uid;
+      allow read, write: if isSignedIn() && isParentPropertyOwner(/databases/$(database)/documents/properties/$(path[1]));
     }
     
     match /{path=**}/inspections/{inspectionId} {
-      allow read, write: if isSignedIn() && get(/databases/$(database)/documents/properties/$(path[1])).data.ownerId == request.auth.uid;
+      allow read, write: if isSignedIn() && isParentPropertyOwner(/databases/$(database)/documents/properties/$(path[1]));
     }
   }
 }
