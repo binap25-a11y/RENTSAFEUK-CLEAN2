@@ -6,22 +6,16 @@ service cloud.firestore {
     // Helper Functions
     //-------------------------------------------------------------------------
 
-    /**
-     * Checks if the user is authenticated.
-     */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /**
-     * Checks if the currently authenticated user's UID matches the provided userId.
-     */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
     //-------------------------------------------------------------------------
-    // User Rules
+    // Top-Level Collection Rules
     //-------------------------------------------------------------------------
 
     match /users/{userId} {
@@ -30,49 +24,44 @@ service cloud.firestore {
       allow create: if isOwner(userId);
     }
 
-    //-------------------------------------------------------------------------
-    // Property & Non-Grouped Sub-collection Rules
-    //-------------------------------------------------------------------------
-
     match /properties/{propertyId} {
-      allow read, update, delete: if isSignedIn() && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && 'ownerId' in request.resource.data && request.resource.data.ownerId == request.auth.uid;
-
-      // These sub-collections do not require collection group queries.
-      match /maintenanceLogs/{maintenanceLogId} {
-        allow read, update, delete: if isSignedIn() && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid;
-        allow create: if isSignedIn() && 'ownerId' in request.resource.data && request.resource.data.ownerId == request.auth.uid && request.resource.data.propertyId == propertyId;
-      }
-      
-      match /expenses/{expenseId} {
-        allow read, update, delete: if isSignedIn() && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid;
-        allow create: if isSignedIn() && 'ownerId' in request.resource.data && request.resource.data.ownerId == request.auth.uid && request.resource.data.propertyId == propertyId;
-      }
+      // Users can CUD their own properties.
+      // Reading/listing is constrained by queries on the 'ownerId' field.
+      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
-
-    //-------------------------------------------------------------------------
-    // Tenant Rules
-    //-------------------------------------------------------------------------
 
     match /tenants/{tenantId} {
-      allow read, update, delete: if isSignedIn() && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && 'ownerId' in request.resource.data && request.resource.data.ownerId == request.auth.uid;
+      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
 
     //-------------------------------------------------------------------------
-    // Collection Group Rules for Reminders Page & Direct Access
+    // Collection Group Rules
     //-------------------------------------------------------------------------
 
-    match /{path=**}/documents/{documentId} {
-      // This single rule block securely handles all access to 'documents' collections.
-      allow read, update, delete: if isSignedIn() && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && 'ownerId' in request.resource.data && request.resource.data.ownerId == request.auth.uid;
+    // This single rule block securely handles all access to 'maintenanceLogs' collections.
+    match /{path=**}/maintenanceLogs/{logId} {
+      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+    }
+
+    // This single rule block securely handles all access to 'expenses' collections.
+    match /{path=**}/expenses/{expenseId} {
+      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
     
+    // This single rule block securely handles all access to 'documents' collections.
+    match /{path=**}/documents/{documentId} {
+      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+    }
+    
+    // This single rule block securely handles all access to 'inspections' collections.
     match /{path=**}/inspections/{inspectionId} {
-      // This single rule block securely handles all access to 'inspections' collections.
-      allow read, update, delete: if isSignedIn() && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && 'ownerId' in request.resource.data && request.resource.data.ownerId == request.auth.uid;
+      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
   }
 }
