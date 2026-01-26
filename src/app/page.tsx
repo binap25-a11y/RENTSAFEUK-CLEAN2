@@ -1,3 +1,5 @@
+'use client';
+
 import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
@@ -5,9 +7,33 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { GoogleIcon, Logo } from '@/components/icons';
+import { useEffect } from 'react';
+import { useRouter } from 'next/navigation';
+import { GoogleAuthProvider, signInWithRedirect } from 'firebase/auth';
+import { useAuth, useUser } from '@/firebase';
 
 export default function LoginPage() {
   const loginImage = PlaceHolderImages.find((img) => img.id === 'login-background');
+  const { user, isUserLoading } = useUser();
+  const auth = useAuth();
+  const router = useRouter();
+
+  useEffect(() => {
+    if (!isUserLoading && user) {
+      router.push('/dashboard');
+    }
+  }, [user, isUserLoading, router]);
+
+  const handleGoogleSignIn = () => {
+    if (auth) {
+      const provider = new GoogleAuthProvider();
+      signInWithRedirect(auth, provider);
+    }
+  };
+
+  if (isUserLoading || user) {
+    return <div className="flex h-screen items-center justify-center">Loading...</div>;
+  }
 
   return (
     <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
@@ -45,7 +71,7 @@ export default function LoginPage() {
             <Button className="w-full" asChild>
               <Link href="/dashboard">Login</Link>
             </Button>
-            <Button variant="outline" className="w-full">
+            <Button variant="outline" className="w-full" onClick={handleGoogleSignIn}>
               <GoogleIcon className="mr-2 h-4 w-4" />
               Login with Google
             </Button>
