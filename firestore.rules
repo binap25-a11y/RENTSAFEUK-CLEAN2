@@ -62,25 +62,29 @@ service cloud.firestore {
 
     // This single rule block securely handles all access to 'maintenanceLogs' collections.
     match /{path=**}/maintenanceLogs/{logId} {
-      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
 
     // This single rule block securely handles all access to 'expenses' collections.
     match /{path=**}/expenses/{expenseId} {
-      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
     
     // This single rule block securely handles all access to 'documents' collections.
     match /{path=**}/documents/{documentId} {
-      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
     
     // This single rule block securely handles all access to 'inspections' collections.
     match /{path=**}/inspections/{inspectionId} {
-      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn();
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
   }
