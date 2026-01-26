@@ -35,18 +35,18 @@ service cloud.firestore {
     //-------------------------------------------------------------------------
 
     match /properties/{propertyId} {
-      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow read, update, delete: if isSignedIn() && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && 'ownerId' in request.resource.data && request.resource.data.ownerId == request.auth.uid;
 
       // These sub-collections do not require collection group queries.
       match /maintenanceLogs/{maintenanceLogId} {
-        allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-        allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.propertyId == propertyId;
+        allow read, update, delete: if isSignedIn() && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid;
+        allow create: if isSignedIn() && 'ownerId' in request.resource.data && request.resource.data.ownerId == request.auth.uid && request.resource.data.propertyId == propertyId;
       }
       
       match /expenses/{expenseId} {
-        allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-        allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.propertyId == propertyId;
+        allow read, update, delete: if isSignedIn() && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid;
+        allow create: if isSignedIn() && 'ownerId' in request.resource.data && request.resource.data.ownerId == request.auth.uid && request.resource.data.propertyId == propertyId;
       }
     }
 
@@ -55,8 +55,8 @@ service cloud.firestore {
     //-------------------------------------------------------------------------
 
     match /tenants/{tenantId} {
-      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow read, update, delete: if isSignedIn() && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && 'ownerId' in request.resource.data && request.resource.data.ownerId == request.auth.uid;
     }
 
     //-------------------------------------------------------------------------
@@ -65,14 +65,14 @@ service cloud.firestore {
 
     match /{path=**}/documents/{documentId} {
       // This single rule block securely handles all access to 'documents' collections.
-      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow read, update, delete: if isSignedIn() && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && 'ownerId' in request.resource.data && request.resource.data.ownerId == request.auth.uid;
     }
     
     match /{path=**}/inspections/{inspectionId} {
       // This single rule block securely handles all access to 'inspections' collections.
-      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow read, update, delete: if isSignedIn() && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && 'ownerId' in request.resource.data && request.resource.data.ownerId == request.auth.uid;
     }
   }
 }
