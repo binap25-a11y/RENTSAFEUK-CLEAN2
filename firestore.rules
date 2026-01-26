@@ -48,24 +48,15 @@ service cloud.firestore {
     }
 
     //-------------------------------------------------------------------------
-    // Collection Group Rules (for read operations)
+    // Collection Group Rule (for all read operations)
     //-------------------------------------------------------------------------
     /**
-     * @description Allows reading from any subcollection via a collection group query
-     * if the user is the owner. This is essential for features like the Reminders
-     * page that query across all properties.
+     * @description Allows reading from any document via a collection query or 
+     * collection group query if the user is the owner. This is essential for 
+     * features like the Reminders page that query across all properties.
      * The query MUST include `where('ownerId', '==', request.auth.uid)`.
      */
-    match /{path=**}/documents/{documentId} {
-      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-    }
-    match /{path=**}/inspections/{inspectionId} {
-      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-    }
-    match /{path=**}/maintenanceLogs/{maintenanceLogId} {
-      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-    }
-    match /{path=**}/expenses/{expenseId} {
+    match /{path=**}/{document=**} {
       allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
 
