@@ -50,7 +50,8 @@ interface Document {
 interface Inspection {
   id: string;
   propertyId: string;
-  inspectionType: string;
+  inspectionType?: string;
+  type: string;
   status: string;
   scheduledDate: { seconds: number; nanoseconds: number } | Date;
 }
@@ -162,7 +163,7 @@ export default function RemindersPage() {
         .map((insp) => ({
           id: `insp-${insp.id}`,
           type: 'Task',
-          description: insp.inspectionType || 'Inspection',
+          description: insp.inspectionType || insp.type || 'Inspection',
           property: propertyMap[insp.propertyId] || 'Unknown Property',
           dueDate:
             insp.scheduledDate instanceof Date
