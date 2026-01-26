@@ -51,91 +51,40 @@ service cloud.firestore {
     // User Rules
     //-------------------------------------------------------------------------
 
-    /**
-     * @description Manages user profile data. A user can create their own
-     * profile, and can only read or write their own data.
-     * @path /users/{userId}
-     * @allow (create) a new user document if `userId` matches `auth.uid`.
-     * @deny (list) other user's profile documents.
-     * @principle Restricts access to a user's own data tree.
-     */
     match /users/{userId} {
       allow get, update, delete: if isOwner(userId);
-      allow list: if false;
+      allow list: if false; // Explicitly deny listing all users
       allow create: if isOwner(userId);
     }
 
     //-------------------------------------------------------------------------
-    // Property Rules
+    // Property & Sub-collection Rules
     //-------------------------------------------------------------------------
 
-    /**
-     * @description Manages rental property information.
-     * @path /properties/{propertyId}
-     * @allow (create) a property if the user is signed in and sets themselves as the owner.
-     * @allow (read, update, delete) a property if the user is the owner.
-     * @principle Enforces owner-based access control.
-     */
     match /properties/{propertyId} {
       allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
 
-      //-------------------------------------------------------------------------
-      // Maintenance Log Sub-collection Rules
-      //-------------------------------------------------------------------------
-
-      /**
-       * @description Manages maintenance logs for a specific property.
-       * @path /properties/{propertyId}/maintenanceLogs/{maintenanceLogId}
-       * @allow (write) if the user owns the log and propertyId is consistent.
-       * @principle Enforces owner-based access and relational integrity.
-       */
+      // Rules for sub-collections that do NOT require collection group queries
       match /maintenanceLogs/{maintenanceLogId} {
         allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
         allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.propertyId == propertyId;
       }
       
-      //-------------------------------------------------------------------------
-      // Document Sub-collection Rules
-      //-------------------------------------------------------------------------
-
-      /**
-       * @description Manages documents (e.g., contracts) for a specific property.
-       * @path /properties/{propertyId}/documents/{documentId}
-       * @allow (write) if user owns the document and propertyId is consistent.
-       * @principle Enforces owner-based access and relational integrity.
-       */
-      match /documents/{documentId} {
-        allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-        allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.propertyId == propertyId;
-      }
-      
-      //-------------------------------------------------------------------------
-      // Expense Sub-collection Rules
-      //-------------------------------------------------------------------------
-      /**
-       * @description Manages expenses for a specific property.
-       * @path /properties/{propertyId}/expenses/{expenseId}
-       * @allow (write) if user owns the expense and propertyId is consistent.
-       * @principle Enforces owner-based access and relational integrity.
-       */
       match /expenses/{expenseId} {
         allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
         allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.propertyId == propertyId;
       }
-      
-      //-------------------------------------------------------------------------
-      // Inspection Sub-collection Rules
-      //-------------------------------------------------------------------------
 
-      /**
-       * @description Manages inspection records for a specific property.
-       * @path /properties/{propertyId}/inspections/{inspectionId}
-       * @allow (write) if user owns the inspection and propertyId is consistent.
-       * @principle Enforces owner-based access and relational integrity.
-       */
+      // Rules for sub-collections that DO require collection group queries.
+      // `list` permissions for these are handled by the collection group rules below.
+      match /documents/{documentId} {
+        allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+        allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.propertyId == propertyId;
+      }
+
       match /inspections/{inspectionId} {
-        allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+        allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
         allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.propertyId == propertyId;
       }
     }
@@ -144,16 +93,25 @@ service cloud.firestore {
     // Tenant Rules
     //-------------------------------------------------------------------------
 
-    /**
-     * @description Manages tenant information.
-     * @path /tenants/{tenantId}
-     * @allow (create) a tenant if the user is signed in and sets themselves as the owner.
-     * @allow (read, update, delete) a tenant if the user is the owner.
-     * @principle Enforces owner-based access control.
-     */
     match /tenants/{tenantId} {
       allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+    }
+
+    //-------------------------------------------------------------------------
+    // Collection Group Rules for Cross-Property Queries (e.g., Reminders Page)
+    //-------------------------------------------------------------------------
+
+    match /{path=**}/documents/{documentId} {
+      // Allows `list` (queries) across all 'documents' collections.
+      // The client query MUST include `where('ownerId', '==', request.auth.uid)`.
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+    }
+    
+    match /{path=**}/inspections/{inspectionId} {
+      // Allows `list` (queries) across all 'inspections' collections.
+      // The client query MUST include `where('ownerId', '==', request.auth.uid)`.
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
   }
 }
