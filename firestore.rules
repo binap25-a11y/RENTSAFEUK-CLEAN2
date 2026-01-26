@@ -15,7 +15,7 @@ service cloud.firestore {
     }
     
     // Checks if the user owns the parent property document.
-    // It safely checks for the existence of the parent document and a valid path structure.
+    // This is safe for GET, CREATE, UPDATE, DELETE but NOT for LIST.
     function isParentPropertyOwner(pathSegments) {
       // Ensure we have a valid path structure: /properties/{propertyId}
       if (pathSegments.size() != 2 || pathSegments[0] != 'properties') {
@@ -72,11 +72,11 @@ service cloud.firestore {
     // Collection Group Rules
     //-------------------------------------------------------------------------
     
-    // These rules are for queries that span across different properties (collection groups).
-    // The 'list' rule is broad (just checking for sign-in), relying on the client-side
+    // These rules separate LIST from other operations. This is critical.
+    // 'list' rules are broad (just checking for sign-in), relying on the client-side
     // query to enforce ownership with a `where('ownerId', '==', user.uid)` clause.
-    // The 'get', 'create', 'update', 'delete' rules are more specific, ensuring data integrity
-    // by checking the parent property's ownership.
+    // 'get', 'create', 'update', 'delete' rules are more specific, ensuring data integrity
+    // by checking the parent property's ownership, which is safe for single-doc operations.
 
     match /{path=**}/maintenanceLogs/{logId} {
       allow get, update, delete: if isSignedIn() && isParentPropertyOwner(path);
