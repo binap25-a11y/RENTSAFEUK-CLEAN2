@@ -38,7 +38,16 @@ const menuItems = [
     ],
   },
   { href: '/dashboard/maintenance', label: 'Maintenance', icon: Wrench },
-  { href: '/dashboard/inspections', label: 'Inspections', icon: CalendarCheck },
+  { 
+    href: '/dashboard/inspections', 
+    label: 'Inspections', 
+    icon: CalendarCheck,
+    subItems: [
+        { href: '/dashboard/inspections', label: 'All Inspections' },
+        { href: '/dashboard/inspections/single-let', label: 'New Single-Let' },
+        { href: '/dashboard/inspections/hmo', label: 'New HMO' },
+    ],
+  },
   { 
     href: '/dashboard/documents', 
     label: 'Documents', 

@@ -100,7 +100,22 @@ export const properties = [
         lat: 52.4862,
         lng: -1.8904,
     }
-  }
+  },
+  {
+    id: '5',
+    address: 'HMO on 55 King St, Manchester, M2 4LQ',
+    propertyType: 'HMO',
+    status: 'Occupied',
+    bedrooms: 6,
+    bathrooms: 3,
+    imageUrl: 'https://picsum.photos/seed/prop5/800/500',
+    tenant: null,
+    tenancy: null,
+    location: {
+        lat: 53.481,
+        lng: -2.245,
+    }
+  },
 ];
 
 export const expenses = [
@@ -146,4 +161,11 @@ export const rentStatement = [
     { month: 'October', rent: 1000, paid: false, notes: 'Pending' },
     { month: 'November', rent: 1000, paid: false, notes: 'Pending' },
     { month: 'December', rent: 1000, paid: false, notes: 'Pending' },
+];
+
+export const pastInspections = [
+    { id: 1, property: '123 Oakhaven St, London, W1A 1AA', type: 'Routine Inspection', date: '2024-07-10', status: 'Completed' },
+    { id: 2, property: '789 Pine Ln, Bristol, BS1 1AA', type: 'Gas Safety Check', date: '2024-06-25', status: 'Completed' },
+    { id: 3, property: '456 Maple Rd, Manchester, M1 1AA', type: 'Move-Out Inspection', date: '2024-05-15', status: 'Completed' },
+    { id: 4, property: 'HMO on 55 King St, Manchester, M2 4LQ', type: 'HMO Inspection', date: '2024-07-20', status: 'Scheduled' },
 ];
