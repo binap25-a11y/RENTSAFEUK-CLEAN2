@@ -55,6 +55,10 @@ export default function LoginPage() {
             <Link href="#" className="underline">
               Sign up
             </Link>
+            {' | '}
+            <Link href="/pricing" className="underline">
+              Pricing
+            </Link>
           </div>
            <div className="mt-2 text-center text-xs text-muted-foreground">
             By continuing, you agree to our{' '}
