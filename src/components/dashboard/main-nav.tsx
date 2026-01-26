@@ -57,7 +57,7 @@ const menuItems = [
         { href: '/dashboard/documents/upload', label: 'Upload Document' },
     ],
   },
-  { href: '/dashboard/expenses', label: 'Expenses', icon: CreditCard },
+  { href: '/dashboard/expenses', label: 'Financials', icon: CreditCard },
   { href: '/dashboard/reminders', label: 'Reminders', icon: Bell },
 ];
 

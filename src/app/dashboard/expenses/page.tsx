@@ -36,7 +36,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Loader2 } from 'lucide-react';
+import { CalendarIcon, CheckCircle, XCircle, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -57,6 +57,8 @@ import {
 } from '@/firebase';
 import { collection, query, where } from 'firebase/firestore';
 import { Label } from '@/components/ui/label';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { annualSummaries, rentStatement } from '@/data/mock-data';
 
 // Schema for the form
 const expenseSchema = z.object({
@@ -87,7 +89,38 @@ interface Expense {
   notes?: string;
 }
 
-export default function ExpensesPage() {
+// Main component
+export default function FinancialsPage() {
+  return (
+    <div className="flex flex-col gap-6">
+      <div>
+        <h1 className="text-3xl font-bold">Financials</h1>
+        <p className="text-muted-foreground">
+          Track expenses, view annual summaries, and manage rent statements.
+        </p>
+      </div>
+      <Tabs defaultValue="expenses">
+        <TabsList className="grid w-full grid-cols-3">
+          <TabsTrigger value="expenses">Expenses</TabsTrigger>
+          <TabsTrigger value="summary">Annual Summary</TabsTrigger>
+          <TabsTrigger value="statement">Rent Statement</TabsTrigger>
+        </TabsList>
+        <TabsContent value="expenses">
+          <ExpenseTracker />
+        </TabsContent>
+        <TabsContent value="summary">
+          <AnnualSummary />
+        </TabsContent>
+        <TabsContent value="statement">
+          <RentStatement />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}
+
+
+function ExpenseTracker() {
   const { user } = useUser();
   const firestore = useFirestore();
   const [selectedProperty, setSelectedProperty] = useState('');
@@ -167,11 +200,9 @@ export default function ExpensesPage() {
   const totalExpenses = useMemo(() => {
     return expenses?.reduce((acc, expense) => acc + expense.amount, 0) || 0;
   }, [expenses]);
-
+  
   return (
-    <div className="flex flex-col gap-6">
-      <h1 className="text-3xl font-bold">Expense Tracker</h1>
-
+    <div className="space-y-6 mt-6">
       <Card>
         <CardHeader>
           <CardTitle>Log New Expense</CardTitle>
@@ -406,5 +437,87 @@ export default function ExpensesPage() {
         </CardFooter>
       </Card>
     </div>
+  );
+}
+
+function AnnualSummary() {
+  // For now, this just displays mock data. In a real app, you'd calculate this.
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle>Annual Financial Summaries</CardTitle>
+        <CardDescription>
+          A year-by-year overview of your portfolio's financial performance.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <Table>
+          <TableHeader>
+            <TableRow>
+              <TableHead>Year</TableHead>
+              <TableHead>Total Rental Income</TableHead>
+              <TableHead>Notes</TableHead>
+            </TableRow>
+          </TableHeader>
+          <TableBody>
+            {annualSummaries.map((summary) => (
+              <TableRow key={summary.year}>
+                <TableCell className="font-medium">{summary.year}</TableCell>
+                <TableCell>£{summary.totalRentalIncome.toLocaleString()}</TableCell>
+                <TableCell>{summary.notes}</TableCell>
+              </TableRow>
+            ))}
+          </TableBody>
+        </Table>
+      </CardContent>
+    </Card>
+  );
+}
+
+function RentStatement() {
+  // This also uses mock data. A real implementation would need property and year filters.
+  return (
+    <Card className="mt-6">
+      <CardHeader>
+        <CardTitle>Rent Payment Statement</CardTitle>
+        <CardDescription>
+          Monthly rent payment status for a selected property and year.
+        </CardDescription>
+      </CardHeader>
+      <CardContent>
+        <p className="text-sm text-muted-foreground mb-4">Showing mock data for 123 Oakhaven St for 2024.</p>
+        <div className="rounded-md border">
+            <Table>
+            <TableHeader>
+                <TableRow>
+                <TableHead>Month</TableHead>
+                <TableHead>Rent Amount</TableHead>
+                <TableHead>Status</TableHead>
+                <TableHead>Notes</TableHead>
+                </TableRow>
+            </TableHeader>
+            <TableBody>
+                {rentStatement.map((statement) => (
+                <TableRow key={statement.month}>
+                    <TableCell className="font-medium">{statement.month}</TableCell>
+                    <TableCell>£{statement.rent.toFixed(2)}</TableCell>
+                    <TableCell>
+                        {statement.paid ? (
+                            <span className="flex items-center gap-2 text-green-600"><CheckCircle className="h-4 w-4" /> Paid</span>
+                        ) : (
+                            <span className="flex items-center gap-2 text-yellow-600"><XCircle className="h-4 w-4" /> Pending</span>
+                        )}
+                    </TableCell>
+                    <TableCell>{statement.notes}</TableCell>
+                </TableRow>
+                ))}
+            </TableBody>
+            </Table>
+        </div>
+      </CardContent>
+       <CardFooter className='flex justify-end font-bold text-lg'>
+          Total Rent Paid: £{rentStatement.filter(r => r.paid).reduce((acc, r) => acc + r.rent, 0).toLocaleString()}
+      </CardFooter>
+    </Card>
   );
 }
