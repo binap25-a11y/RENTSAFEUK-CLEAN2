@@ -7,16 +7,27 @@ import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { GoogleIcon, Logo } from '@/components/icons';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { GoogleAuthProvider, signInWithRedirect } from 'firebase/auth';
+import {
+  GoogleAuthProvider,
+  signInWithRedirect,
+  signInWithEmailAndPassword,
+} from 'firebase/auth';
 import { useAuth, useUser } from '@/firebase';
+import { useToast } from '@/hooks/use-toast';
 
 export default function LoginPage() {
-  const loginImage = PlaceHolderImages.find((img) => img.id === 'login-background');
+  const loginImage = PlaceHolderImages.find(
+    (img) => img.id === 'login-background'
+  );
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
   const router = useRouter();
+  const { toast } = useToast();
+
+  const [email, setEmail] = useState('');
+  const [password, setPassword] = useState('');
 
   useEffect(() => {
     if (!isUserLoading && user) {
@@ -31,8 +42,26 @@ export default function LoginPage() {
     }
   };
 
+  const handleEmailSignIn = (e: React.FormEvent) => {
+    e.preventDefault();
+    if (auth) {
+      signInWithEmailAndPassword(auth, email, password).catch((error) => {
+        toast({
+          variant: 'destructive',
+          title: 'Login Failed',
+          description: 'Invalid email or password.',
+        });
+        console.error('Login error:', error);
+      });
+    }
+  };
+
   if (isUserLoading || user) {
-    return <div className="flex h-screen items-center justify-center">Loading...</div>;
+    return (
+      <div className="flex h-screen items-center justify-center">
+        Loading...
+      </div>
+    );
   }
 
   return (
@@ -46,7 +75,7 @@ export default function LoginPage() {
               Sign in to manage your properties
             </p>
           </div>
-          <div className="grid gap-4">
+          <form onSubmit={handleEmailSignIn} className="grid gap-4">
             <div className="grid gap-2">
               <Label htmlFor="email">Email</Label>
               <Input
@@ -54,6 +83,8 @@ export default function LoginPage() {
                 type="email"
                 placeholder="m@example.com"
                 required
+                value={email}
+                onChange={(e) => setEmail(e.target.value)}
               />
             </div>
             <div className="grid gap-2">
@@ -66,16 +97,26 @@ export default function LoginPage() {
                   Forgot your password?
                 </Link>
               </div>
-              <Input id="password" type="password" required />
+              <Input
+                id="password"
+                type="password"
+                required
+                value={password}
+                onChange={(e) => setPassword(e.target.value)}
+              />
             </div>
-            <Button className="w-full" asChild>
-              <Link href="/dashboard">Login</Link>
+            <Button type="submit" className="w-full">
+              Login
             </Button>
-            <Button variant="outline" className="w-full" onClick={handleGoogleSignIn}>
-              <GoogleIcon className="mr-2 h-4 w-4" />
-              Login with Google
-            </Button>
-          </div>
+          </form>
+          <Button
+            variant="outline"
+            className="w-full"
+            onClick={handleGoogleSignIn}
+          >
+            <GoogleIcon className="mr-2 h-4 w-4" />
+            Login with Google
+          </Button>
           <div className="mt-4 text-center text-sm">
             Don&apos;t have an account?{' '}
             <Link href="#" className="underline">
@@ -86,13 +127,19 @@ export default function LoginPage() {
               Pricing
             </Link>
           </div>
-           <div className="mt-2 text-center text-xs text-muted-foreground">
+          <div className="mt-2 text-center text-xs text-muted-foreground">
             By continuing, you agree to our{' '}
-            <Link href="/terms-of-service" className="underline hover:text-primary">
+            <Link
+              href="/terms-of-service"
+              className="underline hover:text-primary"
+            >
               Terms of Service
             </Link>
-            {' '}and{' '}
-            <Link href="/privacy-policy" className="underline hover:text-primary">
+            {' and '}
+            <Link
+              href="/privacy-policy"
+              className="underline hover:text-primary"
+            >
               Privacy Policy
             </Link>
             .
