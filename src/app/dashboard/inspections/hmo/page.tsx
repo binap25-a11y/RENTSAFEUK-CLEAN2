@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -35,19 +36,27 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon } from 'lucide-react';
+import { CalendarIcon, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
 import { useEffect } from 'react';
+import {
+  useUser,
+  useFirestore,
+  useCollection,
+  useMemoFirebase,
+  addDocumentNonBlocking,
+} from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
 
 const hmoInspectionSchema = z.object({
   // General
   inspectionDate: z.date(),
   inspectorName: z.string().min(1, "Inspector name is required"),
-  propertyAddress: z.string({ required_error: 'Please select a property.' }),
+  propertyId: z.string({ required_error: 'Please select a property.' }),
   occupantCount: z.coerce.number().min(1, "Number of occupants is required"),
   licenceExpiryDate: z.date().optional(),
 
@@ -155,12 +164,10 @@ const hmoInspectionSchema = z.object({
 
 type HmoInspectionFormValues = z.infer<typeof hmoInspectionSchema>;
 
-const properties = [
-  { id: '1', address: '123 Oakhaven St' },
-  { id: '2', address: '456 Maple Rd' },
-  { id: '3', address: '789 Pine Ln' },
-  { id: '5', address: 'HMO on 55 King St' },
-];
+interface Property {
+  id: string;
+  address: string;
+}
 
 const ChecklistItem = ({ form, name, label }: { form: any, name: any, label: string }) => (
     <FormField
@@ -197,22 +204,67 @@ const NotesField = ({ form, name, placeholder }: { form: any, name: any, placeho
 
 
 export default function HmoInspectionPage() {
+    const router = useRouter();
+    const { user } = useUser();
+    const firestore = useFirestore();
+
     const form = useForm<HmoInspectionFormValues>({
         resolver: zodResolver(hmoInspectionSchema),
     });
+
+    const propertiesQuery = useMemoFirebase(() => {
+        if (!user) return null;
+        return query(
+            collection(firestore, 'properties'),
+            where('ownerId', '==', user.uid),
+            where('propertyType', '==', 'HMO')
+        );
+    }, [firestore, user]);
+    const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
 
      useEffect(() => {
         form.setValue('inspectionDate', new Date());
      }, [form]);
 
 
-    function onSubmit(data: HmoInspectionFormValues) {
-        toast({
-            title: 'HMO Inspection Saved',
-            description: 'The inspection record has been successfully saved.',
-        });
-        console.log(data);
-        form.reset();
+    async function onSubmit(data: HmoInspectionFormValues) {
+        if (!user || !firestore) {
+            toast({
+                variant: 'destructive',
+                title: 'Authentication Error',
+                description: 'You must be logged in to save an inspection.',
+            });
+            return;
+        }
+
+        const { propertyId, ...inspectionData } = data;
+
+        const newInspection = {
+            ...inspectionData,
+            ownerId: user.uid,
+            propertyId: propertyId,
+            scheduledDate: data.inspectionDate, // Main date for list view
+            type: 'HMO',
+            status: 'Completed',
+        };
+
+        try {
+            const inspectionsCollection = collection(firestore, 'properties', propertyId, 'inspections');
+            await addDocumentNonBlocking(inspectionsCollection, newInspection);
+            
+            toast({
+                title: 'HMO Inspection Saved',
+                description: 'The inspection record has been successfully saved.',
+            });
+            router.push('/dashboard/inspections');
+        } catch (error) {
+            console.error('Failed to save HMO inspection:', error);
+            toast({
+                variant: 'destructive',
+                title: 'Save Failed',
+                description: 'There was an error saving the inspection. Please try again.',
+            });
+        }
     }
 
     return (
@@ -268,13 +320,17 @@ export default function HmoInspectionPage() {
                                     </div>
                                     <FormField
                                         control={form.control}
-                                        name="propertyAddress"
+                                        name="propertyId"
                                         render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Property</FormLabel>
                                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
-                                                    <FormControl><SelectTrigger><SelectValue placeholder="Select a property" /></SelectTrigger></FormControl>
-                                                    <SelectContent>{properties.map((prop) => (<SelectItem key={prop.id} value={prop.address}>{prop.address}</SelectItem>))}</SelectContent>
+                                                    <FormControl>
+                                                        <SelectTrigger>
+                                                            <SelectValue placeholder={isLoadingProperties ? <div className='flex items-center gap-2'><Loader2 className='animate-spin' /> Loading...</div> : "Select an HMO property"} />
+                                                        </SelectTrigger>
+                                                    </FormControl>
+                                                    <SelectContent>{properties?.map((prop) => (<SelectItem key={prop.id} value={prop.id}>{prop.address}</SelectItem>))}</SelectContent>
                                                 </Select>
                                                 <FormMessage />
                                             </FormItem>

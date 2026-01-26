@@ -34,7 +34,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Upload } from 'lucide-react';
+import { CalendarIcon, Upload, Loader2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -42,9 +42,19 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Checkbox } from '@/components/ui/checkbox';
 import { useEffect } from 'react';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
+import {
+  useUser,
+  useFirestore,
+  useCollection,
+  useMemoFirebase,
+  addDocumentNonBlocking,
+} from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+
 
 const inspectionSchema = z.object({
-  property: z.string({ required_error: 'Please select a property.' }),
+  propertyId: z.string({ required_error: 'Please select a property.' }),
   inspectionType: z.string({ required_error: 'Please select an inspection type.' }),
   status: z.string({ required_error: 'Please select a status.' }),
   scheduledDate: z.date({ required_error: 'Please select a scheduled date.' }),
@@ -142,12 +152,10 @@ const inspectionSchema = z.object({
 
 type InspectionFormValues = z.infer<typeof inspectionSchema>;
 
-// Mock properties data
-const properties = [
-  { id: '1', address: '123 Oakhaven St' },
-  { id: '2', address: '456 Maple Rd' },
-  { id: '3', address: '789 Pine Ln' },
-];
+interface Property {
+  id: string;
+  address: string;
+}
 
 const ChecklistItem = ({ form, name, label }: { form: any, name: any, label: string }) => {
     return (
@@ -191,21 +199,65 @@ const NotesField = ({ form, name, placeholder }: { form: any, name: any, placeho
 
 
 export default function SingleLetInspectionPage() {
+  const router = useRouter();
+  const { user } = useUser();
+  const firestore = useFirestore();
+
   const form = useForm<InspectionFormValues>({
     resolver: zodResolver(inspectionSchema),
   });
+
+  const propertiesQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+        collection(firestore, 'properties'),
+        where('ownerId', '==', user.uid),
+        where('status', 'in', ['Vacant', 'Occupied'])
+    );
+  }, [firestore, user]);
+
+  const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
 
   useEffect(() => {
     form.setValue('scheduledDate', new Date());
   }, [form]);
 
-  function onSubmit(data: InspectionFormValues) {
-    toast({
-      title: 'Inspection Saved',
-      description: 'The inspection details have been successfully saved.',
-    });
-    console.log(data);
-    form.reset();
+  async function onSubmit(data: InspectionFormValues) {
+    if (!user || !firestore) {
+      toast({
+        variant: 'destructive',
+        title: 'Authentication Error',
+        description: 'You must be logged in to save an inspection.',
+      });
+      return;
+    }
+
+    const { propertyId, ...inspectionData } = data;
+
+    const newInspection = {
+      ...inspectionData,
+      ownerId: user.uid,
+      propertyId: propertyId,
+      type: 'Single-Let',
+    };
+
+    try {
+      const inspectionsCollection = collection(firestore, 'properties', propertyId, 'inspections');
+      await addDocumentNonBlocking(inspectionsCollection, newInspection);
+      
+      toast({
+        title: 'Inspection Saved',
+        description: 'The inspection details have been successfully saved.',
+      });
+      router.push('/dashboard/inspections');
+    } catch (error) {
+      console.error('Failed to save inspection:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Save Failed',
+        description: 'There was an error saving the inspection. Please try again.',
+      });
+    }
   }
 
   return (
@@ -227,19 +279,19 @@ export default function SingleLetInspectionPage() {
               <CardContent className="space-y-4">
                  <FormField
                   control={form.control}
-                  name="property"
+                  name="propertyId"
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Property</FormLabel>
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder="Select a property" />
+                            <SelectValue placeholder={isLoadingProperties ? <div className='flex items-center gap-2'><Loader2 className='animate-spin' /> Loading...</div> : "Select a property"} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {properties.map((prop) => (
-                            <SelectItem key={prop.id} value={prop.address}>
+                          {properties?.map((prop) => (
+                            <SelectItem key={prop.id} value={prop.id}>
                               {prop.address}
                             </SelectItem>
                           ))}

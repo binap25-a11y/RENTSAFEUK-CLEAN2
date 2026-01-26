@@ -156,6 +156,10 @@
           "type": "string",
           "description": "Unique identifier for the Inspection entity."
         },
+        "ownerId": {
+          "type": "string",
+          "description": "The UID of the user who owns this inspection."
+        },
         "propertyId": {
           "type": "string",
           "description": "Reference to Property. (Relationship: Property 1:N Inspection)"
@@ -165,6 +169,14 @@
           "description": "Date and time the inspection is scheduled for.",
           "format": "date-time"
         },
+        "type": {
+          "type": "string",
+          "description": "The type of inspection (e.g., Single-Let, HMO)."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the inspection (e.g., Scheduled, Completed)."
+        },
         "notes": {
           "type": "string",
           "description": "Notes about the inspection"
@@ -172,8 +184,11 @@
       },
       "required": [
         "id",
+        "ownerId",
         "propertyId",
-        "scheduledDate"
+        "scheduledDate",
+        "type",
+        "status"
       ]
     },
     "Document": {

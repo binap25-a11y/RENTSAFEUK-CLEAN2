@@ -1,4 +1,7 @@
+'use client';
+
 import Link from 'next/link';
+import { useState, useMemo } from 'react';
 import {
   Card,
   CardHeader,
@@ -16,9 +19,38 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle } from 'lucide-react';
-import { pastInspections } from '@/data/mock-data';
+import { PlusCircle, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
+import {
+  useUser,
+  useFirestore,
+  useCollection,
+  useMemoFirebase,
+} from '@/firebase';
+import { collection, query, where } from 'firebase/firestore';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Label } from '@/components/ui/label';
+
+// Type for property documents from Firestore
+interface Property {
+  id: string;
+  address: string;
+}
+
+// Type for inspection documents from Firestore
+interface Inspection {
+  id: string;
+  propertyId: string;
+  type: string;
+  status: string;
+  scheduledDate: { seconds: number; nanoseconds: number } | Date;
+}
 
 const getStatusVariant = (status: string) => {
   switch (status) {
@@ -32,6 +64,37 @@ const getStatusVariant = (status: string) => {
 };
 
 export default function InspectionsPage() {
+  const { user } = useUser();
+  const firestore = useFirestore();
+  const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
+
+  // Fetch properties for the filter dropdown
+  const propertiesQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+      collection(firestore, 'properties'),
+      where('ownerId', '==', user.uid),
+      where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
+    );
+  }, [firestore, user]);
+  const { data: properties, isLoading: isLoadingProperties } =
+    useCollection<Property>(propertiesQuery);
+
+  // Fetch inspections for the selected property
+  const inspectionsQuery = useMemoFirebase(() => {
+    if (!user || !selectedPropertyId) return null;
+    return query(
+      collection(firestore, 'properties', selectedPropertyId, 'inspections')
+    );
+  }, [firestore, user, selectedPropertyId]);
+
+  const { data: inspections, isLoading: isLoadingInspections } =
+    useCollection<Inspection>(inspectionsQuery);
+
+  const getPropertyAddress = (propertyId: string) => {
+    return properties?.find((p) => p.id === propertyId)?.address || 'Unknown';
+  };
+
   return (
     <div className="flex flex-col gap-6">
       <div>
@@ -46,7 +109,7 @@ export default function InspectionsPage() {
             <PlusCircle className="mr-2 h-4 w-4" /> New Single-Let Inspection
           </Link>
         </Button>
-          <Button asChild variant="outline">
+        <Button asChild variant="outline">
           <Link href="/dashboard/inspections/hmo">
             <PlusCircle className="mr-2 h-4 w-4" /> New HMO Inspection
           </Link>
@@ -59,7 +122,36 @@ export default function InspectionsPage() {
             A log of all completed and scheduled inspections.
           </CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="space-y-4">
+          <div className="flex items-center gap-2">
+            <Label htmlFor="property-filter" className="whitespace-nowrap">
+              Filter by Property
+            </Label>
+            <Select
+              onValueChange={setSelectedPropertyId}
+              value={selectedPropertyId}
+            >
+              <SelectTrigger
+                id="property-filter"
+                className="w-full md:w-[300px]"
+              >
+                <SelectValue
+                  placeholder={
+                    isLoadingProperties
+                      ? 'Loading...'
+                      : 'Select a property to view inspections'
+                  }
+                />
+              </SelectTrigger>
+              <SelectContent>
+                {properties?.map((prop) => (
+                  <SelectItem key={prop.id} value={prop.id}>
+                    {prop.address}
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+          </div>
           <div className="rounded-md border">
             <Table>
               <TableHeader>
@@ -71,14 +163,41 @@ export default function InspectionsPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {pastInspections.map((inspection) => (
+                {isLoadingInspections && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="h-24 text-center">
+                      <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+                    </TableCell>
+                  </TableRow>
+                )}
+                {!isLoadingInspections && inspections?.length === 0 && (
+                  <TableRow>
+                    <TableCell colSpan={4} className="h-24 text-center">
+                      {selectedPropertyId
+                        ? 'No inspections found for this property.'
+                        : 'Select a property to see inspections.'}
+                    </TableCell>
+                  </TableRow>
+                )}
+                {inspections?.map((inspection) => (
                   <TableRow key={inspection.id}>
-                    <TableCell className="font-medium">{inspection.property}</TableCell>
+                    <TableCell className="font-medium">
+                      {getPropertyAddress(inspection.propertyId)}
+                    </TableCell>
                     <TableCell>{inspection.type}</TableCell>
                     <TableCell>
-                      <Badge variant={getStatusVariant(inspection.status)}>{inspection.status}</Badge>
+                      <Badge variant={getStatusVariant(inspection.status)}>
+                        {inspection.status}
+                      </Badge>
                     </TableCell>
-                    <TableCell className="text-right">{format(new Date(inspection.date), 'dd/MM/yyyy')}</TableCell>
+                    <TableCell className="text-right">
+                      {format(
+                        inspection.scheduledDate instanceof Date
+                          ? inspection.scheduledDate
+                          : new Date(inspection.scheduledDate.seconds * 1000),
+                        'dd/MM/yyyy'
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

@@ -140,8 +140,8 @@ service cloud.firestore {
        */
       match /inspections/{inspectionId} {
         allow get, list: if isPropertyOwner(propertyId);
-        allow create: if isPropertyOwner(propertyId) && request.resource.data.propertyId == propertyId;
-        allow update: if isPropertyOwner(propertyId) && isExistingDoc() && request.resource.data.propertyId == resource.data.propertyId;
+        allow create: if isPropertyOwner(propertyId) && request.resource.data.propertyId == propertyId && request.resource.data.ownerId == request.auth.uid;
+        allow update: if isPropertyOwner(propertyId) && isExistingDoc() && request.resource.data.propertyId == resource.data.propertyId && request.resource.data.ownerId == request.auth.uid;
         allow delete: if isPropertyOwner(propertyId) && isExistingDoc();
       }
 
