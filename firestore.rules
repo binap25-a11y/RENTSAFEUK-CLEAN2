@@ -7,24 +7,23 @@
  *
  * Data Structure: The data is organized into top-level collections for 'users',
  * 'properties', and 'tenants'. The 'properties' collection contains nested
- * sub-collections for 'maintenanceLogs', 'inspections', and 'documents',
+ * sub-collections for 'maintenanceLogs', 'inspections', 'documents', and 'expenses',
  * creating a clear hierarchical relationship.
  *
  * Key Security Decisions:
  * - User data in `/users/{userId}` is strictly private to the owner. User listing
  *   is disabled to protect privacy.
- * - The 'Property' and 'Tenant' entities now require an `ownerId` field. This field is
- *   critical for securely determining which user is authorized to read, write, or
- *   delete these documents.
+ * - All primary and sub-collection documents require an `ownerId` field. This field is
+ *   critical for securely and efficiently determining which user is authorized to
+ *   read, write, or delete documents.
  * - Writes to sub-collections (e.g., creating a maintenance log) must validate
  *   that the `propertyId` within the document data matches the ID in the path,
  *   enforcing relational integrity.
  *
  * Denormalization for Authorization: The denormalized `ownerId` (the user's auth UID)
- * field on every document in the `/properties` and `/tenants` collections allows for
- * simple, direct ownership checks and avoids slow, costly `get()` calls.
- *
- * Structural Segregation: N/A in this model.
+ * field on every document allows for simple, direct ownership checks and avoids
+ * slow, costly, and non-scalable `get()` calls in rules. This is essential for
+ * supporting collection group queries.
  */
 rules_version = '2';
 service cloud.firestore {
@@ -48,33 +47,6 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /**
-     * A reusable check for state-changing operations (update, delete) to ensure
-     * the document being modified actually exists.
-     */
-    function isExistingDoc() {
-      return resource != null;
-    }
-
-    /**
-     * Checks if the user is the owner of a specific Property document by reading
-     * the denormalized `ownerId` field from the document itself. This is intended
-     * for use in sub-collection rules to check the parent's ownership.
-     */
-    function isPropertyOwner(propertyId) {
-      let propertyDoc = get(/databases/$(database)/documents/properties/$(propertyId));
-      return isSignedIn() && propertyDoc.data.ownerId == request.auth.uid;
-    }
-    
-    /**
-     * Checks if the user is the owner of a specific Tenant document by reading
-     * the denormalized `ownerId` field from the document itself.
-     */
-    function isTenantOwner(tenantId) {
-      let tenantDoc = get(/databases/$(database)/documents/tenants/$(tenantId));
-      return isSignedIn() && tenantDoc.data.ownerId == request.auth.uid;
-    }
-
     //-------------------------------------------------------------------------
     // User Rules
     //-------------------------------------------------------------------------
@@ -84,11 +56,11 @@ service cloud.firestore {
      * profile, and can only read or write their own data.
      * @path /users/{userId}
      * @allow (create) a new user document if `userId` matches `auth.uid`.
-     * @deny (get) another user's profile document.
+     * @deny (list) other user's profile documents.
      * @principle Restricts access to a user's own data tree.
      */
     match /users/{userId} {
-      allow get, update, delete: if isOwner(userId) && isExistingDoc();
+      allow get, update, delete: if isOwner(userId);
       allow list: if false;
       allow create: if isOwner(userId);
     }
@@ -101,8 +73,7 @@ service cloud.firestore {
      * @description Manages rental property information.
      * @path /properties/{propertyId}
      * @allow (create) a property if the user is signed in and sets themselves as the owner.
-     * @allow (list) properties if the query filters by the user's ownerId.
-     * @allow (get, update, delete) a property if the user is the owner.
+     * @allow (read, update, delete) a property if the user is the owner.
      * @principle Enforces owner-based access control.
      */
     match /properties/{propertyId} {
@@ -116,15 +87,13 @@ service cloud.firestore {
       /**
        * @description Manages maintenance logs for a specific property.
        * @path /properties/{propertyId}/maintenanceLogs/{maintenanceLogId}
-       * @allow (create) a maintenance log if you own the parent property.
-       * @deny (update) a log for a property you do not own.
-       * @principle Enforces derived permissions from the parent document and validates relational integrity.
+       * @allow (read, update, delete) if the user owns the log.
+       * @allow (create) if user owns the log and propertyId is consistent.
+       * @principle Enforces owner-based access and relational integrity.
        */
       match /maintenanceLogs/{maintenanceLogId} {
-        allow get, list: if isPropertyOwner(propertyId);
-        allow create: if isPropertyOwner(propertyId) && request.resource.data.propertyId == propertyId;
-        allow update: if isPropertyOwner(propertyId) && isExistingDoc() && request.resource.data.propertyId == resource.data.propertyId;
-        allow delete: if isPropertyOwner(propertyId) && isExistingDoc();
+        allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+        allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.propertyId == propertyId;
       }
 
       //-------------------------------------------------------------------------
@@ -134,15 +103,13 @@ service cloud.firestore {
       /**
        * @description Manages inspection records for a specific property.
        * @path /properties/{propertyId}/inspections/{inspectionId}
-       * @allow (create) an inspection record if you own the parent property.
-       * @deny (list) inspections for a property you do not own.
-       * @principle Enforces derived permissions from the parent document and validates relational integrity.
+       * @allow (read, update, delete) if the user owns the inspection.
+       * @allow (create) if user owns the inspection and propertyId is consistent.
+       * @principle Enforces owner-based access and relational integrity.
        */
       match /inspections/{inspectionId} {
-        allow get, list: if isPropertyOwner(propertyId);
-        allow create: if isPropertyOwner(propertyId) && request.resource.data.propertyId == propertyId && request.resource.data.ownerId == request.auth.uid;
-        allow update: if isPropertyOwner(propertyId) && isExistingDoc() && request.resource.data.propertyId == resource.data.propertyId && request.resource.data.ownerId == request.auth.uid;
-        allow delete: if isPropertyOwner(propertyId) && isExistingDoc();
+        allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+        allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.propertyId == propertyId;
       }
 
       //-------------------------------------------------------------------------
@@ -152,25 +119,28 @@ service cloud.firestore {
       /**
        * @description Manages documents (e.g., contracts) for a specific property.
        * @path /properties/{propertyId}/documents/{documentId}
-       * @allow (create) a document if you own the parent property.
-       * @deny (get) a document for a property you do not own.
-       * @principle Enforces derived permissions from the parent document and validates relational integrity.
+       * @allow (read, update, delete) if the user owns the document.
+       * @allow (create) if user owns the document and propertyId is consistent.
+       * @principle Enforces owner-based access and relational integrity.
        */
       match /documents/{documentId} {
-        allow get, list: if isPropertyOwner(propertyId);
-        allow create: if isPropertyOwner(propertyId) && request.resource.data.propertyId == propertyId;
-        allow update: if isPropertyOwner(propertyId) && isExistingDoc() && request.resource.data.propertyId == resource.data.propertyId;
-        allow delete: if isPropertyOwner(propertyId) && isExistingDoc();
+        allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+        allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.propertyId == propertyId;
       }
       
       //-------------------------------------------------------------------------
       // Expense Sub-collection Rules
       //-------------------------------------------------------------------------
+      /**
+       * @description Manages expenses for a specific property.
+       * @path /properties/{propertyId}/expenses/{expenseId}
+       * @allow (read, update, delete) if the user owns the expense.
+       * @allow (create) if user owns the expense and propertyId is consistent.
+       * @principle Enforces owner-based access and relational integrity.
+       */
       match /expenses/{expenseId} {
-        allow get, list: if isPropertyOwner(propertyId);
-        allow create: if isPropertyOwner(propertyId) && request.resource.data.propertyId == propertyId;
-        allow update: if isPropertyOwner(propertyId) && isExistingDoc() && request.resource.data.propertyId == resource.data.propertyId;
-        allow delete: if isPropertyOwner(propertyId) && isExistingDoc();
+        allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+        allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid && request.resource.data.propertyId == propertyId;
       }
     }
 
@@ -182,8 +152,7 @@ service cloud.firestore {
      * @description Manages tenant information.
      * @path /tenants/{tenantId}
      * @allow (create) a tenant if the user is signed in and sets themselves as the owner.
-     * @allow (list) tenants if the query filters by the user's ownerId.
-     * @allow (get, update, delete) a tenant if the user is the owner.
+     * @allow (read, update, delete) a tenant if the user is the owner.
      * @principle Enforces owner-based access control.
      */
     match /tenants/{tenantId} {

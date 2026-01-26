@@ -1,5 +1,6 @@
 'use client';
 
+import { useMemo } from 'react';
 import {
   Card,
   CardHeader,
@@ -17,9 +18,15 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Download } from 'lucide-react';
-import { documents, upcomingTasks } from '@/data/mock-data';
-import { format } from 'date-fns';
+import { Download, Loader2 } from 'lucide-react';
+import { format, isBefore, addDays, isFuture } from 'date-fns';
+import {
+  useUser,
+  useFirestore,
+  useCollection,
+  useMemoFirebase,
+} from '@/firebase';
+import { collection, collectionGroup, query, where } from 'firebase/firestore';
 
 // Extend the autoTable interface in jsPDF
 declare module 'jspdf' {
@@ -28,13 +35,45 @@ declare module 'jspdf' {
   }
 }
 
+interface Property {
+  id: string;
+  address: string;
+}
+
+interface Document {
+  id: string;
+  title: string;
+  propertyId: string;
+  expiryDate: { seconds: number; nanoseconds: number } | Date;
+}
+
+interface Inspection {
+  id: string;
+  propertyId: string;
+  inspectionType: string;
+  status: string;
+  scheduledDate: { seconds: number; nanoseconds: number } | Date;
+}
+
+const getDocumentStatus = (expiryDate: Date) => {
+  const today = new Date();
+  const ninetyDaysFromNow = addDays(today, 90);
+
+  if (isBefore(expiryDate, today)) {
+    return 'Expired';
+  }
+  if (isBefore(expiryDate, ninetyDaysFromNow)) {
+    return 'Expiring Soon';
+  }
+  return 'Valid';
+};
+
 const getStatusVariant = (status: string) => {
   switch (status) {
     case 'Expired':
-    case 'Due':
       return 'destructive';
     case 'Expiring Soon':
-    case 'Pending':
+    case 'Scheduled':
       return 'secondary';
     default:
       return 'outline';
@@ -42,43 +81,123 @@ const getStatusVariant = (status: string) => {
 };
 
 export default function RemindersPage() {
-  const documentReminders = documents.filter(
-    (doc) => doc.status === 'Expired' || doc.status === 'Expiring Soon'
-  ).map(doc => ({
-    id: `doc-${doc.id}`,
-    type: 'Document',
-    description: doc.title,
-    property: doc.property,
-    dueDate: doc.expiryDate,
-    status: doc.status,
-  }));
+  const { user } = useUser();
+  const firestore = useFirestore();
 
-  const inspectionReminders = upcomingTasks.map(task => ({
-      id: `task-${task.id}`,
-      type: 'Task',
-      description: task.task,
-      property: task.property,
-      dueDate: task.dueDate,
-      status: task.status,
-  }));
+  const propertiesQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+      collection(firestore, 'properties'),
+      where('ownerId', '==', user.uid)
+    );
+  }, [firestore, user]);
+  const { data: properties, isLoading: isLoadingProperties } =
+    useCollection<Property>(propertiesQuery);
 
-  const allReminders = [...documentReminders, ...inspectionReminders].sort(
-    (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
-  );
+  const documentsQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+      collectionGroup(firestore, 'documents'),
+      where('ownerId', '==', user.uid)
+    );
+  }, [firestore, user]);
+  const { data: documents, isLoading: isLoadingDocuments } =
+    useCollection<Document>(documentsQuery);
+
+  const inspectionsQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+      collectionGroup(firestore, 'inspections'),
+      where('ownerId', '==', user.uid),
+      where('status', '==', 'Scheduled')
+    );
+  }, [firestore, user]);
+  const { data: inspections, isLoading: isLoadingInspections } =
+    useCollection<Inspection>(inspectionsQuery);
+
+  const propertyMap = useMemo(() => {
+    return (
+      properties?.reduce((map, prop) => {
+        map[prop.id] = prop.address;
+        return map;
+      }, {} as Record<string, string>) ?? {}
+    );
+  }, [properties]);
+
+  const allReminders = useMemo(() => {
+    const documentReminders =
+      documents
+        ?.map((doc) => {
+          const expiry =
+            doc.expiryDate instanceof Date
+              ? doc.expiryDate
+              : new Date(doc.expiryDate.seconds * 1000);
+          return {
+            ...doc,
+            expiryDate: expiry,
+            status: getDocumentStatus(expiry),
+          };
+        })
+        .filter(
+          (doc) => doc.status === 'Expired' || doc.status === 'Expiring Soon'
+        )
+        .map((doc) => ({
+          id: `doc-${doc.id}`,
+          type: 'Document',
+          description: doc.title,
+          property: propertyMap[doc.propertyId] || 'Unknown Property',
+          dueDate: doc.expiryDate,
+          status: doc.status,
+        })) ?? [];
+
+    const inspectionReminders =
+      inspections
+        ?.filter((insp) => {
+          const scheduled =
+            insp.scheduledDate instanceof Date
+              ? insp.scheduledDate
+              : new Date(insp.scheduledDate.seconds * 1000);
+          return isFuture(scheduled);
+        })
+        .map((insp) => ({
+          id: `insp-${insp.id}`,
+          type: 'Task',
+          description: insp.inspectionType || 'Inspection',
+          property: propertyMap[insp.propertyId] || 'Unknown Property',
+          dueDate:
+            insp.scheduledDate instanceof Date
+              ? insp.scheduledDate
+              : new Date(insp.scheduledDate.seconds * 1000),
+          status: 'Scheduled',
+        })) ?? [];
+
+    return [...documentReminders, ...inspectionReminders].sort(
+      (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
+    );
+  }, [documents, inspections, propertyMap]);
+
+  const isLoading =
+    isLoadingProperties || isLoadingDocuments || isLoadingInspections;
 
   const exportToPDF = async () => {
     const { default: jsPDF } = await import('jspdf');
     await import('jspdf-autotable');
-    
+
     const doc = new jsPDF();
 
     doc.setFontSize(18);
     doc.text('Compliance and Task Reminders', 14, 22);
 
-    const tableColumn = ["Type", "Description", "Property", "Due Date", "Status"];
+    const tableColumn = [
+      'Type',
+      'Description',
+      'Property',
+      'Due Date',
+      'Status',
+    ];
     const tableRows: (string | null)[][] = [];
 
-    allReminders.forEach(reminder => {
+    allReminders.forEach((reminder) => {
       const reminderData = [
         reminder.type,
         reminder.description,
@@ -90,11 +209,11 @@ export default function RemindersPage() {
     });
 
     doc.autoTable({
-        head: [tableColumn],
-        body: tableRows,
-        startY: 30,
+      head: [tableColumn],
+      body: tableRows,
+      startY: 30,
     });
-    
+
     doc.save('reminders.pdf');
   };
 
@@ -109,7 +228,10 @@ export default function RemindersPage() {
                 A consolidated list of upcoming document expiries and tasks.
               </CardDescription>
             </div>
-            <Button onClick={exportToPDF}>
+            <Button
+              onClick={exportToPDF}
+              disabled={isLoading || allReminders.length === 0}
+            >
               <Download className="mr-2 h-4 w-4" /> Export to PDF
             </Button>
           </div>
@@ -127,24 +249,38 @@ export default function RemindersPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {allReminders.length > 0 ? (
-                    allReminders.map((reminder) => (
-                    <TableRow key={reminder.id}>
-                        <TableCell>{reminder.type}</TableCell>
-                        <TableCell className="font-medium">{reminder.description}</TableCell>
-                        <TableCell>{reminder.property}</TableCell>
-                        <TableCell>
-                        <Badge variant={getStatusVariant(reminder.status)}>{reminder.status}</Badge>
-                        </TableCell>
-                        <TableCell className="text-right">{format(new Date(reminder.dueDate), 'dd/MM/yyyy')}</TableCell>
-                    </TableRow>
-                    ))
+                {isLoading && (
+                  <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center">
+                      <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+                    </TableCell>
+                  </TableRow>
+                )}
+                {!isLoading && allReminders.length === 0 ? (
+                  <TableRow>
+                    <TableCell colSpan={5} className="h-24 text-center">
+                      No reminders at the moment.
+                    </TableCell>
+                  </TableRow>
                 ) : (
-                    <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center">
-                            No reminders at the moment.
-                        </TableCell>
+                  !isLoading &&
+                  allReminders.map((reminder) => (
+                    <TableRow key={reminder.id}>
+                      <TableCell>{reminder.type}</TableCell>
+                      <TableCell className="font-medium">
+                        {reminder.description}
+                      </TableCell>
+                      <TableCell>{reminder.property}</TableCell>
+                      <TableCell>
+                        <Badge variant={getStatusVariant(reminder.status)}>
+                          {reminder.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        {format(new Date(reminder.dueDate), 'dd/MM/yyyy')}
+                      </TableCell>
                     </TableRow>
+                  ))
                 )}
               </TableBody>
             </Table>
