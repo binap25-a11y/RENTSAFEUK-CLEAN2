@@ -34,10 +34,6 @@
           "type": "number",
           "description": "Number of bathrooms in the property."
         },
-        "tenantId": {
-          "type": "string",
-          "description": "Reference to Tenant. (Relationship: Tenant 1:N Property)"
-        },
         "imageUrl": {
           "type": "string",
           "description": "URI of the property image.",
@@ -68,6 +64,10 @@
           "type": "string",
           "description": "The UID of the user who owns the property associated with this tenant."
         },
+        "propertyId": {
+          "type": "string",
+          "description": "The ID of the property this tenant is associated with."
+        },
         "name": {
           "type": "string",
           "description": "Name of the tenant."
@@ -97,13 +97,12 @@
         }
       },
       "required": [
-        "id",
         "ownerId",
+        "propertyId",
         "name",
         "email",
         "telephone",
-        "tenancyStartDate",
-        "tenancyEndDate"
+        "tenancyStartDate"
       ]
     },
     "MaintenanceLog": {

@@ -20,6 +20,7 @@ import {
   ChevronRight,
   CreditCard,
   Bell,
+  Users,
 } from 'lucide-react';
 import * as React from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -35,6 +36,15 @@ const menuItems = [
         { href: '/dashboard/properties', label: 'All Properties' },
         { href: '/dashboard/properties/add', label: 'Add Property' },
         { href: '/dashboard/properties/deleted', label: 'Deleted Properties' },
+    ],
+  },
+  { 
+    href: '/dashboard/tenants', 
+    label: 'Tenants', 
+    icon: Users,
+    subItems: [
+        { href: '/dashboard/tenants', label: 'All Tenants' },
+        { href: '/dashboard/tenants/add', label: 'Add Tenant' },
     ],
   },
   { href: '/dashboard/maintenance', label: 'Maintenance', icon: Wrench },
