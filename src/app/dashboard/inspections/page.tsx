@@ -19,7 +19,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Loader2 } from 'lucide-react';
+import { PlusCircle, Loader2, Eye } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   useUser,
@@ -160,20 +160,21 @@ export default function InspectionsPage() {
                   <TableHead>Property</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Date</TableHead>
+                  <TableHead>Date</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoadingInspections && (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
+                    <TableCell colSpan={5} className="h-24 text-center">
                       <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
                     </TableCell>
                   </TableRow>
                 )}
                 {!isLoadingInspections && inspections?.length === 0 && (
                   <TableRow>
-                    <TableCell colSpan={4} className="h-24 text-center">
+                    <TableCell colSpan={5} className="h-24 text-center">
                       {selectedPropertyId
                         ? 'No inspections found for this property.'
                         : 'Select a property to see inspections.'}
@@ -191,13 +192,21 @@ export default function InspectionsPage() {
                         {inspection.status}
                       </Badge>
                     </TableCell>
-                    <TableCell className="text-right">
+                    <TableCell>
                       {format(
                         inspection.scheduledDate instanceof Date
                           ? inspection.scheduledDate
                           : new Date(inspection.scheduledDate.seconds * 1000),
                         'dd/MM/yyyy'
                       )}
+                    </TableCell>
+                    <TableCell className="text-right">
+                        <Button asChild variant="outline" size="icon">
+                            <Link href={`/dashboard/properties/${inspection.propertyId}/inspections/${inspection.id}`}>
+                                <Eye className="h-4 w-4" />
+                                <span className="sr-only">View Inspection</span>
+                            </Link>
+                        </Button>
                     </TableCell>
                   </TableRow>
                 ))}
