@@ -3,7 +3,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- Helper Functions ---
     function isSignedIn() {
       return request.auth != null;
     }
@@ -15,64 +14,51 @@ service cloud.firestore {
 
     // --- Top-level Collection Rules ---
     match /properties/{propertyId} {
-      // Anyone can list all properties, but they are filtered on the client.
-      allow list: if isSignedIn(); 
-      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      // READ: Allow reading a property if the user is the owner.
+      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      // WRITE: Allow creating, updating, deleting a property if the user is the owner.
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
 
     match /tenants/{tenantId} {
-      // Anyone can list all tenants, filtered on client.
-      allow list: if isSignedIn();
-      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
     
-    // --- Direct Subcollection Access Rules ---
-    // These rules allow a user to access their own documents via a direct path.
-    match /properties/{propertyId}/maintenanceLogs/{logId} {
-      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+    // --- Collection Group & Direct Sub-collection Access ---
+    // The /{path=**}/... wildcard path applies to collection group queries and direct access.
+    // This single set of rules is more robust and simpler to maintain.
+
+    function isDocOwner() {
+      // This function is used for read, update, and delete operations where 'resource' exists.
+      return isSignedIn() && resource.data.ownerId == request.auth.uid;
+    }
+    function isCreatingDocAsOwner() {
+      // This function is used for 'create' operations where 'resource' does not exist yet.
+      return isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
 
-    match /properties/{propertyId}/inspections/{inspectionId} {
-      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-    }
-
-    match /properties/{propertyId}/documents/{documentId} {
-      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-    }
-
-    match /properties/{propertyId}/expenses/{expenseId} {
-      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-    }
-
-    match /properties/{propertyId}/rentPayments/{paymentId} {
-      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-    }
-
-    // --- Collection Group Query Rules ---
-    // These rules are ONLY for collection group queries (e.g., for the dashboard).
-    // They allow a `list` operation if the query includes a `where('ownerId', '==', request.auth.uid)` clause.
-    // The `'ownerId' in resource.data` check adds robustness in case some documents are missing the field.
     match /{path=**}/maintenanceLogs/{logId} {
-      allow list: if isSignedIn() && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid;
+      allow read: if isDocOwner();
+      allow write: if isCreatingDocAsOwner() || isDocOwner();
     }
     match /{path=**}/inspections/{inspectionId} {
-      allow list: if isSignedIn() && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid;
+      allow read: if isDocOwner();
+      allow write: if isCreatingDocAsOwner() || isDocOwner();
     }
     match /{path=**}/documents/{documentId} {
-      allow list: if isSignedIn() && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid;
+      allow read: if isDocOwner();
+      allow write: if isCreatingDocAsOwner() || isDocOwner();
     }
     match /{path=**}/expenses/{expenseId} {
-      allow list: if isSignedIn() && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid;
+      allow read: if isDocOwner();
+      allow write: if isCreatingDocAsOwner() || isDocOwner();
     }
     match /{path=**}/rentPayments/{paymentId} {
-      allow list: if isSignedIn() && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid;
+      allow read: if isDocOwner();
+      allow write: if isCreatingDocAsOwner() || isDocOwner();
     }
   }
 }
