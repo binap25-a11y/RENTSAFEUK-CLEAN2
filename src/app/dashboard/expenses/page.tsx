@@ -35,6 +35,14 @@ import {
   PopoverContent,
   PopoverTrigger,
 } from '@/components/ui/popover';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon, Clock, DollarSign, TrendingDown, TrendingUp, Loader2, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
@@ -439,9 +447,10 @@ function AnnualSummary({ allProperties, selectedProperty, selectedYear }: { allP
   }, [allProperties]);
 
   const totalPaidRent = useMemo(() => {
-    return rentPayments
-      ?.filter(p => p.status === 'Paid')
-      .reduce((acc, p) => acc + (p.amountPaid || p.expectedAmount || 0), 0) || 0;
+    if (!rentPayments) return 0;
+    return rentPayments.reduce((acc, p) => {
+      return acc + (p.amountPaid || 0);
+    }, 0);
   }, [rentPayments]);
   
   const selectedPropertyExpenses = useMemo(() => {
@@ -451,24 +460,27 @@ function AnnualSummary({ allProperties, selectedProperty, selectedYear }: { allP
   const selectedPropertyNet = totalPaidRent - selectedPropertyExpenses;
   const isLoading = isLoadingExpenses || isLoadingPayments;
 
-  const toCssVar = (str: string) => str.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
+  const chartColors = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
 
   const expensesByCategory = useMemo(() => {
     const categoryMap: { [key: string]: number } = {};
     expenses?.forEach(exp => {
       categoryMap[exp.expenseType] = (categoryMap[exp.expenseType] || 0) + exp.amount;
     });
-    return Object.entries(categoryMap).map(([name, amount]) => ({
+    return Object.entries(categoryMap)
+      .sort(([, a], [, b]) => b - a)
+      .map(([name, amount], index) => ({
       name,
       amount,
-      key: toCssVar(name)
+      fill: chartColors[index % chartColors.length]
     }));
   }, [expenses]);
 
   const chartConfig = useMemo(() => {
     return expensesByCategory.reduce((acc, category) => {
-        acc[category.key] = {
+        acc[category.name] = {
             label: category.name,
+            color: category.fill,
         };
         return acc;
     }, {} as ChartConfig);
@@ -563,11 +575,11 @@ function AnnualSummary({ allProperties, selectedProperty, selectedYear }: { allP
                                 strokeWidth={5}
                             >
                                 {expensesByCategory.map((entry) => (
-                                    <Cell key={`cell-${entry.key}`} fill={`var(--color-${entry.key})`} className="stroke-background"/>
+                                    <Cell key={`cell-${entry.name}`} fill={entry.fill} className="stroke-background"/>
                                 ))}
                             </Pie>
                             <ChartLegend
-                            content={<ChartLegendContent nameKey="key" />}
+                            content={<ChartLegendContent nameKey="name" />}
                             className="-mt-4"
                             />
                         </PieChart>
@@ -591,6 +603,9 @@ function AnnualSummary({ allProperties, selectedProperty, selectedYear }: { allP
 function RentStatement({ selectedProperty, selectedYear }: { selectedProperty: Property | undefined, selectedYear: number }) {
   const { user } = useUser();
   const firestore = useFirestore();
+  const [isDialogOpen, setDialogOpen] = useState(false);
+  const [editingPayment, setEditingPayment] = useState<{ month: string; expectedAmount: number } | null>(null);
+  const [partialAmount, setPartialAmount] = useState('');
 
   const rentPaymentsQuery = useMemoFirebase(() => {
     if (!user || !firestore || !selectedProperty) return null;
@@ -617,13 +632,64 @@ function RentStatement({ selectedProperty, selectedYear }: { selectedProperty: P
       status: paymentsMap?.[month]?.status || 'Pending'
     }));
   }, [selectedProperty, months, rentPayments]);
+  
+  const handleSavePartialPayment = async () => {
+    if (!firestore || !user || !selectedProperty || !editingPayment) return;
+
+    const amount = Number(partialAmount);
+    if (isNaN(amount) || amount <= 0 || amount >= editingPayment.expectedAmount) {
+        toast({
+            variant: 'destructive',
+            title: 'Invalid Amount',
+            description: `Please enter an amount greater than 0 and less than the expected rent of £${editingPayment.expectedAmount.toFixed(2)}.`,
+        });
+        return;
+    }
+
+    const { month } = editingPayment;
+    const rentPaymentRef = doc(firestore, 'properties', selectedProperty.id, 'rentPayments', `${selectedYear}-${month}`);
+    
+    const paymentData = {
+      ownerId: user.uid,
+      year: selectedYear,
+      month,
+      status: 'Partially Paid' as PaymentStatus,
+      expectedAmount: editingPayment.expectedAmount,
+      amountPaid: amount,
+    };
+    
+    setDoc(rentPaymentRef, paymentData, { merge: true }).then(() => {
+      toast({
+        title: 'Status Updated',
+        description: `Partial payment for ${month} has been logged.`,
+      });
+    }).catch(error => {
+      console.error("Error updating rent status: ", error);
+      toast({
+        variant: 'destructive',
+        title: 'Update Failed',
+        description: 'Could not save the rent status. Please try again.',
+      });
+    });
+
+    setDialogOpen(false);
+    setEditingPayment(null);
+  };
 
   const handleStatusChange = (month: string, status: PaymentStatus) => {
     if (!firestore || !user || !selectedProperty) return;
 
-    const rentPaymentRef = doc(firestore, 'properties', selectedProperty.id, 'rentPayments', `${selectedYear}-${month}`);
     const expectedAmount = selectedProperty.tenancy?.monthlyRent || 0;
-    const amountPaid = status === 'Paid' ? expectedAmount : 0; // Simplified for now
+
+     if (status === 'Partially Paid') {
+        setEditingPayment({ month, expectedAmount });
+        setPartialAmount('');
+        setDialogOpen(true);
+        return;
+    }
+
+    const rentPaymentRef = doc(firestore, 'properties', selectedProperty.id, 'rentPayments', `${selectedYear}-${month}`);
+    const amountPaid = status === 'Paid' ? expectedAmount : 0;
 
     const paymentData = {
       ownerId: user.uid,
@@ -654,10 +720,7 @@ function RentStatement({ selectedProperty, selectedYear }: { selectedProperty: P
   const totalPaid = useMemo(() => {
     if (!rentPayments) return 0;
     return rentPayments.reduce((acc, row) => {
-      if (row.status === 'Paid') {
-        return acc + (row.amountPaid || row.expectedAmount || 0);
-      }
-      return acc;
+        return acc + (row.amountPaid || 0);
     }, 0);
   }, [rentPayments]);
 
@@ -703,60 +766,91 @@ function RentStatement({ selectedProperty, selectedYear }: { selectedProperty: P
 
 
   return (
-    <Card className="mt-6">
-      <CardHeader>
-        <CardTitle>Rent Payment Statement</CardTitle>
-        <CardDescription>Expected monthly rent payments for {selectedProperty.address} for {selectedYear}.</CardDescription>
-      </CardHeader>
-      <CardContent>
-        <div className="rounded-md border">
-          <Table>
-            <TableHeader><TableRow><TableHead>Month</TableHead><TableHead>Expected Rent</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-            <TableBody>
-              {isLoading && (
-                  <TableRow>
-                      <TableCell colSpan={3} className="h-48 text-center">
-                          <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+    <>
+      <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Enter Partial Payment</DialogTitle>
+            <DialogDescription>
+              Log the partial amount paid for {editingPayment?.month} {selectedYear}. Expected rent is £{editingPayment?.expectedAmount.toFixed(2)}.
+            </DialogDescription>
+          </DialogHeader>
+          <div className="grid gap-4 py-4">
+            <div className="grid grid-cols-4 items-center gap-4">
+              <Label htmlFor="amount" className="text-right">
+                Amount (£)
+              </Label>
+              <Input
+                id="amount"
+                type="number"
+                value={partialAmount}
+                onChange={(e) => setPartialAmount(e.target.value)}
+                className="col-span-3"
+                placeholder={`e.g., 500`}
+              />
+            </div>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button>
+            <Button onClick={handleSavePartialPayment}>Save Payment</Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
+      <Card className="mt-6">
+        <CardHeader>
+          <CardTitle>Rent Payment Statement</CardTitle>
+          <CardDescription>Expected monthly rent payments for {selectedProperty.address} for {selectedYear}.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="rounded-md border">
+            <Table>
+              <TableHeader><TableRow><TableHead>Month</TableHead><TableHead>Expected Rent</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+              <TableBody>
+                {isLoading && (
+                    <TableRow>
+                        <TableCell colSpan={3} className="h-48 text-center">
+                            <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+                        </TableCell>
+                    </TableRow>
+                )}
+                {!isLoading && statement.map((row) => {
+                  const { Icon, className } = getRentStatusProps(row.status);
+                  return (
+                    <TableRow key={row.month}>
+                      <TableCell className="font-medium">{row.month}</TableCell>
+                      <TableCell>£{row.rent.toFixed(2)}</TableCell>
+                      <TableCell>
+                        <Select value={row.status} onValueChange={(newStatus) => handleStatusChange(row.month, newStatus as PaymentStatus)}>
+                          <SelectTrigger className={cn("w-[150px]", className)}>
+                            <div className="flex items-center gap-2">
+                              <Icon className="h-4 w-4" />
+                              <SelectValue />
+                            </div>
+                          </SelectTrigger>
+                          <SelectContent>
+                            <SelectItem value="Paid">Paid</SelectItem>
+                            <SelectItem value="Partially Paid">Partially Paid</SelectItem>
+                            <SelectItem value="Unpaid">Unpaid</SelectItem>
+                            <SelectItem value="Pending">Pending</SelectItem>
+                          </SelectContent>
+                        </Select>
                       </TableCell>
-                  </TableRow>
-              )}
-              {!isLoading && statement.map((row) => {
-                const { Icon, className } = getRentStatusProps(row.status);
-                return (
-                  <TableRow key={row.month}>
-                    <TableCell className="font-medium">{row.month}</TableCell>
-                    <TableCell>£{row.rent.toFixed(2)}</TableCell>
-                    <TableCell>
-                      <Select value={row.status} onValueChange={(newStatus) => handleStatusChange(row.month, newStatus as PaymentStatus)}>
-                        <SelectTrigger className={cn("w-[150px]", className)}>
-                           <div className="flex items-center gap-2">
-                             <Icon className="h-4 w-4" />
-                             <SelectValue />
-                           </div>
-                        </SelectTrigger>
-                        <SelectContent>
-                          <SelectItem value="Paid">Paid</SelectItem>
-                          <SelectItem value="Partially Paid">Partially Paid</SelectItem>
-                          <SelectItem value="Unpaid">Unpaid</SelectItem>
-                          <SelectItem value="Pending">Pending</SelectItem>
-                        </SelectContent>
-                      </Select>
-                    </TableCell>
-                  </TableRow>
-                )
-              })}
-            </TableBody>
-          </Table>
-        </div>
-      </CardContent>
-       <CardFooter className='flex-col items-end space-y-2 pt-6'>
-          <div className="font-bold text-lg">
-            Total Paid: £{totalPaid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                    </TableRow>
+                  )
+                })}
+              </TableBody>
+            </Table>
           </div>
-          <div className="text-muted-foreground">
-            Total Expected Annual Rent: £{totalExpectedRent.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-          </div>
-      </CardFooter>
-    </Card>
+        </CardContent>
+        <CardFooter className='flex-col items-end space-y-2 pt-6'>
+            <div className="font-bold text-lg">
+              Total Paid: £{totalPaid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+            </div>
+            <div className="text-muted-foreground">
+              Total Expected Annual Rent: £{totalExpectedRent.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+            </div>
+        </CardFooter>
+      </Card>
+    </>
   );
 }
