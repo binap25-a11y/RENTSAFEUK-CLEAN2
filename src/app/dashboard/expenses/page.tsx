@@ -3,7 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -36,7 +36,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Clock, DollarSign, TrendingDown, TrendingUp, Loader2 } from 'lucide-react';
+import { CalendarIcon, Clock, DollarSign, TrendingDown, TrendingUp, Loader2, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, getYear } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -127,13 +127,6 @@ export default function FinancialsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-3xl font-bold">Financials</h1>
-        <p className="text-muted-foreground">
-          Track expenses, view annual summaries, and manage rent statements.
-        </p>
-      </div>
-
        <Card>
         <CardHeader>
           <CardTitle>Financial Overview</CardTitle>
@@ -550,25 +543,70 @@ function AnnualSummary({ allProperties, selectedProperty }: { allProperties: Pro
 // RENT STATEMENT COMPONENT
 function RentStatement({ selectedProperty }: { selectedProperty: Property | undefined }) {
   const currentYear = getYear(new Date());
+  type PaymentStatus = 'Paid' | 'Partially Paid' | 'Unpaid' | 'Pending';
+
+  const [payments, setPayments] = useState<Record<string, { status: PaymentStatus }>>({});
+  
+  const months = useMemo(() => Array.from({ length: 12 }, (_, i) => format(new Date(currentYear, i, 1), 'MMMM')), [currentYear]);
+
+  useEffect(() => {
+    if (selectedProperty) {
+      const initialPayments: Record<string, { status: PaymentStatus }> = {};
+      months.forEach(month => {
+        initialPayments[month] = { status: 'Pending' };
+      });
+      setPayments(initialPayments);
+    } else {
+      setPayments({});
+    }
+  }, [months, selectedProperty]);
 
   const statement = useMemo(() => {
     if (!selectedProperty?.tenancy?.monthlyRent) return [];
-    
     const rent = selectedProperty.tenancy.monthlyRent;
-    const months = Array.from({ length: 12 }, (_, i) => {
-      const date = new Date(currentYear, i, 1);
-      return format(date, 'MMMM');
-    });
-
     return months.map(month => ({
       month,
       rent,
-      paid: false, // This is static as we don't track payments yet
-      notes: 'Payment tracking not implemented'
+      status: payments[month]?.status || 'Pending'
     }));
-  }, [selectedProperty, currentYear]);
+  }, [selectedProperty, months, payments]);
 
-  const totalRent = (selectedProperty?.tenancy?.monthlyRent || 0) * 12;
+  const handleStatusChange = (month: string, status: PaymentStatus) => {
+    setPayments(prev => ({
+      ...prev,
+      [month]: { status }
+    }));
+    toast({
+      title: 'Status Updated',
+      description: `Rent for ${month} marked as ${status}. Note: This is not saved and will reset on page refresh.`,
+    });
+  };
+
+  const totalExpectedRent = (selectedProperty?.tenancy?.monthlyRent || 0) * 12;
+
+  const totalPaid = useMemo(() => {
+    if (!selectedProperty?.tenancy?.monthlyRent) return 0;
+    return statement.reduce((acc, row) => {
+      if (row.status === 'Paid') {
+        return acc + row.rent;
+      }
+      return acc;
+    }, 0);
+  }, [statement, selectedProperty]);
+
+  const getRentStatusProps = (status: PaymentStatus) => {
+    switch (status) {
+      case 'Paid':
+        return { Icon: CheckCircle2, className: "text-green-600 border-green-200 bg-green-50" };
+      case 'Partially Paid':
+        return { Icon: AlertCircle, className: "text-yellow-600 border-yellow-200 bg-yellow-50" };
+      case 'Unpaid':
+        return { Icon: XCircle, className: "text-red-600 border-red-200 bg-red-50" };
+      case 'Pending':
+      default:
+        return { Icon: Clock, className: "" };
+    }
+  };
 
   if (!selectedProperty) {
     return (
@@ -606,22 +644,43 @@ function RentStatement({ selectedProperty }: { selectedProperty: Property | unde
           <Table>
             <TableHeader><TableRow><TableHead>Month</TableHead><TableHead>Expected Rent</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
             <TableBody>
-              {statement.map((row) => (
-                <TableRow key={row.month}>
-                  <TableCell className="font-medium">{row.month}</TableCell>
-                  <TableCell>£{row.rent.toFixed(2)}</TableCell>
-                  <TableCell><span className="flex items-center gap-2 text-muted-foreground"><Clock className="h-4 w-4" /> Pending</span></TableCell>
-                </TableRow>
-              ))}
+              {statement.map((row) => {
+                const { Icon, className } = getRentStatusProps(row.status);
+                return (
+                  <TableRow key={row.month}>
+                    <TableCell className="font-medium">{row.month}</TableCell>
+                    <TableCell>£{row.rent.toFixed(2)}</TableCell>
+                    <TableCell>
+                      <Select value={row.status} onValueChange={(newStatus) => handleStatusChange(row.month, newStatus as PaymentStatus)}>
+                        <SelectTrigger className={cn("w-[150px]", className)}>
+                           <div className="flex items-center gap-2">
+                             <Icon className="h-4 w-4" />
+                             <SelectValue />
+                           </div>
+                        </SelectTrigger>
+                        <SelectContent>
+                          <SelectItem value="Paid">Paid</SelectItem>
+                          <SelectItem value="Partially Paid">Partially Paid</SelectItem>
+                          <SelectItem value="Unpaid">Unpaid</SelectItem>
+                          <SelectItem value="Pending">Pending</SelectItem>
+                        </SelectContent>
+                      </Select>
+                    </TableCell>
+                  </TableRow>
+                )
+              })}
             </TableBody>
           </Table>
         </div>
       </CardContent>
-       <CardFooter className='flex justify-end font-bold text-lg'>
-          Total Expected Annual Rent: £{totalRent.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+       <CardFooter className='flex-col items-end space-y-2 pt-6'>
+          <div className="font-bold text-lg">
+            Total Paid: £{totalPaid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+          </div>
+          <div className="text-muted-foreground">
+            Total Expected Annual Rent: £{totalExpectedRent.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+          </div>
       </CardFooter>
     </Card>
   );
 }
-
-    
