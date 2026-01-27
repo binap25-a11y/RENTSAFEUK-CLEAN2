@@ -17,7 +17,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { PlusCircle, Loader2, Edit, Archive } from 'lucide-react';
+import { PlusCircle, Loader2, Edit, Archive, Search } from 'lucide-react';
 import {
   useUser,
   useFirestore,
@@ -26,7 +26,8 @@ import {
 } from '@/firebase';
 import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
-import { useMemo } from 'react';
+import { useMemo, useState } from 'react';
+import { Input } from '@/components/ui/input';
 
 // Types
 interface Tenant {
@@ -47,6 +48,7 @@ interface Property {
 export default function TenantsPage() {
   const { user } = useUser();
   const firestore = useFirestore();
+  const [searchTerm, setSearchTerm] = useState('');
 
   // Fetch tenants
   const tenantsQuery = useMemoFirebase(() => {
@@ -69,6 +71,15 @@ export default function TenantsPage() {
   const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
   
   const activeTenants = useMemo(() => tenants?.filter(t => t.status !== 'Archived') ?? [], [tenants]);
+
+  const filteredTenants = useMemo(() => {
+    if (!activeTenants) return [];
+    if (!searchTerm) return activeTenants;
+    return activeTenants.filter(tenant =>
+        tenant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        tenant.email.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [activeTenants, searchTerm]);
 
   const propertyMap = useMemo(() => {
     if (!properties) return {};
@@ -131,6 +142,15 @@ export default function TenantsPage() {
           <CardDescription>A list of current tenants associated with your properties.</CardDescription>
         </CardHeader>
         <CardContent>
+            <div className="relative w-full max-w-sm mb-4">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input 
+                    placeholder="Search by name or email..." 
+                    className="pl-8" 
+                    value={searchTerm}
+                    onChange={e => setSearchTerm(e.target.value)}
+                />
+            </div>
            <div className="rounded-md border">
             <Table>
               <TableHeader>
@@ -157,14 +177,14 @@ export default function TenantsPage() {
                         </TableCell>
                     </TableRow>
                 )}
-                {!isLoading && !activeTenants?.length && (
+                {!isLoading && !filteredTenants?.length && (
                     <TableRow>
                         <TableCell colSpan={5} className="h-24 text-center">
-                            No active tenants found.
+                            {searchTerm ? `No tenants found for "${searchTerm}".` : 'No active tenants found.'}
                         </TableCell>
                     </TableRow>
                 )}
-                {!isLoading && activeTenants?.map((tenant) => (
+                {!isLoading && filteredTenants?.map((tenant) => (
                   <TableRow key={tenant.id}>
                     <TableCell className="font-medium">
                         <Link href={`/dashboard/tenants/${tenant.id}`} className="hover:underline">

@@ -34,11 +34,11 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Upload, Loader2, Wand2 } from 'lucide-react';
+import { CalendarIcon, Upload, Loader2, Wand2, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import {
   useUser,
@@ -110,6 +110,7 @@ export default function MaintenancePage() {
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
   const [fileNames, setFileNames] = useState<string[]>([]);
+  const [searchTerm, setSearchTerm] = useState('');
 
   const form = useForm<MaintenanceFormValues>({
     resolver: zodResolver(maintenanceSchema),
@@ -141,6 +142,14 @@ export default function MaintenancePage() {
 
   const { data: maintenanceLogs, isLoading: isLoadingLogs } = useCollection<MaintenanceLog>(maintenanceQuery);
   
+  const filteredLogs = useMemo(() => {
+    if (!maintenanceLogs) return [];
+    if (!searchTerm) return maintenanceLogs;
+    return maintenanceLogs.filter(log =>
+        log.title.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+}, [maintenanceLogs, searchTerm]);
+
   const handleLogFromAssistant = (suggestion: MaintenanceAssistantOutput) => {
     form.setValue('title', suggestion.suggestedTitle);
     const description = `AI Diagnosis:\n- ${suggestion.likelyCause}\n\nSuggested Troubleshooting:\n- ${suggestion.troubleshootingSteps.join('\n- ')}`;
@@ -262,7 +271,7 @@ export default function MaintenancePage() {
                 Fill in the details below or use our AI assistant to get started.
               </CardDescription>
             </div>
-            <Button onClick={() => setIsAssistantOpen(true)}>
+            <Button onClick={() => setIsAssistantOpen(true)} variant="outline">
                 <Wand2 className="mr-2 h-4 w-4" />
                 AI Assistant
             </Button>
@@ -608,18 +617,29 @@ export default function MaintenancePage() {
           <CardDescription>View and manage logged maintenance issues for your properties.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-            <div className="flex items-center gap-4">
-                <Label htmlFor="property-filter">Filter by Property</Label>
-                <Select value={selectedPropertyFilter} onValueChange={setSelectedPropertyFilter}>
-                    <SelectTrigger id="property-filter" className="w-full md:w-[300px]">
-                        <SelectValue placeholder={isLoadingProperties ? 'Loading...' : 'Select a property'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {properties?.map(prop => (
-                            <SelectItem key={prop.id} value={prop.id}>{prop.address}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+            <div className="flex flex-col md:flex-row gap-4">
+                <div className="flex items-center gap-2">
+                    <Label htmlFor="property-filter" className="sr-only">Filter by Property</Label>
+                    <Select value={selectedPropertyFilter} onValueChange={setSelectedPropertyFilter}>
+                        <SelectTrigger id="property-filter" className="w-full md:w-[300px]">
+                            <SelectValue placeholder={isLoadingProperties ? 'Loading...' : 'Select a property'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {properties?.map(prop => (
+                                <SelectItem key={prop.id} value={prop.id}>{prop.address}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="relative w-full md:max-w-sm">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                        placeholder="Search by issue title..." 
+                        className="pl-8" 
+                        value={searchTerm} 
+                        onChange={e => setSearchTerm(e.target.value)}
+                    />
+                </div>
             </div>
              <div className="rounded-md border">
                 <Table>
@@ -639,14 +659,14 @@ export default function MaintenancePage() {
                                 </TableCell>
                             </TableRow>
                         )}
-                        {!isLoadingLogs && maintenanceLogs?.length === 0 && (
+                        {!isLoadingLogs && filteredLogs?.length === 0 && (
                             <TableRow>
                                 <TableCell colSpan={4} className="h-24 text-center">
                                     {selectedPropertyFilter ? 'No maintenance logs for this property.' : 'Select a property to view logs.'}
                                 </TableCell>
                             </TableRow>
                         )}
-                        {maintenanceLogs?.map(log => (
+                        {filteredLogs?.map(log => (
                             <TableRow key={log.id}>
                                 <TableCell className="font-medium">
                                     <Link href={`/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`} className="hover:underline">
