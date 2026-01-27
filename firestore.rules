@@ -31,37 +31,11 @@ service cloud.firestore {
       allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
 
-    // --- Collection Group Rules for Subcollections ---
-    // These rules apply to both collection group queries (like on the dashboard) and direct access.
-    
-    match /{path=**}/maintenanceLogs/{logId} {
-      allow list: if request.auth != null && request.query.limit <= 30;
-      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-    }
-
-    match /{path=**}/inspections/{inspectionId} {
-      allow list: if request.auth != null && request.query.limit <= 30;
-      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-    }
-
-    match /{path=**}/documents/{documentId} {
-      allow list: if request.auth != null && request.query.limit <= 30;
-      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-    }
-
-    match /{path=**}/expenses/{expenseId} {
-      allow list: if request.auth != null && request.query.limit <= 30;
-      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-    }
-
-    match /{path=**}/rentPayments/{paymentId} {
-      allow list: if request.auth != null && request.query.limit <= 30;
-      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+    // --- Subcollection Rules for direct path access ---
+    // This single rule applies to all subcollections under a property.
+    // It secures read/write operations by checking the ownership of the parent property document.
+    match /properties/{propertyId}/{subcollection}/{docId} {
+      allow read, write: if get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
     }
   }
 }

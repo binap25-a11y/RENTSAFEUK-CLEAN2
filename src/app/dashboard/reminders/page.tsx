@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   Card,
   CardHeader,
@@ -26,7 +26,7 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, collectionGroup, Timestamp } from 'firebase/firestore';
+import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -87,6 +87,10 @@ export default function RemindersPage() {
   const { user } = useUser();
   const firestore = useFirestore();
 
+  const [allDocuments, setAllDocuments] = useState<Document[]>([]);
+  const [allInspections, setAllInspections] = useState<Inspection[]>([]);
+  const [isLoadingReminders, setIsLoadingReminders] = useState(true);
+
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
@@ -96,23 +100,44 @@ export default function RemindersPage() {
   }, [firestore, user]);
   const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
   
-  const documentsQuery = useMemoFirebase(() => {
-    if (!user || !firestore) return null;
-    return query(
-        collectionGroup(firestore, 'documents'),
-        where('ownerId', '==', user.uid)
-    );
-  }, [user, firestore]);
-  const { data: documents, isLoading: isLoadingDocuments } = useCollection<Document>(documentsQuery);
+  useEffect(() => {
+    if (!firestore || !user || !properties) {
+        if (!isLoadingProperties) {
+            setIsLoadingReminders(false);
+        }
+        return;
+    };
 
-  const inspectionsQuery = useMemoFirebase(() => {
-      if (!user || !firestore) return null;
-      return query(
-          collectionGroup(firestore, 'inspections'),
-          where('ownerId', '==', user.uid)
-      );
-  }, [user, firestore]);
-  const { data: inspections, isLoading: isLoadingInspections } = useCollection<Inspection>(inspectionsQuery);
+    const fetchSubcollections = async () => {
+      setIsLoadingReminders(true);
+      const docs: Document[] = [];
+      const insps: Inspection[] = [];
+
+      for (const prop of properties) {
+        const docsQuery = query(collection(firestore, 'properties', prop.id, 'documents'));
+        const inspsQuery = query(collection(firestore, 'properties', prop.id, 'inspections'));
+        
+        const [docsSnapshot, inspsSnapshot] = await Promise.all([
+            getDocs(docsQuery),
+            getDocs(inspsQuery)
+        ]);
+
+        docsSnapshot.forEach(doc => docs.push({ id: doc.id, ...doc.data() } as Document));
+        inspsSnapshot.forEach(doc => insps.push({ id: doc.id, ...doc.data() } as Inspection));
+      }
+      
+      setAllDocuments(docs);
+      setAllInspections(insps);
+      setIsLoadingReminders(false);
+    };
+
+    if (properties.length > 0) {
+        fetchSubcollections();
+    } else {
+        setIsLoadingReminders(false);
+    }
+  }, [firestore, user, properties, isLoadingProperties]);
+
 
   const propertyMap = useMemo(() => {
     return (
@@ -125,7 +150,7 @@ export default function RemindersPage() {
 
   const allReminders = useMemo(() => {
     const documentReminders =
-      documents
+      allDocuments
         ?.map((doc) => {
           if (!doc.expiryDate) return null;
           const expiry =
@@ -149,7 +174,7 @@ export default function RemindersPage() {
         })) ?? [];
 
     const inspectionReminders =
-      inspections
+      allInspections
         ?.filter((insp) => {
           if (!insp.scheduledDate) return false;
           const scheduled =
@@ -173,9 +198,9 @@ export default function RemindersPage() {
     return [...documentReminders, ...inspectionReminders].sort(
       (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
     );
-  }, [documents, inspections, propertyMap]);
+  }, [allDocuments, allInspections, propertyMap]);
 
-  const isLoading = isLoadingProperties || isLoadingDocuments || isLoadingInspections;
+  const isLoading = isLoadingProperties || isLoadingReminders;
 
   const exportToPDF = async () => {
     const doc = new jsPDF();

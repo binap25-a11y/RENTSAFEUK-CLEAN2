@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   DropdownMenu,
@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Bell, FileWarning, CalendarClock } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, Timestamp, collectionGroup } from 'firebase/firestore';
+import { collection, query, where, Timestamp, getDocs } from 'firebase/firestore';
 import { format, isBefore, addDays, isFuture } from 'date-fns';
 
 // Interfaces from other parts of the app
@@ -56,31 +56,44 @@ const getDocumentStatus = (expiryDate: Date) => {
 export function Notifications() {
   const { user } = useUser();
   const firestore = useFirestore();
+  const [allDocuments, setAllDocuments] = useState<Document[]>([]);
+  const [allInspections, setAllInspections] = useState<Inspection[]>([]);
 
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(collection(firestore, 'properties'), where('ownerId', '==', user.uid));
   }, [firestore, user]);
 
-  const { data: properties } = useCollection<Property>(propertiesQuery);
+  const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
+  
+  useEffect(() => {
+    if (!firestore || !user || !properties) return;
 
-  const documentsQuery = useMemoFirebase(() => {
-    if (!user || !firestore) return null;
-    return query(
-        collectionGroup(firestore, 'documents'),
-        where('ownerId', '==', user.uid)
-    );
-  }, [user, firestore]);
-  const { data: documents } = useCollection<Document>(documentsQuery);
+    const fetchSubcollections = async () => {
+      const docs: Document[] = [];
+      const insps: Inspection[] = [];
 
-  const inspectionsQuery = useMemoFirebase(() => {
-      if (!user || !firestore) return null;
-      return query(
-          collectionGroup(firestore, 'inspections'),
-          where('ownerId', '==', user.uid)
-      );
-  }, [user, firestore]);
-  const { data: inspections } = useCollection<Inspection>(inspectionsQuery);
+      for (const prop of properties) {
+        const docsQuery = query(collection(firestore, 'properties', prop.id, 'documents'));
+        const inspsQuery = query(collection(firestore, 'properties', prop.id, 'inspections'));
+        
+        const [docsSnapshot, inspsSnapshot] = await Promise.all([
+            getDocs(docsQuery),
+            getDocs(inspsQuery)
+        ]);
+
+        docsSnapshot.forEach(doc => docs.push({ id: doc.id, ...doc.data() } as Document));
+        inspsSnapshot.forEach(doc => insps.push({ id: doc.id, ...doc.data() } as Inspection));
+      }
+      
+      setAllDocuments(docs);
+      setAllInspections(insps);
+    };
+
+    if (properties.length > 0) {
+      fetchSubcollections();
+    }
+  }, [firestore, user, properties]);
 
   const propertyMap = useMemo(() => {
     return (
@@ -93,7 +106,7 @@ export function Notifications() {
   
   const allReminders = useMemo(() => {
     const documentReminders =
-      documents
+      allDocuments
         ?.map((doc) => {
           if (!doc.expiryDate) return null;
           const expiry =
@@ -119,7 +132,7 @@ export function Notifications() {
         })) ?? [];
 
     const inspectionReminders =
-      inspections
+      allInspections
         ?.filter((insp) => {
           if (!insp.scheduledDate) return false;
           const scheduled =
@@ -145,7 +158,7 @@ export function Notifications() {
     return [...documentReminders, ...inspectionReminders].sort(
       (a, b) => a.dueDate.getTime() - b.dueDate.getTime()
     );
-  }, [documents, inspections, propertyMap]);
+  }, [allDocuments, allInspections, propertyMap]);
 
   const notificationCount = allReminders.length;
 

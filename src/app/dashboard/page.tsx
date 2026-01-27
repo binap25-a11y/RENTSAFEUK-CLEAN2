@@ -35,8 +35,8 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, Timestamp, collectionGroup } from 'firebase/firestore';
-import { useMemo } from 'react';
+import { collection, query, where, Timestamp, getDocs } from 'firebase/firestore';
+import { useState, useEffect, useMemo } from 'react';
 import { format, isFuture, isBefore, addDays } from 'date-fns';
 
 // Interfaces
@@ -101,6 +101,10 @@ const getStatusVariant = (status: string) => {
 export default function DashboardPage() {
   const { user } = useUser();
   const firestore = useFirestore();
+  const [maintenanceLogs, setMaintenanceLogs] = useState<MaintenanceLog[]>([]);
+  const [inspections, setInspections] = useState<Inspection[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [isSubcollectionsLoading, setIsSubcollectionsLoading] = useState(true);
 
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -110,35 +114,46 @@ export default function DashboardPage() {
     );
   }, [user, firestore]);
   const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
-
-  const maintenanceLogsQuery = useMemoFirebase(() => {
-    if (!user || !firestore) return null;
-    return query(
-      collectionGroup(firestore, 'maintenanceLogs'),
-      where('ownerId', '==', user.uid)
-    );
-  }, [user, firestore]);
-  const { data: maintenanceLogs, isLoading: isLoadingMaintenance } = useCollection<MaintenanceLog>(maintenanceLogsQuery);
   
-  const inspectionsQuery = useMemoFirebase(() => {
-    if (!user || !firestore) return null;
-    return query(
-      collectionGroup(firestore, 'inspections'),
-      where('ownerId', '==', user.uid)
-    );
-  }, [user, firestore]);
-  const { data: inspections, isLoading: isLoadingInspections } = useCollection<Inspection>(inspectionsQuery);
-  
-  const documentsQuery = useMemoFirebase(() => {
-    if (!user || !firestore) return null;
-    return query(
-      collectionGroup(firestore, 'documents'),
-      where('ownerId', '==', user.uid)
-    );
-  }, [user, firestore]);
-  const { data: documents, isLoading: isLoadingDocuments } = useCollection<Document>(documentsQuery);
+  useEffect(() => {
+    if (!firestore || !user || !properties) {
+        if (!isLoadingProperties) {
+            setIsSubcollectionsLoading(false);
+        }
+        return;
+    };
 
-  const isLoading = isLoadingProperties || isLoadingMaintenance || isLoadingInspections || isLoadingDocuments;
+    const fetchSubcollections = async () => {
+      setIsSubcollectionsLoading(true);
+      const logPromises = properties.map(p => getDocs(collection(firestore, 'properties', p.id, 'maintenanceLogs')));
+      const inspPromises = properties.map(p => getDocs(collection(firestore, 'properties', p.id, 'inspections')));
+      const docPromises = properties.map(p => getDocs(collection(firestore, 'properties', p.id, 'documents')));
+
+      const [logSnapshots, inspSnapshots, docSnapshots] = await Promise.all([
+        Promise.all(logPromises),
+        Promise.all(inspPromises),
+        Promise.all(docPromises),
+      ]);
+      
+      const logs = logSnapshots.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as MaintenanceLog)));
+      const insps = inspSnapshots.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Inspection)));
+      const docs = docSnapshots.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Document)));
+
+      setMaintenanceLogs(logs);
+      setInspections(insps);
+      setDocuments(docs);
+      setIsSubcollectionsLoading(false);
+    };
+
+    if (properties.length > 0) {
+        fetchSubcollections();
+    } else {
+        setIsSubcollectionsLoading(false);
+    }
+  }, [firestore, user, properties, isLoadingProperties]);
+
+
+  const isLoading = isLoadingProperties || isSubcollectionsLoading;
   
   const propertyMap = useMemo(() => 
     properties?.reduce((map, prop) => {
