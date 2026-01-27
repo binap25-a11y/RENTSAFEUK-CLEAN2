@@ -45,6 +45,7 @@ const menuItems = [
     subItems: [
         { href: '/dashboard/tenants', label: 'All Tenants' },
         { href: '/dashboard/tenants/add', label: 'Add Tenant' },
+        { href: '/dashboard/tenants/archived', label: 'Archived Tenants' },
     ],
   },
   { href: '/dashboard/maintenance', label: 'Maintenance', icon: Wrench },
@@ -137,9 +138,11 @@ export function MainNav() {
         </SidebarMenuItem>
       ))}
        <SidebarMenuItem className="mt-auto">
-          <SidebarMenuButton>
-              <Settings />
-              <span>Settings</span>
+          <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/settings')}>
+              <Link href="/dashboard/settings">
+                <Settings />
+                <span>Settings</span>
+              </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
     </SidebarMenu>
