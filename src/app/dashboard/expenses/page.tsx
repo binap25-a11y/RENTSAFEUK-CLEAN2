@@ -58,6 +58,15 @@ import {
 import { collection, query, where } from 'firebase/firestore';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import {
+  ChartConfig,
+  ChartContainer,
+  ChartLegend,
+  ChartLegendContent,
+  ChartTooltip,
+  ChartTooltipContent,
+} from '@/components/ui/chart';
+import { Pie, PieChart, Cell } from 'recharts';
 
 // TYPE DEFINITIONS
 
@@ -406,13 +415,28 @@ function AnnualSummary({ allProperties, selectedProperty }: { allProperties: Pro
   
   const selectedPropertyNet = selectedPropertyIncome - selectedPropertyExpenses;
 
+  const toCssVar = (str: string) => str.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
+
   const expensesByCategory = useMemo(() => {
     const categoryMap: { [key: string]: number } = {};
     expenses?.forEach(exp => {
       categoryMap[exp.expenseType] = (categoryMap[exp.expenseType] || 0) + exp.amount;
     });
-    return Object.entries(categoryMap).map(([name, amount]) => ({ name, amount }));
+    return Object.entries(categoryMap).map(([name, amount]) => ({
+      name,
+      amount,
+      key: toCssVar(name)
+    }));
   }, [expenses]);
+
+  const chartConfig = useMemo(() => {
+    return expensesByCategory.reduce((acc, category) => {
+        acc[category.key] = {
+            label: category.name,
+        };
+        return acc;
+    }, {} as ChartConfig);
+  }, [expensesByCategory]);
 
 
   return (
@@ -449,34 +473,79 @@ function AnnualSummary({ allProperties, selectedProperty }: { allProperties: Pro
                 </CardContent>
             </Card>
         </div>
-        <Card>
-            <CardHeader>
-                <CardTitle>Expense Breakdown by Category</CardTitle>
-                <CardDescription>For {selectedProperty ? selectedProperty.address : 'the selected property'} for all time.</CardDescription>
-            </CardHeader>
-            <CardContent>
-              <div className="rounded-md border">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Category</TableHead>
-                      <TableHead className="text-right">Total Amount</TableHead>
-                    </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {isLoadingExpenses && <TableRow><TableCell colSpan={2} className="h-24 text-center"><Loader2 className="h-6 w-6 animate-spin" /></TableCell></TableRow>}
-                    {!isLoadingExpenses && expensesByCategory.length === 0 && <TableRow><TableCell colSpan={2} className="h-24 text-center">{selectedProperty ? "No expenses found." : "Please select a property."}</TableCell></TableRow>}
-                    {expensesByCategory.map(cat => (
-                      <TableRow key={cat.name}>
-                        <TableCell className="font-medium">{cat.name}</TableCell>
-                        <TableCell className="text-right">£{cat.amount.toFixed(2)}</TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-            </CardContent>
-        </Card>
+        <div className="grid gap-6 lg:grid-cols-2">
+            <Card>
+                <CardHeader>
+                    <CardTitle>Expense Breakdown by Category</CardTitle>
+                    <CardDescription>For {selectedProperty ? selectedProperty.address : 'the selected property'} for all time.</CardDescription>
+                </CardHeader>
+                <CardContent>
+                <div className="rounded-md border">
+                    <Table>
+                    <TableHeader>
+                        <TableRow>
+                        <TableHead>Category</TableHead>
+                        <TableHead className="text-right">Total Amount</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {isLoadingExpenses && <TableRow><TableCell colSpan={2} className="h-24 text-center"><Loader2 className="h-6 w-6 animate-spin" /></TableCell></TableRow>}
+                        {!isLoadingExpenses && expensesByCategory.length === 0 && <TableRow><TableCell colSpan={2} className="h-24 text-center">{selectedProperty ? "No expenses found." : "Please select a property."}</TableCell></TableRow>}
+                        {expensesByCategory.map(cat => (
+                        <TableRow key={cat.name}>
+                            <TableCell className="font-medium">{cat.name}</TableCell>
+                            <TableCell className="text-right">£{cat.amount.toFixed(2)}</TableCell>
+                        </TableRow>
+                        ))}
+                    </TableBody>
+                    </Table>
+                </div>
+                </CardContent>
+            </Card>
+             <Card>
+                <CardHeader>
+                    <CardTitle>Expense Distribution</CardTitle>
+                    <CardDescription>Visual breakdown of expenses for the selected property.</CardDescription>
+                </CardHeader>
+                <CardContent className="flex justify-center">
+                    {isLoadingExpenses ? (
+                        <div className="flex h-[250px] w-full items-center justify-center">
+                            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                        </div>
+                    ) : expensesByCategory.length > 0 ? (
+                        <ChartContainer config={chartConfig} className="mx-auto aspect-square h-[250px]">
+                        <PieChart>
+                            <ChartTooltip
+                            cursor={false}
+                            content={<ChartTooltipContent hideLabel nameKey="amount" formatter={(value) => `£${Number(value).toFixed(2)}`} />}
+                            />
+                            <Pie
+                                data={expensesByCategory}
+                                dataKey="amount"
+                                nameKey="name"
+                                innerRadius={60}
+                                strokeWidth={5}
+                            >
+                                {expensesByCategory.map((entry) => (
+                                    <Cell key={`cell-${entry.key}`} fill={`var(--color-${entry.key})`} className="stroke-background"/>
+                                ))}
+                            </Pie>
+                            <ChartLegend
+                            content={<ChartLegendContent nameKey="key" />}
+                            className="-mt-4"
+                            />
+                        </PieChart>
+                        </ChartContainer>
+                    ) : (
+                        <div className="flex h-[250px] w-full flex-col items-center justify-center text-center">
+                        <p className="text-muted-foreground">
+                            {selectedProperty ? "No expenses to visualize." : "Please select a property."}
+                        </p>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
     </div>
   );
 }
