@@ -3,7 +3,6 @@
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { toast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import { Loader2, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
@@ -20,13 +19,10 @@ export default function CheckoutPage() {
     e.preventDefault();
     setIsProcessing(true);
 
-    // In a real app, this would redirect to a Stripe Checkout page
-    // For this prototype, we'll simulate the payment processing
+    // In a real app, this would redirect to a Stripe Checkout page.
+    // For this prototype, we'll simulate the processing time and then
+    // redirect to the dashboard, as if the payment was successful.
     setTimeout(() => {
-      toast({
-        title: 'Payment Successful!',
-        description: `You are now subscribed to the ${plan} plan.`,
-      });
       router.push('/dashboard');
     }, 2000);
   };
