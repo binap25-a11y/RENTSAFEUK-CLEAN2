@@ -101,14 +101,14 @@ export default function PropertiesPage() {
     return (
       <div className="flex flex-col gap-6">
         {/* Header remains visible during load */}
-        <div className="flex justify-between items-center">
+        <div>
           <div>
             <h1 className="text-3xl font-bold">My Properties</h1>
             <p className="text-muted-foreground">
               A list of all properties in your portfolio.
             </p>
           </div>
-          <div className="flex items-center gap-2">
+          <div className="flex items-center gap-2 mt-4">
             <Button asChild variant="outline">
               <Link href="/dashboard/properties/deleted">
                 <Archive className="mr-2 h-4 w-4" /> View Deleted
@@ -138,14 +138,14 @@ export default function PropertiesPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex justify-between items-center">
+      <div>
         <div>
           <h1 className="text-3xl font-bold">My Properties</h1>
           <p className="text-muted-foreground">
             A list of all properties in your portfolio.
           </p>
         </div>
-        <div className="flex items-center gap-2">
+        <div className="flex items-center gap-2 mt-4">
           <Button asChild variant="outline">
             <Link href="/dashboard/properties/deleted">
               <Archive className="mr-2 h-4 w-4" /> View Deleted
