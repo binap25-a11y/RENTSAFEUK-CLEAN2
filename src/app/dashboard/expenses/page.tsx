@@ -38,7 +38,7 @@ import {
 import { Calendar } from '@/components/ui/calendar';
 import { CalendarIcon, Clock, DollarSign, TrendingDown, TrendingUp, Loader2, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
 import { cn } from '@/lib/utils';
-import { format, getYear } from 'date-fns';
+import { format, getYear, startOfYear, endOfYear } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import {
   Table,
@@ -107,6 +107,7 @@ export default function FinancialsPage() {
   const { user } = useUser();
   const firestore = useFirestore();
   const [selectedPropertyId, setSelectedPropertyId] = useState('');
+  const [selectedYear, setSelectedYear] = useState(getYear(new Date()));
 
   // Fetch all properties for the user
   const propertiesQuery = useMemoFirebase(() => {
@@ -130,7 +131,7 @@ export default function FinancialsPage() {
        <Card>
         <CardHeader>
           <CardTitle>Financial Overview</CardTitle>
-          <CardDescription>Select a property to view its detailed financials.</CardDescription>
+          <CardDescription>Select a property and year to view its detailed financials.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
            <div className="flex items-center gap-2">
@@ -147,6 +148,16 @@ export default function FinancialsPage() {
                   ))}
                 </SelectContent>
               </Select>
+              <Select onValueChange={(value) => setSelectedYear(Number(value))} value={String(selectedYear)}>
+                  <SelectTrigger className="w-[120px]">
+                      <SelectValue placeholder="Year" />
+                  </SelectTrigger>
+                  <SelectContent>
+                      {Array.from({ length: 5 }, (_, i) => getYear(new Date()) - i).map(year => (
+                          <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                      ))}
+                  </SelectContent>
+              </Select>
             </div>
            <Tabs defaultValue="expenses">
               <TabsList className="grid w-full grid-cols-3">
@@ -159,13 +170,14 @@ export default function FinancialsPage() {
                   properties={properties || []} 
                   selectedPropertyId={selectedPropertyId} 
                   isLoadingProperties={isLoadingProperties}
+                  selectedYear={selectedYear}
                 />
               </TabsContent>
               <TabsContent value="summary">
-                <AnnualSummary allProperties={properties || []} selectedProperty={selectedProperty} />
+                <AnnualSummary allProperties={properties || []} selectedProperty={selectedProperty} selectedYear={selectedYear} />
               </TabsContent>
               <TabsContent value="statement">
-                <RentStatement selectedProperty={selectedProperty} />
+                <RentStatement selectedProperty={selectedProperty} selectedYear={selectedYear}/>
               </TabsContent>
             </Tabs>
         </CardContent>
@@ -177,7 +189,7 @@ export default function FinancialsPage() {
 
 
 // EXPENSE TRACKER COMPONENT
-function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }: { properties: Property[], selectedPropertyId: string, isLoadingProperties: boolean }) {
+function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, selectedYear }: { properties: Property[], selectedPropertyId: string, isLoadingProperties: boolean, selectedYear: number }) {
   const { user } = useUser();
   const firestore = useFirestore();
 
@@ -194,14 +206,18 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }:
     form.setValue('propertyId', selectedPropertyId);
   }, [selectedPropertyId, form]);
 
-  // Fetch expenses for the selected property
+  // Fetch expenses for the selected property and year
   const expensesQuery = useMemoFirebase(() => {
     if (!user || !firestore || !selectedPropertyId) return null;
+    const startDate = startOfYear(new Date(selectedYear, 0, 1));
+    const endDate = endOfYear(new Date(selectedYear, 0, 1));
     return query(
       collection(firestore, 'properties', selectedPropertyId, 'expenses'),
-      where('ownerId', '==', user.uid)
+      where('ownerId', '==', user.uid),
+      where('date', '>=', startDate),
+      where('date', '<=', endDate)
     );
-  }, [firestore, user, selectedPropertyId]);
+  }, [firestore, user, selectedPropertyId, selectedYear]);
   const { data: expenses, isLoading: isLoadingExpenses } = useCollection<Expense>(expensesQuery);
 
   // Handle form submission
@@ -342,7 +358,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }:
       <Card>
         <CardHeader>
           <CardTitle>Logged Expenses</CardTitle>
-          <CardDescription>Expenses logged for the selected property.</CardDescription>
+          <CardDescription>Expenses logged for the selected property in {selectedYear}.</CardDescription>
         </CardHeader>
         <CardContent>
           <div className="rounded-md border">
@@ -365,7 +381,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }:
         </CardContent>
         <CardFooter className="flex justify-end font-bold">
           <div className="flex items-center gap-4">
-            <span>Total for Selected Property:</span>
+            <span>Total for {selectedYear}:</span>
             <span>£{totalExpenses.toFixed(2)}</span>
           </div>
         </CardFooter>
@@ -376,18 +392,22 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }:
 
 
 // ANNUAL SUMMARY COMPONENT
-function AnnualSummary({ allProperties, selectedProperty }: { allProperties: Property[], selectedProperty: Property | undefined }) {
+function AnnualSummary({ allProperties, selectedProperty, selectedYear }: { allProperties: Property[], selectedProperty: Property | undefined, selectedYear: number }) {
   const { user } = useUser();
   const firestore = useFirestore();
 
-  // Fetch expenses for the selected property
+  // Fetch expenses for the selected property and year
   const expensesQuery = useMemoFirebase(() => {
     if (!user || !firestore || !selectedProperty) return null;
+    const startDate = startOfYear(new Date(selectedYear, 0, 1));
+    const endDate = endOfYear(new Date(selectedYear, 0, 1));
     return query(
       collection(firestore, 'properties', selectedProperty.id, 'expenses'),
-      where('ownerId', '==', user.uid)
+      where('ownerId', '==', user.uid),
+      where('date', '>=', startDate),
+      where('date', '<=', endDate)
     );
-  }, [firestore, user, selectedProperty]);
+  }, [firestore, user, selectedProperty, selectedYear]);
   const { data: expenses, isLoading: isLoadingExpenses } = useCollection<Expense>(expensesQuery);
   
   const portfolioIncome = useMemo(() => {
@@ -443,7 +463,7 @@ function AnnualSummary({ allProperties, selectedProperty }: { allProperties: Pro
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Selected Property Expenses (Annual)</CardTitle>
+                <CardTitle className="text-sm font-medium">Selected Property Expenses ({selectedYear})</CardTitle>
                 <TrendingDown className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -453,7 +473,7 @@ function AnnualSummary({ allProperties, selectedProperty }: { allProperties: Pro
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Selected Property Net Income (Annual)</CardTitle>
+                <CardTitle className="text-sm font-medium">Selected Property Net Income ({selectedYear})</CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -466,7 +486,7 @@ function AnnualSummary({ allProperties, selectedProperty }: { allProperties: Pro
             <Card>
                 <CardHeader>
                     <CardTitle>Expense Breakdown by Category</CardTitle>
-                    <CardDescription>For {selectedProperty ? selectedProperty.address : 'the selected property'} for all time.</CardDescription>
+                    <CardDescription>For {selectedProperty ? selectedProperty.address : 'the selected property'} for {selectedYear}.</CardDescription>
                 </CardHeader>
                 <CardContent>
                 <div className="rounded-md border">
@@ -494,7 +514,7 @@ function AnnualSummary({ allProperties, selectedProperty }: { allProperties: Pro
              <Card>
                 <CardHeader>
                     <CardTitle>Expense Distribution</CardTitle>
-                    <CardDescription>Visual breakdown of expenses for the selected property.</CardDescription>
+                    <CardDescription>Visual breakdown of expenses for {selectedYear}.</CardDescription>
                 </CardHeader>
                 <CardContent className="flex justify-center">
                     {isLoadingExpenses ? (
@@ -541,13 +561,12 @@ function AnnualSummary({ allProperties, selectedProperty }: { allProperties: Pro
 
 
 // RENT STATEMENT COMPONENT
-function RentStatement({ selectedProperty }: { selectedProperty: Property | undefined }) {
-  const currentYear = getYear(new Date());
+function RentStatement({ selectedProperty, selectedYear }: { selectedProperty: Property | undefined, selectedYear: number }) {
   type PaymentStatus = 'Paid' | 'Partially Paid' | 'Unpaid' | 'Pending';
 
   const [payments, setPayments] = useState<Record<string, { status: PaymentStatus }>>({});
   
-  const months = useMemo(() => Array.from({ length: 12 }, (_, i) => format(new Date(currentYear, i, 1), 'MMMM')), [currentYear]);
+  const months = useMemo(() => Array.from({ length: 12 }, (_, i) => format(new Date(selectedYear, i, 1), 'MMMM')), [selectedYear]);
 
   useEffect(() => {
     if (selectedProperty) {
@@ -637,7 +656,7 @@ function RentStatement({ selectedProperty }: { selectedProperty: Property | unde
     <Card className="mt-6">
       <CardHeader>
         <CardTitle>Rent Payment Statement</CardTitle>
-        <CardDescription>Expected monthly rent payments for {selectedProperty.address} for {currentYear}.</CardDescription>
+        <CardDescription>Expected monthly rent payments for {selectedProperty.address} for {selectedYear}.</CardDescription>
       </CardHeader>
       <CardContent>
         <div className="rounded-md border">
