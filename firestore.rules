@@ -3,82 +3,74 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // --- Helper Functions ---
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // Helper function to check ownership on a document by the ownerId field.
-    // This is the primary security mechanism for user data.
-    function isOwner(doc) {
-      return isSignedIn() && doc.ownerId == request.auth.uid;
-    }
-
-    // Profile
+    // --- Profile Rules ---
     match /users/{userId} {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
 
-    // Top-level collections
+    // --- Top-level Collection Rules ---
     match /properties/{propertyId} {
       allow list: if isSignedIn();
-      allow get, update, delete: if isOwner(resource.data);
-      allow create: if isOwner(request.resource.data);
+      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
 
     match /tenants/{tenantId} {
       allow list: if isSignedIn();
-      allow get, update, delete: if isOwner(resource.data);
-      allow create: if isOwner(request.resource.data);
+      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
     
-    // --- DIRECT SUBCOLLECTION ACCESS RULES ---
-    // These rules cover direct access like /properties/{pid}/inspections/{iid}
-    // but DO NOT cover collection group queries.
-
+    // --- Direct Subcollection Access Rules ---
+    // These rules allow a user to get/update/delete their own documents
+    // when accessing them via a direct path.
     match /properties/{propertyId}/maintenanceLogs/{logId} {
-      allow get, update, delete: if isOwner(resource.data);
-      allow create: if isOwner(request.resource.data);
+      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
 
     match /properties/{propertyId}/inspections/{inspectionId} {
-      allow get, update, delete: if isOwner(resource.data);
-      allow create: if isOwner(request.resource.data);
+      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
 
     match /properties/{propertyId}/documents/{documentId} {
-      allow get, update, delete: if isOwner(resource.data);
-      allow create: if isOwner(request.resource.data);
+      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
 
     match /properties/{propertyId}/expenses/{expenseId} {
-      allow get, update, delete: if isOwner(resource.data);
-      allow create: if isOwner(request.resource.data);
+      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
 
     match /properties/{propertyId}/rentPayments/{paymentId} {
-      allow get, update, delete: if isOwner(resource.data);
-      allow create: if isOwner(request.resource.data);
+      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
 
-    // --- COLLECTION GROUP QUERY RULES ---
-    // These rules are ONLY for collection group queries.
-    // They allow `list` operations across all subcollections with the same name.
-    // The client-side query MUST use `where('ownerId', '==', user.uid)`.
-
+    // --- Collection Group Query Rules ---
+    // These rules are ONLY for collection group queries (e.g., for the dashboard).
+    // They allow a `list` operation if the query includes a `where('ownerId', '==', request.auth.uid)` clause.
     match /{path=**}/maintenanceLogs/{logId} {
-      allow list: if isOwner(resource.data);
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
     match /{path=**}/inspections/{inspectionId} {
-      allow list: if isOwner(resource.data);
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
     match /{path=**}/documents/{documentId} {
-      allow list: if isOwner(resource.data);
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
     match /{path=**}/expenses/{expenseId} {
-      allow list: if isOwner(resource.data);
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
     match /{path=**}/rentPayments/{paymentId} {
-      allow list: if isOwner(resource.data);
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
   }
 }
