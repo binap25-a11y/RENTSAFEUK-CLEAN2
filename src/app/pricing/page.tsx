@@ -22,6 +22,7 @@ const plans = [
       'Contains ads or "upgrade" prompts',
     ],
     isMostPopular: false,
+    href: '/dashboard',
   },
   {
     name: 'Standard Landlord',
@@ -118,7 +119,9 @@ export default function PricingPage() {
               </CardContent>
               <CardFooter>
                 <Button asChild className="w-full">
-                  <Link href="/dashboard">Choose {plan.name}</Link>
+                  <Link href={plan.href || `/checkout?plan=${encodeURIComponent(plan.name)}&price=${isAnnual ? plan.price.annually : plan.price.monthly}&billing=${isAnnual ? 'year' : 'month'}`}>
+                    Choose {plan.name}
+                  </Link>
                 </Button>
               </CardFooter>
             </Card>
