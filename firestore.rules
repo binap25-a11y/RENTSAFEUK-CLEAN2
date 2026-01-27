@@ -33,35 +33,33 @@ service cloud.firestore {
 
     // --- Collection Group Rules for Subcollections ---
     // These rules apply to both collection group queries (like on the dashboard) and direct access.
-
+    
     match /{path=**}/maintenanceLogs/{logId} {
-      // For `list` (queries), we rely on the client-side `where('ownerId', '==', user.uid)` clause.
-      allow list: if isSignedIn();
-      // For direct access, we check the ownerId on the document itself.
+      allow list: if request.auth != null && request.query.limit <= 30;
       allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
 
     match /{path=**}/inspections/{inspectionId} {
-      allow list: if isSignedIn();
+      allow list: if request.auth != null && request.query.limit <= 30;
       allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
 
     match /{path=**}/documents/{documentId} {
-      allow list: if isSignedIn();
+      allow list: if request.auth != null && request.query.limit <= 30;
       allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
 
     match /{path=**}/expenses/{expenseId} {
-      allow list: if isSignedIn();
+      allow list: if request.auth != null && request.query.limit <= 30;
       allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
 
     match /{path=**}/rentPayments/{paymentId} {
-      allow list: if isSignedIn();
+      allow list: if request.auth != null && request.query.limit <= 30;
       allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
