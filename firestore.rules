@@ -33,35 +33,35 @@ service cloud.firestore {
 
     match /{path=**}/maintenanceLogs/{logId} {
       allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn();
+      allow list: if isSignedIn() && get(/databases/$(database)/documents/$(path[0])/$(path[1])).data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
 
     match /{path=**}/expenses/{expenseId} {
       allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn();
+      allow list: if isSignedIn() && get(/databases/$(database)/documents/$(path[0])/$(path[1])).data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
 
     match /{path=**}/documents/{documentId} {
       allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn();
+      allow list: if isSignedIn() && get(/databases/$(database)/documents/$(path[0])/$(path[1])).data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
 
     match /{path=**}/inspections/{inspectionId} {
       allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn();
+      allow list: if isSignedIn() && get(/databases/$(database)/documents/$(path[0])/$(path[1])).data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
 
     match /{path=**}/rentPayments/{paymentId} {
       allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn();
+      allow list: if isSignedIn() && get(/databases/$(database)/documents/$(path[0])/$(path[1])).data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
