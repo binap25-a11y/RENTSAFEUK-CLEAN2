@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, notFound } from 'next/navigation';
+import { useParams, notFound, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
@@ -9,7 +9,8 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, Bed, Bath, User, Mail, Phone, Calendar as CalendarIcon, ShieldCheck, Edit, Trash2, UserPlus, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
-import { doc, collection, query, where } from 'firebase/firestore';
+import { doc, collection, query, where, updateDoc } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
 
 // Main interface for a Property document from Firestore
 interface Property {
@@ -44,6 +45,8 @@ export default function PropertyDetailPage() {
   const params = useParams();
   const id = params.id as string;
   const firestore = useFirestore();
+  const router = useRouter();
+  const { toast } = useToast();
 
   const propertyRef = useMemoFirebase(() => {
     if (!firestore || !id) return null;
@@ -64,6 +67,32 @@ export default function PropertyDetailPage() {
   const tenant = tenants?.[0];
 
   const isLoading = isLoadingProperty || isLoadingTenants;
+
+  const handleDelete = async (propertyId: string, address: string) => {
+    if (!firestore) return;
+    const isConfirmed = confirm(
+      `Are you sure you want to delete the property at ${address}?`
+    );
+    if (isConfirmed) {
+      try {
+        const docRef = doc(firestore, 'properties', propertyId);
+        await updateDoc(docRef, { status: 'Deleted' });
+        toast({
+          title: 'Property Deleted',
+          description: `${address} has been moved to the deleted properties list.`,
+        });
+        router.push('/dashboard/properties');
+      } catch (e) {
+        console.error('Error deleting property:', e);
+        toast({
+          variant: 'destructive',
+          title: 'Error',
+          description: 'Could not delete the property. Please try again.',
+        });
+      }
+    }
+  };
+
 
   if (isLoading) {
     return (
@@ -118,7 +147,17 @@ export default function PropertyDetailPage() {
                             <span className='flex items-center gap-1'><Bath className="h-4 w-4" /> {property.bathrooms}</span>
                         </div>
                     </div>
-                    <Badge>{property.status}</Badge>
+                    <div className="flex items-center gap-2">
+                        <Badge>{property.status}</Badge>
+                         <Button asChild variant="outline" size="sm">
+                            <Link href={`/dashboard/properties/${id}/edit`}>
+                                <Edit className="mr-2 h-4 w-4" /> Edit
+                            </Link>
+                        </Button>
+                        <Button variant="destructive" size="sm" onClick={() => handleDelete(id, property.address)}>
+                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                        </Button>
+                    </div>
                 </div>
             </CardHeader>
         </Card>
