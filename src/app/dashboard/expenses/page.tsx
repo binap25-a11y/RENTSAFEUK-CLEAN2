@@ -596,7 +596,8 @@ function RentStatement({ selectedProperty, selectedYear }: { selectedProperty: P
     if (!user || !firestore || !selectedProperty) return null;
     return query(
       collection(firestore, 'properties', selectedProperty.id, 'rentPayments'),
-      where('year', '==', selectedYear)
+      where('year', '==', selectedYear),
+      where('ownerId', '==', user.uid)
     );
   }, [firestore, user, selectedProperty, selectedYear]);
   const { data: rentPayments, isLoading: isLoadingPayments } = useCollection<RentPayment>(rentPaymentsQuery);
