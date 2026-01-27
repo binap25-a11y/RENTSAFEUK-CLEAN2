@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Bed, Bath, Trash2, Archive, Loader2 } from 'lucide-react';
+import { PlusCircle, Bed, Bath, Trash2, Archive, Loader2, Edit } from 'lucide-react';
 import {
   useUser,
   useFirestore,
@@ -186,6 +186,12 @@ export default function PropertiesPage() {
                   <Link href={`/dashboard/properties/${property.id}`}>
                     View Details
                   </Link>
+                </Button>
+                 <Button asChild variant="secondary" size="icon">
+                    <Link href={`/dashboard/properties/${property.id}/edit`}>
+                        <Edit className="h-4 w-4" />
+                        <span className="sr-only">Edit Property</span>
+                    </Link>
                 </Button>
                 <Button
                   variant="destructive"
