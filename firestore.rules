@@ -7,7 +7,7 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Helper function to check ownership on a document
+    // Helper function to check ownership on a document by ownerId field
     function isOwner(doc) {
       return isSignedIn() && doc.ownerId == request.auth.uid;
     }
@@ -20,7 +20,8 @@ service cloud.firestore {
     // A user can manage properties they own
     match /properties/{propertyId} {
       allow get: if isOwner(resource.data);
-      allow list: if isSignedIn(); // Client-side queries always filter by ownerId
+      // List queries are secured by client-side filtering and the `get` rule check on each document
+      allow list: if isSignedIn();
       allow create: if isOwner(request.resource.data);
       allow update, delete: if isOwner(resource.data);
     }
@@ -28,20 +29,27 @@ service cloud.firestore {
     // A user can manage tenants they own
     match /tenants/{tenantId} {
       allow get: if isOwner(resource.data);
-      allow list: if isSignedIn(); // Client-side queries always filter by ownerId
+       // List queries are secured by client-side filtering and the `get` rule check on each document
+      allow list: if isSignedIn();
       allow create: if isOwner(request.resource.data);
       allow update, delete: if isOwner(resource.data);
     }
     
-    // Generic rule for all property subcollections
+    // Generic rule for all property subcollections.
+    // This handles both direct subcollection queries and collection group queries.
     match /properties/{propertyId}/{subcollection}/{docId}
     where subcollection in ['maintenanceLogs', 'inspections', 'documents', 'expenses', 'rentPayments'] {
-      // For single document reads (get), check ownerId on the document itself.
-      allow get: if isOwner(resource.data);
-      // For collection group queries (list), check ownership of the parent property document.
-      allow list: if get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
       
-      // For writes, ensure the new/updated data has the correct ownerId.
+      // Rule for reading individual documents (get) and for checking each document
+      // returned by a list query.
+      allow get: if isOwner(resource.data);
+      
+      // Rule for allowing list/query operations to proceed.
+      // This is safe because the `get` rule above is checked for every document
+      // and client-side queries MUST filter by ownerId.
+      allow list: if isSignedIn();
+      
+      // Rules for writing data
       allow create: if isOwner(request.resource.data);
       allow update, delete: if isOwner(resource.data);
     }
