@@ -17,7 +17,6 @@ import {
   useFirestore,
   useCollection,
   useMemoFirebase,
-  WithId,
 } from '@/firebase';
 import {
   collection,
@@ -27,6 +26,8 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
+import { useSearch } from '@/context/SearchProvider';
+import { useMemo } from 'react';
 
 // Define the Property type based on your Firestore structure
 interface Property {
@@ -42,6 +43,7 @@ interface Property {
 export default function PropertiesPage() {
   const { user } = useUser();
   const firestore = useFirestore();
+  const { searchTerm } = useSearch();
 
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
@@ -57,6 +59,19 @@ export default function PropertiesPage() {
     isLoading,
     error,
   } = useCollection<Property>(propertiesQuery);
+
+  const filteredProperties = useMemo(() => {
+    if (!properties) {
+      return [];
+    }
+    if (!searchTerm) {
+      return properties;
+    }
+    return properties.filter((property) =>
+      property.address.toLowerCase().includes(searchTerm.toLowerCase())
+    );
+  }, [properties, searchTerm]);
+
 
   const handleDelete = async (propertyId: string, address: string) => {
     if (!firestore) return;
@@ -81,6 +96,45 @@ export default function PropertiesPage() {
       }
     }
   };
+  
+  if (isLoading) {
+    return (
+      <div className="flex flex-col gap-6">
+        {/* Header remains visible during load */}
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">My Properties</h1>
+            <p className="text-muted-foreground">
+              A list of all properties in your portfolio.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+            <Button asChild variant="outline">
+              <Link href="/dashboard/properties/deleted">
+                <Archive className="mr-2 h-4 w-4" /> View Deleted
+              </Link>
+            </Button>
+            <Button asChild>
+              <Link href="/dashboard/properties/add">
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Property
+              </Link>
+            </Button>
+          </div>
+        </div>
+        <div className="flex justify-center items-center h-64">
+          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        </div>
+      </div>
+    );
+  }
+
+  if (error) {
+    return (
+        <Card className="flex justify-center items-center h-64">
+            <p className="text-destructive">Error loading properties: {error.message}</p>
+        </Card>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
@@ -105,19 +159,7 @@ export default function PropertiesPage() {
         </div>
       </div>
 
-      {isLoading && (
-        <div className="flex justify-center items-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      )}
-
-      {!isLoading && error && (
-        <Card className="flex justify-center items-center h-64">
-            <p className="text-destructive">Error loading properties: {error.message}</p>
-        </Card>
-      )}
-
-      {!isLoading && !properties?.length && (
+      {!properties?.length ? (
          <Card className="flex flex-col justify-center items-center h-64 text-center">
           <CardHeader>
             <CardTitle>No Properties Found</CardTitle>
@@ -131,11 +173,9 @@ export default function PropertiesPage() {
             </Button>
           </CardContent>
         </Card>
-      )}
-
-      {!isLoading && (properties?.length ?? 0) > 0 && (
+      ) : filteredProperties.length > 0 ? (
         <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-          {properties?.map((property) => (
+          {filteredProperties.map((property) => (
             <Card
               key={property.id}
               className="group overflow-hidden flex flex-col"
@@ -205,6 +245,15 @@ export default function PropertiesPage() {
             </Card>
           ))}
         </div>
+      ) : (
+         <Card className="flex flex-col justify-center items-center h-64 text-center">
+          <CardHeader>
+            <CardTitle>No Properties Found</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <p className="text-muted-foreground mb-4">No properties match your search for "{searchTerm}".</p>
+          </CardContent>
+        </Card>
       )}
     </div>
   );
