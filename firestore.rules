@@ -15,20 +15,21 @@ service cloud.firestore {
 
     // --- Top-level Collection Rules ---
     match /properties/{propertyId} {
-      allow list: if isSignedIn();
+      // Anyone can list all properties, but they are filtered on the client.
+      allow list: if isSignedIn(); 
       allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
 
     match /tenants/{tenantId} {
+      // Anyone can list all tenants, filtered on client.
       allow list: if isSignedIn();
       allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
     
     // --- Direct Subcollection Access Rules ---
-    // These rules allow a user to get/update/delete their own documents
-    // when accessing them via a direct path.
+    // These rules allow a user to access their own documents via a direct path.
     match /properties/{propertyId}/maintenanceLogs/{logId} {
       allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
@@ -57,20 +58,21 @@ service cloud.firestore {
     // --- Collection Group Query Rules ---
     // These rules are ONLY for collection group queries (e.g., for the dashboard).
     // They allow a `list` operation if the query includes a `where('ownerId', '==', request.auth.uid)` clause.
+    // The `'ownerId' in resource.data` check adds robustness in case some documents are missing the field.
     match /{path=**}/maintenanceLogs/{logId} {
-      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn() && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid;
     }
     match /{path=**}/inspections/{inspectionId} {
-      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn() && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid;
     }
     match /{path=**}/documents/{documentId} {
-      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn() && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid;
     }
     match /{path=**}/expenses/{expenseId} {
-      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn() && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid;
     }
     match /{path=**}/rentPayments/{paymentId} {
-      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn() && 'ownerId' in resource.data && resource.data.ownerId == request.auth.uid;
     }
   }
 }
