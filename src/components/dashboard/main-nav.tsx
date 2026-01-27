@@ -100,6 +100,7 @@ export function MainNav() {
                     <SidebarMenuButton
                         isActive={pathname.startsWith(href)}
                         className='justify-between'
+                        tooltip={label}
                     >
                         <div className='flex items-center gap-2'>
                             <Icon />
@@ -128,6 +129,7 @@ export function MainNav() {
                   ? pathname === href
                   : pathname.startsWith(href)
               }
+              tooltip={label}
             >
               <Link href={href}>
                 <Icon />
@@ -138,7 +140,7 @@ export function MainNav() {
         </SidebarMenuItem>
       ))}
        <SidebarMenuItem className="mt-auto">
-          <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/settings')}>
+          <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/settings')} tooltip="Settings">
               <Link href="/dashboard/settings">
                 <Settings />
                 <span>Settings</span>
