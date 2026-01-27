@@ -117,8 +117,8 @@ export default function PricingPage() {
                 </ul>
               </CardContent>
               <CardFooter>
-                <Button className="w-full">
-                  Choose {plan.name}
+                <Button asChild className="w-full">
+                  <Link href="/dashboard">Choose {plan.name}</Link>
                 </Button>
               </CardFooter>
             </Card>
