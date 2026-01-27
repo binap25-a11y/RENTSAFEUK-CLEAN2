@@ -138,9 +138,11 @@ export function MainNav() {
         </SidebarMenuItem>
       ))}
        <SidebarMenuItem className="mt-auto">
-          <SidebarMenuButton>
-              <Settings />
-              <span>Settings</span>
+          <SidebarMenuButton asChild isActive={pathname === '/dashboard/settings'}>
+              <Link href="/dashboard/settings">
+                <Settings />
+                <span>Settings</span>
+              </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
     </SidebarMenu>
