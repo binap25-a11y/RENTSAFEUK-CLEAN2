@@ -10,12 +10,12 @@
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
 
-export const MaintenanceAssistantInputSchema = z.object({
+const MaintenanceAssistantInputSchema = z.object({
   problemDescription: z.string().describe('A description of the maintenance problem provided by the user.'),
 });
 export type MaintenanceAssistantInput = z.infer<typeof MaintenanceAssistantInputSchema>;
 
-export const MaintenanceAssistantOutputSchema = z.object({
+const MaintenanceAssistantOutputSchema = z.object({
   likelyCause: z.string().describe('A brief, likely cause of the problem.'),
   troubleshootingSteps: z.array(z.string()).describe('A short list of simple troubleshooting steps a landlord or tenant could try.'),
   urgency: z.enum(['Low', 'Routine', 'Urgent', 'Emergency']).describe('The assessed urgency of the issue.'),
