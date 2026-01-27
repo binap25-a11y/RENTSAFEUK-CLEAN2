@@ -39,7 +39,7 @@ const plans = [
   },
   {
     name: 'Pro Landlord',
-    price: { monthly: 9.99, annually: 99 },
+    price: { monthly: 14.99, annually: 149 },
     description: 'For serious investors and property managers.',
     features: [
       'Unlimited properties',
@@ -47,7 +47,7 @@ const plans = [
       'Tenant issue tracking',
       'Contractor notes',
       'Full maintenance history',
-      'Cloud backup',
+      'Secure Cloud Data Storage',
       'Priority support',
     ],
     isMostPopular: false,
