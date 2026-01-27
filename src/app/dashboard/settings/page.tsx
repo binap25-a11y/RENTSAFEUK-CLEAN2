@@ -39,6 +39,10 @@ export default function SettingsPage() {
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
+    defaultValues: {
+      displayName: '',
+      email: '',
+    },
   });
 
   useEffect(() => {
