@@ -15,11 +15,29 @@ import {
 import { useAuth, useUser } from '@/firebase';
 import { signOut } from 'firebase/auth';
 import { useRouter } from 'next/navigation';
+import { Moon, Sun } from 'lucide-react';
+import { useEffect, useState } from 'react';
 
 export function UserNav() {
   const { user } = useUser();
   const auth = useAuth();
   const router = useRouter();
+  const [theme, setTheme] = useState('light');
+
+  useEffect(() => {
+    const savedTheme = localStorage.getItem('theme');
+    const systemIsDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const initialTheme = savedTheme || (systemIsDark ? 'dark' : 'light');
+    setTheme(initialTheme);
+    document.documentElement.classList.toggle('dark', initialTheme === 'dark');
+  }, []);
+
+  const toggleTheme = () => {
+    const newTheme = theme === 'light' ? 'dark' : 'light';
+    setTheme(newTheme);
+    localStorage.setItem('theme', newTheme);
+    document.documentElement.classList.toggle('dark', newTheme === 'dark');
+  };
 
   const handleSignOut = () => {
     if (auth) {
@@ -68,6 +86,12 @@ export function UserNav() {
              <Link href="/pricing">Billing</Link>
           </DropdownMenuItem>
         </DropdownMenuGroup>
+        <DropdownMenuSeparator />
+        <DropdownMenuItem onClick={toggleTheme}>
+          <Sun className="h-4 w-4 rotate-0 scale-100 transition-all dark:-rotate-90 dark:scale-0" />
+          <Moon className="absolute h-4 w-4 rotate-90 scale-0 transition-all dark:rotate-0 dark:scale-100" />
+          <span className="ml-2">Toggle Theme</span>
+        </DropdownMenuItem>
         <DropdownMenuSeparator />
         <DropdownMenuItem onClick={handleSignOut}>
           Log out

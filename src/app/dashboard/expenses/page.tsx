@@ -44,7 +44,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Clock, DollarSign, TrendingDown, TrendingUp, Loader2, CheckCircle2, XCircle, AlertCircle } from 'lucide-react';
+import { CalendarIcon, Clock, DollarSign, TrendingDown, TrendingUp, Loader2, CheckCircle2, XCircle, AlertCircle, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, getYear, startOfYear, endOfYear } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -75,6 +75,15 @@ import {
   ChartTooltipContent,
 } from '@/components/ui/chart';
 import { Pie, PieChart, Cell } from 'recharts';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+
+// Extend the autoTable interface in jsPDF
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+  }
+}
 
 // TYPE DEFINITIONS
 
@@ -485,10 +494,98 @@ function AnnualSummary({ allProperties, selectedProperty, selectedYear }: { allP
         return acc;
     }, {} as ChartConfig);
   }, [expensesByCategory]);
+  
+  const generatePDF = () => {
+    if (!selectedProperty) {
+      toast({
+        variant: "destructive",
+        title: "Property Required",
+        description: "Please select a property to generate a statement.",
+      });
+      return;
+    }
+
+    const doc = new jsPDF();
+    let finalY = 0;
+
+    // Header
+    doc.setFontSize(20);
+    doc.text(`Financial Summary for ${selectedYear}`, 14, 22);
+    doc.setFontSize(12);
+    doc.text(`Property: ${selectedProperty.address}`, 14, 30);
+    doc.setLineWidth(0.5);
+    doc.line(14, 32, 196, 32);
+
+    // Summary Data
+    const summaryData = [
+      ['Total Income Received', `£${totalPaidRent.toFixed(2)}`],
+      ['Total Expenses', `£${selectedPropertyExpenses.toFixed(2)}`],
+      ['Net Income', `£${selectedPropertyNet.toFixed(2)}`],
+    ];
+
+    doc.autoTable({
+      startY: 40,
+      head: [['Summary', 'Amount']],
+      body: summaryData,
+      theme: 'striped',
+      headStyles: { fillColor: [38, 102, 114] }, // A nice teal color
+    });
+
+    finalY = (doc as any).lastAutoTable.finalY;
+
+    // Expenses Breakdown
+    if (expensesByCategory.length > 0) {
+      doc.setFontSize(16);
+      doc.text('Expense Breakdown', 14, finalY + 15);
+
+      const expenseBody = expensesByCategory.map(cat => [cat.name, `£${cat.amount.toFixed(2)}`]);
+
+      doc.autoTable({
+        startY: finalY + 22,
+        head: [['Category', 'Total Amount']],
+        body: expenseBody,
+        theme: 'grid',
+      });
+      finalY = (doc as any).lastAutoTable.finalY;
+    }
+
+    // Rent Payments Breakdown
+    if (rentPayments && rentPayments.length > 0) {
+      doc.setFontSize(16);
+      doc.text('Rent Payments Received', 14, finalY + 15);
+
+      const rentBody = rentPayments
+        .filter(p => p.status === 'Paid' || p.status === 'Partially Paid')
+        .map(p => [
+          p.month,
+          `£${(p.amountPaid || 0).toFixed(2)}`,
+          `£${p.expectedAmount.toFixed(2)}`,
+          p.status,
+        ]);
+
+      if (rentBody.length > 0) {
+        doc.autoTable({
+          startY: finalY + 22,
+          head: [['Month', 'Amount Paid', 'Expected', 'Status']],
+          body: rentBody,
+          theme: 'grid',
+        });
+      }
+    }
+    const safeAddress = selectedProperty.address.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+    doc.save(`Financial-Statement-${safeAddress}-${selectedYear}.pdf`);
+  };
 
 
   return (
     <div className="space-y-6 mt-6">
+        <div className='flex justify-between items-center'>
+            <h2 className="text-xl font-semibold">Annual Summary</h2>
+            <Button onClick={generatePDF} disabled={!selectedProperty || isLoading}>
+                <Download className="mr-2 h-4 w-4" />
+                Download PDF
+            </Button>
+        </div>
         <div className="grid gap-4 md:grid-cols-3">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
