@@ -11,6 +11,7 @@ import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, collection, query, where, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 // Main interface for a Property document from Firestore
 interface Property {
@@ -58,12 +59,12 @@ export default function PropertyDetailPage() {
     if (!firestore || !id) return null;
     return query(
         collection(firestore, 'tenants'),
-        where('propertyId', '==', id)
+        where('propertyId', '==', id),
+        where('status', '==', 'Active')
     );
   }, [firestore, id]);
 
   const { data: tenants, isLoading: isLoadingTenants } = useCollection<Tenant>(tenantsQuery);
-  const tenant = tenants?.[0];
 
   const isLoading = isLoadingProperty || isLoadingTenants;
 
@@ -111,9 +112,6 @@ export default function PropertyDetailPage() {
 
   const tenancy = property.tenancy;
 
-  const startDate = tenant?.tenancyStartDate ? (tenant.tenancyStartDate instanceof Date ? tenant.tenancyStartDate : new Date(tenant.tenancyStartDate.seconds * 1000)) : null;
-  const endDate = tenant?.tenancyEndDate ? (tenant.tenancyEndDate instanceof Date ? tenant.tenancyEndDate : new Date(tenant.tenancyEndDate.seconds * 1000)) : null;
-
   return (
     <div className="flex flex-col gap-6">
        <div className="flex items-center gap-4">
@@ -160,100 +158,101 @@ export default function PropertyDetailPage() {
             </CardHeader>
         </Card>
         
-         <Card>
-        <CardHeader>
-            <div className="flex justify-between items-center">
-                <CardTitle>Tenant &amp; Financials</CardTitle>
-                 {tenant && (
-                    <div className="flex items-center gap-2">
-                        <Button asChild size="sm" variant="outline"><Link href={`/dashboard/tenants/${tenant.id}/edit`}><Edit className="mr-2 h-4 w-4" /> Edit Tenant</Link></Button>
+        <Card>
+            <CardHeader>
+                <div className="flex justify-between items-center">
+                    <CardTitle>Tenants</CardTitle>
+                    <Button asChild size="sm">
+                        <Link href={`/dashboard/tenants/add?propertyId=${id}`}>
+                            <UserPlus className="mr-2 h-4 w-4" /> Assign New Tenant
+                        </Link>
+                    </Button>
+                </div>
+            </CardHeader>
+            <CardContent>
+                {isLoadingTenants ? (
+                     <div className="flex justify-center items-center h-24">
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                ) : tenants && tenants.length > 0 ? (
+                    <div className="rounded-md border">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Name</TableHead>
+                                    <TableHead>Email</TableHead>
+                                    <TableHead>Start Date</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {tenants.map(tenant => {
+                                    const startDate = tenant.tenancyStartDate ? (tenant.tenancyStartDate instanceof Date ? tenant.tenancyStartDate : new Date(tenant.tenancyStartDate.seconds * 1000)) : null;
+                                    return (
+                                        <TableRow key={tenant.id}>
+                                            <TableCell className="font-medium">
+                                                <Link href={`/dashboard/tenants/${tenant.id}`} className="hover:underline">{tenant.name}</Link>
+                                            </TableCell>
+                                            <TableCell>{tenant.email}</TableCell>
+                                            <TableCell>{startDate ? format(startDate, 'PPP') : 'N/A'}</TableCell>
+                                            <TableCell className="text-right">
+                                                <Button asChild variant="ghost" size="icon">
+                                                    <Link href={`/dashboard/tenants/${tenant.id}/edit`}>
+                                                        <Edit className="h-4 w-4" /><span className="sr-only">Edit</span>
+                                                    </Link>
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    );
+                                })}
+                            </TableBody>
+                        </Table>
+                    </div>
+                ) : (
+                    <div className="text-center py-8 text-muted-foreground">
+                        <p>No active tenants assigned to this property.</p>
                     </div>
                 )}
-            </div>
-        </CardHeader>
-        <CardContent>
-            {tenant ? (
-            <div className="space-y-4">
-                <div className="flex items-center gap-4">
-                    <User className="h-5 w-5 text-muted-foreground" />
-                    <span>{tenant.name}</span>
-                </div>
-                <div className="flex items-center gap-4">
-                    <Mail className="h-5 w-5 text-muted-foreground" />
-                    <a href={`mailto:${tenant.email}`} className="text-primary hover:underline">
-                        {tenant.email}
-                    </a>
-                </div>
-                <div className="flex items-center gap-4">
-                    <Phone className="h-5 w-5 text-muted-foreground" />
-                    <span>{tenant.telephone}</span>
-                </div>
+            </CardContent>
+        </Card>
 
-                <div className="border-t pt-4 mt-4 space-y-4">
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className="flex items-start gap-4">
-                            <CalendarIcon className="h-5 w-5 text-muted-foreground mt-1" />
-                            <div>
-                                <p className="text-sm text-muted-foreground">Tenancy Start</p>
-                                <p>{startDate ? format(startDate, 'PPP') : 'N/A'}</p>
-                            </div>
-                        </div>
-                        {endDate && (
-                            <div className="flex items-start gap-4">
-                                <CalendarIcon className="h-5 w-5 text-muted-foreground mt-1" />
+         <Card>
+            <CardHeader>
+                <CardTitle>Financials</CardTitle>
+            </CardHeader>
+            <CardContent>
+                {tenancy && (tenancy.monthlyRent || tenancy.depositAmount || tenancy.depositScheme) ? (
+                    <div className="space-y-4">
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {tenancy.monthlyRent && (
                                 <div>
-                                    <p className="text-sm text-muted-foreground">Tenancy End</p>
-                                    <p>{format(endDate, 'PPP')}</p>
+                                    <p className="text-sm text-muted-foreground">Monthly Rent</p>
+                                    <p className='font-semibold'>£{tenancy.monthlyRent.toFixed(2)}</p>
+                                </div>
+                            )}
+                            {tenancy.depositAmount && (
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Deposit Amount</p>
+                                    <p className='font-semibold'>£{tenancy.depositAmount.toFixed(2)}</p>
+                                </div>
+                            )}
+                        </div>
+                        {tenancy.depositScheme && (
+                            <div className="flex items-start gap-4 pt-4">
+                                <ShieldCheck className="h-5 w-5 text-muted-foreground mt-1" />
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Deposit Scheme</p>
+                                    <p className='font-semibold'>{tenancy.depositScheme}</p>
                                 </div>
                             </div>
                         )}
                     </div>
-                </div>
-            </div>
-            ) : (
-            <div className="text-center py-8">
-                <p className="text-muted-foreground mb-4">This property is currently vacant.</p>
-                <Button asChild><Link href="/dashboard/tenants/add"><UserPlus className="mr-2 h-4 w-4" /> Add Tenant</Link></Button>
-            </div>
-            )}
-            
-            {/* Separator if both tenant and financials exist */}
-            {tenant && tenancy && (tenancy.monthlyRent || tenancy.depositAmount || tenancy.depositScheme) && <div className="border-t my-6" />}
-            
-            {/* Financial Details */}
-            {tenancy && (tenancy.monthlyRent || tenancy.depositAmount || tenancy.depositScheme) ? (
-                 <div className="space-y-4">
-                     <h4 className="text-md font-semibold">Financial Details</h4>
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        {tenancy.monthlyRent && (
-                             <div>
-                                <p className="text-sm text-muted-foreground">Monthly Rent</p>
-                                <p className='font-semibold'>£{tenancy.monthlyRent.toFixed(2)}</p>
-                            </div>
-                         )}
-                        {tenancy.depositAmount && (
-                            <div>
-                                <p className="text-sm text-muted-foreground">Deposit Amount</p>
-                                <p className='font-semibold'>£{tenancy.depositAmount.toFixed(2)}</p>
-                            </div>
-                        )}
-                     </div>
-                     {tenancy.depositScheme && (
-                         <div className="flex items-start gap-4">
-                            <ShieldCheck className="h-5 w-5 text-muted-foreground mt-1" />
-                             <div>
-                                <p className="text-sm text-muted-foreground">Deposit Scheme</p>
-                                <p className='font-semibold'>{tenancy.depositScheme}</p>
-                            </div>
-                        </div>
-                    )}
-                </div>
-            ) : !tenant ? (
-                <div className="border-t mt-6 pt-6 text-center text-muted-foreground">
-                    <p>No financial information has been added for this property.</p>
-                </div>
-            ) : null }
-        </CardContent>
+                ) : (
+                    <div className="text-center text-muted-foreground">
+                        <p>No financial information has been added for this property. You can add it by editing the property.</p>
+                    </div>
+                )}
+            </CardContent>
         </Card>
       </div>
     </div>

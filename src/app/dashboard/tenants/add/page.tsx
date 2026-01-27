@@ -3,8 +3,9 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import { useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -47,7 +48,7 @@ import {
   useMemoFirebase,
   addDocumentNonBlocking,
 } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
 
 // Zod schema for tenant form validation
 const tenantSchema = z.object({
@@ -70,12 +71,15 @@ interface Property {
 
 export default function AddTenantPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useUser();
   const firestore = useFirestore();
 
   const form = useForm<TenantFormValues>({
     resolver: zodResolver(tenantSchema),
   });
+
+  const propertyId = searchParams.get('propertyId');
 
   // Fetch properties for the dropdown
   const propertiesQuery = useMemoFirebase(() => {
@@ -87,6 +91,13 @@ export default function AddTenantPage() {
     );
   }, [firestore, user]);
   const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
+  
+  useEffect(() => {
+    if (propertyId) {
+      form.setValue('propertyId', propertyId);
+    }
+  }, [propertyId, form]);
+
 
   async function onSubmit(data: TenantFormValues) {
     if (!user || !firestore) {
@@ -107,12 +118,15 @@ export default function AddTenantPage() {
     try {
       const tenantsCollection = collection(firestore, 'tenants');
       await addDocumentNonBlocking(tenantsCollection, newTenant);
+      
+      const propertyDocRef = doc(firestore, 'properties', data.propertyId);
+      await updateDoc(propertyDocRef, { status: 'Occupied' });
 
       toast({
         title: 'Tenant Saved',
-        description: `${data.name} has been added to your records.`,
+        description: `${data.name} has been added and assigned to the property.`,
       });
-      router.push('/dashboard/tenants');
+      router.push(`/dashboard/properties/${data.propertyId}`);
     } catch (error) {
       console.error('Failed to add tenant:', error);
       toast({
@@ -128,7 +142,7 @@ export default function AddTenantPage() {
       <CardHeader>
         <CardTitle>Add New Tenant</CardTitle>
         <CardDescription>
-          Fill in the details below to add a new tenant to your portfolio.
+          Fill in the details below to add a new tenant and assign them to a property.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -140,7 +154,7 @@ export default function AddTenantPage() {
               render={({ field }) => (
                 <FormItem>
                   <FormLabel>Assign to Property</FormLabel>
-                  <Select onValueChange={field.onChange} defaultValue={field.value}>
+                  <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
                         <SelectValue placeholder={isLoadingProperties ? <div className='flex items-center gap-2'><Loader2 className='animate-spin' /> Loading...</div> : "Select a property"} />
@@ -272,7 +286,7 @@ export default function AddTenantPage() {
 
             <div className="flex justify-end gap-2 pt-4">
                 <Button type="button" variant="outline" asChild>
-                    <Link href="/dashboard/tenants">Cancel</Link>
+                    <Link href={propertyId ? `/dashboard/properties/${propertyId}` : '/dashboard/tenants'}>Cancel</Link>
                 </Button>
                 <Button type="submit">Save Tenant</Button>
             </div>
