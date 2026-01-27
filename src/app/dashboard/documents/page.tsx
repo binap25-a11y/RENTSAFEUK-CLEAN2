@@ -40,6 +40,7 @@ import { Label } from '@/components/ui/label';
 
 // Type for property documents from Firestore
 interface Property {
+  id: string;
   address: string;
   ownerId: string;
 }
