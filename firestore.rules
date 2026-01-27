@@ -19,24 +19,29 @@ service cloud.firestore {
 
     // A user can manage properties they own
     match /properties/{propertyId} {
-      allow read: if isOwner(resource.data);
+      allow get: if isOwner(resource.data);
+      allow list: if isSignedIn(); // Client-side queries always filter by ownerId
       allow create: if isOwner(request.resource.data);
       allow update, delete: if isOwner(resource.data);
     }
 
     // A user can manage tenants they own
     match /tenants/{tenantId} {
-      allow read: if isOwner(resource.data);
+      allow get: if isOwner(resource.data);
+      allow list: if isSignedIn(); // Client-side queries always filter by ownerId
       allow create: if isOwner(request.resource.data);
       allow update, delete: if isOwner(resource.data);
     }
     
     // Generic rule for all property subcollections
-    // This allows collection group queries as long as they filter by ownerId,
-    // which is enforced by the isOwner() check.
     match /properties/{propertyId}/{subcollection}/{docId}
     where subcollection in ['maintenanceLogs', 'inspections', 'documents', 'expenses', 'rentPayments'] {
-      allow read: if isOwner(resource.data);
+      // For single document reads (get), check ownerId on the document itself.
+      allow get: if isOwner(resource.data);
+      // For collection group queries (list), check ownership of the parent property document.
+      allow list: if get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
+      
+      // For writes, ensure the new/updated data has the correct ownerId.
       allow create: if isOwner(request.resource.data);
       allow update, delete: if isOwner(resource.data);
     }
