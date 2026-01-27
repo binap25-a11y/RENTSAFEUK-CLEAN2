@@ -7,51 +7,38 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Helper function to check ownership on a document
+    function isOwner(doc) {
+      return isSignedIn() && doc.ownerId == request.auth.uid;
+    }
+
+    // A user can manage their own profile document
     match /users/{userId} {
-      allow read, update, delete: if isSignedIn() && request.auth.uid == userId;
-      allow create: if isSignedIn() && request.auth.uid == userId;
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
 
+    // A user can manage properties they own
     match /properties/{propertyId} {
-      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow read: if isOwner(resource.data);
+      allow create: if isOwner(request.resource.data);
+      allow update, delete: if isOwner(resource.data);
     }
 
+    // A user can manage tenants they own
     match /tenants/{tenantId} {
-      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow read: if isOwner(resource.data);
+      allow create: if isOwner(request.resource.data);
+      allow update, delete: if isOwner(resource.data);
     }
-
-    match /{path=**}/maintenanceLogs/{logId} {
-      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-    }
-
-    match /{path=**}/expenses/{expenseId} {
-      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-    }
-
-    match /{path=**}/documents/{documentId} {
-      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-    }
-
-    match /{path=**}/inspections/{inspectionId} {
-      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-    }
-
-    match /{path=**}/rentPayments/{paymentId} {
-      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+    
+    // Generic rule for all property subcollections
+    // This allows collection group queries as long as they filter by ownerId,
+    // which is enforced by the isOwner() check.
+    match /properties/{propertyId}/{subcollection}/{docId}
+    where subcollection in ['maintenanceLogs', 'inspections', 'documents', 'expenses', 'rentPayments'] {
+      allow read: if isOwner(resource.data);
+      allow create: if isOwner(request.resource.data);
+      allow update, delete: if isOwner(resource.data);
     }
   }
 }
