@@ -20,11 +20,10 @@ interface Property {
     bedrooms: number;
     bathrooms: number;
     imageUrl: string;
-    // The following were from mock data and are not on the main property doc
     tenancy?: {
-        monthlyRent: number;
-        depositAmount: number;
-        depositScheme: string;
+        monthlyRent?: number;
+        depositAmount?: number;
+        depositScheme?: string;
     }
 }
 
@@ -110,7 +109,6 @@ export default function PropertyDetailPage() {
     return notFound();
   }
 
-  // A bit of a hack since tenancy financial details are not fully implemented in forms
   const tenancy = property.tenancy;
 
   const startDate = tenant?.tenancyStartDate ? (tenant.tenancyStartDate instanceof Date ? tenant.tenancyStartDate : new Date(tenant.tenancyStartDate.seconds * 1000)) : null;
@@ -210,32 +208,7 @@ export default function PropertyDetailPage() {
                             </div>
                         )}
                     </div>
-                     {tenancy?.monthlyRent && (
-                         <div>
-                            <p className="text-sm text-muted-foreground">Monthly Rent</p>
-                            <p className='font-semibold'>£{tenancy.monthlyRent.toFixed(2)}</p>
-                        </div>
-                     )}
                 </div>
-                 {tenancy && (tenancy.depositAmount || tenancy.depositScheme) && (
-                     <div className="border-t pt-4 mt-4 space-y-4">
-                        {tenancy.depositAmount && (
-                            <div>
-                                <p className="text-sm text-muted-foreground">Deposit Amount</p>
-                                <p className='font-semibold'>£{tenancy.depositAmount.toFixed(2)}</p>
-                            </div>
-                        )}
-                        {tenancy.depositScheme && (
-                             <div className="flex items-start gap-4">
-                                <ShieldCheck className="h-5 w-5 text-muted-foreground mt-1" />
-                                 <div>
-                                    <p className="text-sm text-muted-foreground">Deposit Scheme</p>
-                                    <p className='font-semibold'>{tenancy.depositScheme}</p>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                 )}
             </div>
             ) : (
             <div className="text-center py-8">
@@ -243,6 +216,43 @@ export default function PropertyDetailPage() {
                 <Button asChild><Link href="/dashboard/tenants/add"><UserPlus className="mr-2 h-4 w-4" /> Add Tenant</Link></Button>
             </div>
             )}
+            
+            {/* Separator if both tenant and financials exist */}
+            {tenant && tenancy && (tenancy.monthlyRent || tenancy.depositAmount || tenancy.depositScheme) && <div className="border-t my-6" />}
+            
+            {/* Financial Details */}
+            {tenancy && (tenancy.monthlyRent || tenancy.depositAmount || tenancy.depositScheme) ? (
+                 <div className="space-y-4">
+                     <h4 className="text-md font-semibold">Financial Details</h4>
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {tenancy.monthlyRent && (
+                             <div>
+                                <p className="text-sm text-muted-foreground">Monthly Rent</p>
+                                <p className='font-semibold'>£{tenancy.monthlyRent.toFixed(2)}</p>
+                            </div>
+                         )}
+                        {tenancy.depositAmount && (
+                            <div>
+                                <p className="text-sm text-muted-foreground">Deposit Amount</p>
+                                <p className='font-semibold'>£{tenancy.depositAmount.toFixed(2)}</p>
+                            </div>
+                        )}
+                     </div>
+                     {tenancy.depositScheme && (
+                         <div className="flex items-start gap-4">
+                            <ShieldCheck className="h-5 w-5 text-muted-foreground mt-1" />
+                             <div>
+                                <p className="text-sm text-muted-foreground">Deposit Scheme</p>
+                                <p className='font-semibold'>{tenancy.depositScheme}</p>
+                            </div>
+                        </div>
+                    )}
+                </div>
+            ) : !tenant ? (
+                <div className="border-t mt-6 pt-6 text-center text-muted-foreground">
+                    <p>No financial information has been added for this property.</p>
+                </div>
+            ) : null }
         </CardContent>
         </Card>
       </div>

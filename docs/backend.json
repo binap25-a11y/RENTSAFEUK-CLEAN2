@@ -38,6 +38,28 @@
           "type": "string",
           "description": "URI of the property image.",
           "format": "uri"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional notes about the property."
+        },
+        "tenancy": {
+          "type": "object",
+          "description": "Financial details related to the property's tenancy.",
+          "properties": {
+            "monthlyRent": {
+              "type": "number",
+              "description": "The monthly rent amount."
+            },
+            "depositAmount": {
+              "type": "number",
+              "description": "The total security deposit amount held."
+            },
+            "depositScheme": {
+              "type": "string",
+              "description": "The name of the deposit protection scheme used."
+            }
+          }
         }
       },
       "required": [

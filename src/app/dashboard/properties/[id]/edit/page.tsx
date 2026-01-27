@@ -25,6 +25,11 @@ const propertySchema = z.object({
   bedrooms: z.coerce.number().min(0, 'Cannot be negative'),
   bathrooms: z.coerce.number().min(0, 'Cannot be negative'),
   notes: z.string().optional(),
+  tenancy: z.object({
+    monthlyRent: z.coerce.number().optional(),
+    depositAmount: z.coerce.number().optional(),
+    depositScheme: z.string().optional(),
+  }).optional(),
 });
 
 type PropertyFormValues = z.infer<typeof propertySchema>;
@@ -36,6 +41,11 @@ interface Property {
   bedrooms: number;
   bathrooms: number;
   notes?: string;
+  tenancy?: {
+    monthlyRent?: number;
+    depositAmount?: number;
+    depositScheme?: string;
+  };
 }
 
 export default function EditPropertyPage() {
@@ -238,6 +248,55 @@ export default function EditPropertyPage() {
                   />
                 </div>
               </CardContent>
+            </Card>
+
+            <Card>
+                <CardHeader>
+                <CardTitle className="text-xl">Tenancy & Financials</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField
+                    control={form.control}
+                    name="tenancy.monthlyRent"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Monthly Rent (£)</FormLabel>
+                        <FormControl>
+                            <Input type="number" placeholder="1200" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="tenancy.depositAmount"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Deposit Amount (£)</FormLabel>
+                        <FormControl>
+                            <Input type="number" placeholder="1500" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                </div>
+                <FormField
+                    control={form.control}
+                    name="tenancy.depositScheme"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Deposit Protection Scheme</FormLabel>
+                        <FormControl>
+                        <Input placeholder="e.g., DPS, MyDeposits" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                </CardContent>
             </Card>
 
             <Card>
