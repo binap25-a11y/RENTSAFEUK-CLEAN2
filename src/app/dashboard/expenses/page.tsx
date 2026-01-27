@@ -136,13 +136,12 @@ export default function FinancialsPage() {
 
        <Card>
         <CardHeader>
-           <div className='flex flex-col sm:flex-row gap-4 justify-between items-start sm:items-center'>
-            <div>
-              <CardTitle>Financial Overview</CardTitle>
-              <CardDescription>Select a property to view its detailed financials.</CardDescription>
-            </div>
-            <div className="flex items-center gap-2 w-full sm:w-auto">
-              <Label htmlFor="property-filter" className='sr-only'>Property</Label>
+          <CardTitle>Financial Overview</CardTitle>
+          <CardDescription>Select a property to view its detailed financials.</CardDescription>
+        </CardHeader>
+        <CardContent className="space-y-4">
+           <div className="flex items-center gap-2">
+              <Label htmlFor="property-filter" className="whitespace-nowrap">Filter by Property</Label>
               <Select onValueChange={setSelectedPropertyId} value={selectedPropertyId}>
                 <SelectTrigger id="property-filter" className="w-full sm:w-[300px]">
                   <SelectValue placeholder={isLoadingProperties ? "Loading..." : "Select a property"} />
@@ -156,9 +155,6 @@ export default function FinancialsPage() {
                 </SelectContent>
               </Select>
             </div>
-          </div>
-        </CardHeader>
-        <CardContent>
            <Tabs defaultValue="expenses">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="expenses">Expenses</TabsTrigger>
