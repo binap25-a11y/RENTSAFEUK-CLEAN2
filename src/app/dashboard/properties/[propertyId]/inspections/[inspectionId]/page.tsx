@@ -5,10 +5,19 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Loader2, CalendarIcon, User, Shield, AlertTriangle } from 'lucide-react';
+import { ArrowLeft, Loader2, CalendarIcon, User, Shield, AlertTriangle, Download } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
+import jsPDF from 'jspdf';
+import 'jspdf-autotable';
+
+// Extend the autoTable interface in jsPDF
+declare module 'jspdf' {
+  interface jsPDF {
+    autoTable: (options: any) => jsPDF;
+  }
+}
 
 // A helper component to display a checklist item
 const ChecklistItemDisplay = ({ label, checked }: { label: string; checked: boolean | undefined }) => (
@@ -105,6 +114,147 @@ export default function ViewInspectionPage() {
   const { data: property, isLoading: isLoadingProperty } = useDoc(propertyRef);
 
 
+  const generatePDF = () => {
+    if (!inspection || !property) return;
+
+    const doc = new jsPDF();
+    const inspectionDate = inspection.scheduledDate?.seconds ? format(new Date(inspection.scheduledDate.seconds * 1000), 'PPP') : 'N/A';
+    const inspectionType = inspection.type || 'N/A';
+    const pageHeight = doc.internal.pageSize.getHeight();
+    let finalY = 0;
+
+    // --- HEADER ---
+    doc.setFontSize(20);
+    doc.text('Inspection Report', 14, 22);
+    doc.setFontSize(12);
+    doc.text(`Property: ${property.address}`, 14, 30);
+    doc.setLineWidth(0.5);
+    doc.line(14, 32, 200, 32);
+
+    // --- SUMMARY TABLE ---
+    doc.autoTable({
+        startY: 35,
+        head: [['Date', 'Inspector', 'Type', 'Status']],
+        body: [[
+            inspectionDate,
+            inspection.inspectorName || 'N/A',
+            inspectionType,
+            inspection.status || 'N/A'
+        ]],
+        theme: 'striped',
+        headStyles: { fillColor: [38, 102, 114] } 
+    });
+
+    finalY = (doc as any).lastAutoTable.finalY + 15;
+
+    // --- HELPER TO ADD A SECTION ---
+    const addSectionToPdf = (title: string, data: any, fields: {key: string, label: string}[], notesKey: string, concernsNote: string | null = null) => {
+        if (!data && !concernsNote) return;
+
+        // Check if we need a new page
+        if (finalY > pageHeight - 60) { // Margin for content and footer
+            doc.addPage();
+            finalY = 20; // Reset Y for new page
+        }
+
+        doc.setFontSize(16);
+        doc.text(title, 14, finalY);
+        finalY += 8;
+
+        if (fields && data) {
+            const tableBody = fields.map(field => {
+                const checked = data[field.key];
+                const status = checked === true ? 'Pass' : (checked === false ? 'Fail' : 'N/A');
+                return [field.label, status];
+            });
+
+            doc.autoTable({
+                startY: finalY,
+                head: [['Checklist Item', 'Status']],
+                body: tableBody,
+                theme: 'grid'
+            });
+            finalY = (doc as any).lastAutoTable.finalY;
+        }
+
+        const notes = data?.[notesKey];
+        if (notes) {
+            finalY += 8;
+            doc.setFontSize(11);
+            doc.text('Notes:', 15, finalY);
+            finalY += 6;
+            doc.setFontSize(10);
+            const splitNotes = doc.splitTextToSize(notes, 170);
+            doc.text(splitNotes, 15, finalY);
+            finalY += (splitNotes.length * 4); // Adjust line height factor
+        }
+        
+        if (concernsNote) {
+            finalY += 8;
+            doc.setFontSize(11);
+            doc.text("Tenant's Concerns Recorded:", 15, finalY);
+            finalY += 6;
+            doc.setFontSize(10);
+            const splitNotes = doc.splitTextToSize(concernsNote, 170);
+            doc.text(splitNotes, 15, finalY);
+            finalY += (splitNotes.length * 4);
+        }
+
+        finalY += 10; // Spacing after section
+    };
+
+    // --- RENDER SECTIONS BASED ON TYPE ---
+    if (inspection.type === 'Single-Let') {
+        Object.entries(singleLetSections).forEach(([key, { title, fields }]) => {
+            addSectionToPdf(title, inspection[key], fields, 'notes');
+        });
+        addSectionToPdf(
+            "Tenant Responsibilities", 
+            inspection.tenantResponsibilities, 
+            tenantResponsibilitiesFields, 
+            'notes',
+            inspection.tenantResponsibilities?.concerns
+        );
+        addSectionToPdf("Follow-Up Actions", inspection.followUpActions, followUpFields, 'notes');
+
+    } else if (inspection.type === 'HMO') {
+         Object.entries(hmoSections).forEach(([key, { title, fields }]) => {
+            addSectionToPdf(title, inspection[key], fields, 'notes');
+        });
+        addSectionToPdf(
+            "Tenant Responsibilities", 
+            inspection.tenantResponsibilities, 
+            hmoTenantFields, 
+            'notes',
+            inspection.tenantResponsibilities?.concerns
+        );
+        addSectionToPdf("Follow-Up Actions", inspection.followUp, hmoFollowUpFields, 'notes');
+
+        const nextInspectionDate = inspection.followUp?.nextInspectionDate?.seconds ? format(new Date(inspection.followUp.nextInspectionDate.seconds * 1000), 'PPP') : null;
+        if (nextInspectionDate) {
+            finalY += 5;
+            doc.setFontSize(12);
+            doc.setTextColor(255, 165, 0); // Orange color for warning
+            doc.text(`Next inspection recommended for: ${nextInspectionDate}`, 14, finalY);
+            doc.setTextColor(0, 0, 0);
+        }
+    }
+
+    // --- FOOTER ---
+    const pageCount = doc.internal.getNumberOfPages();
+    for(let i = 1; i <= pageCount; i++) {
+        doc.setPage(i);
+        doc.setFontSize(8);
+        doc.text(`Page ${i} of ${pageCount}`, doc.internal.pageSize.getWidth() / 2, 287, { align: 'center' });
+        doc.text(`Report generated on: ${format(new Date(), 'PPP')}`, 14, 287);
+    }
+    
+    // --- SAVE ---
+    const safeAddress = property.address.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+    doc.save(`Inspection-Report-${safeAddress}.pdf`);
+  };
+
+
   if (isLoadingInspection || isLoadingProperty) {
     return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
   }
@@ -123,14 +273,19 @@ export default function ViewInspectionPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" asChild>
-          <Link href="/dashboard/inspections"><ArrowLeft className="h-4 w-4" /></Link>
-        </Button>
-        <div>
-            <h1 className="text-2xl font-bold">Inspection Report</h1>
-            <p className="text-muted-foreground">{property?.address || 'Loading property...'}</p>
+      <div className="flex items-center justify-between gap-4">
+        <div className="flex items-center gap-4">
+            <Button variant="outline" size="icon" asChild>
+                <Link href="/dashboard/inspections"><ArrowLeft className="h-4 w-4" /></Link>
+            </Button>
+            <div>
+                <h1 className="text-2xl font-bold">Inspection Report</h1>
+                <p className="text-muted-foreground">{property?.address || 'Loading property...'}</p>
+            </div>
         </div>
+        <Button onClick={generatePDF} disabled={!inspection || !property}>
+            <Download className="mr-2 h-4 w-4" /> Download PDF
+        </Button>
       </div>
       
       <Card>
