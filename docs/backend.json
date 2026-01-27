@@ -308,6 +308,51 @@
         "amount",
         "paidBy"
       ]
+    },
+    "RentPayment": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "RentPayment",
+      "type": "object",
+      "description": "Represents a rent payment record for a specific month for a property.",
+      "properties": {
+        "ownerId": {
+          "type": "string",
+          "description": "The UID of the user who owns this rent payment record."
+        },
+        "year": {
+          "type": "number",
+          "description": "The year of the rent payment."
+        },
+        "month": {
+          "type": "string",
+          "description": "The month of the rent payment (e.g., 'January')."
+        },
+        "status": {
+          "type": "string",
+          "description": "The payment status.",
+          "enum": [
+            "Paid",
+            "Partially Paid",
+            "Unpaid",
+            "Pending"
+          ]
+        },
+        "amountPaid": {
+          "type": "number",
+          "description": "The amount actually paid for the month."
+        },
+        "expectedAmount": {
+          "type": "number",
+          "description": "The rent amount expected for the month."
+        }
+      },
+      "required": [
+        "ownerId",
+        "year",
+        "month",
+        "status",
+        "expectedAmount"
+      ]
     }
   },
   "auth": {
@@ -427,6 +472,26 @@
             {
               "name": "expenseId",
               "description": "The unique identifier for the expense."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/properties/{propertyId}/rentPayments/{rentPaymentId}",
+        "definition": {
+          "entityName": "RentPayment",
+          "schema": {
+            "$ref": "#/backend/entities/RentPayment"
+          },
+          "description": "Subcollection to store rent payment status for each property and month.",
+          "params": [
+            {
+              "name": "propertyId",
+              "description": "The unique identifier for the property."
+            },
+            {
+              "name": "rentPaymentId",
+              "description": "The unique identifier for the rent payment, formatted as YYYY-Month."
             }
           ]
         }

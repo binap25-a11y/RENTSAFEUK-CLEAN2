@@ -55,7 +55,7 @@ import {
   useMemoFirebase,
   addDocumentNonBlocking,
 } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, doc, setDoc } from 'firebase/firestore';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -89,6 +89,18 @@ interface Expense {
   paidBy: string;
   notes?: string;
 }
+
+// Type for rent payment documents from Firestore
+type PaymentStatus = 'Paid' | 'Partially Paid' | 'Unpaid' | 'Pending';
+interface RentPayment {
+  id: string;
+  year: number;
+  month: string;
+  status: PaymentStatus;
+  amountPaid?: number;
+  expectedAmount: number;
+}
+
 
 // Schema for the expense form
 const expenseSchema = z.object({
@@ -409,6 +421,16 @@ function AnnualSummary({ allProperties, selectedProperty, selectedYear }: { allP
     );
   }, [firestore, user, selectedProperty, selectedYear]);
   const { data: expenses, isLoading: isLoadingExpenses } = useCollection<Expense>(expensesQuery);
+
+   // Fetch rent payments for the selected property and year
+  const rentPaymentsQuery = useMemoFirebase(() => {
+    if (!user || !firestore || !selectedProperty) return null;
+    return query(
+      collection(firestore, 'properties', selectedProperty.id, 'rentPayments'),
+      where('year', '==', selectedYear)
+    );
+  }, [firestore, user, selectedProperty, selectedYear]);
+  const { data: rentPayments, isLoading: isLoadingPayments } = useCollection<RentPayment>(rentPaymentsQuery);
   
   const portfolioIncome = useMemo(() => {
     return allProperties.reduce((total, prop) => {
@@ -416,13 +438,18 @@ function AnnualSummary({ allProperties, selectedProperty, selectedYear }: { allP
     }, 0);
   }, [allProperties]);
 
-  const selectedPropertyIncome = (selectedProperty?.tenancy?.monthlyRent || 0) * 12;
+  const totalPaidRent = useMemo(() => {
+    return rentPayments
+      ?.filter(p => p.status === 'Paid')
+      .reduce((acc, p) => acc + (p.amountPaid || p.expectedAmount || 0), 0) || 0;
+  }, [rentPayments]);
   
   const selectedPropertyExpenses = useMemo(() => {
     return expenses?.reduce((total, exp) => total + exp.amount, 0) || 0;
   }, [expenses]);
   
-  const selectedPropertyNet = selectedPropertyIncome - selectedPropertyExpenses;
+  const selectedPropertyNet = totalPaidRent - selectedPropertyExpenses;
+  const isLoading = isLoadingExpenses || isLoadingPayments;
 
   const toCssVar = (str: string) => str.replace(/[^a-zA-Z0-9_]/g, '').toLowerCase();
 
@@ -477,8 +504,8 @@ function AnnualSummary({ allProperties, selectedProperty, selectedYear }: { allP
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                     {isLoadingExpenses ? <Loader2 className="h-6 w-6 animate-spin" /> : <div className={cn("text-2xl font-bold", selectedPropertyNet < 0 && "text-destructive")}>£{selectedPropertyNet.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>}
-                    <p className="text-xs text-muted-foreground">Based on potential rent vs logged expenses</p>
+                     {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <div className={cn("text-2xl font-bold", selectedPropertyNet < 0 && "text-destructive")}>£{selectedPropertyNet.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>}
+                    <p className="text-xs text-muted-foreground">Based on actual rent vs logged expenses</p>
                 </CardContent>
             </Card>
         </div>
@@ -562,56 +589,76 @@ function AnnualSummary({ allProperties, selectedProperty, selectedYear }: { allP
 
 // RENT STATEMENT COMPONENT
 function RentStatement({ selectedProperty, selectedYear }: { selectedProperty: Property | undefined, selectedYear: number }) {
-  type PaymentStatus = 'Paid' | 'Partially Paid' | 'Unpaid' | 'Pending';
+  const { user } = useUser();
+  const firestore = useFirestore();
 
-  const [payments, setPayments] = useState<Record<string, { status: PaymentStatus }>>({});
+  const rentPaymentsQuery = useMemoFirebase(() => {
+    if (!user || !firestore || !selectedProperty) return null;
+    return query(
+      collection(firestore, 'properties', selectedProperty.id, 'rentPayments'),
+      where('year', '==', selectedYear)
+    );
+  }, [firestore, user, selectedProperty, selectedYear]);
+  const { data: rentPayments, isLoading: isLoadingPayments } = useCollection<RentPayment>(rentPaymentsQuery);
   
   const months = useMemo(() => Array.from({ length: 12 }, (_, i) => format(new Date(selectedYear, i, 1), 'MMMM')), [selectedYear]);
 
-  useEffect(() => {
-    if (selectedProperty) {
-      const initialPayments: Record<string, { status: PaymentStatus }> = {};
-      months.forEach(month => {
-        initialPayments[month] = { status: 'Pending' };
-      });
-      setPayments(initialPayments);
-    } else {
-      setPayments({});
-    }
-  }, [months, selectedProperty]);
-
   const statement = useMemo(() => {
-    if (!selectedProperty?.tenancy?.monthlyRent) return [];
-    const rent = selectedProperty.tenancy.monthlyRent;
+    const rent = selectedProperty?.tenancy?.monthlyRent || 0;
+    const paymentsMap = rentPayments?.reduce((acc, p) => {
+      acc[p.month] = p;
+      return acc;
+    }, {} as Record<string, RentPayment>);
+
     return months.map(month => ({
       month,
       rent,
-      status: payments[month]?.status || 'Pending'
+      status: paymentsMap?.[month]?.status || 'Pending'
     }));
-  }, [selectedProperty, months, payments]);
+  }, [selectedProperty, months, rentPayments]);
 
   const handleStatusChange = (month: string, status: PaymentStatus) => {
-    setPayments(prev => ({
-      ...prev,
-      [month]: { status }
-    }));
-    toast({
-      title: 'Status Updated',
-      description: `Rent for ${month} marked as ${status}. Note: This is not saved and will reset on page refresh.`,
+    if (!firestore || !user || !selectedProperty) return;
+
+    const rentPaymentRef = doc(firestore, 'properties', selectedProperty.id, 'rentPayments', `${selectedYear}-${month}`);
+    const expectedAmount = selectedProperty.tenancy?.monthlyRent || 0;
+    const amountPaid = status === 'Paid' ? expectedAmount : 0; // Simplified for now
+
+    const paymentData = {
+      ownerId: user.uid,
+      year: selectedYear,
+      month,
+      status,
+      expectedAmount,
+      amountPaid,
+    };
+    
+    setDoc(rentPaymentRef, paymentData, { merge: true }).then(() => {
+      toast({
+        title: 'Status Updated',
+        description: `Rent for ${month} marked as ${status}.`,
+      });
+    }).catch(error => {
+      console.error("Error updating rent status: ", error);
+      toast({
+        variant: 'destructive',
+        title: 'Update Failed',
+        description: 'Could not save the rent status. Please try again.',
+      });
     });
   };
 
   const totalExpectedRent = (selectedProperty?.tenancy?.monthlyRent || 0) * 12;
 
   const totalPaid = useMemo(() => {
-    if (!selectedProperty?.tenancy?.monthlyRent) return 0;
-    return statement.reduce((acc, row) => {
+    if (!rentPayments) return 0;
+    return rentPayments.reduce((acc, row) => {
       if (row.status === 'Paid') {
-        return acc + row.rent;
+        return acc + (row.amountPaid || row.expectedAmount || 0);
       }
       return acc;
     }, 0);
-  }, [statement, selectedProperty]);
+  }, [rentPayments]);
 
   const getRentStatusProps = (status: PaymentStatus) => {
     switch (status) {
@@ -626,6 +673,8 @@ function RentStatement({ selectedProperty, selectedYear }: { selectedProperty: P
         return { Icon: Clock, className: "" };
     }
   };
+  
+  const isLoading = isLoadingPayments;
 
   if (!selectedProperty) {
     return (
@@ -663,7 +712,14 @@ function RentStatement({ selectedProperty, selectedYear }: { selectedProperty: P
           <Table>
             <TableHeader><TableRow><TableHead>Month</TableHead><TableHead>Expected Rent</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
             <TableBody>
-              {statement.map((row) => {
+              {isLoading && (
+                  <TableRow>
+                      <TableCell colSpan={3} className="h-48 text-center">
+                          <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+                      </TableCell>
+                  </TableRow>
+              )}
+              {!isLoading && statement.map((row) => {
                 const { Icon, className } = getRentStatusProps(row.status);
                 return (
                   <TableRow key={row.month}>

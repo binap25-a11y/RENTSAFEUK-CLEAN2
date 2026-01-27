@@ -48,5 +48,10 @@ service cloud.firestore {
       allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow write: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
+
+    match /{path=**}/rentPayments/{paymentId} {
+      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow write: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+    }
   }
 }
