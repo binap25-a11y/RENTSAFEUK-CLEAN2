@@ -262,7 +262,7 @@ export default function MaintenancePage() {
                 Fill in the details below or use our AI assistant to get started.
               </CardDescription>
             </div>
-            <Button variant="outline" onClick={() => setIsAssistantOpen(true)}>
+            <Button onClick={() => setIsAssistantOpen(true)}>
                 <Wand2 className="mr-2 h-4 w-4" />
                 AI Assistant
             </Button>
