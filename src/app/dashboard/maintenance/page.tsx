@@ -39,14 +39,17 @@ import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import { useState } from 'react';
+import Link from 'next/link';
 import {
   useUser,
   useFirestore,
+  useStorage,
   useCollection,
   useMemoFirebase,
   addDocumentNonBlocking,
 } from '@/firebase';
 import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import {
   Table,
   TableBody,
@@ -74,7 +77,7 @@ const maintenanceSchema = z.object({
   contractorPhone: z.string().optional(),
   scheduledDate: z.date().optional(),
   estimatedCost: z.coerce.number().optional(),
-  photos: z.any().optional(),
+  photos: z.custom<FileList>().optional(),
   notes: z.string().optional(),
 });
 
@@ -102,8 +105,11 @@ interface MaintenanceLog {
 export default function MaintenancePage() {
   const { user } = useUser();
   const firestore = useFirestore();
+  const storage = useStorage();
   const [selectedPropertyFilter, setSelectedPropertyFilter] = useState<string>('');
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
+  const [fileNames, setFileNames] = useState<string[]>([]);
 
   const form = useForm<MaintenanceFormValues>({
     resolver: zodResolver(maintenanceSchema),
@@ -149,7 +155,7 @@ export default function MaintenancePage() {
   };
 
   async function onSubmit(data: MaintenanceFormValues) {
-    if (!user || !firestore) {
+    if (!user || !firestore || !storage) {
       toast({
         variant: 'destructive',
         title: 'Authentication Error',
@@ -158,25 +164,42 @@ export default function MaintenancePage() {
       return;
     }
 
-    const newLog = {
-      ...data,
-      ownerId: user.uid,
-      status: 'Open', // Default status
-    };
+    setIsUploading(true);
 
     try {
-      const logsCollection = collection(firestore, 'properties', data.propertyId, 'maintenanceLogs');
-      await addDocumentNonBlocking(logsCollection, newLog);
-      
-      toast({
-        title: 'Maintenance Logged',
-        description: 'The new maintenance issue has been successfully logged.',
-      });
-      form.reset({ reportedDate: new Date() });
-      // If no filter is set, set it to the property we just added a log for
-      if (!selectedPropertyFilter) {
-          setSelectedPropertyFilter(data.propertyId);
-      }
+        const photoUrls: string[] = [];
+        if (data.photos && data.photos.length > 0) {
+            for (const file of Array.from(data.photos)) {
+                const uniqueFileName = `${Date.now()}-${file.name}`;
+                const fileStorageRef = storageRef(storage, `maintenance/${user.uid}/${uniqueFileName}`);
+                const uploadResult = await uploadBytes(fileStorageRef, file);
+                const fileUri = await getDownloadURL(uploadResult.ref);
+                photoUrls.push(fileUri);
+            }
+        }
+        
+        const { photos, ...formData } = data;
+
+        const newLog = {
+          ...formData,
+          ownerId: user.uid,
+          status: 'Open', // Default status
+          photoUrls,
+        };
+
+        const logsCollection = collection(firestore, 'properties', data.propertyId, 'maintenanceLogs');
+        await addDocumentNonBlocking(logsCollection, newLog);
+        
+        toast({
+          title: 'Maintenance Logged',
+          description: 'The new maintenance issue has been successfully logged.',
+        });
+        form.reset({ reportedDate: new Date() });
+        setFileNames([]);
+        // If no filter is set, set it to the property we just added a log for
+        if (!selectedPropertyFilter) {
+            setSelectedPropertyFilter(data.propertyId);
+        }
     } catch (error) {
         console.error('Failed to log maintenance issue', error);
         toast({
@@ -184,6 +207,8 @@ export default function MaintenancePage() {
             title: 'Save Failed',
             description: 'There was an error saving the maintenance log. Please try again.',
         });
+    } finally {
+        setIsUploading(false);
     }
   }
 
@@ -497,15 +522,36 @@ export default function MaintenancePage() {
                       <FormItem>
                         <FormLabel>Upload Photos of Issue</FormLabel>
                         <FormControl>
-                          <Button asChild variant="outline" className="w-full">
-                            <label className="cursor-pointer">
+                          <Button asChild variant="outline" className="w-full cursor-pointer">
+                            <label htmlFor="photos-upload">
                               <Upload className="mr-2 h-4 w-4" />
                               Choose Files
-                              <Input type="file" multiple className="sr-only" {...field} />
+                              <Input
+                                id="photos-upload"
+                                type="file"
+                                multiple
+                                className="sr-only"
+                                onChange={(e) => {
+                                    field.onChange(e.target.files);
+                                    if (e.target.files) {
+                                        setFileNames(Array.from(e.target.files).map(f => f.name));
+                                    } else {
+                                        setFileNames([]);
+                                    }
+                                }}
+                              />
                             </label>
                           </Button>
                         </FormControl>
                         <FormMessage />
+                        {fileNames.length > 0 && (
+                            <div className="text-sm text-muted-foreground pt-2">
+                                <p>Selected file(s):</p>
+                                <ul className="list-disc pl-5">
+                                    {fileNames.map(name => <li key={name}>{name}</li>)}
+                                </ul>
+                            </div>
+                        )}
                       </FormItem>
                     )}
                   />
@@ -540,7 +586,16 @@ export default function MaintenancePage() {
                 <Button type="button" variant="outline">
                   Cancel
                 </Button>
-                <Button type="submit">Log Maintenance</Button>
+                <Button type="submit" disabled={isUploading}>
+                  {isUploading ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Logging...
+                    </>
+                  ) : (
+                    'Log Maintenance'
+                  )}
+                </Button>
               </div>
             </form>
           </Form>
@@ -593,7 +648,11 @@ export default function MaintenancePage() {
                         )}
                         {maintenanceLogs?.map(log => (
                             <TableRow key={log.id}>
-                                <TableCell className="font-medium">{log.title}</TableCell>
+                                <TableCell className="font-medium">
+                                    <Link href={`/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`} className="hover:underline">
+                                        {log.title}
+                                    </Link>
+                                </TableCell>
                                 <TableCell>
                                     <Select
                                         value={log.status}

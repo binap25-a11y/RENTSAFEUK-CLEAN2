@@ -147,20 +147,61 @@
         },
         "propertyId": {
           "type": "string",
-          "description": "Reference to Property. (Relationship: Property 1:N MaintenanceLog)"
+          "description": "Reference to Property."
+        },
+        "title": {
+          "type": "string",
+          "description": "A concise title for the maintenance issue."
         },
         "description": {
           "type": "string",
           "description": "Description of the maintenance issue."
         },
-        "urgency": {
+        "category": {
           "type": "string",
-          "description": "Urgency level of the maintenance issue."
+          "description": "The category of the maintenance issue."
         },
-        "dateLogged": {
+        "priority": {
           "type": "string",
-          "description": "Date when the maintenance issue was logged.",
+          "description": "Priority level of the maintenance issue."
+        },
+        "reportedBy": {
+          "type": "string",
+          "description": "Name of the person who reported the issue."
+        },
+        "reportedDate": {
+          "type": "string",
+          "description": "Date when the maintenance issue was reported.",
           "format": "date-time"
+        },
+        "contractorName": {
+          "type": "string",
+          "description": "Name of the assigned contractor."
+        },
+        "contractorPhone": {
+          "type": "string",
+          "description": "Phone number of the assigned contractor."
+        },
+        "scheduledDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date the work is scheduled for."
+        },
+        "estimatedCost": {
+          "type": "number",
+          "description": "The estimated cost of the repair."
+        },
+        "photoUrls": {
+          "type": "array",
+          "description": "An array of URLs for photos of the maintenance issue.",
+          "items": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional notes about the maintenance log."
         },
         "status": {
           "type": "string",
@@ -168,12 +209,13 @@
         }
       },
       "required": [
-        "id",
         "ownerId",
         "propertyId",
-        "description",
-        "urgency",
-        "dateLogged"
+        "title",
+        "category",
+        "priority",
+        "reportedDate",
+        "status"
       ]
     },
     "Inspection": {
