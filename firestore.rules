@@ -30,27 +30,32 @@ service cloud.firestore {
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn();
       allow write: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
 
     match /{path=**}/expenses/{expenseId} {
-      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn();
       allow write: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
 
     match /{path=**}/documents/{documentId} {
-      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn();
       allow write: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
 
     match /{path=**}/inspections/{inspectionId} {
-      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn();
       allow write: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
 
     match /{path=**}/rentPayments/{paymentId} {
-      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn();
       allow write: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
   }
