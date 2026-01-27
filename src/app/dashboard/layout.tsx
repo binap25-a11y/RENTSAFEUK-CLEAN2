@@ -19,6 +19,7 @@ import { Button } from '@/components/ui/button';
 import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
+import { Notifications } from '@/components/dashboard/notifications';
 
 export default function DashboardLayout({
   children,
@@ -73,6 +74,7 @@ export default function DashboardLayout({
               </div>
             </form>
           </div>
+          <Notifications />
           <UserNav />
         </header>
         <main className="flex-1 p-4 sm:p-6">{children}</main>
