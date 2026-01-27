@@ -674,6 +674,7 @@ function RentStatement({ selectedProperty, selectedYear }: { selectedProperty: P
 
     setDialogOpen(false);
     setEditingPayment(null);
+    setPartialAmount('');
   };
 
   const handleStatusChange = (month: string, status: PaymentStatus) => {
