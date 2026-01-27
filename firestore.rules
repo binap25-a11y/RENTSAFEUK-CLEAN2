@@ -13,73 +13,72 @@ service cloud.firestore {
       return isSignedIn() && doc.ownerId == request.auth.uid;
     }
 
-    // A user can manage their own profile document
+    // Profile
     match /users/{userId} {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
 
-    // A user can manage properties they own.
-    // `list` is allowed because client-side queries must filter by ownerId,
-    // and Firestore evaluates the `get` rule on each returned document.
+    // Top-level collections
     match /properties/{propertyId} {
       allow list: if isSignedIn();
-      allow get: if isOwner(resource.data);
+      allow get, update, delete: if isOwner(resource.data);
       allow create: if isOwner(request.resource.data);
-      allow update, delete: if isOwner(resource.data);
     }
 
-    // A user can manage tenants they own.
     match /tenants/{tenantId} {
       allow list: if isSignedIn();
-      allow get: if isOwner(resource.data);
+      allow get, update, delete: if isOwner(resource.data);
       allow create: if isOwner(request.resource.data);
-      allow update, delete: if isOwner(resource.data);
     }
+    
+    // --- DIRECT SUBCOLLECTION ACCESS RULES ---
+    // These rules cover direct access like /properties/{pid}/inspections/{iid}
+    // but DO NOT cover collection group queries.
 
-    // --- SUBCOLLECTION RULES ---
-    // These rules are designed to work for both direct queries and collection group queries.
-    // For collection group queries, Firestore checks the `list` rule. It is allowed if
-    // the document being read (`resource.data`) is owned by the user. This is secure because
-    // the client-side queries MUST include `where('ownerId', '==', user.uid)`.
-
-    // Subcollection: maintenanceLogs
     match /properties/{propertyId}/maintenanceLogs/{logId} {
-      allow get: if isOwner(resource.data);
-      allow list: if isOwner(resource.data);
+      allow get, update, delete: if isOwner(resource.data);
       allow create: if isOwner(request.resource.data);
-      allow update, delete: if isOwner(resource.data);
     }
 
-    // Subcollection: inspections
     match /properties/{propertyId}/inspections/{inspectionId} {
-      allow get: if isOwner(resource.data);
-      allow list: if isOwner(resource.data);
+      allow get, update, delete: if isOwner(resource.data);
       allow create: if isOwner(request.resource.data);
-      allow update, delete: if isOwner(resource.data);
     }
 
-    // Subcollection: documents
     match /properties/{propertyId}/documents/{documentId} {
-      allow get: if isOwner(resource.data);
-      allow list: if isOwner(resource.data);
+      allow get, update, delete: if isOwner(resource.data);
       allow create: if isOwner(request.resource.data);
-      allow update, delete: if isOwner(resource.data);
     }
 
-    // Subcollection: expenses
     match /properties/{propertyId}/expenses/{expenseId} {
-      allow get: if isOwner(resource.data);
-      allow list: if isOwner(resource.data);
+      allow get, update, delete: if isOwner(resource.data);
       allow create: if isOwner(request.resource.data);
-      allow update, delete: if isOwner(resource.data);
     }
 
-    // Subcollection: rentPayments
     match /properties/{propertyId}/rentPayments/{paymentId} {
-      allow get: if isOwner(resource.data);
-      allow list: if isOwner(resource.data);
+      allow get, update, delete: if isOwner(resource.data);
       allow create: if isOwner(request.resource.data);
-      allow update, delete: if isOwner(resource.data);
+    }
+
+    // --- COLLECTION GROUP QUERY RULES ---
+    // These rules are ONLY for collection group queries.
+    // They allow `list` operations across all subcollections with the same name.
+    // The client-side query MUST use `where('ownerId', '==', user.uid)`.
+
+    match /{path=**}/maintenanceLogs/{logId} {
+      allow list: if isOwner(resource.data);
+    }
+    match /{path=**}/inspections/{inspectionId} {
+      allow list: if isOwner(resource.data);
+    }
+    match /{path=**}/documents/{documentId} {
+      allow list: if isOwner(resource.data);
+    }
+    match /{path=**}/expenses/{expenseId} {
+      allow list: if isOwner(resource.data);
+    }
+    match /{path=**}/rentPayments/{paymentId} {
+      allow list: if isOwner(resource.data);
     }
   }
 }
