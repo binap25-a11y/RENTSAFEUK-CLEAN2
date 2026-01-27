@@ -272,22 +272,28 @@ export default function UploadDocumentPage() {
             <FormField
               control={form.control}
               name="documentFile"
-              render={({ field: { onChange, ...fieldProps } }) => (
+              render={({ field }) => (
                 <FormItem>
                   <FormLabel>Document File</FormLabel>
                   <FormControl>
-                    <Input 
-                      type="file" 
-                      onChange={(e) => {
-                        onChange(e.target.files);
-                        setFileName(e.target.files?.[0]?.name || '');
-                      }}
-                      {...fieldProps}
-                      className="pt-2"
-                    />
+                    <Button asChild className="w-full cursor-pointer">
+                      <label htmlFor="file-upload">
+                        <Upload className="mr-2 h-4 w-4" />
+                        Choose File
+                        <Input
+                          id="file-upload"
+                          type="file"
+                          className="sr-only"
+                          onChange={(e) => {
+                            field.onChange(e.target.files);
+                            setFileName(e.target.files?.[0]?.name || '');
+                          }}
+                        />
+                      </label>
+                    </Button>
                   </FormControl>
                   <FormMessage />
-                   {fileName && <p className="text-sm text-muted-foreground pt-1">Selected file: {fileName}</p>}
+                   {fileName && <p className="text-sm text-muted-foreground pt-2">Selected file: {fileName}</p>}
                 </FormItem>
               )}
             />
