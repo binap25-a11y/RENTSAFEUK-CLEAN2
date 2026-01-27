@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
 import {
   DropdownMenu,
@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Bell, FileWarning, CalendarClock } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, query, where, Timestamp, collectionGroup } from 'firebase/firestore';
 import { format, isBefore, addDays, isFuture } from 'date-fns';
 
 // Interfaces from other parts of the app
@@ -57,57 +57,30 @@ export function Notifications() {
   const { user } = useUser();
   const firestore = useFirestore();
 
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [inspections, setInspections] = useState<Inspection[]>([]);
-  const [isLoadingSubcollections, setIsLoadingSubcollections] = useState(true);
-
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(collection(firestore, 'properties'), where('ownerId', '==', user.uid));
   }, [firestore, user]);
 
-  const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
+  const { data: properties } = useCollection<Property>(propertiesQuery);
 
-  useEffect(() => {
-    if (!properties || !firestore) {
-      setIsLoadingSubcollections(!properties);
-      return;
-    }
+  const documentsQuery = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return query(
+        collectionGroup(firestore, 'documents'),
+        where('ownerId', '==', user.uid)
+    );
+  }, [user, firestore]);
+  const { data: documents } = useCollection<Document>(documentsQuery);
 
-    if (properties.length === 0) {
-      setDocuments([]);
-      setInspections([]);
-      setIsLoadingSubcollections(false);
-      return;
-    }
-
-    const fetchSubcollections = async () => {
-      setIsLoadingSubcollections(true);
-      try {
-        const documentPromises = properties.map(prop =>
-          getDocs(collection(firestore, 'properties', prop.id, 'documents'))
-        );
-        const inspectionPromises = properties.map(prop =>
-          getDocs(collection(firestore, 'properties', prop.id, 'inspections'))
-        );
-
-        const documentSnapshots = await Promise.all(documentPromises);
-        const inspectionSnapshots = await Promise.all(inspectionPromises);
-
-        const allDocs = documentSnapshots.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Document)));
-        const allInspections = inspectionSnapshots.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Inspection)));
-
-        setDocuments(allDocs);
-        setInspections(allInspections);
-      } catch (e) {
-        console.error("Error fetching notification data: ", e);
-      } finally {
-        setIsLoadingSubcollections(false);
-      }
-    };
-
-    fetchSubcollections();
-  }, [properties, firestore]);
+  const inspectionsQuery = useMemoFirebase(() => {
+      if (!user || !firestore) return null;
+      return query(
+          collectionGroup(firestore, 'inspections'),
+          where('ownerId', '==', user.uid)
+      );
+  }, [user, firestore]);
+  const { data: inspections } = useCollection<Inspection>(inspectionsQuery);
 
   const propertyMap = useMemo(() => {
     return (
@@ -122,6 +95,7 @@ export function Notifications() {
     const documentReminders =
       documents
         ?.map((doc) => {
+          if (!doc.expiryDate) return null;
           const expiry =
             doc.expiryDate instanceof Date
               ? doc.expiryDate
@@ -132,9 +106,7 @@ export function Notifications() {
             status: getDocumentStatus(expiry),
           };
         })
-        .filter(
-          (doc) => doc.status === 'Expired' || doc.status === 'Expiring Soon'
-        )
+        .filter((doc): doc is NonNullable<typeof doc> => doc !== null && (doc.status === 'Expired' || doc.status === 'Expiring Soon'))
         .map((doc) => ({
           id: `doc-${doc.id}`,
           type: 'Document',
@@ -149,6 +121,7 @@ export function Notifications() {
     const inspectionReminders =
       inspections
         ?.filter((insp) => {
+          if (!insp.scheduledDate) return false;
           const scheduled =
             insp.scheduledDate instanceof Date
               ? insp.scheduledDate

@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import {
   Card,
   CardHeader,
@@ -26,7 +26,7 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, getDocs } from 'firebase/firestore';
+import { collection, query, where, collectionGroup, Timestamp } from 'firebase/firestore';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -87,11 +87,6 @@ export default function RemindersPage() {
   const { user } = useUser();
   const firestore = useFirestore();
 
-  // State for data fetched from subcollections
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [inspections, setInspections] = useState<Inspection[]>([]);
-  const [isLoadingSubcollections, setIsLoadingSubcollections] = useState(true);
-  
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
@@ -100,47 +95,24 @@ export default function RemindersPage() {
     );
   }, [firestore, user]);
   const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
+  
+  const documentsQuery = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return query(
+        collectionGroup(firestore, 'documents'),
+        where('ownerId', '==', user.uid)
+    );
+  }, [user, firestore]);
+  const { data: documents, isLoading: isLoadingDocuments } = useCollection<Document>(documentsQuery);
 
-  useEffect(() => {
-    if (!properties || !firestore) {
-        setIsLoadingSubcollections(!properties);
-        return;
-    };
-    
-    if(properties.length === 0) {
-        setDocuments([]);
-        setInspections([]);
-        setIsLoadingSubcollections(false);
-        return;
-    }
-
-    const fetchSubcollections = async () => {
-      setIsLoadingSubcollections(true);
-      try {
-        const documentPromises = properties.map(prop =>
-          getDocs(collection(firestore, 'properties', prop.id, 'documents'))
-        );
-        const inspectionPromises = properties.map(prop =>
-          getDocs(collection(firestore, 'properties', prop.id, 'inspections'))
-        );
-
-        const documentSnapshots = await Promise.all(documentPromises);
-        const inspectionSnapshots = await Promise.all(inspectionPromises);
-
-        const allDocs = documentSnapshots.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Document)));
-        const allInspections = inspectionSnapshots.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Inspection)));
-
-        setDocuments(allDocs);
-        setInspections(allInspections);
-      } catch (e) {
-        console.error("Error fetching reminders subcollections: ", e);
-      } finally {
-        setIsLoadingSubcollections(false);
-      }
-    };
-
-    fetchSubcollections();
-  }, [properties, firestore]);
+  const inspectionsQuery = useMemoFirebase(() => {
+      if (!user || !firestore) return null;
+      return query(
+          collectionGroup(firestore, 'inspections'),
+          where('ownerId', '==', user.uid)
+      );
+  }, [user, firestore]);
+  const { data: inspections, isLoading: isLoadingInspections } = useCollection<Inspection>(inspectionsQuery);
 
   const propertyMap = useMemo(() => {
     return (
@@ -155,19 +127,18 @@ export default function RemindersPage() {
     const documentReminders =
       documents
         ?.map((doc) => {
+          if (!doc.expiryDate) return null;
           const expiry =
             doc.expiryDate instanceof Date
               ? doc.expiryDate
-              : new Date(doc.expiryDate.seconds * 1000);
+              : (doc.expiryDate as Timestamp).toDate();
           return {
             ...doc,
             expiryDate: expiry,
             status: getDocumentStatus(expiry),
           };
         })
-        .filter(
-          (doc) => doc.status === 'Expired' || doc.status === 'Expiring Soon'
-        )
+        .filter((doc): doc is NonNullable<typeof doc> => doc !== null && (doc.status === 'Expired' || doc.status === 'Expiring Soon'))
         .map((doc) => ({
           id: `doc-${doc.id}`,
           type: 'Document',
@@ -180,11 +151,11 @@ export default function RemindersPage() {
     const inspectionReminders =
       inspections
         ?.filter((insp) => {
+          if (!insp.scheduledDate) return false;
           const scheduled =
             insp.scheduledDate instanceof Date
               ? insp.scheduledDate
-              : new Date(insp.scheduledDate.seconds * 1000);
-          // Client-side filtering for 'Scheduled' status and is in the future
+              : (insp.scheduledDate as Timestamp).toDate();
           return insp.status === 'Scheduled' && isFuture(scheduled);
         })
         .map((insp) => ({
@@ -195,7 +166,7 @@ export default function RemindersPage() {
           dueDate:
             insp.scheduledDate instanceof Date
               ? insp.scheduledDate
-              : new Date(insp.scheduledDate.seconds * 1000),
+              : (insp.scheduledDate as Timestamp).toDate(),
           status: 'Scheduled',
         })) ?? [];
 
@@ -204,7 +175,7 @@ export default function RemindersPage() {
     );
   }, [documents, inspections, propertyMap]);
 
-  const isLoading = isLoadingProperties || isLoadingSubcollections;
+  const isLoading = isLoadingProperties || isLoadingDocuments || isLoadingInspections;
 
   const exportToPDF = async () => {
     const doc = new jsPDF();

@@ -35,8 +35,8 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
-import { useState, useEffect, useMemo } from 'react';
+import { collection, query, where, Timestamp, collectionGroup } from 'firebase/firestore';
+import { useMemo } from 'react';
 import { format, isFuture, isBefore, addDays } from 'date-fns';
 
 // Interfaces
@@ -102,11 +102,6 @@ export default function DashboardPage() {
   const { user } = useUser();
   const firestore = useFirestore();
 
-  const [maintenanceLogs, setMaintenanceLogs] = useState<MaintenanceLog[]>([]);
-  const [inspections, setInspections] = useState<Inspection[]>([]);
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [isLoadingSubcollections, setIsLoadingSubcollections] = useState(true);
-
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
@@ -114,55 +109,36 @@ export default function DashboardPage() {
       where('ownerId', '==', user.uid)
     );
   }, [user, firestore]);
-
   const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
+
+  const maintenanceLogsQuery = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return query(
+      collectionGroup(firestore, 'maintenanceLogs'),
+      where('ownerId', '==', user.uid)
+    );
+  }, [user, firestore]);
+  const { data: maintenanceLogs, isLoading: isLoadingMaintenance } = useCollection<MaintenanceLog>(maintenanceLogsQuery);
   
-  useEffect(() => {
-    if (!properties || !firestore) {
-      setIsLoadingSubcollections(false);
-      return;
-    }
+  const inspectionsQuery = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return query(
+      collectionGroup(firestore, 'inspections'),
+      where('ownerId', '==', user.uid)
+    );
+  }, [user, firestore]);
+  const { data: inspections, isLoading: isLoadingInspections } = useCollection<Inspection>(inspectionsQuery);
+  
+  const documentsQuery = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return query(
+      collectionGroup(firestore, 'documents'),
+      where('ownerId', '==', user.uid)
+    );
+  }, [user, firestore]);
+  const { data: documents, isLoading: isLoadingDocuments } = useCollection<Document>(documentsQuery);
 
-    if (properties.length === 0) {
-      setIsLoadingSubcollections(false);
-      setMaintenanceLogs([]);
-      setInspections([]);
-      setDocuments([]);
-      return;
-    }
-
-    const fetchSubcollections = async () => {
-      setIsLoadingSubcollections(true);
-      try {
-        const maintenancePromises = properties.map(p => getDocs(collection(firestore, 'properties', p.id, 'maintenanceLogs')));
-        const inspectionPromises = properties.map(p => getDocs(collection(firestore, 'properties', p.id, 'inspections')));
-        const documentPromises = properties.map(p => getDocs(collection(firestore, 'properties', p.id, 'documents')));
-
-        const [maintenanceSnapshots, inspectionSnapshots, documentSnapshots] = await Promise.all([
-          Promise.all(maintenancePromises),
-          Promise.all(inspectionPromises),
-          Promise.all(documentPromises),
-        ]);
-
-        const allMaintenance = maintenanceSnapshots.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as MaintenanceLog)));
-        const allInspections = inspectionSnapshots.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Inspection)));
-        const allDocuments = documentSnapshots.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Document)));
-
-        setMaintenanceLogs(allMaintenance);
-        setInspections(allInspections);
-        setDocuments(allDocuments);
-
-      } catch (error) {
-        console.error("Error fetching dashboard data:", error);
-      } finally {
-        setIsLoadingSubcollections(false);
-      }
-    };
-
-    fetchSubcollections();
-  }, [properties, firestore]);
-
-  const isLoading = isLoadingProperties || isLoadingSubcollections;
+  const isLoading = isLoadingProperties || isLoadingMaintenance || isLoadingInspections || isLoadingDocuments;
   
   const propertyMap = useMemo(() => 
     properties?.reduce((map, prop) => {
@@ -172,28 +148,30 @@ export default function DashboardPage() {
   , [properties]);
 
   const activeProperties = useMemo(() => properties?.filter(p => p.status !== 'Deleted') ?? [], [properties]);
-  const openMaintenanceCount = useMemo(() => maintenanceLogs.filter(log => log.status === 'Open').length, [maintenanceLogs]);
-  const upcomingInspectionsCount = useMemo(() => inspections.filter(insp => {
+  const openMaintenanceCount = useMemo(() => maintenanceLogs?.filter(log => log.status === 'Open').length ?? 0, [maintenanceLogs]);
+  const upcomingInspectionsCount = useMemo(() => inspections?.filter(insp => {
+      if (!insp.scheduledDate) return false;
       const scheduledDate = insp.scheduledDate instanceof Date ? insp.scheduledDate : (insp.scheduledDate as Timestamp).toDate();
       return insp.status === 'Scheduled' && isFuture(scheduledDate);
-  }).length, [inspections]);
-  const totalDocumentsCount = useMemo(() => documents.length, [documents]);
+  }).length ?? 0, [inspections]);
+  const totalDocumentsCount = useMemo(() => documents?.length ?? 0, [documents]);
 
   const recentActivities = useMemo(() => 
     maintenanceLogs
-        .sort((a,b) => ((b.reportedDate as Timestamp)?.toMillis?.() ?? 0) - ((a.reportedDate as Timestamp)?.toMillis?.() ?? 0))
+        ?.sort((a,b) => ((b.reportedDate as Timestamp)?.toMillis?.() ?? 0) - ((a.reportedDate as Timestamp)?.toMillis?.() ?? 0))
         .slice(0, 4)
         .map(log => ({
             id: log.id,
             property: propertyMap[log.propertyId] || 'Unknown Property',
             activity: log.title,
             date: format((log.reportedDate as Timestamp).toDate(), 'dd/MM/yyyy'),
-        }))
+        })) ?? []
   , [maintenanceLogs, propertyMap]);
 
   const upcomingTasks = useMemo(() => {
     const inspectionTasks = inspections
-        .filter(insp => {
+        ?.filter(insp => {
+            if (!insp.scheduledDate) return false;
             const scheduledDate = insp.scheduledDate instanceof Date ? insp.scheduledDate : (insp.scheduledDate as Timestamp).toDate();
             return insp.status === 'Scheduled' && isFuture(scheduledDate)
         })
@@ -203,10 +181,11 @@ export default function DashboardPage() {
             property: propertyMap[insp.propertyId] || 'Unknown Property',
             status: 'Scheduled',
             dueDate: format((insp.scheduledDate as Timestamp).toDate(), 'dd/MM/yyyy'),
-        }));
+        })) ?? [];
     
     const documentTasks = documents
-        .map(doc => {
+        ?.map(doc => {
+            if (!doc.expiryDate) return null;
             const expiry = doc.expiryDate instanceof Date ? doc.expiryDate : (doc.expiryDate as Timestamp).toDate();
             return {
                 ...doc,
@@ -214,14 +193,14 @@ export default function DashboardPage() {
                 expiryDate: expiry
             };
         })
-        .filter(doc => doc.status === 'Expired' || doc.status === 'Expiring Soon')
+        .filter((doc): doc is NonNullable<typeof doc> => doc !== null && (doc.status === 'Expired' || doc.status === 'Expiring Soon'))
         .map(doc => ({
             id: `doc-${doc.id}`,
             task: doc.title,
             property: propertyMap[doc.propertyId] || 'Unknown Property',
             status: doc.status,
             dueDate: format(doc.expiryDate, 'dd/MM/yyyy'),
-        }));
+        })) ?? [];
 
         return [...inspectionTasks, ...documentTasks]
             .sort((a,b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
