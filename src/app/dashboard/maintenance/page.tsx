@@ -34,7 +34,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Upload, Loader2 } from 'lucide-react';
+import { CalendarIcon, Upload, Loader2, Wand2 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -57,6 +57,8 @@ import {
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
+import { MaintenanceAssistantDialog } from '@/components/dashboard/maintenance-assistant-dialog';
+import type { MaintenanceAssistantOutput } from '@/ai/flows/maintenance-assistant-flow';
 
 
 // Schema for the form
@@ -101,6 +103,7 @@ export default function MaintenancePage() {
   const { user } = useUser();
   const firestore = useFirestore();
   const [selectedPropertyFilter, setSelectedPropertyFilter] = useState<string>('');
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
 
   const form = useForm<MaintenanceFormValues>({
     resolver: zodResolver(maintenanceSchema),
@@ -131,6 +134,19 @@ export default function MaintenancePage() {
   }, [firestore, user, selectedPropertyFilter]);
 
   const { data: maintenanceLogs, isLoading: isLoadingLogs } = useCollection<MaintenanceLog>(maintenanceQuery);
+  
+  const handleLogFromAssistant = (suggestion: MaintenanceAssistantOutput) => {
+    form.setValue('title', suggestion.suggestedTitle);
+    const description = `AI Diagnosis:\n- ${suggestion.likelyCause}\n\nSuggested Troubleshooting:\n- ${suggestion.troubleshootingSteps.join('\n- ')}`;
+    form.setValue('description', description);
+    form.setValue('priority', suggestion.urgency);
+    form.setValue('category', suggestion.suggestedCategory);
+    setIsAssistantOpen(false);
+    toast({
+      title: 'Form Pre-filled',
+      description: 'The maintenance form has been pre-filled with the AI suggestions.',
+    });
+  };
 
   async function onSubmit(data: MaintenanceFormValues) {
     if (!user || !firestore) {
@@ -207,12 +223,25 @@ export default function MaintenancePage() {
 
   return (
     <div className="space-y-6">
+       <MaintenanceAssistantDialog 
+          isOpen={isAssistantOpen} 
+          onOpenChange={setIsAssistantOpen}
+          onLogIssue={handleLogFromAssistant}
+      />
       <Card>
         <CardHeader>
-          <CardTitle>Log Maintenance Issue</CardTitle>
-          <CardDescription>
-            Fill in the details below to log a new maintenance issue.
-          </CardDescription>
+          <div className="flex justify-between items-start">
+            <div>
+              <CardTitle>Log Maintenance Issue</CardTitle>
+              <CardDescription>
+                Fill in the details below or use our AI assistant to get started.
+              </CardDescription>
+            </div>
+            <Button variant="outline" onClick={() => setIsAssistantOpen(true)}>
+                <Wand2 className="mr-2 h-4 w-4" />
+                AI Assistant
+            </Button>
+          </div>
         </CardHeader>
         <CardContent>
           <Form {...form}>
@@ -283,7 +312,7 @@ export default function MaintenancePage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Category</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select a category" />
@@ -307,7 +336,7 @@ export default function MaintenancePage() {
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>Priority</FormLabel>
-                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                          <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                               <SelectTrigger>
                                 <SelectValue placeholder="Select a priority" />
