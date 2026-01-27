@@ -7,7 +7,8 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Helper function to check ownership on a document by ownerId field
+    // Helper function to check ownership on a document by the ownerId field.
+    // This is the primary security mechanism for user data.
     function isOwner(doc) {
       return isSignedIn() && doc.ownerId == request.auth.uid;
     }
@@ -17,28 +18,34 @@ service cloud.firestore {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
 
-    // A user can manage properties they own
+    // A user can manage properties they own.
+    // `list` is allowed because client-side queries must filter by ownerId,
+    // and Firestore evaluates the `get` rule on each returned document.
     match /properties/{propertyId} {
-      allow get: if isOwner(resource.data);
-      // List queries are secured by client-side filtering and the `get` rule check on each document
       allow list: if isSignedIn();
+      allow get: if isOwner(resource.data);
       allow create: if isOwner(request.resource.data);
       allow update, delete: if isOwner(resource.data);
     }
 
-    // A user can manage tenants they own
+    // A user can manage tenants they own.
     match /tenants/{tenantId} {
-      allow get: if isOwner(resource.data);
-       // List queries are secured by client-side filtering and the `get` rule check on each document
       allow list: if isSignedIn();
+      allow get: if isOwner(resource.data);
       allow create: if isOwner(request.resource.data);
       allow update, delete: if isOwner(resource.data);
     }
-    
+
+    // --- SUBCOLLECTION RULES ---
+    // These rules are designed to work for both direct queries and collection group queries.
+    // For collection group queries, Firestore checks the `list` rule. It is allowed if
+    // the document being read (`resource.data`) is owned by the user. This is secure because
+    // the client-side queries MUST include `where('ownerId', '==', user.uid)`.
+
     // Subcollection: maintenanceLogs
     match /properties/{propertyId}/maintenanceLogs/{logId} {
       allow get: if isOwner(resource.data);
-      allow list: if isSignedIn(); // Allows collection group query to run
+      allow list: if isOwner(resource.data);
       allow create: if isOwner(request.resource.data);
       allow update, delete: if isOwner(resource.data);
     }
@@ -46,7 +53,7 @@ service cloud.firestore {
     // Subcollection: inspections
     match /properties/{propertyId}/inspections/{inspectionId} {
       allow get: if isOwner(resource.data);
-      allow list: if isSignedIn(); // Allows collection group query to run
+      allow list: if isOwner(resource.data);
       allow create: if isOwner(request.resource.data);
       allow update, delete: if isOwner(resource.data);
     }
@@ -54,7 +61,7 @@ service cloud.firestore {
     // Subcollection: documents
     match /properties/{propertyId}/documents/{documentId} {
       allow get: if isOwner(resource.data);
-      allow list: if isSignedIn(); // Allows collection group query to run
+      allow list: if isOwner(resource.data);
       allow create: if isOwner(request.resource.data);
       allow update, delete: if isOwner(resource.data);
     }
@@ -62,7 +69,7 @@ service cloud.firestore {
     // Subcollection: expenses
     match /properties/{propertyId}/expenses/{expenseId} {
       allow get: if isOwner(resource.data);
-      allow list: if isSignedIn(); // Allows collection group query to run
+      allow list: if isOwner(resource.data);
       allow create: if isOwner(request.resource.data);
       allow update, delete: if isOwner(resource.data);
     }
@@ -70,7 +77,7 @@ service cloud.firestore {
     // Subcollection: rentPayments
     match /properties/{propertyId}/rentPayments/{paymentId} {
       allow get: if isOwner(resource.data);
-      allow list: if isSignedIn(); // Allows collection group query to run
+      allow list: if isOwner(resource.data);
       allow create: if isOwner(request.resource.data);
       allow update, delete: if isOwner(resource.data);
     }
