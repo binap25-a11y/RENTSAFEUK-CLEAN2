@@ -37,21 +37,24 @@ service cloud.firestore {
     
     // Generic rule for all property subcollections.
     // This handles both direct subcollection queries and collection group queries.
-    match /properties/{propertyId}/{subcollection}/{docId}
-    where subcollection in ['maintenanceLogs', 'inspections', 'documents', 'expenses', 'rentPayments'] {
+    match /properties/{propertyId}/{subcollection}/{docId} {
       
+      function isAllowedSubcollection() {
+        return subcollection in ['maintenanceLogs', 'inspections', 'documents', 'expenses', 'rentPayments'];
+      }
+
       // Rule for reading individual documents (get) and for checking each document
       // returned by a list query.
-      allow get: if isOwner(resource.data);
+      allow get: if isAllowedSubcollection() && isOwner(resource.data);
       
       // Rule for allowing list/query operations to proceed.
       // This is safe because the `get` rule above is checked for every document
       // and client-side queries MUST filter by ownerId.
-      allow list: if isSignedIn();
+      allow list: if isAllowedSubcollection() && isSignedIn();
       
       // Rules for writing data
-      allow create: if isOwner(request.resource.data);
-      allow update, delete: if isOwner(resource.data);
+      allow create: if isAllowedSubcollection() && isOwner(request.resource.data);
+      allow update, delete: if isAllowedSubcollection() && isOwner(resource.data);
     }
   }
 }
