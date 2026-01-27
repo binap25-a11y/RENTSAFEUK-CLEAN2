@@ -3,11 +3,9 @@
 import { useSearchParams, useRouter } from 'next/navigation';
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Label } from '@/components/ui/label';
 import { toast } from '@/hooks/use-toast';
 import { useState } from 'react';
-import { Loader2 } from 'lucide-react';
+import { Loader2, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 
 export default function CheckoutPage() {
@@ -22,7 +20,8 @@ export default function CheckoutPage() {
     e.preventDefault();
     setIsProcessing(true);
 
-    // Simulate payment processing
+    // In a real app, this would redirect to a Stripe Checkout page
+    // For this prototype, we'll simulate the payment processing
     setTimeout(() => {
       toast({
         title: 'Payment Successful!',
@@ -35,34 +34,24 @@ export default function CheckoutPage() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-muted/40">
       <Card className="w-full max-w-md">
-        <CardHeader>
-          <CardTitle>Complete Your Purchase</CardTitle>
-          <CardDescription>You are subscribing to the <strong>{plan}</strong> plan.</CardDescription>
-        </CardHeader>
         <form onSubmit={handlePayment}>
+          <CardHeader>
+            <CardTitle>Confirm Your Subscription</CardTitle>
+            <CardDescription>You are subscribing to the <strong>{plan}</strong> plan. You will be redirected to our secure payment provider to complete your purchase.</CardDescription>
+          </CardHeader>
           <CardContent className="space-y-6">
             <div className="flex justify-between items-baseline p-4 rounded-lg bg-muted">
               <span className="font-semibold">Total Due Today</span>
               <span className="text-2xl font-bold">£{price} <span className="text-sm font-normal text-muted-foreground">/{billing}</span></span>
             </div>
-            <div className="space-y-2">
-              <Label htmlFor="card-name">Name on Card</Label>
-              <Input id="card-name" placeholder="John Doe" required />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="card-number">Card Details</Label>
-              {/* This would be a real payment element from Stripe/Braintree in production */}
-              <div className="grid grid-cols-3 gap-2">
-                <Input id="card-number" placeholder="Card Number" className="col-span-3" required />
-                <Input placeholder="MM / YY" required />
-                <Input placeholder="CVC" required />
-                <Input placeholder="Postcode" required />
-              </div>
+             <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                <ShieldCheck className="h-4 w-4 text-green-500" />
+                <span>Payments are processed securely by our third-party partner.</span>
             </div>
           </CardContent>
           <CardFooter className="flex flex-col gap-4">
             <Button type="submit" className="w-full" disabled={isProcessing}>
-              {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : `Pay £${price}`}
+              {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : `Proceed to Payment`}
             </Button>
             <Button variant="outline" className="w-full" asChild>
                 <Link href="/pricing">Cancel</Link>
