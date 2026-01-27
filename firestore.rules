@@ -7,58 +7,67 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // --- Profile Rules ---
+    // --- Profile ---
     match /users/{userId} {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
 
-    // --- Top-level Collection Rules ---
+    // --- Properties ---
     match /properties/{propertyId} {
-      // READ: Allow reading a property if the user is the owner.
       allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      // WRITE: Allow creating, updating, deleting a property if the user is the owner.
+      allow list: if isSignedIn(); // Relies on client-side query constraint
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
 
+    // --- Tenants ---
     match /tenants/{tenantId} {
       allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn(); // Relies on client-side query constraint
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
-    
-    // --- Collection Group & Direct Sub-collection Access ---
-    // The /{path=**}/... wildcard path applies to collection group queries and direct access.
-    // This single set of rules is more robust and simpler to maintain.
 
-    function isDocOwner() {
-      // This function is used for read, update, and delete operations where 'resource' exists.
-      return isSignedIn() && resource.data.ownerId == request.auth.uid;
-    }
-    function isCreatingDocAsOwner() {
-      // This function is used for 'create' operations where 'resource' does not exist yet.
-      return isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-    }
+    // --- Subcollections (for Collection Group Queries and Direct Access) ---
 
+    // MaintenanceLogs
     match /{path=**}/maintenanceLogs/{logId} {
-      allow read: if isDocOwner();
-      allow write: if isCreatingDocAsOwner() || isDocOwner();
+      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn(); // Relies on client-side query constraint
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
+
+    // Inspections
     match /{path=**}/inspections/{inspectionId} {
-      allow read: if isDocOwner();
-      allow write: if isCreatingDocAsOwner() || isDocOwner();
+      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn(); // Relies on client-side query constraint
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
+
+    // Documents
     match /{path=**}/documents/{documentId} {
-      allow read: if isDocOwner();
-      allow write: if isCreatingDocAsOwner() || isDocOwner();
+      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn(); // Relies on client-side query constraint
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
+
+    // Expenses
     match /{path=**}/expenses/{expenseId} {
-      allow read: if isDocOwner();
-      allow write: if isCreatingDocAsOwner() || isDocOwner();
+      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn(); // Relies on client-side query constraint
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
+
+    // RentPayments
     match /{path=**}/rentPayments/{paymentId} {
-      allow read: if isDocOwner();
-      allow write: if isCreatingDocAsOwner() || isDocOwner();
+      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn(); // Relies on client-side query constraint
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
   }
 }
