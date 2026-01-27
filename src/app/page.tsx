@@ -4,12 +4,48 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { Logo } from '@/components/icons';
-import { useEffect } from 'react';
+import { GoogleIcon, Logo } from '@/components/icons';
+import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
-import { signInAnonymously } from 'firebase/auth';
+import {
+  signInAnonymously,
+  signInWithRedirect,
+  GoogleAuthProvider,
+  createUserWithEmailAndPassword,
+  signInWithEmailAndPassword,
+} from 'firebase/auth';
 import { useAuth, useUser } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
+import { zodResolver } from '@hookform/resolvers/zod';
+import { useForm } from 'react-hook-form';
+import { z } from 'zod';
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from '@/components/ui/card';
+import {
+  Form,
+  FormControl,
+  FormField,
+  FormItem,
+  FormLabel,
+  FormMessage,
+} from '@/components/ui/form';
+import { Input } from '@/components/ui/input';
+import { Loader2 } from 'lucide-react';
+
+const formSchema = z.object({
+  email: z.string().email({ message: 'Please enter a valid email address.' }),
+  password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
+});
+
+type FormValues = z.infer<typeof formSchema>;
+
+type AuthMode = 'login' | 'signup';
 
 export default function LoginPage() {
   const loginImage = PlaceHolderImages.find(
@@ -19,6 +55,16 @@ export default function LoginPage() {
   const auth = useAuth();
   const router = useRouter();
   const { toast } = useToast();
+  const [mode, setMode] = useState<AuthMode>('login');
+  const [isProcessing, setIsProcessing] = useState(false);
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+    },
+  });
 
   useEffect(() => {
     if (!isUserLoading && user) {
@@ -26,23 +72,59 @@ export default function LoginPage() {
     }
   }, [user, isUserLoading, router]);
 
-  const handleAnonymousSignIn = () => {
+  const handleAuthAction = async (data: FormValues) => {
+    if (!auth) return;
+    setIsProcessing(true);
+    try {
+      if (mode === 'signup') {
+        await createUserWithEmailAndPassword(auth, data.email, data.password);
+      } else {
+        await signInWithEmailAndPassword(auth, data.email, data.password);
+      }
+      // The useEffect will handle the redirect on user state change
+    } catch (error: any) {
+      toast({
+        variant: 'destructive',
+        title: `Failed to ${mode}`,
+        description: error.message,
+      });
+    } finally {
+      setIsProcessing(false);
+    }
+  };
+
+  const handleGoogleSignIn = () => {
     if (auth) {
+      setIsProcessing(true);
+      const provider = new GoogleAuthProvider();
+      signInWithRedirect(auth, provider).catch((error) => {
+        toast({
+          variant: 'destructive',
+          title: 'Google Sign-In Failed',
+          description: error.message,
+        });
+        setIsProcessing(false);
+      });
+    }
+  };
+  
+   const handleAnonymousSignIn = () => {
+    if (auth) {
+      setIsProcessing(true);
       signInAnonymously(auth).catch((error) => {
         toast({
           variant: 'destructive',
           title: 'Login Failed',
           description: error.message,
         });
-        console.error('Login error:', error);
-      });
+      }).finally(() => setIsProcessing(false));
     }
   };
 
   if (isUserLoading || user) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        Loading...
+      <div className="flex h-screen w-full items-center justify-center">
+         <Loader2 className="h-8 w-8 animate-spin" />
       </div>
     );
   }
@@ -50,45 +132,102 @@ export default function LoginPage() {
   return (
     <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
       <div className="flex items-center justify-center py-12">
-        <div className="mx-auto grid w-[350px] gap-6">
-          <div className="grid gap-2 text-center">
-            <Logo className="w-16 h-16 mx-auto" />
-            <h1 className="text-3xl font-bold font-headline mt-2">RentSafeUK</h1>
-            <p className="text-balance text-muted-foreground">
-              Sign in to manage your properties
-            </p>
-          </div>
-          <div className="grid gap-4">
-            <Button onClick={handleAnonymousSignIn} className="w-full">
-              Sign In Anonymously
-            </Button>
-            <p className="text-center text-sm text-muted-foreground">
-              Note: To use Google or Email/Password, you must enable them in your Firebase project's console.
-            </p>
-          </div>
-           <div className="mt-4 text-center text-sm">
-            <Link href="/pricing" className="underline">
-              Pricing
-            </Link>
-          </div>
-          <div className="mt-2 text-center text-xs text-muted-foreground">
-            By continuing, you agree to our{' '}
-            <Link
-              href="/terms-of-service"
-              className="underline hover:text-primary"
-            >
-              Terms of Service
-            </Link>
-            {' and '}
-            <Link
-              href="/privacy-policy"
-              className="underline hover:text-primary"
-            >
-              Privacy Policy
-            </Link>
-            .
-          </div>
-        </div>
+        <Card className="mx-auto w-full max-w-sm">
+          <CardHeader className="text-center">
+             <Logo className="w-16 h-16 mx-auto" />
+            <CardTitle className="text-2xl font-bold font-headline mt-2">
+              {mode === 'login' ? 'Welcome Back' : 'Create an Account'}
+            </CardTitle>
+            <CardDescription>
+              Enter your credentials to {mode}
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(handleAuthAction)} className="space-y-4">
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Email</FormLabel>
+                      <FormControl>
+                        <Input placeholder="name@example.com" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="password"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Password</FormLabel>
+                      <FormControl>
+                        <Input type="password" placeholder="••••••••" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button type="submit" className="w-full" disabled={isProcessing}>
+                  {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  {mode === 'login' ? 'Login' : 'Sign Up'}
+                </Button>
+              </form>
+            </Form>
+            <div className="relative my-4">
+              <div className="absolute inset-0 flex items-center">
+                <span className="w-full border-t" />
+              </div>
+              <div className="relative flex justify-center text-xs uppercase">
+                <span className="bg-card px-2 text-muted-foreground">
+                  Or continue with
+                </span>
+              </div>
+            </div>
+            <div className="grid grid-cols-2 gap-2">
+                <Button variant="outline" onClick={handleGoogleSignIn} disabled={isProcessing}>
+                  <GoogleIcon className="mr-2 h-4 w-4" />
+                  Google
+                </Button>
+                <Button variant="outline" onClick={handleAnonymousSignIn} disabled={isProcessing}>
+                  Anonymous
+                </Button>
+            </div>
+          </CardContent>
+          <CardFooter className="flex flex-col gap-4">
+            <div className="text-center text-sm">
+              {mode === 'login' ? (
+                <>
+                  Don&apos;t have an account?{' '}
+                  <Button variant="link" className="p-0 h-auto" onClick={() => setMode('signup')}>
+                    Sign up
+                  </Button>
+                </>
+              ) : (
+                <>
+                  Already have an account?{' '}
+                  <Button variant="link" className="p-0 h-auto" onClick={() => setMode('login')}>
+                    Login
+                  </Button>
+                </>
+              )}
+            </div>
+             <div className="text-center text-xs text-muted-foreground">
+                By continuing, you agree to our{' '}
+                <Link href="/terms-of-service" className="underline hover:text-primary">
+                Terms
+                </Link>
+                {' & '}
+                <Link href="/privacy-policy" className="underline hover:text-primary">
+                Privacy
+                </Link>
+                .
+            </div>
+          </CardFooter>
+        </Card>
       </div>
       <div className="hidden bg-muted lg:block">
         {loginImage && (
