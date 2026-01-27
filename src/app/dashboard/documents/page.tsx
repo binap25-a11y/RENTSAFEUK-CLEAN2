@@ -27,7 +27,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Search, Upload, FileWarning, Clock, ShieldCheck, Loader2 } from 'lucide-react';
+import { Search, Upload, FileWarning, Clock, ShieldCheck, Loader2, Eye } from 'lucide-react';
 import { format, isBefore, addDays } from 'date-fns';
 import {
   useUser,
@@ -53,6 +53,7 @@ interface Document {
     documentType: string;
     issueDate: { seconds: number; nanoseconds: number; } | Date;
     expiryDate: { seconds: number; nanoseconds: number; } | Date;
+    fileUri?: string;
     propertyAddress?: string; // For display
 }
 
@@ -228,20 +229,21 @@ export default function DocumentsPage() {
                   <TableHead>Property</TableHead>
                   <TableHead>Type</TableHead>
                   <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Expiry Date</TableHead>
+                  <TableHead>Expiry Date</TableHead>
+                  <TableHead className="text-right">Actions</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
                 {isLoadingDocuments && (
                     <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center">
+                        <TableCell colSpan={6} className="h-24 text-center">
                             <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
                         </TableCell>
                     </TableRow>
                 )}
                 {!isLoadingDocuments && documents?.length === 0 && (
                      <TableRow>
-                        <TableCell colSpan={5} className="h-24 text-center">
+                        <TableCell colSpan={6} className="h-24 text-center">
                             {selectedPropertyId ? 'No documents found for this property.' : 'Select a property to see documents.'}
                         </TableCell>
                     </TableRow>
@@ -254,7 +256,17 @@ export default function DocumentsPage() {
                     <TableCell>
                       <Badge variant={getStatusVariant(doc.status)}>{doc.status}</Badge>
                     </TableCell>
-                    <TableCell className="text-right">{format(doc.expiryDate, 'dd/MM/yyyy')}</TableCell>
+                    <TableCell>{format(doc.expiryDate, 'dd/MM/yyyy')}</TableCell>
+                    <TableCell className="text-right">
+                      {doc.fileUri && (
+                        <Button asChild variant="outline" size="icon">
+                          <a href={doc.fileUri} target="_blank" rel="noopener noreferrer">
+                            <Eye className="h-4 w-4" />
+                            <span className="sr-only">View Document</span>
+                          </a>
+                        </Button>
+                      )}
+                    </TableCell>
                   </TableRow>
                 ))}
               </TableBody>

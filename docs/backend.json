@@ -240,6 +240,10 @@
           "description": "URI of the document file.",
           "format": "uri"
         },
+        "fileName": {
+          "type": "string",
+          "description": "The original name of the uploaded file."
+        },
         "notes": {
           "type": "string",
           "description": "Additional notes about the document."
