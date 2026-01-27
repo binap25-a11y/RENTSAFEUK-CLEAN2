@@ -8,23 +8,8 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Bed, Bath, User, Mail, Phone, Calendar as CalendarIcon, ShieldCheck, Edit, Trash2, UserPlus, Loader2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
-
-// Define types for sub-objects to keep the main interface clean
-interface Tenant {
-    name: string;
-    email: string;
-    phone: string;
-}
-
-interface Tenancy {
-    startDate: string | Date;
-    endDate: string | Date;
-    monthlyRent: number;
-    depositAmount: number;
-    depositScheme: string;
-}
+import { useDoc, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
+import { doc, collection, query, where } from 'firebase/firestore';
 
 // Main interface for a Property document from Firestore
 interface Property {
@@ -34,10 +19,26 @@ interface Property {
     bedrooms: number;
     bathrooms: number;
     imageUrl: string;
-    tenant?: Tenant;
-    tenancy?: Tenancy;
-    // location is not used on this page, but keeping it for future use
+    // The following were from mock data and are not on the main property doc
+    tenancy?: {
+        monthlyRent: number;
+        depositAmount: number;
+        depositScheme: string;
+    }
 }
+
+// Type for tenant from firestore
+interface Tenant {
+    id: string;
+    name: string;
+    email: string;
+    telephone: string;
+    propertyId: string;
+    tenancyStartDate: { seconds: number, nanoseconds: number } | Date;
+    tenancyEndDate?: { seconds: number, nanoseconds: number } | Date;
+    notes?: string;
+}
+
 
 export default function PropertyDetailPage() {
   const params = useParams();
@@ -49,7 +50,20 @@ export default function PropertyDetailPage() {
     return doc(firestore, 'properties', id);
   }, [firestore, id]);
 
-  const { data: property, isLoading, error } = useDoc<Property>(propertyRef);
+  const { data: property, isLoading: isLoadingProperty, error } = useDoc<Property>(propertyRef);
+
+  const tenantsQuery = useMemoFirebase(() => {
+    if (!firestore || !id) return null;
+    return query(
+        collection(firestore, 'tenants'),
+        where('propertyId', '==', id)
+    );
+  }, [firestore, id]);
+
+  const { data: tenants, isLoading: isLoadingTenants } = useCollection<Tenant>(tenantsQuery);
+  const tenant = tenants?.[0];
+
+  const isLoading = isLoadingProperty || isLoadingTenants;
 
   if (isLoading) {
     return (
@@ -66,6 +80,12 @@ export default function PropertyDetailPage() {
   if (!property) {
     return notFound();
   }
+
+  // A bit of a hack since tenancy financial details are not fully implemented in forms
+  const tenancy = property.tenancy;
+
+  const startDate = tenant?.tenancyStartDate ? (tenant.tenancyStartDate instanceof Date ? tenant.tenancyStartDate : new Date(tenant.tenancyStartDate.seconds * 1000)) : null;
+  const endDate = tenant?.tenancyEndDate ? (tenant.tenancyEndDate instanceof Date ? tenant.tenancyEndDate : new Date(tenant.tenancyEndDate.seconds * 1000)) : null;
 
   return (
     <div className="flex flex-col gap-6">
@@ -107,30 +127,29 @@ export default function PropertyDetailPage() {
         <CardHeader>
             <div className="flex justify-between items-center">
                 <CardTitle>Tenant &amp; Financials</CardTitle>
-                 {property.tenant && (
+                 {tenant && (
                     <div className="flex items-center gap-2">
-                        <Button size="sm" variant="outline"><Edit className="mr-2 h-4 w-4" /> Edit Tenant</Button>
-                        <Button size="sm" variant="destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete Tenant</Button>
+                        <Button asChild size="sm" variant="outline"><Link href={`/dashboard/tenants/${tenant.id}/edit`}><Edit className="mr-2 h-4 w-4" /> Edit Tenant</Link></Button>
                     </div>
                 )}
             </div>
         </CardHeader>
         <CardContent>
-            {property.tenant && property.tenancy ? (
+            {tenant ? (
             <div className="space-y-4">
                 <div className="flex items-center gap-4">
                     <User className="h-5 w-5 text-muted-foreground" />
-                    <span>{property.tenant.name}</span>
+                    <span>{tenant.name}</span>
                 </div>
                 <div className="flex items-center gap-4">
                     <Mail className="h-5 w-5 text-muted-foreground" />
-                    <a href={`mailto:${property.tenant.email}`} className="text-primary hover:underline">
-                        {property.tenant.email}
+                    <a href={`mailto:${tenant.email}`} className="text-primary hover:underline">
+                        {tenant.email}
                     </a>
                 </div>
                 <div className="flex items-center gap-4">
                     <Phone className="h-5 w-5 text-muted-foreground" />
-                    <span>{property.tenant.phone}</span>
+                    <span>{tenant.telephone}</span>
                 </div>
 
                 <div className="border-t pt-4 mt-4 space-y-4">
@@ -139,40 +158,50 @@ export default function PropertyDetailPage() {
                             <CalendarIcon className="h-5 w-5 text-muted-foreground mt-1" />
                             <div>
                                 <p className="text-sm text-muted-foreground">Tenancy Start</p>
-                                <p>{format(new Date(property.tenancy.startDate), 'PPP')}</p>
+                                <p>{startDate ? format(startDate, 'PPP') : 'N/A'}</p>
                             </div>
                         </div>
-                        <div className="flex items-start gap-4">
-                            <CalendarIcon className="h-5 w-5 text-muted-foreground mt-1" />
-                            <div>
-                                <p className="text-sm text-muted-foreground">Tenancy End</p>
-                                <p>{format(new Date(property.tenancy.endDate), 'PPP')}</p>
+                        {endDate && (
+                            <div className="flex items-start gap-4">
+                                <CalendarIcon className="h-5 w-5 text-muted-foreground mt-1" />
+                                <div>
+                                    <p className="text-sm text-muted-foreground">Tenancy End</p>
+                                    <p>{format(endDate, 'PPP')}</p>
+                                </div>
                             </div>
-                        </div>
+                        )}
                     </div>
-                     <div>
-                        <p className="text-sm text-muted-foreground">Monthly Rent</p>
-                        <p className='font-semibold'>£{property.tenancy.monthlyRent.toFixed(2)}</p>
-                    </div>
-                </div>
-                 <div className="border-t pt-4 mt-4 space-y-4">
-                    <div>
-                        <p className="text-sm text-muted-foreground">Deposit Amount</p>
-                        <p className='font-semibold'>£{property.tenancy.depositAmount.toFixed(2)}</p>
-                    </div>
-                     <div className="flex items-start gap-4">
-                        <ShieldCheck className="h-5 w-5 text-muted-foreground mt-1" />
+                     {tenancy?.monthlyRent && (
                          <div>
-                            <p className="text-sm text-muted-foreground">Deposit Scheme</p>
-                            <p className='font-semibold'>{property.tenancy.depositScheme}</p>
+                            <p className="text-sm text-muted-foreground">Monthly Rent</p>
+                            <p className='font-semibold'>£{tenancy.monthlyRent.toFixed(2)}</p>
                         </div>
-                    </div>
+                     )}
                 </div>
+                 {tenancy && (tenancy.depositAmount || tenancy.depositScheme) && (
+                     <div className="border-t pt-4 mt-4 space-y-4">
+                        {tenancy.depositAmount && (
+                            <div>
+                                <p className="text-sm text-muted-foreground">Deposit Amount</p>
+                                <p className='font-semibold'>£{tenancy.depositAmount.toFixed(2)}</p>
+                            </div>
+                        )}
+                        {tenancy.depositScheme && (
+                             <div className="flex items-start gap-4">
+                                <ShieldCheck className="h-5 w-5 text-muted-foreground mt-1" />
+                                 <div>
+                                    <p className="text-sm text-muted-foreground">Deposit Scheme</p>
+                                    <p className='font-semibold'>{tenancy.depositScheme}</p>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                 )}
             </div>
             ) : (
             <div className="text-center py-8">
                 <p className="text-muted-foreground mb-4">This property is currently vacant.</p>
-                <Button><UserPlus className="mr-2 h-4 w-4" /> Add Tenant</Button>
+                <Button asChild><Link href="/dashboard/tenants/add"><UserPlus className="mr-2 h-4 w-4" /> Add Tenant</Link></Button>
             </div>
             )}
         </CardContent>
@@ -181,5 +210,3 @@ export default function PropertyDetailPage() {
     </div>
   );
 }
-
-    
