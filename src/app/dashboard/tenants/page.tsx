@@ -17,16 +17,16 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { PlusCircle, Loader2, Edit, Trash2 } from 'lucide-react';
+import { PlusCircle, Loader2, Edit, Archive } from 'lucide-react';
 import {
   useUser,
   useFirestore,
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, doc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
-import { useState, useMemo } from 'react';
+import { useMemo } from 'react';
 
 // Types
 interface Tenant {
@@ -36,6 +36,7 @@ interface Tenant {
   telephone: string;
   propertyId: string;
   ownerId: string;
+  status?: string;
 }
 
 interface Property {
@@ -66,6 +67,8 @@ export default function TenantsPage() {
     );
   }, [firestore, user]);
   const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
+  
+  const activeTenants = useMemo(() => tenants?.filter(t => t.status !== 'Archived') ?? [], [tenants]);
 
   const propertyMap = useMemo(() => {
     if (!properties) return {};
@@ -76,22 +79,22 @@ export default function TenantsPage() {
   }, [properties]);
 
 
-  const handleDelete = async (tenantId: string, tenantName: string) => {
+  const handleArchive = async (tenantId: string, tenantName: string) => {
     if (!firestore) return;
-    const isConfirmed = confirm(`Are you sure you want to delete the tenant ${tenantName}? This action cannot be undone.`);
+    const isConfirmed = confirm(`Are you sure you want to archive ${tenantName}? Their records will be moved to the archives.`);
     if (isConfirmed) {
       try {
-        await deleteDoc(doc(firestore, 'tenants', tenantId));
+        await updateDoc(doc(firestore, 'tenants', tenantId), { status: 'Archived' });
         toast({
-          title: 'Tenant Deleted',
-          description: `${tenantName} has been removed from your records.`,
+          title: 'Tenant Archived',
+          description: `${tenantName} has been moved to the archives.`,
         });
       } catch (e) {
-        console.error('Error deleting tenant:', e);
+        console.error('Error archiving tenant:', e);
         toast({
           variant: 'destructive',
           title: 'Error',
-          description: 'Could not delete the tenant. Please try again.',
+          description: 'Could not archive the tenant. Please try again.',
         });
       }
     }
@@ -108,17 +111,24 @@ export default function TenantsPage() {
             Manage all your tenants in one place.
           </p>
         </div>
-        <Button asChild>
-          <Link href="/dashboard/tenants/add">
-            <PlusCircle className="mr-2 h-4 w-4" /> Add Tenant
-          </Link>
-        </Button>
+         <div className="flex items-center gap-2">
+            <Button asChild variant="outline">
+                <Link href="/dashboard/tenants/archived">
+                    <Archive className="mr-2 h-4 w-4" /> View Archived
+                </Link>
+            </Button>
+            <Button asChild>
+              <Link href="/dashboard/tenants/add">
+                <PlusCircle className="mr-2 h-4 w-4" /> Add Tenant
+              </Link>
+            </Button>
+        </div>
       </div>
       
       <Card>
         <CardHeader>
-          <CardTitle>All Tenants</CardTitle>
-          <CardDescription>A list of current and past tenants associated with your properties.</CardDescription>
+          <CardTitle>Active Tenants</CardTitle>
+          <CardDescription>A list of current tenants associated with your properties.</CardDescription>
         </CardHeader>
         <CardContent>
            <div className="rounded-md border">
@@ -147,16 +157,20 @@ export default function TenantsPage() {
                         </TableCell>
                     </TableRow>
                 )}
-                {!isLoading && !tenants?.length && (
+                {!isLoading && !activeTenants?.length && (
                     <TableRow>
                         <TableCell colSpan={5} className="h-24 text-center">
-                            No tenants found.
+                            No active tenants found.
                         </TableCell>
                     </TableRow>
                 )}
-                {!isLoading && tenants?.map((tenant) => (
+                {!isLoading && activeTenants?.map((tenant) => (
                   <TableRow key={tenant.id}>
-                    <TableCell className="font-medium">{tenant.name}</TableCell>
+                    <TableCell className="font-medium">
+                        <Link href={`/dashboard/tenants/${tenant.id}`} className="hover:underline">
+                            {tenant.name}
+                        </Link>
+                    </TableCell>
                     <TableCell>{propertyMap[tenant.propertyId] || 'No property assigned'}</TableCell>
                     <TableCell>{tenant.email}</TableCell>
                     <TableCell>{tenant.telephone}</TableCell>
@@ -166,8 +180,8 @@ export default function TenantsPage() {
                              <Edit className="h-4 w-4" />
                            </Link>
                         </Button>
-                        <Button variant="ghost" size="icon" onClick={() => handleDelete(tenant.id, tenant.name)}>
-                           <Trash2 className="h-4 w-4" />
+                        <Button variant="ghost" size="icon" onClick={() => handleArchive(tenant.id, tenant.name)}>
+                           <Archive className="h-4 w-4" />
                         </Button>
                     </TableCell>
                   </TableRow>

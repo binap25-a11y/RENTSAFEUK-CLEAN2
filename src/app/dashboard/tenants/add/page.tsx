@@ -101,6 +101,7 @@ export default function AddTenantPage() {
     const newTenant = {
       ...data,
       ownerId: user.uid,
+      status: 'Active',
     };
 
     try {

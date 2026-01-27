@@ -94,6 +94,10 @@
         "notes": {
           "type": "string",
           "description": "Additional notes about the tenant or tenancy."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the tenant (e.g., Active, Archived)."
         }
       },
       "required": [
