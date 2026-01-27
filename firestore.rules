@@ -12,62 +12,58 @@ service cloud.firestore {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
 
-    // --- Properties ---
+    // --- Top-level Collections ---
     match /properties/{propertyId} {
+      // Any signed-in user can query properties, but the query must be filtered by ownerId on the client.
+      allow list: if isSignedIn();
+      // Only the owner can get, create, update, or delete their property.
       allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn(); // Relies on client-side query constraint
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
 
-    // --- Tenants ---
     match /tenants/{tenantId} {
+      // Any signed-in user can query tenants, but the query must be filtered by ownerId on the client.
+      allow list: if isSignedIn();
+      // Only the owner can get, create, update, or delete their tenant records.
       allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn(); // Relies on client-side query constraint
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
 
-    // --- Subcollections (for Collection Group Queries and Direct Access) ---
+    // --- Collection Group Rules for Subcollections ---
+    // These rules apply to both collection group queries (like on the dashboard) and direct access.
 
-    // MaintenanceLogs
     match /{path=**}/maintenanceLogs/{logId} {
-      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn(); // Relies on client-side query constraint
+      // For `list` (queries), we rely on the client-side `where('ownerId', '==', user.uid)` clause.
+      allow list: if isSignedIn();
+      // For direct access, we check the ownerId on the document itself.
+      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
 
-    // Inspections
     match /{path=**}/inspections/{inspectionId} {
-      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn(); // Relies on client-side query constraint
+      allow list: if isSignedIn();
+      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
 
-    // Documents
     match /{path=**}/documents/{documentId} {
-      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn(); // Relies on client-side query constraint
+      allow list: if isSignedIn();
+      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
 
-    // Expenses
     match /{path=**}/expenses/{expenseId} {
-      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn(); // Relies on client-side query constraint
+      allow list: if isSignedIn();
+      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
 
-    // RentPayments
     match /{path=**}/rentPayments/{paymentId} {
-      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn(); // Relies on client-side query constraint
+      allow list: if isSignedIn();
+      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
   }
 }
