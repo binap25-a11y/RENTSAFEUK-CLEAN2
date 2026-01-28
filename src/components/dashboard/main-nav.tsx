@@ -9,6 +9,7 @@ import {
   SidebarMenuSub,
   SidebarMenuSubItem,
   SidebarMenuSubButton,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import {
   LayoutDashboard,
@@ -77,6 +78,7 @@ const menuItems = [
 
 export function MainNav() {
   const pathname = usePathname();
+  const { isMobile, setOpenMobile } = useSidebar();
   const [openItems, setOpenItems] = React.useState<string[]>([]);
 
   React.useEffect(() => {
@@ -90,6 +92,12 @@ export function MainNav() {
 
   const handleToggle = (href: string) => {
     setOpenItems(prev => prev.includes(href) ? prev.filter(item => item !== href) : [...prev, href]);
+  };
+  
+  const handleLinkClick = () => {
+    if (isMobile) {
+      setOpenMobile(false);
+    }
   };
 
 
@@ -117,7 +125,7 @@ export function MainNav() {
                         {subItems.map(sub => (
                             <SidebarMenuSubItem key={sub.href}>
                                 <SidebarMenuSubButton asChild isActive={pathname === sub.href}>
-                                    <Link href={sub.href}>{sub.label}</Link>
+                                    <Link href={sub.href} onClick={handleLinkClick}>{sub.label}</Link>
                                 </SidebarMenuSubButton>
                             </SidebarMenuSubItem>
                         ))}
@@ -134,7 +142,7 @@ export function MainNav() {
               }
               tooltip={label}
             >
-              <Link href={href}>
+              <Link href={href} onClick={handleLinkClick}>
                 <Icon />
                 <span>{label}</span>
               </Link>
@@ -144,7 +152,7 @@ export function MainNav() {
       ))}
        <SidebarMenuItem className="mt-auto">
           <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/settings')} tooltip="Settings">
-              <Link href="/dashboard/settings">
+              <Link href="/dashboard/settings" onClick={handleLinkClick}>
                 <Settings />
                 <span>Settings</span>
               </Link>
