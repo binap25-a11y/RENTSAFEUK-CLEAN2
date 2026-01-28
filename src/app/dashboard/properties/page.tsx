@@ -31,6 +31,7 @@ import { useMemo } from 'react';
 
 // Define the Property type based on your Firestore structure
 interface Property {
+  id: string;
   address: string;
   propertyType: string;
   status: string;
