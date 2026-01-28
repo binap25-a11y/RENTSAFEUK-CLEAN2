@@ -101,6 +101,13 @@ interface MaintenanceLog {
     propertyAddress?: string;
 }
 
+// Type for contractor documents from Firestore
+interface Contractor {
+    id: string;
+    name: string;
+    phone: string;
+}
+
 
 export default function MaintenancePage() {
   const { user } = useUser();
@@ -130,6 +137,17 @@ export default function MaintenancePage() {
   }, [firestore, user]);
 
   const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
+  
+  // Fetch contractors for the dropdown
+  const contractorsQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+      collection(firestore, 'contractors'),
+      where('ownerId', '==', user.uid)
+    );
+  }, [firestore, user]);
+  const { data: contractors } = useCollection<Contractor>(contractorsQuery);
+
 
   // Fetch maintenance logs for the selected property
   const maintenanceQuery = useMemoFirebase(() => {
@@ -446,6 +464,32 @@ export default function MaintenancePage() {
                   <CardTitle className="text-xl">Contractor Information</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
+                   <FormItem>
+                      <FormLabel>Select a saved contractor</FormLabel>
+                      <Select onValueChange={(contractorId) => {
+                          const contractor = contractors?.find(c => c.id === contractorId);
+                          if (contractor) {
+                              form.setValue('contractorName', contractor.name);
+                              form.setValue('contractorPhone', contractor.phone);
+                          }
+                      }}>
+                        <FormControl>
+                          <SelectTrigger>
+                            <SelectValue placeholder="Select from your directory" />
+                          </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                          {contractors?.map((c) => (
+                            <SelectItem key={c.id} value={c.id}>
+                              {c.name} ({c.trade})
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                      <FormDescription>
+                        Or enter new contractor details below.
+                      </FormDescription>
+                    </FormItem>
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     <FormField
                       control={form.control}

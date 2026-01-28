@@ -31,6 +31,15 @@ service cloud.firestore {
       allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
 
+    match /contractors/{contractorId} {
+      // Any signed-in user can query contractors, but the query must be filtered by ownerId on the client.
+      allow list: if isSignedIn();
+      // Only the owner can get, create, update, or delete their contractor records.
+      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+    }
+
     // --- Subcollection Rules for direct path access ---
     // This single rule applies to all subcollections under a property.
     // It secures read/write operations by checking the ownership of the parent property document.

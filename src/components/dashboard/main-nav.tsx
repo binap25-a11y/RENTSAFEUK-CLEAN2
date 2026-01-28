@@ -21,6 +21,7 @@ import {
   CreditCard,
   Bell,
   Users,
+  HardHat,
 } from 'lucide-react';
 import * as React from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -49,6 +50,7 @@ const menuItems = [
         { href: '/dashboard/tenants/archived', label: 'Archived Tenants' },
     ],
   },
+  { href: '/dashboard/contractors', label: 'Contractors', icon: HardHat },
   { href: '/dashboard/maintenance', label: 'Maintenance', icon: Wrench },
   { 
     href: '/dashboard/inspections', 
