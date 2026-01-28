@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
+  CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -84,32 +85,30 @@ export default function ArchivedContractorsPage() {
                 <CardDescription>You can restore these contractors to your active directory.</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="rounded-md border">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Name</TableHead>
-                                <TableHead>Trade</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {isLoading && (
+                {isLoading ? (
+                    <div className="flex justify-center items-center h-64">
+                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                ) : error ? (
+                    <div className="text-center py-10 text-destructive">Error: {error.message}</div>
+                ) : !archivedContractors?.length ? (
+                     <div className="text-center py-10 text-muted-foreground">
+                        No archived contractors.
+                    </div>
+                ) : (
+                <>
+                    {/* Desktop Table View */}
+                    <div className="hidden rounded-md border md:block">
+                        <Table>
+                            <TableHeader>
                                 <TableRow>
-                                    <TableCell colSpan={3} className="h-24 text-center">
-                                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
-                                    </TableCell>
+                                    <TableHead>Name</TableHead>
+                                    <TableHead>Trade</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
-                            )}
-                             {!isLoading && error && (
-                                <TableRow>
-                                    <TableCell colSpan={3} className="h-24 text-center text-destructive">
-                                        Error: {error.message}
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                            {!isLoading && archivedContractors && archivedContractors.length > 0 ? (
-                                archivedContractors.map((contractor) => (
+                            </TableHeader>
+                            <TableBody>
+                                {archivedContractors.map((contractor) => (
                                 <TableRow key={contractor.id}>
                                     <TableCell className="font-medium">{contractor.name}</TableCell>
                                     <TableCell>{contractor.trade}</TableCell>
@@ -119,19 +118,29 @@ export default function ArchivedContractorsPage() {
                                     </Button>
                                     </TableCell>
                                 </TableRow>
-                                ))
-                            ) : (
-                                !isLoading && (
-                                    <TableRow>
-                                        <TableCell colSpan={3} className="h-24 text-center">
-                                            No archived contractors.
-                                        </TableCell>
-                                    </TableRow>
-                                )
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+
+                    {/* Mobile Card View */}
+                    <div className="grid gap-4 md:hidden">
+                        {archivedContractors.map((contractor) => (
+                            <Card key={contractor.id}>
+                                <CardHeader>
+                                    <CardTitle className='text-base'>{contractor.name}</CardTitle>
+                                    <CardDescription>{contractor.trade}</CardDescription>
+                                </CardHeader>
+                                <CardFooter>
+                                    <Button size="sm" className='w-full' onClick={() => handleRestore(contractor.id, contractor.name)}>
+                                        <RefreshCw className="mr-2 h-4 w-4" /> Restore
+                                    </Button>
+                                </CardFooter>
+                            </Card>
+                        ))}
+                    </div>
+                </>
+                )}
             </CardContent>
         </Card>
     </div>
