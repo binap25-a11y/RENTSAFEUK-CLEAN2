@@ -43,39 +43,39 @@ interface Tenant {
 
 export default function PropertyDetailPage() {
   const params = useParams();
-  const propertyId = params.propertyId as string;
+  const id = params.id as string;
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
 
   const propertyRef = useMemoFirebase(() => {
-    if (!firestore || !propertyId) return null;
-    return doc(firestore, 'properties', propertyId);
-  }, [firestore, propertyId]);
+    if (!firestore || !id) return null;
+    return doc(firestore, 'properties', id);
+  }, [firestore, id]);
 
   const { data: property, isLoading: isLoadingProperty, error } = useDoc<Property>(propertyRef);
 
   const tenantsQuery = useMemoFirebase(() => {
-    if (!firestore || !propertyId) return null;
+    if (!firestore || !id) return null;
     return query(
         collection(firestore, 'tenants'),
-        where('propertyId', '==', propertyId),
+        where('propertyId', '==', id),
         where('status', '==', 'Active')
     );
-  }, [firestore, propertyId]);
+  }, [firestore, id]);
 
   const { data: tenants, isLoading: isLoadingTenants } = useCollection<Tenant>(tenantsQuery);
 
   const isLoading = isLoadingProperty || isLoadingTenants;
 
-  const handleDelete = async (propertyId: string, address: string) => {
+  const handleDelete = async (id: string, address: string) => {
     if (!firestore) return;
     const isConfirmed = confirm(
       `Are you sure you want to delete the property at ${address}?`
     );
     if (isConfirmed) {
       try {
-        const docRef = doc(firestore, 'properties', propertyId);
+        const docRef = doc(firestore, 'properties', id);
         await updateDoc(docRef, { status: 'Deleted' });
         toast({
           title: 'Property Deleted',
@@ -146,11 +146,11 @@ export default function PropertyDetailPage() {
                     <div className="flex items-center gap-2">
                         <Badge>{property.status}</Badge>
                          <Button asChild variant="outline" size="sm">
-                            <Link href={`/dashboard/properties/${propertyId}/edit`}>
+                            <Link href={`/dashboard/properties/${id}/edit`}>
                                 <Edit className="mr-2 h-4 w-4" /> Edit
                             </Link>
                         </Button>
-                        <Button variant="destructive" size="sm" onClick={() => handleDelete(propertyId, property.address)}>
+                        <Button variant="destructive" size="sm" onClick={() => handleDelete(id, property.address)}>
                             <Trash2 className="mr-2 h-4 w-4" /> Delete
                         </Button>
                     </div>
@@ -163,7 +163,7 @@ export default function PropertyDetailPage() {
                 <div className="flex justify-between items-center">
                     <CardTitle>Tenants</CardTitle>
                     <Button asChild size="sm">
-                        <Link href={`/dashboard/tenants/add?propertyId=${propertyId}`}>
+                        <Link href={`/dashboard/tenants/add?propertyId=${id}`}>
                             <UserPlus className="mr-2 h-4 w-4" /> Assign New Tenant
                         </Link>
                     </Button>
