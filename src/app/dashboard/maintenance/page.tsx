@@ -14,6 +14,7 @@ import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -106,6 +107,7 @@ interface Contractor {
     id: string;
     name: string;
     phone: string;
+    trade: string;
 }
 
 
