@@ -320,7 +320,7 @@ export default function TenantScreeningPage() {
                                 <AccordionContent className='pt-4'>
                                     <div className="flex flex-col gap-4">
                                         <FormField control={form.control} name="creditCheck.agencyUsed" render={({ field }) => (<FormItem><FormLabel>Agency/Service Used</FormLabel><FormControl><Input placeholder="e.g., OpenRent, Experian" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <div className="flex flex-wrap items-start gap-4">
+                                        <div className="space-y-4">
                                             <ChecklistItem form={form} name="creditCheck.reportReceived" label="Report Received" />
                                             <ChecklistItem form={form} name="creditCheck.passed" label="Passed" />
                                         </div>
@@ -364,11 +364,9 @@ export default function TenantScreeningPage() {
 
                             <AccordionItem value="address-history" className='border rounded-lg px-4'>
                                 <AccordionTrigger className='text-lg font-semibold'>Address History (3-5 years)</AccordionTrigger>
-                                <AccordionContent className='pt-4'>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <ChecklistItem form={form} name="addressHistory.verified" label="Address history verified" />
-                                        <NotesField form={form} name="addressHistory.notes" placeholder="Notes on address history..." />
-                                    </div>
+                                <AccordionContent className='pt-4 space-y-4'>
+                                    <ChecklistItem form={form} name="addressHistory.verified" label="Address history verified" />
+                                    <NotesField form={form} name="addressHistory.notes" placeholder="Notes on address history..." />
                                 </AccordionContent>
                             </AccordionItem>
 
