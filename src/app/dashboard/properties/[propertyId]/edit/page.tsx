@@ -51,7 +51,7 @@ interface Property {
 export default function EditPropertyPage() {
   const router = useRouter();
   const params = useParams();
-  const id = params.id as string;
+  const propertyId = params.propertyId as string;
 
   const { user } = useUser();
   const firestore = useFirestore();
@@ -61,9 +61,9 @@ export default function EditPropertyPage() {
   });
 
   const propertyRef = useMemoFirebase(() => {
-      if (!firestore || !id) return null;
-      return doc(firestore, 'properties', id);
-  }, [firestore, id]);
+      if (!firestore || !propertyId) return null;
+      return doc(firestore, 'properties', propertyId);
+  }, [firestore, propertyId]);
 
   const { data: property, isLoading: isLoadingProperty } = useDoc<Property>(propertyRef);
 
@@ -83,10 +83,10 @@ export default function EditPropertyPage() {
       return;
     }
     
-    if (!id) return;
+    if (!propertyId) return;
 
     try {
-      const propertyDocRef = doc(firestore, 'properties', id);
+      const propertyDocRef = doc(firestore, 'properties', propertyId);
       await updateDoc(propertyDocRef, {
         ...data,
       });

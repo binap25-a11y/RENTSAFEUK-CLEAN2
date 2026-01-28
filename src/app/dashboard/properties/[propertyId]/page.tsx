@@ -43,26 +43,26 @@ interface Tenant {
 
 export default function PropertyDetailPage() {
   const params = useParams();
-  const id = params.id as string;
+  const propertyId = params.propertyId as string;
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
 
   const propertyRef = useMemoFirebase(() => {
-    if (!firestore || !id) return null;
-    return doc(firestore, 'properties', id);
-  }, [firestore, id]);
+    if (!firestore || !propertyId) return null;
+    return doc(firestore, 'properties', propertyId);
+  }, [firestore, propertyId]);
 
   const { data: property, isLoading: isLoadingProperty, error } = useDoc<Property>(propertyRef);
 
   const tenantsQuery = useMemoFirebase(() => {
-    if (!firestore || !id) return null;
+    if (!firestore || !propertyId) return null;
     return query(
         collection(firestore, 'tenants'),
-        where('propertyId', '==', id),
+        where('propertyId', '==', propertyId),
         where('status', '==', 'Active')
     );
-  }, [firestore, id]);
+  }, [firestore, propertyId]);
 
   const { data: tenants, isLoading: isLoadingTenants } = useCollection<Tenant>(tenantsQuery);
 
@@ -146,11 +146,11 @@ export default function PropertyDetailPage() {
                     <div className="flex items-center gap-2">
                         <Badge>{property.status}</Badge>
                          <Button asChild variant="outline" size="sm">
-                            <Link href={`/dashboard/properties/${id}/edit`}>
+                            <Link href={`/dashboard/properties/${propertyId}/edit`}>
                                 <Edit className="mr-2 h-4 w-4" /> Edit
                             </Link>
                         </Button>
-                        <Button variant="destructive" size="sm" onClick={() => handleDelete(id, property.address)}>
+                        <Button variant="destructive" size="sm" onClick={() => handleDelete(propertyId, property.address)}>
                             <Trash2 className="mr-2 h-4 w-4" /> Delete
                         </Button>
                     </div>
@@ -163,7 +163,7 @@ export default function PropertyDetailPage() {
                 <div className="flex justify-between items-center">
                     <CardTitle>Tenants</CardTitle>
                     <Button asChild size="sm">
-                        <Link href={`/dashboard/tenants/add?propertyId=${id}`}>
+                        <Link href={`/dashboard/tenants/add?propertyId=${propertyId}`}>
                             <UserPlus className="mr-2 h-4 w-4" /> Assign New Tenant
                         </Link>
                     </Button>
