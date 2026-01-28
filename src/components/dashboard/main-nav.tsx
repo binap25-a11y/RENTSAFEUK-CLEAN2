@@ -45,13 +45,22 @@ const menuItems = [
     label: 'Tenants', 
     icon: Users,
     subItems: [
+        { href: '/dashboard/tenants', label: 'All Tenants' },
         { href: '/dashboard/tenants/add', label: 'Add Tenant' },
         { href: '/dashboard/tenants/screening', label: 'Tenant Screening' },
-        { href: '/dashboard/tenants', label: 'All Tenants' },
         { href: '/dashboard/tenants/archived', label: 'Archived Tenants' },
     ],
   },
-  { href: '/dashboard/contractors', label: 'Contractors', icon: HardHat },
+  { 
+    href: '/dashboard/contractors', 
+    label: 'Contractors', 
+    icon: HardHat,
+    subItems: [
+        { href: '/dashboard/contractors', label: 'All Contractors' },
+        { href: '/dashboard/contractors/add', label: 'Add Contractor' },
+        { href: '/dashboard/contractors/archived', label: 'Archived Contractors' },
+    ],
+  },
   { href: '/dashboard/maintenance', label: 'Maintenance', icon: Wrench },
   { 
     href: '/dashboard/inspections', 

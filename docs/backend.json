@@ -564,6 +564,10 @@
         "notes": {
           "type": "string",
           "description": "Additional notes about the contractor."
+        },
+        "status": {
+          "type": "string",
+          "description": "The status of the contractor (e.g., Active, Archived)."
         }
       },
       "required": [

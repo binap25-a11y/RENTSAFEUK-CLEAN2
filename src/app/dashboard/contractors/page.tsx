@@ -1,36 +1,14 @@
 'use client';
 
-import { zodResolver } from '@hookform/resolvers/zod';
-import { useForm } from 'react-hook-form';
-import { z } from 'zod';
+import Link from 'next/link';
 import {
   Card,
   CardContent,
-  CardDescription,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import {
-  Form,
-  FormControl,
-  FormField,
-  FormItem,
-  FormLabel,
-  FormMessage,
-} from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
-import { toast } from '@/hooks/use-toast';
-import { useState, useMemo } from 'react';
-import {
-  useUser,
-  useFirestore,
-  useCollection,
-  useMemoFirebase,
-  addDocumentNonBlocking,
-} from '@/firebase';
-import { collection, query, where, doc } from 'firebase/firestore';
 import {
   Table,
   TableBody,
@@ -39,49 +17,70 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { Loader2, PlusCircle, User, Edit, Trash2 } from 'lucide-react';
-import Link from 'next/link';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  PlusCircle,
+  Loader2,
+  Edit,
+  Archive,
+  Search,
+  MoreVertical,
+  Mail,
+  Phone,
+  HardHat,
+} from 'lucide-react';
+import {
+  useUser,
+  useFirestore,
+  useCollection,
+  useMemoFirebase,
+} from '@/firebase';
+import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
+import { toast } from '@/hooks/use-toast';
+import { useMemo, useState } from 'react';
+import { Input } from '@/components/ui/input';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
-
-// Schema for the form
-const contractorSchema = z.object({
-  name: z.string().min(2, 'Name is too short'),
-  trade: z.string().min(2, 'Trade is too short'),
-  phone: z.string().min(10, 'Phone number seems too short'),
-  email: z.string().email('Invalid email address').optional().or(z.literal('')),
-  notes: z.string().optional(),
-});
-
-type ContractorFormValues = z.infer<typeof contractorSchema>;
-
-// Type for contractor documents from Firestore
+// Types
 interface Contractor {
-    id: string;
-    name: string;
-    trade: string;
-    phone: string;
-    email?: string;
+  id: string;
+  name: string;
+  trade: string;
+  phone: string;
+  email?: string;
+  ownerId: string;
+  status?: string;
 }
-
 
 export default function ContractorsPage() {
   const { user } = useUser();
   const firestore = useFirestore();
   const [searchTerm, setSearchTerm] = useState('');
-
-  const form = useForm<ContractorFormValues>({
-    resolver: zodResolver(contractorSchema),
-  });
+  const [contractorToArchive, setContractorToArchive] = useState<Contractor | null>(null);
 
   // Fetch contractors
   const contractorsQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
       collection(firestore, 'contractors'),
-      where('ownerId', '==', user.uid)
+      where('ownerId', '==', user.uid),
+      where('status', '!=', 'Archived')
     );
   }, [firestore, user]);
-
   const { data: contractors, isLoading, error } = useCollection<Contractor>(contractorsQuery);
 
   const filteredContractors = useMemo(() => {
@@ -92,195 +91,184 @@ export default function ContractorsPage() {
         c.trade.toLowerCase().includes(searchTerm.toLowerCase())
     );
   }, [contractors, searchTerm]);
-
-
-  async function onSubmit(data: ContractorFormValues) {
-    if (!user || !firestore) {
+  
+  const handleArchiveConfirm = async () => {
+    if (!firestore || !contractorToArchive) return;
+    try {
+      await updateDoc(doc(firestore, 'contractors', contractorToArchive.id), { status: 'Archived' });
+      toast({
+        title: 'Contractor Archived',
+        description: `${contractorToArchive.name} has been moved to the archives.`,
+      });
+    } catch (e) {
+      console.error('Error archiving contractor:', e);
       toast({
         variant: 'destructive',
-        title: 'Authentication Error',
-        description: 'You must be logged in.',
+        title: 'Error',
+        description: 'Could not archive the contractor. Please try again.',
       });
-      return;
+    } finally {
+      setContractorToArchive(null);
     }
+  };
 
-    try {
-        const newContractor = {
-            ...data,
-            ownerId: user.uid,
-        };
-        const contractorsCollection = collection(firestore, 'contractors');
-        await addDocumentNonBlocking(contractorsCollection, newContractor);
-        
-        toast({
-          title: 'Contractor Added',
-          description: `${data.name} has been added to your directory.`,
-        });
-        form.reset({ name: '', trade: '', phone: '', email: '', notes: '' });
-    } catch (error) {
-        console.error('Failed to add contractor:', error);
-        toast({
-            variant: 'destructive',
-            title: 'Save Failed',
-            description: 'There was an error saving the contractor. Please try again.',
-        });
-    }
-  }
 
   return (
-    <div className="space-y-6">
-       <div>
-        <h1 className="text-3xl font-bold">Contractors</h1>
-        <p className="text-muted-foreground">
-          Manage your directory of trusted tradespeople.
-        </p>
-      </div>
-
-      <Card>
-        <CardHeader>
-            <CardTitle>Add New Contractor</CardTitle>
-            <CardDescription>Add a new tradesperson to your directory for easy access later.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Name / Company Name</FormLabel>
-                        <FormControl>
-                        <Input placeholder="e.g., John Smith Plumbing" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                 <FormField
-                    control={form.control}
-                    name="trade"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Trade</FormLabel>
-                        <FormControl>
-                        <Input placeholder="e.g., Electrician, Plumber" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-             </div>
-             <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Phone Number</FormLabel>
-                        <FormControl>
-                        <Input placeholder="07123456789" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                 <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Email (Optional)</FormLabel>
-                        <FormControl>
-                        <Input type="email" placeholder="contact@example.com" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-             </div>
-             <FormField
-                control={form.control}
-                name="notes"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel>Notes (Optional)</FormLabel>
-                    <FormControl>
-                        <Textarea placeholder="e.g., 'Specializes in boiler repairs', 'Available on weekends'" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                    </FormItem>
-                )}
-            />
-              <div className="flex justify-end">
-                <Button type="submit">
+    <>
+      <div className="flex flex-col gap-6">
+        <div className="flex justify-between items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Contractors</h1>
+            <p className="text-muted-foreground">
+              Manage your directory of trusted tradespeople.
+            </p>
+          </div>
+          <div className="flex items-center gap-2">
+              <Button asChild variant="outline">
+                  <Link href="/dashboard/contractors/archived">
+                      <Archive className="mr-2 h-4 w-4" /> View Archived
+                  </Link>
+              </Button>
+              <Button asChild>
+                <Link href="/dashboard/contractors/add">
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Contractor
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-      
-       <Card>
-        <CardHeader>
-          <CardTitle>Contractor Directory</CardTitle>
-          <CardDescription>Your list of saved contractors.</CardDescription>
-        </CardHeader>
-        <CardContent>
-            <div className="mb-4 max-w-sm">
-                 <Input 
-                    placeholder="Search by name or trade..." 
-                    value={searchTerm} 
-                    onChange={e => setSearchTerm(e.target.value)}
-                />
+                </Link>
+              </Button>
+          </div>
+        </div>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Contractor Directory</CardTitle>
+            <CardDescription>Your list of saved contractors.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="relative w-full max-w-sm mb-4">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by name or trade..."
+                className="pl-8"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
             </div>
-             <div className="rounded-md border">
-                <Table>
+            
+            {isLoading ? (
+              <div className="flex justify-center items-center h-64">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : error ? (
+              <div className="text-center py-10 text-destructive">Error: {error.message}</div>
+            ) : !filteredContractors?.length ? (
+              <div className="text-center py-10 text-muted-foreground">
+                {searchTerm ? `No contractors found for "${searchTerm}".` : 'No active contractors found.'}
+              </div>
+            ) : (
+              <>
+                {/* Desktop Table View */}
+                <div className="hidden rounded-md border md:block">
+                  <Table>
                     <TableHeader>
-                        <TableRow>
-                            <TableHead>Name</TableHead>
-                            <TableHead>Trade</TableHead>
-                            <TableHead>Phone</TableHead>
-                            <TableHead>Email</TableHead>
-                        </TableRow>
+                      <TableRow>
+                        <TableHead>Name</TableHead>
+                        <TableHead>Trade</TableHead>
+                        <TableHead>Phone</TableHead>
+                        <TableHead>Email</TableHead>
+                        <TableHead className="text-right">Actions</TableHead>
+                      </TableRow>
                     </TableHeader>
                     <TableBody>
-                        {isLoading && (
-                            <TableRow>
-                                <TableCell colSpan={4} className="h-24 text-center">
-                                    <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
-                                </TableCell>
-                            </TableRow>
-                        )}
-                        {!isLoading && error && (
-                            <TableRow>
-                                <TableCell colSpan={4} className="h-24 text-center text-destructive">
-                                    Error loading contractors: {error.message}
-                                </TableCell>
-                            </TableRow>
-                        )}
-                        {!isLoading && filteredContractors?.length === 0 && (
-                            <TableRow>
-                                <TableCell colSpan={4} className="h-24 text-center">
-                                    {searchTerm ? `No contractors found for "${searchTerm}".` : 'No contractors added yet.'}
-                                </TableCell>
-                            </TableRow>
-                        )}
-                        {filteredContractors?.map(c => (
-                            <TableRow key={c.id}>
-                                <TableCell className="font-medium">{c.name}</TableCell>
-                                <TableCell>{c.trade}</TableCell>
-                                <TableCell>{c.phone}</TableCell>
-                                <TableCell>{c.email}</TableCell>
-                            </TableRow>
-                        ))}
+                      {filteredContractors.map((c) => (
+                        <TableRow key={c.id}>
+                          <TableCell className="font-medium">{c.name}</TableCell>
+                          <TableCell>{c.trade}</TableCell>
+                          <TableCell>{c.phone}</TableCell>
+                          <TableCell>{c.email}</TableCell>
+                          <TableCell className="text-right">
+                            <Button asChild variant="ghost" size="icon">
+                              <Link href={`/dashboard/contractors/${c.id}/edit`}>
+                                <Edit className="h-4 w-4" />
+                              </Link>
+                            </Button>
+                            <Button variant="ghost" size="icon" onClick={() => setContractorToArchive(c)}>
+                              <Archive className="h-4 w-4" />
+                            </Button>
+                          </TableCell>
+                        </TableRow>
+                      ))}
                     </TableBody>
-                </Table>
-             </div>
-        </CardContent>
-       </Card>
-    </div>
+                  </Table>
+                </div>
+
+                {/* Mobile Card View */}
+                <div className="grid gap-4 md:hidden">
+                  {filteredContractors.map((c) => (
+                    <Card key={c.id}>
+                      <CardHeader>
+                        <div className="flex justify-between items-start">
+                          <div>
+                            <CardTitle>{c.name}</CardTitle>
+                            <CardDescription>{c.trade}</CardDescription>
+                          </div>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon" className="-mr-2 -mt-2">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem asChild>
+                                <Link href={`/dashboard/contractors/${c.id}/edit`}>
+                                  <Edit className="mr-2 h-4 w-4" /> Edit
+                                </Link>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setContractorToArchive(c)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                <Archive className="mr-2 h-4 w-4" /> Archive
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
+                      </CardHeader>
+                      <CardContent className="space-y-2 text-sm">
+                        <div className="flex items-center gap-2">
+                          <Phone className="h-4 w-4 text-muted-foreground" />
+                          <span>{c.phone}</span>
+                        </div>
+                        {c.email && (
+                          <div className="flex items-center gap-2">
+                            <Mail className="h-4 w-4 text-muted-foreground" />
+                            <a href={`mailto:${c.email}`} className='truncate hover:underline'>{c.email}</a>
+                          </div>
+                        )}
+                      </CardContent>
+                    </Card>
+                  ))}
+                </div>
+              </>
+            )}
+          </CardContent>
+        </Card>
+      </div>
+
+      <AlertDialog open={!!contractorToArchive} onOpenChange={(open) => !open && setContractorToArchive(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will archive {contractorToArchive?.name}. You can restore them from the archived contractors page.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleArchiveConfirm}
+            >
+              Archive
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
