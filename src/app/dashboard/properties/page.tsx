@@ -190,7 +190,7 @@ export default function PropertiesPage() {
             {filteredProperties.map((property) => (
               <Card
                 key={property.id}
-                className="group overflow-hidden flex flex-col"
+                className="group overflow-hidden"
               >
                 <Link href={`/dashboard/properties/${property.id}`} className="block">
                   <div className="overflow-hidden">
@@ -239,14 +239,6 @@ export default function PropertiesPage() {
                     </div>
                   </div>
                 </CardHeader>
-                <CardContent className="flex-grow p-0"></CardContent>
-                <CardFooter>
-                    <Button asChild variant="outline" className="w-full">
-                        <Link href={`/dashboard/properties/${property.id}`}>
-                            View Details
-                        </Link>
-                    </Button>
-                </CardFooter>
               </Card>
             ))}
           </div>
