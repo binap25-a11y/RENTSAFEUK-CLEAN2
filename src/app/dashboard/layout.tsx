@@ -13,7 +13,7 @@ import {
 import { MainNav } from '@/components/dashboard/main-nav';
 import { UserNav } from '@/components/dashboard/user-nav';
 import { Logo } from '@/components/icons';
-import { Search } from 'lucide-react';
+import { Search, Loader2 } from 'lucide-react';
 import { Input } from '@/components/ui/input';
 import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
@@ -64,8 +64,8 @@ export default function DashboardLayout({
 
   if (isUserLoading || !user) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <div>Loading...</div>
+      <div className="flex h-screen items-center justify-center bg-background">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
       </div>
     );
   }
