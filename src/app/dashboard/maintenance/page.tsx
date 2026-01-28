@@ -9,6 +9,7 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
+  CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -139,6 +140,14 @@ export default function MaintenancePage() {
   }, [firestore, user]);
 
   const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
+  
+  const propertyMap = useMemo(() => {
+    if (!properties) return {};
+    return properties.reduce((acc, prop) => {
+        acc[prop.id] = prop.address;
+        return acc;
+    }, {} as Record<string, string>);
+  }, [properties]);
   
   // Fetch contractors for the dropdown
   const contractorsQuery = useMemoFirebase(() => {
@@ -687,7 +696,9 @@ export default function MaintenancePage() {
                     />
                 </div>
             </div>
-             <div className="rounded-md border">
+             
+             {/* Desktop Table View */}
+             <div className="hidden rounded-md border md:block">
                 <Table>
                     <TableHeader>
                         <TableRow>
@@ -744,6 +755,59 @@ export default function MaintenancePage() {
                     </TableBody>
                 </Table>
              </div>
+
+            {/* Mobile Card View */}
+            <div className="space-y-4 md:hidden">
+              {isLoadingLogs ? (
+                  <div className="flex justify-center items-center h-24">
+                      <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
+              ) : filteredLogs?.length === 0 ? (
+                  <div className="text-center py-10 text-muted-foreground">
+                      {selectedPropertyFilter ? 'No maintenance logs for this property.' : 'Select a property to view logs.'}
+                  </div>
+              ) : (
+                filteredLogs.map(log => (
+                    <Card key={log.id}>
+                        <CardHeader>
+                            <div className="flex justify-between items-start">
+                                <CardTitle className="text-base pr-2">
+                                    <Link href={`/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`} className="hover:underline">
+                                        {log.title}
+                                    </Link>
+                                </CardTitle>
+                                <Badge variant={getPriorityVariant(log.priority)} className="flex-shrink-0">{log.priority}</Badge>
+                            </div>
+                            {propertyMap[log.propertyId] && (
+                                <CardDescription>{propertyMap[log.propertyId]}</CardDescription>
+                            )}
+                        </CardHeader>
+                        <CardContent>
+                             <div className="flex items-center justify-between text-sm">
+                              <span className="text-muted-foreground">Status</span>
+                               <Select
+                                    value={log.status}
+                                    onValueChange={(newStatus) => handleStatusChange(log.id, log.propertyId, newStatus)}
+                                >
+                                    <SelectTrigger className="w-[150px] h-9">
+                                        <SelectValue placeholder="Set status" />
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Open">Open</SelectItem>
+                                        <SelectItem value="In Progress">In Progress</SelectItem>
+                                        <SelectItem value="Completed">Completed</SelectItem>
+                                        <SelectItem value="Cancelled">Cancelled</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </div>
+                        </CardContent>
+                        <CardFooter className="text-xs justify-end text-muted-foreground pt-4">
+                            Reported on {log.reportedDate instanceof Date ? format(log.reportedDate, 'dd/MM/yyyy') : format(new Date(log.reportedDate.seconds * 1000), 'dd/MM/yyyy')}
+                        </CardFooter>
+                    </Card>
+                ))
+              )}
+            </div>
         </CardContent>
        </Card>
     </div>
