@@ -97,20 +97,20 @@ const hmoFollowUpFields = [{ key: 'repairsRequired', label: 'Repairs Required' }
 // Main Page Component
 export default function ViewInspectionPage() {
   const params = useParams();
-  const propertyId = params.propertyId as string;
+  const id = params.id as string;
   const inspectionId = params.inspectionId as string;
   const firestore = useFirestore();
 
   const inspectionRef = useMemoFirebase(() => {
-    if (!firestore || !propertyId || !inspectionId) return null;
-    return doc(firestore, 'properties', propertyId, 'inspections', inspectionId);
-  }, [firestore, propertyId, inspectionId]);
+    if (!firestore || !id || !inspectionId) return null;
+    return doc(firestore, 'properties', id, 'inspections', inspectionId);
+  }, [firestore, id, inspectionId]);
   const { data: inspection, isLoading: isLoadingInspection, error: inspectionError } = useDoc(inspectionRef);
   
   const propertyRef = useMemoFirebase(() => {
-    if(!firestore || !propertyId) return null;
-    return doc(firestore, 'properties', propertyId);
-  }, [firestore, propertyId]);
+    if(!firestore || !id) return null;
+    return doc(firestore, 'properties', id);
+  }, [firestore, id]);
   const { data: property, isLoading: isLoadingProperty } = useDoc(propertyRef);
 
 
