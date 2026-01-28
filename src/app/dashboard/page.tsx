@@ -166,7 +166,7 @@ export default function DashboardPage() {
         Promise.all(logPromises),
         Promise.all(inspPromises),
         Promise.all(docPromises),
-        Promise.all(rentPromises),
+        Promise.all(rentSnapshots),
       ]);
       
       const logs = logSnapshots.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as MaintenanceLog)));
