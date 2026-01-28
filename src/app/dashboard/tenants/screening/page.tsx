@@ -320,7 +320,7 @@ export default function TenantScreeningPage() {
                                 <AccordionContent className='pt-4'>
                                      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                          <FormField control={form.control} name="creditCheck.agencyUsed" render={({ field }) => (<FormItem><FormLabel>Agency/Service Used</FormLabel><FormControl><Input placeholder="e.g., OpenRent, Experian" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <div className="flex items-end gap-4">
+                                        <div className="flex flex-wrap items-start gap-4">
                                             <ChecklistItem form={form} name="creditCheck.reportReceived" label="Report Received" />
                                             <ChecklistItem form={form} name="creditCheck.passed" label="Passed" />
                                         </div>
