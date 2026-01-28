@@ -298,8 +298,8 @@ export default function TenantScreeningPage() {
                                         <ChecklistItem form={form} name="rightToRent.ukPassport" label="Checked valid UK Passport" />
                                         <ChecklistItem form={form} name="rightToRent.shareCode" label="Used Home Office online check (share code)" />
                                         <ChecklistItem form={form} name="rightToRent.visaPermit" label="Checked valid Visa / Residence Permit" />
-                                        <NotesField form={form} name="rightToRent.notes" placeholder="Notes on Right to Rent check..." />
                                     </div>
+                                    <NotesField form={form} name="rightToRent.notes" placeholder="Notes on Right to Rent check..." />
                                 </AccordionContent>
                             </AccordionItem>
 
