@@ -369,24 +369,24 @@ export default function TenantScreeningPage() {
                                         <ChecklistItem form={form} name="landlordReference.anyArrears" label="Any arrears?" />
                                         <ChecklistItem form={form} name="landlordReference.propertyConditionGood" label="Property kept in good condition?" />
                                         <ChecklistItem form={form} name="landlordReference.wouldRentAgain" label="Would they rent to them again?" />
-                                        <FormField
-                                            control={form.control}
-                                            name="landlordReference.notes"
-                                            render={({ field }) => (
-                                                <FormItem className="mt-4 sm:col-span-2">
-                                                    <FormLabel>Notes</FormLabel>
-                                                    <FormControl>
-                                                        <Textarea
-                                                            rows={4}
-                                                            placeholder="Notes on landlord reference..."
-                                                            {...field}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
                                     </div>
+                                    <FormField
+                                        control={form.control}
+                                        name="landlordReference.notes"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Notes</FormLabel>
+                                                <FormControl>
+                                                    <Textarea
+                                                        rows={4}
+                                                        placeholder="Notes on landlord reference..."
+                                                        {...field}
+                                                    />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
                                 </AccordionContent>
                             </AccordionItem>
 
@@ -405,7 +405,23 @@ export default function TenantScreeningPage() {
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <ChecklistItem form={form} name="affordability.passed" label="Passes affordability test" />
                                         <ChecklistItem form={form} name="affordability.guarantorConsidered" label="Guarantor considered/required" />
-                                        <NotesField form={form} name="affordability.notes" placeholder="Notes on affordability..." />
+                                        <FormField
+                                            control={form.control}
+                                            name="affordability.notes"
+                                            render={({ field }) => (
+                                                <FormItem className="sm:col-span-2">
+                                                    <FormLabel>Notes</FormLabel>
+                                                    <FormControl>
+                                                        <Textarea
+                                                            rows={4}
+                                                            placeholder="Notes on affordability..."
+                                                            {...field}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
                                     </div>
                                 </AccordionContent>
                             </AccordionItem>
