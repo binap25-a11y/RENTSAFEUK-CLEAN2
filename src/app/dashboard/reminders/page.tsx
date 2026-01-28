@@ -71,7 +71,7 @@ const getDocumentStatus = (expiryDate: Date) => {
   return 'Valid';
 };
 
-const getStatusVariant = (status: string) => {
+const getStatusVariant = (status: string): "destructive" | "secondary" | "outline" => {
   switch (status) {
     case 'Expired':
       return 'destructive';
@@ -257,54 +257,76 @@ export default function RemindersPage() {
           </div>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Description</TableHead>
-                  <TableHead>Property</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead className="text-right">Due Date</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoading && (
+          {isLoading ? (
+             <div className="flex justify-center items-center h-64">
+                <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
+             </div>
+          ) : allReminders.length === 0 ? (
+            <div className="h-24 text-center flex justify-center items-center">
+                No reminders at the moment.
+            </div>
+          ) : (
+          <>
+            {/* Desktop Table View */}
+            <div className="hidden rounded-md border md:block">
+              <Table>
+                <TableHeader>
                   <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
-                      <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
-                    </TableCell>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Description</TableHead>
+                    <TableHead>Property</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Due Date</TableHead>
                   </TableRow>
-                )}
-                {!isLoading && allReminders.length === 0 ? (
-                  <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
-                      No reminders at the moment.
-                    </TableCell>
-                  </TableRow>
-                ) : (
-                  !isLoading &&
-                  allReminders.map((reminder) => (
-                    <TableRow key={reminder.id}>
-                      <TableCell>{reminder.type}</TableCell>
-                      <TableCell className="font-medium">
-                        {reminder.description}
-                      </TableCell>
-                      <TableCell>{reminder.property}</TableCell>
-                      <TableCell>
-                        <Badge variant={getStatusVariant(reminder.status)}>
-                          {reminder.status}
-                        </Badge>
-                      </TableCell>
-                      <TableCell className="text-right">
-                        {format(new Date(reminder.dueDate), 'dd/MM/yyyy')}
-                      </TableCell>
-                    </TableRow>
-                  ))
-                )}
-              </TableBody>
-            </Table>
-          </div>
+                </TableHeader>
+                <TableBody>
+                    {allReminders.map((reminder) => (
+                      <TableRow key={reminder.id}>
+                        <TableCell>{reminder.type}</TableCell>
+                        <TableCell className="font-medium">
+                          {reminder.description}
+                        </TableCell>
+                        <TableCell>{reminder.property}</TableCell>
+                        <TableCell>
+                          <Badge variant={getStatusVariant(reminder.status)}>
+                            {reminder.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell className="text-right">
+                          {format(new Date(reminder.dueDate), 'dd/MM/yyyy')}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="grid gap-4 md:hidden">
+              {allReminders.map((reminder) => (
+                <Card key={reminder.id}>
+                  <CardHeader>
+                    <div className="flex justify-between items-start gap-2">
+                        <CardTitle className="text-base">{reminder.description}</CardTitle>
+                        <Badge variant={getStatusVariant(reminder.status)}>{reminder.status}</Badge>
+                    </div>
+                    <CardDescription>{reminder.property}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm pt-0">
+                    <div className="flex justify-between items-center border-t pt-2">
+                      <span className="text-muted-foreground">Type</span>
+                      <span className="font-medium">{reminder.type}</span>
+                    </div>
+                    <div className="flex justify-between items-center border-t pt-2">
+                      <span className="text-muted-foreground">Due</span>
+                      <span className="font-medium">{format(new Date(reminder.dueDate), 'dd/MM/yyyy')}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+          </>
+          )}
         </CardContent>
       </Card>
     </div>
