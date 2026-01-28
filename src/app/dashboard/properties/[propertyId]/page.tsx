@@ -12,6 +12,17 @@ import { useDoc, useFirestore, useMemoFirebase, useCollection } from '@/firebase
 import { doc, collection, query, where, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { useState } from 'react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 // Main interface for a Property document from Firestore
 interface Property {
@@ -47,6 +58,7 @@ export default function PropertyDetailPage() {
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const propertyRef = useMemoFirebase(() => {
     if (!firestore || !propertyId) return null;
@@ -68,28 +80,26 @@ export default function PropertyDetailPage() {
 
   const isLoading = isLoadingProperty || isLoadingTenants;
 
-  const handleDelete = async (currentPropertyId: string, address: string) => {
-    if (!firestore) return;
-    const isConfirmed = confirm(
-      `Are you sure you want to delete the property at ${address}?`
-    );
-    if (isConfirmed) {
-      try {
-        const docRef = doc(firestore, 'properties', currentPropertyId);
-        await updateDoc(docRef, { status: 'Deleted' });
-        toast({
-          title: 'Property Deleted',
-          description: `${address} has been moved to the deleted properties list.`,
-        });
-        router.push('/dashboard/properties');
-      } catch (e) {
-        console.error('Error deleting property:', e);
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Could not delete the property. Please try again.',
-        });
-      }
+  const handleDeleteConfirm = async () => {
+    if (!firestore || !property) return;
+    
+    try {
+      const docRef = doc(firestore, 'properties', propertyId);
+      await updateDoc(docRef, { status: 'Deleted' });
+      toast({
+        title: 'Property Deleted',
+        description: `${property.address} has been moved to the deleted properties list.`,
+      });
+      router.push('/dashboard/properties');
+    } catch (e) {
+      console.error('Error deleting property:', e);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not delete the property. Please try again.',
+      });
+    } finally {
+      setIsDeleteDialogOpen(false);
     }
   };
 
@@ -113,148 +123,169 @@ export default function PropertyDetailPage() {
   const tenancy = property.tenancy;
 
   return (
-    <div className="flex flex-col gap-6">
-       <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" asChild>
-          <Link href="/dashboard/properties">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <h1 className="text-2xl font-bold">{property.address}</h1>
-      </div>
-      <div className="space-y-6">
-        <Card>
-            <CardContent className="p-0">
-                <Image
-                    src={property.imageUrl}
-                    alt={`Image of ${property.address}`}
-                    width={800}
-                    height={500}
-                    className="rounded-t-lg object-cover w-full aspect-video"
-                />
-            </CardContent>
-            <CardHeader>
-                <div className="flex justify-between items-start">
-                    <div>
-                        <CardTitle className='mb-2'>{property.address}</CardTitle>
-                        <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                            <span>{property.propertyType}</span>
-                            <span className='flex items-center gap-1'><Bed className="h-4 w-4" /> {property.bedrooms}</span>
-                            <span className='flex items-center gap-1'><Bath className="h-4 w-4" /> {property.bathrooms}</span>
-                        </div>
-                    </div>
-                    <div className="flex items-center gap-2">
-                        <Badge>{property.status}</Badge>
-                         <Button asChild variant="outline" size="sm">
-                            <Link href={`/dashboard/properties/${propertyId}/edit`}>
-                                <Edit className="mr-2 h-4 w-4" /> Edit
-                            </Link>
-                        </Button>
-                        <Button variant="destructive" size="sm" onClick={() => handleDelete(propertyId, property.address)}>
-                            <Trash2 className="mr-2 h-4 w-4" /> Delete
-                        </Button>
-                    </div>
-                </div>
-            </CardHeader>
-        </Card>
-        
-        <Card>
-            <CardHeader>
-                <div className="flex justify-between items-center">
-                    <CardTitle>Tenants</CardTitle>
-                    <Button asChild size="sm">
-                        <Link href={`/dashboard/tenants/add?propertyId=${propertyId}`}>
-                            <UserPlus className="mr-2 h-4 w-4" /> Assign New Tenant
-                        </Link>
-                    </Button>
-                </div>
-            </CardHeader>
-            <CardContent>
-                {isLoadingTenants ? (
-                     <div className="flex justify-center items-center h-24">
-                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                    </div>
-                ) : tenants && tenants.length > 0 ? (
-                    <div className="rounded-md border">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Name</TableHead>
-                                    <TableHead>Email</TableHead>
-                                    <TableHead>Start Date</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {tenants.map(tenant => {
-                                    const startDate = tenant.tenancyStartDate ? (tenant.tenancyStartDate instanceof Date ? tenant.tenancyStartDate : new Date(tenant.tenancyStartDate.seconds * 1000)) : null;
-                                    return (
-                                        <TableRow key={tenant.id}>
-                                            <TableCell className="font-medium">
-                                                <Link href={`/dashboard/tenants/${tenant.id}`} className="hover:underline">{tenant.name}</Link>
-                                            </TableCell>
-                                            <TableCell>{tenant.email}</TableCell>
-                                            <TableCell>{startDate ? format(startDate, 'PPP') : 'N/A'}</TableCell>
-                                            <TableCell className="text-right">
-                                                <Button asChild variant="ghost" size="icon">
-                                                    <Link href={`/dashboard/tenants/${tenant.id}/edit`}>
-                                                        <Edit className="h-4 w-4" /><span className="sr-only">Edit</span>
-                                                    </Link>
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    );
-                                })}
-                            </TableBody>
-                        </Table>
-                    </div>
-                ) : (
-                    <div className="text-center py-8 text-muted-foreground">
-                        <p>No active tenants assigned to this property.</p>
-                    </div>
-                )}
-            </CardContent>
-        </Card>
+    <>
+      <div className="flex flex-col gap-6">
+        <div className="flex items-center gap-4">
+          <Button variant="outline" size="icon" asChild>
+            <Link href="/dashboard/properties">
+              <ArrowLeft className="h-4 w-4" />
+            </Link>
+          </Button>
+          <h1 className="text-2xl font-bold">{property.address}</h1>
+        </div>
+        <div className="space-y-6">
+          <Card>
+              <CardContent className="p-0">
+                  <Image
+                      src={property.imageUrl}
+                      alt={`Image of ${property.address}`}
+                      width={800}
+                      height={500}
+                      className="rounded-t-lg object-cover w-full aspect-video"
+                  />
+              </CardContent>
+              <CardHeader>
+                  <div className="flex justify-between items-start">
+                      <div>
+                          <CardTitle className='mb-2'>{property.address}</CardTitle>
+                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                              <span>{property.propertyType}</span>
+                              <span className='flex items-center gap-1'><Bed className="h-4 w-4" /> {property.bedrooms}</span>
+                              <span className='flex items-center gap-1'><Bath className="h-4 w-4" /> {property.bathrooms}</span>
+                          </div>
+                      </div>
+                      <div className="flex items-center gap-2">
+                          <Badge>{property.status}</Badge>
+                          <Button asChild variant="outline" size="sm">
+                              <Link href={`/dashboard/properties/${propertyId}/edit`}>
+                                  <Edit className="mr-2 h-4 w-4" /> Edit
+                              </Link>
+                          </Button>
+                          <Button variant="destructive" size="sm" onClick={() => setIsDeleteDialogOpen(true)}>
+                              <Trash2 className="mr-2 h-4 w-4" /> Delete
+                          </Button>
+                      </div>
+                  </div>
+              </CardHeader>
+          </Card>
+          
+          <Card>
+              <CardHeader>
+                  <div className="flex justify-between items-center">
+                      <CardTitle>Tenants</CardTitle>
+                      <Button asChild size="sm">
+                          <Link href={`/dashboard/tenants/add?propertyId=${propertyId}`}>
+                              <UserPlus className="mr-2 h-4 w-4" /> Assign New Tenant
+                          </Link>
+                      </Button>
+                  </div>
+              </CardHeader>
+              <CardContent>
+                  {isLoadingTenants ? (
+                      <div className="flex justify-center items-center h-24">
+                          <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                      </div>
+                  ) : tenants && tenants.length > 0 ? (
+                      <div className="rounded-md border">
+                          <Table>
+                              <TableHeader>
+                                  <TableRow>
+                                      <TableHead>Name</TableHead>
+                                      <TableHead>Email</TableHead>
+                                      <TableHead>Start Date</TableHead>
+                                      <TableHead className="text-right">Actions</TableHead>
+                                  </TableRow>
+                              </TableHeader>
+                              <TableBody>
+                                  {tenants.map(tenant => {
+                                      const startDate = tenant.tenancyStartDate ? (tenant.tenancyStartDate instanceof Date ? tenant.tenancyStartDate : new Date(tenant.tenancyStartDate.seconds * 1000)) : null;
+                                      return (
+                                          <TableRow key={tenant.id}>
+                                              <TableCell className="font-medium">
+                                                  <Link href={`/dashboard/tenants/${tenant.id}`} className="hover:underline">{tenant.name}</Link>
+                                              </TableCell>
+                                              <TableCell>{tenant.email}</TableCell>
+                                              <TableCell>{startDate ? format(startDate, 'PPP') : 'N/A'}</TableCell>
+                                              <TableCell className="text-right">
+                                                  <Button asChild variant="ghost" size="icon">
+                                                      <Link href={`/dashboard/tenants/${tenant.id}/edit`}>
+                                                          <Edit className="h-4 w-4" /><span className="sr-only">Edit</span>
+                                                      </Link>
+                                                  </Button>
+                                              </TableCell>
+                                          </TableRow>
+                                      );
+                                  })}
+                              </TableBody>
+                          </Table>
+                      </div>
+                  ) : (
+                      <div className="text-center py-8 text-muted-foreground">
+                          <p>No active tenants assigned to this property.</p>
+                      </div>
+                  )}
+              </CardContent>
+          </Card>
 
-         <Card>
-            <CardHeader>
-                <CardTitle>Financials</CardTitle>
-            </CardHeader>
-            <CardContent>
-                {tenancy && (tenancy.monthlyRent || tenancy.depositAmount || tenancy.depositScheme) ? (
-                    <div className="space-y-4">
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                            {tenancy.monthlyRent && (
-                                <div>
-                                    <p className="text-sm text-muted-foreground">Monthly Rent</p>
-                                    <p className='font-semibold'>£{tenancy.monthlyRent.toFixed(2)}</p>
-                                </div>
-                            )}
-                            {tenancy.depositAmount && (
-                                <div>
-                                    <p className="text-sm text-muted-foreground">Deposit Amount</p>
-                                    <p className='font-semibold'>£{tenancy.depositAmount.toFixed(2)}</p>
-                                </div>
-                            )}
-                        </div>
-                        {tenancy.depositScheme && (
-                            <div className="flex items-start gap-4 pt-4">
-                                <ShieldCheck className="h-5 w-5 text-muted-foreground mt-1" />
-                                <div>
-                                    <p className="text-sm text-muted-foreground">Deposit Scheme</p>
-                                    <p className='font-semibold'>{tenancy.depositScheme}</p>
-                                </div>
-                            </div>
-                        )}
-                    </div>
-                ) : (
-                    <div className="text-center text-muted-foreground">
-                        <p>No financial information has been added for this property. You can add it by editing the property.</p>
-                    </div>
-                )}
-            </CardContent>
-        </Card>
+          <Card>
+              <CardHeader>
+                  <CardTitle>Financials</CardTitle>
+              </CardHeader>
+              <CardContent>
+                  {tenancy && (tenancy.monthlyRent || tenancy.depositAmount || tenancy.depositScheme) ? (
+                      <div className="space-y-4">
+                          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                              {tenancy.monthlyRent && (
+                                  <div>
+                                      <p className="text-sm text-muted-foreground">Monthly Rent</p>
+                                      <p className='font-semibold'>£{tenancy.monthlyRent.toFixed(2)}</p>
+                                  </div>
+                              )}
+                              {tenancy.depositAmount && (
+                                  <div>
+                                      <p className="text-sm text-muted-foreground">Deposit Amount</p>
+                                      <p className='font-semibold'>£{tenancy.depositAmount.toFixed(2)}</p>
+                                  </div>
+                              )}
+                          </div>
+                          {tenancy.depositScheme && (
+                              <div className="flex items-start gap-4 pt-4">
+                                  <ShieldCheck className="h-5 w-5 text-muted-foreground mt-1" />
+                                  <div>
+                                      <p className="text-sm text-muted-foreground">Deposit Scheme</p>
+                                      <p className='font-semibold'>{tenancy.depositScheme}</p>
+                                  </div>
+                              </div>
+                          )}
+                      </div>
+                  ) : (
+                      <div className="text-center text-muted-foreground">
+                          <p>No financial information has been added for this property. You can add it by editing the property.</p>
+                      </div>
+                  )}
+              </CardContent>
+          </Card>
+        </div>
       </div>
-    </div>
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will delete the property at {property?.address}. You can restore it later from the 'View Deleted' page.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleDeleteConfirm}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
