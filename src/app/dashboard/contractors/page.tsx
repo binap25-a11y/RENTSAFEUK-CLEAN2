@@ -78,7 +78,7 @@ export default function ContractorsPage() {
     return query(
       collection(firestore, 'contractors'),
       where('ownerId', '==', user.uid),
-      where('status', '!=', 'Archived')
+      where('status', '==', 'Active')
     );
   }, [firestore, user]);
   const { data: contractors, isLoading, error } = useCollection<Contractor>(contractorsQuery);
