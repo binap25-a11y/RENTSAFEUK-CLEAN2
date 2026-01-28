@@ -369,7 +369,23 @@ export default function TenantScreeningPage() {
                                         <ChecklistItem form={form} name="landlordReference.anyArrears" label="Any arrears?" />
                                         <ChecklistItem form={form} name="landlordReference.propertyConditionGood" label="Property kept in good condition?" />
                                         <ChecklistItem form={form} name="landlordReference.wouldRentAgain" label="Would they rent to them again?" />
-                                        <NotesField form={form} name="landlordReference.notes" placeholder="Notes on landlord reference..." />
+                                        <FormField
+                                            control={form.control}
+                                            name="landlordReference.notes"
+                                            render={({ field }) => (
+                                                <FormItem className="mt-4 sm:col-span-2">
+                                                    <FormLabel>Notes</FormLabel>
+                                                    <FormControl>
+                                                        <Textarea
+                                                            rows={4}
+                                                            placeholder="Notes on landlord reference..."
+                                                            {...field}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
                                     </div>
                                 </AccordionContent>
                             </AccordionItem>
