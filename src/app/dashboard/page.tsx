@@ -484,26 +484,39 @@ export default function DashboardPage() {
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
             ) : recentActivities.length > 0 ? (
-                <Table>
-                <TableHeader>
-                    <TableRow>
-                    <TableHead>Property</TableHead>
-                    <TableHead>Activity</TableHead>
-                    <TableHead className="text-right">Date</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {recentActivities.map((activity) => (
-                    <TableRow key={activity.id}>
-                        <TableCell className="font-medium">
-                        {activity.property}
-                        </TableCell>
-                        <TableCell>{activity.activity}</TableCell>
-                        <TableCell className="text-right">{activity.date}</TableCell>
-                    </TableRow>
-                    ))}
-                </TableBody>
-                </Table>
+                <>
+                    <Table className="hidden md:table">
+                        <TableHeader>
+                            <TableRow>
+                            <TableHead>Property</TableHead>
+                            <TableHead>Activity</TableHead>
+                            <TableHead className="text-right">Date</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {recentActivities.map((activity) => (
+                            <TableRow key={activity.id}>
+                                <TableCell className="font-medium">
+                                {activity.property}
+                                </TableCell>
+                                <TableCell>{activity.activity}</TableCell>
+                                <TableCell className="text-right">{activity.date}</TableCell>
+                            </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                     <div className="space-y-4 md:hidden">
+                        {recentActivities.map((activity) => (
+                            <div key={activity.id} className="rounded-lg border bg-card text-card-foreground p-4">
+                                <p className="font-medium">{activity.activity}</p>
+                                <div className="flex justify-between text-sm text-muted-foreground mt-1">
+                                    <span>{activity.property}</span>
+                                    <span>{activity.date}</span>
+                                </div>
+                            </div>
+                        ))}
+                    </div>
+                </>
             ) : (
                 <div className="text-center text-muted-foreground py-10">No recent activity.</div>
             )}
@@ -525,33 +538,49 @@ export default function DashboardPage() {
                     <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                 </div>
              ) : upcomingTasks.length > 0 ? (
-                <Table>
-                <TableHeader>
-                    <TableRow>
-                    <TableHead>Task</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Due Date</TableHead>
-                    </TableRow>
-                </TableHeader>
-                <TableBody>
-                    {upcomingTasks.map((task) => (
-                    <TableRow key={task.id}>
-                        <TableCell>
-                        <div className="font-medium">{task.task}</div>
-                        <div className="text-sm text-muted-foreground">
-                            {task.property}
-                        </div>
-                        </TableCell>
-                        <TableCell>
-                        <Badge variant={getStatusVariant(task.status)}>
-                            {task.status}
-                        </Badge>
-                        </TableCell>
-                        <TableCell className="text-right">{task.dueDate}</TableCell>
-                    </TableRow>
-                    ))}
-                </TableBody>
-                </Table>
+                <>
+                    <Table className="hidden md:table">
+                        <TableHeader>
+                            <TableRow>
+                            <TableHead>Task</TableHead>
+                            <TableHead>Status</TableHead>
+                            <TableHead className="text-right">Due Date</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {upcomingTasks.map((task) => (
+                            <TableRow key={task.id}>
+                                <TableCell>
+                                <div className="font-medium">{task.task}</div>
+                                <div className="text-sm text-muted-foreground">
+                                    {task.property}
+                                </div>
+                                </TableCell>
+                                <TableCell>
+                                <Badge variant={getStatusVariant(task.status)}>
+                                    {task.status}
+                                </Badge>
+                                </TableCell>
+                                <TableCell className="text-right">{task.dueDate}</TableCell>
+                            </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                    <div className="space-y-4 md:hidden">
+                        {upcomingTasks.map((task) => (
+                            <div key={task.id} className="rounded-lg border bg-card text-card-foreground p-4">
+                                <div className="flex justify-between items-start gap-2">
+                                    <div>
+                                        <p className="font-medium">{task.task}</p>
+                                        <p className="text-sm text-muted-foreground">{task.property}</p>
+                                    </div>
+                                    <Badge variant={getStatusVariant(task.status)}>{task.status}</Badge>
+                                </div>
+                                <p className="text-sm text-muted-foreground mt-2">Due: {task.dueDate}</p>
+                            </div>
+                        ))}
+                    </div>
+                </>
              ) : (
                 <div className="text-center text-muted-foreground py-10">No upcoming tasks.</div>
              )}
