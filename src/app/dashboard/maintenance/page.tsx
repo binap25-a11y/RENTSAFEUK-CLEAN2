@@ -293,20 +293,18 @@ export default function MaintenancePage() {
       />
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-start">
-            <div>
-              <CardTitle>Log Maintenance Issue</CardTitle>
-              <CardDescription>
-                Fill in the details below or use our AI assistant to get started.
-              </CardDescription>
-            </div>
+          <CardTitle>Log Maintenance Issue</CardTitle>
+          <CardDescription>
+            Fill in the details below or use our AI assistant to get started.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="mb-6">
             <Button onClick={() => setIsAssistantOpen(true)} variant="outline">
                 <Wand2 className="mr-2 h-4 w-4" />
                 AI Assistant
             </Button>
           </div>
-        </CardHeader>
-        <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
               {/* Issue Details Section */}
