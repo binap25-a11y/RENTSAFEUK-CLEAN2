@@ -330,7 +330,7 @@ export default function TenantScreeningPage() {
                             </AccordionItem>
 
                             <AccordionItem value="employment-income" className='border rounded-lg px-4'>
-                                <AccordionTrigger className='text-lg font-semibold'>Employment & Income Check</AccordionTrigger>
+                                <AccordionTrigger className='text-lg font-semibold'>Employment &amp; Income Check</AccordionTrigger>
                                 <AccordionContent className='pt-4'>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <ChecklistItem form={form} name="employmentIncome.bankStatements" label="3 months' bank statements" />
@@ -339,7 +339,19 @@ export default function TenantScreeningPage() {
                                         <ChecklistItem form={form} name="employmentIncome.employerReference" label="Employer reference" />
                                         <ChecklistItem form={form} name="employmentIncome.sa302" label="SA302 / Tax returns (if self-employed)" />
                                         <ChecklistItem form={form} name="employmentIncome.accountantReference" label="Accountant reference (if self-employed)" />
-                                        <NotesField form={form} name="employmentIncome.notes" placeholder="Notes on income verification..." />
+                                        <FormField
+                                            control={form.control}
+                                            name="employmentIncome.notes"
+                                            render={({ field }) => (
+                                                <FormItem className="mt-4 sm:col-span-2">
+                                                    <FormLabel>Notes</FormLabel>
+                                                    <FormControl>
+                                                        <Textarea rows={4} placeholder="Notes on income verification..." {...field} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
                                     </div>
                                 </AccordionContent>
                             </AccordionItem>
@@ -400,7 +412,7 @@ export default function TenantScreeningPage() {
                             name="overallNotes"
                             render={({ field }) => (
                                 <FormItem>
-                                <FormLabel className='text-lg font-semibold'>Overall Summary & Decision</FormLabel>
+                                <FormLabel className='text-lg font-semibold'>Overall Summary &amp; Decision</FormLabel>
                                 <FormControl>
                                     <Textarea
                                     placeholder="Summarize your findings and decision here..."
