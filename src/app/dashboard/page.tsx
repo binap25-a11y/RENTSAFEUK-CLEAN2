@@ -18,7 +18,7 @@ import {
   ListTodo,
   FileText,
   Loader2,
-  DollarSign
+  PoundSterling
 } from 'lucide-react';
 import {
   Table,
@@ -406,7 +406,7 @@ export default function DashboardPage() {
       <Card>
         <CardHeader>
             <CardTitle className="flex items-center gap-2">
-                <DollarSign className="h-5 w-5" /> Monthly Rent Overview
+                <PoundSterling className="h-5 w-5" /> Monthly Rent Overview
             </CardTitle>
             <CardDescription>
                 Rent payment status for {format(new Date(), 'MMMM yyyy')}.

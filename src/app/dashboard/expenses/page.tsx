@@ -44,7 +44,7 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Clock, DollarSign, TrendingDown, TrendingUp, Loader2, CheckCircle2, XCircle, AlertCircle, Download } from 'lucide-react';
+import { CalendarIcon, Clock, PoundSterling, TrendingDown, TrendingUp, Loader2, CheckCircle2, XCircle, AlertCircle, Download } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format, getYear, startOfYear, endOfYear } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -590,7 +590,7 @@ function AnnualSummary({ allProperties, selectedProperty, selectedYear }: { allP
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Total Portfolio Income (Annual)</CardTitle>
-                <DollarSign className="h-4 w-4 text-muted-foreground" />
+                <PoundSterling className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                 <div className="text-2xl font-bold">£{portfolioIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
