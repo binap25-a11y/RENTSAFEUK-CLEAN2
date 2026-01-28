@@ -305,13 +305,13 @@ export default function TenantScreeningPage() {
 
                             <AccordionItem value="id-verification" className='border rounded-lg px-4'>
                                 <AccordionTrigger className='text-lg font-semibold'>ID Verification</AccordionTrigger>
-                                <AccordionContent className='pt-4'>
+                                <AccordionContent className='pt-4 space-y-4'>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <ChecklistItem form={form} name="idVerification.photoMatch" label="Photo on ID matches applicant" />
                                         <ChecklistItem form={form} name="idVerification.nameMatch" label="Name matches on all documents" />
                                         <ChecklistItem form={form} name="idVerification.dobConsistent" label="Date of Birth is consistent" />
-                                        <NotesField form={form} name="idVerification.notes" placeholder="Notes on ID verification..." />
                                     </div>
+                                    <NotesField form={form} name="idVerification.notes" placeholder="Notes on ID verification..." />
                                 </AccordionContent>
                             </AccordionItem>
                             
