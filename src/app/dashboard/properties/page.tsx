@@ -8,10 +8,11 @@ import {
   CardFooter,
   CardHeader,
   CardTitle,
+  CardDescription,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Bed, Bath, Trash2, Archive, Loader2, Edit } from 'lucide-react';
+import { PlusCircle, Bed, Bath, Trash2, Archive, Loader2, Edit, MoreVertical } from 'lucide-react';
 import {
   useUser,
   useFirestore,
@@ -38,6 +39,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 // Define the Property type based on your Firestore structure
 interface Property {
@@ -202,55 +204,48 @@ export default function PropertiesPage() {
                   </div>
                 </Link>
                 <CardHeader>
-                  <div className="flex justify-between items-start">
-                    <CardTitle className="text-lg">
-                      <Link
-                        href={`/dashboard/properties/${property.id}`}
-                        className="hover:underline"
-                      >
-                        {property.address}
-                      </Link>
-                    </CardTitle>
-                    <Badge
-                      variant={
-                        property.status === 'Occupied' ? 'default' : 'secondary'
-                      }
-                    >
-                      {property.status}
-                    </Badge>
+                  <div className="flex justify-between items-start gap-2">
+                    <div className='flex-1'>
+                        <CardTitle className="text-lg">
+                            <Link href={`/dashboard/properties/${property.id}`} className="hover:underline">
+                                {property.address}
+                            </Link>
+                        </CardTitle>
+                         <CardDescription className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground pt-1">
+                            <span>{property.propertyType}</span>
+                            <span className="flex items-center gap-1"><Bed className="h-4 w-4" /> {property.bedrooms}</span>
+                            <span className="flex items-center gap-1"><Bath className="h-4 w-4" /> {property.bathrooms}</span>
+                        </CardDescription>
+                    </div>
+                    <div className="flex items-center gap-1">
+                        <Badge variant={property.status === 'Occupied' ? 'default' : 'secondary'} className="h-fit">{property.status}</Badge>
+                        <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2">
+                                    <MoreVertical className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem asChild>
+                                    <Link href={`/dashboard/properties/${property.id}/edit`}>
+                                        <Edit className="mr-2 h-4 w-4" /> Edit
+                                    </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setPropertyToDelete(property)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
+                    </div>
                   </div>
                 </CardHeader>
-                <CardContent className="flex-grow">
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                    <span>{property.propertyType}</span>
-                    <span className="flex items-center gap-1">
-                      <Bed className="h-4 w-4" /> {property.bedrooms}
-                    </span>
-                    <span className="flex items-center gap-1">
-                      <Bath className="h-4 w-4" /> {property.bathrooms}
-                    </span>
-                  </div>
-                </CardContent>
-                <CardFooter className="flex items-center gap-2">
-                  <Button asChild variant="outline" className="w-full">
-                    <Link href={`/dashboard/properties/${property.id}`}>
-                      View Details
-                    </Link>
-                  </Button>
-                  <Button asChild variant="secondary" size="icon">
-                      <Link href={`/dashboard/properties/${property.id}/edit`}>
-                          <Edit className="h-4 w-4" />
-                          <span className="sr-only">Edit Property</span>
-                      </Link>
-                  </Button>
-                  <Button
-                    variant="destructive"
-                    size="icon"
-                    onClick={() => setPropertyToDelete(property)}
-                  >
-                    <Trash2 className="h-4 w-4" />
-                    <span className="sr-only">Delete Property</span>
-                  </Button>
+                <CardContent className="flex-grow p-0"></CardContent>
+                <CardFooter>
+                    <Button asChild variant="outline" className="w-full">
+                        <Link href={`/dashboard/properties/${property.id}`}>
+                            View Details
+                        </Link>
+                    </Button>
                 </CardFooter>
               </Card>
             ))}
