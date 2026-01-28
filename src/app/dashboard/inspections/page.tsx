@@ -52,7 +52,7 @@ interface Inspection {
   scheduledDate: { seconds: number; nanoseconds: number } | Date;
 }
 
-const getStatusVariant = (status: string) => {
+const getStatusVariant = (status: string): "default" | "secondary" | "outline" | "destructive" | null | undefined => {
   switch (status) {
     case 'Scheduled':
       return 'secondary';
@@ -153,66 +153,106 @@ export default function InspectionsPage() {
               </SelectContent>
             </Select>
           </div>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Property</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoadingInspections && (
-                  <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
-                      <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
-                    </TableCell>
-                  </TableRow>
-                )}
-                {!isLoadingInspections && inspections?.length === 0 && (
-                  <TableRow>
-                    <TableCell colSpan={5} className="h-24 text-center">
-                      {selectedPropertyId
-                        ? 'No inspections found for this property.'
-                        : 'Select a property to see inspections.'}
-                    </TableCell>
-                  </TableRow>
-                )}
-                {inspections?.map((inspection) => (
-                  <TableRow key={inspection.id}>
-                    <TableCell className="font-medium">
-                      {getPropertyAddress(inspection.propertyId)}
-                    </TableCell>
-                    <TableCell>{inspection.type}</TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusVariant(inspection.status)}>
-                        {inspection.status}
-                      </Badge>
-                    </TableCell>
-                    <TableCell>
-                      {format(
-                        inspection.scheduledDate instanceof Date
-                          ? inspection.scheduledDate
-                          : new Date(inspection.scheduledDate.seconds * 1000),
-                        'dd/MM/yyyy'
-                      )}
-                    </TableCell>
-                    <TableCell className="text-right">
-                        <Button asChild variant="outline" size="icon">
-                            <Link href={`/dashboard/properties/${inspection.propertyId}/inspections/${inspection.id}`}>
-                                <Eye className="h-4 w-4" />
-                                <span className="sr-only">View Inspection</span>
-                            </Link>
-                        </Button>
-                    </TableCell>
-                  </TableRow>
+          
+          {isLoadingInspections ? (
+              <div className="flex justify-center items-center h-64">
+                <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+          ) : !inspections?.length ? (
+              <div className="text-center py-10 text-muted-foreground">
+                {selectedPropertyId
+                  ? 'No inspections found for this property.'
+                  : 'Select a property to see inspections.'}
+              </div>
+          ) : (
+            <>
+              {/* Desktop Table View */}
+              <div className="hidden rounded-md border md:block">
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Property</TableHead>
+                      <TableHead>Type</TableHead>
+                      <TableHead>Status</TableHead>
+                      <TableHead>Date</TableHead>
+                      <TableHead className="text-right">Actions</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {inspections?.map((inspection) => (
+                      <TableRow key={inspection.id}>
+                        <TableCell className="font-medium">
+                          {getPropertyAddress(inspection.propertyId)}
+                        </TableCell>
+                        <TableCell>{inspection.type}</TableCell>
+                        <TableCell>
+                          <Badge variant={getStatusVariant(inspection.status)}>
+                            {inspection.status}
+                          </Badge>
+                        </TableCell>
+                        <TableCell>
+                          {format(
+                            inspection.scheduledDate instanceof Date
+                              ? inspection.scheduledDate
+                              : new Date(inspection.scheduledDate.seconds * 1000),
+                            'dd/MM/yyyy'
+                          )}
+                        </TableCell>
+                        <TableCell className="text-right">
+                            <Button asChild variant="outline" size="icon">
+                                <Link href={`/dashboard/properties/${inspection.propertyId}/inspections/${inspection.id}`}>
+                                    <Eye className="h-4 w-4" />
+                                    <span className="sr-only">View Inspection</span>
+                                </Link>
+                            </Button>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </div>
+              
+              {/* Mobile Card View */}
+              <div className="grid gap-4 md:hidden">
+                {inspections.map((inspection) => (
+                    <Card key={inspection.id}>
+                        <CardHeader>
+                            <div className="flex justify-between items-start">
+                            <div>
+                                <CardTitle className='text-base'>{getPropertyAddress(inspection.propertyId)}</CardTitle>
+                                <CardDescription>{inspection.type}</CardDescription>
+                            </div>
+                            <Button asChild variant="outline" size="sm">
+                                <Link href={`/dashboard/properties/${inspection.propertyId}/inspections/${inspection.id}`}>
+                                    <Eye className="mr-2 h-4 w-4" />
+                                    View
+                                </Link>
+                            </Button>
+                            </div>
+                        </CardHeader>
+                        <CardContent className="space-y-2 text-sm pt-0">
+                            <div className="flex justify-between items-center border-t pt-2">
+                                <span className="text-muted-foreground">Status</span>
+                                <Badge variant={getStatusVariant(inspection.status)}>
+                                    {inspection.status}
+                                </Badge>
+                            </div>
+                            <div className="flex justify-between items-center border-t pt-2">
+                                <span className="text-muted-foreground">Date</span>
+                                <span className='font-medium'>{format(
+                                    inspection.scheduledDate instanceof Date
+                                    ? inspection.scheduledDate
+                                    : new Date(inspection.scheduledDate.seconds * 1000),
+                                    'dd/MM/yyyy'
+                                )}</span>
+                            </div>
+                        </CardContent>
+                    </Card>
                 ))}
-              </TableBody>
-            </Table>
-          </div>
+              </div>
+            </>
+          )}
+
         </CardContent>
       </Card>
     </div>
