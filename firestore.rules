@@ -37,5 +37,10 @@ service cloud.firestore {
     match /properties/{propertyId}/{subcollection}/{docId} {
       allow read, write: if get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
     }
+
+    // This rule applies to all subcollections under a tenant.
+    match /tenants/{tenantId}/{subcollection}/{docId} {
+      allow read, write: if get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid;
+    }
   }
 }

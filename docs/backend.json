@@ -417,6 +417,119 @@
         "status",
         "expectedAmount"
       ]
+    },
+    "TenantScreening": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "TenantScreening",
+      "type": "object",
+      "description": "Represents a tenant screening and background check record.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the screening record."
+        },
+        "ownerId": {
+          "type": "string",
+          "description": "The UID of the user who owns this screening record."
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "The ID of the tenant this screening record is associated with."
+        },
+        "screeningDate": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The date the screening was conducted."
+        },
+        "rightToRent": {
+          "type": "object",
+          "properties": {
+            "checkDate": { "type": "string", "format": "date-time" },
+            "ukPassport": { "type": "boolean" },
+            "shareCode": { "type": "boolean" },
+            "visaPermit": { "type": "boolean" },
+            "notes": { "type": "string" }
+          }
+        },
+        "idVerification": {
+          "type": "object",
+          "properties": {
+            "photoMatch": { "type": "boolean" },
+            "nameMatch": { "type": "boolean" },
+            "dobConsistent": { "type": "boolean" },
+            "notes": { "type": "string" }
+          }
+        },
+        "creditCheck": {
+          "type": "object",
+          "properties": {
+            "agencyUsed": { "type": "string" },
+            "reportReceived": { "type": "boolean" },
+            "passed": { "type": "boolean" },
+            "notes": { "type": "string" }
+          }
+        },
+        "employmentIncome": {
+          "type": "object",
+          "properties": {
+            "bankStatements": { "type": "boolean" },
+            "payslips": { "type": "boolean" },
+            "employmentContract": { "type": "boolean" },
+            "employerReference": { "type": "boolean" },
+            "sa302": { "type": "boolean" },
+            "accountantReference": { "type": "boolean" },
+            "notes": { "type": "string" }
+          }
+        },
+        "landlordReference": {
+          "type": "object",
+          "properties": {
+            "name": { "type": "string" },
+            "email": { "type": "string", "format": "email" },
+            "phone": { "type": "string" },
+            "rentOnTime": { "type": "boolean" },
+            "anyArrears": { "type": "boolean" },
+            "propertyConditionGood": { "type": "boolean" },
+            "wouldRentAgain": { "type": "boolean" },
+            "notes": { "type": "string" }
+          }
+        },
+        "addressHistory": {
+          "type": "object",
+          "properties": {
+            "verified": { "type": "boolean" },
+            "notes": { "type": "string" }
+          }
+        },
+        "affordability": {
+          "type": "object",
+          "properties": {
+            "passed": { "type": "boolean" },
+            "guarantorConsidered": { "type": "boolean" },
+            "notes": { "type": "string" }
+          }
+        },
+        "guarantor": {
+          "type": "object",
+          "properties": {
+            "required": { "type": "boolean" },
+            "idCheck": { "type": "boolean" },
+            "creditCheck": { "type": "boolean" },
+            "incomeVerified": { "type": "boolean" },
+            "notes": { "type": "string" }
+          }
+        },
+        "overallNotes": {
+          "type": "string",
+          "description": "Overall summary and decision of the screening process."
+        }
+      },
+      "required": [
+        "id",
+        "ownerId",
+        "tenantId",
+        "screeningDate"
+      ]
     }
   },
   "auth": {
@@ -574,6 +687,16 @@
               "description": "The unique identifier for the tenant."
             }
           ]
+        }
+      },
+      {
+        "path": "/tenants/{tenantId}/screenings/{screeningId}",
+        "definition": {
+          "entityName": "TenantScreening",
+          "schema": {
+            "$ref": "#/backend/entities/TenantScreening"
+          },
+          "description": "Subcollection to store tenant screening records for each tenant."
         }
       }
     ],
