@@ -17,7 +17,8 @@ import {
   Activity,
   ListTodo,
   FileText,
-  Loader2
+  Loader2,
+  DollarSign
 } from 'lucide-react';
 import {
   Table,
@@ -38,6 +39,16 @@ import {
 import { collection, query, where, Timestamp, getDocs } from 'firebase/firestore';
 import { useState, useEffect, useMemo } from 'react';
 import { format, isFuture, isBefore, addDays } from 'date-fns';
+import {
+  ChartContainer,
+  ChartTooltip,
+  ChartTooltipContent,
+  ChartLegend,
+  ChartLegendContent,
+  type ChartConfig,
+} from "@/components/ui/chart"
+import { Pie, PieChart, Cell } from 'recharts';
+
 
 // Interfaces
 interface Property {
@@ -69,6 +80,15 @@ interface Document {
   expiryDate: Timestamp | Date;
 }
 
+interface RentPayment {
+  id: string;
+  propertyId: string;
+  status: 'Paid' | 'Partially Paid' | 'Unpaid' | 'Pending';
+  year: number;
+  month: string;
+}
+
+
 // Helper for document status
 const getDocumentStatus = (expiryDate: Date) => {
     const today = new Date();
@@ -91,6 +111,7 @@ const getStatusVariant = (status: string) => {
       return 'secondary';
     case 'Due':
     case 'Expired':
+    case 'Unpaid':
         return 'destructive';
     default:
       return 'outline';
@@ -104,6 +125,7 @@ export default function DashboardPage() {
   const [maintenanceLogs, setMaintenanceLogs] = useState<MaintenanceLog[]>([]);
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
+  const [rentPayments, setRentPayments] = useState<RentPayment[]>([]);
   const [isSubcollectionsLoading, setIsSubcollectionsLoading] = useState(true);
 
   const propertiesQuery = useMemoFirebase(() => {
@@ -128,20 +150,34 @@ export default function DashboardPage() {
       const logPromises = properties.map(p => getDocs(collection(firestore, 'properties', p.id, 'maintenanceLogs')));
       const inspPromises = properties.map(p => getDocs(collection(firestore, 'properties', p.id, 'inspections')));
       const docPromises = properties.map(p => getDocs(collection(firestore, 'properties', p.id, 'documents')));
+      
+      const currentMonth = format(new Date(), 'MMMM');
+      const currentYear = new Date().getFullYear();
+      const rentPromises = properties.map(p => getDocs(
+          query(
+              collection(firestore, 'properties', p.id, 'rentPayments'), 
+              where('year', '==', currentYear), 
+              where('month', '==', currentMonth)
+          )
+      ));
 
-      const [logSnapshots, inspSnapshots, docSnapshots] = await Promise.all([
+
+      const [logSnapshots, inspSnapshots, docSnapshots, rentSnapshots] = await Promise.all([
         Promise.all(logPromises),
         Promise.all(inspPromises),
         Promise.all(docPromises),
+        Promise.all(rentPromises),
       ]);
       
       const logs = logSnapshots.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as MaintenanceLog)));
       const insps = inspSnapshots.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Inspection)));
       const docs = docSnapshots.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Document)));
+      const rents = rentSnapshots.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, propertyId: doc.ref.parent.parent!.id, ...doc.data() } as RentPayment)));
 
       setMaintenanceLogs(logs);
       setInspections(insps);
       setDocuments(docs);
+      setRentPayments(rents);
       setIsSubcollectionsLoading(false);
     };
 
@@ -222,6 +258,59 @@ export default function DashboardPage() {
             .slice(0, 4);
 
   }, [inspections, documents, propertyMap]);
+  
+  const rentStatusData = useMemo(() => {
+    if (isLoading || !properties) return [];
+
+    const occupiedPropertiesCount = properties.filter(p => p.status === 'Occupied').length;
+    
+    const statusCounts: Record<'Paid' | 'Partially Paid' | 'Unpaid', number> = {
+      'Paid': 0,
+      'Partially Paid': 0,
+      'Unpaid': 0,
+    };
+
+    rentPayments.forEach(payment => {
+      if (statusCounts[payment.status] !== undefined) {
+        statusCounts[payment.status]++;
+      }
+    });
+
+    const nonPendingCount = statusCounts.Paid + statusCounts['Partially Paid'] + statusCounts.Unpaid;
+    const pendingCount = occupiedPropertiesCount - nonPendingCount;
+
+    const data = [
+      { status: 'Paid', count: statusCounts.Paid, fill: 'hsl(var(--chart-2))' },
+      { status: 'Partially Paid', count: statusCounts['Partially Paid'], fill: 'hsl(var(--chart-4))' },
+      { status: 'Unpaid', count: statusCounts.Unpaid, fill: 'hsl(var(--chart-1))' },
+      { status: 'Pending', count: pendingCount > 0 ? pendingCount : 0, fill: 'hsl(var(--muted))' },
+    ].filter(item => item.count > 0);
+
+    return data;
+
+  }, [isLoading, properties, rentPayments]);
+
+  const rentChartConfig = {
+      count: {
+        label: "Properties",
+      },
+      Paid: {
+        label: "Paid",
+        color: "hsl(var(--chart-2))",
+      },
+      "Partially Paid": {
+        label: "Partially Paid",
+        color: "hsl(var(--chart-4))",
+      },
+      Unpaid: {
+        label: "Unpaid",
+        color: "hsl(var(--chart-1))",
+      },
+      Pending: {
+        label: "Pending",
+        color: "hsl(var(--muted))",
+      },
+  } satisfies ChartConfig;
 
 
   const infoCards = [
@@ -313,6 +402,71 @@ export default function DashboardPage() {
           </Card>
         ))}
       </div>
+
+      <Card>
+        <CardHeader>
+            <CardTitle className="flex items-center gap-2">
+                <DollarSign className="h-5 w-5" /> Monthly Rent Overview
+            </CardTitle>
+            <CardDescription>
+                Rent payment status for {format(new Date(), 'MMMM yyyy')}.
+            </CardDescription>
+        </CardHeader>
+        <CardContent>
+            {isLoading ? (
+                <div className="flex justify-center items-center h-64">
+                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                </div>
+            ) : rentStatusData.length > 0 ? (
+                <ChartContainer config={rentChartConfig} className="mx-auto aspect-square max-h-[300px]">
+                    <PieChart>
+                        <ChartTooltip
+                            cursor={false}
+                            content={<ChartTooltipContent nameKey="count" hideLabel />}
+                        />
+                        <Pie
+                            data={rentStatusData}
+                            dataKey="count"
+                            nameKey="status"
+                            innerRadius={60}
+                            strokeWidth={5}
+                            labelLine={false}
+                            label={({
+                              payload,
+                              ...props
+                            }) => {
+                              return (
+                                <text
+                                  cx={props.cx}
+                                  cy={props.cy}
+                                  x={props.x}
+                                  y={props.y}
+                                  textAnchor={props.textAnchor}
+                                  dominantBaseline={props.dominantBaseline}
+                                  fill="hsla(var(--foreground))"
+                                  className='text-sm'
+                                >
+                                  {`${payload.status} (${payload.value})`}
+                                </text>
+                              )
+                            }}
+                        >
+                            {rentStatusData.map((entry) => (
+                                <Cell key={`cell-${entry.status}`} fill={entry.fill} className="stroke-background"/>
+                            ))}
+                        </Pie>
+                        <ChartLegend
+                            content={<ChartLegendContent nameKey="status" />}
+                            className="-mt-4"
+                        />
+                    </PieChart>
+                </ChartContainer>
+            ) : (
+                <div className="text-center text-muted-foreground py-10">No occupied properties to track rent for.</div>
+            )}
+        </CardContent>
+      </Card>
+
 
       <div className="grid gap-6 lg:grid-cols-2">
         <Card>
