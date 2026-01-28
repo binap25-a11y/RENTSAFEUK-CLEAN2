@@ -70,7 +70,7 @@ const getDocumentStatus = (expiryDate: Date) => {
     return 'Valid';
 };
 
-const getStatusVariant = (status: string) => {
+const getStatusVariant = (status: string): "destructive" | "secondary" | "outline" => {
   switch (status) {
     case 'Expired':
       return 'destructive';
@@ -221,57 +221,95 @@ export default function DocumentsPage() {
             </div>
           </div>
 
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Title</TableHead>
-                  <TableHead>Property</TableHead>
-                  <TableHead>Type</TableHead>
-                  <TableHead>Status</TableHead>
-                  <TableHead>Expiry Date</TableHead>
-                  <TableHead className="text-right">Actions</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {isLoadingDocuments && (
-                    <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center">
-                            <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
-                        </TableCell>
+          {isLoadingDocuments ? (
+            <div className="flex justify-center items-center h-64">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+            </div>
+          ) : !filteredDocuments?.length ? (
+            <div className="text-center py-10 text-muted-foreground">
+                {selectedPropertyId ? 'No documents match your filters.' : 'Select a property to see documents.'}
+            </div>
+          ) : (
+          <>
+            {/* Desktop Table View */}
+            <div className="hidden rounded-md border md:block">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Title</TableHead>
+                    <TableHead>Property</TableHead>
+                    <TableHead>Type</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Expiry Date</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {filteredDocuments.map((doc) => (
+                    <TableRow key={doc.id}>
+                      <TableCell className="font-medium">{doc.title}</TableCell>
+                      <TableCell>{getPropertyAddress(doc.propertyId)}</TableCell>
+                      <TableCell>{doc.documentType}</TableCell>
+                      <TableCell>
+                        <Badge variant={getStatusVariant(doc.status)}>{doc.status}</Badge>
+                      </TableCell>
+                      <TableCell>{format(doc.expiryDate, 'dd/MM/yyyy')}</TableCell>
+                      <TableCell className="text-right">
+                        {doc.fileUri && (
+                          <Button asChild variant="outline" size="icon">
+                            <a href={doc.fileUri} target="_blank" rel="noopener noreferrer">
+                              <Eye className="h-4 w-4" />
+                              <span className="sr-only">View Document</span>
+                            </a>
+                          </Button>
+                        )}
+                      </TableCell>
                     </TableRow>
-                )}
-                {!isLoadingDocuments && documents?.length === 0 && (
-                     <TableRow>
-                        <TableCell colSpan={6} className="h-24 text-center">
-                            {selectedPropertyId ? 'No documents found for this property.' : 'Select a property to see documents.'}
-                        </TableCell>
-                    </TableRow>
-                )}
-                {filteredDocuments.map((doc) => (
-                  <TableRow key={doc.id}>
-                    <TableCell className="font-medium">{doc.title}</TableCell>
-                    <TableCell>{getPropertyAddress(doc.propertyId)}</TableCell>
-                    <TableCell>{doc.documentType}</TableCell>
-                    <TableCell>
-                      <Badge variant={getStatusVariant(doc.status)}>{doc.status}</Badge>
-                    </TableCell>
-                    <TableCell>{format(doc.expiryDate, 'dd/MM/yyyy')}</TableCell>
-                    <TableCell className="text-right">
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+
+            {/* Mobile Card View */}
+            <div className="grid gap-4 md:hidden">
+              {filteredDocuments.map((doc) => (
+                <Card key={doc.id}>
+                  <CardHeader>
+                    <div className="flex justify-between items-start">
+                      <div>
+                        <CardTitle className='text-base'>{doc.title}</CardTitle>
+                        <CardDescription>{getPropertyAddress(doc.propertyId)}</CardDescription>
+                      </div>
                       {doc.fileUri && (
-                        <Button asChild variant="outline" size="icon">
+                        <Button asChild variant="outline" size="sm">
                           <a href={doc.fileUri} target="_blank" rel="noopener noreferrer">
-                            <Eye className="h-4 w-4" />
-                            <span className="sr-only">View Document</span>
+                            <Eye className="mr-2 h-4 w-4" />
+                            View
                           </a>
                         </Button>
                       )}
-                    </TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+                    </div>
+                  </CardHeader>
+                  <CardContent className="space-y-2 text-sm pt-0">
+                     <div className="flex justify-between items-center border-t pt-2">
+                      <span className="text-muted-foreground">Type</span>
+                      <span className='font-medium'>{doc.documentType}</span>
+                    </div>
+                    <div className="flex justify-between items-center border-t pt-2">
+                      <span className="text-muted-foreground">Status</span>
+                      <Badge variant={getStatusVariant(doc.status)}>{doc.status}</Badge>
+                    </div>
+                    <div className="flex justify-between items-center border-t pt-2">
+                      <span className="text-muted-foreground">Expires</span>
+                      <span className='font-medium'>{format(doc.expiryDate, 'dd/MM/yyyy')}</span>
+                    </div>
+                  </CardContent>
+                </Card>
+              ))}
+            </div>
+            </>
+          )}
+
         </CardContent>
       </Card>
     </div>
