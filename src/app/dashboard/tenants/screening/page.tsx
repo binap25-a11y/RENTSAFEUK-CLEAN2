@@ -317,15 +317,25 @@ export default function TenantScreeningPage() {
                             
                             <AccordionItem value="credit-check" className='border rounded-lg px-4'>
                                 <AccordionTrigger className='text-lg font-semibold'>Credit Check</AccordionTrigger>
-                                <AccordionContent className='pt-4'>
-                                    <div className="flex flex-col gap-4">
-                                        <FormField control={form.control} name="creditCheck.agencyUsed" render={({ field }) => (<FormItem><FormLabel>Agency/Service Used</FormLabel><FormControl><Input placeholder="e.g., OpenRent, Experian" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <div className="space-y-4">
-                                            <ChecklistItem form={form} name="creditCheck.reportReceived" label="Report Received" />
-                                            <ChecklistItem form={form} name="creditCheck.passed" label="Passed" />
-                                        </div>
-                                        <NotesField form={form} name="creditCheck.notes" placeholder="Notes on credit check..." />
+                                <AccordionContent className='pt-4 space-y-4'>
+                                    <FormField
+                                        control={form.control}
+                                        name="creditCheck.agencyUsed"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Agency/Service Used</FormLabel>
+                                                <FormControl>
+                                                    <Input placeholder="e.g., OpenRent, Experian" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    <div className="space-y-4">
+                                        <ChecklistItem form={form} name="creditCheck.reportReceived" label="Report Received" />
+                                        <ChecklistItem form={form} name="creditCheck.passed" label="Passed" />
                                     </div>
+                                    <NotesField form={form} name="creditCheck.notes" placeholder="Notes on credit check..." />
                                 </AccordionContent>
                             </AccordionItem>
 
@@ -374,7 +384,7 @@ export default function TenantScreeningPage() {
                                         control={form.control}
                                         name="landlordReference.notes"
                                         render={({ field }) => (
-                                            <FormItem>
+                                            <FormItem className="mt-4">
                                                 <FormLabel>Notes</FormLabel>
                                                 <FormControl>
                                                     <Textarea
@@ -409,7 +419,7 @@ export default function TenantScreeningPage() {
                                             control={form.control}
                                             name="affordability.notes"
                                             render={({ field }) => (
-                                                <FormItem className="sm:col-span-2">
+                                                <FormItem className="mt-4 sm:col-span-2">
                                                     <FormLabel>Notes</FormLabel>
                                                     <FormControl>
                                                         <Textarea
@@ -434,7 +444,23 @@ export default function TenantScreeningPage() {
                                         <ChecklistItem form={form} name="guarantor.idCheck" label="Guarantor ID check complete" />
                                         <ChecklistItem form={form} name="guarantor.creditCheck" label="Guarantor credit check complete" />
                                         <ChecklistItem form={form} name="guarantor.incomeVerified" label="Guarantor income verified" />
-                                        <NotesField form={form} name="guarantor.notes" placeholder="Notes on guarantor checks..." />
+                                        <FormField
+                                            control={form.control}
+                                            name="guarantor.notes"
+                                            render={({ field }) => (
+                                                <FormItem className="sm:col-span-2">
+                                                    <FormLabel>Notes</FormLabel>
+                                                    <FormControl>
+                                                        <Textarea
+                                                            rows={4}
+                                                            placeholder="Notes on guarantor checks..."
+                                                            {...field}
+                                                        />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )}
+                                        />
                                     </div>
                                 </AccordionContent>
                             </AccordionItem>
