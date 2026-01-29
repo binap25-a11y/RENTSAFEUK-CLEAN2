@@ -160,7 +160,8 @@ export default function FinancialsPage() {
         <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Portfolio Gross Income (Annual)</CardTitle>
+                <CardTitle className="text-sm font-medium">Portfolio Gross Income</CardTitle>
+                 <CardDescription className='text-xs'>(Annual)</CardDescription>
                 <PoundSterling className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -175,21 +176,23 @@ export default function FinancialsPage() {
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
-                <CardDescription className='text-xs'>For selected property & year</CardDescription>
+                <CardDescription className='text-xs'>(for selection)</CardDescription>
                 <TrendingDown className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">-</div>
+                    <p className="text-xs text-muted-foreground">Select property & year</p>
                 </CardContent>
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Net Income</CardTitle>
-                <CardDescription className='text-xs'>Income minus expenses</CardDescription>
+                <CardDescription className='text-xs'>(for selection)</CardDescription>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">-</div>
+                     <p className="text-xs text-muted-foreground">Income minus expenses</p>
                 </CardContent>
             </Card>
         </div>
@@ -657,11 +660,10 @@ function AnnualSummary({ allProperties, selectedProperty, selectedYear }: { allP
 
   return (
     <div className="space-y-6 mt-6">
-        <div className='flex justify-between items-center'>
-            <h2 className="text-xl font-semibold">Annual Summary</h2>
+        <div className='flex justify-end'>
             <Button onClick={generatePDF} disabled={!selectedProperty || isLoading}>
                 <Download className="mr-2 h-4 w-4" />
-                Download PDF
+                Download PDF Report
             </Button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
@@ -973,17 +975,14 @@ function RentStatement({ selectedProperty, selectedYear }: { selectedProperty: P
         </DialogContent>
       </Dialog>
       <Card className="mt-6">
-        <CardHeader>
-          <CardTitle>Rent Payment Statement</CardTitle>
-          <CardDescription>Expected monthly rent payments for {selectedProperty.address} for {selectedYear}.</CardDescription>
-        </CardHeader>
-        <CardContent>
+        <CardContent className='pt-6'>
            {isLoading ? (
                 <div className="flex justify-center items-center h-48">
                     <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
                 </div>
             ) : (
             <>
+                <p className="text-sm text-muted-foreground mb-4">Update the payment status for each month for {selectedProperty.address}.</p>
                 {/* Desktop Table View */}
                 <div className="hidden rounded-md border md:block">
                     <Table>
