@@ -18,7 +18,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Download, Loader2 } from 'lucide-react';
+import { Download, Loader2, FileWarning, CalendarClock } from 'lucide-react';
 import { format, isBefore, addDays, isFuture } from 'date-fns';
 import {
   useUser,
@@ -199,6 +199,10 @@ export default function RemindersPage() {
       (a, b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime()
     );
   }, [allDocuments, allInspections, propertyMap]);
+  
+  const urgentCount = useMemo(() => allReminders.filter(r => r.status === 'Expired').length, [allReminders]);
+  const upcomingCount = useMemo(() => allReminders.filter(r => r.status === 'Expiring Soon' || r.status === 'Scheduled').length, [allReminders]);
+
 
   const isLoading = isLoadingProperties || isLoadingReminders;
 
@@ -239,11 +243,34 @@ export default function RemindersPage() {
 
   return (
     <div className="flex flex-col gap-6">
+      <div className="grid gap-4 md:grid-cols-2">
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Urgent Items</CardTitle>
+            <FileWarning className="h-4 w-4 text-destructive" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold text-destructive">{isLoading ? '-' : urgentCount}</div>
+            <p className="text-xs text-muted-foreground">Expired documents needing immediate action</p>
+          </CardContent>
+        </Card>
+        <Card>
+          <CardHeader className="flex flex-row items-center justify-between pb-2">
+            <CardTitle className="text-sm font-medium">Upcoming Tasks</CardTitle>
+            <CalendarClock className="h-4 w-4 text-yellow-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-2xl font-bold">{isLoading ? '-' : upcomingCount}</div>
+            <p className="text-xs text-muted-foreground">Documents expiring & scheduled tasks</p>
+          </CardContent>
+        </Card>
+      </div>
+
       <Card>
         <CardHeader>
           <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-start">
             <div>
-              <CardTitle>Reminders</CardTitle>
+              <CardTitle>All Reminders</CardTitle>
               <CardDescription>
                 A consolidated list of upcoming document expiries and tasks.
               </CardDescription>
