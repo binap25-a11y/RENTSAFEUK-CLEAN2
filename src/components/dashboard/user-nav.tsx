@@ -58,7 +58,7 @@ export function UserNav() {
     if (user?.email) {
       return user.email.charAt(0).toUpperCase();
     }
-    return 'A'; // for Anonymous
+    return 'U'; // for User
   };
 
 
@@ -75,7 +75,7 @@ export function UserNav() {
       <DropdownMenuContent className="w-56" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex flex-col space-y-1">
-            <p className="text-sm font-medium leading-none">{user?.displayName ?? (user?.isAnonymous ? 'Anonymous User' : 'User')}</p>
+            <p className="text-sm font-medium leading-none">{user?.displayName ?? 'User'}</p>
             <p className="text-xs leading-none text-muted-foreground">
               {user?.email ?? ''}
             </p>
