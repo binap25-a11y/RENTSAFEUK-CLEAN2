@@ -175,21 +175,21 @@ export default function FinancialsPage() {
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
+                <CardDescription className='text-xs'>For selected property & year</CardDescription>
                 <TrendingDown className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">-</div>
-                    <p className="text-xs text-muted-foreground">For selected property & year</p>
                 </CardContent>
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-sm font-medium">Net Income</CardTitle>
+                <CardDescription className='text-xs'>Income minus expenses</CardDescription>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">-</div>
-                    <p className="text-xs text-muted-foreground">Income minus expenses</p>
                 </CardContent>
             </Card>
         </div>
@@ -230,7 +230,7 @@ export default function FinancialsPage() {
                 </div>
            </div>
            <Tabs defaultValue="expenses">
-              <TabsList className="grid w-full grid-cols-3">
+              <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3">
                 <TabsTrigger value="expenses">Expenses</TabsTrigger>
                 <TabsTrigger value="summary">Annual Summary</TabsTrigger>
                 <TabsTrigger value="statement">Rent Statement</TabsTrigger>
