@@ -64,7 +64,7 @@ export default function TenantDetailPage() {
   const { data: property, isLoading: isLoadingProperty } = useDoc<Property>(propertyRef);
 
   const handleArchiveConfirm = async () => {
-    if (!firestore || !tenant) return;
+    if (!firestore || !tenant || !tenantRef) return;
     try {
       await updateDoc(tenantRef, { status: 'Archived' });
       toast({
