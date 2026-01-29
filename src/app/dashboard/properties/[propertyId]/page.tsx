@@ -6,7 +6,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Bed, Bath, User, Mail, Phone, Calendar as CalendarIcon, ShieldCheck, Edit, Trash2, UserPlus, Loader2 } from 'lucide-react';
+import { ArrowLeft, Bed, Bath, User, Mail, Phone, Calendar as CalendarIcon, ShieldCheck, Edit, Trash2, UserPlus, Loader2, MoreVertical } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, collection, query, where, updateDoc } from 'firebase/firestore';
@@ -23,6 +23,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 // Main interface for a Property document from Firestore
 interface Property {
@@ -156,14 +157,23 @@ export default function PropertyDetailPage() {
                       </div>
                       <div className="flex items-center gap-2">
                           <Badge>{property.status}</Badge>
-                          <Button asChild variant="outline" size="sm">
-                              <Link href={`/dashboard/properties/${propertyId}/edit`}>
-                                  <Edit className="mr-2 h-4 w-4" /> Edit
-                              </Link>
-                          </Button>
-                          <Button variant="destructive" size="sm" onClick={() => setIsDeleteDialogOpen(true)}>
-                              <Trash2 className="mr-2 h-4 w-4" /> Delete
-                          </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon">
+                                    <MoreVertical className="h-4 w-4" />
+                                </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                                <DropdownMenuItem asChild>
+                                    <Link href={`/dashboard/properties/${propertyId}/edit`}>
+                                        <Edit className="mr-2 h-4 w-4" /> Edit
+                                    </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                </DropdownMenuItem>
+                            </DropdownMenuContent>
+                        </DropdownMenu>
                       </div>
                   </div>
               </CardHeader>
