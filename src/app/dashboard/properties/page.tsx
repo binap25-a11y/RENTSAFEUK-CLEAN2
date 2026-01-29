@@ -112,25 +112,25 @@ export default function PropertiesPage() {
     return (
       <div className="flex flex-col gap-6">
         {/* Header remains visible during load */}
-        <div>
-          <div>
-            <h1 className="text-3xl font-bold">My Properties</h1>
-            <p className="text-muted-foreground">
-              A list of all properties in your portfolio.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 mt-4">
-            <Button asChild variant="outline">
-              <Link href="/dashboard/properties/deleted">
-                <Archive className="mr-2 h-4 w-4" /> View Deleted
-              </Link>
-            </Button>
-            <Button asChild>
-              <Link href="/dashboard/properties/add">
-                <PlusCircle className="mr-2 h-4 w-4" /> Add Property
-              </Link>
-            </Button>
-          </div>
+        <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between sm:items-center">
+            <div>
+                <h1 className="text-3xl font-bold">My Properties</h1>
+                <p className="text-muted-foreground">
+                A list of all properties in your portfolio.
+                </p>
+            </div>
+            <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+                <Button asChild variant="outline" className="w-full sm:w-auto">
+                <Link href="/dashboard/properties/deleted">
+                    <Archive className="mr-2 h-4 w-4" /> View Deleted
+                </Link>
+                </Button>
+                <Button asChild className="w-full sm:w-auto">
+                <Link href="/dashboard/properties/add">
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add Property
+                </Link>
+                </Button>
+            </div>
         </div>
         <div className="flex justify-center items-center h-64">
           <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -150,25 +150,25 @@ export default function PropertiesPage() {
   return (
     <>
       <div className="flex flex-col gap-6">
-        <div>
-          <div>
-            <h1 className="text-3xl font-bold">My Properties</h1>
-            <p className="text-muted-foreground">
-              A list of all properties in your portfolio.
-            </p>
-          </div>
-          <div className="flex items-center gap-2 mt-4">
-            <Button asChild variant="outline">
-              <Link href="/dashboard/properties/deleted">
-                <Archive className="mr-2 h-4 w-4" /> View Deleted
-              </Link>
-            </Button>
-            <Button asChild>
-              <Link href="/dashboard/properties/add">
-                <PlusCircle className="mr-2 h-4 w-4" /> Add Property
-              </Link>
-            </Button>
-          </div>
+        <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between sm:items-center">
+            <div>
+                <h1 className="text-3xl font-bold">My Properties</h1>
+                <p className="text-muted-foreground">
+                A list of all properties in your portfolio.
+                </p>
+            </div>
+            <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+                <Button asChild variant="outline" className="w-full sm:w-auto">
+                <Link href="/dashboard/properties/deleted">
+                    <Archive className="mr-2 h-4 w-4" /> View Deleted
+                </Link>
+                </Button>
+                <Button asChild className="w-full sm:w-auto">
+                <Link href="/dashboard/properties/add">
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add Property
+                </Link>
+                </Button>
+            </div>
         </div>
 
         {!properties?.length ? (

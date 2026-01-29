@@ -98,24 +98,26 @@ export default function InspectionsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-      <div>
-        <h1 className="text-3xl font-bold">Property Inspections</h1>
-        <p className="text-muted-foreground">
-          View past inspections and create new ones.
-        </p>
-      </div>
-      <div className="flex items-center gap-2">
-        <Button asChild>
-          <Link href="/dashboard/inspections/single-let">
-            <PlusCircle className="mr-2 h-4 w-4" /> New Single-Let Inspection
-          </Link>
-        </Button>
-        <Button asChild variant="outline">
-          <Link href="/dashboard/inspections/hmo">
-            <PlusCircle className="mr-2 h-4 w-4" /> New HMO Inspection
-          </Link>
-        </Button>
-      </div>
+       <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between sm:items-center">
+        <div>
+          <h1 className="text-3xl font-bold">Property Inspections</h1>
+          <p className="text-muted-foreground">
+            View past inspections and create new ones.
+          </p>
+        </div>
+        <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+          <Button asChild className='w-full sm:w-auto'>
+            <Link href="/dashboard/inspections/single-let">
+              <PlusCircle className="mr-2 h-4 w-4" /> New Single-Let Inspection
+            </Link>
+          </Button>
+          <Button asChild variant="outline" className='w-full sm:w-auto'>
+            <Link href="/dashboard/inspections/hmo">
+              <PlusCircle className="mr-2 h-4 w-4" /> New HMO Inspection
+            </Link>
+          </Button>
+        </div>
+       </div>
       <Card>
         <CardHeader>
           <CardTitle>Previous Inspections</CardTitle>
