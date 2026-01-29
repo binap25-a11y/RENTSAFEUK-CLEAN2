@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
+  CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -23,6 +24,7 @@ import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebas
 import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
 
 interface Property {
+  id: string;
   address: string;
   propertyType: string;
 }
@@ -83,32 +85,30 @@ export default function DeletedPropertiesPage() {
                 <CardDescription>You can restore these properties to your active portfolio.</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="rounded-md border">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Address</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {isLoading && (
+                {isLoading ? (
+                    <div className="flex justify-center items-center h-64">
+                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                ) : error ? (
+                    <div className="text-center py-10 text-destructive">Error: {error.message}</div>
+                ) : !deletedProperties?.length ? (
+                     <div className="text-center py-10 text-muted-foreground">
+                        No deleted properties.
+                    </div>
+                ) : (
+                <>
+                    {/* Desktop Table View */}
+                    <div className="hidden rounded-md border md:block">
+                        <Table>
+                            <TableHeader>
                                 <TableRow>
-                                    <TableCell colSpan={3} className="h-24 text-center">
-                                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
-                                    </TableCell>
+                                    <TableHead>Address</TableHead>
+                                    <TableHead>Type</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
-                            )}
-                             {!isLoading && error && (
-                                <TableRow>
-                                    <TableCell colSpan={3} className="h-24 text-center text-destructive">
-                                        Error: {error.message}
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                            {!isLoading && deletedProperties && deletedProperties.length > 0 ? (
-                                deletedProperties.map((property) => (
+                            </TableHeader>
+                            <TableBody>
+                                {deletedProperties.map((property) => (
                                 <TableRow key={property.id}>
                                     <TableCell className="font-medium">{property.address}</TableCell>
                                     <TableCell>{property.propertyType}</TableCell>
@@ -118,23 +118,31 @@ export default function DeletedPropertiesPage() {
                                     </Button>
                                     </TableCell>
                                 </TableRow>
-                                ))
-                            ) : (
-                                !isLoading && (
-                                    <TableRow>
-                                        <TableCell colSpan={3} className="h-24 text-center">
-                                            No deleted properties.
-                                        </TableCell>
-                                    </TableRow>
-                                )
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+
+                    {/* Mobile Card View */}
+                    <div className="grid gap-4 md:hidden">
+                        {deletedProperties.map((property) => (
+                            <Card key={property.id}>
+                                <CardHeader>
+                                    <CardTitle className="text-base">{property.address}</CardTitle>
+                                    <CardDescription>{property.propertyType}</CardDescription>
+                                </CardHeader>
+                                <CardFooter>
+                                    <Button size="sm" className="w-full" onClick={() => handleRestore(property.id, property.address)}>
+                                        <RefreshCw className="mr-2 h-4 w-4" /> Restore
+                                    </Button>
+                                </CardFooter>
+                            </Card>
+                        ))}
+                    </div>
+                </>
+                )}
             </CardContent>
         </Card>
     </div>
   );
 }
-
-    
