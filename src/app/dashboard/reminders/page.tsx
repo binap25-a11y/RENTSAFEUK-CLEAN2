@@ -241,7 +241,7 @@ export default function RemindersPage() {
     <div className="flex flex-col gap-6">
       <Card>
         <CardHeader>
-          <div className="flex justify-between items-center">
+          <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-start">
             <div>
               <CardTitle>Reminders</CardTitle>
               <CardDescription>
@@ -251,6 +251,7 @@ export default function RemindersPage() {
             <Button
               onClick={exportToPDF}
               disabled={isLoading || allReminders.length === 0}
+              className="w-full sm:w-auto"
             >
               <Download className="mr-2 h-4 w-4" /> Export to PDF
             </Button>

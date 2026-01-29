@@ -142,20 +142,20 @@ export default function TenantsPage() {
   return (
     <>
       <div className="flex flex-col gap-6">
-        <div className="flex justify-between items-center">
+        <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between sm:items-center">
           <div>
             <h1 className="text-3xl font-bold">Tenants</h1>
             <p className="text-muted-foreground">
               Manage all your tenants in one place.
             </p>
           </div>
-          <div className="flex items-center gap-2">
-              <Button asChild variant="outline">
+          <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+              <Button asChild variant="outline" className="w-full sm:w-auto">
                   <Link href="/dashboard/tenants/archived">
                       <Archive className="mr-2 h-4 w-4" /> View Archived
                   </Link>
               </Button>
-              <Button asChild>
+              <Button asChild className="w-full sm:w-auto">
                 <Link href="/dashboard/tenants/add">
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Tenant
                 </Link>
