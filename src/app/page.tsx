@@ -8,7 +8,6 @@ import { GoogleIcon, Logo } from '@/components/icons';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  signInAnonymously,
   signInWithRedirect,
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
@@ -107,19 +106,6 @@ export default function LoginPage() {
       });
     }
   };
-  
-   const handleAnonymousSignIn = () => {
-    if (auth) {
-      setIsProcessing(true);
-      signInAnonymously(auth).catch((error) => {
-        toast({
-          variant: 'destructive',
-          title: 'Login Failed',
-          description: error.message,
-        });
-      }).finally(() => setIsProcessing(false));
-    }
-  };
 
   if (isUserLoading || user) {
     return (
@@ -187,13 +173,10 @@ export default function LoginPage() {
                 </span>
               </div>
             </div>
-            <div className="grid grid-cols-2 gap-2">
+            <div className="grid grid-cols-1 gap-2">
                 <Button variant="outline" onClick={handleGoogleSignIn} disabled={isProcessing}>
                   <GoogleIcon className="mr-2 h-4 w-4" />
                   Google
-                </Button>
-                <Button variant="outline" onClick={handleAnonymousSignIn} disabled={isProcessing}>
-                  Anonymous
                 </Button>
             </div>
           </CardContent>
