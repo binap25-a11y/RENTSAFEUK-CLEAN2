@@ -48,14 +48,18 @@ export function UserNav() {
   };
 
   const getInitials = () => {
-      if (user?.displayName) {
-          return user.displayName.charAt(0).toUpperCase();
+    if (user?.displayName) {
+      const nameParts = user.displayName.split(' ').filter(Boolean);
+      if (nameParts.length > 1) {
+        return (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase();
       }
-      if (user?.email) {
-          return user.email.charAt(0).toUpperCase();
-      }
-      return 'A'; // for Anonymous
-  }
+      return user.displayName.charAt(0).toUpperCase();
+    }
+    if (user?.email) {
+      return user.email.charAt(0).toUpperCase();
+    }
+    return 'A'; // for Anonymous
+  };
 
 
   return (
