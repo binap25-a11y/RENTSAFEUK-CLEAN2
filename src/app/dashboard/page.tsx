@@ -485,26 +485,28 @@ export default function DashboardPage() {
                 </div>
             ) : recentActivities.length > 0 ? (
                 <>
-                    <Table className="hidden md:table">
-                        <TableHeader>
-                            <TableRow>
-                            <TableHead>Property</TableHead>
-                            <TableHead>Activity</TableHead>
-                            <TableHead className="text-right">Date</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {recentActivities.map((activity) => (
-                            <TableRow key={activity.id}>
-                                <TableCell className="font-medium">
-                                {activity.property}
-                                </TableCell>
-                                <TableCell>{activity.activity}</TableCell>
-                                <TableCell className="text-right">{activity.date}</TableCell>
-                            </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                    <div className="hidden md:block">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                <TableHead>Property</TableHead>
+                                <TableHead>Activity</TableHead>
+                                <TableHead className="text-right">Date</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {recentActivities.map((activity) => (
+                                <TableRow key={activity.id}>
+                                    <TableCell className="font-medium">
+                                    {activity.property}
+                                    </TableCell>
+                                    <TableCell>{activity.activity}</TableCell>
+                                    <TableCell className="text-right">{activity.date}</TableCell>
+                                </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
                      <div className="space-y-4 md:hidden">
                         {recentActivities.map((activity) => (
                             <div key={activity.id} className="rounded-lg border bg-card text-card-foreground p-4">
@@ -539,33 +541,35 @@ export default function DashboardPage() {
                 </div>
              ) : upcomingTasks.length > 0 ? (
                 <>
-                    <Table className="hidden md:table">
-                        <TableHeader>
-                            <TableRow>
-                            <TableHead>Task</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead className="text-right">Due Date</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {upcomingTasks.map((task) => (
-                            <TableRow key={task.id}>
-                                <TableCell>
-                                <div className="font-medium">{task.task}</div>
-                                <div className="text-sm text-muted-foreground">
-                                    {task.property}
-                                </div>
-                                </TableCell>
-                                <TableCell>
-                                <Badge variant={getStatusVariant(task.status)}>
-                                    {task.status}
-                                </Badge>
-                                </TableCell>
-                                <TableCell className="text-right">{task.dueDate}</TableCell>
-                            </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
+                    <div className="hidden md:block">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                <TableHead>Task</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead className="text-right">Due Date</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {upcomingTasks.map((task) => (
+                                <TableRow key={task.id}>
+                                    <TableCell>
+                                    <div className="font-medium">{task.task}</div>
+                                    <div className="text-sm text-muted-foreground">
+                                        {task.property}
+                                    </div>
+                                    </TableCell>
+                                    <TableCell>
+                                    <Badge variant={getStatusVariant(task.status)}>
+                                        {task.status}
+                                    </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-right">{task.dueDate}</TableCell>
+                                </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
                     <div className="space-y-4 md:hidden">
                         {upcomingTasks.map((task) => (
                             <div key={task.id} className="rounded-lg border bg-card text-card-foreground p-4">
