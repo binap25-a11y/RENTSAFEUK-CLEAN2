@@ -623,20 +623,20 @@ function AnnualSummary({ allProperties, selectedProperty, selectedYear }: { allP
                 Download PDF
             </Button>
         </div>
-        <div className="grid gap-4 lg:grid-cols-3">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Portfolio Annual Income</CardTitle>
+                <CardTitle className="text-sm font-medium">Total Portfolio Income</CardTitle>
                 <PoundSterling className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                 <div className="text-2xl font-bold">£{portfolioIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-                <p className="text-xs text-muted-foreground">Across {allProperties.length} properties</p>
+                <p className="text-xs text-muted-foreground">{allProperties.length} properties total</p>
                 </CardContent>
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Property Expenses ({selectedYear})</CardTitle>
+                <CardTitle className="text-sm font-medium">Total Expenses ({selectedYear})</CardTitle>
                 <TrendingDown className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -646,12 +646,12 @@ function AnnualSummary({ allProperties, selectedProperty, selectedYear }: { allP
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Property Net Income ({selectedYear})</CardTitle>
+                <CardTitle className="text-sm font-medium">Net Income ({selectedYear})</CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                      {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <div className={cn("text-2xl font-bold", selectedPropertyNet < 0 && "text-destructive")}>£{selectedPropertyNet.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>}
-                    <p className="text-xs text-muted-foreground">Actual rent vs expenses</p>
+                    <p className="text-xs text-muted-foreground">Income minus expenses</p>
                 </CardContent>
             </Card>
         </div>
