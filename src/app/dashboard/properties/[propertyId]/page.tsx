@@ -3,7 +3,7 @@
 import { useParams, notFound, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Bed, Bath, User, Mail, Phone, Calendar as CalendarIcon, ShieldCheck, Edit, Trash2, UserPlus, Loader2 } from 'lucide-react';
@@ -186,39 +186,76 @@ export default function PropertyDetailPage() {
                           <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                       </div>
                   ) : tenants && tenants.length > 0 ? (
-                      <div className="rounded-md border">
-                          <Table>
-                              <TableHeader>
-                                  <TableRow>
-                                      <TableHead>Name</TableHead>
-                                      <TableHead>Email</TableHead>
-                                      <TableHead>Start Date</TableHead>
-                                      <TableHead className="text-right">Actions</TableHead>
-                                  </TableRow>
-                              </TableHeader>
-                              <TableBody>
-                                  {tenants.map(tenant => {
-                                      const startDate = tenant.tenancyStartDate ? (tenant.tenancyStartDate instanceof Date ? tenant.tenancyStartDate : new Date(tenant.tenancyStartDate.seconds * 1000)) : null;
-                                      return (
-                                          <TableRow key={tenant.id}>
-                                              <TableCell className="font-medium">
-                                                  <Link href={`/dashboard/tenants/${tenant.id}`} className="hover:underline">{tenant.name}</Link>
-                                              </TableCell>
-                                              <TableCell>{tenant.email}</TableCell>
-                                              <TableCell>{startDate ? format(startDate, 'PPP') : 'N/A'}</TableCell>
-                                              <TableCell className="text-right">
-                                                  <Button asChild variant="ghost" size="icon">
+                      <>
+                          {/* Desktop Table View */}
+                          <div className="hidden rounded-md border md:block">
+                              <Table>
+                                  <TableHeader>
+                                      <TableRow>
+                                          <TableHead>Name</TableHead>
+                                          <TableHead>Email</TableHead>
+                                          <TableHead>Start Date</TableHead>
+                                          <TableHead className="text-right">Actions</TableHead>
+                                      </TableRow>
+                                  </TableHeader>
+                                  <TableBody>
+                                      {tenants.map(tenant => {
+                                          const startDate = tenant.tenancyStartDate ? (tenant.tenancyStartDate instanceof Date ? tenant.tenancyStartDate : new Date(tenant.tenancyStartDate.seconds * 1000)) : null;
+                                          return (
+                                              <TableRow key={tenant.id}>
+                                                  <TableCell className="font-medium">
+                                                      <Link href={`/dashboard/tenants/${tenant.id}`} className="hover:underline">{tenant.name}</Link>
+                                                  </TableCell>
+                                                  <TableCell>{tenant.email}</TableCell>
+                                                  <TableCell>{startDate ? format(startDate, 'PPP') : 'N/A'}</TableCell>
+                                                  <TableCell className="text-right">
+                                                      <Button asChild variant="ghost" size="icon">
+                                                          <Link href={`/dashboard/tenants/${tenant.id}/edit`}>
+                                                              <Edit className="h-4 w-4" /><span className="sr-only">Edit</span>
+                                                          </Link>
+                                                      </Button>
+                                                  </TableCell>
+                                              </TableRow>
+                                          );
+                                      })}
+                                  </TableBody>
+                              </Table>
+                          </div>
+                           {/* Mobile Card View */}
+                          <div className="grid gap-4 md:hidden">
+                              {tenants.map(tenant => {
+                                  const startDate = tenant.tenancyStartDate ? (tenant.tenancyStartDate instanceof Date ? tenant.tenancyStartDate : new Date(tenant.tenancyStartDate.seconds * 1000)) : null;
+                                  return (
+                                      <Card key={tenant.id}>
+                                          <CardHeader>
+                                              <div className="flex justify-between items-start">
+                                                  <CardTitle className="text-base">
+                                                      <Link href={`/dashboard/tenants/${tenant.id}`} className="hover:underline">
+                                                          {tenant.name}
+                                                      </Link>
+                                                  </CardTitle>
+                                                  <Button asChild variant="outline" size="sm">
                                                       <Link href={`/dashboard/tenants/${tenant.id}/edit`}>
-                                                          <Edit className="h-4 w-4" /><span className="sr-only">Edit</span>
+                                                          <Edit className="mr-2 h-4 w-4" /> Edit
                                                       </Link>
                                                   </Button>
-                                              </TableCell>
-                                          </TableRow>
-                                      );
-                                  })}
-                              </TableBody>
-                          </Table>
-                      </div>
+                                              </div>
+                                          </CardHeader>
+                                          <CardContent className="space-y-2 text-sm pt-0">
+                                              <div className="flex items-center gap-2">
+                                                  <Mail className="h-4 w-4 text-muted-foreground" />
+                                                  <a href={`mailto:${tenant.email}`} className='truncate hover:underline'>{tenant.email}</a>
+                                              </div>
+                                              <div className="flex items-center gap-2">
+                                                  <CalendarIcon className="h-4 w-4 text-muted-foreground" />
+                                                  <span>Start Date: {startDate ? format(startDate, 'PPP') : 'N/A'}</span>
+                                              </div>
+                                          </CardContent>
+                                      </Card>
+                                  );
+                              })}
+                          </div>
+                      </>
                   ) : (
                       <div className="text-center py-8 text-muted-foreground">
                           <p>No active tenants assigned to this property.</p>
