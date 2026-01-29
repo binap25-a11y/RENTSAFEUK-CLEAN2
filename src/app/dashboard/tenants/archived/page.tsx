@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
+  CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -17,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowLeft, RefreshCw, Loader2 } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Loader2, Mail, Phone } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
@@ -28,6 +29,7 @@ interface Tenant {
   id: string;
   name: string;
   email: string;
+  telephone?: string;
   propertyId: string;
   status?: string;
 }
@@ -111,33 +113,31 @@ export default function ArchivedTenantsPage() {
                 <CardDescription>You can restore these tenants to your active list.</CardDescription>
             </CardHeader>
             <CardContent>
-                <div className="rounded-md border">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead>Name</TableHead>
-                                <TableHead>Email</TableHead>
-                                <TableHead>Last Known Property</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {isLoading && (
+                {isLoading ? (
+                    <div className="flex justify-center items-center h-64">
+                        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                    </div>
+                ) : error ? (
+                    <div className="text-center py-10 text-destructive">Error: {error.message}</div>
+                ) : !archivedTenants?.length ? (
+                    <div className="text-center py-10 text-muted-foreground">
+                        No archived tenants found.
+                    </div>
+                ) : (
+                <>
+                    {/* Desktop Table View */}
+                    <div className="hidden rounded-md border md:block">
+                        <Table>
+                            <TableHeader>
                                 <TableRow>
-                                    <TableCell colSpan={4} className="h-24 text-center">
-                                        <Loader2 className="h-6 w-6 animate-spin mx-auto text-muted-foreground" />
-                                    </TableCell>
+                                    <TableHead>Name</TableHead>
+                                    <TableHead>Email</TableHead>
+                                    <TableHead>Last Known Property</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
                                 </TableRow>
-                            )}
-                             {!isLoading && error && (
-                                <TableRow>
-                                    <TableCell colSpan={4} className="h-24 text-center text-destructive">
-                                        Error: {error.message}
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                            {!isLoading && archivedTenants && archivedTenants.length > 0 ? (
-                                archivedTenants.map((tenant) => (
+                            </TableHeader>
+                            <TableBody>
+                                {archivedTenants.map((tenant) => (
                                 <TableRow key={tenant.id}>
                                     <TableCell className="font-medium">{tenant.name}</TableCell>
                                     <TableCell>{tenant.email}</TableCell>
@@ -148,19 +148,41 @@ export default function ArchivedTenantsPage() {
                                     </Button>
                                     </TableCell>
                                 </TableRow>
-                                ))
-                            ) : (
-                                !isLoading && (
-                                    <TableRow>
-                                        <TableCell colSpan={4} className="h-24 text-center">
-                                            No archived tenants.
-                                        </TableCell>
-                                    </TableRow>
-                                )
-                            )}
-                        </TableBody>
-                    </Table>
-                </div>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+
+                    {/* Mobile Card View */}
+                    <div className="grid gap-4 md:hidden">
+                        {archivedTenants.map((tenant) => (
+                            <Card key={tenant.id}>
+                                <CardHeader>
+                                    <CardTitle>{tenant.name}</CardTitle>
+                                    <CardDescription>{propertyMap[tenant.propertyId] || 'No property assigned'}</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-2 text-sm pt-0">
+                                    <div className="flex items-center gap-2">
+                                        <Mail className="h-4 w-4 text-muted-foreground" />
+                                        <a href={`mailto:${tenant.email}`} className='truncate hover:underline'>{tenant.email}</a>
+                                    </div>
+                                    {tenant.telephone && (
+                                        <div className="flex items-center gap-2">
+                                            <Phone className="h-4 w-4 text-muted-foreground" />
+                                            <span>{tenant.telephone}</span>
+                                        </div>
+                                    )}
+                                </CardContent>
+                                <CardFooter>
+                                    <Button size="sm" className="w-full" onClick={() => handleRestore(tenant.id, tenant.name)}>
+                                        <RefreshCw className="mr-2 h-4 w-4" /> Restore
+                                    </Button>
+                                </CardFooter>
+                            </Card>
+                        ))}
+                    </div>
+                </>
+                )}
             </CardContent>
         </Card>
     </div>
