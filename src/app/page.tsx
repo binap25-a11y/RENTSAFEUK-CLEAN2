@@ -185,20 +185,7 @@ export default function LoginPage() {
                   name="password"
                   render={({ field }) => (
                     <FormItem>
-                      <div className="flex items-center">
-                        <FormLabel>Password</FormLabel>
-                        {mode === 'login' && (
-                          <Button
-                            type="button"
-                            variant="link"
-                            className="ml-auto inline-block py-0 px-0 h-auto text-sm font-normal"
-                            onClick={handlePasswordReset}
-                            disabled={isProcessing}
-                          >
-                            Forgot password?
-                          </Button>
-                        )}
-                      </div>
+                      <FormLabel>Password</FormLabel>
                       <FormControl>
                         <div className="relative">
                           <Input
@@ -225,6 +212,19 @@ export default function LoginPage() {
                         </div>
                       </FormControl>
                       <FormMessage />
+                       {mode === 'login' && (
+                          <div className="text-right -mt-2">
+                            <Button
+                                type="button"
+                                variant="link"
+                                className="py-0 px-0 h-auto text-sm font-normal"
+                                onClick={handlePasswordReset}
+                                disabled={isProcessing}
+                            >
+                                Forgot password?
+                            </Button>
+                          </div>
+                      )}
                     </FormItem>
                   )}
                 />
