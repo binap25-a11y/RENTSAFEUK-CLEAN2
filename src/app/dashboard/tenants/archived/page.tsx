@@ -158,7 +158,7 @@ export default function ArchivedTenantsPage() {
                         {archivedTenants.map((tenant) => (
                             <Card key={tenant.id}>
                                 <CardHeader>
-                                    <CardTitle>{tenant.name}</CardTitle>
+                                    <CardTitle className="text-base">{tenant.name}</CardTitle>
                                     <CardDescription>{propertyMap[tenant.propertyId] || 'No property assigned'}</CardDescription>
                                 </CardHeader>
                                 <CardContent className="space-y-2 text-sm pt-0">
