@@ -390,23 +390,60 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
           <CardDescription>Expenses logged for the selected property in {selectedYear}.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Paid By</TableHead><TableHead className="text-right">Amount (£)</TableHead></TableRow></TableHeader>
-              <TableBody>
-                {isLoadingExpenses && (<TableRow><TableCell colSpan={4} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" /></TableCell></TableRow>)}
-                {!isLoadingExpenses && expenses?.length === 0 && (<TableRow><TableCell colSpan={4} className="h-24 text-center">{selectedPropertyId ? 'No expenses logged for this property.' : 'Select a property to see expenses.'}</TableCell></TableRow>)}
-                {expenses?.map((expense) => (
-                  <TableRow key={expense.id}>
-                    <TableCell>{format(expense.date instanceof Date ? expense.date : new Date(expense.date.seconds * 1000),'dd/MM/yyyy')}</TableCell>
-                    <TableCell>{expense.expenseType}</TableCell>
-                    <TableCell>{expense.paidBy}</TableCell>
-                    <TableCell className="text-right font-medium">{expense.amount.toFixed(2)}</TableCell>
-                  </TableRow>
-                ))}
-              </TableBody>
-            </Table>
-          </div>
+          {isLoadingExpenses ? (
+            <div className="flex justify-center items-center h-24">
+              <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+            </div>
+          ) : !expenses?.length ? (
+              <div className="text-center text-muted-foreground py-10">
+                  {selectedPropertyId ? 'No expenses logged for this property.' : 'Select a property to see expenses.'}
+              </div>
+          ) : (
+              <>
+                  {/* Desktop Table View */}
+                  <div className="hidden rounded-md border md:block">
+                      <Table>
+                      <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Paid By</TableHead><TableHead className="text-right">Amount (£)</TableHead></TableRow></TableHeader>
+                      <TableBody>
+                          {expenses?.map((expense) => (
+                          <TableRow key={expense.id}>
+                              <TableCell>{format(expense.date instanceof Date ? expense.date : new Date(expense.date.seconds * 1000),'dd/MM/yyyy')}</TableCell>
+                              <TableCell>{expense.expenseType}</TableCell>
+                              <TableCell>{expense.paidBy}</TableCell>
+                              <TableCell className="text-right font-medium">£{expense.amount.toFixed(2)}</TableCell>
+                          </TableRow>
+                          ))}
+                      </TableBody>
+                      </Table>
+                  </div>
+                  {/* Mobile Card View */}
+                  <div className="grid gap-4 md:hidden">
+                      {expenses.map((expense) => (
+                          <Card key={expense.id}>
+                              <CardHeader>
+                                  <CardTitle className="text-base">{expense.expenseType}</CardTitle>
+                                  <CardDescription>{format(expense.date instanceof Date ? expense.date : new Date(expense.date.seconds * 1000),'PPP')}</CardDescription>
+                              </CardHeader>
+                              <CardContent className="space-y-2 text-sm pt-0">
+                                  <div className="flex justify-between items-center border-t pt-2">
+                                      <span className="text-muted-foreground">Amount</span>
+                                      <span className="font-medium">£{expense.amount.toFixed(2)}</span>
+                                  </div>
+                                  <div className="flex justify-between items-center border-t pt-2">
+                                      <span className="text-muted-foreground">Paid By</span>
+                                      <span className="font-medium">{expense.paidBy}</span>
+                                  </div>
+                              </CardContent>
+                              {expense.notes && (
+                                  <CardFooter className="text-xs text-muted-foreground border-t pt-2 pb-2">
+                                      <p className="line-clamp-2">{expense.notes}</p>
+                                  </CardFooter>
+                              )}
+                          </Card>
+                      ))}
+                  </div>
+              </>
+          )}
         </CardContent>
         <CardFooter className="flex justify-end font-bold">
           <div className="flex items-center gap-4">
