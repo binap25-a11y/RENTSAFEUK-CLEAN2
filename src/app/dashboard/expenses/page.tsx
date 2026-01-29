@@ -703,7 +703,9 @@ function AnnualSummary({ allProperties, selectedProperty, selectedYear }: { allP
                 <CardContent className="pt-6">
                     <p className="text-lg font-semibold">Expense Breakdown</p>
                     <p className="text-sm text-muted-foreground mb-4">For {selectedProperty ? selectedProperty.address : 'the selected property'} for {selectedYear}.</p>
-                    <div className="rounded-md border">
+                    
+                    {/* Desktop Table View */}
+                    <div className="hidden rounded-md border md:block">
                         <Table>
                         <TableHeader>
                             <TableRow>
@@ -723,6 +725,25 @@ function AnnualSummary({ allProperties, selectedProperty, selectedYear }: { allP
                         </TableBody>
                         </Table>
                     </div>
+
+                    {/* Mobile Card View */}
+                    <div className="space-y-4 md:hidden">
+                        {isLoadingExpenses && <div className="flex h-24 items-center justify-center"><Loader2 className="h-6 w-6 animate-spin" /></div>}
+                        {!isLoadingExpenses && expensesByCategory.length === 0 && (
+                            <div className="py-10 text-center text-muted-foreground">
+                                {selectedProperty ? "No expenses found." : "Please select a property."}
+                            </div>
+                        )}
+                        {expensesByCategory.map(cat => (
+                            <Card key={cat.name}>
+                                <CardContent className="flex items-center justify-between p-4">
+                                    <p className="font-medium">{cat.name}</p>
+                                    <p className="font-semibold">£{cat.amount.toFixed(2)}</p>
+                                </CardContent>
+                            </Card>
+                        ))}
+                    </div>
+
                 </CardContent>
             </Card>
              <Card>
