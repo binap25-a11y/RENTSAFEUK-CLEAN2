@@ -157,11 +157,10 @@ export default function FinancialsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Portfolio Gross Income</CardTitle>
-                 <CardDescription className='text-xs'>(Annual)</CardDescription>
+                <CardTitle className="text-sm font-medium">Gross Portfolio Income</CardTitle>
                 <PoundSterling className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -170,24 +169,22 @@ export default function FinancialsPage() {
                         return total + (prop.tenancy?.monthlyRent || 0) * 12;
                     }, 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})
                 }</div>
-                <p className="text-xs text-muted-foreground">{properties?.length || 0} properties total</p>
+                <p className="text-xs text-muted-foreground">Annual figure for {properties?.length || 0} properties</p>
                 </CardContent>
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
-                <CardDescription className='text-xs'>(for selection)</CardDescription>
+                <CardTitle className="text-sm font-medium">Selected Expenses</CardTitle>
                 <TrendingDown className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">-</div>
-                    <p className="text-xs text-muted-foreground">Select property & year</p>
+                    <p className="text-xs text-muted-foreground">For selected property & year</p>
                 </CardContent>
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Net Income</CardTitle>
-                <CardDescription className='text-xs'>(for selection)</CardDescription>
+                <CardTitle className="text-sm font-medium">Selected Net Income</CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -931,11 +928,7 @@ function RentStatement({ selectedProperty, selectedYear }: { selectedProperty: P
   if (!selectedProperty.tenancy?.monthlyRent) {
      return (
         <Card className="mt-6">
-            <CardHeader>
-                <CardTitle>Rent Payment Statement</CardTitle>
-                <CardDescription>For {selectedProperty.address}</CardDescription>
-            </CardHeader>
-            <CardContent>
+            <CardContent className="pt-6">
                 <p className="text-center text-muted-foreground">No tenancy or rent information available for this property.</p>
             </CardContent>
         </Card>
