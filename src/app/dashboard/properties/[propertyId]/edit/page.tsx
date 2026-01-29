@@ -126,7 +126,7 @@ export default function EditPropertyPage() {
   }
 
   return (
-    <Card>
+    <Card className="max-w-4xl mx-auto">
       <CardHeader>
         <CardTitle>Edit Property</CardTitle>
         <CardDescription>

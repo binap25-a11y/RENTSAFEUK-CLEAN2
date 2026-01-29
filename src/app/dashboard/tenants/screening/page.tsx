@@ -216,7 +216,7 @@ export default function TenantScreeningPage() {
     }
 
     return (
-        <Card>
+        <Card className="max-w-4xl mx-auto">
             <CardHeader>
                 <CardTitle>Tenant Screening Checklist</CardTitle>
                 <CardDescription>

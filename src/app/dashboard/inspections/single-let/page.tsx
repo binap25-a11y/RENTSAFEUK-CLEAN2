@@ -261,7 +261,7 @@ export default function SingleLetInspectionPage() {
   }
 
   return (
-    <Card>
+    <Card className="max-w-4xl mx-auto">
       <CardHeader>
         <CardTitle>Record Single-Let Inspection</CardTitle>
         <CardDescription>

@@ -83,7 +83,7 @@ export default function AddPropertyPage() {
   }
 
   return (
-    <Card>
+    <Card className="max-w-4xl mx-auto">
       <CardHeader>
         <CardTitle>Add New Property</CardTitle>
         <CardDescription>
