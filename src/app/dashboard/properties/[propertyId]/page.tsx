@@ -126,13 +126,37 @@ export default function PropertyDetailPage() {
   return (
     <>
       <div className="flex flex-col gap-6">
-        <div className="flex items-center gap-4">
-          <Button variant="outline" size="icon" asChild>
-            <Link href="/dashboard/properties">
-              <ArrowLeft className="h-4 w-4" />
-            </Link>
-          </Button>
-          <h1 className="text-2xl font-bold">{property.address}</h1>
+        <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+                <Button variant="outline" size="icon" asChild>
+                    <Link href="/dashboard/properties">
+                    <ArrowLeft className="h-4 w-4" />
+                    </Link>
+                </Button>
+                <div>
+                    <h1 className="text-2xl font-bold">{property.address}</h1>
+                    <div className="flex items-center gap-2 mt-1">
+                        <Badge>{property.status}</Badge>
+                    </div>
+                </div>
+            </div>
+            <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon">
+                        <MoreVertical className="h-4 w-4" />
+                    </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuItem asChild>
+                        <Link href={`/dashboard/properties/${propertyId}/edit`}>
+                            <Edit className="mr-2 h-4 w-4" /> Edit
+                        </Link>
+                    </DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                    </DropdownMenuItem>
+                </DropdownMenuContent>
+            </DropdownMenu>
         </div>
         <div className="space-y-6">
           <Card>
@@ -146,35 +170,10 @@ export default function PropertyDetailPage() {
                   />
               </CardContent>
               <CardHeader>
-                  <div className="flex justify-between items-start">
-                      <div>
-                          <CardTitle className='mb-2'>{property.address}</CardTitle>
-                          <div className="flex items-center gap-4 text-sm text-muted-foreground">
-                              <span>{property.propertyType}</span>
-                              <span className='flex items-center gap-1'><Bed className="h-4 w-4" /> {property.bedrooms}</span>
-                              <span className='flex items-center gap-1'><Bath className="h-4 w-4" /> {property.bathrooms}</span>
-                          </div>
-                      </div>
-                      <div className="flex items-center gap-2">
-                          <Badge>{property.status}</Badge>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon">
-                                    <MoreVertical className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem asChild>
-                                    <Link href={`/dashboard/properties/${propertyId}/edit`}>
-                                        <Edit className="mr-2 h-4 w-4" /> Edit
-                                    </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                      </div>
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                        <span>{property.propertyType}</span>
+                        <span className='flex items-center gap-1'><Bed className="h-4 w-4" /> {property.bedrooms}</span>
+                        <span className='flex items-center gap-1'><Bath className="h-4 w-4" /> {property.bathrooms}</span>
                   </div>
               </CardHeader>
           </Card>
