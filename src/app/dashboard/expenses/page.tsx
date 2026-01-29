@@ -160,7 +160,7 @@ export default function FinancialsPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Portfolio Income</CardTitle>
+                <CardTitle className="text-sm font-medium">Annual Portfolio Income</CardTitle>
                 <PoundSterling className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -169,22 +169,22 @@ export default function FinancialsPage() {
                         return total + (prop.tenancy?.monthlyRent || 0) * 12;
                     }, 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})
                 }</div>
-                <p className="text-xs text-muted-foreground">Annual figure for {properties?.length || 0} properties</p>
+                <p className="text-xs text-muted-foreground">{properties?.length || 0} properties</p>
                 </CardContent>
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Expenses</CardTitle>
+                <CardTitle className="text-sm font-medium">Selected Property Expenses</CardTitle>
                 <TrendingDown className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">-</div>
-                    <p className="text-xs text-muted-foreground">For selected property & year</p>
+                    <p className="text-xs text-muted-foreground">Select a property & year</p>
                 </CardContent>
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Net Income</CardTitle>
+                <CardTitle className="text-sm font-medium">Selected Property Net</CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -200,7 +200,7 @@ export default function FinancialsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
            <div className="flex flex-col sm:flex-row gap-4">
-                <div className="grid w-full sm:w-auto gap-2">
+                <div className="grid w-full sm:w-auto gap-1.5">
                     <Label htmlFor="property-filter">Property</Label>
                     <Select onValueChange={setSelectedPropertyId} value={selectedPropertyId}>
                         <SelectTrigger id="property-filter" className="w-full sm:w-[300px]">
@@ -215,7 +215,7 @@ export default function FinancialsPage() {
                         </SelectContent>
                     </Select>
                 </div>
-                <div className="grid w-full sm:w-auto gap-2">
+                <div className="grid w-full sm:w-auto gap-1.5">
                     <Label htmlFor="year-filter">Year</Label>
                     <Select onValueChange={(value) => setSelectedYear(Number(value))} value={String(selectedYear)}>
                         <SelectTrigger id="year-filter" className="w-full sm:w-[120px]">
@@ -229,7 +229,7 @@ export default function FinancialsPage() {
                     </Select>
                 </div>
            </div>
-           <Tabs defaultValue="expenses">
+           <Tabs defaultValue="expenses" className="pt-4">
               <TabsList className="grid w-full grid-cols-1 sm:w-auto sm:grid-cols-3">
                 <TabsTrigger value="expenses">Expenses</TabsTrigger>
                 <TabsTrigger value="summary">Annual Summary</TabsTrigger>
@@ -266,13 +266,16 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseSchema),
     defaultValues: {
-      date: new Date(),
       propertyId: selectedPropertyId || undefined,
     },
   });
 
+  useEffect(() => {
+    form.setValue('date', new Date());
+  }, [form]);
+
   // Automatically update the form's propertyId when the global selection changes
-  useMemo(() => {
+  useEffect(() => {
     form.setValue('propertyId', selectedPropertyId);
   }, [selectedPropertyId, form]);
 

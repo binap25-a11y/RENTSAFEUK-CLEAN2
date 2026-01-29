@@ -161,10 +161,11 @@ export default function TenantScreeningPage() {
 
     const form = useForm<ScreeningFormValues>({
         resolver: zodResolver(screeningSchema),
-        defaultValues: {
-            screeningDate: new Date(),
-        }
     });
+
+    useEffect(() => {
+        form.setValue('screeningDate', new Date());
+    }, [form]);
 
     const tenantsQuery = useMemoFirebase(() => {
         if (!user) return null;

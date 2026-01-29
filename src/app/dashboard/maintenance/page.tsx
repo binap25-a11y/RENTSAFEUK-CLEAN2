@@ -40,7 +40,7 @@ import { CalendarIcon, Upload, Loader2, Wand2, Search } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
   useUser,
@@ -124,10 +124,11 @@ export default function MaintenancePage() {
 
   const form = useForm<MaintenanceFormValues>({
     resolver: zodResolver(maintenanceSchema),
-    defaultValues: {
-      reportedDate: new Date(),
-    }
   });
+
+  useEffect(() => {
+    form.setValue('reportedDate', new Date());
+  }, [form]);
 
   // Fetch properties for the dropdowns
   const propertiesQuery = useMemoFirebase(() => {
