@@ -18,7 +18,7 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowLeft, RefreshCw, Loader2 } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Loader2, Phone, Mail } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
@@ -27,6 +27,8 @@ interface Contractor {
     id: string;
     name: string;
     trade: string;
+    phone: string;
+    email?: string;
 }
 
 export default function ArchivedContractorsPage() {
@@ -128,9 +130,25 @@ export default function ArchivedContractorsPage() {
                         {archivedContractors.map((contractor) => (
                             <Card key={contractor.id}>
                                 <CardHeader>
-                                    <CardTitle className='text-base'>{contractor.name}</CardTitle>
+                                    <CardTitle>{contractor.name}</CardTitle>
                                     <CardDescription>{contractor.trade}</CardDescription>
                                 </CardHeader>
+                                {(contractor.phone || contractor.email) && (
+                                    <CardContent className="space-y-2 text-sm pt-0">
+                                        {contractor.phone && (
+                                        <div className="flex items-center gap-2">
+                                            <Phone className="h-4 w-4 text-muted-foreground" />
+                                            <span>{contractor.phone}</span>
+                                        </div>
+                                        )}
+                                        {contractor.email && (
+                                        <div className="flex items-center gap-2">
+                                            <Mail className="h-4 w-4 text-muted-foreground" />
+                                            <a href={`mailto:${contractor.email}`} className='truncate hover:underline'>{contractor.email}</a>
+                                        </div>
+                                        )}
+                                    </CardContent>
+                                )}
                                 <CardFooter>
                                     <Button size="sm" className='w-full' onClick={() => handleRestore(contractor.id, contractor.name)}>
                                         <RefreshCw className="mr-2 h-4 w-4" /> Restore
