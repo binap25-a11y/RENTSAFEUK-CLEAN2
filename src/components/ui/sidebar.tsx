@@ -3,7 +3,7 @@
 import * as React from "react"
 import { Slot } from "@radix-ui/react-slot"
 import { VariantProps, cva } from "class-variance-authority"
-import { PanelLeft } from "lucide-react"
+import { PanelLeft, ArrowLeft } from "lucide-react"
 
 import { useIsMobile } from "@/hooks/use-mobile"
 import { cn } from "@/lib/utils"
@@ -363,14 +363,28 @@ SidebarInput.displayName = "SidebarInput"
 const SidebarHeader = React.forwardRef<
   HTMLDivElement,
   React.ComponentProps<"div">
->(({ className, ...props }, ref) => {
+>(({ className, children, ...props }, ref) => {
+  const { isMobile, setOpenMobile } = useSidebar()
+
   return (
     <div
       ref={ref}
       data-sidebar="header"
       className={cn("flex flex-col gap-2 p-2", className)}
       {...props}
-    />
+    >
+      {isMobile ? (
+        <div className="flex items-center justify-between">
+          {children}
+          <Button variant="ghost" size="icon" onClick={() => setOpenMobile(false)}>
+            <ArrowLeft className="h-4 w-4" />
+            <span className="sr-only">Close sidebar</span>
+          </Button>
+        </div>
+      ) : (
+        children
+      )}
+    </div>
   )
 })
 SidebarHeader.displayName = "SidebarHeader"
@@ -772,5 +786,3 @@ export {
   SidebarTrigger,
   useSidebar,
 }
-
-    
