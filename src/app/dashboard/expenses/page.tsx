@@ -160,7 +160,7 @@ export default function FinancialsPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Gross Portfolio Income</CardTitle>
+                <CardTitle className="text-sm font-medium">Portfolio Income</CardTitle>
                 <PoundSterling className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -174,7 +174,7 @@ export default function FinancialsPage() {
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Selected Expenses</CardTitle>
+                <CardTitle className="text-sm font-medium">Expenses</CardTitle>
                 <TrendingDown className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -184,7 +184,7 @@ export default function FinancialsPage() {
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Selected Net Income</CardTitle>
+                <CardTitle className="text-sm font-medium">Net Income</CardTitle>
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -200,7 +200,7 @@ export default function FinancialsPage() {
         </CardHeader>
         <CardContent className="space-y-4">
            <div className="flex flex-col sm:flex-row gap-4">
-                <div className="grid gap-2">
+                <div className="grid w-full sm:w-auto gap-2">
                     <Label htmlFor="property-filter">Property</Label>
                     <Select onValueChange={setSelectedPropertyId} value={selectedPropertyId}>
                         <SelectTrigger id="property-filter" className="w-full sm:w-[300px]">
@@ -215,7 +215,7 @@ export default function FinancialsPage() {
                         </SelectContent>
                     </Select>
                 </div>
-                <div className="grid gap-2">
+                <div className="grid w-full sm:w-auto gap-2">
                     <Label htmlFor="year-filter">Year</Label>
                     <Select onValueChange={(value) => setSelectedYear(Number(value))} value={String(selectedYear)}>
                         <SelectTrigger id="year-filter" className="w-full sm:w-[120px]">
@@ -230,7 +230,7 @@ export default function FinancialsPage() {
                 </div>
            </div>
            <Tabs defaultValue="expenses">
-              <TabsList className="grid w-full grid-cols-1 sm:grid-cols-3">
+              <TabsList className="grid w-full grid-cols-1 sm:w-auto sm:grid-cols-3">
                 <TabsTrigger value="expenses">Expenses</TabsTrigger>
                 <TabsTrigger value="summary">Annual Summary</TabsTrigger>
                 <TabsTrigger value="statement">Rent Statement</TabsTrigger>
@@ -697,39 +697,36 @@ function AnnualSummary({ allProperties, selectedProperty, selectedYear }: { allP
         </div>
         <div className="grid gap-6 lg:grid-cols-2">
             <Card>
-                <CardHeader>
-                    <CardTitle>Expense Breakdown by Category</CardTitle>
-                    <CardDescription>For {selectedProperty ? selectedProperty.address : 'the selected property'} for {selectedYear}.</CardDescription>
-                </CardHeader>
-                <CardContent>
-                <div className="rounded-md border">
-                    <Table>
-                    <TableHeader>
-                        <TableRow>
-                        <TableHead>Category</TableHead>
-                        <TableHead className="text-right">Total Amount</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {isLoadingExpenses && <TableRow><TableCell colSpan={2} className="h-24 text-center"><Loader2 className="h-6 w-6 animate-spin" /></TableCell></TableRow>}
-                        {!isLoadingExpenses && expensesByCategory.length === 0 && <TableRow><TableCell colSpan={2} className="h-24 text-center">{selectedProperty ? "No expenses found." : "Please select a property."}</TableCell></TableRow>}
-                        {expensesByCategory.map(cat => (
-                        <TableRow key={cat.name}>
-                            <TableCell className="font-medium">{cat.name}</TableCell>
-                            <TableCell className="text-right">£{cat.amount.toFixed(2)}</TableCell>
-                        </TableRow>
-                        ))}
-                    </TableBody>
-                    </Table>
-                </div>
+                <CardContent className="pt-6">
+                    <p className="text-lg font-semibold">Expense Breakdown</p>
+                    <p className="text-sm text-muted-foreground mb-4">For {selectedProperty ? selectedProperty.address : 'the selected property'} for {selectedYear}.</p>
+                    <div className="rounded-md border">
+                        <Table>
+                        <TableHeader>
+                            <TableRow>
+                            <TableHead>Category</TableHead>
+                            <TableHead className="text-right">Total Amount</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {isLoadingExpenses && <TableRow><TableCell colSpan={2} className="h-24 text-center"><Loader2 className="h-6 w-6 animate-spin" /></TableCell></TableRow>}
+                            {!isLoadingExpenses && expensesByCategory.length === 0 && <TableRow><TableCell colSpan={2} className="h-24 text-center">{selectedProperty ? "No expenses found." : "Please select a property."}</TableCell></TableRow>}
+                            {expensesByCategory.map(cat => (
+                            <TableRow key={cat.name}>
+                                <TableCell className="font-medium">{cat.name}</TableCell>
+                                <TableCell className="text-right">£{cat.amount.toFixed(2)}</TableCell>
+                            </TableRow>
+                            ))}
+                        </TableBody>
+                        </Table>
+                    </div>
                 </CardContent>
             </Card>
              <Card>
-                <CardHeader>
-                    <CardTitle>Expense Distribution</CardTitle>
-                    <CardDescription>Visual breakdown of expenses for {selectedYear}.</CardDescription>
-                </CardHeader>
-                <CardContent className="flex justify-center">
+                <CardContent className="pt-6">
+                    <p className="text-lg font-semibold">Expense Distribution</p>
+                    <p className="text-sm text-muted-foreground mb-4">Visual breakdown of expenses for {selectedYear}.</p>
+                    <div className="flex justify-center">
                     {isLoadingExpenses ? (
                         <div className="flex h-[250px] w-full items-center justify-center">
                             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -765,6 +762,7 @@ function AnnualSummary({ allProperties, selectedProperty, selectedYear }: { allP
                         </p>
                         </div>
                     )}
+                    </div>
                 </CardContent>
             </Card>
         </div>
