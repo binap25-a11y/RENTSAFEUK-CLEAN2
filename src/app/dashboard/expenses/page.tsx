@@ -154,6 +154,49 @@ export default function FinancialsPage() {
     return properties?.find(p => p.id === selectedPropertyId);
   }, [properties, selectedPropertyId]);
 
+  // Fetch expenses for the selected property and year
+  const expensesQuery = useMemoFirebase(() => {
+    if (!user || !firestore || !selectedPropertyId) return null;
+    const startDate = startOfYear(new Date(selectedYear, 0, 1));
+    const endDate = endOfYear(new Date(selectedYear, 0, 1));
+    return query(
+      collection(firestore, 'properties', selectedPropertyId, 'expenses'),
+      where('ownerId', '==', user.uid),
+      where('date', '>=', startDate),
+      where('date', '<=', endDate)
+    );
+  }, [firestore, user, selectedPropertyId, selectedYear]);
+  const { data: expenses, isLoading: isLoadingExpenses } = useCollection<Expense>(expensesQuery);
+
+  // Fetch rent payments for the selected property and year
+  const rentPaymentsQuery = useMemoFirebase(() => {
+    if (!user || !firestore || !selectedPropertyId) return null;
+    return query(
+      collection(firestore, 'properties', selectedPropertyId, 'rentPayments'),
+      where('year', '==', selectedYear)
+    );
+  }, [firestore, user, selectedPropertyId, selectedYear]);
+  const { data: rentPayments, isLoading: isLoadingPayments } = useCollection<RentPayment>(rentPaymentsQuery);
+
+  const totalPaidRent = useMemo(() => {
+    if (!rentPayments) return 0;
+    return rentPayments.reduce((acc, p) => acc + (p.amountPaid || 0), 0);
+  }, [rentPayments]);
+  
+  const totalExpenses = useMemo(() => {
+    return expenses?.reduce((acc, expense) => acc + expense.amount, 0) || 0;
+  }, [expenses]);
+  
+  const netIncome = totalPaidRent - totalExpenses;
+
+  const portfolioIncome = useMemo(() => {
+    return (properties || []).reduce((total, prop) => {
+        return total + (prop.tenancy?.monthlyRent || 0) * 12;
+    }, 0);
+  }, [properties]);
+  
+  const isLoading = isLoadingProperties || isLoadingExpenses || isLoadingPayments;
+
 
   return (
     <div className="flex flex-col gap-6">
@@ -164,11 +207,7 @@ export default function FinancialsPage() {
                 <PoundSterling className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                <div className="text-2xl font-bold">£{
-                    (properties || []).reduce((total, prop) => {
-                        return total + (prop.tenancy?.monthlyRent || 0) * 12;
-                    }, 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})
-                }</div>
+                <div className="text-2xl font-bold">£{portfolioIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
                 <p className="text-xs text-muted-foreground">{properties?.length || 0} properties</p>
                 </CardContent>
             </Card>
@@ -178,7 +217,9 @@ export default function FinancialsPage() {
                 <TrendingDown className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">-</div>
+                    <div className="text-2xl font-bold">
+                        {isLoading && selectedPropertyId ? <Loader2 className="h-6 w-6 animate-spin" /> : selectedPropertyId ? `£${totalExpenses.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`: '-'}
+                    </div>
                     <p className="text-xs text-muted-foreground">Select a property & year</p>
                 </CardContent>
             </Card>
@@ -188,7 +229,9 @@ export default function FinancialsPage() {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">-</div>
+                    <div className={cn("text-2xl font-bold", netIncome < 0 && "text-destructive")}>
+                        {isLoading && selectedPropertyId ? <Loader2 className="h-6 w-6 animate-spin" /> : selectedPropertyId ? `£${netIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`: '-'}
+                    </div>
                      <p className="text-xs text-muted-foreground">Income minus expenses</p>
                 </CardContent>
             </Card>
@@ -241,13 +284,32 @@ export default function FinancialsPage() {
                   selectedPropertyId={selectedPropertyId} 
                   isLoadingProperties={isLoadingProperties}
                   selectedYear={selectedYear}
+                  expenses={expenses}
+                  isLoadingExpenses={isLoadingExpenses}
                 />
               </TabsContent>
               <TabsContent value="summary">
-                <AnnualSummary allProperties={properties || []} selectedProperty={selectedProperty} selectedYear={selectedYear} />
+                <AnnualSummary 
+                    allProperties={properties || []} 
+                    selectedProperty={selectedProperty} 
+                    selectedYear={selectedYear}
+                    expenses={expenses}
+                    isLoadingExpenses={isLoadingExpenses}
+                    rentPayments={rentPayments}
+                    isLoadingPayments={isLoadingPayments}
+                    portfolioIncome={portfolioIncome}
+                    totalPaidRent={totalPaidRent}
+                    totalExpenses={totalExpenses}
+                    netIncome={netIncome}
+                />
               </TabsContent>
               <TabsContent value="statement">
-                <RentStatement selectedProperty={selectedProperty} selectedYear={selectedYear}/>
+                <RentStatement 
+                    selectedProperty={selectedProperty} 
+                    selectedYear={selectedYear}
+                    rentPayments={rentPayments}
+                    isLoadingPayments={isLoadingPayments}
+                />
               </TabsContent>
             </Tabs>
         </CardContent>
@@ -259,7 +321,7 @@ export default function FinancialsPage() {
 
 
 // EXPENSE TRACKER COMPONENT
-function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, selectedYear }: { properties: Property[], selectedPropertyId: string, isLoadingProperties: boolean, selectedYear: number }) {
+function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, selectedYear, expenses, isLoadingExpenses }: { properties: Property[], selectedPropertyId: string, isLoadingProperties: boolean, selectedYear: number, expenses: Expense[] | null, isLoadingExpenses: boolean }) {
   const { user } = useUser();
   const firestore = useFirestore();
 
@@ -278,20 +340,6 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
   useEffect(() => {
     form.setValue('propertyId', selectedPropertyId);
   }, [selectedPropertyId, form]);
-
-  // Fetch expenses for the selected property and year
-  const expensesQuery = useMemoFirebase(() => {
-    if (!user || !firestore || !selectedPropertyId) return null;
-    const startDate = startOfYear(new Date(selectedYear, 0, 1));
-    const endDate = endOfYear(new Date(selectedYear, 0, 1));
-    return query(
-      collection(firestore, 'properties', selectedPropertyId, 'expenses'),
-      where('ownerId', '==', user.uid),
-      where('date', '>=', startDate),
-      where('date', '<=', endDate)
-    );
-  }, [firestore, user, selectedPropertyId, selectedYear]);
-  const { data: expenses, isLoading: isLoadingExpenses } = useCollection<Expense>(expensesQuery);
 
   // Handle form submission
   async function onSubmit(data: ExpenseFormValues) {
@@ -502,52 +550,32 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
 
 
 // ANNUAL SUMMARY COMPONENT
-function AnnualSummary({ allProperties, selectedProperty, selectedYear }: { allProperties: Property[], selectedProperty: Property | undefined, selectedYear: number }) {
-  const { user } = useUser();
-  const firestore = useFirestore();
+function AnnualSummary({ 
+    allProperties, 
+    selectedProperty, 
+    selectedYear,
+    expenses,
+    isLoadingExpenses,
+    rentPayments,
+    isLoadingPayments,
+    portfolioIncome,
+    totalPaidRent,
+    totalExpenses,
+    netIncome,
+}: { 
+    allProperties: Property[], 
+    selectedProperty: Property | undefined, 
+    selectedYear: number,
+    expenses: Expense[] | null,
+    isLoadingExpenses: boolean,
+    rentPayments: RentPayment[] | null,
+    isLoadingPayments: boolean,
+    portfolioIncome: number,
+    totalPaidRent: number,
+    totalExpenses: number,
+    netIncome: number,
+}) {
 
-  // Fetch expenses for the selected property and year
-  const expensesQuery = useMemoFirebase(() => {
-    if (!user || !firestore || !selectedProperty) return null;
-    const startDate = startOfYear(new Date(selectedYear, 0, 1));
-    const endDate = endOfYear(new Date(selectedYear, 0, 1));
-    return query(
-      collection(firestore, 'properties', selectedProperty.id, 'expenses'),
-      where('ownerId', '==', user.uid),
-      where('date', '>=', startDate),
-      where('date', '<=', endDate)
-    );
-  }, [firestore, user, selectedProperty, selectedYear]);
-  const { data: expenses, isLoading: isLoadingExpenses } = useCollection<Expense>(expensesQuery);
-
-   // Fetch rent payments for the selected property and year
-  const rentPaymentsQuery = useMemoFirebase(() => {
-    if (!user || !firestore || !selectedProperty) return null;
-    return query(
-      collection(firestore, 'properties', selectedProperty.id, 'rentPayments'),
-      where('year', '==', selectedYear)
-    );
-  }, [firestore, user, selectedProperty, selectedYear]);
-  const { data: rentPayments, isLoading: isLoadingPayments } = useCollection<RentPayment>(rentPaymentsQuery);
-  
-  const portfolioIncome = useMemo(() => {
-    return allProperties.reduce((total, prop) => {
-        return total + (prop.tenancy?.monthlyRent || 0) * 12;
-    }, 0);
-  }, [allProperties]);
-
-  const totalPaidRent = useMemo(() => {
-    if (!rentPayments) return 0;
-    return rentPayments.reduce((acc, p) => {
-      return acc + (p.amountPaid || 0);
-    }, 0);
-  }, [rentPayments]);
-  
-  const selectedPropertyExpenses = useMemo(() => {
-    return expenses?.reduce((total, exp) => total + exp.amount, 0) || 0;
-  }, [expenses]);
-  
-  const selectedPropertyNet = totalPaidRent - selectedPropertyExpenses;
   const isLoading = isLoadingExpenses || isLoadingPayments;
 
   const chartColors = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
@@ -600,8 +628,8 @@ function AnnualSummary({ allProperties, selectedProperty, selectedYear }: { allP
     // Summary Data
     const summaryData = [
       ['Total Income Received', `£${totalPaidRent.toFixed(2)}`],
-      ['Total Expenses', `£${selectedPropertyExpenses.toFixed(2)}`],
-      ['Net Income', `£${selectedPropertyNet.toFixed(2)}`],
+      ['Total Expenses', `£${totalExpenses.toFixed(2)}`],
+      ['Net Income', `£${netIncome.toFixed(2)}`],
     ];
 
     doc.autoTable({
@@ -683,7 +711,7 @@ function AnnualSummary({ allProperties, selectedProperty, selectedYear }: { allP
                 <TrendingDown className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    {isLoadingExpenses ? <Loader2 className="h-6 w-6 animate-spin" /> : <div className="text-2xl font-bold">£{selectedPropertyExpenses.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>}
+                    {isLoadingExpenses ? <Loader2 className="h-6 w-6 animate-spin" /> : <div className="text-2xl font-bold">£{totalExpenses.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>}
                     <p className="text-xs text-muted-foreground truncate">{selectedProperty ? selectedProperty.address : 'No property selected'}</p>
                 </CardContent>
             </Card>
@@ -693,7 +721,7 @@ function AnnualSummary({ allProperties, selectedProperty, selectedYear }: { allP
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                     {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <div className={cn("text-2xl font-bold", selectedPropertyNet < 0 && "text-destructive")}>£{selectedPropertyNet.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>}
+                     {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <div className={cn("text-2xl font-bold", netIncome < 0 && "text-destructive")}>£{netIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>}
                     <p className="text-xs text-muted-foreground">Income minus expenses</p>
                 </CardContent>
             </Card>
@@ -802,22 +830,12 @@ function AnnualSummary({ allProperties, selectedProperty, selectedYear }: { allP
 
 
 // RENT STATEMENT COMPONENT
-function RentStatement({ selectedProperty, selectedYear }: { selectedProperty: Property | undefined, selectedYear: number }) {
+function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoadingPayments }: { selectedProperty: Property | undefined, selectedYear: number, rentPayments: RentPayment[] | null, isLoadingPayments: boolean }) {
   const { user } = useUser();
   const firestore = useFirestore();
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [editingPayment, setEditingPayment] = useState<{ month: string; expectedAmount: number } | null>(null);
   const [partialAmount, setPartialAmount] = useState('');
-
-  const rentPaymentsQuery = useMemoFirebase(() => {
-    if (!user || !firestore || !selectedProperty) return null;
-    return query(
-      collection(firestore, 'properties', selectedProperty.id, 'rentPayments'),
-      where('year', '==', selectedYear),
-      where('ownerId', '==', user.uid)
-    );
-  }, [firestore, user, selectedProperty, selectedYear]);
-  const { data: rentPayments, isLoading: isLoadingPayments } = useCollection<RentPayment>(rentPaymentsQuery);
   
   const months = useMemo(() => Array.from({ length: 12 }, (_, i) => format(new Date(selectedYear, i, 1), 'MMMM')), [selectedYear]);
 
