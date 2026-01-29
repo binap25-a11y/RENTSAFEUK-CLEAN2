@@ -2,9 +2,9 @@
   "placeholderImages": [
     {
       "id": "login-background",
-      "description": "A modern kitchen and living area, representing a desirable rental home.",
-      "imageUrl": "https://images.unsplash.com/photo-1484154218962-a197022b5858?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw2fHxyZW50aW5nJTIwaG9tZXxlbnwwfHx8fDE3MjA0NTU1Njd8MA&ixlib=rb-4.0.3&q=80&w=1080",
-      "imageHint": "kitchen interior"
+      "description": "A set of house keys in a front door, symbolizing access and security for a new home.",
+      "imageUrl": "https://images.unsplash.com/photo-1588880331179-b1b0143a72b2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxob3VzZSUyMGtleXN8ZW58MHx8fHwxNzIyMDA4ODUxfDA&ixlib=rb-4.0.3&q=80&w=1080",
+      "imageHint": "house keys"
     },
     {
       "id": "property-placeholder",
