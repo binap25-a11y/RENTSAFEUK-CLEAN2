@@ -22,6 +22,7 @@ import { useEffect } from 'react';
 import { Notifications } from '@/components/dashboard/notifications';
 import { SearchProvider, useSearch } from '@/context/SearchProvider';
 import { Separator } from '@/components/ui/separator';
+import { BackToTopButton } from '@/components/ui/back-to-top-button';
 
 function DashboardHeader() {
   const { searchTerm, setSearchTerm } = useSearch();
@@ -120,6 +121,7 @@ export default function DashboardLayout({
         <SidebarInset>
           <DashboardHeader />
           <main className="flex-1 p-4 sm:p-6">{children}</main>
+          <BackToTopButton />
         </SidebarInset>
       </SidebarProvider>
     </SearchProvider>
