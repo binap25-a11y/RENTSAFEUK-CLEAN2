@@ -937,45 +937,77 @@ function RentStatement({ selectedProperty, selectedYear }: { selectedProperty: P
           <CardDescription>Expected monthly rent payments for {selectedProperty.address} for {selectedYear}.</CardDescription>
         </CardHeader>
         <CardContent>
-          <div className="rounded-md border">
-            <Table>
-              <TableHeader><TableRow><TableHead>Month</TableHead><TableHead>Expected Rent</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-              <TableBody>
-                {isLoading && (
-                    <TableRow>
-                        <TableCell colSpan={3} className="h-48 text-center">
-                            <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
-                        </TableCell>
-                    </TableRow>
-                )}
-                {!isLoading && statement.map((row) => {
-                  const { Icon, className } = getRentStatusProps(row.status);
-                  return (
-                    <TableRow key={row.month}>
-                      <TableCell className="font-medium">{row.month}</TableCell>
-                      <TableCell>£{row.rent.toFixed(2)}</TableCell>
-                      <TableCell>
-                        <Select value={row.status} onValueChange={(newStatus) => handleStatusChange(row.month, newStatus as PaymentStatus)}>
-                          <SelectTrigger className={cn("w-[150px]", className)}>
-                            <div className="flex items-center gap-2">
-                              <Icon className="h-4 w-4" />
-                              <SelectValue />
-                            </div>
-                          </SelectTrigger>
-                          <SelectContent>
-                            <SelectItem value="Paid">Paid</SelectItem>
-                            <SelectItem value="Partially Paid">Partially Paid</SelectItem>
-                            <SelectItem value="Unpaid">Unpaid</SelectItem>
-                            <SelectItem value="Pending">Pending</SelectItem>
-                          </SelectContent>
-                        </Select>
-                      </TableCell>
-                    </TableRow>
-                  )
-                })}
-              </TableBody>
-            </Table>
-          </div>
+           {isLoading ? (
+                <div className="flex justify-center items-center h-48">
+                    <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+                </div>
+            ) : (
+            <>
+                {/* Desktop Table View */}
+                <div className="hidden rounded-md border md:block">
+                    <Table>
+                    <TableHeader><TableRow><TableHead>Month</TableHead><TableHead>Expected Rent</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                    <TableBody>
+                        {statement.map((row) => {
+                        const { Icon, className } = getRentStatusProps(row.status);
+                        return (
+                            <TableRow key={row.month}>
+                            <TableCell className="font-medium">{row.month}</TableCell>
+                            <TableCell>£{row.rent.toFixed(2)}</TableCell>
+                            <TableCell>
+                                <Select value={row.status} onValueChange={(newStatus) => handleStatusChange(row.month, newStatus as PaymentStatus)}>
+                                <SelectTrigger className={cn("w-[150px]", className)}>
+                                    <div className="flex items-center gap-2">
+                                    <Icon className="h-4 w-4" />
+                                    <SelectValue />
+                                    </div>
+                                </SelectTrigger>
+                                <SelectContent>
+                                    <SelectItem value="Paid">Paid</SelectItem>
+                                    <SelectItem value="Partially Paid">Partially Paid</SelectItem>
+                                    <SelectItem value="Unpaid">Unpaid</SelectItem>
+                                    <SelectItem value="Pending">Pending</SelectItem>
+                                </SelectContent>
+                                </Select>
+                            </TableCell>
+                            </TableRow>
+                        )
+                        })}
+                    </TableBody>
+                    </Table>
+                </div>
+                {/* Mobile Card View */}
+                 <div className="grid gap-4 md:hidden">
+                    {statement.map((row) => {
+                        const { Icon, className } = getRentStatusProps(row.status);
+                        return (
+                            <Card key={row.month}>
+                                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                    <CardTitle className="text-base font-medium">{row.month}</CardTitle>
+                                    <span className="text-base font-semibold">£{row.rent.toFixed(2)}</span>
+                                </CardHeader>
+                                <CardContent>
+                                    <Select value={row.status} onValueChange={(newStatus) => handleStatusChange(row.month, newStatus as PaymentStatus)}>
+                                    <SelectTrigger className={cn("w-full", className)}>
+                                        <div className="flex items-center gap-2">
+                                        <Icon className="h-4 w-4" />
+                                        <SelectValue />
+                                        </div>
+                                    </SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Paid">Paid</SelectItem>
+                                        <SelectItem value="Partially Paid">Partially Paid</SelectItem>
+                                        <SelectItem value="Unpaid">Unpaid</SelectItem>
+                                        <SelectItem value="Pending">Pending</SelectItem>
+                                    </SelectContent>
+                                    </Select>
+                                </CardContent>
+                            </Card>
+                        )
+                    })}
+                </div>
+            </>
+          )}
         </CardContent>
         <CardFooter className='flex-col items-end space-y-2 pt-6'>
             <div className="font-bold text-lg">
