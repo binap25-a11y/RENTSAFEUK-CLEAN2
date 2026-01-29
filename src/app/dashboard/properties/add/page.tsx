@@ -5,6 +5,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
+import { useState } from 'react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,6 +17,8 @@ import { toast } from '@/hooks/use-toast';
 import { useUser, useFirestore } from '@/firebase';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { collection } from 'firebase/firestore';
+import { Loader2 } from 'lucide-react';
+import { Label } from '@/components/ui/label';
 
 const propertySchema = z.object({
   address: z.string().min(5, 'Address is too short'),
@@ -37,6 +40,9 @@ export default function AddPropertyPage() {
   const router = useRouter();
   const { user } = useUser();
   const firestore = useFirestore();
+  const [postcode, setPostcode] = useState('');
+  const [foundAddresses, setFoundAddresses] = useState<string[]>([]);
+  const [isFindingAddress, setIsFindingAddress] = useState(false);
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
@@ -44,8 +50,36 @@ export default function AddPropertyPage() {
       bedrooms: 1,
       bathrooms: 1,
       status: 'Vacant',
+      address: '',
     },
   });
+
+  const handleFindAddress = async () => {
+    if (!postcode) {
+        toast({ variant: 'destructive', title: 'Postcode required', description: 'Please enter a postcode to find an address.' });
+        return;
+    }
+    setIsFindingAddress(true);
+    setFoundAddresses([]);
+    form.setValue('address', ''); // Clear address field
+    try {
+        const response = await fetch(`/api/postcode?postcode=${encodeURIComponent(postcode)}`);
+        if (!response.ok) throw new Error('Failed to fetch addresses');
+
+        const data = await response.json();
+        if (data.addresses && data.addresses.length > 0) {
+            setFoundAddresses(data.addresses);
+        } else {
+            toast({ variant: 'destructive', title: 'No addresses found', description: 'Please check the postcode and try again, or enter the address manually.' });
+        }
+    } catch (error) {
+        console.error("Error finding address:", error);
+        toast({ variant: 'destructive', title: 'Error finding address', description: 'Could not fetch addresses. Please try again later.' });
+    } finally {
+        setIsFindingAddress(false);
+    }
+  };
+
 
   async function onSubmit(data: PropertyFormValues) {
     if (!user || !firestore) {
@@ -93,24 +127,58 @@ export default function AddPropertyPage() {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <Card>
+             <Card>
               <CardHeader>
-                <CardTitle className="text-xl">Property Details</CardTitle>
+                <CardTitle className="text-xl">Property Address</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
+                    <div className="sm:col-span-2">
+                        <Label htmlFor="postcode">Postcode</Label>
+                        <Input id="postcode" placeholder="e.g., SW1A 0AA" value={postcode} onChange={(e) => setPostcode(e.target.value.toUpperCase())} />
+                    </div>
+                    <Button type="button" onClick={handleFindAddress} disabled={isFindingAddress}>
+                        {isFindingAddress ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Find Address'}
+                    </Button>
+                </div>
+                 {foundAddresses.length > 0 && (
+                    <FormItem>
+                        <FormLabel>Select Address</FormLabel>
+                        <Select onValueChange={(value) => form.setValue('address', value)}>
+                            <FormControl>
+                                <SelectTrigger>
+                                    <SelectValue placeholder="Select an address from the list" />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                {foundAddresses.map((addr, index) => (
+                                    <SelectItem key={index} value={addr}>{addr}</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                    </FormItem>
+                 )}
                 <FormField
                   control={form.control}
                   name="address"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Property Address</FormLabel>
+                      <FormLabel>Full Address</FormLabel>
                       <FormControl>
-                        <Input placeholder="e.g., 123 Main St, London" {...field} />
+                        <Textarea placeholder="e.g., 123 Main St, London, SW1A 0AA&#10;Or select an address after finding by postcode." {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
+                <CardTitle className="text-xl">Property Details</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}
@@ -209,7 +277,7 @@ export default function AddPropertyPage() {
 
             <Card>
                 <CardHeader>
-                <CardTitle className="text-xl">Tenancy & Financials</CardTitle>
+                <CardTitle className="text-xl">Tenancy & Financials (Optional)</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -220,7 +288,7 @@ export default function AddPropertyPage() {
                         <FormItem>
                         <FormLabel>Monthly Rent (£)</FormLabel>
                         <FormControl>
-                            <Input type="number" placeholder="1200" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} />
+                            <Input type="number" placeholder="1200" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -233,7 +301,7 @@ export default function AddPropertyPage() {
                         <FormItem>
                         <FormLabel>Deposit Amount (£)</FormLabel>
                         <FormControl>
-                            <Input type="number" placeholder="1500" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} />
+                            <Input type="number" placeholder="1500" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -247,7 +315,7 @@ export default function AddPropertyPage() {
                     <FormItem>
                         <FormLabel>Deposit Protection Scheme</FormLabel>
                         <FormControl>
-                        <Input placeholder="e.g., DPS, MyDeposits" {...field} />
+                        <Input placeholder="e.g., DPS, MyDeposits" {...field} value={field.value ?? ''}/>
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -272,6 +340,7 @@ export default function AddPropertyPage() {
                           className="resize-none"
                           rows={5}
                           {...field}
+                          value={field.value ?? ''}
                         />
                       </FormControl>
                       <FormMessage />
@@ -293,5 +362,3 @@ export default function AddPropertyPage() {
     </Card>
   );
 }
-
-    
