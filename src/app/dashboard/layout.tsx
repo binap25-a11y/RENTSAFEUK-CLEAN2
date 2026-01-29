@@ -9,6 +9,7 @@ import {
   SidebarFooter,
   SidebarInset,
   SidebarTrigger,
+  useSidebar,
 } from '@/components/ui/sidebar';
 import { MainNav } from '@/components/dashboard/main-nav';
 import { UserNav } from '@/components/dashboard/user-nav';
@@ -20,6 +21,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect } from 'react';
 import { Notifications } from '@/components/dashboard/notifications';
 import { SearchProvider, useSearch } from '@/context/SearchProvider';
+import { Separator } from '@/components/ui/separator';
 
 function DashboardHeader() {
   const { searchTerm, setSearchTerm } = useSearch();
@@ -47,6 +49,33 @@ function DashboardHeader() {
   );
 }
 
+// New component for mobile search in sidebar
+function MobileSearch() {
+  const { searchTerm, setSearchTerm } = useSearch();
+  const { isMobile } = useSidebar();
+
+  if (!isMobile) {
+    return null;
+  }
+
+  return (
+    <>
+      <div className="p-2">
+        <div className="relative">
+          <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+          <Input
+            type="search"
+            placeholder="Search properties..."
+            className="w-full appearance-none bg-background pl-8 shadow-none"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+          />
+        </div>
+      </div>
+      <Separator className="bg-sidebar-border" />
+    </>
+  );
+}
 
 export default function DashboardLayout({
   children,
@@ -80,6 +109,7 @@ export default function DashboardLayout({
               <span className="font-bold text-lg font-headline">RentSafeUK</span>
             </Link>
           </SidebarHeader>
+          <MobileSearch />
           <SidebarContent>
             <MainNav />
           </SidebarContent>
