@@ -157,37 +157,78 @@ export default function FinancialsPage() {
 
   return (
     <div className="flex flex-col gap-6">
+        <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Portfolio Gross Income (Annual)</CardTitle>
+                <PoundSterling className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                <div className="text-2xl font-bold">£{
+                    (properties || []).reduce((total, prop) => {
+                        return total + (prop.tenancy?.monthlyRent || 0) * 12;
+                    }, 0).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})
+                }</div>
+                <p className="text-xs text-muted-foreground">{properties?.length || 0} properties total</p>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Total Expenses</CardTitle>
+                <TrendingDown className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">-</div>
+                    <p className="text-xs text-muted-foreground">For selected property & year</p>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Net Income</CardTitle>
+                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">-</div>
+                    <p className="text-xs text-muted-foreground">Income minus expenses</p>
+                </CardContent>
+            </Card>
+        </div>
        <Card>
         <CardHeader>
           <CardTitle>Financial Overview</CardTitle>
           <CardDescription>Select a property and year to view its detailed financials.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-           <div className="flex items-center gap-2">
-              <Label htmlFor="property-filter" className="whitespace-nowrap">Filter by Property</Label>
-              <Select onValueChange={setSelectedPropertyId} value={selectedPropertyId}>
-                <SelectTrigger id="property-filter" className="w-full sm:w-[300px]">
-                  <SelectValue placeholder={isLoadingProperties ? "Loading..." : "Select a property"} />
-                </SelectTrigger>
-                <SelectContent>
-                  {properties?.map((prop) => (
-                    <SelectItem key={prop.id} value={prop.id}>
-                      {prop.address}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
-              <Select onValueChange={(value) => setSelectedYear(Number(value))} value={String(selectedYear)}>
-                  <SelectTrigger className="w-[120px]">
-                      <SelectValue placeholder="Year" />
-                  </SelectTrigger>
-                  <SelectContent>
-                      {Array.from({ length: 5 }, (_, i) => getYear(new Date()) - i).map(year => (
-                          <SelectItem key={year} value={String(year)}>{year}</SelectItem>
-                      ))}
-                  </SelectContent>
-              </Select>
-            </div>
+           <div className="flex flex-col sm:flex-row gap-4">
+                <div className="grid gap-2">
+                    <Label htmlFor="property-filter">Property</Label>
+                    <Select onValueChange={setSelectedPropertyId} value={selectedPropertyId}>
+                        <SelectTrigger id="property-filter" className="w-full sm:w-[300px]">
+                        <SelectValue placeholder={isLoadingProperties ? "Loading..." : "Select a property"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                        {properties?.map((prop) => (
+                            <SelectItem key={prop.id} value={prop.id}>
+                            {prop.address}
+                            </SelectItem>
+                        ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="grid gap-2">
+                    <Label htmlFor="year-filter">Year</Label>
+                    <Select onValueChange={(value) => setSelectedYear(Number(value))} value={String(selectedYear)}>
+                        <SelectTrigger id="year-filter" className="w-full sm:w-[120px]">
+                            <SelectValue placeholder="Year" />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {Array.from({ length: 5 }, (_, i) => getYear(new Date()) - i).map(year => (
+                                <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+           </div>
            <Tabs defaultValue="expenses">
               <TabsList className="grid w-full grid-cols-3">
                 <TabsTrigger value="expenses">Expenses</TabsTrigger>
