@@ -68,6 +68,8 @@ export default function SettingsPage() {
       await updateProfile(auth.currentUser, {
         displayName: data.displayName,
       });
+      
+      await auth.currentUser.reload();
 
       toast({
         title: 'Profile Updated',
