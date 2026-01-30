@@ -25,6 +25,7 @@ import { useUser, useAuth } from '@/firebase';
 import { updateProfile } from 'firebase/auth';
 import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
+import { useRouter } from 'next/navigation';
 
 const profileSchema = z.object({
   displayName: z.string().min(2, 'Display name must be at least 2 characters.'),
@@ -36,6 +37,7 @@ type ProfileFormValues = z.infer<typeof profileSchema>;
 export default function SettingsPage() {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
+  const router = useRouter();
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -75,6 +77,9 @@ export default function SettingsPage() {
         title: 'Profile Updated',
         description: 'Your profile has been successfully updated.',
       });
+
+      router.refresh();
+
     } catch (error) {
       console.error('Failed to update profile:', error);
       toast({
