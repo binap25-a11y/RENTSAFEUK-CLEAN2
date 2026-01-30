@@ -130,7 +130,7 @@ export default function ArchivedContractorsPage() {
                         {archivedContractors.map((contractor) => (
                             <Card key={contractor.id}>
                                 <CardHeader>
-                                    <CardTitle>{contractor.name}</CardTitle>
+                                    <CardTitle className="text-base">{contractor.name}</CardTitle>
                                     <CardDescription>{contractor.trade}</CardDescription>
                                 </CardHeader>
                                 {(contractor.phone || contractor.email) && (
