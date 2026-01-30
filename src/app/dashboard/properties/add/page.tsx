@@ -42,7 +42,7 @@ export default function AddPropertyPage() {
   const firestore = useFirestore();
   const [postcode, setPostcode] = useState('');
   const [foundAddresses, setFoundAddresses] = useState<string[]>([]);
-  const [isFindingAddress, setIsFindingAddress] = useState(false);
+  const [addressLookupStatus, setAddressLookupStatus] = useState<'idle' | 'loading' | 'found' | 'not_found' | 'error'>('idle');
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
@@ -59,7 +59,7 @@ export default function AddPropertyPage() {
         toast({ variant: 'destructive', title: 'Postcode required', description: 'Please enter a postcode to find an address.' });
         return;
     }
-    setIsFindingAddress(true);
+    setAddressLookupStatus('loading');
     setFoundAddresses([]);
     form.setValue('address', ''); // Clear address field
     try {
@@ -69,14 +69,13 @@ export default function AddPropertyPage() {
         const data = await response.json();
         if (data.addresses && data.addresses.length > 0) {
             setFoundAddresses(data.addresses);
+            setAddressLookupStatus('found');
         } else {
-            toast({ variant: 'destructive', title: 'No addresses found', description: 'Please check the postcode and try again, or enter the address manually.' });
+            setAddressLookupStatus('not_found');
         }
     } catch (error) {
         console.error("Error finding address:", error);
-        toast({ variant: 'destructive', title: 'Error finding address', description: 'Could not fetch addresses. Please try again later.' });
-    } finally {
-        setIsFindingAddress(false);
+        setAddressLookupStatus('error');
     }
   };
 
@@ -132,16 +131,18 @@ export default function AddPropertyPage() {
                 <CardTitle className="text-xl">Property Address</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 items-end">
-                    <div className="sm:col-span-2">
-                        <Label htmlFor="postcode">Postcode</Label>
-                        <Input id="postcode" placeholder="e.g., SW1A 0AA" value={postcode} onChange={(e) => setPostcode(e.target.value.toUpperCase())} />
+                <div className="space-y-2">
+                    <Label htmlFor="postcode">Find by Postcode</Label>
+                    <div className="flex flex-col sm:flex-row gap-2">
+                        <Input id="postcode" placeholder="e.g., SW1A 0AA" className="sm:w-1/3" value={postcode} onChange={(e) => setPostcode(e.target.value.toUpperCase())} />
+                        <Button type="button" onClick={handleFindAddress} disabled={addressLookupStatus === 'loading'}>
+                            {addressLookupStatus === 'loading' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                            Find Address
+                        </Button>
                     </div>
-                    <Button type="button" onClick={handleFindAddress} disabled={isFindingAddress}>
-                        {isFindingAddress ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Find Address'}
-                    </Button>
                 </div>
-                 {foundAddresses.length > 0 && (
+
+                {addressLookupStatus === 'found' && (
                     <FormItem>
                         <FormLabel>Select Address</FormLabel>
                         <Select onValueChange={(value) => form.setValue('address', value)}>
@@ -157,15 +158,38 @@ export default function AddPropertyPage() {
                             </SelectContent>
                         </Select>
                     </FormItem>
-                 )}
+                )}
+
+                {(addressLookupStatus === 'not_found' || addressLookupStatus === 'error') && (
+                    <div className="text-sm text-muted-foreground p-3 bg-muted rounded-md border">
+                        {addressLookupStatus === 'not_found'
+                            ? "No addresses found for that postcode. Please enter the full address manually below."
+                            : "Could not fetch addresses. Please check the postcode or enter the address manually."
+                        }
+                    </div>
+                )}
+                
+                <div className="pt-2">
+                    <div className="relative">
+                        <div className="absolute inset-0 flex items-center">
+                            <span className="w-full border-t" />
+                        </div>
+                        <div className="relative flex justify-center text-xs uppercase">
+                            <span className="bg-card px-2 text-muted-foreground">
+                            Or
+                            </span>
+                        </div>
+                    </div>
+                </div>
+
                 <FormField
                   control={form.control}
                   name="address"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Full Address</FormLabel>
+                      <FormLabel>Enter Full Address Manually</FormLabel>
                       <FormControl>
-                        <Textarea placeholder="e.g., 123 Main St, London, SW1A 0AA&#10;Or select an address after finding by postcode." {...field} />
+                        <Textarea placeholder="Select an address above or enter one manually." {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
