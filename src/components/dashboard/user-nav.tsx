@@ -48,17 +48,29 @@ export function UserNav() {
   };
 
   const getInitials = () => {
-    if (user?.displayName) {
-      const nameParts = user.displayName.split(' ').filter(Boolean);
+    if (!user) return 'U';
+    
+    const { displayName, email } = user;
+
+    if (displayName) {
+      const nameParts = displayName.trim().split(' ').filter(Boolean);
+      
       if (nameParts.length > 1) {
-        return (nameParts[0][0] + nameParts[nameParts.length - 1][0]).toUpperCase();
+        const firstInitial = nameParts[0][0];
+        const lastInitial = nameParts[nameParts.length - 1][0];
+        return `${firstInitial}${lastInitial}`.toUpperCase();
       }
-      return user.displayName.charAt(0).toUpperCase();
+      
+      if (nameParts.length === 1 && nameParts[0].length > 0) {
+        return nameParts[0][0].toUpperCase();
+      }
     }
-    if (user?.email) {
-      return user.email.charAt(0).toUpperCase();
+    
+    if (email) {
+      return email[0].toUpperCase();
     }
-    return 'U'; // for User
+    
+    return 'U';
   };
 
 
