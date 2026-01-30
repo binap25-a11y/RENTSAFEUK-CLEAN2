@@ -237,7 +237,7 @@ export default function TenantsPage() {
                       <CardHeader>
                         <div className="flex justify-between items-start">
                           <div>
-                            <CardTitle>
+                            <CardTitle className="text-base">
                               <Link href={`/dashboard/tenants/${tenant.id}`} className="hover:underline">
                                 {tenant.name}
                               </Link>

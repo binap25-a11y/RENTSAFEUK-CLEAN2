@@ -207,7 +207,7 @@ export default function ContractorsPage() {
                       <CardHeader>
                         <div className="flex justify-between items-start">
                           <div>
-                            <CardTitle>{c.name}</CardTitle>
+                            <CardTitle className="text-base">{c.name}</CardTitle>
                             <CardDescription>{c.trade}</CardDescription>
                           </div>
                           <DropdownMenu>
