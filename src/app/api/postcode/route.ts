@@ -21,15 +21,17 @@ const mockAddresses: { [key: string]: string[] } = {
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const postcode = searchParams.get('postcode')?.toUpperCase().trim() || '';
+  const postcode = searchParams.get('postcode')?.toUpperCase().replace(/\s/g, '') || '';
 
   if (!postcode) {
     return NextResponse.json({ error: 'Postcode is required' }, { status: 400 });
   }
 
   // In a real app, you would use a third-party service here.
-  // This is a mock implementation.
-  const addresses = mockAddresses[postcode] || [];
+  // This is a mock implementation that is now more flexible with spacing.
+  const matchedKey = Object.keys(mockAddresses).find(key => key.replace(/\s/g, '') === postcode);
+  const addresses = matchedKey ? mockAddresses[matchedKey as keyof typeof mockAddresses] : [];
+
 
   // Simulate network delay
   await new Promise(resolve => setTimeout(resolve, 500));
