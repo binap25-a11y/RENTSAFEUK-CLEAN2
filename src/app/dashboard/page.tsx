@@ -155,8 +155,7 @@ export default function DashboardPage() {
       const currentMonth = format(new Date(), 'MMMM');
       const currentYear = new Date().getFullYear();
 
-      // Create an array of promises for all the subcollection fetches
-      const promises = properties.map(prop => {
+      for (const prop of properties) {
         const maintenanceQuery = query(collection(firestore, 'properties', prop.id, 'maintenanceLogs'));
         const inspectionQuery = query(collection(firestore, 'properties', prop.id, 'inspections'));
         const documentQuery = query(collection(firestore, 'properties', prop.id, 'documents'));
@@ -165,25 +164,19 @@ export default function DashboardPage() {
           where('year', '==', currentYear),
           where('month', '==', currentMonth)
         );
-        return Promise.all([
+
+        const [maintenanceSnap, inspectionSnap, documentSnap, rentSnap] = await Promise.all([
           getDocs(maintenanceQuery),
           getDocs(inspectionQuery),
           getDocs(documentQuery),
           getDocs(rentQuery),
-          Promise.resolve(prop.id), // Pass propertyId through to associate results
         ]);
-      });
 
-      // Await all fetches in parallel
-      const results = await Promise.all(promises);
-
-      // Process the results
-      results.forEach(([maintenanceSnap, inspectionSnap, documentSnap, rentSnap, propId]) => {
-        maintenanceSnap.forEach(doc => allLogs.push({ ...doc.data(), id: doc.id, propertyId: propId } as MaintenanceLog));
-        inspectionSnap.forEach(doc => allInspections.push({ ...doc.data(), id: doc.id, propertyId: propId } as Inspection));
-        documentSnap.forEach(doc => allDocs.push({ ...doc.data(), id: doc.id, propertyId: propId } as Document));
-        rentSnap.forEach(doc => allRents.push({ ...doc.data(), id: doc.id, propertyId: propId } as RentPayment));
-      });
+        maintenanceSnap.forEach(doc => allLogs.push({ ...doc.data(), id: doc.id, propertyId: prop.id } as MaintenanceLog));
+        inspectionSnap.forEach(doc => allInspections.push({ ...doc.data(), id: doc.id, propertyId: prop.id } as Inspection));
+        documentSnap.forEach(doc => allDocs.push({ ...doc.data(), id: doc.id, propertyId: prop.id } as Document));
+        rentSnap.forEach(doc => allRents.push({ ...doc.data(), id: doc.id, propertyId: prop.id } as RentPayment));
+      }
 
       setMaintenanceLogs(allLogs);
       setInspections(allInspections);
