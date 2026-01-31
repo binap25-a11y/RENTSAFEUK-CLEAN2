@@ -18,7 +18,6 @@ import { useUser, useFirestore, useStorage, useDoc, useMemoFirebase } from '@/fi
 import { doc, updateDoc } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Loader2, Upload } from 'lucide-react';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const propertySchema = z.object({
   address: z.string().min(5, 'Address is too short'),
@@ -98,9 +97,6 @@ export default function EditPropertyPage() {
     setIsSubmitting(true);
 
     try {
-       // Deep-clone and clean the data object to remove undefined values.
-      const cleanData = JSON.parse(JSON.stringify(data));
-
       let imageUrl = property?.imageUrl; // Keep existing image by default
       const imageFile = data.imageFile?.[0]; // Use original data for FileList
 
@@ -112,13 +108,32 @@ export default function EditPropertyPage() {
         imageUrl = await getDownloadURL(uploadResult.ref);
       }
       
-      const { imageFile: _, ...formData } = cleanData;
+      const updatedData: { [key: string]: any } = {
+        address: data.address,
+        propertyType: data.propertyType,
+        status: data.status,
+        bedrooms: data.bedrooms,
+        bathrooms: data.bathrooms,
+        imageUrl,
+      };
+
+      if (data.notes) {
+        updatedData.notes = data.notes;
+      }
+
+      if (data.tenancy) {
+        const tenancyData: { [key: string]: any } = {};
+        if (data.tenancy.monthlyRent) tenancyData.monthlyRent = data.tenancy.monthlyRent;
+        if (data.tenancy.depositAmount) tenancyData.depositAmount = data.tenancy.depositAmount;
+        if (data.tenancy.depositScheme) tenancyData.depositScheme = data.tenancy.depositScheme;
+        updatedData.tenancy = tenancyData;
+      } else {
+        updatedData.tenancy = {}; // Clear tenancy info if form section is empty
+      }
+
 
       const propertyDocRef = doc(firestore, 'properties', propertyId);
-      await updateDoc(propertyDocRef, {
-        ...formData,
-        imageUrl, // Add the new or existing image URL
-      });
+      await updateDoc(propertyDocRef, updatedData);
 
       toast({
         title: 'Property Updated',
@@ -237,7 +252,7 @@ export default function EditPropertyPage() {
                       <FormItem>
                         <FormLabel>Bedrooms</FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} />
+                          <Input type="number" min="0" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -247,7 +262,7 @@ export default function EditPropertyPage() {
                       <FormItem>
                         <FormLabel>Bathrooms</FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} />
+                          <Input type="number" min="0" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -260,14 +275,11 @@ export default function EditPropertyPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Property Image</FormLabel>
-                        <div className="mt-2 relative aspect-video w-full rounded-lg border overflow-hidden bg-muted">
-                          {imagePreview && (
-                            <img
-                              src={imagePreview}
-                              alt="Current property image"
-                              className="absolute h-full w-full object-cover"
-                            />
-                          )}
+                        <div 
+                          className="mt-2 relative aspect-video w-full rounded-lg border overflow-hidden bg-muted bg-cover bg-center"
+                          style={{ backgroundImage: imagePreview ? `url(${imagePreview})` : 'none' }}
+                        >
+                           {!imagePreview && <div className="flex items-center justify-center h-full text-muted-foreground">Image Preview</div>}
                         </div>
                         <FormControl>
                            <Button asChild className="w-full cursor-pointer mt-2" variant="outline">
@@ -310,7 +322,7 @@ export default function EditPropertyPage() {
                         <FormItem>
                         <FormLabel>Monthly Rent (£)</FormLabel>
                         <FormControl>
-                            <Input type="number" placeholder="1200" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} />
+                            <Input type="number" placeholder="1200" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} value={field.value ?? ''}/>
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -323,7 +335,7 @@ export default function EditPropertyPage() {
                         <FormItem>
                         <FormLabel>Deposit Amount (£)</FormLabel>
                         <FormControl>
-                            <Input type="number" placeholder="1500" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} />
+                            <Input type="number" placeholder="1500" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} value={field.value ?? ''}/>
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -337,7 +349,7 @@ export default function EditPropertyPage() {
                     <FormItem>
                         <FormLabel>Deposit Protection Scheme</FormLabel>
                         <FormControl>
-                        <Input placeholder="e.g., DPS, MyDeposits" {...field} />
+                        <Input placeholder="e.g., DPS, MyDeposits" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -354,7 +366,7 @@ export default function EditPropertyPage() {
                 <FormField control={form.control} name="notes" render={({ field }) => (
                     <FormItem>
                       <FormControl>
-                        <Textarea placeholder="Any additional notes about the property..." className="resize-none" rows={5} {...field} />
+                        <Textarea placeholder="Any additional notes about the property..." className="resize-none" rows={5} {...field} value={field.value ?? ''} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

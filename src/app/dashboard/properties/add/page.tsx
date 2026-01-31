@@ -3,9 +3,9 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,7 +19,6 @@ import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { collection } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Loader2, Upload } from 'lucide-react';
-import { Label } from '@/components/ui/label';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const propertySchema = z.object({
@@ -80,12 +79,8 @@ export default function AddPropertyPage() {
     setIsSubmitting(true);
 
     try {
-      // Deep-clone and clean the data object to remove undefined values,
-      // which Firestore doesn't handle well in nested objects.
-      const cleanData = JSON.parse(JSON.stringify(data));
-
       let imageUrl = PlaceHolderImages.find(p => p.id === 'property-placeholder')?.imageUrl || `https://picsum.photos/seed/${Math.random()}/800/500`;
-      const imageFile = data.imageFile?.[0]; // Use original data for FileList
+      const imageFile = data.imageFile?.[0];
 
       if (imageFile) {
         const uniqueFileName = `${Date.now()}-${imageFile.name}`;
@@ -94,24 +89,39 @@ export default function AddPropertyPage() {
         imageUrl = await getDownloadURL(uploadResult.ref);
       }
       
-      const { imageFile: _imageFile, addressNameNo, addressLine1, addressLine2, city, county, postcode, ...formData } = cleanData;
-
       const fullAddress = [
-        addressNameNo,
-        addressLine1,
-        addressLine2,
-        city,
-        county,
-        postcode,
+        data.addressNameNo,
+        data.addressLine1,
+        data.addressLine2,
+        data.city,
+        data.county,
+        data.postcode,
       ].filter(Boolean).join(', ');
 
-
-      const newProperty = {
-        ...formData,
+      // Manually construct the object to be saved to avoid sending `undefined` values
+      const newProperty: { [key: string]: any } = {
         address: fullAddress,
+        propertyType: data.propertyType,
+        status: data.status,
+        bedrooms: data.bedrooms,
+        bathrooms: data.bathrooms,
         ownerId: user.uid,
         imageUrl,
       };
+
+      if (data.notes) {
+        newProperty.notes = data.notes;
+      }
+
+      if (data.tenancy) {
+        const tenancyData: { [key: string]: any } = {};
+        if (data.tenancy.monthlyRent) tenancyData.monthlyRent = data.tenancy.monthlyRent;
+        if (data.tenancy.depositAmount) tenancyData.depositAmount = data.tenancy.depositAmount;
+        if (data.tenancy.depositScheme) tenancyData.depositScheme = data.tenancy.depositScheme;
+        if (Object.keys(tenancyData).length > 0) {
+            newProperty.tenancy = tenancyData;
+        }
+      }
 
       await addDocumentNonBlocking(collection(firestore, 'properties'), newProperty);
       
@@ -290,7 +300,7 @@ export default function AddPropertyPage() {
                       <FormItem>
                         <FormLabel>Bedrooms</FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} />
+                          <Input type="number" min="0" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -300,7 +310,7 @@ export default function AddPropertyPage() {
                       <FormItem>
                         <FormLabel>Bathrooms</FormLabel>
                         <FormControl>
-                          <Input type="number" {...field} />
+                          <Input type="number" min="0" {...field} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -313,14 +323,11 @@ export default function AddPropertyPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Property Image</FormLabel>
-                       <div className="mt-2 relative aspect-video w-full rounded-lg border overflow-hidden bg-muted">
-                          {imagePreview && (
-                            <img
-                                src={imagePreview}
-                                alt="Image preview"
-                                className="absolute h-full w-full object-cover"
-                            />
-                          )}
+                       <div 
+                          className="mt-2 relative aspect-video w-full rounded-lg border overflow-hidden bg-muted bg-cover bg-center"
+                          style={{ backgroundImage: imagePreview ? `url(${imagePreview})` : 'none' }}
+                        >
+                          {!imagePreview && <div className="flex items-center justify-center h-full text-muted-foreground">Image Preview</div>}
                        </div>
                       <FormControl>
                         <Button
