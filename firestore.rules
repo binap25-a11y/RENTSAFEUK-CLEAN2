@@ -14,28 +14,24 @@ service cloud.firestore {
 
     // --- Top-level Collections ---
     match /properties/{propertyId} {
-      // Any signed-in user can query properties, but the query must be filtered by ownerId on the client.
-      allow list: if isSignedIn();
-      // Only the owner can get, create, update, or delete their property.
-      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      // Only the owner can read, create, update, or delete their property.
+      // The `read` rule covers both `get` and `list` operations.
+      // Client-side queries MUST include `where('ownerId', '==', request.auth.uid)`.
+      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
 
     match /tenants/{tenantId} {
-      // Any signed-in user can query tenants, but the query must be filtered by ownerId on the client.
-      allow list: if isSignedIn();
-      // Only the owner can get, create, update, or delete their tenant records.
-      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      // Only the owner can read their tenant records.
+      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
 
     match /contractors/{contractorId} {
-      // Any signed-in user can query contractors, but the query must be filtered by ownerId on the client.
-      allow list: if isSignedIn();
-      // Only the owner can get, create, update, or delete their contractor records.
-      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      // Only the owner can read their contractor records.
+      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
