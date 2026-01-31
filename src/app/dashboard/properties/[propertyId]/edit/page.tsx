@@ -14,8 +14,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { useUser, useFirestore, useStorage, useDoc, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { useUser, useFirestore, useStorage, useDoc, useMemoFirebase } from '@/firebase';
+import { doc, updateDoc } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Loader2, Upload } from 'lucide-react';
 
@@ -104,7 +104,6 @@ export default function EditPropertyPage() {
     setIsSubmitting(true);
 
     try {
-       // Manually construct the object to save to avoid sending undefined values
       const propertyDataToSave: { [key: string]: any } = {
         address: data.address,
         propertyType: data.propertyType,
@@ -116,11 +115,10 @@ export default function EditPropertyPage() {
       if (data.notes) {
         propertyDataToSave.notes = data.notes;
       } else {
-        propertyDataToSave.notes = ''; // Explicitly clear notes if empty
+        propertyDataToSave.notes = '';
       }
 
       const tenancyData: { [key: string]: any } = {};
-      // Check for valid numbers (including 0) before adding
       if (data.tenancy?.monthlyRent !== undefined && !isNaN(data.tenancy.monthlyRent)) {
         tenancyData.monthlyRent = data.tenancy.monthlyRent;
       }
@@ -134,7 +132,7 @@ export default function EditPropertyPage() {
       if (Object.keys(tenancyData).length > 0) {
         propertyDataToSave.tenancy = tenancyData;
       } else {
-        propertyDataToSave.tenancy = {}; // Clear tenancy if all fields are empty
+        propertyDataToSave.tenancy = {};
       }
       
       let imageUrl = property?.imageUrl; 
@@ -148,7 +146,7 @@ export default function EditPropertyPage() {
       propertyDataToSave.imageUrl = imageUrl;
       
       const propertyDocRef = doc(firestore, 'properties', propertyId);
-      updateDocumentNonBlocking(propertyDocRef, propertyDataToSave);
+      await updateDoc(propertyDocRef, propertyDataToSave);
 
       toast({
         title: 'Property Updated',
@@ -162,7 +160,8 @@ export default function EditPropertyPage() {
         title: 'Update Failed',
         description: error.message || 'There was an error updating the property. Please try again.',
       });
-      setIsSubmitting(false);
+    } finally {
+        setIsSubmitting(false);
     }
   }
   

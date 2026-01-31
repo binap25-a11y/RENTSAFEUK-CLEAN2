@@ -14,8 +14,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { useUser, useFirestore, useStorage, addDocumentNonBlocking } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { useUser, useFirestore, useStorage } from '@/firebase';
+import { collection, addDoc } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Loader2, Upload } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -103,7 +103,6 @@ export default function AddPropertyPage() {
         imageUrl = await getDownloadURL(uploadResult.ref);
       }
       
-      // Manually construct the object to save to avoid sending undefined values
       const propertyDataToSave: { [key: string]: any } = {
         address: fullAddress,
         propertyType: data.propertyType,
@@ -119,7 +118,6 @@ export default function AddPropertyPage() {
       }
       
       const tenancyData: { [key: string]: any } = {};
-      // Check for valid numbers (including 0) before adding
       if (data.tenancy?.monthlyRent !== undefined && !isNaN(data.tenancy.monthlyRent)) {
         tenancyData.monthlyRent = data.tenancy.monthlyRent;
       }
@@ -134,7 +132,7 @@ export default function AddPropertyPage() {
         propertyDataToSave.tenancy = tenancyData;
       }
 
-      addDocumentNonBlocking(collection(firestore, 'properties'), propertyDataToSave);
+      await addDoc(collection(firestore, 'properties'), propertyDataToSave);
       
       toast({
         title: 'Property Saved',
