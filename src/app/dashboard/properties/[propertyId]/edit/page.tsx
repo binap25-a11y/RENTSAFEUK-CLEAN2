@@ -6,6 +6,8 @@ import { z } from 'zod';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
+import { doc, setDoc } from 'firebase/firestore';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,8 +17,6 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useStorage, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Loader2, Upload } from 'lucide-react';
 
 const propertySchema = z.object({
@@ -89,7 +89,6 @@ export default function EditPropertyPage() {
   useEffect(() => {
     if (property) {
       form.reset({
-        ...property,
         address: {
             nameOrNumber: property.address?.nameOrNumber ?? '',
             street: property.address?.street ?? '',
@@ -97,6 +96,8 @@ export default function EditPropertyPage() {
             county: property.address?.county ?? '',
             postcode: property.address?.postcode ?? '',
         },
+        propertyType: property.propertyType,
+        status: property.status,
         bedrooms: property.bedrooms ?? 0,
         bathrooms: property.bathrooms ?? 0,
         notes: property.notes ?? '',
@@ -113,70 +114,46 @@ export default function EditPropertyPage() {
   }, [property, form]);
 
   async function onSubmit(data: PropertyFormValues) {
-    if (!user || !firestore || !storage || !propertyId) {
+    if (!user || !firestore || !storage || !propertyId || !property) {
       toast({ variant: 'destructive', title: 'Save Failed', description: 'An unexpected error occurred. Please try again.' });
       return;
     }
     setIsSubmitting(true);
 
     try {
-        const propertyDocRef = doc(firestore, 'properties', propertyId);
-        const imageFile = data.imageFile?.[0];
+      const propertyDocRef = doc(firestore, 'properties', propertyId);
+      let finalImageUrl = property.imageUrl || '';
+      const imageFile = data.imageFile?.[0];
 
-        // 1. Build the object with text-based data
-        const propertyDataToSave: { [key: string]: any } = {
-            ownerId: user.uid, // Explicitly preserve the ownerId
-            address: data.address,
-            propertyType: data.propertyType,
-            status: data.status,
-            bedrooms: data.bedrooms,
-            bathrooms: data.bathrooms,
-            notes: data.notes || '',
-        };
+      if (imageFile) {
+        const uniqueFileName = `${Date.now()}-${imageFile.name}`;
+        const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
+        const uploadResult = await uploadBytes(fileStorageRef, imageFile);
+        finalImageUrl = await getDownloadURL(uploadResult.ref);
+      }
 
-        const tenancyData: { [key: string]: any } = {};
-        if (data.tenancy?.monthlyRent !== undefined && !isNaN(data.tenancy.monthlyRent)) tenancyData.monthlyRent = data.tenancy.monthlyRent;
-        if (data.tenancy?.depositAmount !== undefined && !isNaN(data.tenancy.depositAmount)) tenancyData.depositAmount = data.tenancy.depositAmount;
-        if (data.tenancy?.depositScheme) tenancyData.depositScheme = data.tenancy.depositScheme;
-        propertyDataToSave.tenancy = tenancyData;
-        
-        // 2. Instantly update the text data
-        await updateDoc(propertyDocRef, propertyDataToSave);
+      const { imageFile: _imageFile, ...formData } = data;
+      const dataToSave = {
+        ...formData,
+        imageUrl: finalImageUrl,
+      };
 
-        // 3. Navigate away immediately
-        toast({
-            title: 'Property Updated',
-            description: imageFile ? 'Your changes have been saved. The new image is now uploading.' : 'The property details have been successfully updated.',
-        });
-        router.push('/dashboard/properties');
+      await setDoc(propertyDocRef, dataToSave, { merge: true });
 
-        // 4. If there's a new image, upload it and update the doc in the background
-        if (imageFile) {
-            const uniqueFileName = `${Date.now()}-${imageFile.name}`;
-            const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
-            
-            uploadBytes(fileStorageRef, imageFile)
-                .then(uploadResult => getDownloadURL(uploadResult.ref))
-                .then(finalImageUrl => {
-                    updateDoc(propertyDocRef, { imageUrl: finalImageUrl });
-                })
-                .catch(error => {
-                    console.error("Background image upload failed:", error);
-                    toast({
-                        variant: 'destructive',
-                        title: 'Image Upload Failed',
-                        description: 'The property details were saved, but the new image could not be uploaded.'
-                    });
-                });
-        }
+      toast({
+        title: 'Property Updated',
+        description: 'The property details have been successfully updated.',
+      });
+      router.push('/dashboard/properties');
+
     } catch (error: any) {
-        console.error('Failed to update property:', error);
-        toast({
-            variant: 'destructive',
-            title: 'Update Failed',
-            description: error.message || 'There was an error updating the property. Please try again.',
-        });
-        setIsSubmitting(false); // Only set this back on initial failure
+      console.error('Failed to update property:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Update Failed',
+        description: error.message || 'There was an error updating the property. Please try again.',
+      });
+      setIsSubmitting(false);
     }
   }
   
@@ -260,7 +237,7 @@ export default function EditPropertyPage() {
                         name="address.county"
                         render={({ field }) => (
                             <FormItem>
-                            <FormLabel>County (Optional)</FormLabel>
+                            <FormLabel>County</FormLabel>
                             <FormControl>
                                 <Input placeholder="e.g., Greater London" {...field} value={field.value ?? ''} />
                             </FormControl>
