@@ -323,12 +323,13 @@ export default function AddPropertyPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Property Image</FormLabel>
-                       <div 
-                          className="mt-2 relative aspect-video w-full rounded-lg border overflow-hidden bg-muted bg-cover bg-center"
-                          style={{ backgroundImage: imagePreview ? `url(${imagePreview})` : 'none' }}
-                        >
-                          {!imagePreview && <div className="flex items-center justify-center h-full text-muted-foreground">Image Preview</div>}
-                       </div>
+                       <div className="mt-2 aspect-video w-full relative rounded-lg border bg-muted overflow-hidden">
+                          {imagePreview ? (
+                            <img src={imagePreview} alt="Image Preview" className="h-full w-full object-cover" />
+                          ) : (
+                            <div className="flex items-center justify-center h-full text-muted-foreground">Image Preview</div>
+                          )}
+                        </div>
                       <FormControl>
                         <Button
                           asChild
