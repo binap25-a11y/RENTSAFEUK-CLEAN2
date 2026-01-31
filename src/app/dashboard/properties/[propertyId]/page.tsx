@@ -6,11 +6,11 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Bed, Bath, Edit, Trash2, MoreVertical, Loader2 } from 'lucide-react';
-import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { ArrowLeft, Bed, Bath, Edit, Trash2, MoreVertical, Loader2, AlertTriangle } from 'lucide-react';
+import { useUser, useFirestore } from '@/firebase';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -25,6 +25,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 
 // Main interface for a Property document from Firestore
 interface Property {
+    id: string;
     address: {
       street: string;
       city: string;
@@ -51,13 +52,39 @@ export default function PropertyDetailPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  
+  const [property, setProperty] = useState<Property | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<Error | null>(null);
 
-  const propertyRef = useMemoFirebase(() => {
-    if (!firestore || !propertyId) return null;
-    return doc(firestore, 'properties', propertyId);
+  useEffect(() => {
+    if (!firestore || !propertyId) {
+      setIsLoading(false);
+      return;
+    }
+
+    const fetchProperty = async () => {
+        const docRef = doc(firestore, 'properties', propertyId);
+        try {
+            const docSnap = await getDoc(docRef);
+            if (docSnap.exists()) {
+                setProperty({ id: docSnap.id, ...docSnap.data() } as Property);
+            } else {
+                // This means the document truly doesn't exist.
+                setError(new Error("Not Found"));
+            }
+        } catch (err: any) {
+            // This will catch permission errors and other network issues.
+            console.error("Firestore error:", err);
+            setError(err);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    
+    fetchProperty();
   }, [firestore, propertyId]);
 
-  const { data: property, isLoading, error } = useDoc<Property>(propertyRef);
 
   const handleDeleteConfirm = async () => {
     if (!firestore || !property) return;
@@ -90,22 +117,42 @@ export default function PropertyDetailPage() {
     );
   }
 
-  // Explicitly handle the error state first.
   if (error) {
+    // Handle "not found" specifically to trigger Next.js 404 page
+    if (error.message === "Not Found") {
+        notFound();
+    }
+
+    // Handle permission denied and other errors
+    const isPermissionError = error.message.includes('permission-denied') || (error as any).code === 'permission-denied';
+    
     return (
-        <div className="bg-destructive/10 border border-destructive/50 text-destructive p-4 rounded-md">
-            <h3 className="font-bold">Error Loading Property Details</h3>
-            <p className="text-sm mt-2">There was a permission error while trying to load the property. This is likely due to a security rule misconfiguration.</p>
-            <pre className="mt-4 p-2 bg-black/70 text-white rounded-md text-xs overflow-auto">
-                <code>{error.message}</code>
-            </pre>
-        </div>
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <AlertTriangle className="h-12 w-12 text-destructive" />
+        <Card className="w-full max-w-lg text-center">
+            <CardHeader>
+                <CardTitle>{isPermissionError ? "Access Denied" : "Error Loading Property"}</CardTitle>
+                <CardDescription>
+                    {isPermissionError 
+                        ? "You do not have permission to view this property. Please ensure you are logged in with the correct account." 
+                        : "An unexpected error occurred while trying to load the property details."}
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <p className="text-sm text-muted-foreground">If you believe this is an error, please try again later.</p>
+                { !isPermissionError && <pre className="mt-4 p-2 bg-muted rounded-md text-xs overflow-auto"><code>{error.message}</code></pre>}
+            </CardContent>
+             <CardFooter className="flex justify-center">
+                <Button asChild><Link href="/dashboard/properties">Return to Properties</Link></Button>
+            </CardFooter>
+        </Card>
+      </div>
     );
   }
   
   if (!property) {
-    // This will be called if data is null after loading and there's no error.
-    // This correctly indicates a "not found" situation.
+    // This case should ideally not be hit if isLoading is false and there is no error,
+    // but it's a safe fallback.
     return notFound();
   }
 
