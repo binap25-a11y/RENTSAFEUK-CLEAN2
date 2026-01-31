@@ -115,8 +115,8 @@ export default function AddPropertyPage() {
 
       if (data.tenancy) {
         const tenancyData: { [key: string]: any } = {};
-        if (data.tenancy.monthlyRent) tenancyData.monthlyRent = data.tenancy.monthlyRent;
-        if (data.tenancy.depositAmount) tenancyData.depositAmount = data.tenancy.depositAmount;
+        if (data.tenancy.monthlyRent !== undefined) tenancyData.monthlyRent = data.tenancy.monthlyRent;
+        if (data.tenancy.depositAmount !== undefined) tenancyData.depositAmount = data.tenancy.depositAmount;
         if (data.tenancy.depositScheme) tenancyData.depositScheme = data.tenancy.depositScheme;
         if (Object.keys(tenancyData).length > 0) {
             newProperty.tenancy = tenancyData;
@@ -323,7 +323,7 @@ export default function AddPropertyPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Property Image</FormLabel>
-                       <div className="mt-2 aspect-video w-full relative rounded-lg border bg-muted overflow-hidden">
+                       <div className="mt-2 h-64 w-full relative rounded-lg border bg-muted overflow-hidden">
                           {imagePreview ? (
                             <img src={imagePreview} alt="Image Preview" className="h-full w-full object-cover" />
                           ) : (
