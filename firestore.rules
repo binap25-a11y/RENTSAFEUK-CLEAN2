@@ -3,49 +3,41 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    // --- Profile ---
+    // --- PROFILE ---
     match /users/{userId} {
-      // Users can only read and write their own profile document.
-      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      allow read, write: if request.auth.uid == userId;
     }
 
-    // --- Top-level Collections ---
+    // --- TOP-LEVEL COLLECTIONS ---
     match /properties/{propertyId} {
-      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn() && request.query.where.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow create: if request.auth.uid == request.resource.data.ownerId;
+      allow list: if request.auth.uid == request.query.where.ownerId;
+      allow get, update, delete: if request.auth.uid == resource.data.ownerId;
     }
 
     match /tenants/{tenantId} {
-      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn() && request.query.where.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow create: if request.auth.uid == request.resource.data.ownerId;
+      allow list: if request.auth.uid == request.query.where.ownerId;
+      allow get, update, delete: if request.auth.uid == resource.data.ownerId;
     }
-
+    
     match /contractors/{contractorId} {
-      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn() && request.query.where.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow create: if request.auth.uid == request.resource.data.ownerId;
+      allow list: if request.auth.uid == request.query.where.ownerId;
+      allow get, update, delete: if request.auth.uid == resource.data.ownerId;
     }
 
-    // --- Subcollections ---
+    // --- SUBCOLLECTIONS ---
     match /properties/{propertyId}/{subcollection}/{docId} {
-      // Get, update, delete are based on the existing document's ownerId
-      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      // List is based on a query filter
-      allow list: if isSignedIn() && request.query.where.ownerId == request.auth.uid;
-      // Create is based on the new document's ownerId
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow create: if request.auth.uid == request.resource.data.ownerId;
+      allow list: if request.auth.uid == request.query.where.ownerId;
+      allow get, update, delete: if request.auth.uid == resource.data.ownerId;
     }
-
+    
     match /tenants/{tenantId}/{subcollection}/{docId} {
-      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn() && request.query.where.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow create: if request.auth.uid == request.resource.data.ownerId;
+      allow list: if request.auth.uid == request.query.where.ownerId;
+      allow get, update, delete: if request.auth.uid == resource.data.ownerId;
     }
   }
 }
