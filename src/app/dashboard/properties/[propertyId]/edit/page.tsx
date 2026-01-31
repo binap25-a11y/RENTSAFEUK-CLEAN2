@@ -114,7 +114,7 @@ export default function EditPropertyPage() {
   }, [property, form]);
 
   async function onSubmit(data: PropertyFormValues) {
-    if (!user || !firestore || !storage || !propertyId) {
+    if (!user || !firestore || !storage || !propertyId || !property) {
       toast({ variant: 'destructive', title: 'Save Failed', description: 'An unexpected error occurred. Please try again.' });
       return;
     }
@@ -125,7 +125,7 @@ export default function EditPropertyPage() {
       const propertyDocRef = doc(firestore, 'properties', propertyId);
       const { imageFile, ...formData } = data;
 
-      let finalImageUrl = property?.imageUrl;
+      let finalImageUrl = property.imageUrl;
       if (imageFile && imageFile.length > 0) {
         const file = imageFile[0];
         const uniqueFileName = `${Date.now()}-${file.name}`;
@@ -137,6 +137,7 @@ export default function EditPropertyPage() {
       const dataToUpdate = {
         ...formData,
         imageUrl: finalImageUrl,
+        ownerId: property.ownerId, // Explicitly preserve the ownerId to prevent removal
       };
 
       await updateDoc(propertyDocRef, dataToUpdate);
@@ -154,7 +155,8 @@ export default function EditPropertyPage() {
         title: 'Update Failed',
         description: error.message || 'There was an error updating the property. Please try again.',
       });
-       setIsSubmitting(false);
+    } finally {
+        setIsSubmitting(false);
     }
   }
   
