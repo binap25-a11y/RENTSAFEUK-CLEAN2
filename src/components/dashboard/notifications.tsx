@@ -70,23 +70,24 @@ export function Notifications() {
     if (!firestore || !user || !properties) return;
 
     const fetchSubcollections = async () => {
-      const promises = properties.map(async (prop) => {
-        const docsQuery = query(collection(firestore, 'properties', prop.id, 'documents'));
-        const inspsQuery = query(collection(firestore, 'properties', prop.id, 'inspections'));
-        
-        const [docsSnapshot, inspsSnapshot] = await Promise.all([
-            getDocs(docsQuery),
-            getDocs(inspsQuery)
-        ]);
+      let docs: Document[] = [];
+      let insps: Inspection[] = [];
 
-        const docs = docsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, propertyId: prop.id } as Document));
-        const insps = inspsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, propertyId: prop.id } as Inspection));
-        return { docs, insps };
-      });
-      
-      const results = await Promise.all(promises);
-      setAllDocuments(results.flatMap(r => r.docs));
-      setAllInspections(results.flatMap(r => r.insps));
+      for (const prop of properties) {
+          const docsQuery = query(collection(firestore, 'properties', prop.id, 'documents'));
+          const inspsQuery = query(collection(firestore, 'properties', prop.id, 'inspections'));
+          
+          const [docsSnapshot, inspsSnapshot] = await Promise.all([
+              getDocs(docsQuery),
+              getDocs(inspsQuery)
+          ]);
+          
+          docs.push(...docsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, propertyId: prop.id } as Document)));
+          insps.push(...inspsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, propertyId: prop.id } as Inspection)));
+      }
+
+      setAllDocuments(docs);
+      setAllInspections(insps);
     };
 
     if (properties.length > 0) {
@@ -151,7 +152,7 @@ export function Notifications() {
               : (insp.scheduledDate as Timestamp).toDate(),
           status: 'Scheduled',
           icon: CalendarClock,
-          href: '/dashboard/inspections'
+          href: `/dashboard/inspections/${insp.id}?propertyId=${insp.propertyId}`
         })) ?? [];
 
     return [...documentReminders, ...inspectionReminders].sort(

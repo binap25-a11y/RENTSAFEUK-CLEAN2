@@ -1,6 +1,7 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
+import Link from 'next/link';
 import {
   Card,
   CardHeader,
@@ -110,25 +111,25 @@ export default function RemindersPage() {
 
     const fetchSubcollections = async () => {
       setIsLoadingReminders(true);
-
-      const promises = properties.map(async (prop) => {
-        const docsQuery = query(collection(firestore, 'properties', prop.id, 'documents'));
-        const inspsQuery = query(collection(firestore, 'properties', prop.id, 'inspections'));
-        
-        const [docsSnapshot, inspsSnapshot] = await Promise.all([
-            getDocs(docsQuery),
-            getDocs(inspsQuery)
-        ]);
-
-        const docs = docsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, propertyId: prop.id } as Document));
-        const insps = inspsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, propertyId: prop.id } as Inspection));
-        return { docs, insps };
-      });
       
-      const results = await Promise.all(promises);
+      let docs: Document[] = [];
+      let insps: Inspection[] = [];
 
-      setAllDocuments(results.flatMap(r => r.docs));
-      setAllInspections(results.flatMap(r => r.insps));
+      for (const prop of properties) {
+          const docsQuery = query(collection(firestore, 'properties', prop.id, 'documents'));
+          const inspsQuery = query(collection(firestore, 'properties', prop.id, 'inspections'));
+          
+          const [docsSnapshot, inspsSnapshot] = await Promise.all([
+              getDocs(docsQuery),
+              getDocs(inspsQuery)
+          ]);
+          
+          docs.push(...docsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, propertyId: prop.id } as Document)));
+          insps.push(...inspsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, propertyId: prop.id } as Inspection)));
+      }
+      
+      setAllDocuments(docs);
+      setAllInspections(insps);
       setIsLoadingReminders(false);
     };
 
@@ -172,6 +173,7 @@ export default function RemindersPage() {
           property: propertyMap[doc.propertyId] || 'Unknown Property',
           dueDate: doc.expiryDate,
           status: doc.status,
+          href: '/dashboard/documents'
         })) ?? [];
 
     const inspectionReminders =
@@ -194,6 +196,7 @@ export default function RemindersPage() {
               ? insp.scheduledDate
               : (insp.scheduledDate as Timestamp).toDate(),
           status: 'Scheduled',
+          href: `/dashboard/inspections/${insp.id}?propertyId=${insp.propertyId}`
         })) ?? [];
 
     return [...documentReminders, ...inspectionReminders].sort(
@@ -313,7 +316,9 @@ export default function RemindersPage() {
                       <TableRow key={reminder.id}>
                         <TableCell>{reminder.type}</TableCell>
                         <TableCell className="font-medium">
-                          {reminder.description}
+                          <Link href={reminder.href} className="hover:underline">
+                            {reminder.description}
+                          </Link>
                         </TableCell>
                         <TableCell>{reminder.property}</TableCell>
                         <TableCell>
@@ -334,23 +339,25 @@ export default function RemindersPage() {
             <div className="grid gap-4 md:hidden">
               {allReminders.map((reminder) => (
                 <Card key={reminder.id}>
-                  <CardHeader>
-                    <div className="flex justify-between items-start gap-2">
-                        <CardTitle className="text-base">{reminder.description}</CardTitle>
-                        <Badge variant={getStatusVariant(reminder.status)}>{reminder.status}</Badge>
-                    </div>
-                    <CardDescription>{reminder.property}</CardDescription>
-                  </CardHeader>
-                  <CardContent className="space-y-2 text-sm pt-0">
-                    <div className="flex justify-between items-center border-t pt-2">
-                      <span className="text-muted-foreground">Type</span>
-                      <span className="font-medium">{reminder.type}</span>
-                    </div>
-                    <div className="flex justify-between items-center border-t pt-2">
-                      <span className="text-muted-foreground">Due</span>
-                      <span className="font-medium">{format(new Date(reminder.dueDate), 'dd/MM/yyyy')}</span>
-                    </div>
-                  </CardContent>
+                   <Link href={reminder.href} className="block hover:bg-accent/50">
+                    <CardHeader>
+                        <div className="flex justify-between items-start gap-2">
+                            <CardTitle className="text-base">{reminder.description}</CardTitle>
+                            <Badge variant={getStatusVariant(reminder.status)}>{reminder.status}</Badge>
+                        </div>
+                        <CardDescription>{reminder.property}</CardDescription>
+                    </CardHeader>
+                    <CardContent className="space-y-2 text-sm pt-0">
+                        <div className="flex justify-between items-center border-t pt-2">
+                        <span className="text-muted-foreground">Type</span>
+                        <span className="font-medium">{reminder.type}</span>
+                        </div>
+                        <div className="flex justify-between items-center border-t pt-2">
+                        <span className="text-muted-foreground">Due</span>
+                        <span className="font-medium">{format(new Date(reminder.dueDate), 'dd/MM/yyyy')}</span>
+                        </div>
+                    </CardContent>
+                   </Link>
                 </Card>
               ))}
             </div>
