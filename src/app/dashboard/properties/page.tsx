@@ -114,13 +114,13 @@ export default function PropertiesPage() {
             <div>
                 <h1 className="text-3xl font-bold">My Properties</h1>
                 <p className="text-muted-foreground">
-                A list of all properties in your portfolio.
+                  View, manage, and add properties to your portfolio.
                 </p>
             </div>
             <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
                 <Button asChild variant="outline" className="w-full sm:w-auto">
                 <Link href="/dashboard/properties/deleted">
-                    <Archive className="mr-2 h-4 w-4" /> View Deleted
+                    <Archive className="mr-2 h-4 w-4" /> View Archived
                 </Link>
                 </Button>
                 <Button asChild className="w-full sm:w-auto">
@@ -133,20 +133,23 @@ export default function PropertiesPage() {
 
          <Card>
           <CardHeader>
-            <CardTitle>Your Portfolio</CardTitle>
-            <CardDescription>View and manage your properties below.</CardDescription>
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <CardTitle>Your Portfolio</CardTitle>
+                <CardDescription>An overview of all active properties.</CardDescription>
+              </div>
+              <div className="relative w-full md:w-auto md:max-w-sm">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input
+                    placeholder="Search by address..."
+                    className="pl-8"
+                    value={searchTerm}
+                    onChange={(e) => setSearchTerm(e.target.value)}
+                  />
+              </div>
+            </div>
           </CardHeader>
           <CardContent>
-            <div className="relative w-full max-w-sm mb-4">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search by address..."
-                className="pl-8"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-              />
-            </div>
-            
             {isLoading ? (
               <div className="flex justify-center items-center h-64">
                 <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -154,66 +157,80 @@ export default function PropertiesPage() {
             ) : error ? (
                 <div className="text-center py-10 text-destructive">Error loading properties: {error.message}</div>
             ) : !properties?.length ? (
-              <div className="text-center py-10">
+              <div className="text-center py-20">
                  <h3 className="text-lg font-semibold">No Properties Found</h3>
-                <p className="text-muted-foreground mb-4">Get started by adding your first property using the button above.</p>
+                <p className="text-muted-foreground mb-4 mt-1">Get started by adding your first property.</p>
+                 <Button asChild>
+                    <Link href="/dashboard/properties/add">
+                        <PlusCircle className="mr-2 h-4 w-4" /> Add Property
+                    </Link>
+                </Button>
               </div>
             ) : filteredProperties.length > 0 ? (
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {filteredProperties.map((property) => (
-                  <Card
-                    key={property.id}
-                    className="group overflow-hidden"
-                  >
-                    <Link href={`/dashboard/properties/${property.id}`} className="block">
-                      <div className="overflow-hidden">
-                        <Image
-                          src={property.imageUrl}
-                          alt={`Image of ${property.address}`}
-                          width={400}
-                          height={250}
-                          className="object-cover w-full aspect-video group-hover:scale-105 transition-transform duration-300"
-                        />
-                      </div>
-                    </Link>
-                    <CardHeader>
-                      <div className="flex justify-between items-start gap-2">
-                        <div className='flex-1'>
-                            <CardTitle className="text-base">
-                                <Link href={`/dashboard/properties/${property.id}`} className="hover:underline">
-                                    {property.address}
-                                </Link>
-                            </CardTitle>
-                             <CardDescription className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground pt-1">
-                                <span>{property.propertyType}</span>
-                                <span className="flex items-center gap-1"><Bed className="h-4 w-4" /> {property.bedrooms}</span>
-                                <span className="flex items-center gap-1"><Bath className="h-4 w-4" /> {property.bathrooms}</span>
-                            </CardDescription>
+                {filteredProperties.map((property) => {
+                  const addressParts = property.address.split(',');
+                  const mainAddress = addressParts[0]?.trim();
+                  const subAddress = addressParts.slice(1).join(',').trim();
+
+                  return (
+                    <Card
+                      key={property.id}
+                      className="group overflow-hidden flex flex-col"
+                    >
+                      <Link href={`/dashboard/properties/${property.id}`} className="block">
+                        <div className="overflow-hidden">
+                          <Image
+                            src={property.imageUrl}
+                            alt={`Image of ${property.address}`}
+                            width={400}
+                            height={250}
+                            className="object-cover w-full aspect-video group-hover:scale-105 transition-transform duration-300"
+                          />
                         </div>
-                        <div className="flex items-center gap-1">
-                            <Badge variant={property.status === 'Occupied' ? 'default' : 'secondary'} className="h-fit">{property.status}</Badge>
-                            <DropdownMenu>
-                                <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2">
-                                        <MoreVertical className="h-4 w-4" />
-                                    </Button>
-                                </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <DropdownMenuItem asChild>
-                                        <Link href={`/dashboard/properties/${property.id}/edit`}>
-                                            <Edit className="mr-2 h-4 w-4" /> Edit
-                                        </Link>
-                                    </DropdownMenuItem>
-                                    <DropdownMenuItem onClick={() => setPropertyToDelete(property)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                    </DropdownMenuItem>
-                                </DropdownMenuContent>
-                            </DropdownMenu>
+                      </Link>
+                      <CardHeader className="flex-grow">
+                        <div className="flex justify-between items-start gap-2">
+                          <div className='flex-1'>
+                              <CardTitle className="text-lg leading-tight font-semibold">
+                                  <Link href={`/dashboard/properties/${property.id}`} className="hover:underline">
+                                      {mainAddress}
+                                  </Link>
+                              </CardTitle>
+                              {subAddress && <p className="text-sm text-muted-foreground pt-1">{subAddress}</p>}
+                          </div>
+                          <div className="flex items-center gap-1">
+                              <Badge variant={property.status === 'Occupied' ? 'default' : 'secondary'} className="h-fit">{property.status}</Badge>
+                              <DropdownMenu>
+                                  <DropdownMenuTrigger asChild>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2">
+                                          <MoreVertical className="h-4 w-4" />
+                                      </Button>
+                                  </DropdownMenuTrigger>
+                                  <DropdownMenuContent align="end">
+                                      <DropdownMenuItem asChild>
+                                          <Link href={`/dashboard/properties/${property.id}/edit`}>
+                                              <Edit className="mr-2 h-4 w-4" /> Edit
+                                          </Link>
+                                      </DropdownMenuItem>
+                                      <DropdownMenuItem onClick={() => setPropertyToDelete(property)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                          <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                      </DropdownMenuItem>
+                                  </DropdownMenuContent>
+                              </DropdownMenu>
+                          </div>
                         </div>
-                      </div>
-                    </CardHeader>
-                  </Card>
-                ))}
+                      </CardHeader>
+                      <CardContent>
+                        <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                            <span>{property.propertyType}</span>
+                            <span className="flex items-center gap-1"><Bed className="h-4 w-4" /> {property.bedrooms}</span>
+                            <span className="flex items-center gap-1"><Bath className="h-4 w-4" /> {property.bathrooms}</span>
+                        </div>
+                      </CardContent>
+                    </Card>
+                  );
+                })}
               </div>
             ) : (
                 <div className="text-center py-10 text-muted-foreground">
