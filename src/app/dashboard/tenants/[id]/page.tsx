@@ -260,8 +260,10 @@ export default function TenantDetailPage() {
                                             {format(screening.screeningDate instanceof Date ? screening.screeningDate : new Date(screening.screeningDate.seconds * 1000), 'PPP')}
                                         </TableCell>
                                         <TableCell className="text-right">
-                                            <Button variant="outline" size="sm" disabled>
-                                                <Eye className="mr-2 h-4 w-4" /> View
+                                            <Button asChild variant="outline" size="sm">
+                                                <Link href={`/dashboard/tenants/${id}/screenings/${screening.id}`}>
+                                                    <Eye className="mr-2 h-4 w-4" /> View
+                                                </Link>
                                             </Button>
                                         </TableCell>
                                     </TableRow>
