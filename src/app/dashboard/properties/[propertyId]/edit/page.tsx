@@ -133,38 +133,38 @@ export default function EditPropertyPage() {
     setIsSubmitting(true);
 
     try {
-      // 1. Prepare an object with all the text-based fields to update
-      const propertyToUpdate: { [key: string]: any } = {
+      // 1. Build the object for all text-based fields from the form data.
+      // This is a safe, explicit construction.
+      const dataToUpdate: { [key: string]: any } = {
+        ownerId: property.ownerId, // Crucially, preserve the ownerId
         address: data.address,
         propertyType: data.propertyType,
         status: data.status,
         bedrooms: data.bedrooms,
         bathrooms: data.bathrooms,
-        notes: data.notes,
-        tenancy: data.tenancy,
+        notes: data.notes || '',
+        tenancy: data.tenancy || {},
       };
-
-      // 2. Handle image upload ONLY if a new file is selected
+      
+      // 2. Handle image upload only if a new image has been selected.
       if (data.imageFile && data.imageFile.length > 0) {
         const file = data.imageFile[0];
         const uniqueFileName = `${Date.now()}-${file.name}`;
         const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
+        
+        // Wait for upload to complete
         await uploadBytes(fileStorageRef, file);
-        propertyToUpdate.imageUrl = await getDownloadURL(fileStorageRef); // Add new URL to the update object
+        const newImageUrl = await getDownloadURL(fileStorageRef);
+        
+        // Only add the imageUrl to the update object if the upload was successful.
+        dataToUpdate.imageUrl = newImageUrl;
       }
-
-      // 3. Clean up optional empty fields
-      if (!propertyToUpdate.notes) delete propertyToUpdate.notes;
-      if (propertyToUpdate.tenancy) {
-        if (propertyToUpdate.tenancy.monthlyRent === undefined) delete propertyToUpdate.tenancy.monthlyRent;
-        if (propertyToUpdate.tenancy.depositAmount === undefined) delete propertyToUpdate.tenancy.depositAmount;
-        if (!propertyToUpdate.tenancy.depositScheme) delete propertyToUpdate.tenancy.depositScheme;
-        if (Object.keys(propertyToUpdate.tenancy).length === 0) delete propertyToUpdate.tenancy;
-      }
-
-      // 4. Perform the update with the prepared data
+      
+      // 3. Update the document in Firestore with the prepared data.
+      // updateDoc will only modify the fields present in dataToUpdate.
+      // If no new image was uploaded, imageUrl will not be in dataToUpdate, and the existing one will be preserved.
       const propertyDocRef = doc(firestore, 'properties', propertyId);
-      await updateDoc(propertyDocRef, propertyToUpdate);
+      await updateDoc(propertyDocRef, dataToUpdate);
 
       toast({
         title: 'Property Updated',
@@ -488,3 +488,5 @@ export default function EditPropertyPage() {
     </Card>
   );
 }
+
+    
