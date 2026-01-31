@@ -8,29 +8,45 @@ service cloud.firestore {
       allow read, write: if request.auth.uid == userId;
     }
 
-    // --- Properties and all subcollections ---
+    // --- Properties ---
     match /properties/{propertyId} {
-      allow get: if resource.data.ownerId == request.auth.uid;
+      allow get, update, delete: if resource.data.ownerId == request.auth.uid;
       allow list: if request.auth.uid != null; // Client MUST filter by ownerId
       allow create: if request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if resource.data.ownerId == request.auth.uid;
+    }
 
-      match /{subcollection}/{docId} {
-        // This rule is simpler and more robust.
-        // It relies on the subcollection documents also having an `ownerId`.
-        // The client-side queries MUST filter by this ownerId for list operations.
+    // --- Explicit Property Subcollections ---
+    match /properties/{propertyId}/maintenanceLogs/{maintenanceLogId} {
         allow get, update, delete: if resource.data.ownerId == request.auth.uid;
         allow list: if request.auth.uid != null; // Client MUST filter by ownerId
         allow create: if request.resource.data.ownerId == request.auth.uid;
-      }
+    }
+    match /properties/{propertyId}/inspections/{inspectionId} {
+        allow get, update, delete: if resource.data.ownerId == request.auth.uid;
+        allow list: if request.auth.uid != null; // Client MUST filter by ownerId
+        allow create: if request.resource.data.ownerId == request.auth.uid;
+    }
+    match /properties/{propertyId}/documents/{documentId} {
+        allow get, update, delete: if resource.data.ownerId == request.auth.uid;
+        allow list: if request.auth.uid != null; // Client MUST filter by ownerId
+        allow create: if request.resource.data.ownerId == request.auth.uid;
+    }
+    match /properties/{propertyId}/expenses/{expenseId} {
+        allow get, update, delete: if resource.data.ownerId == request.auth.uid;
+        allow list: if request.auth.uid != null; // Client MUST filter by ownerId
+        allow create: if request.resource.data.ownerId == request.auth.uid;
+    }
+    match /properties/{propertyId}/rentPayments/{rentPaymentId} {
+        allow get, update, delete: if resource.data.ownerId == request.auth.uid;
+        allow list: if request.auth.uid != null; // Client MUST filter by ownerId
+        allow create: if request.resource.data.ownerId == request.auth.uid;
     }
 
     // --- Tenants and subcollections ---
     match /tenants/{tenantId} {
-      allow get: if resource.data.ownerId == request.auth.uid;
+      allow get, update, delete: if resource.data.ownerId == request.auth.uid;
       allow list: if request.auth.uid != null; // Client MUST filter by ownerId
       allow create: if request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if resource.data.ownerId == request.auth.uid;
 
       match /screenings/{screeningId} {
         allow get, update, delete: if resource.data.ownerId == request.auth.uid;
@@ -41,10 +57,9 @@ service cloud.firestore {
     
     // --- Contractors ---
     match /contractors/{contractorId} {
-      allow get: if resource.data.ownerId == request.auth.uid;
+      allow get, update, delete: if resource.data.ownerId == request.auth.uid;
       allow list: if request.auth.uid != null; // Client MUST filter by ownerId
       allow create: if request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if resource.data.ownerId == request.auth.uid;
     }
   }
 }
