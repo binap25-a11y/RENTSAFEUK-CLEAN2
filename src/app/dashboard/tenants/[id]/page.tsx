@@ -6,8 +6,8 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, User, Mail, Phone, Calendar as CalendarIcon, Edit, Archive, Home, Loader2, MoreVertical, UserPlus, Eye } from 'lucide-react';
 import { format } from 'date-fns';
-import { useDoc, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
-import { doc, collection, query, updateDoc } from 'firebase/firestore';
+import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
+import { doc, collection, query, updateDoc, where } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import {
@@ -60,6 +60,7 @@ export default function TenantDetailPage() {
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useUser();
   const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
 
   const tenantRef = useMemoFirebase(() => {
@@ -76,9 +77,12 @@ export default function TenantDetailPage() {
   const { data: property, isLoading: isLoadingProperty } = useDoc<Property>(propertyRef);
   
   const screeningsQuery = useMemoFirebase(() => {
-    if (!firestore || !id) return null;
-    return collection(firestore, 'tenants', id, 'screenings');
-  }, [firestore, id]);
+    if (!firestore || !id || !user) return null;
+    return query(
+        collection(firestore, 'tenants', id, 'screenings'),
+        where('ownerId', '==', user.uid)
+    );
+  }, [firestore, id, user]);
 
   const { data: screenings, isLoading: isLoadingScreenings } = useCollection<TenantScreening>(screeningsQuery);
 
