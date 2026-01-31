@@ -15,9 +15,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useStorage } from '@/firebase';
-import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
+import { collection, addDoc } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Loader2, Upload } from 'lucide-react';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const propertySchema = z.object({
   address: z.object({
@@ -85,69 +86,56 @@ export default function AddPropertyPage() {
     setIsSubmitting(true);
     
     try {
-      const imageFile = data.imageFile?.[0];
-      const placeholderImageUrl = `https://picsum.photos/seed/${Date.now()}/800/500`;
+      const defaultPlaceholder = PlaceHolderImages.find(p => p.id === 'property-placeholder');
+      let finalImageUrl = defaultPlaceholder?.imageUrl || '';
 
-      // Base property data
+      const imageFile = data.imageFile?.[0];
+      if (imageFile) {
+        const uniqueFileName = `${Date.now()}-${imageFile.name}`;
+        const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
+        const uploadResult = await uploadBytes(fileStorageRef, file);
+        finalImageUrl = await getDownloadURL(uploadResult.ref);
+      }
+      
+      const { imageFile: _, ...formData } = data;
+      
       const propertyData: { [key: string]: any } = {
+        ...formData,
         address: data.address,
         propertyType: data.propertyType,
         status: data.status,
         bedrooms: data.bedrooms,
         bathrooms: data.bathrooms,
         ownerId: user.uid,
-        imageUrl: placeholderImageUrl,
+        imageUrl: finalImageUrl,
       };
+
       if (data.notes) propertyData.notes = data.notes;
-
-      // Tenancy data
-      const tenancyData: { [key: string]: any } = {};
-      if (data.tenancy?.monthlyRent !== undefined && !isNaN(data.tenancy.monthlyRent)) tenancyData.monthlyRent = data.tenancy.monthlyRent;
-      if (data.tenancy?.depositAmount !== undefined && !isNaN(data.tenancy.depositAmount)) tenancyData.depositAmount = data.tenancy.depositAmount;
-      if (data.tenancy?.depositScheme) tenancyData.depositScheme = data.tenancy.depositScheme;
-      if (Object.keys(tenancyData).length > 0) propertyData.tenancy = tenancyData;
-
-
-      // 1. Instantly create the document with a placeholder image
-      const docRef = await addDoc(collection(firestore, 'properties'), propertyData);
+      if (data.tenancy) {
+        const tenancyData: { [key: string]: any } = {};
+        if (data.tenancy.monthlyRent !== undefined && !isNaN(data.tenancy.monthlyRent)) tenancyData.monthlyRent = data.tenancy.monthlyRent;
+        if (data.tenancy.depositAmount !== undefined && !isNaN(data.tenancy.depositAmount)) tenancyData.depositAmount = data.tenancy.depositAmount;
+        if (data.tenancy.depositScheme) tenancyData.depositScheme = data.tenancy.depositScheme;
+        if (Object.keys(tenancyData).length > 0) propertyData.tenancy = tenancyData;
+      }
       
-      // 2. Navigate away immediately, making the UI feel fast
+      await addDoc(collection(firestore, 'properties'), propertyData);
+
       toast({
-        title: 'Property Saved',
-        description: imageFile ? 'Your property has been added. The image is now uploading.' : 'The new property has been added to your portfolio.',
+        title: 'Property Added',
+        description: 'The new property has been added to your portfolio.',
       });
       router.push('/dashboard/properties');
 
-      // 3. If there is an image, upload it and update the document in the background
-      if (imageFile) {
-        const uniqueFileName = `${Date.now()}-${imageFile.name}`;
-        const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
-        
-        uploadBytes(fileStorageRef, imageFile)
-          .then(uploadResult => getDownloadURL(uploadResult.ref))
-          .then(finalImageUrl => {
-            updateDoc(docRef, { imageUrl: finalImageUrl });
-            // You can optionally add a success toast for the image upload here
-          })
-          .catch(error => {
-            console.error("Background image upload failed:", error);
-            // Optionally notify the user that the image part failed
-            toast({
-                variant: 'destructive',
-                title: 'Image Upload Failed',
-                description: 'The property details were saved, but the image could not be uploaded.'
-            })
-          });
-      }
     } catch (error: any) {
-        // This will only catch errors from the initial, fast addDoc
         console.error('Failed to add property', error);
         toast({
             variant: 'destructive',
             title: 'Save Failed',
             description: error.message || 'There was an error saving the property. Please try again.',
         });
-        setIsSubmitting(false); // Only set this back on initial failure
+    } finally {
+        setIsSubmitting(false);
     }
   }
 
@@ -212,9 +200,9 @@ export default function AddPropertyPage() {
                         name="address.county"
                         render={({ field }) => (
                             <FormItem>
-                            <FormLabel>County (Optional)</FormLabel>
+                            <FormLabel>County</FormLabel>
                             <FormControl>
-                                <Input placeholder="e.g., Greater London" {...field} />
+                                <Input placeholder="e.g., Greater London" {...field} value={field.value ?? ''} />
                             </FormControl>
                             <FormMessage />
                             </FormItem>

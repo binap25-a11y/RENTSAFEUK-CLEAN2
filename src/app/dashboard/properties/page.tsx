@@ -41,6 +41,7 @@ import {
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 // Define the Property type based on your Firestore structure
 interface Property {
@@ -118,6 +119,8 @@ export default function PropertiesPage() {
     }
   };
   
+  const defaultPlaceholderUrl = PlaceHolderImages.find(p => p.id === 'property-placeholder')?.imageUrl || 'https://placehold.co/400x250';
+
   return (
     <>
       <div className="flex flex-col gap-6">
@@ -201,7 +204,7 @@ export default function PropertiesPage() {
                             <div className="relative">
                                 <div className="overflow-hidden">
                                     <Image
-                                        src={property.imageUrl && property.imageUrl.includes('firebasestorage.googleapis.com') ? property.imageUrl : `https://picsum.photos/seed/${property.id}/400/250`}
+                                        src={property.imageUrl || defaultPlaceholderUrl}
                                         data-ai-hint="house exterior"
                                         alt={`Image of ${property.address.street}`}
                                         width={400}

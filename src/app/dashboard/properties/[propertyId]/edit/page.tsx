@@ -143,24 +143,25 @@ export default function EditPropertyPage() {
     setIsSubmitting(true);
 
     try {
-      const propertyDocRef = doc(firestore, 'properties', propertyId);
-      const { imageFile, ...formData } = data;
+      let finalImageUrl = property.imageUrl; // Start with the current image URL
 
-      let finalImageUrl = property.imageUrl;
-      if (imageFile && imageFile.length > 0) {
-        const file = imageFile[0];
-        const uniqueFileName = `${Date.now()}-${file.name}`;
+      const imageFile = data.imageFile?.[0];
+      if (imageFile) {
+        const uniqueFileName = `${Date.now()}-${imageFile.name}`;
         const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
         const uploadResult = await uploadBytes(fileStorageRef, file);
         finalImageUrl = await getDownloadURL(uploadResult.ref);
       }
 
+      const { imageFile: _, ...formData } = data;
+      
       const dataToUpdate = {
         ...formData,
         imageUrl: finalImageUrl,
-        ownerId: property.ownerId, // Explicitly preserve the ownerId to prevent accidental removal
+        ownerId: property.ownerId, // Explicitly preserve ownerId
       };
 
+      const propertyDocRef = doc(firestore, 'properties', propertyId);
       await updateDoc(propertyDocRef, dataToUpdate);
 
       toast({

@@ -23,6 +23,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 // Interfaces
 interface Property {
@@ -185,10 +186,10 @@ export default function PropertyDetailPage() {
   }
   
   if (!property) return notFound();
+  
+  const defaultPlaceholder = PlaceHolderImages.find(p => p.id === 'property-placeholder');
+  const displayImageUrl = property.imageUrl || defaultPlaceholder?.imageUrl || 'https://placehold.co/800x500';
 
-  const displayImageUrl = (property.imageUrl && property.imageUrl.includes('firebasestorage.googleapis.com'))
-    ? property.imageUrl
-    : `https://picsum.photos/seed/${property.id}/800/500`;
 
   return (
     <>
