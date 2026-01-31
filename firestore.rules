@@ -10,36 +10,47 @@ service cloud.firestore {
 
     // --- TOP-LEVEL COLLECTIONS ---
     match /properties/{propertyId} {
+      // Allow read/write access to a property and its subcollections only if the user is the owner.
+      allow read, write: if request.auth.uid == resource.data.ownerId;
+      // Allow creation if the user is the owner.
       allow create: if request.auth.uid == request.resource.data.ownerId;
-      // Allow list if the user is authenticated. The client MUST apply a where clause for security.
+      // Allow listing properties, but the client query MUST enforce ownerId security.
       allow list: if request.auth.uid != null;
-      // Allow get/update/delete if the user is the owner of the specific document.
-      allow get, update, delete: if request.auth.uid == resource.data.ownerId;
+
+      // --- PROPERTIES SUBCOLLECTIONS ---
+      // To access items in a property's subcollection, you must own the parent property.
+      match /maintenanceLogs/{logId} {
+        allow read, write: if request.auth.uid == get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId;
+      }
+      match /inspections/{inspectionId} {
+        allow read, write: if request.auth.uid == get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId;
+      }
+      match /documents/{docId} {
+        allow read, write: if request.auth.uid == get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId;
+      }
+      match /expenses/{expenseId} {
+        allow read, write: if request.auth.uid == get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId;
+      }
+      match /rentPayments/{paymentId} {
+        allow read, write: if request.auth.uid == get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId;
+      }
     }
 
     match /tenants/{tenantId} {
-      allow create: if request.auth.uid == request.resource.data.ownerId;
-      allow list: if request.auth.uid != null;
       allow get, update, delete: if request.auth.uid == resource.data.ownerId;
+      allow list: if request.auth.uid != null;
+      allow create: if request.auth.uid == request.resource.data.ownerId;
+
+      // --- TENANTS SUBCOLLECTIONS ---
+      match /screenings/{screeningId} {
+        allow read, write: if request.auth.uid == get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId;
+      }
     }
     
     match /contractors/{contractorId} {
-      allow create: if request.auth.uid == request.resource.data.ownerId;
-      allow list: if request.auth.uid != null;
       allow get, update, delete: if request.auth.uid == resource.data.ownerId;
-    }
-
-    // --- SUBCOLLECTIONS ---
-    match /properties/{propertyId}/{subcollection}/{docId} {
-      allow create: if request.auth.uid == request.resource.data.ownerId;
       allow list: if request.auth.uid != null;
-      allow get, update, delete: if request.auth.uid == resource.data.ownerId;
-    }
-    
-    match /tenants/{tenantId}/{subcollection}/{docId} {
       allow create: if request.auth.uid == request.resource.data.ownerId;
-      allow list: if request.auth.uid != null;
-      allow get, update, delete: if request.auth.uid == resource.data.ownerId;
     }
   }
 }
