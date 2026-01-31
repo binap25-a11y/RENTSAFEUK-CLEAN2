@@ -91,7 +91,7 @@ export default function AddPropertyPage() {
         imageUrl = await getDownloadURL(uploadResult.ref);
       }
       
-      const { imageFile, addressNameNo, addressLine1, addressLine2, city, county, postcode, ...formData } = data;
+      const { imageFile: _imageFile, addressNameNo, addressLine1, addressLine2, city, county, postcode, ...formData } = data;
 
       const fullAddress = [
         addressNameNo,
