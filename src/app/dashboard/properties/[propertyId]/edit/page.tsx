@@ -125,7 +125,7 @@ export default function EditPropertyPage() {
   }, [property, form]);
 
   async function onSubmit(data: PropertyFormValues) {
-    if (!user || !firestore || !storage || !propertyId || !property) {
+    if (!user || !firestore || !storage || !propertyId) {
       toast({ variant: 'destructive', title: 'Save Failed', description: 'An unexpected error occurred. Please try again.' });
       return;
     }
@@ -134,34 +134,36 @@ export default function EditPropertyPage() {
 
     try {
         const propertyDocRef = doc(firestore, 'properties', propertyId);
-        let newImageUrl: string | null = null;
+        
+        // Create an update object with all the form data that is not the image.
+        const dataToUpdate: { [key: string]: any } = {
+             address: data.address,
+             propertyType: data.propertyType,
+             status: data.status,
+             bedrooms: data.bedrooms,
+             bathrooms: data.bathrooms,
+             notes: data.notes || '',
+             tenancy: data.tenancy || {},
+        };
 
-        // Step 1: Handle image upload if a new file is provided.
+        // Handle image upload separately.
+        // Only if a new file is provided, upload it and add the `imageUrl` to the update object.
         if (data.imageFile && data.imageFile.length > 0) {
             const file = data.imageFile[0];
             const uniqueFileName = `${Date.now()}-${file.name}`;
             const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
             
             await uploadBytes(fileStorageRef, file);
-            newImageUrl = await getDownloadURL(fileStorageRef);
+            const newImageUrl = await getDownloadURL(fileStorageRef);
+            
+            dataToUpdate.imageUrl = newImageUrl;
         }
-
-        // Step 2: Prepare the final data object for Firestore.
-        const finalData = {
-            ownerId: property.ownerId, // CRITICAL: Preserve ownerId
-            address: data.address,
-            propertyType: data.propertyType,
-            status: data.status,
-            bedrooms: data.bedrooms,
-            bathrooms: data.bathrooms,
-            notes: data.notes || '',
-            tenancy: data.tenancy || {},
-            // Use new image URL if available, otherwise preserve the original one.
-            imageUrl: newImageUrl ?? property.imageUrl ?? ''
-        };
         
-        // Step 3: Perform the update.
-        await updateDoc(propertyDocRef, finalData);
+        // Now, perform the update.
+        // updateDoc will only modify the fields present in dataToUpdate.
+        // If imageUrl was not added above, the existing one in Firestore will be untouched.
+        // The ownerId is also untouched because it's not in dataToUpdate.
+        await updateDoc(propertyDocRef, dataToUpdate);
 
         toast({
             title: 'Property Updated',
