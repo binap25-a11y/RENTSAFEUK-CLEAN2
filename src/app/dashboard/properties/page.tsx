@@ -192,12 +192,12 @@ export default function PropertiesPage() {
                       <CardHeader className="flex-grow">
                         <div className="flex justify-between items-start gap-2">
                           <div className='flex-1'>
-                              <CardTitle className="text-lg leading-tight font-semibold">
+                              <CardTitle className="text-lg leading-tight font-semibold truncate">
                                   <Link href={`/dashboard/properties/${property.id}`} className="hover:underline">
                                       {mainAddress}
+                                      {subAddress && <span className="text-sm font-normal text-muted-foreground">, {subAddress}</span>}
                                   </Link>
                               </CardTitle>
-                              {subAddress && <p className="text-sm text-muted-foreground pt-1">{subAddress}</p>}
                           </div>
                           <div className="flex items-center gap-1">
                               <Badge variant={property.status === 'Occupied' ? 'default' : 'secondary'} className="h-fit">{property.status}</Badge>
