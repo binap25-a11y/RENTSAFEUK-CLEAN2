@@ -15,15 +15,13 @@ service cloud.firestore {
 
     // --- Top-level Collections (Properties, Tenants, Contractors) ---
     match /properties/{propertyId} {
-      // For 'list' queries, the client-side query MUST filter by ownerId.
-      // For 'get', 'update', 'delete', this rule checks the ownerId on the existing document.
+      // A user can read/write a property document if they are the owner.
+      // For 'list' operations, the client query MUST filter by ownerId.
       allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      // For 'create', this rule ensures the new document has the correct owner.
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
 
     match /tenants/{tenantId} {
-      // For 'list' queries, the client-side query MUST filter by ownerId.
       allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
@@ -33,19 +31,17 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
 
-    // --- Subcollections (e.g., maintenanceLogs, inspections, documents) ---
+    // --- Subcollections ---
     match /properties/{propertyId}/{subcollection}/{docId} {
-      // Allow read/write to subcollection if user owns the parent property document.
-      // This is more efficient than checking a field in every subcollection document.
-      allow read, update, delete: if isSignedIn() && get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
-      // For create, check the ownerId on the new document being created.
-      // The app code must ensure ownerId is copied to all subcollection documents.
+      // A user can read/write a document in a subcollection if they are the owner.
+      // This rule requires that the ownerId is present on all subcollection documents.
+      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
 
     match /tenants/{tenantId}/{subcollection}/{docId} {
       // This follows the same pattern as property subcollections.
-      allow read, update, delete: if isSignedIn() && get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid;
+      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
   }
