@@ -46,7 +46,7 @@ type PropertyFormValues = z.infer<typeof propertySchema>;
 
 export default function AddPropertyPage() {
   const router = useRouter();
-  const { user } from useUser();
+  const { user } = useUser();
   const firestore = useFirestore();
   const storage = useStorage();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -109,8 +109,7 @@ export default function AddPropertyPage() {
         imageUrl,
       };
 
-      const propertiesCollection = collection(firestore, 'properties');
-      await addDocumentNonBlocking(propertiesCollection, newProperty);
+      await addDocumentNonBlocking(collection(firestore, 'properties'), newProperty);
       
       toast({
         title: 'Property Saved',
@@ -311,11 +310,11 @@ export default function AddPropertyPage() {
                     <FormItem>
                       <FormLabel>Property Image</FormLabel>
                       {imagePreview && (
-                        <div className="mt-2 rounded-lg border overflow-hidden">
+                        <div className="mt-2 relative aspect-video w-full rounded-lg border overflow-hidden">
                           <img
                             src={imagePreview}
                             alt="Image preview"
-                            className="w-full h-auto"
+                            className="absolute h-full w-full object-cover"
                           />
                         </div>
                       )}

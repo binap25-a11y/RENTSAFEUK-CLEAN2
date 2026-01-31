@@ -258,8 +258,8 @@ export default function EditPropertyPage() {
                       <FormItem>
                         <FormLabel>Property Image</FormLabel>
                         {imagePreview && (
-                            <div className="mt-2 rounded-lg border overflow-hidden">
-                                <img src={imagePreview} alt="Current property image" className="w-full h-auto" />
+                            <div className="mt-2 relative aspect-video w-full rounded-lg border overflow-hidden">
+                                <img src={imagePreview} alt="Current property image" className="absolute h-full w-full object-cover" />
                             </div>
                         )}
                         <FormControl>
