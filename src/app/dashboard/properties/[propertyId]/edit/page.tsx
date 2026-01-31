@@ -134,26 +134,31 @@ export default function EditPropertyPage() {
     try {
         const propertyDocRef = doc(firestore, 'properties', propertyId);
         
-        let newImageUrl: string | undefined = undefined;
+        let finalImageUrl = property.imageUrl; // Start with the existing image URL
+
+        // If a new file is uploaded, upload it and get the new URL
         if (data.imageFile && data.imageFile.length > 0) {
             const file = data.imageFile[0];
             const uniqueFileName = `${Date.now()}-${file.name}`;
             const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
             
             await uploadBytes(fileStorageRef, file);
-            newImageUrl = await getDownloadURL(fileStorageRef);
+            finalImageUrl = await getDownloadURL(fileStorageRef); // Overwrite with the new URL
         }
 
+        // Build the final, complete object for update
         const dataToUpdate = {
-            ...data,
-            ownerId: property.ownerId, // Ensure ownerId is preserved
-            imageUrl: newImageUrl ?? property.imageUrl ?? '', // Prioritize new, then existing, then empty
+            address: data.address,
+            propertyType: data.propertyType,
+            status: data.status,
+            bedrooms: data.bedrooms,
+            bathrooms: data.bathrooms,
+            notes: data.notes ?? '',
+            tenancy: data.tenancy,
+            ownerId: property.ownerId, // Always preserve the ownerId
+            imageUrl: finalImageUrl, // Use the final, correctly determined URL
         };
         
-        // The form sends imageFile, but we don't want to store this in Firestore.
-        // We've already handled it by creating the imageUrl above.
-        delete (dataToUpdate as Partial<PropertyFormValues>).imageFile;
-
         await updateDoc(propertyDocRef, dataToUpdate);
 
         toast({
