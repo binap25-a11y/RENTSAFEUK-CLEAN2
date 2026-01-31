@@ -123,12 +123,12 @@ export default function EditPropertyPage() {
 
     try {
       const propertyDocRef = doc(firestore, 'properties', propertyId);
-      const imageFile = data.imageFile?.[0];
-      const { imageFile: _imageFile, ...formData } = data;
+      const { imageFile, ...formData } = data;
 
-      let finalImageUrl = property?.imageUrl; // Start with the existing URL
-      if (imageFile) {
-        const uniqueFileName = `${Date.now()}-${imageFile.name}`;
+      let finalImageUrl = property?.imageUrl;
+      if (imageFile && imageFile.length > 0) {
+        const file = imageFile[0];
+        const uniqueFileName = `${Date.now()}-${file.name}`;
         const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
         const uploadResult = await uploadBytes(fileStorageRef, file);
         finalImageUrl = await getDownloadURL(uploadResult.ref);
