@@ -56,8 +56,8 @@ export default function AddPropertyPage() {
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
     defaultValues: {
-      bedrooms: 1,
-      bathrooms: 1,
+      bedrooms: 0,
+      bathrooms: 0,
       status: 'Vacant',
       addressNameNo: '',
       addressLine1: '',
