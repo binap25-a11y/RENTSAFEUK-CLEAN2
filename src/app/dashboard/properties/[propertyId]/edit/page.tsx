@@ -61,6 +61,7 @@ interface Property {
     depositAmount?: number;
     depositScheme?: string;
   };
+  ownerId: string;
 }
 
 export default function EditPropertyPage() {
@@ -124,6 +125,7 @@ export default function EditPropertyPage() {
 
         // 1. Build the object with text-based data
         const propertyDataToSave: { [key: string]: any } = {
+            ownerId: user.uid, // Explicitly preserve the ownerId
             address: data.address,
             propertyType: data.propertyType,
             status: data.status,
@@ -260,7 +262,7 @@ export default function EditPropertyPage() {
                             <FormItem>
                             <FormLabel>County (Optional)</FormLabel>
                             <FormControl>
-                                <Input placeholder="e.g., Greater London" {...field} />
+                                <Input placeholder="e.g., Greater London" {...field} value={field.value ?? ''} />
                             </FormControl>
                             <FormMessage />
                             </FormItem>
