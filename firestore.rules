@@ -7,58 +7,62 @@ service cloud.firestore {
       return request.auth.uid == docData.ownerId;
     }
 
+    // USER PROFILE
     match /users/{userId} {
       allow read, write: if request.auth.uid == userId;
     }
 
+    // PROPERTIES & SUBCOLLECTIONS
     match /properties/{propertyId} {
       allow get: if isOwner(resource.data);
       allow list: if request.auth.uid != null;
       allow create: if isOwner(request.resource.data);
       allow update, delete: if isOwner(resource.data);
+
+      match /maintenanceLogs/{logId} {
+        allow get, update, delete: if isOwner(resource.data);
+        allow list: if request.auth.uid != null;
+        allow create: if isOwner(request.resource.data);
+      }
+      match /inspections/{inspectionId} {
+        allow get, update, delete: if isOwner(resource.data);
+        allow list: if request.auth.uid != null;
+        allow create: if isOwner(request.resource.data);
+      }
+      match /documents/{documentId} {
+        allow get, update, delete: if isOwner(resource.data);
+        allow list: if request.auth.uid != null;
+        allow create: if isOwner(request.resource.data);
+      }
+       match /expenses/{expenseId} {
+        allow get, update, delete: if isOwner(resource.data);
+        allow list: if request.auth.uid != null;
+        allow create: if isOwner(request.resource.data);
+      }
+       match /rentPayments/{rentPaymentId} {
+        allow get, update, delete: if isOwner(resource.data);
+        allow list: if request.auth.uid != null;
+        allow create: if isOwner(request.resource.data);
+      }
     }
 
+    // TENANTS & SUBCOLLECTIONS
     match /tenants/{tenantId} {
-      allow get: if isOwner(resource.data);
+      allow get, update, delete: if isOwner(resource.data);
       allow list: if request.auth.uid != null;
       allow create: if isOwner(request.resource.data);
-      allow update, delete: if isOwner(resource.data);
+      
+      match /screenings/{screeningId} {
+        allow get, update, delete: if isOwner(resource.data);
+        allow list: if request.auth.uid != null;
+        allow create: if isOwner(request.resource.data);
+      }
     }
 
+    // CONTRACTORS
     match /contractors/{contractorId} {
-      allow get: if isOwner(resource.data);
+      allow get, update, delete: if isOwner(resource.data);
       allow list: if request.auth.uid != null;
-      allow create: if isOwner(request.resource.data);
-      allow update, delete: if isOwner(resource.data);
-    }
-
-    match /properties/{propertyId}/maintenanceLogs/{maintenanceLogId} {
-      allow read, write: if isOwner(get(/databases/$(database)/documents/properties/$(propertyId)).data);
-      allow create: if isOwner(request.resource.data);
-    }
-    
-    match /properties/{propertyId}/inspections/{inspectionId} {
-      allow read, write: if isOwner(get(/databases/$(database)/documents/properties/$(propertyId)).data);
-      allow create: if isOwner(request.resource.data);
-    }
-    
-    match /properties/{propertyId}/documents/{documentId} {
-      allow read, write: if isOwner(get(/databases/$(database)/documents/properties/$(propertyId)).data);
-      allow create: if isOwner(request.resource.data);
-    }
-    
-    match /properties/{propertyId}/expenses/{expenseId} {
-      allow read, write: if isOwner(get(/databases/$(database)/documents/properties/$(propertyId)).data);
-      allow create: if isOwner(request.resource.data);
-    }
-    
-    match /properties/{propertyId}/rentPayments/{rentPaymentId} {
-      allow read, write: if isOwner(get(/databases/$(database)/documents/properties/$(propertyId)).data);
-      allow create: if isOwner(request.resource.data);
-    }
-    
-    match /tenants/{tenantId}/screenings/{screeningId} {
-      allow read, write: if isOwner(get(/databases/$(database)/documents/tenants/$(tenantId)).data);
       allow create: if isOwner(request.resource.data);
     }
   }
