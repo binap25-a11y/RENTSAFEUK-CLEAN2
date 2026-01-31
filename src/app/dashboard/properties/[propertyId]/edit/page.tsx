@@ -55,7 +55,7 @@ interface Property {
   status: string;
   bedrooms: number;
   bathrooms: number;
-  imageUrl?: string;
+  imageUrl: string;
   notes?: string;
   tenancy?: {
     monthlyRent?: number;
@@ -132,34 +132,35 @@ export default function EditPropertyPage() {
     setIsSubmitting(true);
 
     try {
-        const propertyDocRef = doc(firestore, 'properties', propertyId);
-        
-        let finalImageUrl = property.imageUrl; // Start with the existing image URL
+        const { imageFile, ...formData } = data;
 
-        // If a new file is uploaded, upload it and get the new URL
-        if (data.imageFile && data.imageFile.length > 0) {
-            const file = data.imageFile[0];
+        // Start building the data object for Firestore, ensuring we preserve critical fields.
+        const updatedData: Omit<Property, 'id'> = {
+            ownerId: property.ownerId, // CRITICAL: Preserve the original owner ID.
+            address: formData.address,
+            propertyType: formData.propertyType,
+            status: formData.status,
+            bedrooms: formData.bedrooms,
+            bathrooms: formData.bathrooms,
+            notes: formData.notes ?? '',
+            tenancy: formData.tenancy,
+            imageUrl: property.imageUrl, // Start with the original image URL. It will be overwritten if a new one is uploaded.
+        };
+
+        // If a new file was uploaded, upload it and update the imageUrl in our data object.
+        if (imageFile && imageFile.length > 0) {
+            const file = imageFile[0];
             const uniqueFileName = `${Date.now()}-${file.name}`;
             const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
             
             await uploadBytes(fileStorageRef, file);
-            finalImageUrl = await getDownloadURL(fileStorageRef); // Overwrite with the new URL
+            const newImageUrl = await getDownloadURL(fileStorageRef);
+            updatedData.imageUrl = newImageUrl; // Overwrite with the new URL
         }
 
-        // Build the final, complete object for update
-        const dataToUpdate = {
-            address: data.address,
-            propertyType: data.propertyType,
-            status: data.status,
-            bedrooms: data.bedrooms,
-            bathrooms: data.bathrooms,
-            notes: data.notes ?? '',
-            tenancy: data.tenancy,
-            ownerId: property.ownerId, // Always preserve the ownerId
-            imageUrl: finalImageUrl, // Use the final, correctly determined URL
-        };
-        
-        await updateDoc(propertyDocRef, dataToUpdate);
+        // Now, update the document with our cleanly constructed `updatedData` object.
+        const propertyDocRef = doc(firestore, 'properties', propertyId);
+        await updateDoc(propertyDocRef, updatedData);
 
         toast({
             title: 'Property Updated',
