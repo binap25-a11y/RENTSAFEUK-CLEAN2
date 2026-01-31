@@ -239,7 +239,7 @@ export default function DashboardPage() {
             property: propertyMap[insp.propertyId] || 'Unknown Property',
             status: 'Scheduled',
             dueDate: format((insp.scheduledDate as Timestamp).toDate(), 'dd/MM/yyyy'),
-            href: `/dashboard/properties/${insp.propertyId}/inspections/${insp.id}`
+            href: `/dashboard/inspections/${insp.id}?propertyId=${insp.propertyId}`
         })) ?? [];
     
     const documentTasks = documents
