@@ -93,7 +93,7 @@ export default function AddPropertyPage() {
       if (imageFile) {
         const uniqueFileName = `${Date.now()}-${imageFile.name}`;
         const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
-        const uploadResult = await uploadBytes(fileStorageRef, file);
+        const uploadResult = await uploadBytes(fileStorageRef, imageFile);
         finalImageUrl = await getDownloadURL(uploadResult.ref);
       }
       
@@ -306,7 +306,7 @@ export default function AddPropertyPage() {
                     <FormItem>
                       <FormLabel>Property Image</FormLabel>
                       <div 
-                        className="aspect-video w-full rounded-lg border-2 border-dashed bg-muted bg-contain bg-no-repeat bg-center"
+                        className="aspect-video w-full rounded-lg border-2 border-dashed bg-muted bg-cover bg-center"
                         style={{ backgroundImage: imagePreview ? `url(${imagePreview})` : 'none' }}
                       >
                         {!imagePreview && (

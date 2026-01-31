@@ -149,7 +149,7 @@ export default function EditPropertyPage() {
       if (imageFile) {
         const uniqueFileName = `${Date.now()}-${imageFile.name}`;
         const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
-        const uploadResult = await uploadBytes(fileStorageRef, file);
+        const uploadResult = await uploadBytes(fileStorageRef, imageFile);
         finalImageUrl = await getDownloadURL(uploadResult.ref);
       }
 
@@ -158,7 +158,6 @@ export default function EditPropertyPage() {
       const dataToUpdate = {
         ...formData,
         imageUrl: finalImageUrl,
-        ownerId: property.ownerId, // Explicitly preserve ownerId
       };
 
       const propertyDocRef = doc(firestore, 'properties', propertyId);
