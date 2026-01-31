@@ -82,8 +82,8 @@ export function Notifications() {
             getDocs(inspsQuery)
         ]);
 
-        docsSnapshot.forEach(doc => docs.push({ id: doc.id, ...doc.data() } as Document));
-        inspsSnapshot.forEach(doc => insps.push({ id: doc.id, ...doc.data() } as Inspection));
+        docsSnapshot.forEach(doc => docs.push({ id: doc.id, propertyId: prop.id, ...doc.data() } as Document));
+        inspsSnapshot.forEach(doc => insps.push({ id: doc.id, propertyId: prop.id, ...doc.data() } as Inspection));
       }
       
       setAllDocuments(docs);
