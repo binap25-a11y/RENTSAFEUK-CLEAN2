@@ -5,14 +5,13 @@ import Image from 'next/image';
 import {
   Card,
   CardContent,
-  CardFooter,
   CardHeader,
   CardTitle,
   CardDescription,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Bed, Bath, Trash2, Archive, Loader2, Edit, MoreVertical } from 'lucide-react';
+import { PlusCircle, Bed, Bath, Trash2, Archive, Loader2, Edit, MoreVertical, Search } from 'lucide-react';
 import {
   useUser,
   useFirestore,
@@ -27,7 +26,6 @@ import {
   updateDoc,
 } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
-import { useSearch } from '@/context/SearchProvider';
 import { useMemo, useState } from 'react';
 import {
   AlertDialog,
@@ -40,6 +38,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Input } from '@/components/ui/input';
 
 // Define the Property type based on your Firestore structure
 interface Property {
@@ -56,7 +55,7 @@ interface Property {
 export default function PropertiesPage() {
   const { user } = useUser();
   const firestore = useFirestore();
-  const { searchTerm } = useSearch();
+  const [searchTerm, setSearchTerm] = useState('');
   const [propertyToDelete, setPropertyToDelete] = useState<Property | null>(null);
 
   const propertiesQuery = useMemoFirebase(() => {
@@ -108,45 +107,6 @@ export default function PropertiesPage() {
     }
   };
   
-  if (isLoading) {
-    return (
-      <div className="flex flex-col gap-6">
-        {/* Header remains visible during load */}
-        <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between sm:items-center">
-            <div>
-                <h1 className="text-3xl font-bold">My Properties</h1>
-                <p className="text-muted-foreground">
-                A list of all properties in your portfolio.
-                </p>
-            </div>
-            <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
-                <Button asChild variant="outline" className="w-full sm:w-auto">
-                <Link href="/dashboard/properties/deleted">
-                    <Archive className="mr-2 h-4 w-4" /> View Deleted
-                </Link>
-                </Button>
-                <Button asChild className="w-full sm:w-auto">
-                <Link href="/dashboard/properties/add">
-                    <PlusCircle className="mr-2 h-4 w-4" /> Add Property
-                </Link>
-                </Button>
-            </div>
-        </div>
-        <div className="flex justify-center items-center h-64">
-          <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-        <Card className="flex justify-center items-center h-64">
-            <p className="text-destructive">Error loading properties: {error.message}</p>
-        </Card>
-    );
-  }
-
   return (
     <>
       <div className="flex flex-col gap-6">
@@ -171,87 +131,102 @@ export default function PropertiesPage() {
             </div>
         </div>
 
-        {!properties?.length ? (
-          <Card className="flex flex-col justify-center items-center h-64 text-center">
-            <CardHeader>
-              <CardTitle>No Properties Found</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground mb-4">Get started by adding your first property.</p>
-              <Button asChild>
-                <Link href="/dashboard/properties/add">
-                  <PlusCircle className="mr-2 h-4 w-4" /> Add Property
-                </Link>
-              </Button>
-            </CardContent>
-          </Card>
-        ) : filteredProperties.length > 0 ? (
-          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-            {filteredProperties.map((property) => (
-              <Card
-                key={property.id}
-                className="group overflow-hidden"
-              >
-                <Link href={`/dashboard/properties/${property.id}`} className="block">
-                  <div className="overflow-hidden">
-                    <Image
-                      src={property.imageUrl}
-                      alt={`Image of ${property.address}`}
-                      width={400}
-                      height={250}
-                      className="object-cover w-full aspect-video group-hover:scale-105 transition-transform duration-300"
-                    />
-                  </div>
-                </Link>
-                <CardHeader>
-                  <div className="flex justify-between items-start gap-2">
-                    <div className='flex-1'>
-                        <CardTitle className="text-base">
-                            <Link href={`/dashboard/properties/${property.id}`} className="hover:underline">
-                                {property.address}
-                            </Link>
-                        </CardTitle>
-                         <CardDescription className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground pt-1">
-                            <span>{property.propertyType}</span>
-                            <span className="flex items-center gap-1"><Bed className="h-4 w-4" /> {property.bedrooms}</span>
-                            <span className="flex items-center gap-1"><Bath className="h-4 w-4" /> {property.bathrooms}</span>
-                        </CardDescription>
-                    </div>
-                    <div className="flex items-center gap-1">
-                        <Badge variant={property.status === 'Occupied' ? 'default' : 'secondary'} className="h-fit">{property.status}</Badge>
-                        <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2">
-                                    <MoreVertical className="h-4 w-4" />
-                                </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                                <DropdownMenuItem asChild>
-                                    <Link href={`/dashboard/properties/${property.id}/edit`}>
-                                        <Edit className="mr-2 h-4 w-4" /> Edit
-                                    </Link>
-                                </DropdownMenuItem>
-                                <DropdownMenuItem onClick={() => setPropertyToDelete(property)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                                    <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                </DropdownMenuItem>
-                            </DropdownMenuContent>
-                        </DropdownMenu>
-                    </div>
-                  </div>
-                </CardHeader>
-              </Card>
-            ))}
-          </div>
-        ) : (
-          <Card className="flex flex-col justify-center items-center h-64 text-center">
-            <CardHeader>
-              <CardTitle>No Properties Found</CardTitle>
-            </CardHeader>
-            <CardContent>
-              <p className="text-muted-foreground mb-4">No properties match your search for "{searchTerm}".</p>
-            </CardContent>
-          </Card>
-        )}
+         <Card>
+          <CardHeader>
+            <CardTitle>Your Portfolio</CardTitle>
+            <CardDescription>View and manage your properties below.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="relative w-full max-w-sm mb-4">
+              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+              <Input
+                placeholder="Search by address..."
+                className="pl-8"
+                value={searchTerm}
+                onChange={(e) => setSearchTerm(e.target.value)}
+              />
+            </div>
+            
+            {isLoading ? (
+              <div className="flex justify-center items-center h-64">
+                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+              </div>
+            ) : error ? (
+                <div className="text-center py-10 text-destructive">Error loading properties: {error.message}</div>
+            ) : !properties?.length ? (
+              <div className="text-center py-10">
+                 <h3 className="text-lg font-semibold">No Properties Found</h3>
+                <p className="text-muted-foreground mb-4">Get started by adding your first property.</p>
+                <Button asChild>
+                  <Link href="/dashboard/properties/add">
+                    <PlusCircle className="mr-2 h-4 w-4" /> Add Property
+                  </Link>
+                </Button>
+              </div>
+            ) : filteredProperties.length > 0 ? (
+              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+                {filteredProperties.map((property) => (
+                  <Card
+                    key={property.id}
+                    className="group overflow-hidden"
+                  >
+                    <Link href={`/dashboard/properties/${property.id}`} className="block">
+                      <div className="overflow-hidden">
+                        <Image
+                          src={property.imageUrl}
+                          alt={`Image of ${property.address}`}
+                          width={400}
+                          height={250}
+                          className="object-cover w-full aspect-video group-hover:scale-105 transition-transform duration-300"
+                        />
+                      </div>
+                    </Link>
+                    <CardHeader>
+                      <div className="flex justify-between items-start gap-2">
+                        <div className='flex-1'>
+                            <CardTitle className="text-base">
+                                <Link href={`/dashboard/properties/${property.id}`} className="hover:underline">
+                                    {property.address}
+                                </Link>
+                            </CardTitle>
+                             <CardDescription className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground pt-1">
+                                <span>{property.propertyType}</span>
+                                <span className="flex items-center gap-1"><Bed className="h-4 w-4" /> {property.bedrooms}</span>
+                                <span className="flex items-center gap-1"><Bath className="h-4 w-4" /> {property.bathrooms}</span>
+                            </CardDescription>
+                        </div>
+                        <div className="flex items-center gap-1">
+                            <Badge variant={property.status === 'Occupied' ? 'default' : 'secondary'} className="h-fit">{property.status}</Badge>
+                            <DropdownMenu>
+                                <DropdownMenuTrigger asChild>
+                                    <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2">
+                                        <MoreVertical className="h-4 w-4" />
+                                    </Button>
+                                </DropdownMenuTrigger>
+                                <DropdownMenuContent align="end">
+                                    <DropdownMenuItem asChild>
+                                        <Link href={`/dashboard/properties/${property.id}/edit`}>
+                                            <Edit className="mr-2 h-4 w-4" /> Edit
+                                        </Link>
+                                    </DropdownMenuItem>
+                                    <DropdownMenuItem onClick={() => setPropertyToDelete(property)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                        <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                    </DropdownMenuItem>
+                                </DropdownMenuContent>
+                            </DropdownMenu>
+                        </div>
+                      </div>
+                    </CardHeader>
+                  </Card>
+                ))}
+              </div>
+            ) : (
+                <div className="text-center py-10 text-muted-foreground">
+                    <p>No properties match your search for "{searchTerm}".</p>
+                </div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <AlertDialog open={!!propertyToDelete} onOpenChange={(open) => !open && setPropertyToDelete(null)}>
