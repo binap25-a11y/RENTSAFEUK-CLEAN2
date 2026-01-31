@@ -187,9 +187,7 @@ export default function PropertyDetailPage() {
                 <div>
                     <h1 className="text-2xl font-bold">{property.address.street}</h1>
                     <p className="text-muted-foreground">{`${property.address.city}, ${property.address.county ? property.address.county + ', ' : ''}${property.address.postcode}`}</p>
-                    <div className="flex items-center gap-2 mt-1">
-                        <Badge>{property.status}</Badge>
-                    </div>
+                    
                 </div>
             </div>
             <DropdownMenu>
@@ -222,7 +220,10 @@ export default function PropertyDetailPage() {
                   />
               </CardContent>
               <CardHeader>
-                  <div className="flex items-center gap-4 text-sm text-muted-foreground">
+                   <div className="flex items-center gap-4">
+                        <Badge>{property.status}</Badge>
+                    </div>
+                  <div className="flex items-center gap-4 text-sm text-muted-foreground pt-2">
                         <span>{property.propertyType}</span>
                         <span className='flex items-center gap-1'><Bed className="h-4 w-4" /> {property.bedrooms}</span>
                         <span className='flex items-center gap-1'><Bath className="h-4 w-4" /> {property.bathrooms}</span>

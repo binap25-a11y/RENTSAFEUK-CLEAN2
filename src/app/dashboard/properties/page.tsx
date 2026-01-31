@@ -191,61 +191,60 @@ export default function PropertiesPage() {
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     {filteredProperties.map((property) => (
                         <Card
-                        key={property.id}
-                        className="group overflow-hidden flex flex-col"
+                            key={property.id}
+                            className="group overflow-hidden flex flex-col"
                         >
-                        <Link href={`/dashboard/properties/${property.id}`} className="block">
-                            <div className="overflow-hidden">
-                            <Image
-                                src={property.imageUrl}
-                                alt={`Image of ${property.address.street}`}
-                                width={400}
-                                height={250}
-                                className="object-cover w-full aspect-video group-hover:scale-105 transition-transform duration-300"
-                            />
-                            </div>
-                        </Link>
-                        <CardHeader className="flex-grow pb-4">
-                            <div className="flex justify-between items-start gap-2">
-                                <div className='flex-1 min-w-0'>
-                                    <CardTitle className="text-lg leading-tight font-semibold">
-                                        <Link href={`/dashboard/properties/${property.id}`} className="hover:underline">
+                            <div className="relative">
+                                <Link href={`/dashboard/properties/${property.id}`}>
+                                    <div className="overflow-hidden">
+                                        <Image
+                                            src={property.imageUrl}
+                                            alt={`Image of ${property.address.street}`}
+                                            width={400}
+                                            height={250}
+                                            className="object-cover w-full aspect-video group-hover:scale-105 transition-transform duration-300"
+                                        />
+                                    </div>
+                                    <CardHeader className="pb-2">
+                                        <CardTitle className="text-lg leading-tight font-semibold group-hover:underline">
                                             {property.address.street}
-                                        </Link>
-                                    </CardTitle>
-                                    <CardDescription className="truncate mt-1">
-                                    {`${property.address.city}, ${property.address.county ? property.address.county + ', ' : ''}${property.address.postcode}`}
-                                    </CardDescription>
+                                        </CardTitle>
+                                        <CardDescription className="truncate">
+                                            {`${property.address.city}, ${property.address.county ? property.address.county + ', ' : ''}${property.address.postcode}`}
+                                        </CardDescription>
+                                    </CardHeader>
+                                </Link>
+                                <div className="absolute top-2 right-2">
+                                    <DropdownMenu>
+                                        <DropdownMenuTrigger asChild>
+                                            <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full">
+                                                <MoreVertical className="h-4 w-4" />
+                                            </Button>
+                                        </DropdownMenuTrigger>
+                                        <DropdownMenuContent align="end">
+                                            <DropdownMenuItem asChild>
+                                                <Link href={`/dashboard/properties/${property.id}/edit`}>
+                                                    <Edit className="mr-2 h-4 w-4" /> Edit
+                                                </Link>
+                                            </DropdownMenuItem>
+                                            <DropdownMenuItem onClick={() => setPropertyToDelete(property)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                            </DropdownMenuItem>
+                                        </DropdownMenuContent>
+                                    </DropdownMenu>
                                 </div>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 -mt-2">
-                                            <MoreVertical className="h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem asChild>
-                                            <Link href={`/dashboard/properties/${property.id}/edit`}>
-                                                <Edit className="mr-2 h-4 w-4" /> Edit
-                                            </Link>
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onClick={() => setPropertyToDelete(property)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
                             </div>
-                        </CardHeader>
-                        <CardContent>
-                            <div className="flex justify-between items-center">
-                                <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                                    <span>{property.propertyType}</span>
-                                    <span className="flex items-center gap-1"><Bed className="h-4 w-4" /> {property.bedrooms}</span>
-                                    <span className="flex items-center gap-1"><Bath className="h-4 w-4" /> {property.bathrooms}</span>
+
+                            <CardContent className="flex-grow flex flex-col justify-end">
+                                <div className="flex justify-between items-center pt-4 border-t">
+                                    <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                                        <span>{property.propertyType}</span>
+                                        <span className="flex items-center gap-1"><Bed className="h-4 w-4" /> {property.bedrooms}</span>
+                                        <span className="flex items-center gap-1"><Bath className="h-4 w-4" /> {property.bathrooms}</span>
+                                    </div>
+                                    <Badge variant={property.status === 'Occupied' ? 'default' : 'secondary'} className="h-fit">{property.status}</Badge>
                                 </div>
-                                <Badge variant={property.status === 'Occupied' ? 'default' : 'secondary'} className="h-fit">{property.status}</Badge>
-                            </div>
-                        </CardContent>
+                            </CardContent>
                         </Card>
                     )
                     )}
@@ -284,6 +283,11 @@ export default function PropertiesPage() {
                                               </Button>
                                           </DropdownMenuTrigger>
                                           <DropdownMenuContent align="end">
+                                               <DropdownMenuItem asChild>
+                                                  <Link href={`/dashboard/properties/${property.id}`}>
+                                                      <Eye className="mr-2 h-4 w-4" /> View
+                                                  </Link>
+                                              </DropdownMenuItem>
                                               <DropdownMenuItem asChild>
                                                   <Link href={`/dashboard/properties/${property.id}/edit`}>
                                                       <Edit className="mr-2 h-4 w-4" /> Edit
