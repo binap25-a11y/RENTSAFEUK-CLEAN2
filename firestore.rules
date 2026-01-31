@@ -3,54 +3,42 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- PROFILE ---
+    function isOwner(docData) {
+      return request.auth.uid == docData.ownerId;
+    }
+
     match /users/{userId} {
       allow read, write: if request.auth.uid == userId;
     }
 
-    // --- TOP-LEVEL COLLECTIONS ---
     match /properties/{propertyId} {
-      // Allow read/write access to a property and its subcollections only if the user is the owner.
-      allow read, write: if request.auth.uid == resource.data.ownerId;
-      // Allow creation if the user is the owner.
-      allow create: if request.auth.uid == request.resource.data.ownerId;
-      // Allow listing properties, but the client query MUST enforce ownerId security.
-      allow list: if request.auth.uid != null;
+      allow get, update, delete: if isOwner(resource.data);
+      allow create: if isOwner(request.resource.data);
+      allow list: if request.auth.uid != null; // Client query MUST filter by ownerId
 
-      // --- PROPERTIES SUBCOLLECTIONS ---
-      // To access items in a property's subcollection, you must own the parent property.
-      match /maintenanceLogs/{logId} {
-        allow read, write: if request.auth.uid == get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId;
-      }
-      match /inspections/{inspectionId} {
-        allow read, write: if request.auth.uid == get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId;
-      }
-      match /documents/{docId} {
-        allow read, write: if request.auth.uid == get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId;
-      }
-      match /expenses/{expenseId} {
-        allow read, write: if request.auth.uid == get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId;
-      }
-      match /rentPayments/{paymentId} {
-        allow read, write: if request.auth.uid == get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId;
+      match /{subcollection}/{docId} {
+        allow get, update, delete: if isOwner(resource.data);
+        allow create: if isOwner(request.resource.data);
+        allow list: if request.auth.uid != null; // Client query MUST filter by ownerId
       }
     }
 
     match /tenants/{tenantId} {
-      allow get, update, delete: if request.auth.uid == resource.data.ownerId;
-      allow list: if request.auth.uid != null;
-      allow create: if request.auth.uid == request.resource.data.ownerId;
+      allow get, update, delete: if isOwner(resource.data);
+      allow create: if isOwner(request.resource.data);
+      allow list: if request.auth.uid != null; // Client query MUST filter by ownerId
 
-      // --- TENANTS SUBCOLLECTIONS ---
       match /screenings/{screeningId} {
-        allow read, write: if request.auth.uid == get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId;
+        allow get, update, delete: if isOwner(resource.data);
+        allow create: if isOwner(request.resource.data);
+        allow list: if request.auth.uid != null; // Client query MUST filter by ownerId
       }
     }
     
     match /contractors/{contractorId} {
-      allow get, update, delete: if request.auth.uid == resource.data.ownerId;
-      allow list: if request.auth.uid != null;
-      allow create: if request.auth.uid == request.resource.data.ownerId;
+      allow get, update, delete: if isOwner(resource.data);
+      allow create: if isOwner(request.resource.data);
+      allow list: if request.auth.uid != null; // Client query MUST filter by ownerId
     }
   }
 }
