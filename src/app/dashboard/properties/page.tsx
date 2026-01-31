@@ -156,12 +156,7 @@ export default function PropertiesPage() {
             ) : !properties?.length ? (
               <div className="text-center py-10">
                  <h3 className="text-lg font-semibold">No Properties Found</h3>
-                <p className="text-muted-foreground mb-4">Get started by adding your first property.</p>
-                <Button asChild>
-                  <Link href="/dashboard/properties/add">
-                    <PlusCircle className="mr-2 h-4 w-4" /> Add Property
-                  </Link>
-                </Button>
+                <p className="text-muted-foreground mb-4">Get started by adding your first property using the button above.</p>
               </div>
             ) : filteredProperties.length > 0 ? (
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
