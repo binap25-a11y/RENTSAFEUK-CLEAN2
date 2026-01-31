@@ -8,7 +8,7 @@ import { GoogleIcon, Logo } from '@/components/icons';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  signInWithPopup,
+  signInWithRedirect,
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -132,7 +132,7 @@ export default function LoginPage() {
     if (auth) {
       setIsProcessing(true);
       const provider = new GoogleAuthProvider();
-      signInWithPopup(auth, provider)
+      signInWithRedirect(auth, provider)
         .catch((error) => {
           toast({
             variant: 'destructive',
