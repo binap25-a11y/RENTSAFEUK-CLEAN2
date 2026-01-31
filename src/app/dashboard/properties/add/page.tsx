@@ -21,7 +21,12 @@ import { Loader2, Upload } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const propertySchema = z.object({
-  address: z.string().min(10, 'Please enter a full, valid address.'),
+  address: z.object({
+    street: z.string().min(3, 'Please enter a street address.'),
+    city: z.string().min(2, 'Please enter a city or town.'),
+    county: z.string().optional(),
+    postcode: z.string().min(5, 'Please enter a valid postcode.'),
+  }),
   propertyType: z.string({ required_error: 'Please select a property type.' }),
   status: z.string({ required_error: 'Please select a status.' }),
   bedrooms: z.coerce.number().min(0, 'Cannot be negative'),
@@ -51,7 +56,12 @@ export default function AddPropertyPage() {
       bedrooms: 0,
       bathrooms: 0,
       status: 'Vacant',
-      address: '',
+      address: {
+        street: '',
+        city: '',
+        county: '',
+        postcode: '',
+      },
       notes: '',
       tenancy: {
         monthlyRent: undefined,
@@ -158,16 +168,53 @@ export default function AddPropertyPage() {
               <CardContent className="space-y-4">
                  <FormField
                     control={form.control}
-                    name="address"
+                    name="address.street"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Full Address</FormLabel>
+                        <FormLabel>Street Address</FormLabel>
                         <FormControl>
-                            <Textarea
-                                placeholder="Enter the full property address, including street, city, and postcode."
-                                rows={4}
-                                {...field}
-                            />
+                            <Input placeholder="e.g., 123 Main Street" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField
+                        control={form.control}
+                        name="address.city"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>City / Town</FormLabel>
+                            <FormControl>
+                                <Input placeholder="e.g., London" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="address.county"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>County (Optional)</FormLabel>
+                            <FormControl>
+                                <Input placeholder="e.g., Greater London" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                 </div>
+                 <FormField
+                    control={form.control}
+                    name="address.postcode"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Postcode</FormLabel>
+                        <FormControl>
+                            <Input placeholder="e.g., SW1A 0AA" {...field} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>

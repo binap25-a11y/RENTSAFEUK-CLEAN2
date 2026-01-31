@@ -53,7 +53,12 @@ import { Pie, PieChart, Cell } from 'recharts';
 // Interfaces
 interface Property {
   id: string;
-  address: string;
+  address: {
+    street: string;
+    city: string;
+    county?: string;
+    postcode: string;
+  };
   status: string;
 }
 
@@ -117,6 +122,11 @@ const getStatusVariant = (status: string) => {
       return 'outline';
   }
 };
+
+const formatAddress = (address: Property['address']) => {
+    if (!address) return 'Unknown Property';
+    return `${address.street}, ${address.city}`;
+}
 
 
 export default function DashboardPage() {
@@ -201,7 +211,7 @@ export default function DashboardPage() {
     properties?.reduce((map, prop) => {
       map[prop.id] = prop.address;
       return map;
-    }, {} as Record<string, string>) ?? {}
+    }, {} as Record<string, Property['address']>) ?? {}
   , [properties]);
 
   const activeProperties = useMemo(() => properties?.filter(p => ['Vacant', 'Occupied', 'Under Maintenance'].includes(p.status)) ?? [], [properties]);
@@ -219,7 +229,7 @@ export default function DashboardPage() {
         .slice(0, 4)
         .map(log => ({
             id: log.id,
-            property: propertyMap[log.propertyId] || 'Unknown Property',
+            property: formatAddress(propertyMap[log.propertyId]),
             activity: log.title,
             date: format((log.reportedDate as Timestamp).toDate(), 'dd/MM/yyyy'),
             href: `/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`
@@ -236,7 +246,7 @@ export default function DashboardPage() {
         .map(insp => ({
             id: `insp-${insp.id}`,
             task: insp.type || 'Inspection',
-            property: propertyMap[insp.propertyId] || 'Unknown Property',
+            property: formatAddress(propertyMap[insp.propertyId]),
             status: 'Scheduled',
             dueDate: format((insp.scheduledDate as Timestamp).toDate(), 'dd/MM/yyyy'),
             href: `/dashboard/inspections/${insp.id}?propertyId=${insp.propertyId}`
@@ -256,7 +266,7 @@ export default function DashboardPage() {
         .map(doc => ({
             id: `doc-${doc.id}`,
             task: doc.title,
-            property: propertyMap[doc.propertyId] || 'Unknown Property',
+            property: formatAddress(propertyMap[doc.propertyId]),
             status: doc.status,
             dueDate: format(doc.expiryDate, 'dd/MM/yyyy'),
             href: '/dashboard/documents'

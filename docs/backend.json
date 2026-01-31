@@ -15,8 +15,31 @@
           "description": "The UID of the user who owns this property."
         },
         "address": {
-          "type": "string",
-          "description": "Full address of the property."
+          "type": "object",
+          "description": "The structured address of the property.",
+          "properties": {
+            "street": {
+              "type": "string",
+              "description": "The street address."
+            },
+            "city": {
+              "type": "string",
+              "description": "The city or town."
+            },
+            "county": {
+              "type": "string",
+              "description": "The county."
+            },
+            "postcode": {
+              "type": "string",
+              "description": "The postcode."
+            }
+          },
+          "required": [
+            "street",
+            "city",
+            "postcode"
+          ]
         },
         "propertyType": {
           "type": "string",

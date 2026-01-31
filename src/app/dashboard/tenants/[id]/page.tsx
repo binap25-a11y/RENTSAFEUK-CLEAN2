@@ -26,7 +26,12 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 
 // Type for a Property document from Firestore
 interface Property {
-    address: string;
+    address: {
+      street: string;
+      city: string;
+      county?: string;
+      postcode: string;
+    };
 }
 
 // Type for tenant from firestore
@@ -99,6 +104,11 @@ export default function TenantDetailPage() {
   };
 
   const isLoading = isLoadingTenant || isLoadingProperty || isLoadingScreenings;
+  
+  const formatAddress = (address: Property['address']) => {
+    if (!address) return 'N/A';
+    return `${address.street}, ${address.city}, ${address.postcode}`;
+  };
 
   if (isLoading) {
     return (
@@ -183,7 +193,7 @@ export default function TenantDetailPage() {
                         <Home className="h-5 w-5 text-muted-foreground" />
                         {property ? (
                             <Link href={`/dashboard/properties/${tenant.propertyId}`} className="text-primary hover:underline">
-                                {property.address}
+                                {formatAddress(property.address)}
                             </Link>
                         ) : (
                             <span>Loading property...</span>

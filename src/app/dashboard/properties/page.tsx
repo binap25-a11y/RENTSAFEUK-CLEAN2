@@ -43,7 +43,12 @@ import { Input } from '@/components/ui/input';
 // Define the Property type based on your Firestore structure
 interface Property {
   id: string;
-  address: string;
+  address: {
+    street: string;
+    city: string;
+    county?: string;
+    postcode: string;
+  };
   propertyType: string;
   status: string;
   bedrooms: number;
@@ -80,8 +85,9 @@ export default function PropertiesPage() {
     if (!searchTerm) {
       return properties;
     }
+    const lowercasedTerm = searchTerm.toLowerCase();
     return properties.filter((property) =>
-      property.address.toLowerCase().includes(searchTerm.toLowerCase())
+      Object.values(property.address).some(val => val?.toLowerCase().includes(lowercasedTerm))
     );
   }, [properties, searchTerm]);
 
@@ -93,7 +99,7 @@ export default function PropertiesPage() {
       await updateDoc(docRef, { status: 'Deleted' });
       toast({
         title: 'Property Deleted',
-        description: `${propertyToDelete.address} has been moved to the deleted properties list.`,
+        description: `${propertyToDelete.address.street} has been moved to the deleted properties list.`,
       });
     } catch (e) {
       console.error('Error deleting property:', e);
@@ -168,12 +174,7 @@ export default function PropertiesPage() {
               </div>
             ) : filteredProperties.length > 0 ? (
               <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {filteredProperties.map((property) => {
-                  const addressParts = property.address.split(',');
-                  const mainAddress = addressParts[0]?.trim();
-                  const subAddress = addressParts.slice(1).join(',').trim();
-
-                  return (
+                {filteredProperties.map((property) => (
                     <Card
                       key={property.id}
                       className="group overflow-hidden flex flex-col"
@@ -182,22 +183,24 @@ export default function PropertiesPage() {
                         <div className="overflow-hidden">
                           <Image
                             src={property.imageUrl}
-                            alt={`Image of ${property.address}`}
+                            alt={`Image of ${property.address.street}`}
                             width={400}
                             height={250}
                             className="object-cover w-full aspect-video group-hover:scale-105 transition-transform duration-300"
                           />
                         </div>
                       </Link>
-                      <CardHeader className="flex-grow pb-2">
+                      <CardHeader className="flex-grow pb-4">
                         <div className="flex justify-between items-start gap-2">
                           <div className='flex-1 min-w-0'>
                               <CardTitle className="text-lg leading-tight font-semibold">
                                   <Link href={`/dashboard/properties/${property.id}`} className="hover:underline">
-                                      {mainAddress}
+                                      {property.address.street}
                                   </Link>
                               </CardTitle>
-                              <CardDescription className="truncate">{subAddress}</CardDescription>
+                              <CardDescription className="truncate mt-1">
+                                {`${property.address.city}, ${property.address.county ? property.address.county + ', ' : ''}${property.address.postcode}`}
+                              </CardDescription>
                           </div>
                           <DropdownMenu>
                               <DropdownMenuTrigger asChild>
@@ -229,8 +232,8 @@ export default function PropertiesPage() {
                           </div>
                       </CardContent>
                     </Card>
-                  );
-                })}
+                  )
+                )}
               </div>
             ) : (
                 <div className="text-center py-10 text-muted-foreground">
@@ -246,7 +249,7 @@ export default function PropertiesPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will delete the property at {propertyToDelete?.address}. You can restore it later from the 'View Deleted' page.
+              This will delete the property at {propertyToDelete?.address.street}. You can restore it later from the 'View Deleted' page.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

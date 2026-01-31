@@ -68,7 +68,12 @@ interface Tenant {
 
 interface Property {
   id: string;
-  address: string;
+  address: {
+    street: string;
+    city: string;
+    county?: string;
+    postcode: string;
+  };
 }
 
 export default function TenantsPage() {
@@ -111,7 +116,7 @@ export default function TenantsPage() {
   const propertyMap = useMemo(() => {
     if (!properties) return {};
     return properties.reduce((acc, prop) => {
-        acc[prop.id] = prop.address;
+        acc[prop.id] = `${prop.address.street}, ${prop.address.city}`;
         return acc;
     }, {} as Record<string, string>);
   }, [properties]);

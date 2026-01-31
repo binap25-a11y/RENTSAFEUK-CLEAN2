@@ -25,7 +25,12 @@ import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
 
 interface Property {
   id: string;
-  address: string;
+  address: {
+    street: string;
+    city: string;
+    county?: string;
+    postcode: string;
+  };
   propertyType: string;
 }
 
@@ -62,6 +67,10 @@ export default function DeletedPropertiesPage() {
                 description: 'Could not restore the property. Please try again.',
             });
         }
+    };
+
+    const formatAddress = (address: Property['address']) => {
+        return `${address.street}, ${address.city}, ${address.postcode}`;
     };
 
   return (
@@ -110,10 +119,10 @@ export default function DeletedPropertiesPage() {
                             <TableBody>
                                 {deletedProperties.map((property) => (
                                 <TableRow key={property.id}>
-                                    <TableCell className="font-medium">{property.address}</TableCell>
+                                    <TableCell className="font-medium">{formatAddress(property.address)}</TableCell>
                                     <TableCell>{property.propertyType}</TableCell>
                                     <TableCell className="text-right">
-                                    <Button size="sm" onClick={() => handleRestore(property.id, property.address)}>
+                                    <Button size="sm" onClick={() => handleRestore(property.id, property.address.street)}>
                                         <RefreshCw className="mr-2 h-4 w-4" /> Restore
                                     </Button>
                                     </TableCell>
@@ -128,11 +137,11 @@ export default function DeletedPropertiesPage() {
                         {deletedProperties.map((property) => (
                             <Card key={property.id}>
                                 <CardHeader>
-                                    <CardTitle className="text-base">{property.address}</CardTitle>
-                                    <CardDescription>{property.propertyType}</CardDescription>
+                                    <CardTitle className="text-base">{property.address.street}</CardTitle>
+                                    <CardDescription>{`${property.address.city}, ${property.address.postcode}`}</CardDescription>
                                 </CardHeader>
                                 <CardFooter>
-                                    <Button size="sm" className="w-full" onClick={() => handleRestore(property.id, property.address)}>
+                                    <Button size="sm" className="w-full" onClick={() => handleRestore(property.id, property.address.street)}>
                                         <RefreshCw className="mr-2 h-4 w-4" /> Restore
                                     </Button>
                                 </CardFooter>

@@ -66,7 +66,12 @@ type TenantFormValues = z.infer<typeof tenantSchema>;
 // Type for property documents from Firestore
 interface Property {
   id: string;
-  address: string;
+  address: {
+    street: string;
+    city: string;
+    county?: string;
+    postcode: string;
+  };
 }
 
 // Type for tenant from firestore
@@ -156,6 +161,10 @@ export default function EditTenantPage() {
       });
     }
   }
+  
+  const formatAddress = (address: Property['address']) => {
+    return `${address.street}, ${address.city}, ${address.postcode}`;
+  };
 
   if (isLoadingTenant || isLoadingProperties) {
     return (
@@ -202,7 +211,7 @@ export default function EditTenantPage() {
                     <SelectContent>
                       {properties?.map((prop) => (
                         <SelectItem key={prop.id} value={prop.id}>
-                          {prop.address}
+                          {formatAddress(prop.address)}
                         </SelectItem>
                       ))}
                     </SelectContent>

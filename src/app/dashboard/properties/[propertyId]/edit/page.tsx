@@ -20,7 +20,12 @@ import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage
 import { Loader2, Upload } from 'lucide-react';
 
 const propertySchema = z.object({
-  address: z.string().min(10, 'Please enter a full, valid address.'),
+  address: z.object({
+    street: z.string().min(3, 'Please enter a street address.'),
+    city: z.string().min(2, 'Please enter a city or town.'),
+    county: z.string().optional(),
+    postcode: z.string().min(5, 'Please enter a valid postcode.'),
+  }),
   propertyType: z.string({ required_error: 'Please select a property type.' }),
   status: z.string({ required_error: 'Please select a status.' }),
   bedrooms: z.coerce.number().min(0, 'Cannot be negative'),
@@ -37,7 +42,12 @@ const propertySchema = z.object({
 type PropertyFormValues = z.infer<typeof propertySchema>;
 
 interface Property {
-  address: string;
+  address: {
+    street: string;
+    city: string;
+    county?: string;
+    postcode: string;
+  };
   propertyType: string;
   status: string;
   bedrooms: number;
@@ -77,6 +87,12 @@ export default function EditPropertyPage() {
     if (property) {
       form.reset({
         ...property,
+        address: {
+            street: property.address?.street ?? '',
+            city: property.address?.city ?? '',
+            county: property.address?.county ?? '',
+            postcode: property.address?.postcode ?? '',
+        },
         bedrooms: property.bedrooms ?? 0,
         bathrooms: property.bathrooms ?? 0,
         notes: property.notes ?? '',
@@ -196,16 +212,53 @@ export default function EditPropertyPage() {
               <CardContent className="space-y-4">
                  <FormField
                     control={form.control}
-                    name="address"
+                    name="address.street"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Full Address</FormLabel>
+                        <FormLabel>Street Address</FormLabel>
                         <FormControl>
-                            <Textarea
-                                placeholder="Enter the full property address, including street, city, and postcode."
-                                rows={4}
-                                {...field}
-                            />
+                            <Input placeholder="e.g., 123 Main Street" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField
+                        control={form.control}
+                        name="address.city"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>City / Town</FormLabel>
+                            <FormControl>
+                                <Input placeholder="e.g., London" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                    <FormField
+                        control={form.control}
+                        name="address.county"
+                        render={({ field }) => (
+                            <FormItem>
+                            <FormLabel>County (Optional)</FormLabel>
+                            <FormControl>
+                                <Input placeholder="e.g., Greater London" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                 </div>
+                 <FormField
+                    control={form.control}
+                    name="address.postcode"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Postcode</FormLabel>
+                        <FormControl>
+                            <Input placeholder="e.g., SW1A 0AA" {...field} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>

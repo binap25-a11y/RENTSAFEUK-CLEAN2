@@ -27,7 +27,12 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 
 // Main interface for a Property document from Firestore
 interface Property {
-    address: string;
+    address: {
+      street: string;
+      city: string;
+      county?: string;
+      postcode: string;
+    };
     propertyType: string;
     status: string;
     bedrooms: number;
@@ -89,7 +94,7 @@ export default function PropertyDetailPage() {
       await updateDoc(docRef, { status: 'Deleted' });
       toast({
         title: 'Property Deleted',
-        description: `${property.address} has been moved to the deleted properties list.`,
+        description: `${property.address.street} has been moved to the deleted properties list.`,
       });
       router.push('/dashboard/properties');
     } catch (e) {
@@ -123,10 +128,6 @@ export default function PropertyDetailPage() {
 
   const tenancy = property.tenancy;
 
-  const addressParts = property.address.split(',');
-  const mainAddress = addressParts[0]?.trim();
-  const subAddress = addressParts.slice(1).join(', ').trim();
-
   return (
     <>
       <div className="flex flex-col gap-6">
@@ -138,8 +139,8 @@ export default function PropertyDetailPage() {
                     </Link>
                 </Button>
                 <div>
-                    <h1 className="text-2xl font-bold">{mainAddress}</h1>
-                    {subAddress && <p className="text-muted-foreground">{subAddress}</p>}
+                    <h1 className="text-2xl font-bold">{property.address.street}</h1>
+                    <p className="text-muted-foreground">{`${property.address.city}, ${property.address.county ? property.address.county + ', ' : ''}${property.address.postcode}`}</p>
                     <div className="flex items-center gap-2 mt-1">
                         <Badge>{property.status}</Badge>
                     </div>
@@ -168,7 +169,7 @@ export default function PropertyDetailPage() {
               <CardContent className="p-0">
                   <Image
                       src={property.imageUrl}
-                      alt={`Image of ${property.address}`}
+                      alt={`Image of ${property.address.street}`}
                       width={800}
                       height={500}
                       className="rounded-t-lg object-cover w-full aspect-video"
@@ -323,7 +324,7 @@ export default function PropertyDetailPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will delete the property at {property?.address}. You can restore it later from the 'View Deleted' page.
+              This will delete the property at {property?.address.street}. You can restore it later from the 'View Deleted' page.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

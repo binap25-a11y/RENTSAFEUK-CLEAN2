@@ -65,7 +65,12 @@ type TenantFormValues = z.infer<typeof tenantSchema>;
 // Type for property documents from Firestore
 interface Property {
   id: string;
-  address: string;
+  address: {
+    street: string;
+    city: string;
+    county?: string;
+    postcode: string;
+  };
 }
 
 export default function AddTenantPage() {
@@ -136,6 +141,10 @@ export default function AddTenantPage() {
     }
   }
 
+  const formatAddress = (address: Property['address']) => {
+    return `${address.street}, ${address.city}, ${address.postcode}`;
+  };
+
   return (
     <Card className="max-w-2xl mx-auto">
       <CardHeader>
@@ -162,7 +171,7 @@ export default function AddTenantPage() {
                     <SelectContent>
                       {properties?.map((prop) => (
                         <SelectItem key={prop.id} value={prop.id}>
-                          {prop.address}
+                          {formatAddress(prop.address)}
                         </SelectItem>
                       ))}
                     </SelectContent>
