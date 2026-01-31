@@ -77,6 +77,25 @@ export default function EditPropertyPage() {
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
+    defaultValues: { // Set default values to prevent uncontrolled -> controlled error
+      address: {
+        nameOrNumber: '',
+        street: '',
+        city: '',
+        county: '',
+        postcode: '',
+      },
+      propertyType: '',
+      status: '',
+      bedrooms: 0,
+      bathrooms: 0,
+      notes: '',
+      tenancy: {
+        monthlyRent: undefined,
+        depositAmount: undefined,
+        depositScheme: '',
+      },
+    },
   });
 
   const propertyRef = useMemoFirebase(() => {
@@ -90,21 +109,21 @@ export default function EditPropertyPage() {
     if (property) {
       form.reset({
         address: {
-            nameOrNumber: property.address?.nameOrNumber,
-            street: property.address?.street,
-            city: property.address?.city,
-            county: property.address?.county,
-            postcode: property.address?.postcode,
+            nameOrNumber: property.address?.nameOrNumber ?? '',
+            street: property.address?.street ?? '',
+            city: property.address?.city ?? '',
+            county: property.address?.county ?? '',
+            postcode: property.address?.postcode ?? '',
         },
         propertyType: property.propertyType,
         status: property.status,
         bedrooms: property.bedrooms ?? 0,
         bathrooms: property.bathrooms ?? 0,
-        notes: property.notes,
+        notes: property.notes ?? '',
         tenancy: {
             monthlyRent: property.tenancy?.monthlyRent,
             depositAmount: property.tenancy?.depositAmount,
-            depositScheme: property.tenancy?.depositScheme,
+            depositScheme: property.tenancy?.depositScheme ?? '',
         }
       });
       if (property.imageUrl) {
@@ -215,7 +234,7 @@ export default function EditPropertyPage() {
                         <FormItem>
                         <FormLabel>Street Address</FormLabel>
                         <FormControl>
-                            <Input placeholder="e.g., 123 Main Street" {...field} />
+                            <Input placeholder="e.g., 123 Main Street" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -229,7 +248,7 @@ export default function EditPropertyPage() {
                             <FormItem>
                             <FormLabel>City / Town</FormLabel>
                             <FormControl>
-                                <Input placeholder="e.g., London" {...field} />
+                                <Input placeholder="e.g., London" {...field} value={field.value ?? ''} />
                             </FormControl>
                             <FormMessage />
                             </FormItem>
@@ -256,7 +275,7 @@ export default function EditPropertyPage() {
                         <FormItem>
                         <FormLabel>Postcode</FormLabel>
                         <FormControl>
-                            <Input placeholder="e.g., SW1A 0AA" {...field} />
+                            <Input placeholder="e.g., SW1A 0AA" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -322,7 +341,7 @@ export default function EditPropertyPage() {
                       <FormItem>
                         <FormLabel>Bedrooms</FormLabel>
                         <FormControl>
-                          <Input type="number" min="0" {...field} />
+                          <Input type="number" min="0" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -332,7 +351,7 @@ export default function EditPropertyPage() {
                       <FormItem>
                         <FormLabel>Bathrooms</FormLabel>
                         <FormControl>
-                          <Input type="number" min="0" {...field} />
+                          <Input type="number" min="0" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
