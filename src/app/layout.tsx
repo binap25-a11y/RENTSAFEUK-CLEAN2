@@ -6,6 +6,7 @@ import { FirebaseClientProvider } from '@/firebase';
 export const metadata: Metadata = {
   title: 'RentSafeUK',
   description: 'Property Management App',
+  manifest: '/manifest.webmanifest',
 };
 
 export default function RootLayout({
