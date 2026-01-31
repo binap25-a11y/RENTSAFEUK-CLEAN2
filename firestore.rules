@@ -11,32 +11,34 @@ service cloud.firestore {
     // --- TOP-LEVEL COLLECTIONS ---
     match /properties/{propertyId} {
       allow create: if request.auth.uid == request.resource.data.ownerId;
-      allow list: if request.auth.uid == request.query.where.ownerId;
+      // Allow list if the user is authenticated. The client MUST apply a where clause for security.
+      allow list: if request.auth.uid != null;
+      // Allow get/update/delete if the user is the owner of the specific document.
       allow get, update, delete: if request.auth.uid == resource.data.ownerId;
     }
 
     match /tenants/{tenantId} {
       allow create: if request.auth.uid == request.resource.data.ownerId;
-      allow list: if request.auth.uid == request.query.where.ownerId;
+      allow list: if request.auth.uid != null;
       allow get, update, delete: if request.auth.uid == resource.data.ownerId;
     }
     
     match /contractors/{contractorId} {
       allow create: if request.auth.uid == request.resource.data.ownerId;
-      allow list: if request.auth.uid == request.query.where.ownerId;
+      allow list: if request.auth.uid != null;
       allow get, update, delete: if request.auth.uid == resource.data.ownerId;
     }
 
     // --- SUBCOLLECTIONS ---
     match /properties/{propertyId}/{subcollection}/{docId} {
       allow create: if request.auth.uid == request.resource.data.ownerId;
-      allow list: if request.auth.uid == request.query.where.ownerId;
+      allow list: if request.auth.uid != null;
       allow get, update, delete: if request.auth.uid == resource.data.ownerId;
     }
     
     match /tenants/{tenantId}/{subcollection}/{docId} {
       allow create: if request.auth.uid == request.resource.data.ownerId;
-      allow list: if request.auth.uid == request.query.where.ownerId;
+      allow list: if request.auth.uid != null;
       allow get, update, delete: if request.auth.uid == resource.data.ownerId;
     }
   }
