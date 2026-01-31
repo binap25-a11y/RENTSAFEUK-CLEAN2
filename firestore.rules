@@ -14,38 +14,36 @@ service cloud.firestore {
 
     // --- Top-level Collections ---
     match /properties/{propertyId} {
-      // Only the owner can read, create, update, or delete their property.
-      // The `read` rule covers both `get` and `list` operations.
-      // Client-side queries MUST include `where('ownerId', '==', request.auth.uid)`.
-      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      // A user can read, update, or delete a property if they are the owner.
+      // For 'list' operations, the client-side query must include `where('ownerId', '==', request.auth.uid)`.
+      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      // A user can create a property if they are signed in and set themselves as the owner.
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
 
     match /tenants/{tenantId} {
-      // Only the owner can read their tenant records.
-      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      // Rules mirror the properties collection: only the owner can manage their own tenant records.
+      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
 
     match /contractors/{contractorId} {
-      // Only the owner can read their contractor records.
-      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      // Rules mirror the properties collection: only the owner can manage their own contractor records.
+      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
 
     // --- Subcollection Rules for direct path access ---
     match /properties/{propertyId}/{subcollection}/{docId} {
-      // All access requires checking ownership of the parent property.
-      allow read, write: if get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
+      // To access a subcollection document, the user must be the owner of the parent property.
+      // This is secure and efficient as it performs one extra read (`get`) per operation.
+      allow read, write: if isSignedIn() && get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
     }
 
     // This rule applies to all subcollections under a tenant.
     match /tenants/{tenantId}/{subcollection}/{docId} {
-      // All access requires checking ownership of the parent tenant document.
-      allow read, write: if get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid;
+      // To access a tenant's subcollection document, the user must be the owner of the parent tenant.
+      allow read, write: if isSignedIn() && get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid;
     }
   }
 }
