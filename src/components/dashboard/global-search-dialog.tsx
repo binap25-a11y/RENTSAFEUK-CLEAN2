@@ -8,7 +8,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, query, where, getDocs, collectionGroup } from 'firebase/firestore';
+import { collection, query, where, getDocs } from 'firebase/firestore';
 import { Home, Users, HardHat, Wrench, CalendarCheck, Loader2, Search } from 'lucide-react';
 
 // Data types
@@ -16,7 +16,7 @@ interface Searchable {
   id: string;
   [key: string]: any;
 }
-interface Property extends Searchable { address: string; }
+interface Property extends Searchable { address: string; status?: string; }
 interface Tenant extends Searchable { name: string; email: string; status?: string; }
 interface Contractor extends Searchable { name: string; trade: string; status?: string; }
 interface MaintenanceLog extends Searchable { title: string; propertyId: string; }
@@ -55,37 +55,42 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
   } | null>(null);
 
   useEffect(() => {
+    // This effect now fetches data respecting security rules.
     if (isOpen && !allData && user && firestore) {
       const fetchData = async () => {
         setIsLoading(true);
         try {
+          // 1. Fetch top-level collections
           const propertyQuery = query(collection(firestore, 'properties'), where('ownerId', '==', user.uid));
           const tenantQuery = query(collection(firestore, 'tenants'), where('ownerId', '==', user.uid));
           const contractorQuery = query(collection(firestore, 'contractors'), where('ownerId', '==', user.uid));
           
-          // These collection group queries require indexes in firestore.rules
-          const maintenanceQuery = query(collectionGroup(firestore, 'maintenanceLogs'), where('ownerId', '==', user.uid));
-          const inspectionQuery = query(collectionGroup(firestore, 'inspections'), where('ownerId', '==', user.uid));
-          
-          const [
-            propertySnap,
-            tenantSnap,
-            contractorSnap,
-            maintenanceSnap,
-            inspectionSnap,
-          ] = await Promise.all([
+          const [propertySnap, tenantSnap, contractorSnap] = await Promise.all([
             getDocs(propertyQuery),
             getDocs(tenantQuery),
             getDocs(contractorQuery),
-            getDocs(maintenanceQuery),
-            getDocs(inspectionQuery),
           ]);
           
           const properties = propertySnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Property));
           const tenants = tenantSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tenant));
           const contractors = contractorSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Contractor));
-          const maintenanceLogs = maintenanceSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), propertyId: doc.ref.parent.parent!.id } as MaintenanceLog));
-          const inspections = inspectionSnap.docs.map(doc => ({ id: doc.id, ...doc.data(), propertyId: doc.ref.parent.parent!.id } as Inspection));
+          
+          // 2. Fetch sub-collections for each property
+          const maintenanceLogs: MaintenanceLog[] = [];
+          const inspections: Inspection[] = [];
+
+          for (const prop of properties) {
+              const maintenanceQuery = query(collection(firestore, 'properties', prop.id, 'maintenanceLogs'));
+              const inspectionQuery = query(collection(firestore, 'properties', prop.id, 'inspections'));
+
+              const [maintenanceSnap, inspectionSnap] = await Promise.all([
+                  getDocs(maintenanceQuery),
+                  getDocs(inspectionQuery),
+              ]);
+
+              maintenanceSnap.docs.forEach(doc => maintenanceLogs.push({ id: doc.id, ...doc.data(), propertyId: prop.id } as MaintenanceLog));
+              inspectionSnap.docs.forEach(doc => inspections.push({ id: doc.id, ...doc.data(), propertyId: prop.id } as Inspection));
+          }
           
           setAllData({ properties, tenants, contractors, maintenanceLogs, inspections });
 
@@ -153,12 +158,12 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
     
     // Search Inspections
     const inspectionItems = allData.inspections
-      .filter(i => i.type.toLowerCase().includes(term))
+      .filter(i => (i.type || '').toLowerCase().includes(term))
       .map(i => ({
         id: i.id,
         title: `${i.type} Inspection`,
         description: 'Inspection Record',
-        href: `/dashboard/properties/${i.propertyId}/inspections/${i.id}`,
+        href: `/dashboard/inspections/${i.id}?propertyId=${i.propertyId}`,
       }));
     if (inspectionItems.length) results.push({ title: 'Inspections', icon: CalendarCheck, items: inspectionItems });
 
