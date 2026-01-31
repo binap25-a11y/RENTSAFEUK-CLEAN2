@@ -103,6 +103,7 @@ export default function AddPropertyPage() {
         imageUrl = await getDownloadURL(uploadResult.ref);
       }
       
+      // Manually construct the object to save to avoid sending undefined values
       const propertyDataToSave: { [key: string]: any } = {
         address: fullAddress,
         propertyType: data.propertyType,
@@ -116,18 +117,17 @@ export default function AddPropertyPage() {
       if (data.notes) {
         propertyDataToSave.notes = data.notes;
       }
-
+      
       const tenancyData: { [key: string]: any } = {};
-      if (data.tenancy) {
-        if (data.tenancy.monthlyRent !== undefined && !isNaN(data.tenancy.monthlyRent)) {
-            tenancyData.monthlyRent = data.tenancy.monthlyRent;
-        }
-        if (data.tenancy.depositAmount !== undefined && !isNaN(data.tenancy.depositAmount)) {
-            tenancyData.depositAmount = data.tenancy.depositAmount;
-        }
-        if (data.tenancy.depositScheme) {
-            tenancyData.depositScheme = data.tenancy.depositScheme;
-        }
+      // Check for valid numbers (including 0) before adding
+      if (data.tenancy?.monthlyRent !== undefined && !isNaN(data.tenancy.monthlyRent)) {
+        tenancyData.monthlyRent = data.tenancy.monthlyRent;
+      }
+      if (data.tenancy?.depositAmount !== undefined && !isNaN(data.tenancy.depositAmount)) {
+        tenancyData.depositAmount = data.tenancy.depositAmount;
+      }
+      if (data.tenancy?.depositScheme) {
+        tenancyData.depositScheme = data.tenancy.depositScheme;
       }
 
       if (Object.keys(tenancyData).length > 0) {
@@ -336,6 +336,7 @@ export default function AddPropertyPage() {
                       <div className="aspect-video w-full rounded-lg border-2 border-dashed bg-muted flex items-center justify-center overflow-hidden">
                         {imagePreview ? (
                           <img
+                            key={imagePreview}
                             src={imagePreview}
                             alt="Property preview"
                             className="h-full w-full object-contain"
