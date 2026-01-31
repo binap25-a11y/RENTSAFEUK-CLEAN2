@@ -133,10 +133,22 @@ export default function EditPropertyPage() {
     setIsSubmitting(true);
 
     try {
-      // 1. Build the object for all text-based fields from the form data.
-      // This is a safe, explicit construction.
-      const dataToUpdate: { [key: string]: any } = {
-        ownerId: property.ownerId, // Crucially, preserve the ownerId
+      const propertyDocRef = doc(firestore, 'properties', propertyId);
+      let finalImageUrl = property.imageUrl; // Start with the existing image URL.
+
+      // Step 1: Handle image upload SEPARATELY only if a new file is provided.
+      if (data.imageFile && data.imageFile.length > 0) {
+        const file = data.imageFile[0];
+        const uniqueFileName = `${Date.now()}-${file.name}`;
+        const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
+        
+        await uploadBytes(fileStorageRef, file);
+        finalImageUrl = await getDownloadURL(fileStorageRef); // Get the new URL
+      }
+      
+      // Step 2: Build the update object with all form data.
+      const dataToUpdate = {
+        ownerId: property.ownerId, // CRITICAL: Preserve existing ownerId
         address: data.address,
         propertyType: data.propertyType,
         status: data.status,
@@ -144,26 +156,10 @@ export default function EditPropertyPage() {
         bathrooms: data.bathrooms,
         notes: data.notes || '',
         tenancy: data.tenancy || {},
+        imageUrl: finalImageUrl || '', // Use the new URL if it exists, otherwise the old one, fallback to empty string
       };
       
-      // 2. Handle image upload only if a new image has been selected.
-      if (data.imageFile && data.imageFile.length > 0) {
-        const file = data.imageFile[0];
-        const uniqueFileName = `${Date.now()}-${file.name}`;
-        const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
-        
-        // Wait for upload to complete
-        await uploadBytes(fileStorageRef, file);
-        const newImageUrl = await getDownloadURL(fileStorageRef);
-        
-        // Only add the imageUrl to the update object if the upload was successful.
-        dataToUpdate.imageUrl = newImageUrl;
-      }
-      
-      // 3. Update the document in Firestore with the prepared data.
-      // updateDoc will only modify the fields present in dataToUpdate.
-      // If no new image was uploaded, imageUrl will not be in dataToUpdate, and the existing one will be preserved.
-      const propertyDocRef = doc(firestore, 'properties', propertyId);
+      // Step 3: Perform the update.
       await updateDoc(propertyDocRef, dataToUpdate);
 
       toast({
@@ -488,5 +484,3 @@ export default function EditPropertyPage() {
     </Card>
   );
 }
-
-    
