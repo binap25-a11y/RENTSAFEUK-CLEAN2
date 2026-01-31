@@ -3,35 +3,25 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Helper function for owner check on create/update/delete
-    function isOwner(docData) {
-      return request.auth.uid == docData.ownerId;
-    }
-
+    // User can only access their own user document
     match /users/{userId} {
       allow read, write: if request.auth.uid == userId;
     }
 
     // --- Properties and all subcollections ---
     match /properties/{propertyId} {
-      // Allow reading a single property if user is the owner
       allow get: if resource.data.ownerId == request.auth.uid;
-      // Allow listing properties, but client MUST filter by ownerId
-      allow list: if request.auth.uid != null;
-      // Allow creating a property if the new data has the user as owner
-      allow create: if isOwner(request.resource.data);
-      // Allow updating/deleting a property if user is the owner
-      allow update, delete: if isOwner(resource.data);
+      allow list: if request.auth.uid != null; // Client MUST filter by ownerId
+      allow create: if request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if resource.data.ownerId == request.auth.uid;
 
       match /{subcollection}/{docId} {
-        // Allow reading a single subcollection document if user is the owner
-        allow get: if resource.data.ownerId == request.auth.uid;
-        // Allow listing subcollection documents, but client MUST filter by ownerId
-        allow list: if request.auth.uid != null;
-        // Allow creating a subcollection document if new data has user as owner
-        allow create: if isOwner(request.resource.data);
-        // Allow updating/deleting a subcollection document if user is the owner
-        allow update, delete: if isOwner(resource.data);
+        // This rule is simpler and more robust.
+        // It relies on the subcollection documents also having an `ownerId`.
+        // The client-side queries MUST filter by this ownerId for list operations.
+        allow get, update, delete: if resource.data.ownerId == request.auth.uid;
+        allow list: if request.auth.uid != null; // Client MUST filter by ownerId
+        allow create: if request.resource.data.ownerId == request.auth.uid;
       }
     }
 
@@ -39,14 +29,13 @@ service cloud.firestore {
     match /tenants/{tenantId} {
       allow get: if resource.data.ownerId == request.auth.uid;
       allow list: if request.auth.uid != null; // Client MUST filter by ownerId
-      allow create: if isOwner(request.resource.data);
-      allow update, delete: if isOwner(resource.data);
+      allow create: if request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if resource.data.ownerId == request.auth.uid;
 
       match /screenings/{screeningId} {
-        allow get: if resource.data.ownerId == request.auth.uid;
+        allow get, update, delete: if resource.data.ownerId == request.auth.uid;
         allow list: if request.auth.uid != null; // Client MUST filter by ownerId
-        allow create: if isOwner(request.resource.data);
-        allow update, delete: if isOwner(resource.data);
+        allow create: if request.resource.data.ownerId == request.auth.uid;
       }
     }
     
@@ -54,8 +43,8 @@ service cloud.firestore {
     match /contractors/{contractorId} {
       allow get: if resource.data.ownerId == request.auth.uid;
       allow list: if request.auth.uid != null; // Client MUST filter by ownerId
-      allow create: if isOwner(request.resource.data);
-      allow update, delete: if isOwner(resource.data);
+      allow create: if request.resource.data.ownerId == request.auth.uid;
+      allow update, delete: if resource.data.ownerId == request.auth.uid;
     }
   }
 }
