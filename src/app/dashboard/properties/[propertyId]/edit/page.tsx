@@ -90,21 +90,21 @@ export default function EditPropertyPage() {
     if (property) {
       form.reset({
         address: {
-            nameOrNumber: property.address?.nameOrNumber ?? '',
-            street: property.address?.street ?? '',
-            city: property.address?.city ?? '',
-            county: property.address?.county ?? '',
-            postcode: property.address?.postcode ?? '',
+            nameOrNumber: property.address?.nameOrNumber,
+            street: property.address?.street,
+            city: property.address?.city,
+            county: property.address?.county,
+            postcode: property.address?.postcode,
         },
         propertyType: property.propertyType,
         status: property.status,
         bedrooms: property.bedrooms ?? 0,
         bathrooms: property.bathrooms ?? 0,
-        notes: property.notes ?? '',
+        notes: property.notes,
         tenancy: {
-            monthlyRent: property.tenancy?.monthlyRent ?? undefined,
-            depositAmount: property.tenancy?.depositAmount ?? undefined,
-            depositScheme: property.tenancy?.depositScheme ?? '',
+            monthlyRent: property.tenancy?.monthlyRent,
+            depositAmount: property.tenancy?.depositAmount,
+            depositScheme: property.tenancy?.depositScheme,
         }
       });
       if (property.imageUrl) {
