@@ -64,16 +64,13 @@ export function Notifications() {
     return query(collection(firestore, 'properties'), where('ownerId', '==', user.uid));
   }, [firestore, user]);
 
-  const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
+  const { data: properties } = useCollection<Property>(propertiesQuery);
   
   useEffect(() => {
     if (!firestore || !user || !properties) return;
 
     const fetchSubcollections = async () => {
-      const docs: Document[] = [];
-      const insps: Inspection[] = [];
-
-      for (const prop of properties) {
+      const promises = properties.map(async (prop) => {
         const docsQuery = query(collection(firestore, 'properties', prop.id, 'documents'));
         const inspsQuery = query(collection(firestore, 'properties', prop.id, 'inspections'));
         
@@ -82,12 +79,14 @@ export function Notifications() {
             getDocs(inspsQuery)
         ]);
 
-        docsSnapshot.forEach(doc => docs.push({ ...doc.data(), id: doc.id, propertyId: prop.id } as Document));
-        inspsSnapshot.forEach(doc => insps.push({ ...doc.data(), id: doc.id, propertyId: prop.id } as Inspection));
-      }
+        const docs = docsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, propertyId: prop.id } as Document));
+        const insps = inspsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, propertyId: prop.id } as Inspection));
+        return { docs, insps };
+      });
       
-      setAllDocuments(docs);
-      setAllInspections(insps);
+      const results = await Promise.all(promises);
+      setAllDocuments(results.flatMap(r => r.docs));
+      setAllInspections(results.flatMap(r => r.insps));
     };
 
     if (properties.length > 0) {

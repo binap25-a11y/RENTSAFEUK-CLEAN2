@@ -147,22 +147,15 @@ export default function DashboardPage() {
 
     const fetchAllData = async () => {
       setIsSubcollectionsLoading(true);
-      const allLogs: MaintenanceLog[] = [];
-      const allInspections: Inspection[] = [];
-      const allDocs: Document[] = [];
-      const allRents: RentPayment[] = [];
 
-      const currentMonth = format(new Date(), 'MMMM');
-      const currentYear = new Date().getFullYear();
-
-      for (const prop of properties) {
+      const promises = properties.map(async (prop) => {
         const maintenanceQuery = query(collection(firestore, 'properties', prop.id, 'maintenanceLogs'));
         const inspectionQuery = query(collection(firestore, 'properties', prop.id, 'inspections'));
         const documentQuery = query(collection(firestore, 'properties', prop.id, 'documents'));
         const rentQuery = query(
           collection(firestore, 'properties', prop.id, 'rentPayments'),
-          where('year', '==', currentYear),
-          where('month', '==', currentMonth)
+          where('year', '==', new Date().getFullYear()),
+          where('month', '==', format(new Date(), 'MMMM'))
         );
 
         const [maintenanceSnap, inspectionSnap, documentSnap, rentSnap] = await Promise.all([
@@ -172,11 +165,20 @@ export default function DashboardPage() {
           getDocs(rentQuery),
         ]);
 
-        maintenanceSnap.forEach(doc => allLogs.push({ ...doc.data(), id: doc.id, propertyId: prop.id } as MaintenanceLog));
-        inspectionSnap.forEach(doc => allInspections.push({ ...doc.data(), id: doc.id, propertyId: prop.id } as Inspection));
-        documentSnap.forEach(doc => allDocs.push({ ...doc.data(), id: doc.id, propertyId: prop.id } as Document));
-        rentSnap.forEach(doc => allRents.push({ ...doc.data(), id: doc.id, propertyId: prop.id } as RentPayment));
-      }
+        const logs = maintenanceSnap.docs.map(doc => ({ ...doc.data(), id: doc.id, propertyId: prop.id } as MaintenanceLog));
+        const inspections = inspectionSnap.docs.map(doc => ({ ...doc.data(), id: doc.id, propertyId: prop.id } as Inspection));
+        const docs = documentSnap.docs.map(doc => ({ ...doc.data(), id: doc.id, propertyId: prop.id } as Document));
+        const rents = rentSnap.docs.map(doc => ({ ...doc.data(), id: doc.id, propertyId: prop.id } as RentPayment));
+        
+        return { logs, inspections, docs, rents };
+      });
+
+      const results = await Promise.all(promises);
+
+      const allLogs = results.flatMap(r => r.logs);
+      const allInspections = results.flatMap(r => r.inspections);
+      const allDocs = results.flatMap(r => r.docs);
+      const allRents = results.flatMap(r => r.rents);
 
       setMaintenanceLogs(allLogs);
       setInspections(allInspections);
