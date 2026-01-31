@@ -5,7 +5,6 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useEffect, useState } from 'react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -259,8 +258,8 @@ export default function EditPropertyPage() {
                       <FormItem>
                         <FormLabel>Property Image</FormLabel>
                         {imagePreview && (
-                            <div className="mt-2">
-                                <Image src={imagePreview} alt="Current property image" width={200} height={125} className="rounded-md object-cover" />
+                            <div className="mt-2 rounded-lg border overflow-hidden">
+                                <img src={imagePreview} alt="Current property image" className="w-full h-auto" />
                             </div>
                         )}
                         <FormControl>
@@ -293,7 +292,7 @@ export default function EditPropertyPage() {
 
             <Card>
                 <CardHeader>
-                <CardTitle className="text-xl">Tenancy & Financials</CardTitle>
+                <CardTitle className="text-xl">Tenancy &amp; Financials</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

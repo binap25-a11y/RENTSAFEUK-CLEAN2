@@ -6,7 +6,6 @@ import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useState } from 'react';
-import Image from 'next/image';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -47,7 +46,7 @@ type PropertyFormValues = z.infer<typeof propertySchema>;
 
 export default function AddPropertyPage() {
   const router = useRouter();
-  const { user } = useUser();
+  const { user } from useUser();
   const firestore = useFirestore();
   const storage = useStorage();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -312,12 +311,11 @@ export default function AddPropertyPage() {
                     <FormItem>
                       <FormLabel>Property Image</FormLabel>
                       {imagePreview && (
-                        <div className="relative mt-2 w-full aspect-video overflow-hidden rounded-lg border">
-                          <Image
+                        <div className="mt-2 rounded-lg border overflow-hidden">
+                          <img
                             src={imagePreview}
                             alt="Image preview"
-                            fill
-                            className="object-cover"
+                            className="w-full h-auto"
                           />
                         </div>
                       )}
@@ -355,7 +353,7 @@ export default function AddPropertyPage() {
 
             <Card>
                 <CardHeader>
-                <CardTitle className="text-xl">Tenancy & Financials (Optional)</CardTitle>
+                <CardTitle className="text-xl">Tenancy &amp; Financials (Optional)</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
