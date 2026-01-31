@@ -24,7 +24,12 @@ import { Label } from '@/components/ui/label';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const propertySchema = z.object({
-  address: z.string().min(5, 'Address is too short'),
+  addressNameNo: z.string().min(1, "Building name or number is required."),
+  addressLine1: z.string().min(3, "The first line of the address is required."),
+  addressLine2: z.string().optional(),
+  city: z.string().min(2, "A city or town is required."),
+  county: z.string().optional(),
+  postcode: z.string().min(5, "A valid UK postcode is required."),
   propertyType: z.string({ required_error: 'Please select a property type.' }),
   status: z.string({ required_error: 'Please select a status.' }),
   bedrooms: z.coerce.number().min(0, 'Cannot be negative'),
@@ -45,9 +50,6 @@ export default function AddPropertyPage() {
   const { user } = useUser();
   const firestore = useFirestore();
   const storage = useStorage();
-  const [postcode, setPostcode] = useState('');
-  const [foundAddresses, setFoundAddresses] = useState<string[]>([]);
-  const [addressLookupStatus, setAddressLookupStatus] = useState<'idle' | 'loading' | 'found' | 'not_found' | 'error'>('idle');
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [imagePreview, setImagePreview] = useState<string | null>(null);
 
@@ -57,34 +59,14 @@ export default function AddPropertyPage() {
       bedrooms: 1,
       bathrooms: 1,
       status: 'Vacant',
-      address: '',
+      addressNameNo: '',
+      addressLine1: '',
+      addressLine2: '',
+      city: '',
+      county: '',
+      postcode: '',
     },
   });
-
-  const handleFindAddress = async () => {
-    if (!postcode) {
-        toast({ variant: 'destructive', title: 'Postcode required', description: 'Please enter a postcode to find an address.' });
-        return;
-    }
-    setAddressLookupStatus('loading');
-    setFoundAddresses([]);
-    form.setValue('address', ''); // Clear address field
-    try {
-        const response = await fetch(`/api/postcode?postcode=${encodeURIComponent(postcode)}`);
-        if (!response.ok) throw new Error('Failed to fetch addresses');
-
-        const data = await response.json();
-        if (data.addresses && data.addresses.length > 0) {
-            setFoundAddresses(data.addresses);
-            setAddressLookupStatus('found');
-        } else {
-            setAddressLookupStatus('not_found');
-        }
-    } catch (error) {
-        console.error("Error finding address:", error);
-        setAddressLookupStatus('error');
-    }
-  };
 
   async function onSubmit(data: PropertyFormValues) {
     if (!user || !firestore || !storage) {
@@ -109,10 +91,21 @@ export default function AddPropertyPage() {
         imageUrl = await getDownloadURL(uploadResult.ref);
       }
       
-      const { imageFile: _, ...formData } = data;
+      const { imageFile, addressNameNo, addressLine1, addressLine2, city, county, postcode, ...formData } = data;
+
+      const fullAddress = [
+        addressNameNo,
+        addressLine1,
+        addressLine2,
+        city,
+        county,
+        postcode,
+      ].filter(Boolean).join(', ');
+
 
       const newProperty = {
         ...formData,
+        address: fullAddress,
         ownerId: user.uid,
         imageUrl,
       };
@@ -148,76 +141,93 @@ export default function AddPropertyPage() {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-             <Card>
+            <Card>
               <CardHeader>
                 <CardTitle className="text-xl">Property Address</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <div className="space-y-2">
-                    <Label htmlFor="postcode">Find by Postcode</Label>
-                    <div className="flex flex-col sm:flex-row gap-2">
-                        <Input id="postcode" placeholder="e.g., SW1A 0AA" className="sm:w-1/3" value={postcode} onChange={(e) => setPostcode(e.target.value.toUpperCase())} />
-                        <Button type="button" onClick={handleFindAddress} disabled={addressLookupStatus === 'loading'}>
-                            {addressLookupStatus === 'loading' ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-                            Find Address
-                        </Button>
-                    </div>
-                    <p className="text-xs text-muted-foreground">Uses getAddress.io. Requires an API key in your .env file.</p>
+                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField
+                    control={form.control}
+                    name="addressNameNo"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Name/No.</FormLabel>
+                        <FormControl>
+                            <Input placeholder="e.g., 123 or The Cottage" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="addressLine1"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Address Line 1</FormLabel>
+                        <FormControl>
+                            <Input placeholder="e.g., Main Street" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
                 </div>
-
-                {addressLookupStatus === 'found' && (
-                    <FormItem>
-                        <FormLabel>Select Address</FormLabel>
-                        <Select onValueChange={(value) => form.setValue('address', value)}>
-                            <FormControl>
-                                <SelectTrigger>
-                                    <SelectValue placeholder="Select an address from the list" />
-                                </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                {foundAddresses.map((addr, index) => (
-                                    <SelectItem key={index} value={addr}>{addr}</SelectItem>
-                                ))}
-                            </SelectContent>
-                        </Select>
-                    </FormItem>
-                )}
-
-                {(addressLookupStatus === 'not_found' || addressLookupStatus === 'error') && (
-                    <div className="text-sm text-muted-foreground p-3 bg-muted rounded-md border">
-                        {addressLookupStatus === 'not_found'
-                            ? "No addresses found for that postcode. Please enter the full address manually below."
-                            : "Could not fetch addresses. Please check the postcode or enter the address manually."
-                        }
-                    </div>
-                )}
-                
-                <div className="pt-2">
-                    <div className="relative">
-                        <div className="absolute inset-0 flex items-center">
-                            <span className="w-full border-t" />
-                        </div>
-                        <div className="relative flex justify-center text-xs uppercase">
-                            <span className="bg-card px-2 text-muted-foreground">
-                            Or
-                            </span>
-                        </div>
-                    </div>
+                 <FormField
+                    control={form.control}
+                    name="addressLine2"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Address Line 2 (Optional)</FormLabel>
+                        <FormControl>
+                            <Input placeholder="e.g., Appt. 4B" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                    <FormField
+                    control={form.control}
+                    name="city"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>City/Town</FormLabel>
+                        <FormControl>
+                            <Input placeholder="e.g., London" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                     <FormField
+                    control={form.control}
+                    name="county"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>County (Optional)</FormLabel>
+                        <FormControl>
+                            <Input placeholder="e.g., Greater London" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
+                    <FormField
+                    control={form.control}
+                    name="postcode"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Post Code</FormLabel>
+                        <FormControl>
+                            <Input placeholder="e.g., W1A 1AA" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                    />
                 </div>
-
-                <FormField
-                  control={form.control}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Enter Full Address Manually</FormLabel>
-                      <FormControl>
-                        <Textarea placeholder="Select an address above or enter one manually." {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </CardContent>
             </Card>
 
