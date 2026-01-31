@@ -107,29 +107,32 @@ export default function PropertyDetailPage() {
   const { data: tenants, isLoading: isLoadingTenants } = useCollection<Tenant>(tenantsQuery);
 
   const maintenanceLogsQuery = useMemoFirebase(() => {
-    if (!firestore || !propertyId) return null;
+    if (!firestore || !propertyId || !user) return null;
     return query(
         collection(firestore, 'properties', propertyId, 'maintenanceLogs'),
+        where('ownerId', '==', user.uid),
         where('status', 'in', ['Open', 'In Progress'])
     );
-  }, [firestore, propertyId]);
+  }, [firestore, propertyId, user]);
   const { data: maintenanceLogs, isLoading: isLoadingMaintenance } = useCollection<MaintenanceLog>(maintenanceLogsQuery);
 
   const inspectionsQuery = useMemoFirebase(() => {
-    if (!firestore || !propertyId) return null;
+    if (!firestore || !propertyId || !user) return null;
     return query(
         collection(firestore, 'properties', propertyId, 'inspections'),
+        where('ownerId', '==', user.uid),
         where('status', '==', 'Scheduled')
     );
-  }, [firestore, propertyId]);
+  }, [firestore, propertyId, user]);
   const { data: inspections, isLoading: isLoadingInspections } = useCollection<Inspection>(inspectionsQuery);
 
   const documentsQuery = useMemoFirebase(() => {
-    if (!firestore || !propertyId) return null;
+    if (!firestore || !propertyId || !user) return null;
     return query(
-        collection(firestore, 'properties', propertyId, 'documents')
+        collection(firestore, 'properties', propertyId, 'documents'),
+        where('ownerId', '==', user.uid)
     );
-  }, [firestore, propertyId]);
+  }, [firestore, propertyId, user]);
   const { data: documents, isLoading: isLoadingDocuments } = useCollection<DocumentSummary>(documentsQuery);
 
   const isLoading = isLoadingProperty || isLoadingTenants || isLoadingMaintenance || isLoadingInspections || isLoadingDocuments;
