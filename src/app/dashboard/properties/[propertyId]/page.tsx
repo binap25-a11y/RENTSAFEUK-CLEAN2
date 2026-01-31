@@ -6,8 +6,8 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Bed, Bath, User, Mail, Phone, Calendar as CalendarIcon, ShieldCheck, Edit, Trash2, UserPlus, Loader2, MoreVertical } from 'lucide-react';
-import { format } from 'date-fns';
+import { ArrowLeft, Bed, Bath, User, Mail, Phone, Calendar as CalendarIcon, ShieldCheck, Edit, Trash2, UserPlus, Loader2, MoreVertical, Wrench, CalendarCheck, Files, PlusCircle, Upload, Eye } from 'lucide-react';
+import { format, isFuture } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
 import { doc, collection, query, where, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -57,6 +57,27 @@ interface Tenant {
     notes?: string;
 }
 
+interface MaintenanceLog {
+    id: string;
+    title: string;
+    priority: string;
+    status: string;
+}
+
+interface Inspection {
+    id: string;
+    type: string;
+    status: string;
+    scheduledDate: { seconds: number; nanoseconds: number } | Date;
+}
+
+interface DocumentSummary {
+    id: string;
+    title: string;
+    documentType: string;
+    fileUri: string;
+}
+
 
 export default function PropertyDetailPage() {
   const params = useParams();
@@ -81,10 +102,35 @@ export default function PropertyDetailPage() {
         where('status', '==', 'Active')
     );
   }, [firestore, propertyId]);
-
   const { data: tenants, isLoading: isLoadingTenants } = useCollection<Tenant>(tenantsQuery);
 
-  const isLoading = isLoadingProperty || isLoadingTenants;
+  const maintenanceLogsQuery = useMemoFirebase(() => {
+    if (!firestore || !propertyId) return null;
+    return query(
+        collection(firestore, 'properties', propertyId, 'maintenanceLogs'),
+        where('status', 'in', ['Open', 'In Progress'])
+    );
+  }, [firestore, propertyId]);
+  const { data: maintenanceLogs, isLoading: isLoadingMaintenance } = useCollection<MaintenanceLog>(maintenanceLogsQuery);
+
+  const inspectionsQuery = useMemoFirebase(() => {
+    if (!firestore || !propertyId) return null;
+    return query(
+        collection(firestore, 'properties', propertyId, 'inspections'),
+        where('status', '==', 'Scheduled')
+    );
+  }, [firestore, propertyId]);
+  const { data: inspections, isLoading: isLoadingInspections } = useCollection<Inspection>(inspectionsQuery);
+
+  const documentsQuery = useMemoFirebase(() => {
+    if (!firestore || !propertyId) return null;
+    return query(
+        collection(firestore, 'properties', propertyId, 'documents')
+    );
+  }, [firestore, propertyId]);
+  const { data: documents, isLoading: isLoadingDocuments } = useCollection<DocumentSummary>(documentsQuery);
+
+  const isLoading = isLoadingProperty || isLoadingTenants || isLoadingMaintenance || isLoadingInspections || isLoadingDocuments;
 
   const handleDeleteConfirm = async () => {
     if (!firestore || !property) return;
@@ -317,6 +363,129 @@ export default function PropertyDetailPage() {
                   )}
               </CardContent>
           </Card>
+           <div className="grid gap-6 md:grid-cols-2">
+              <Card>
+                  <CardHeader>
+                      <div className="flex justify-between items-center">
+                          <CardTitle className="flex items-center gap-2"><Wrench className="h-5 w-5" /> Open Maintenance</CardTitle>
+                          <Button asChild size="sm">
+                              <Link href="/dashboard/maintenance">
+                                  <PlusCircle className="mr-2 h-4 w-4" /> New Log
+                              </Link>
+                          </Button>
+                      </div>
+                  </CardHeader>
+                  <CardContent>
+                      {isLoadingMaintenance ? (
+                          <div className="flex justify-center items-center h-24">
+                              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                          </div>
+                      ) : maintenanceLogs && maintenanceLogs.length > 0 ? (
+                          <div className="space-y-2">
+                              {maintenanceLogs.map(log => (
+                                  <Link key={log.id} href={`/dashboard/maintenance/${log.id}?propertyId=${propertyId}`} className="block p-3 rounded-md hover:bg-accent">
+                                      <div className="flex justify-between items-start">
+                                          <p className="font-medium text-sm">{log.title}</p>
+                                          <Badge variant={log.priority === 'Emergency' || log.priority === 'Urgent' ? 'destructive' : 'outline'}>{log.priority}</Badge>
+                                      </div>
+                                      <p className="text-xs text-muted-foreground">{log.status}</p>
+                                  </Link>
+                              ))}
+                          </div>
+                      ) : (
+                          <div className="text-center py-8 text-muted-foreground">
+                              <p>No open maintenance issues.</p>
+                          </div>
+                      )}
+                  </CardContent>
+              </Card>
+
+              <Card>
+                  <CardHeader>
+                      <div className="flex justify-between items-center">
+                          <CardTitle className="flex items-center gap-2"><CalendarCheck className="h-5 w-5" /> Upcoming Inspections</CardTitle>
+                          <Button asChild size="sm">
+                              <Link href="/dashboard/inspections">
+                                  <PlusCircle className="mr-2 h-4 w-4" /> New Inspection
+                              </Link>
+                          </Button>
+                      </div>
+                  </CardHeader>
+                  <CardContent>
+                      {isLoadingInspections ? (
+                          <div className="flex justify-center items-center h-24">
+                              <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                          </div>
+                      ) : inspections && inspections.length > 0 ? (
+                          <div className="space-y-2">
+                              {inspections.filter(insp => isFuture(insp.scheduledDate instanceof Date ? insp.scheduledDate : new Date(insp.scheduledDate.seconds * 1000))).map(insp => (
+                                  <Link key={insp.id} href={`/dashboard/inspections/${insp.id}?propertyId=${propertyId}`} className="block p-3 rounded-md hover:bg-accent">
+                                      <div className="flex justify-between items-start">
+                                          <p className="font-medium text-sm">{insp.type}</p>
+                                          <p className="text-sm text-muted-foreground">{format(insp.scheduledDate instanceof Date ? insp.scheduledDate : new Date(insp.scheduledDate.seconds * 1000), 'PPP')}</p>
+                                      </div>
+                                  </Link>
+                              ))}
+                          </div>
+                      ) : (
+                          <div className="text-center py-8 text-muted-foreground">
+                              <p>No upcoming inspections scheduled.</p>
+                          </div>
+                      )}
+                  </CardContent>
+              </Card>
+            </div>
+
+            <Card>
+                <CardHeader>
+                    <div className="flex justify-between items-center">
+                        <CardTitle className="flex items-center gap-2"><Files className="h-5 w-5" /> Documents</CardTitle>
+                        <Button asChild size="sm">
+                            <Link href="/dashboard/documents/upload">
+                                <Upload className="mr-2 h-4 w-4" /> Upload
+                            </Link>
+                        </Button>
+                    </div>
+                </CardHeader>
+                <CardContent>
+                    {isLoadingDocuments ? (
+                        <div className="flex justify-center items-center h-24">
+                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        </div>
+                    ) : documents && documents.length > 0 ? (
+                        <div className="rounded-md border">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Title</TableHead>
+                                        <TableHead>Type</TableHead>
+                                        <TableHead className="text-right">Action</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {documents.slice(0, 5).map(doc => (
+                                        <TableRow key={doc.id}>
+                                            <TableCell className="font-medium">{doc.title}</TableCell>
+                                            <TableCell>{doc.documentType}</TableCell>
+                                            <TableCell className="text-right">
+                                                <Button asChild variant="outline" size="icon">
+                                                    <a href={doc.fileUri} target="_blank" rel="noopener noreferrer">
+                                                        <Eye className="h-4 w-4" />
+                                                    </a>
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    ) : (
+                        <div className="text-center py-8 text-muted-foreground">
+                            <p>No documents uploaded for this property.</p>
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
         </div>
       </div>
       <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
