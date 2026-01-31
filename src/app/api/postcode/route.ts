@@ -2,41 +2,49 @@ import { NextResponse } from 'next/server';
 
 export async function GET(request: Request) {
   const { searchParams } = new URL(request.url);
-  const postcode = searchParams.get('postcode')?.toUpperCase().replace(/\s/g, '') || '';
+  const postcode = searchParams.get('postcode');
+  const apiKey = process.env.GETADDRESS_API_KEY;
+
+  if (!apiKey) {
+    // Provide a more user-friendly error in development
+    if (process.env.NODE_ENV === 'development') {
+        return NextResponse.json({ 
+            error: 'getAddress.io API key is missing. Please add GETADDRESS_API_KEY to your .env.local file.' 
+        }, { status: 500 });
+    }
+    return NextResponse.json({ error: 'Address service is not configured.' }, { status: 500 });
+  }
 
   if (!postcode) {
     return NextResponse.json({ error: 'Postcode is required' }, { status: 400 });
   }
 
   try {
-    const url = `https://api.postcodes.io/postcodes/${postcode}`;
+    // The `expand=true` parameter provides more detailed address information if available.
+    const url = `https://api.getaddress.io/find/${postcode}?api-key=${apiKey}&expand=true`;
     const res = await fetch(url);
 
     if (!res.ok) {
-        // postcodes.io returns 404 for invalid postcodes, which is a valid response for us
-        if (res.status === 404) {
-            return NextResponse.json({ addresses: [] });
+        // Don't expose the full error in production for security
+        if (process.env.NODE_ENV !== 'production') {
+            try {
+                const errorData = await res.json();
+                console.error("getAddress.io API error:", errorData);
+            } catch {
+                console.error("getAddress.io API error: Could not parse error response.");
+            }
         }
-        const errorData = await res.json();
-        console.error("api.postcodes.io API error:", errorData);
-        throw new Error(`API request failed with status ${res.status}`);
+        // Return a generic error to the client
+        return NextResponse.json({ error: `Address lookup failed. Status: ${res.status}` }, { status: res.status });
     }
 
     const data = await res.json();
     
-    // postcodes.io returns a single result object, not a list of addresses.
-    // We will construct a single, generic address string for the dropdown.
-    if (data.status === 200 && data.result) {
-        const { admin_district, region, postcode: resultPostcode } = data.result;
-        // Construct a general location string. This won't be a specific street address.
-        const constructedAddress = [admin_district, region, resultPostcode].filter(Boolean).join(', ');
-        return NextResponse.json({ addresses: [constructedAddress] });
-    }
-
-    return NextResponse.json({ addresses: [] });
+    // The addresses are returned as a flat array of formatted strings.
+    return NextResponse.json({ addresses: data.addresses });
 
   } catch (error) {
-    console.error('Error fetching from api.postcodes.io:', error);
+    console.error('Error fetching from getAddress.io:', error);
     return NextResponse.json({ error: 'Could not fetch addresses.' }, { status: 500 });
   }
 }
