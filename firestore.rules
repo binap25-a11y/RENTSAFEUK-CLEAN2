@@ -40,21 +40,16 @@ service cloud.firestore {
       allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
 
-    // --- Subcollection Rules for direct path access and collection group queries ---
+    // --- Subcollection Rules for direct path access ---
     match /properties/{propertyId}/{subcollection}/{docId} {
-      // `get` and `write` operations must check the parent property's ownership.
-      allow get, write: if get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
-      // `list` operations (including collection group queries) are allowed for any signed-in user.
-      // The client-side query MUST enforce filtering by ownerId.
-      allow list: if isSignedIn();
+      // All access requires checking ownership of the parent property.
+      allow read, write: if get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
     }
 
     // This rule applies to all subcollections under a tenant.
     match /tenants/{tenantId}/{subcollection}/{docId} {
-      // `get` and `write` operations must check the parent tenant's ownership.
-      allow get, write: if get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid;
-      // `list` operations (including collection group queries) are allowed for any signed-in user.
-      allow list: if isSignedIn();
+      // All access requires checking ownership of the parent tenant document.
+      allow read, write: if get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid;
     }
   }
 }
