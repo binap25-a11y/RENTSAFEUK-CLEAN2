@@ -33,15 +33,18 @@ service cloud.firestore {
     }
 
     // --- Subcollections ---
-    // A user can read/write a document in a subcollection if they own it.
-    // The client queries are responsible for filtering by ownerId for list operations.
     match /properties/{propertyId}/{subcollection}/{docId} {
-      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      // Get, update, delete are based on the existing document's ownerId
+      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      // List is based on a query filter
+      allow list: if isSignedIn() && request.query.where.ownerId == request.auth.uid;
+      // Create is based on the new document's ownerId
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
 
     match /tenants/{tenantId}/{subcollection}/{docId} {
-      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow get, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn() && request.query.where.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
   }
