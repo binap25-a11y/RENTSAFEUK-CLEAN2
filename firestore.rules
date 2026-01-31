@@ -23,6 +23,7 @@ service cloud.firestore {
     }
 
     match /tenants/{tenantId} {
+      // For 'list' queries, the client-side query MUST filter by ownerId.
       allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
@@ -34,16 +35,18 @@ service cloud.firestore {
 
     // --- Subcollections (e.g., maintenanceLogs, inspections, documents) ---
     match /properties/{propertyId}/{subcollection}/{docId} {
-      // This security model relies on the 'ownerId' being copied (denormalized) to every subcollection document.
-      // The app code already does this, so this rule is both secure and efficient.
+      // Allow read/write to subcollection if user owns the parent property document.
+      // This is more efficient than checking a field in every subcollection document.
+      allow read, update, delete: if isSignedIn() && get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
+      // For create, check the ownerId on the new document being created.
+      // The app code must ensure ownerId is copied to all subcollection documents.
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
 
     match /tenants/{tenantId}/{subcollection}/{docId} {
-      // This follows the same simple, denormalized pattern as property subcollections.
+      // This follows the same pattern as property subcollections.
+      allow read, update, delete: if isSignedIn() && get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
   }
 }

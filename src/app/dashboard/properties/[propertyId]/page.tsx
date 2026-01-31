@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Bed, Bath, User, Mail, Phone, Calendar as CalendarIcon, ShieldCheck, Edit, Trash2, UserPlus, Loader2, MoreVertical, Wrench, CalendarCheck, Files, PlusCircle, Upload, Eye } from 'lucide-react';
 import { format, isFuture } from 'date-fns';
-import { useDoc, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
+import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
 import { doc, collection, query, where, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -86,6 +86,7 @@ export default function PropertyDetailPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const { user } = useUser();
 
   const propertyRef = useMemoFirebase(() => {
     if (!firestore || !propertyId) return null;
@@ -95,13 +96,14 @@ export default function PropertyDetailPage() {
   const { data: property, isLoading: isLoadingProperty, error } = useDoc<Property>(propertyRef);
 
   const tenantsQuery = useMemoFirebase(() => {
-    if (!firestore || !propertyId) return null;
+    if (!firestore || !propertyId || !user) return null;
     return query(
         collection(firestore, 'tenants'),
         where('propertyId', '==', propertyId),
+        where('ownerId', '==', user.uid),
         where('status', '==', 'Active')
     );
-  }, [firestore, propertyId]);
+  }, [firestore, propertyId, user]);
   const { data: tenants, isLoading: isLoadingTenants } = useCollection<Tenant>(tenantsQuery);
 
   const maintenanceLogsQuery = useMemoFirebase(() => {
