@@ -87,18 +87,9 @@ export default function AddPropertyPage() {
     setIsSubmitting(true);
     
     try {
-      const defaultPlaceholder = PlaceHolderImages.find(p => p.id === 'property-placeholder');
-      let finalImageUrl = defaultPlaceholder?.imageUrl || '';
-
-      if (data.imageFile && data.imageFile.length > 0) {
-        const file = data.imageFile[0];
-        const uniqueFileName = `${Date.now()}-${file.name}`;
-        const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
-        const uploadResult = await uploadBytes(fileStorageRef, file);
-        finalImageUrl = await getDownloadURL(uploadResult.ref);
-      }
-      
+      // 1. Prepare all non-image data first
       const propertyData: { [key: string]: any } = {
+        ownerId: user.uid,
         address: data.address,
         propertyType: data.propertyType,
         status: data.status,
@@ -106,21 +97,29 @@ export default function AddPropertyPage() {
         bathrooms: data.bathrooms,
         notes: data.notes,
         tenancy: data.tenancy,
-        imageUrl: finalImageUrl,
-        ownerId: user.uid,
       };
 
-      // Remove undefined fields from tenancy to avoid Firestore errors
+      // 2. Handle image upload if a file is selected
+      let imageUrl = PlaceHolderImages.find(p => p.id === 'property-placeholder')?.imageUrl || '';
+      if (data.imageFile && data.imageFile.length > 0) {
+        const file = data.imageFile[0];
+        const uniqueFileName = `${Date.now()}-${file.name}`;
+        const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
+        await uploadBytes(fileStorageRef, file);
+        imageUrl = await getDownloadURL(fileStorageRef);
+      }
+      propertyData.imageUrl = imageUrl; // Add the final URL to the data object
+
+      // 3. Clean up optional empty fields
+      if (!propertyData.notes) delete propertyData.notes;
       if (propertyData.tenancy) {
         if (propertyData.tenancy.monthlyRent === undefined) delete propertyData.tenancy.monthlyRent;
         if (propertyData.tenancy.depositAmount === undefined) delete propertyData.tenancy.depositAmount;
-        if (propertyData.tenancy.depositScheme === undefined || propertyData.tenancy.depositScheme === '') delete propertyData.tenancy.depositScheme;
-        if (Object.keys(propertyData.tenancy).length === 0) {
-          delete propertyData.tenancy;
-        }
+        if (!propertyData.tenancy.depositScheme) delete propertyData.tenancy.depositScheme;
+        if (Object.keys(propertyData.tenancy).length === 0) delete propertyData.tenancy;
       }
-      if (propertyData.notes === undefined || propertyData.notes === '') delete propertyData.notes;
       
+      // 4. Add the complete document to Firestore
       await addDoc(collection(firestore, 'properties'), propertyData);
 
       toast({
@@ -177,7 +176,7 @@ export default function AddPropertyPage() {
                         <FormItem>
                         <FormLabel>Street Address</FormLabel>
                         <FormControl>
-                            <Input placeholder="e.g., 123 Main Street" {...field} />
+                            <Input placeholder="e.g., 123 Main Street" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -191,7 +190,7 @@ export default function AddPropertyPage() {
                             <FormItem>
                             <FormLabel>City / Town</FormLabel>
                             <FormControl>
-                                <Input placeholder="e.g., London" {...field} />
+                                <Input placeholder="e.g., London" {...field} value={field.value ?? ''} />
                             </FormControl>
                             <FormMessage />
                             </FormItem>
@@ -218,7 +217,7 @@ export default function AddPropertyPage() {
                         <FormItem>
                         <FormLabel>Postcode</FormLabel>
                         <FormControl>
-                            <Input placeholder="e.g., SW1A 0AA" {...field} />
+                            <Input placeholder="e.g., SW1A 0AA" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>

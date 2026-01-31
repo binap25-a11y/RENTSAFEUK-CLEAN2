@@ -80,23 +80,13 @@ export default function EditPropertyPage() {
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
     defaultValues: {
-      address: {
-        nameOrNumber: '',
-        street: '',
-        city: '',
-        county: '',
-        postcode: '',
-      },
+      address: { nameOrNumber: '', street: '', city: '', county: '', postcode: '' },
       propertyType: '',
       status: '',
       bedrooms: 0,
       bathrooms: 0,
       notes: '',
-      tenancy: {
-        monthlyRent: undefined,
-        depositAmount: undefined,
-        depositScheme: '',
-      },
+      tenancy: { monthlyRent: undefined, depositAmount: undefined, depositScheme: '' },
     },
   });
 
@@ -143,19 +133,8 @@ export default function EditPropertyPage() {
     setIsSubmitting(true);
 
     try {
-      let newImageUrl = property.imageUrl; // Keep existing image by default
-
-      // 1. If a new image is uploaded, handle it
-      if (data.imageFile && data.imageFile.length > 0) {
-        const file = data.imageFile[0];
-        const uniqueFileName = `${Date.now()}-${file.name}`;
-        const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
-        const uploadResult = await uploadBytes(fileStorageRef, file);
-        newImageUrl = await getDownloadURL(uploadResult.ref); // Get the URL of the new image
-      }
-
-      // 2. Construct the update object explicitly for safety
-      const dataToUpdate: { [key: string]: any } = {
+      // 1. Prepare an object with all the text-based fields to update
+      const propertyToUpdate: { [key: string]: any } = {
         address: data.address,
         propertyType: data.propertyType,
         status: data.status,
@@ -163,24 +142,29 @@ export default function EditPropertyPage() {
         bathrooms: data.bathrooms,
         notes: data.notes,
         tenancy: data.tenancy,
-        imageUrl: newImageUrl,
-        ownerId: property.ownerId, // CRITICAL: Preserve the owner ID
       };
 
-      // Remove undefined fields from tenancy to avoid Firestore errors
-      if (dataToUpdate.tenancy) {
-        if (dataToUpdate.tenancy.monthlyRent === undefined) delete dataToUpdate.tenancy.monthlyRent;
-        if (dataToUpdate.tenancy.depositAmount === undefined) delete dataToUpdate.tenancy.depositAmount;
-        if (dataToUpdate.tenancy.depositScheme === undefined || dataToUpdate.tenancy.depositScheme === '') delete dataToUpdate.tenancy.depositScheme;
-        if (Object.keys(dataToUpdate.tenancy).length === 0) {
-          delete dataToUpdate.tenancy;
-        }
+      // 2. Handle image upload ONLY if a new file is selected
+      if (data.imageFile && data.imageFile.length > 0) {
+        const file = data.imageFile[0];
+        const uniqueFileName = `${Date.now()}-${file.name}`;
+        const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
+        await uploadBytes(fileStorageRef, file);
+        propertyToUpdate.imageUrl = await getDownloadURL(fileStorageRef); // Add new URL to the update object
       }
-      if (dataToUpdate.notes === undefined || dataToUpdate.notes === '') delete dataToUpdate.notes;
 
-      // 3. Perform the update
+      // 3. Clean up optional empty fields
+      if (!propertyToUpdate.notes) delete propertyToUpdate.notes;
+      if (propertyToUpdate.tenancy) {
+        if (propertyToUpdate.tenancy.monthlyRent === undefined) delete propertyToUpdate.tenancy.monthlyRent;
+        if (propertyToUpdate.tenancy.depositAmount === undefined) delete propertyToUpdate.tenancy.depositAmount;
+        if (!propertyToUpdate.tenancy.depositScheme) delete propertyToUpdate.tenancy.depositScheme;
+        if (Object.keys(propertyToUpdate.tenancy).length === 0) delete propertyToUpdate.tenancy;
+      }
+
+      // 4. Perform the update with the prepared data
       const propertyDocRef = doc(firestore, 'properties', propertyId);
-      await updateDoc(propertyDocRef, dataToUpdate);
+      await updateDoc(propertyDocRef, propertyToUpdate);
 
       toast({
         title: 'Property Updated',
