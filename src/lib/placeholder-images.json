@@ -1,12 +1,6 @@
 {
   "placeholderImages": [
     {
-      "id": "login-background",
-      "description": "A set of house keys in a front door, symbolizing access and security for a new home.",
-      "imageUrl": "https://images.unsplash.com/photo-1588880331179-b1b0143a72b2?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxob3VzZSUyMGtleXN8ZW58MHx8fHwxNzIyMDA4ODUxfDA&ixlib=rb-4.0.3&q=80&w=1080",
-      "imageHint": "house keys"
-    },
-    {
       "id": "property-placeholder",
       "description": "A generic modern house exterior.",
       "imageUrl": "https://images.unsplash.com/photo-1670589953882-b94c9cb380f5?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxtb2Rlcm4lMjBob3VzZXxlbnwwfHx8fDE3NjkzNDU2MTJ8MA&ixlib=rb-4.1.0&q=80&w=1080",

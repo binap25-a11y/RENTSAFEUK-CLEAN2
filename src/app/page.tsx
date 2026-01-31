@@ -4,7 +4,7 @@ import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
-import { GoogleIcon, Logo } from '@/components/icons';
+import { GoogleIcon } from '@/components/icons';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -159,8 +159,7 @@ export default function LoginPage() {
       <div className="flex items-center justify-center py-12">
         <Card className="mx-auto w-full max-w-sm">
           <CardHeader className="text-center">
-             <Logo className="w-16 h-16 mx-auto" />
-            <CardTitle className="text-2xl font-bold font-headline mt-2">
+            <CardTitle className="text-3xl font-bold font-headline">
               {mode === 'login' ? 'Welcome Back' : 'Create an Account'}
             </CardTitle>
             <CardDescription>
