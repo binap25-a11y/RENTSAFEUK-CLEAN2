@@ -46,6 +46,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 interface Property {
   id: string;
   address: {
+    nameOrNumber?: string;
     street: string;
     city: string;
     county?: string;
@@ -209,10 +210,10 @@ export default function PropertiesPage() {
                                 </div>
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-lg leading-tight font-semibold group-hover:underline">
-                                        {property.address.street}
+                                        {[property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ')}
                                     </CardTitle>
                                     <CardDescription className="truncate">
-                                        {`${property.address.city}, ${property.address.county ? property.address.county + ', ' : ''}${property.address.postcode}`}
+                                        {[property.address.city, property.address.county, property.address.postcode].filter(Boolean).join(', ')}
                                     </CardDescription>
                                 </CardHeader>
                                 <div className="absolute top-2 right-2" onClick={(e) => e.stopPropagation()}>
@@ -269,7 +270,7 @@ export default function PropertiesPage() {
                                   onClick={() => router.push(`/dashboard/properties/${property.id}`)}
                                 >
                                     <TableCell className="font-medium">
-                                          <div>{property.address.street}</div>
+                                          <div>{[property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ')}</div>
                                           <div className="text-xs text-muted-foreground">{`${property.address.city}, ${property.address.postcode}`}</div>
                                     </TableCell>
                                     <TableCell>{property.propertyType}</TableCell>
@@ -322,7 +323,7 @@ export default function PropertiesPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will delete the property at {propertyToDelete?.address.street}. You can restore it later from the 'View Deleted' page.
+              This will delete the property at {[propertyToDelete?.address.nameOrNumber, propertyToDelete?.address.street].filter(Boolean).join(', ')}. You can restore it later from the 'View Deleted' page.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>

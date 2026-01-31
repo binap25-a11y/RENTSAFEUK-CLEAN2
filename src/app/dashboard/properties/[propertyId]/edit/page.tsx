@@ -21,6 +21,7 @@ import { Loader2, Upload } from 'lucide-react';
 
 const propertySchema = z.object({
   address: z.object({
+    nameOrNumber: z.string().optional(),
     street: z.string().min(3, 'Please enter a street address.'),
     city: z.string().min(2, 'Please enter a city or town.'),
     county: z.string().optional(),
@@ -43,6 +44,7 @@ type PropertyFormValues = z.infer<typeof propertySchema>;
 
 interface Property {
   address: {
+    nameOrNumber?: string;
     street: string;
     city: string;
     county?: string;
@@ -88,6 +90,7 @@ export default function EditPropertyPage() {
       form.reset({
         ...property,
         address: {
+            nameOrNumber: property.address?.nameOrNumber ?? '',
             street: property.address?.street ?? '',
             city: property.address?.city ?? '',
             county: property.address?.county ?? '',
@@ -210,6 +213,19 @@ export default function EditPropertyPage() {
                 <CardTitle className="text-xl">Property Address</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                <FormField
+                    control={form.control}
+                    name="address.nameOrNumber"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Property Name / Number (Optional)</FormLabel>
+                        <FormControl>
+                            <Input placeholder="e.g., The Coppice, Flat 3b" {...field} value={field.value ?? ''} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
                  <FormField
                     control={form.control}
                     name="address.street"

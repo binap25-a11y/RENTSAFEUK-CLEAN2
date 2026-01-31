@@ -26,6 +26,7 @@ import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
 interface Property {
   id: string;
   address: {
+    nameOrNumber?: string;
     street: string;
     city: string;
     county?: string;
@@ -50,14 +51,14 @@ export default function DeletedPropertiesPage() {
 
     const { data: deletedProperties, isLoading, error } = useCollection<Property>(deletedPropertiesQuery);
 
-    const handleRestore = async (propertyId: string, address: string) => {
+    const handleRestore = async (propertyId: string, address: Property['address']) => {
         if (!firestore) return;
         try {
             const docRef = doc(firestore, 'properties', propertyId);
             await updateDoc(docRef, { status: 'Vacant' });
             toast({
                 title: 'Property Restored',
-                description: `${address} has been restored to your portfolio.`,
+                description: `${[address.nameOrNumber, address.street].filter(Boolean).join(', ')} has been restored to your portfolio.`,
             });
         } catch (e) {
             console.error('Error restoring property:', e);
@@ -70,7 +71,7 @@ export default function DeletedPropertiesPage() {
     };
 
     const formatAddress = (address: Property['address']) => {
-        return `${address.street}, ${address.city}, ${address.postcode}`;
+        return [[address.nameOrNumber, address.street].filter(Boolean).join(', '), address.city, address.postcode].filter(Boolean).join(', ');
     };
 
   return (
@@ -122,7 +123,7 @@ export default function DeletedPropertiesPage() {
                                     <TableCell className="font-medium">{formatAddress(property.address)}</TableCell>
                                     <TableCell>{property.propertyType}</TableCell>
                                     <TableCell className="text-right">
-                                    <Button size="sm" onClick={() => handleRestore(property.id, property.address.street)}>
+                                    <Button size="sm" onClick={() => handleRestore(property.id, property.address)}>
                                         <RefreshCw className="mr-2 h-4 w-4" /> Restore
                                     </Button>
                                     </TableCell>
@@ -137,11 +138,11 @@ export default function DeletedPropertiesPage() {
                         {deletedProperties.map((property) => (
                             <Card key={property.id}>
                                 <CardHeader>
-                                    <CardTitle className="text-base">{property.address.street}</CardTitle>
+                                    <CardTitle className="text-base">{[property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ')}</CardTitle>
                                     <CardDescription>{`${property.address.city}, ${property.address.postcode}`}</CardDescription>
                                 </CardHeader>
                                 <CardFooter>
-                                    <Button size="sm" className="w-full" onClick={() => handleRestore(property.id, property.address.street)}>
+                                    <Button size="sm" className="w-full" onClick={() => handleRestore(property.id, property.address)}>
                                         <RefreshCw className="mr-2 h-4 w-4" /> Restore
                                     </Button>
                                 </CardFooter>

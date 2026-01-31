@@ -22,6 +22,7 @@ import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const propertySchema = z.object({
   address: z.object({
+    nameOrNumber: z.string().optional(),
     street: z.string().min(3, 'Please enter a street address.'),
     city: z.string().min(2, 'Please enter a city or town.'),
     county: z.string().optional(),
@@ -57,6 +58,7 @@ export default function AddPropertyPage() {
       bathrooms: 0,
       status: 'Vacant',
       address: {
+        nameOrNumber: '',
         street: '',
         city: '',
         county: '',
@@ -166,6 +168,19 @@ export default function AddPropertyPage() {
                 <CardTitle className="text-xl">Property Address</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
+                 <FormField
+                    control={form.control}
+                    name="address.nameOrNumber"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Property Name / Number (Optional)</FormLabel>
+                        <FormControl>
+                            <Input placeholder="e.g., The Coppice, Flat 3b" {...field} value={field.value ?? ''} />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
                  <FormField
                     control={form.control}
                     name="address.street"

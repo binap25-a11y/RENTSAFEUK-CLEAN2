@@ -28,6 +28,7 @@ import { format } from 'date-fns';
 interface Property {
     id: string;
     address: {
+      nameOrNumber?: string;
       street: string;
       city: string;
       county?: string;
@@ -192,7 +193,7 @@ export default function PropertyDetailPage() {
             <div className="flex items-center gap-4">
                 <Button variant="outline" size="icon" asChild><Link href="/dashboard/properties"><ArrowLeft className="h-4 w-4" /></Link></Button>
                 <div>
-                    <h1 className="text-2xl font-bold">{property.address.street}</h1>
+                    <h1 className="text-2xl font-bold">{[property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ')}</h1>
                     <p className="text-muted-foreground">{`${property.address.city}, ${property.address.county ? property.address.county + ', ' : ''}${property.address.postcode}`}</p>
                 </div>
             </div>
@@ -247,7 +248,7 @@ export default function PropertyDetailPage() {
                                 loading="lazy"
                                 allowFullScreen
                                 referrerPolicy="no-referrer-when-downgrade"
-                                src={`https://maps.google.com/maps?q=${encodeURIComponent(`${property.address.street}, ${property.address.city}, ${property.address.postcode}`)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                                src={`https://maps.google.com/maps?q=${encodeURIComponent([property.address.nameOrNumber, property.address.street, property.address.city, property.address.postcode].filter(Boolean).join(', '))}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
                             ></iframe>
                         </div>
                     </CardContent>

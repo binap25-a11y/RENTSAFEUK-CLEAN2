@@ -18,6 +18,10 @@
           "type": "object",
           "description": "The structured address of the property.",
           "properties": {
+            "nameOrNumber": {
+              "type": "string",
+              "description": "The name or number of the building/property."
+            },
             "street": {
               "type": "string",
               "description": "The street address."
