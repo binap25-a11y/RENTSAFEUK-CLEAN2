@@ -92,35 +92,6 @@ export default function AddPropertyPage() {
         data.postcode,
       ].filter(Boolean).join(', ');
 
-    const propertyData: { [key: string]: any } = {
-        address: fullAddress,
-        propertyType: data.propertyType,
-        status: data.status,
-        bedrooms: data.bedrooms,
-        bathrooms: data.bathrooms,
-        ownerId: user.uid,
-    };
-    
-    if (data.notes) {
-        propertyData.notes = data.notes;
-    }
-    
-    if (data.tenancy) {
-        const tenancyData: { [key: string]: any } = {};
-        if (data.tenancy.monthlyRent !== undefined && !isNaN(data.tenancy.monthlyRent)) {
-            tenancyData.monthlyRent = data.tenancy.monthlyRent;
-        }
-        if (data.tenancy.depositAmount !== undefined && !isNaN(data.tenancy.depositAmount)) {
-            tenancyData.depositAmount = data.tenancy.depositAmount;
-        }
-        if (data.tenancy.depositScheme) {
-            tenancyData.depositScheme = data.tenancy.depositScheme;
-        }
-        if (Object.keys(tenancyData).length > 0) {
-            propertyData.tenancy = tenancyData;
-        }
-    }
-
     try {
       let imageUrl = PlaceHolderImages.find(p => p.id === 'property-placeholder')?.imageUrl || `https://picsum.photos/seed/${Math.random()}/800/500`;
       const imageFile = data.imageFile?.[0];
@@ -131,10 +102,40 @@ export default function AddPropertyPage() {
         const uploadResult = await uploadBytes(fileStorageRef, imageFile);
         imageUrl = await getDownloadURL(uploadResult.ref);
       }
-      propertyData.imageUrl = imageUrl;
+      
+      const propertyDataToSave: { [key: string]: any } = {
+        address: fullAddress,
+        propertyType: data.propertyType,
+        status: data.status,
+        bedrooms: data.bedrooms,
+        bathrooms: data.bathrooms,
+        ownerId: user.uid,
+        imageUrl: imageUrl,
+      };
+
+      if (data.notes) {
+        propertyDataToSave.notes = data.notes;
+      }
+
+      const tenancyData: { [key: string]: any } = {};
+      if (data.tenancy) {
+        if (data.tenancy.monthlyRent !== undefined && !isNaN(data.tenancy.monthlyRent)) {
+            tenancyData.monthlyRent = data.tenancy.monthlyRent;
+        }
+        if (data.tenancy.depositAmount !== undefined && !isNaN(data.tenancy.depositAmount)) {
+            tenancyData.depositAmount = data.tenancy.depositAmount;
+        }
+        if (data.tenancy.depositScheme) {
+            tenancyData.depositScheme = data.tenancy.depositScheme;
+        }
+      }
+
+      if (Object.keys(tenancyData).length > 0) {
+        propertyDataToSave.tenancy = tenancyData;
+      }
 
 
-      await addDoc(collection(firestore, 'properties'), propertyData);
+      await addDoc(collection(firestore, 'properties'), propertyDataToSave);
       
       toast({
         title: 'Property Saved',
@@ -334,16 +335,17 @@ export default function AddPropertyPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Property Image</FormLabel>
-                        <div
-                            className="aspect-video w-full rounded-lg border-2 border-dashed bg-muted bg-contain bg-center bg-no-repeat"
-                            style={{ backgroundImage: imagePreview ? `url(${imagePreview})` : 'none' }}
-                        >
-                            {!imagePreview && (
-                                <div className="flex h-full w-full items-center justify-center">
-                                    <span className="text-muted-foreground">Image Preview</span>
-                                </div>
-                            )}
-                        </div>
+                      <div className="aspect-video w-full rounded-lg border-2 border-dashed bg-muted flex items-center justify-center overflow-hidden">
+                        {imagePreview ? (
+                          <img
+                            src={imagePreview}
+                            alt="Property preview"
+                            className="h-full w-full object-contain"
+                          />
+                        ) : (
+                          <span className="text-muted-foreground">Image Preview</span>
+                        )}
+                      </div>
                       <FormControl>
                         <Button
                           asChild

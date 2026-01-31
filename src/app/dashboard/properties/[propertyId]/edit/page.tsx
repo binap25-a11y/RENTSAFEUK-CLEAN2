@@ -103,22 +103,23 @@ export default function EditPropertyPage() {
     }
     setIsSubmitting(true);
 
-    const propertyDataToSave: { [key: string]: any } = {
+    try {
+      const propertyDataToSave: { [key: string]: any } = {
         address: data.address,
         propertyType: data.propertyType,
         status: data.status,
         bedrooms: data.bedrooms,
         bathrooms: data.bathrooms,
-    };
-    
-    if (data.notes) {
+      };
+
+      if (data.notes) {
         propertyDataToSave.notes = data.notes;
-    } else {
+      } else {
         propertyDataToSave.notes = '';
-    }
-    
-    const tenancyData: { [key: string]: any } = {};
-    if (data.tenancy) {
+      }
+
+      const tenancyData: { [key: string]: any } = {};
+      if (data.tenancy) {
         if (data.tenancy.monthlyRent !== undefined && !isNaN(data.tenancy.monthlyRent)) {
             tenancyData.monthlyRent = data.tenancy.monthlyRent;
         }
@@ -128,12 +129,11 @@ export default function EditPropertyPage() {
         if (data.tenancy.depositScheme) {
             tenancyData.depositScheme = data.tenancy.depositScheme;
         }
-    }
-     if (Object.keys(tenancyData).length > 0) {
+      }
+      if (Object.keys(tenancyData).length > 0) {
         propertyDataToSave.tenancy = tenancyData;
-    }
-
-    try {
+      }
+      
       let imageUrl = property?.imageUrl; 
       const imageFile = data.imageFile?.[0];
       if (imageFile) {
@@ -287,14 +287,15 @@ export default function EditPropertyPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Property Image</FormLabel>
-                        <div
-                            className="aspect-video w-full rounded-lg border-2 border-dashed bg-muted bg-contain bg-center bg-no-repeat"
-                            style={{ backgroundImage: imagePreview ? `url(${imagePreview})` : 'none' }}
-                        >
-                            {!imagePreview && (
-                                <div className="flex h-full w-full items-center justify-center">
-                                    <span className="text-muted-foreground">Image Preview</span>
-                                </div>
+                        <div className="aspect-video w-full rounded-lg border-2 border-dashed bg-muted flex items-center justify-center overflow-hidden">
+                            {imagePreview ? (
+                                <img
+                                    src={imagePreview}
+                                    alt="Property preview"
+                                    className="h-full w-full object-contain"
+                                />
+                            ) : (
+                                <span className="text-muted-foreground">Image Preview</span>
                             )}
                         </div>
                         <FormControl>
