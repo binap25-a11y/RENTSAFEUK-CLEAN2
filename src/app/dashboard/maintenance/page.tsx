@@ -36,7 +36,7 @@ import {
   PopoverTrigger,
 } from '@/components/ui/popover';
 import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Upload, Loader2, Wand2, Search } from 'lucide-react';
+import { CalendarIcon, Upload, Loader2, Wand2, Search, MoreVertical, Edit } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -64,6 +64,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { MaintenanceAssistantDialog } from '@/components/dashboard/maintenance-assistant-dialog';
 import type { MaintenanceAssistantOutput } from '@/ai/flows/maintenance-assistant-flow';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 
 // Schema for the form
@@ -704,20 +705,21 @@ export default function MaintenancePage() {
                             <TableHead>Title</TableHead>
                             <TableHead>Status</TableHead>
                             <TableHead>Priority</TableHead>
-                            <TableHead className="text-right">Reported</TableHead>
+                            <TableHead>Reported</TableHead>
+                            <TableHead className="text-right">Actions</TableHead>
                         </TableRow>
                     </TableHeader>
                     <TableBody>
                         {isLoadingLogs && (
                             <TableRow>
-                                <TableCell colSpan={4} className="h-24 text-center">
+                                <TableCell colSpan={5} className="h-24 text-center">
                                     <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
                                 </TableCell>
                             </TableRow>
                         )}
                         {!isLoadingLogs && filteredLogs?.length === 0 && (
                             <TableRow>
-                                <TableCell colSpan={4} className="h-24 text-center">
+                                <TableCell colSpan={5} className="h-24 text-center">
                                     {selectedPropertyFilter ? 'No maintenance logs for this property.' : 'Select a property to view logs.'}
                                 </TableCell>
                             </TableRow>
@@ -746,8 +748,15 @@ export default function MaintenancePage() {
                                     </Select>
                                 </TableCell>
                                 <TableCell><Badge variant={getPriorityVariant(log.priority)}>{log.priority}</Badge></TableCell>
-                                <TableCell className="text-right">
+                                <TableCell>
                                     {log.reportedDate instanceof Date ? format(log.reportedDate, 'dd/MM/yyyy') : format(new Date(log.reportedDate.seconds * 1000), 'dd/MM/yyyy')}
+                                </TableCell>
+                                <TableCell className="text-right">
+                                    <Button asChild variant="ghost" size="icon">
+                                      <Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${log.propertyId}`}>
+                                        <Edit className="h-4 w-4" />
+                                      </Link>
+                                    </Button>
                                 </TableCell>
                             </TableRow>
                         ))}
@@ -770,18 +779,27 @@ export default function MaintenancePage() {
                     <Card key={log.id}>
                         <CardHeader>
                             <div className="flex justify-between items-start">
-                                <CardTitle className="text-base pr-2">
-                                    <Link href={`/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`} className="hover:underline">
-                                        {log.title}
-                                    </Link>
-                                </CardTitle>
-                                <Badge variant={getPriorityVariant(log.priority)} className="flex-shrink-0">{log.priority}</Badge>
+                                <div>
+                                    <CardTitle className="text-base pr-2">
+                                        <Link href={`/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`} className="hover:underline">
+                                            {log.title}
+                                        </Link>
+                                    </CardTitle>
+                                    <CardDescription>{propertyMap[log.propertyId]}</CardDescription>
+                                </div>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="ghost" size="icon" className="-mr-2 -mt-2"><MoreVertical className="h-4 w-4" /></Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem asChild>
+                                            <Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${log.propertyId}`}><Edit className="mr-2 h-4 w-4" /> Edit</Link>
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
                             </div>
-                            {propertyMap[log.propertyId] && (
-                                <CardDescription>{propertyMap[log.propertyId]}</CardDescription>
-                            )}
                         </CardHeader>
-                        <CardContent>
+                        <CardContent className="space-y-4">
                              <div className="flex items-center justify-between text-sm">
                               <span className="text-muted-foreground">Status</span>
                                <Select
@@ -799,6 +817,10 @@ export default function MaintenancePage() {
                                     </SelectContent>
                                 </Select>
                             </div>
+                             <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">Priority</span>
+                                <Badge variant={getPriorityVariant(log.priority)}>{log.priority}</Badge>
+                             </div>
                         </CardContent>
                         <CardFooter className="text-xs justify-end text-muted-foreground pt-4">
                             Reported on {log.reportedDate instanceof Date ? format(log.reportedDate, 'dd/MM/yyyy') : format(new Date(log.reportedDate.seconds * 1000), 'dd/MM/yyyy')}

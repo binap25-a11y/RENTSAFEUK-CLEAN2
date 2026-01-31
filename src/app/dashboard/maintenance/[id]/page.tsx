@@ -6,10 +6,24 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2, CalendarIcon, User, HardHat, Phone, Tag, AlertTriangle, Home, Building, Banknote, FileText } from 'lucide-react';
+import { ArrowLeft, Loader2, CalendarIcon, User, HardHat, Phone, Tag, AlertTriangle, Home, Building, Banknote, FileText, MoreVertical, Edit, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
+import { useToast } from '@/hooks/use-toast';
+import { useState } from 'react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+
 
 // Main interface for a Maintenance Log document from Firestore
 interface MaintenanceLog {
@@ -36,6 +50,10 @@ interface Property {
 export default function MaintenanceDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
+  const router = useRouter();
+  const { toast } = useToast();
+  const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+
   const id = params.id as string;
   const propertyId = searchParams.get('propertyId');
   const firestore = useFirestore();
@@ -52,6 +70,21 @@ export default function MaintenanceDetailPage() {
     return doc(firestore, 'properties', propertyId);
   }, [firestore, propertyId]);
   const { data: property, isLoading: isLoadingProperty } = useDoc<Property>(propertyRef);
+  
+  const handleCancelConfirm = async () => {
+    if (!maintenanceLogRef) return;
+    try {
+      await updateDoc(maintenanceLogRef, { status: 'Cancelled' });
+      toast({ title: 'Log Cancelled', description: 'The maintenance log has been marked as cancelled.' });
+      router.push('/dashboard/maintenance');
+    } catch (e) {
+      console.error('Error cancelling log:', e);
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not cancel the log. Please try again.' });
+    } finally {
+      setIsCancelDialogOpen(false);
+    }
+  };
+
 
   if (isLoadingLog || isLoadingProperty) {
     return (
@@ -81,139 +114,174 @@ export default function MaintenanceDetailPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6">
-       <div className="flex items-center gap-4">
-        <Button variant="outline" size="icon" asChild>
-          <Link href="/dashboard/maintenance">
-            <ArrowLeft className="h-4 w-4" />
-          </Link>
-        </Button>
-        <div>
-            <h1 className="text-2xl font-bold">{maintenanceLog.title}</h1>
-            <p className="text-muted-foreground">{property?.address || 'Loading...'}</p>
+    <>
+      <div className="flex flex-col gap-6">
+        <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center gap-4">
+            <Button variant="outline" size="icon" asChild>
+                <Link href="/dashboard/maintenance">
+                <ArrowLeft className="h-4 w-4" />
+                </Link>
+            </Button>
+            <div>
+                <h1 className="text-2xl font-bold">{maintenanceLog.title}</h1>
+                <p className="text-muted-foreground">{property?.address || 'Loading...'}</p>
+            </div>
+            </div>
+             <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                    <Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                    <DropdownMenuItem asChild>
+                        <Link href={`/dashboard/maintenance/${id}/edit?propertyId=${propertyId}`}><Edit className="mr-2 h-4 w-4" /> Edit</Link>
+                    </DropdownMenuItem>
+                    {maintenanceLog.status !== 'Cancelled' && (
+                        <DropdownMenuItem onClick={() => setIsCancelDialogOpen(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                            <XCircle className="mr-2 h-4 w-4" /> Cancel Log
+                        </DropdownMenuItem>
+                    )}
+                </DropdownMenuContent>
+            </DropdownMenu>
         </div>
-      </div>
-      
-      <div className="grid gap-6 lg:grid-cols-3">
-        <div className="lg:col-span-2 space-y-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Issue Details</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className='flex flex-wrap gap-4 items-center'>
-                         <Badge variant={getPriorityVariant(maintenanceLog.priority)}>{maintenanceLog.priority}</Badge>
-                         <Badge variant="secondary">{maintenanceLog.status}</Badge>
-                         <Badge variant="outline">{maintenanceLog.category}</Badge>
-                    </div>
-                     {maintenanceLog.description && <p className="text-muted-foreground whitespace-pre-wrap">{maintenanceLog.description}</p>}
-                </CardContent>
-            </Card>
-
-             {maintenanceLog.photoUrls && maintenanceLog.photoUrls.length > 0 && (
+        
+        <div className="grid gap-6 lg:grid-cols-3">
+            <div className="lg:col-span-2 space-y-6">
                 <Card>
                     <CardHeader>
-                        <CardTitle>Photos</CardTitle>
+                        <CardTitle>Issue Details</CardTitle>
                     </CardHeader>
-                    <CardContent className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
-                        {maintenanceLog.photoUrls.map((url, index) => (
-                            <Link href={url} key={index} target="_blank" rel="noopener noreferrer" className="overflow-hidden rounded-md group">
-                                <Image
-                                    src={url}
-                                    alt={`Maintenance photo ${index + 1}`}
-                                    width={200}
-                                    height={200}
-                                    className="object-cover w-full aspect-square group-hover:scale-105 transition-transform"
-                                />
-                            </Link>
-                        ))}
+                    <CardContent className="space-y-4">
+                        <div className='flex flex-wrap gap-4 items-center'>
+                            <Badge variant={getPriorityVariant(maintenanceLog.priority)}>{maintenanceLog.priority}</Badge>
+                            <Badge variant="secondary">{maintenanceLog.status}</Badge>
+                            <Badge variant="outline">{maintenanceLog.category}</Badge>
+                        </div>
+                        {maintenanceLog.description && <p className="text-muted-foreground whitespace-pre-wrap">{maintenanceLog.description}</p>}
                     </CardContent>
                 </Card>
-             )}
 
-             {maintenanceLog.notes && (
-                 <Card>
+                {maintenanceLog.photoUrls && maintenanceLog.photoUrls.length > 0 && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Photos</CardTitle>
+                        </CardHeader>
+                        <CardContent className="grid grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-4">
+                            {maintenanceLog.photoUrls.map((url, index) => (
+                                <Link href={url} key={index} target="_blank" rel="noopener noreferrer" className="overflow-hidden rounded-md group">
+                                    <Image
+                                        src={url}
+                                        alt={`Maintenance photo ${index + 1}`}
+                                        width={200}
+                                        height={200}
+                                        className="object-cover w-full aspect-square group-hover:scale-105 transition-transform"
+                                    />
+                                </Link>
+                            ))}
+                        </CardContent>
+                    </Card>
+                )}
+
+                {maintenanceLog.notes && (
+                    <Card>
+                        <CardHeader>
+                            <CardTitle>Additional Notes</CardTitle>
+                        </CardHeader>
+                        <CardContent>
+                            <p className="text-muted-foreground whitespace-pre-wrap">{maintenanceLog.notes}</p>
+                        </CardContent>
+                    </Card>
+                )}
+            </div>
+            <div className="space-y-6">
+                <Card>
                     <CardHeader>
-                        <CardTitle>Additional Notes</CardTitle>
+                        <CardTitle>Reporting</CardTitle>
                     </CardHeader>
-                    <CardContent>
-                         <p className="text-muted-foreground whitespace-pre-wrap">{maintenanceLog.notes}</p>
-                    </CardContent>
-                 </Card>
-             )}
-        </div>
-        <div className="space-y-6">
-            <Card>
-                <CardHeader>
-                    <CardTitle>Reporting</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="flex items-start gap-3">
-                        <CalendarIcon className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
-                        <div>
-                            <p className="text-sm font-medium">Reported Date</p>
-                            <p className="text-sm text-muted-foreground">{reportedDate ? format(reportedDate, 'PPP') : 'N/A'}</p>
-                        </div>
-                    </div>
-                    {maintenanceLog.reportedBy && (
-                        <div className="flex items-start gap-3">
-                            <User className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
-                            <div>
-                                <p className="text-sm font-medium">Reported By</p>
-                                <p className="text-sm text-muted-foreground">{maintenanceLog.reportedBy}</p>
-                            </div>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-            <Card>
-                <CardHeader>
-                    <CardTitle>Contractor & Scheduling</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                     {maintenanceLog.contractorName && (
-                        <div className="flex items-start gap-3">
-                            <HardHat className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
-                            <div>
-                                <p className="text-sm font-medium">Contractor</p>
-                                <p className="text-sm text-muted-foreground">{maintenanceLog.contractorName}</p>
-                            </div>
-                        </div>
-                    )}
-                     {maintenanceLog.contractorPhone && (
-                        <div className="flex items-start gap-3">
-                            <Phone className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
-                            <div>
-                                <p className="text-sm font-medium">Contractor Phone</p>
-                                <p className="text-sm text-muted-foreground">{maintenanceLog.contractorPhone}</p>
-                            </div>
-                        </div>
-                    )}
-                     {scheduledDate && (
+                    <CardContent className="space-y-4">
                         <div className="flex items-start gap-3">
                             <CalendarIcon className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
                             <div>
-                                <p className="text-sm font-medium">Scheduled Date</p>
-                                <p className="text-sm text-muted-foreground">{format(scheduledDate, 'PPP')}</p>
+                                <p className="text-sm font-medium">Reported Date</p>
+                                <p className="text-sm text-muted-foreground">{reportedDate ? format(reportedDate, 'PPP') : 'N/A'}</p>
                             </div>
                         </div>
-                    )}
-                     {maintenanceLog.estimatedCost && (
-                        <div className="flex items-start gap-3">
-                            <Banknote className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
-                            <div>
-                                <p className="text-sm font-medium">Estimated Cost</p>
-                                <p className="text-sm text-muted-foreground">£{maintenanceLog.estimatedCost.toFixed(2)}</p>
+                        {maintenanceLog.reportedBy && (
+                            <div className="flex items-start gap-3">
+                                <User className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
+                                <div>
+                                    <p className="text-sm font-medium">Reported By</p>
+                                    <p className="text-sm text-muted-foreground">{maintenanceLog.reportedBy}</p>
+                                </div>
                             </div>
-                        </div>
-                    )}
-                    {!maintenanceLog.contractorName && !scheduledDate && (
-                        <p className="text-sm text-muted-foreground text-center py-4">No contractor or schedule information provided yet.</p>
-                    )}
-                </CardContent>
-            </Card>
+                        )}
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader>
+                        <CardTitle>Contractor & Scheduling</CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                        {maintenanceLog.contractorName && (
+                            <div className="flex items-start gap-3">
+                                <HardHat className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
+                                <div>
+                                    <p className="text-sm font-medium">Contractor</p>
+                                    <p className="text-sm text-muted-foreground">{maintenanceLog.contractorName}</p>
+                                </div>
+                            </div>
+                        )}
+                        {maintenanceLog.contractorPhone && (
+                            <div className="flex items-start gap-3">
+                                <Phone className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
+                                <div>
+                                    <p className="text-sm font-medium">Contractor Phone</p>
+                                    <p className="text-sm text-muted-foreground">{maintenanceLog.contractorPhone}</p>
+                                </div>
+                            </div>
+                        )}
+                        {scheduledDate && (
+                            <div className="flex items-start gap-3">
+                                <CalendarIcon className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
+                                <div>
+                                    <p className="text-sm font-medium">Scheduled Date</p>
+                                    <p className="text-sm text-muted-foreground">{format(scheduledDate, 'PPP')}</p>
+                                </div>
+                            </div>
+                        )}
+                        {maintenanceLog.estimatedCost && (
+                            <div className="flex items-start gap-3">
+                                <Banknote className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
+                                <div>
+                                    <p className="text-sm font-medium">Estimated Cost</p>
+                                    <p className="text-sm text-muted-foreground">£{maintenanceLog.estimatedCost.toFixed(2)}</p>
+                                </div>
+                            </div>
+                        )}
+                        {!maintenanceLog.contractorName && !scheduledDate && (
+                            <p className="text-sm text-muted-foreground text-center py-4">No contractor or schedule information provided yet.</p>
+                        )}
+                    </CardContent>
+                </Card>
+            </div>
         </div>
       </div>
-    </div>
+      <AlertDialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to cancel this log?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will mark the maintenance log as 'Cancelled'. This action can be undone by editing the log later.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Go Back</AlertDialogCancel>
+            <AlertDialogAction onClick={handleCancelConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Yes, Cancel Log
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
