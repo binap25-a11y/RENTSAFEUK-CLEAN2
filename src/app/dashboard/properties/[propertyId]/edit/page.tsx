@@ -94,55 +94,55 @@ export default function EditPropertyPage() {
 
   async function onSubmit(data: PropertyFormValues) {
     if (!user || !firestore || !storage) {
-      toast({
-        variant: 'destructive',
-        title: 'Authentication Error',
-        description: 'You must be logged in to update a property.',
-      });
-      return;
+        toast({
+            variant: 'destructive',
+            title: 'Authentication Error',
+            description: 'You must be logged in to update a property.',
+        });
+        return;
     }
-    
     if (!propertyId) return;
-
     setIsSubmitting(true);
-
     try {
       let imageUrl = property?.imageUrl; // Keep existing image by default
-      const imageFile = data.imageFile?.[0]; // Use original data for FileList
-
+      const imageFile = data.imageFile?.[0];
       if (imageFile) {
-        // A new image has been uploaded
         const uniqueFileName = `${Date.now()}-${imageFile.name}`;
         const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
         const uploadResult = await uploadBytes(fileStorageRef, imageFile);
         imageUrl = await getDownloadURL(uploadResult.ref);
       }
       
-      const updatedData: { [key: string]: any } = {
+      const propertyData: { [key: string]: any } = {
         address: data.address,
         propertyType: data.propertyType,
         status: data.status,
         bedrooms: data.bedrooms,
         bathrooms: data.bathrooms,
         imageUrl,
-        notes: data.notes || '',
       };
 
+      if (data.notes) {
+          propertyData.notes = data.notes;
+      } else {
+          propertyData.notes = ''; // explicitly clear if empty
+      }
+
       const tenancyData: { [key: string]: any } = {};
-      if (typeof data.tenancy?.monthlyRent === 'number' && !isNaN(data.tenancy.monthlyRent)) {
+      if (data.tenancy?.monthlyRent !== undefined && !isNaN(data.tenancy.monthlyRent)) {
         tenancyData.monthlyRent = data.tenancy.monthlyRent;
       }
-      if (typeof data.tenancy?.depositAmount === 'number' && !isNaN(data.tenancy.depositAmount)) {
+      if (data.tenancy?.depositAmount !== undefined && !isNaN(data.tenancy.depositAmount)) {
         tenancyData.depositAmount = data.tenancy.depositAmount;
       }
       if (data.tenancy?.depositScheme) {
         tenancyData.depositScheme = data.tenancy.depositScheme;
       }
-      updatedData.tenancy = tenancyData;
-
-
+      
+      propertyData.tenancy = tenancyData;
+      
       const propertyDocRef = doc(firestore, 'properties', propertyId);
-      await updateDoc(propertyDocRef, updatedData);
+      await updateDoc(propertyDocRef, propertyData);
 
       toast({
         title: 'Property Updated',
@@ -284,12 +284,16 @@ export default function EditPropertyPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Property Image</FormLabel>
-                        <div className="aspect-video w-full rounded-lg border border-dashed bg-muted flex items-center justify-center text-muted-foreground overflow-hidden">
-                          {imagePreview ? (
-                              <img src={imagePreview} alt="Image Preview" className="h-full w-full object-contain" />
-                          ) : (
-                              <span>Image Preview</span>
-                          )}
+                        <div
+                          className="aspect-video w-full rounded-lg border-2 border-dashed bg-muted flex items-center justify-center text-muted-foreground overflow-hidden"
+                          style={{
+                            backgroundImage: `url(${imagePreview})`,
+                            backgroundSize: 'contain',
+                            backgroundPosition: 'center',
+                            backgroundRepeat: 'no-repeat',
+                          }}
+                        >
+                            {!imagePreview && <span>Image Preview</span>}
                         </div>
                         <FormControl>
                            <Button asChild className="w-full cursor-pointer mt-2" variant="outline">

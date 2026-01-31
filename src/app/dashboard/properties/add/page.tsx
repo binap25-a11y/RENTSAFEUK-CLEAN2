@@ -3,9 +3,9 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState } from 'react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,8 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useStorage } from '@/firebase';
-import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
-import { collection } from 'firebase/firestore';
+import { collection, addDoc } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Loader2, Upload } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -104,22 +103,25 @@ export default function AddPropertyPage() {
         data.postcode,
       ].filter(Boolean).join(', ');
 
-      const newProperty: { [key: string]: any } = {
+      const propertyData: { [key: string]: any } = {
         address: fullAddress,
         propertyType: data.propertyType,
         status: data.status,
         bedrooms: data.bedrooms,
         bathrooms: data.bathrooms,
         ownerId: user.uid,
-        imageUrl,
-        notes: data.notes || '',
+        imageUrl: imageUrl,
       };
 
+      if (data.notes) {
+          propertyData.notes = data.notes;
+      }
+
       const tenancyData: { [key: string]: any } = {};
-      if (typeof data.tenancy?.monthlyRent === 'number' && !isNaN(data.tenancy.monthlyRent)) {
+      if (data.tenancy?.monthlyRent !== undefined && !isNaN(data.tenancy.monthlyRent)) {
         tenancyData.monthlyRent = data.tenancy.monthlyRent;
       }
-      if (typeof data.tenancy?.depositAmount === 'number' && !isNaN(data.tenancy.depositAmount)) {
+      if (data.tenancy?.depositAmount !== undefined && !isNaN(data.tenancy.depositAmount)) {
         tenancyData.depositAmount = data.tenancy.depositAmount;
       }
       if (data.tenancy?.depositScheme) {
@@ -127,10 +129,10 @@ export default function AddPropertyPage() {
       }
       
       if (Object.keys(tenancyData).length > 0) {
-        newProperty.tenancy = tenancyData;
+        propertyData.tenancy = tenancyData;
       }
 
-      await addDocumentNonBlocking(collection(firestore, 'properties'), newProperty);
+      await addDoc(collection(firestore, 'properties'), propertyData);
       
       toast({
         title: 'Property Saved',
@@ -330,13 +332,17 @@ export default function AddPropertyPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Property Image</FormLabel>
-                        <div className="aspect-video w-full rounded-lg border border-dashed bg-muted flex items-center justify-center text-muted-foreground overflow-hidden">
-                          {imagePreview ? (
-                              <img src={imagePreview} alt="Image Preview" className="h-full w-full object-contain" />
-                          ) : (
-                              <span>Image Preview</span>
-                          )}
-                        </div>
+                      <div
+                        className="aspect-video w-full rounded-lg border-2 border-dashed bg-muted flex items-center justify-center text-muted-foreground overflow-hidden"
+                        style={{
+                          backgroundImage: `url(${imagePreview})`,
+                          backgroundSize: 'contain',
+                          backgroundPosition: 'center',
+                          backgroundRepeat: 'no-repeat',
+                        }}
+                      >
+                          {!imagePreview && <span>Image Preview</span>}
+                      </div>
                       <FormControl>
                         <Button
                           asChild
