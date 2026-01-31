@@ -133,48 +133,49 @@ export default function EditPropertyPage() {
     setIsSubmitting(true);
 
     try {
-      const propertyDocRef = doc(firestore, 'properties', propertyId);
-      let finalImageUrl = property.imageUrl; // Start with the existing image URL.
+        const propertyDocRef = doc(firestore, 'properties', propertyId);
+        let newImageUrl: string | null = null;
 
-      // Step 1: Handle image upload SEPARATELY only if a new file is provided.
-      if (data.imageFile && data.imageFile.length > 0) {
-        const file = data.imageFile[0];
-        const uniqueFileName = `${Date.now()}-${file.name}`;
-        const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
+        // Step 1: Handle image upload if a new file is provided.
+        if (data.imageFile && data.imageFile.length > 0) {
+            const file = data.imageFile[0];
+            const uniqueFileName = `${Date.now()}-${file.name}`;
+            const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
+            
+            await uploadBytes(fileStorageRef, file);
+            newImageUrl = await getDownloadURL(fileStorageRef);
+        }
+
+        // Step 2: Prepare the final data object for Firestore.
+        const finalData = {
+            ownerId: property.ownerId, // CRITICAL: Preserve ownerId
+            address: data.address,
+            propertyType: data.propertyType,
+            status: data.status,
+            bedrooms: data.bedrooms,
+            bathrooms: data.bathrooms,
+            notes: data.notes || '',
+            tenancy: data.tenancy || {},
+            // Use new image URL if available, otherwise preserve the original one.
+            imageUrl: newImageUrl ?? property.imageUrl ?? ''
+        };
         
-        await uploadBytes(fileStorageRef, file);
-        finalImageUrl = await getDownloadURL(fileStorageRef); // Get the new URL
-      }
-      
-      // Step 2: Build the update object with all form data.
-      const dataToUpdate = {
-        ownerId: property.ownerId, // CRITICAL: Preserve existing ownerId
-        address: data.address,
-        propertyType: data.propertyType,
-        status: data.status,
-        bedrooms: data.bedrooms,
-        bathrooms: data.bathrooms,
-        notes: data.notes || '',
-        tenancy: data.tenancy || {},
-        imageUrl: finalImageUrl || '', // Use the new URL if it exists, otherwise the old one, fallback to empty string
-      };
-      
-      // Step 3: Perform the update.
-      await updateDoc(propertyDocRef, dataToUpdate);
+        // Step 3: Perform the update.
+        await updateDoc(propertyDocRef, finalData);
 
-      toast({
-        title: 'Property Updated',
-        description: 'The property details have been successfully updated.',
-      });
-      router.push('/dashboard/properties');
+        toast({
+            title: 'Property Updated',
+            description: 'The property details have been successfully updated.',
+        });
+        router.push('/dashboard/properties');
 
     } catch (error: any) {
-      console.error('Failed to update property', error);
-      toast({
-        variant: 'destructive',
-        title: 'Update Failed',
-        description: error.message || 'There was an error updating the property. Please try again.',
-      });
+        console.error('Failed to update property', error);
+        toast({
+            variant: 'destructive',
+            title: 'Update Failed',
+            description: error.message || 'There was an error updating the property. Please try again.',
+        });
     } finally {
         setIsSubmitting(false);
     }
