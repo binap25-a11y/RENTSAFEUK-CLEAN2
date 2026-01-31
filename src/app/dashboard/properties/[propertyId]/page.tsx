@@ -93,7 +93,7 @@ export default function PropertyDetailPage() {
     return doc(firestore, 'properties', propertyId);
   }, [firestore, propertyId]);
 
-  const { data: property, isLoading: isLoadingProperty, error } = useDoc<Property>(propertyRef);
+  const { data: property, isLoading: isLoadingProperty, error: propertyError } = useDoc<Property>(propertyRef);
 
   const tenantsQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
@@ -104,7 +104,7 @@ export default function PropertyDetailPage() {
         where('status', '==', 'Active')
     );
   }, [firestore, propertyId, user]);
-  const { data: tenants, isLoading: isLoadingTenants } = useCollection<Tenant>(tenantsQuery);
+  const { data: tenants, isLoading: isLoadingTenants, error: tenantsError } = useCollection<Tenant>(tenantsQuery);
 
   const maintenanceLogsQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
@@ -114,7 +114,7 @@ export default function PropertyDetailPage() {
         where('status', 'in', ['Open', 'In Progress'])
     );
   }, [firestore, propertyId, user]);
-  const { data: maintenanceLogs, isLoading: isLoadingMaintenance } = useCollection<MaintenanceLog>(maintenanceLogsQuery);
+  const { data: maintenanceLogs, isLoading: isLoadingMaintenance, error: maintenanceError } = useCollection<MaintenanceLog>(maintenanceLogsQuery);
 
   const inspectionsQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
@@ -124,7 +124,7 @@ export default function PropertyDetailPage() {
         where('status', '==', 'Scheduled')
     );
   }, [firestore, propertyId, user]);
-  const { data: inspections, isLoading: isLoadingInspections } = useCollection<Inspection>(inspectionsQuery);
+  const { data: inspections, isLoading: isLoadingInspections, error: inspectionsError } = useCollection<Inspection>(inspectionsQuery);
 
   const documentsQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
@@ -133,9 +133,10 @@ export default function PropertyDetailPage() {
         where('ownerId', '==', user.uid)
     );
   }, [firestore, propertyId, user]);
-  const { data: documents, isLoading: isLoadingDocuments } = useCollection<DocumentSummary>(documentsQuery);
+  const { data: documents, isLoading: isLoadingDocuments, error: documentsError } = useCollection<DocumentSummary>(documentsQuery);
 
   const isLoading = isLoadingProperty || isLoadingTenants || isLoadingMaintenance || isLoadingInspections || isLoadingDocuments;
+  const error = propertyError || tenantsError || maintenanceError || inspectionsError || documentsError;
 
   const handleDeleteConfirm = async () => {
     if (!firestore || !property) return;
@@ -170,11 +171,22 @@ export default function PropertyDetailPage() {
   }
 
   if (error) {
-    return <p className='text-destructive'>Error: {error.message}</p>
+    return <div className="bg-destructive/10 border border-destructive/50 text-destructive p-4 rounded-md">
+      <h3 className="font-bold">Error Loading Property Details</h3>
+      <p className="text-sm mt-2">There was a permission error while trying to load data for this page. Please check the details below.</p>
+      <pre className="mt-4 p-2 bg-black/70 text-white rounded-md text-xs overflow-auto">
+        <code>{error.message}</code>
+      </pre>
+    </div>
+  }
+  
+  if (!property && !isLoading) {
+    return notFound();
   }
   
   if (!property) {
-    return notFound();
+    // This case should ideally not be reached if notFound() is called, but it's good for type safety.
+    return null;
   }
 
   const tenancy = property.tenancy;
