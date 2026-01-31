@@ -20,7 +20,7 @@ import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage
 import { Loader2, Upload } from 'lucide-react';
 
 const propertySchema = z.object({
-  address: z.string().min(5, 'Address is too short'),
+  address: z.string().min(10, 'Please enter a full, valid address.'),
   propertyType: z.string({ required_error: 'Please select a property type.' }),
   status: z.string({ required_error: 'Please select a status.' }),
   bedrooms: z.coerce.number().min(0, 'Cannot be negative'),
@@ -183,7 +183,7 @@ export default function EditPropertyPage() {
       <CardHeader>
         <CardTitle>Edit Property</CardTitle>
         <CardDescription>
-          Update the details for your property at {property.address}.
+          Update the details for your property.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -191,22 +191,34 @@ export default function EditPropertyPage() {
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <Card>
               <CardHeader>
+                <CardTitle className="text-xl">Property Address</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-4">
+                 <FormField
+                    control={form.control}
+                    name="address"
+                    render={({ field }) => (
+                        <FormItem>
+                        <FormLabel>Full Address</FormLabel>
+                        <FormControl>
+                            <Textarea
+                                placeholder="Enter the full property address, including street, city, and postcode."
+                                rows={4}
+                                {...field}
+                            />
+                        </FormControl>
+                        <FormMessage />
+                        </FormItem>
+                    )}
+                />
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader>
                 <CardTitle className="text-xl">Property Details</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <FormField
-                  control={form.control}
-                  name="address"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Property Address</FormLabel>
-                      <FormControl>
-                        <Input placeholder="e.g., 123 Main St, London" {...field} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField
                     control={form.control}

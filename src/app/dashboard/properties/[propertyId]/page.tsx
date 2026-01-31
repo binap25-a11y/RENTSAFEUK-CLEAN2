@@ -123,6 +123,10 @@ export default function PropertyDetailPage() {
 
   const tenancy = property.tenancy;
 
+  const addressParts = property.address.split(',');
+  const mainAddress = addressParts[0]?.trim();
+  const subAddress = addressParts.slice(1).join(', ').trim();
+
   return (
     <>
       <div className="flex flex-col gap-6">
@@ -134,7 +138,8 @@ export default function PropertyDetailPage() {
                     </Link>
                 </Button>
                 <div>
-                    <h1 className="text-2xl font-bold">{property.address}</h1>
+                    <h1 className="text-2xl font-bold">{mainAddress}</h1>
+                    {subAddress && <p className="text-muted-foreground">{subAddress}</p>}
                     <div className="flex items-center gap-2 mt-1">
                         <Badge>{property.status}</Badge>
                     </div>

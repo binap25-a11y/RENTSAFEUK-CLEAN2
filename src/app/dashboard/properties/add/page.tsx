@@ -21,12 +21,7 @@ import { Loader2, Upload } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const propertySchema = z.object({
-  addressNameNo: z.string().min(1, "Building name or number is required."),
-  addressLine1: z.string().min(3, "The first line of the address is required."),
-  addressLine2: z.string().optional(),
-  city: z.string().min(2, "A city or town is required."),
-  county: z.string().optional(),
-  postcode: z.string().min(5, "A valid UK postcode is required."),
+  address: z.string().min(10, 'Please enter a full, valid address.'),
   propertyType: z.string({ required_error: 'Please select a property type.' }),
   status: z.string({ required_error: 'Please select a status.' }),
   bedrooms: z.coerce.number().min(0, 'Cannot be negative'),
@@ -56,12 +51,7 @@ export default function AddPropertyPage() {
       bedrooms: 0,
       bathrooms: 0,
       status: 'Vacant',
-      addressNameNo: '',
-      addressLine1: '',
-      addressLine2: '',
-      city: '',
-      county: '',
-      postcode: '',
+      address: '',
       notes: '',
       tenancy: {
         monthlyRent: undefined,
@@ -83,22 +73,13 @@ export default function AddPropertyPage() {
 
     setIsSubmitting(true);
     
-    const fullAddress = [
-        data.addressNameNo,
-        data.addressLine1,
-        data.addressLine2,
-        data.city,
-        data.county,
-        data.postcode,
-      ].filter(Boolean).join(', ');
-
     try {
       const imageFile = data.imageFile?.[0];
       const placeholderImageUrl = PlaceHolderImages.find(p => p.id === 'property-placeholder')?.imageUrl || `https://picsum.photos/seed/${Math.random()}/800/500`;
 
       // Base property data
       const propertyData: { [key: string]: any } = {
-        address: fullAddress,
+        address: data.address,
         propertyType: data.propertyType,
         status: data.status,
         bedrooms: data.bedrooms,
@@ -175,88 +156,23 @@ export default function AddPropertyPage() {
                 <CardTitle className="text-xl">Property Address</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField
-                    control={form.control}
-                    name="addressNameNo"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Name/No.</FormLabel>
-                        <FormControl>
-                            <Input placeholder="e.g., 123 or The Cottage" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                    <FormField
-                    control={form.control}
-                    name="addressLine1"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Address Line 1</FormLabel>
-                        <FormControl>
-                            <Input placeholder="e.g., Main Street" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                </div>
                  <FormField
                     control={form.control}
-                    name="addressLine2"
+                    name="address"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Address Line 2 (Optional)</FormLabel>
+                        <FormLabel>Full Address</FormLabel>
                         <FormControl>
-                            <Input placeholder="e.g., Appt. 4B" {...field} />
+                            <Textarea
+                                placeholder="Enter the full property address, including street, city, and postcode."
+                                rows={4}
+                                {...field}
+                            />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
                     )}
-                    />
-                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                    <FormField
-                    control={form.control}
-                    name="city"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>City/Town</FormLabel>
-                        <FormControl>
-                            <Input placeholder="e.g., London" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                     <FormField
-                    control={form.control}
-                    name="county"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>County (Optional)</FormLabel>
-                        <FormControl>
-                            <Input placeholder="e.g., Greater London" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                    <FormField
-                    control={form.control}
-                    name="postcode"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Post Code</FormLabel>
-                        <FormControl>
-                            <Input placeholder="e.g., W1A 1AA" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                </div>
+                />
               </CardContent>
             </Card>
 
