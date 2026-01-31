@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -18,6 +19,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useStorage, useDoc, useMemoFirebase } from '@/firebase';
 import { Loader2, Upload } from 'lucide-react';
+import Image from 'next/image';
 
 const propertySchema = z.object({
   address: z.object({
@@ -77,7 +79,7 @@ export default function EditPropertyPage() {
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
-    defaultValues: { // Set default values to prevent uncontrolled -> controlled error
+    defaultValues: {
       address: {
         nameOrNumber: '',
         street: '',
@@ -156,7 +158,7 @@ export default function EditPropertyPage() {
       const dataToUpdate = {
         ...formData,
         imageUrl: finalImageUrl,
-        ownerId: property.ownerId, // Explicitly preserve the ownerId to prevent removal
+        ownerId: property.ownerId, // Explicitly preserve the ownerId to prevent accidental removal
       };
 
       await updateDoc(propertyDocRef, dataToUpdate);
@@ -341,7 +343,7 @@ export default function EditPropertyPage() {
                       <FormItem>
                         <FormLabel>Bedrooms</FormLabel>
                         <FormControl>
-                          <Input type="number" min="0" {...field} value={field.value ?? ''} />
+                          <Input type="number" min="0" {...field} value={field.value ?? 0} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -351,7 +353,7 @@ export default function EditPropertyPage() {
                       <FormItem>
                         <FormLabel>Bathrooms</FormLabel>
                         <FormControl>
-                          <Input type="number" min="0" {...field} value={field.value ?? ''} />
+                          <Input type="number" min="0" {...field} value={field.value ?? 0} />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
@@ -364,14 +366,11 @@ export default function EditPropertyPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Property Image</FormLabel>
-                        <div 
-                          className="aspect-video w-full rounded-lg border-2 border-dashed bg-muted bg-cover bg-center"
-                          style={{ backgroundImage: imagePreview ? `url(${imagePreview})` : 'none' }}
-                        >
-                          {!imagePreview && (
-                              <div className="flex items-center justify-center h-full">
-                                  <span className="text-muted-foreground">Image Preview</span>
-                              </div>
+                        <div className="w-full aspect-video rounded-lg border-2 border-dashed bg-muted flex items-center justify-center">
+                          {imagePreview ? (
+                            <Image src={imagePreview} alt="Property preview" width={400} height={225} className="rounded-md object-cover h-full w-full" />
+                          ) : (
+                            <span className="text-muted-foreground">Image Preview</span>
                           )}
                         </div>
                         <FormControl>
