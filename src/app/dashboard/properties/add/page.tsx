@@ -312,13 +312,12 @@ export default function AddPropertyPage() {
                     <FormItem>
                       <FormLabel>Property Image</FormLabel>
                       {imagePreview && (
-                        <div className="mt-2 w-full overflow-hidden rounded-lg border">
+                        <div className="relative mt-2 w-full aspect-video overflow-hidden rounded-lg border">
                           <Image
                             src={imagePreview}
                             alt="Image preview"
-                            width={800}
-                            height={500}
-                            className="h-auto w-full object-cover aspect-video"
+                            fill
+                            className="object-cover"
                           />
                         </div>
                       )}
