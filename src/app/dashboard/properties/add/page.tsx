@@ -173,7 +173,7 @@ export default function AddPropertyPage() {
                     name="address.nameOrNumber"
                     render={({ field }) => (
                         <FormItem>
-                        <FormLabel>Property Name / Number (Optional)</FormLabel>
+                        <FormLabel>Property Name / Number</FormLabel>
                         <FormControl>
                             <Input placeholder="e.g., The Coppice, Flat 3b" {...field} value={field.value ?? ''} />
                         </FormControl>
