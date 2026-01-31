@@ -66,20 +66,6 @@
           "type": "string",
           "description": "Additional notes about the property."
         },
-        "location": {
-            "type": "object",
-            "description": "The geographical location of the property.",
-            "properties": {
-                "lat": {
-                    "type": "number",
-                    "description": "The latitude of the property."
-                },
-                "lng": {
-                    "type": "number",
-                    "description": "The longitude of the property."
-                }
-            }
-        },
         "tenancy": {
           "type": "object",
           "description": "Financial details related to the property's tenancy.",
@@ -802,5 +788,3 @@
     "reasoning": "The Firestore structure is designed to manage rental properties, tenants, maintenance logs, inspections, and documents. The top-level collections are `properties`, `tenants`, `contractors` and `users/{userId}`. The subcollections `maintenanceLogs`, `inspections`, and `documents` are nested under each `property` to ensure data locality and facilitate querying related information. This structure leverages path-based ownership for user-specific data (e.g., properties owned by a user), which simplifies security rules. The design prioritizes Authorization Independence (CRITICAL) by avoiding hierarchical authorization dependencies (`get()`).  All collections are designed to support QAPs, as listing operations will be secured by path-based rules and potentially by filtering on denormalized fields, ensuring that users can only access data they are authorized to view."
   }
 }
-
-    

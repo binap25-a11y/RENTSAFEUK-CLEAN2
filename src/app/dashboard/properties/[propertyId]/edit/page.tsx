@@ -30,10 +30,6 @@ const propertySchema = z.object({
   status: z.string({ required_error: 'Please select a status.' }),
   bedrooms: z.coerce.number().min(0, 'Cannot be negative'),
   bathrooms: z.coerce.number().min(0, 'Cannot be negative'),
-  location: z.object({
-    lat: z.coerce.number().optional(),
-    lng: z.coerce.number().optional(),
-  }).optional(),
   imageFile: z.custom<FileList>().optional(),
   notes: z.string().optional(),
   tenancy: z.object({
@@ -57,10 +53,6 @@ interface Property {
   bedrooms: number;
   bathrooms: number;
   imageUrl?: string;
-  location?: {
-    lat?: number;
-    lng?: number;
-  };
   notes?: string;
   tenancy?: {
     monthlyRent?: number;
@@ -104,10 +96,6 @@ export default function EditPropertyPage() {
         bedrooms: property.bedrooms ?? 0,
         bathrooms: property.bathrooms ?? 0,
         notes: property.notes ?? '',
-        location: {
-            lat: property.location?.lat ?? undefined,
-            lng: property.location?.lng ?? undefined,
-        },
         tenancy: {
             monthlyRent: property.tenancy?.monthlyRent ?? undefined,
             depositAmount: property.tenancy?.depositAmount ?? undefined,
@@ -139,7 +127,6 @@ export default function EditPropertyPage() {
             bedrooms: data.bedrooms,
             bathrooms: data.bathrooms,
             notes: data.notes || '',
-            location: data.location,
         };
 
         const tenancyData: { [key: string]: any } = {};
@@ -354,34 +341,6 @@ export default function EditPropertyPage() {
                     )}
                   />
                 </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="location.lat"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Latitude (Optional)</FormLabel>
-                        <FormControl>
-                          <Input type="number" step="any" placeholder="e.g., 51.5074" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} value={field.value ?? ''} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="location.lng"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Longitude (Optional)</FormLabel>
-                        <FormControl>
-                          <Input type="number" step="any" placeholder="e.g., -0.1278" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} value={field.value ?? ''} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </div>
                  <FormField
                     control={form.control}
                     name="imageFile"
@@ -510,5 +469,3 @@ export default function EditPropertyPage() {
     </Card>
   );
 }
-
-    

@@ -38,10 +38,6 @@ interface Property {
     bedrooms: number;
     bathrooms: number;
     imageUrl: string;
-    location?: {
-        lat?: number;
-        lng?: number;
-    };
     notes?: string;
     tenancy?: {
         monthlyRent?: number;
@@ -240,7 +236,7 @@ export default function PropertyDetailPage() {
               </CardContent>
             </Card>
 
-            {property.location?.lat && property.location?.lng && (
+            {property.address?.postcode && (
                 <Card>
                     <CardHeader><CardTitle>Map Location</CardTitle></CardHeader>
                     <CardContent>
@@ -251,7 +247,7 @@ export default function PropertyDetailPage() {
                                 loading="lazy"
                                 allowFullScreen
                                 referrerPolicy="no-referrer-when-downgrade"
-                                src={`https://maps.google.com/maps?q=${property.location.lat},${property.location.lng}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
+                                src={`https://maps.google.com/maps?q=${encodeURIComponent(`${property.address.street}, ${property.address.city}, ${property.address.postcode}`)}&t=&z=15&ie=UTF8&iwloc=&output=embed`}
                             ></iframe>
                         </div>
                     </CardContent>
@@ -300,5 +296,3 @@ export default function PropertyDetailPage() {
     </>
   );
 }
-
-    
