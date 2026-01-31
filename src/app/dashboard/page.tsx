@@ -139,52 +139,57 @@ export default function DashboardPage() {
   
   useEffect(() => {
     if (!firestore || !user || !properties) {
-        if (!isLoadingProperties) {
-            setIsSubcollectionsLoading(false);
-        }
-        return;
-    };
+      if (!isLoadingProperties) {
+        setIsSubcollectionsLoading(false);
+      }
+      return;
+    }
 
     const fetchSubcollections = async () => {
       setIsSubcollectionsLoading(true);
-      const logPromises = properties.map(p => getDocs(collection(firestore, 'properties', p.id, 'maintenanceLogs')));
-      const inspPromises = properties.map(p => getDocs(collection(firestore, 'properties', p.id, 'inspections')));
-      const docPromises = properties.map(p => getDocs(collection(firestore, 'properties', p.id, 'documents')));
       
+      const allLogs: MaintenanceLog[] = [];
+      const allInspections: Inspection[] = [];
+      const allDocs: Document[] = [];
+      const allRents: RentPayment[] = [];
+
       const currentMonth = format(new Date(), 'MMMM');
       const currentYear = new Date().getFullYear();
-      const rentPromises = properties.map(p => getDocs(
-          query(
-              collection(firestore, 'properties', p.id, 'rentPayments'), 
-              where('year', '==', currentYear), 
-              where('month', '==', currentMonth)
-          )
-      ));
 
+      for (const prop of properties) {
+        const logQuery = collection(firestore, 'properties', prop.id, 'maintenanceLogs');
+        const inspQuery = collection(firestore, 'properties', prop.id, 'inspections');
+        const docQuery = collection(firestore, 'properties', prop.id, 'documents');
+        const rentQuery = query(
+          collection(firestore, 'properties', prop.id, 'rentPayments'),
+          where('year', '==', currentYear),
+          where('month', '==', currentMonth)
+        );
 
-      const [logSnapshots, inspSnapshots, docSnapshots, rentSnapshots] = await Promise.all([
-        Promise.all(logPromises),
-        Promise.all(inspPromises),
-        Promise.all(docPromises),
-        Promise.all(rentSnapshots),
-      ]);
-      
-      const logs = logSnapshots.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as MaintenanceLog)));
-      const insps = inspSnapshots.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Inspection)));
-      const docs = docSnapshots.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Document)));
-      const rents = rentSnapshots.flatMap(snap => snap.docs.map(doc => ({ id: doc.id, propertyId: doc.ref.parent.parent!.id, ...doc.data() } as RentPayment)));
+        const [logSnap, inspSnap, docSnap, rentSnap] = await Promise.all([
+          getDocs(logQuery),
+          getDocs(inspQuery),
+          getDocs(docQuery),
+          getDocs(rentQuery),
+        ]);
 
-      setMaintenanceLogs(logs);
-      setInspections(insps);
-      setDocuments(docs);
-      setRentPayments(rents);
+        logSnap.forEach(doc => allLogs.push({ id: doc.id, propertyId: prop.id, ...doc.data() } as MaintenanceLog));
+        inspSnap.forEach(doc => allInspections.push({ id: doc.id, propertyId: prop.id, ...doc.data() } as Inspection));
+        docSnap.forEach(doc => allDocs.push({ id: doc.id, propertyId: prop.id, ...doc.data() } as Document));
+        rentSnap.forEach(doc => allRents.push({ id: doc.id, propertyId: prop.id, ...doc.data() } as RentPayment));
+      }
+
+      setMaintenanceLogs(allLogs);
+      setInspections(allInspections);
+      setDocuments(allDocs);
+      setRentPayments(allRents);
       setIsSubcollectionsLoading(false);
     };
 
     if (properties.length > 0) {
-        fetchSubcollections();
+      fetchSubcollections();
     } else {
-        setIsSubcollectionsLoading(false);
+      setIsSubcollectionsLoading(false);
     }
   }, [firestore, user, properties, isLoadingProperties]);
 
@@ -216,6 +221,7 @@ export default function DashboardPage() {
             property: propertyMap[log.propertyId] || 'Unknown Property',
             activity: log.title,
             date: format((log.reportedDate as Timestamp).toDate(), 'dd/MM/yyyy'),
+            href: `/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`
         })) ?? []
   , [maintenanceLogs, propertyMap]);
 
@@ -232,6 +238,7 @@ export default function DashboardPage() {
             property: propertyMap[insp.propertyId] || 'Unknown Property',
             status: 'Scheduled',
             dueDate: format((insp.scheduledDate as Timestamp).toDate(), 'dd/MM/yyyy'),
+            href: `/dashboard/properties/${insp.propertyId}/inspections/${insp.id}`
         })) ?? [];
     
     const documentTasks = documents
@@ -251,6 +258,7 @@ export default function DashboardPage() {
             property: propertyMap[doc.propertyId] || 'Unknown Property',
             status: doc.status,
             dueDate: format(doc.expiryDate, 'dd/MM/yyyy'),
+            href: '/dashboard/documents'
         })) ?? [];
 
         return [...inspectionTasks, ...documentTasks]
@@ -500,7 +508,11 @@ export default function DashboardPage() {
                                     <TableCell className="font-medium">
                                     {activity.property}
                                     </TableCell>
-                                    <TableCell>{activity.activity}</TableCell>
+                                    <TableCell>
+                                      <Link href={activity.href} className="hover:underline">
+                                        {activity.activity}
+                                      </Link>
+                                    </TableCell>
                                     <TableCell className="text-right">{activity.date}</TableCell>
                                 </TableRow>
                                 ))}
@@ -509,13 +521,13 @@ export default function DashboardPage() {
                     </div>
                      <div className="space-y-4 md:hidden">
                         {recentActivities.map((activity) => (
-                            <div key={activity.id} className="rounded-lg border bg-card text-card-foreground p-4">
+                            <Link href={activity.href} key={activity.id} className="block rounded-lg border bg-card text-card-foreground p-4 hover:bg-accent">
                                 <p className="font-medium">{activity.activity}</p>
                                 <div className="flex justify-between text-sm text-muted-foreground mt-1">
                                     <span>{activity.property}</span>
                                     <span>{activity.date}</span>
                                 </div>
-                            </div>
+                            </Link>
                         ))}
                     </div>
                 </>
@@ -554,10 +566,12 @@ export default function DashboardPage() {
                                 {upcomingTasks.map((task) => (
                                 <TableRow key={task.id}>
                                     <TableCell>
-                                    <div className="font-medium">{task.task}</div>
-                                    <div className="text-sm text-muted-foreground">
-                                        {task.property}
-                                    </div>
+                                      <Link href={task.href} className="hover:underline">
+                                        <div className="font-medium">{task.task}</div>
+                                        <div className="text-sm text-muted-foreground">
+                                            {task.property}
+                                        </div>
+                                      </Link>
                                     </TableCell>
                                     <TableCell>
                                     <Badge variant={getStatusVariant(task.status)}>
@@ -572,7 +586,7 @@ export default function DashboardPage() {
                     </div>
                     <div className="space-y-4 md:hidden">
                         {upcomingTasks.map((task) => (
-                            <div key={task.id} className="rounded-lg border bg-card text-card-foreground p-4">
+                            <Link href={task.href} key={task.id} className="block rounded-lg border bg-card text-card-foreground p-4 hover:bg-accent">
                                 <div className="flex justify-between items-start gap-2">
                                     <div>
                                         <p className="font-medium">{task.task}</p>
@@ -581,7 +595,7 @@ export default function DashboardPage() {
                                     <Badge variant={getStatusVariant(task.status)}>{task.status}</Badge>
                                 </div>
                                 <p className="text-sm text-muted-foreground mt-2">Due: {task.dueDate}</p>
-                            </div>
+                            </Link>
                         ))}
                     </div>
                 </>
