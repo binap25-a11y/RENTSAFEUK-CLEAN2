@@ -14,8 +14,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { useUser, useFirestore, useStorage, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { useUser, useFirestore, useStorage, useDoc, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
+import { doc } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Loader2, Upload } from 'lucide-react';
 
@@ -145,7 +145,7 @@ export default function EditPropertyPage() {
       propertyDataToSave.imageUrl = imageUrl;
       
       const propertyDocRef = doc(firestore, 'properties', propertyId);
-      await updateDoc(propertyDocRef, propertyDataToSave);
+      updateDocumentNonBlocking(propertyDocRef, propertyDataToSave);
 
       toast({
         title: 'Property Updated',
@@ -159,8 +159,7 @@ export default function EditPropertyPage() {
         title: 'Update Failed',
         description: error.message || 'There was an error updating the property. Please try again.',
       });
-    } finally {
-        setIsSubmitting(false);
+      setIsSubmitting(false);
     }
   }
   

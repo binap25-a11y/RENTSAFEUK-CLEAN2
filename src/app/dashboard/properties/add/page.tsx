@@ -14,8 +14,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { useUser, useFirestore, useStorage } from '@/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { useUser, useFirestore, useStorage, addDocumentNonBlocking } from '@/firebase';
+import { collection } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Loader2, Upload } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -134,8 +134,7 @@ export default function AddPropertyPage() {
         propertyDataToSave.tenancy = tenancyData;
       }
 
-
-      await addDoc(collection(firestore, 'properties'), propertyDataToSave);
+      addDocumentNonBlocking(collection(firestore, 'properties'), propertyDataToSave);
       
       toast({
         title: 'Property Saved',
@@ -149,8 +148,7 @@ export default function AddPropertyPage() {
             title: 'Save Failed',
             description: error.message || 'There was an error saving the property. Please try again.',
         });
-    } finally {
-      setIsSubmitting(false);
+        setIsSubmitting(false);
     }
   }
 
