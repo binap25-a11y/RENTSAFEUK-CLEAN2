@@ -179,10 +179,10 @@ export default function DashboardPage() {
 
       // Process the results
       results.forEach(([maintenanceSnap, inspectionSnap, documentSnap, rentSnap, propId]) => {
-        maintenanceSnap.forEach(doc => allLogs.push({ id: doc.id, propertyId: propId, ...doc.data() } as MaintenanceLog));
-        inspectionSnap.forEach(doc => allInspections.push({ id: doc.id, propertyId: propId, ...doc.data() } as Inspection));
-        documentSnap.forEach(doc => allDocs.push({ id: doc.id, propertyId: propId, ...doc.data() } as Document));
-        rentSnap.forEach(doc => allRents.push({ id: doc.id, propertyId: propId, ...doc.data() } as RentPayment));
+        maintenanceSnap.forEach(doc => allLogs.push({ ...doc.data(), id: doc.id, propertyId: propId } as MaintenanceLog));
+        inspectionSnap.forEach(doc => allInspections.push({ ...doc.data(), id: doc.id, propertyId: propId } as Inspection));
+        documentSnap.forEach(doc => allDocs.push({ ...doc.data(), id: doc.id, propertyId: propId } as Document));
+        rentSnap.forEach(doc => allRents.push({ ...doc.data(), id: doc.id, propertyId: propId } as RentPayment));
       });
 
       setMaintenanceLogs(allLogs);

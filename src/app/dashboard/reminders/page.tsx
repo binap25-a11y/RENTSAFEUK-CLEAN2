@@ -122,8 +122,8 @@ export default function RemindersPage() {
             getDocs(inspsQuery)
         ]);
 
-        docsSnapshot.forEach(doc => docs.push({ id: doc.id, propertyId: prop.id, ...doc.data() } as Document));
-        inspsSnapshot.forEach(doc => insps.push({ id: doc.id, propertyId: prop.id, ...doc.data() } as Inspection));
+        docsSnapshot.forEach(doc => docs.push({ ...doc.data(), id: doc.id, propertyId: prop.id } as Document));
+        inspsSnapshot.forEach(doc => insps.push({ ...doc.data(), id: doc.id, propertyId: prop.id } as Inspection));
       }
       
       setAllDocuments(docs);
