@@ -189,44 +189,44 @@ export default function PropertiesPage() {
                           />
                         </div>
                       </Link>
-                      <CardHeader className="flex-grow">
+                      <CardHeader className="flex-grow pb-2">
                         <div className="flex justify-between items-start gap-2">
                           <div className='flex-1 min-w-0'>
-                              <CardTitle className="text-lg leading-tight font-semibold truncate">
+                              <CardTitle className="text-lg leading-tight font-semibold">
                                   <Link href={`/dashboard/properties/${property.id}`} className="hover:underline">
                                       {mainAddress}
-                                      {subAddress && <span className="text-sm font-normal text-muted-foreground">, {subAddress}</span>}
                                   </Link>
                               </CardTitle>
+                              <CardDescription className="truncate">{subAddress}</CardDescription>
                           </div>
-                          <div className="flex items-center gap-1">
-                              <Badge variant={property.status === 'Occupied' ? 'default' : 'secondary'} className="h-fit">{property.status}</Badge>
-                              <DropdownMenu>
-                                  <DropdownMenuTrigger asChild>
-                                      <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2">
-                                          <MoreVertical className="h-4 w-4" />
-                                      </Button>
-                                  </DropdownMenuTrigger>
-                                  <DropdownMenuContent align="end">
-                                      <DropdownMenuItem asChild>
-                                          <Link href={`/dashboard/properties/${property.id}/edit`}>
-                                              <Edit className="mr-2 h-4 w-4" /> Edit
-                                          </Link>
-                                      </DropdownMenuItem>
-                                      <DropdownMenuItem onClick={() => setPropertyToDelete(property)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                                          <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                      </DropdownMenuItem>
-                                  </DropdownMenuContent>
-                              </DropdownMenu>
-                          </div>
+                          <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 -mt-2">
+                                      <MoreVertical className="h-4 w-4" />
+                                  </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end">
+                                  <DropdownMenuItem asChild>
+                                      <Link href={`/dashboard/properties/${property.id}/edit`}>
+                                          <Edit className="mr-2 h-4 w-4" /> Edit
+                                      </Link>
+                                  </DropdownMenuItem>
+                                  <DropdownMenuItem onClick={() => setPropertyToDelete(property)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                      <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                  </DropdownMenuItem>
+                              </DropdownMenuContent>
+                          </DropdownMenu>
                         </div>
                       </CardHeader>
                       <CardContent>
-                        <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                            <span>{property.propertyType}</span>
-                            <span className="flex items-center gap-1"><Bed className="h-4 w-4" /> {property.bedrooms}</span>
-                            <span className="flex items-center gap-1"><Bath className="h-4 w-4" /> {property.bathrooms}</span>
-                        </div>
+                          <div className="flex justify-between items-center">
+                            <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                                <span>{property.propertyType}</span>
+                                <span className="flex items-center gap-1"><Bed className="h-4 w-4" /> {property.bedrooms}</span>
+                                <span className="flex items-center gap-1"><Bath className="h-4 w-4" /> {property.bathrooms}</span>
+                            </div>
+                            <Badge variant={property.status === 'Occupied' ? 'default' : 'secondary'} className="h-fit">{property.status}</Badge>
+                          </div>
                       </CardContent>
                     </Card>
                   );
