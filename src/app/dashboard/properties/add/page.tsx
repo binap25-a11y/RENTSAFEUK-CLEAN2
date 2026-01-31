@@ -116,9 +116,15 @@ export default function AddPropertyPage() {
       };
 
       const tenancyData: { [key: string]: any } = {};
-      if (data.tenancy?.monthlyRent !== undefined && data.tenancy.monthlyRent !== null && !isNaN(data.tenancy.monthlyRent)) tenancyData.monthlyRent = data.tenancy.monthlyRent;
-      if (data.tenancy?.depositAmount !== undefined && data.tenancy.depositAmount !== null && !isNaN(data.tenancy.depositAmount)) tenancyData.depositAmount = data.tenancy.depositAmount;
-      if (data.tenancy?.depositScheme) tenancyData.depositScheme = data.tenancy.depositScheme;
+      if (typeof data.tenancy?.monthlyRent === 'number' && !isNaN(data.tenancy.monthlyRent)) {
+        tenancyData.monthlyRent = data.tenancy.monthlyRent;
+      }
+      if (typeof data.tenancy?.depositAmount === 'number' && !isNaN(data.tenancy.depositAmount)) {
+        tenancyData.depositAmount = data.tenancy.depositAmount;
+      }
+      if (data.tenancy?.depositScheme) {
+        tenancyData.depositScheme = data.tenancy.depositScheme;
+      }
       
       if (Object.keys(tenancyData).length > 0) {
         newProperty.tenancy = tenancyData;
@@ -324,13 +330,11 @@ export default function AddPropertyPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Property Image</FormLabel>
-                       <div className="mt-2">
+                        <div className="aspect-video w-full rounded-lg border border-dashed bg-muted flex items-center justify-center text-muted-foreground overflow-hidden">
                           {imagePreview ? (
-                              <img src={imagePreview} alt="Image Preview" className="h-64 w-full rounded-lg border bg-muted object-contain" />
+                              <img src={imagePreview} alt="Image Preview" className="h-full w-full object-contain" />
                           ) : (
-                              <div className="flex h-64 w-full items-center justify-center rounded-lg border border-dashed bg-muted text-muted-foreground">
-                                  Image Preview
-                              </div>
+                              <span>Image Preview</span>
                           )}
                         </div>
                       <FormControl>
@@ -352,6 +356,9 @@ export default function AddPropertyPage() {
                                 if (file) {
                                   field.onChange(e.target.files);
                                   setImagePreview(URL.createObjectURL(file));
+                                } else {
+                                  field.onChange(null);
+                                  setImagePreview(null);
                                 }
                               }}
                             />
