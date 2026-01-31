@@ -311,27 +311,41 @@ export default function AddPropertyPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Property Image</FormLabel>
-                      {imagePreview && <Image src={imagePreview} alt="Image preview" width={200} height={125} className="mt-2 rounded-md object-cover" />}
+                      {imagePreview && (
+                        <div className="mt-2 w-full overflow-hidden rounded-lg border">
+                          <Image
+                            src={imagePreview}
+                            alt="Image preview"
+                            width={800}
+                            height={500}
+                            className="h-auto w-full object-cover aspect-video"
+                          />
+                        </div>
+                      )}
                       <FormControl>
-                         <Button asChild className="w-full cursor-pointer mt-2" variant="outline">
-                            <label htmlFor="image-upload">
-                              <Upload className="mr-2 h-4 w-4" />
-                              Upload an Image
-                              <Input
-                                id="image-upload"
-                                type="file"
-                                className="sr-only"
-                                accept="image/png, image/jpeg, image/webp"
-                                onChange={(e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    field.onChange(e.target.files);
-                                    setImagePreview(URL.createObjectURL(file));
-                                  }
-                                }}
-                              />
-                            </label>
-                          </Button>
+                        <Button
+                          asChild
+                          className="w-full cursor-pointer mt-2"
+                          variant="outline"
+                        >
+                          <label htmlFor="image-upload">
+                            <Upload className="mr-2 h-4 w-4" />
+                            {imagePreview ? 'Change Image' : 'Upload an Image'}
+                            <Input
+                              id="image-upload"
+                              type="file"
+                              className="sr-only"
+                              accept="image/png, image/jpeg, image/webp"
+                              onChange={(e) => {
+                                const file = e.target.files?.[0];
+                                if (file) {
+                                  field.onChange(e.target.files);
+                                  setImagePreview(URL.createObjectURL(file));
+                                }
+                              }}
+                            />
+                          </label>
+                        </Button>
                       </FormControl>
                       <FormMessage />
                     </FormItem>
