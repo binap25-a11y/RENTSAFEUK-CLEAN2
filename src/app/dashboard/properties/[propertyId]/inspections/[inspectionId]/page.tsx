@@ -1,17 +1,31 @@
-'use server';
+'use client';
 
-import { redirect } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
+import { useEffect } from 'react';
+import { Loader2 } from 'lucide-react';
 
-// This is a server component to handle any old or stray links
-// that might still point to the old nested inspection route.
-// It permanently redirects them to the new, correct route.
-export default function RedirectInspectionPage({ params }: { params: { propertyId: string; inspectionId: string } }) {
-  const { propertyId, inspectionId } = params;
-  
-  if (propertyId && inspectionId) {
-    redirect(`/dashboard/inspections/${inspectionId}?propertyId=${propertyId}`);
-  } else {
-    // If for some reason params are missing, redirect to the main inspections list
-    redirect('/dashboard/inspections');
-  }
+export default function RedirectInspectionPage() {
+  const router = useRouter();
+  const params = useParams();
+  const propertyId = params.propertyId as string;
+  const inspectionId = params.inspectionId as string;
+
+  useEffect(() => {
+    if (propertyId && inspectionId) {
+      router.replace(`/dashboard/inspections/${inspectionId}?propertyId=${propertyId}`);
+    } else {
+      // Fallback if params are missing for any reason
+      router.replace('/dashboard/inspections');
+    }
+  }, [router, propertyId, inspectionId]);
+
+  // Render a loading state to avoid a flash of blank content and to inform the user
+  return (
+    <div className="flex h-screen w-full items-center justify-center bg-background">
+      <div className="flex items-center gap-4">
+        <Loader2 className="h-8 w-8 animate-spin" />
+        <p className="text-muted-foreground">Redirecting...</p>
+      </div>
+    </div>
+  );
 }
