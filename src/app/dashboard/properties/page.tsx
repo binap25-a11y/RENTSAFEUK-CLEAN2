@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Bed, Bath, Trash2, Archive, Loader2, Edit, MoreVertical, Search, LayoutGrid, List } from 'lucide-react';
+import { PlusCircle, Bed, Bath, Trash2, Archive, Loader2, Edit, MoreVertical, Search, LayoutGrid, List, Eye } from 'lucide-react';
 import {
   useUser,
   useFirestore,
