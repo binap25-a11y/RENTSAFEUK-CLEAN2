@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { doc, setDoc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -114,7 +114,7 @@ export default function EditPropertyPage() {
   }, [property, form]);
 
   async function onSubmit(data: PropertyFormValues) {
-    if (!user || !firestore || !storage || !propertyId || !property) {
+    if (!user || !firestore || !storage || !propertyId) {
       toast({ variant: 'destructive', title: 'Save Failed', description: 'An unexpected error occurred. Please try again.' });
       return;
     }
@@ -126,36 +126,26 @@ export default function EditPropertyPage() {
       const imageFile = data.imageFile?.[0];
       const { imageFile: _imageFile, ...formData } = data;
 
-      const initialDataToSave = {
-        ...formData,
-        ownerId: property.ownerId, // Explicitly preserve ownerId
-        imageUrl: property.imageUrl, // Keep existing image URL for now
-      };
-
-      await setDoc(propertyDocRef, initialDataToSave, { merge: true });
-
-      toast({
-        title: 'Property Updated',
-        description: imageFile 
-          ? 'Your changes have been saved. The new image is uploading in the background.' 
-          : 'The property details have been successfully updated.',
-      });
-      router.push('/dashboard/properties');
-
+      let finalImageUrl = property?.imageUrl; // Start with the existing URL
       if (imageFile) {
         const uniqueFileName = `${Date.now()}-${imageFile.name}`;
         const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
-        
-        uploadBytes(fileStorageRef, imageFile)
-          .then(uploadResult => getDownloadURL(uploadResult.ref))
-          .then(finalImageUrl => {
-            updateDoc(propertyDocRef, { imageUrl: finalImageUrl });
-          })
-          .catch(error => {
-            console.error("Background image upload failed on edit:", error);
-            // Optionally, notify user of background failure
-          });
+        const uploadResult = await uploadBytes(fileStorageRef, file);
+        finalImageUrl = await getDownloadURL(uploadResult.ref);
       }
+
+      const dataToUpdate = {
+        ...formData,
+        imageUrl: finalImageUrl,
+      };
+
+      await updateDoc(propertyDocRef, dataToUpdate);
+
+      toast({
+        title: 'Property Updated',
+        description: 'The property details have been successfully updated.',
+      });
+      router.push('/dashboard/properties');
 
     } catch (error: any) {
       console.error('Failed to update property', error);
