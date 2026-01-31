@@ -18,7 +18,6 @@ import { useUser, useFirestore, useStorage } from '@/firebase';
 import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Loader2, Upload } from 'lucide-react';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const propertySchema = z.object({
   address: z.object({
@@ -87,7 +86,7 @@ export default function AddPropertyPage() {
     
     try {
       const imageFile = data.imageFile?.[0];
-      const placeholderImageUrl = PlaceHolderImages.find(p => p.id === 'property-placeholder')?.imageUrl || `https://picsum.photos/seed/${Math.random()}/800/500`;
+      const placeholderImageUrl = `https://picsum.photos/seed/${Date.now()}/800/500`;
 
       // Base property data
       const propertyData: { [key: string]: any } = {
@@ -389,7 +388,7 @@ export default function AddPropertyPage() {
                         <FormItem>
                         <FormLabel>Deposit Amount (£)</FormLabel>
                         <FormControl>
-                            <Input type="number" placeholder="0" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} value={field.value ?? ''} />
+                            <Input type="number" placeholder="0" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} value={field.value ?? ''}/>
                         </FormControl>
                         <FormMessage />
                         </FormItem>

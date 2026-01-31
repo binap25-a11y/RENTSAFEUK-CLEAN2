@@ -186,6 +186,10 @@ export default function PropertyDetailPage() {
   
   if (!property) return notFound();
 
+  const displayImageUrl = (property.imageUrl && property.imageUrl.includes('firebasestorage.googleapis.com'))
+    ? property.imageUrl
+    : `https://picsum.photos/seed/${property.id}/800/500`;
+
   return (
     <>
       <div className="flex flex-col gap-6">
@@ -209,7 +213,7 @@ export default function PropertyDetailPage() {
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
             <Card>
-                <CardContent className="p-0"><Image src={property.imageUrl} alt={`Image of ${property.address.street}`} width={800} height={500} className="rounded-t-lg object-cover w-full aspect-video" /></CardContent>
+                <CardContent className="p-0"><Image src={displayImageUrl} data-ai-hint="house exterior" alt={`Image of ${property.address.street}`} width={800} height={500} className="rounded-t-lg object-cover w-full aspect-video" /></CardContent>
             </Card>
 
             {property.tenancy && (property.tenancy.monthlyRent || property.tenancy.depositAmount) && (

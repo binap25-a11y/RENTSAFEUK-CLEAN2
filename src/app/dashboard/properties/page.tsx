@@ -201,7 +201,8 @@ export default function PropertiesPage() {
                             <div className="relative">
                                 <div className="overflow-hidden">
                                     <Image
-                                        src={property.imageUrl}
+                                        src={property.imageUrl && property.imageUrl.includes('firebasestorage.googleapis.com') ? property.imageUrl : `https://picsum.photos/seed/${property.id}/400/250`}
+                                        data-ai-hint="house exterior"
                                         alt={`Image of ${property.address.street}`}
                                         width={400}
                                         height={250}
