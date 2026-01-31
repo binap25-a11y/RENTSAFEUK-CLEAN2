@@ -6,6 +6,7 @@ import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { useState } from 'react';
+import Image from 'next/image';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,11 +15,13 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, useStorage } from '@/firebase';
 import { addDocumentNonBlocking } from '@/firebase/non-blocking-updates';
 import { collection } from 'firebase/firestore';
-import { Loader2 } from 'lucide-react';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { Loader2, Upload } from 'lucide-react';
 import { Label } from '@/components/ui/label';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const propertySchema = z.object({
   address: z.string().min(5, 'Address is too short'),
@@ -26,6 +29,7 @@ const propertySchema = z.object({
   status: z.string({ required_error: 'Please select a status.' }),
   bedrooms: z.coerce.number().min(0, 'Cannot be negative'),
   bathrooms: z.coerce.number().min(0, 'Cannot be negative'),
+  imageFile: z.custom<FileList>().optional(),
   notes: z.string().optional(),
   tenancy: z.object({
     monthlyRent: z.coerce.number().optional(),
@@ -40,9 +44,12 @@ export default function AddPropertyPage() {
   const router = useRouter();
   const { user } = useUser();
   const firestore = useFirestore();
+  const storage = useStorage();
   const [postcode, setPostcode] = useState('');
   const [foundAddresses, setFoundAddresses] = useState<string[]>([]);
   const [addressLookupStatus, setAddressLookupStatus] = useState<'idle' | 'loading' | 'found' | 'not_found' | 'error'>('idle');
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
@@ -79,9 +86,8 @@ export default function AddPropertyPage() {
     }
   };
 
-
   async function onSubmit(data: PropertyFormValues) {
-    if (!user || !firestore) {
+    if (!user || !firestore || !storage) {
       toast({
         variant: 'destructive',
         title: 'Authentication Error',
@@ -90,13 +96,27 @@ export default function AddPropertyPage() {
       return;
     }
 
-    const newProperty = {
-      ...data,
-      ownerId: user.uid,
-      imageUrl: `https://picsum.photos/seed/${Math.random()}/800/500`, // Add a random placeholder image
-    };
+    setIsSubmitting(true);
 
     try {
+      let imageUrl = PlaceHolderImages.find(p => p.id === 'property-placeholder')?.imageUrl || `https://picsum.photos/seed/${Math.random()}/800/500`;
+      const imageFile = data.imageFile?.[0];
+
+      if (imageFile) {
+        const uniqueFileName = `${Date.now()}-${imageFile.name}`;
+        const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
+        const uploadResult = await uploadBytes(fileStorageRef, imageFile);
+        imageUrl = await getDownloadURL(uploadResult.ref);
+      }
+      
+      const { imageFile: _, ...formData } = data;
+
+      const newProperty = {
+        ...formData,
+        ownerId: user.uid,
+        imageUrl,
+      };
+
       const propertiesCollection = collection(firestore, 'properties');
       await addDocumentNonBlocking(propertiesCollection, newProperty);
       
@@ -112,6 +132,8 @@ export default function AddPropertyPage() {
             title: 'Save Failed',
             description: 'There was an error saving the property. Please try again.',
         });
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -140,6 +162,7 @@ export default function AddPropertyPage() {
                             Find Address
                         </Button>
                     </div>
+                    <p className="text-xs text-muted-foreground">Uses getAddress.io. Requires an API key in your .env file.</p>
                 </div>
 
                 {addressLookupStatus === 'found' && (
@@ -210,27 +233,15 @@ export default function AddPropertyPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Property Type</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select a type" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {[
-                              'House',
-                              'Flat',
-                              'Bungalow',
-                              'Maisonette',
-                              'Studio',
-                              'HMO',
-                            ].map((type) => (
-                              <SelectItem key={type} value={type}>
-                                {type}
-                              </SelectItem>
+                            {[ 'House', 'Flat', 'Bungalow', 'Maisonette', 'Studio', 'HMO', ].map((type) => (
+                              <SelectItem key={type} value={type}> {type} </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -244,21 +255,15 @@ export default function AddPropertyPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Status</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                        >
+                        <Select onValueChange={field.onChange} defaultValue={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select a status" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {['Vacant', 'Occupied', 'Under Maintenance'].map(
-                              (status) => (
-                                <SelectItem key={status} value={status}>
-                                  {status}
-                                </SelectItem>
+                            {['Vacant', 'Occupied', 'Under Maintenance'].map( (status) => (
+                                <SelectItem key={status} value={status}> {status} </SelectItem>
                               )
                             )}
                           </SelectContent>
@@ -269,10 +274,7 @@ export default function AddPropertyPage() {
                   />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="bedrooms"
-                    render={({ field }) => (
+                  <FormField control={form.control} name="bedrooms" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Bedrooms</FormLabel>
                         <FormControl>
@@ -282,10 +284,7 @@ export default function AddPropertyPage() {
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="bathrooms"
-                    render={({ field }) => (
+                  <FormField control={form.control} name="bathrooms" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Bathrooms</FormLabel>
                         <FormControl>
@@ -296,6 +295,38 @@ export default function AddPropertyPage() {
                     )}
                   />
                 </div>
+                <FormField
+                  control={form.control}
+                  name="imageFile"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Property Image</FormLabel>
+                      {imagePreview && <Image src={imagePreview} alt="Image preview" width={200} height={125} className="mt-2 rounded-md object-cover" />}
+                      <FormControl>
+                         <Button asChild className="w-full cursor-pointer mt-2" variant="outline">
+                            <label htmlFor="image-upload">
+                              <Upload className="mr-2 h-4 w-4" />
+                              Upload an Image
+                              <Input
+                                id="image-upload"
+                                type="file"
+                                className="sr-only"
+                                accept="image/png, image/jpeg, image/webp"
+                                onChange={(e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    field.onChange(e.target.files);
+                                    setImagePreview(URL.createObjectURL(file));
+                                  }
+                                }}
+                              />
+                            </label>
+                          </Button>
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </CardContent>
             </Card>
 
@@ -359,13 +390,7 @@ export default function AddPropertyPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormControl>
-                        <Textarea
-                          placeholder="Any additional notes about the property..."
-                          className="resize-none"
-                          rows={5}
-                          {...field}
-                          value={field.value ?? ''}
-                        />
+                        <Textarea placeholder="Any additional notes about the property..." className="resize-none" rows={5} {...field} value={field.value ?? ''} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -378,7 +403,10 @@ export default function AddPropertyPage() {
               <Button type="button" variant="outline" asChild>
                 <Link href="/dashboard/properties">Cancel</Link>
               </Button>
-              <Button type="submit">Save Property</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Save Property
+              </Button>
             </div>
           </form>
         </Form>

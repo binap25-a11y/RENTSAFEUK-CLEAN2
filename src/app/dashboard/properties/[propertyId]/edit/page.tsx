@@ -5,7 +5,8 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { useEffect } from 'react';
+import Image from 'next/image';
+import { useEffect, useState } from 'react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -14,9 +15,11 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useStorage, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
-import { Loader2 } from 'lucide-react';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { Loader2, Upload } from 'lucide-react';
+import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const propertySchema = z.object({
   address: z.string().min(5, 'Address is too short'),
@@ -24,6 +27,7 @@ const propertySchema = z.object({
   status: z.string({ required_error: 'Please select a status.' }),
   bedrooms: z.coerce.number().min(0, 'Cannot be negative'),
   bathrooms: z.coerce.number().min(0, 'Cannot be negative'),
+  imageFile: z.custom<FileList>().optional(),
   notes: z.string().optional(),
   tenancy: z.object({
     monthlyRent: z.coerce.number().optional(),
@@ -40,6 +44,7 @@ interface Property {
   status: string;
   bedrooms: number;
   bathrooms: number;
+  imageUrl?: string;
   notes?: string;
   tenancy?: {
     monthlyRent?: number;
@@ -55,6 +60,9 @@ export default function EditPropertyPage() {
 
   const { user } = useUser();
   const firestore = useFirestore();
+  const storage = useStorage();
+  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
@@ -70,11 +78,14 @@ export default function EditPropertyPage() {
   useEffect(() => {
     if (property) {
       form.reset(property);
+      if (property.imageUrl) {
+        setImagePreview(property.imageUrl);
+      }
     }
   }, [property, form]);
 
   async function onSubmit(data: PropertyFormValues) {
-    if (!user || !firestore) {
+    if (!user || !firestore || !storage) {
       toast({
         variant: 'destructive',
         title: 'Authentication Error',
@@ -85,10 +96,26 @@ export default function EditPropertyPage() {
     
     if (!propertyId) return;
 
+    setIsSubmitting(true);
+
     try {
+      let imageUrl = property?.imageUrl; // Keep existing image by default
+      const imageFile = data.imageFile?.[0];
+
+      if (imageFile) {
+        // A new image has been uploaded
+        const uniqueFileName = `${Date.now()}-${imageFile.name}`;
+        const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
+        const uploadResult = await uploadBytes(fileStorageRef, imageFile);
+        imageUrl = await getDownloadURL(uploadResult.ref);
+      }
+      
+      const { imageFile: _, ...formData } = data;
+
       const propertyDocRef = doc(firestore, 'properties', propertyId);
       await updateDoc(propertyDocRef, {
-        ...data,
+        ...formData,
+        imageUrl, // Add the new or existing image URL
       });
 
       toast({
@@ -103,6 +130,8 @@ export default function EditPropertyPage() {
         title: 'Update Failed',
         description: 'There was an error updating the property. Please try again.',
       });
+    } finally {
+        setIsSubmitting(false);
     }
   }
   
@@ -161,27 +190,15 @@ export default function EditPropertyPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Property Type</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                        >
+                        <Select onValueChange={field.onChange} value={field.value} >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select a type" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {[
-                              'House',
-                              'Flat',
-                              'Bungalow',
-                              'Maisonette',
-                              'Studio',
-                              'HMO',
-                            ].map((type) => (
-                              <SelectItem key={type} value={type}>
-                                {type}
-                              </SelectItem>
+                            {[ 'House', 'Flat', 'Bungalow', 'Maisonette', 'Studio', 'HMO' ].map((type) => (
+                              <SelectItem key={type} value={type}> {type} </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
@@ -195,21 +212,15 @@ export default function EditPropertyPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Status</FormLabel>
-                        <Select
-                          onValueChange={field.onChange}
-                          value={field.value}
-                        >
+                        <Select onValueChange={field.onChange} value={field.value} >
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder="Select a status" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {['Vacant', 'Occupied', 'Under Maintenance'].map(
-                              (status) => (
-                                <SelectItem key={status} value={status}>
-                                  {status}
-                                </SelectItem>
+                            {['Vacant', 'Occupied', 'Under Maintenance'].map( (status) => (
+                                <SelectItem key={status} value={status}> {status} </SelectItem>
                               )
                             )}
                           </SelectContent>
@@ -220,10 +231,7 @@ export default function EditPropertyPage() {
                   />
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="bedrooms"
-                    render={({ field }) => (
+                  <FormField control={form.control} name="bedrooms" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Bedrooms</FormLabel>
                         <FormControl>
@@ -233,10 +241,7 @@ export default function EditPropertyPage() {
                       </FormItem>
                     )}
                   />
-                  <FormField
-                    control={form.control}
-                    name="bathrooms"
-                    render={({ field }) => (
+                  <FormField control={form.control} name="bathrooms" render={({ field }) => (
                       <FormItem>
                         <FormLabel>Bathrooms</FormLabel>
                         <FormControl>
@@ -247,6 +252,42 @@ export default function EditPropertyPage() {
                     )}
                   />
                 </div>
+                 <FormField
+                    control={form.control}
+                    name="imageFile"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Property Image</FormLabel>
+                        {imagePreview && (
+                            <div className="mt-2">
+                                <Image src={imagePreview} alt="Current property image" width={200} height={125} className="rounded-md object-cover" />
+                            </div>
+                        )}
+                        <FormControl>
+                           <Button asChild className="w-full cursor-pointer mt-2" variant="outline">
+                              <label htmlFor="image-upload">
+                                <Upload className="mr-2 h-4 w-4" />
+                                {imagePreview ? 'Change Image' : 'Upload Image'}
+                                <Input
+                                  id="image-upload"
+                                  type="file"
+                                  className="sr-only"
+                                  accept="image/png, image/jpeg, image/webp"
+                                  onChange={(e) => {
+                                      const file = e.target.files?.[0];
+                                      if (file) {
+                                          field.onChange(e.target.files);
+                                          setImagePreview(URL.createObjectURL(file));
+                                      }
+                                  }}
+                                />
+                              </label>
+                            </Button>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
               </CardContent>
             </Card>
 
@@ -304,18 +345,10 @@ export default function EditPropertyPage() {
                 <CardTitle className="text-xl">Notes</CardTitle>
               </CardHeader>
               <CardContent>
-                <FormField
-                  control={form.control}
-                  name="notes"
-                  render={({ field }) => (
+                <FormField control={form.control} name="notes" render={({ field }) => (
                     <FormItem>
                       <FormControl>
-                        <Textarea
-                          placeholder="Any additional notes about the property..."
-                          className="resize-none"
-                          rows={5}
-                          {...field}
-                        />
+                        <Textarea placeholder="Any additional notes about the property..." className="resize-none" rows={5} {...field} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -328,7 +361,10 @@ export default function EditPropertyPage() {
               <Button type="button" variant="outline" asChild>
                 <Link href="/dashboard/properties">Cancel</Link>
               </Button>
-              <Button type="submit">Save Changes</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                Save Changes
+              </Button>
             </div>
           </form>
         </Form>
