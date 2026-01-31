@@ -184,7 +184,7 @@ export default function InspectionsPage() {
                     {inspections?.map((inspection) => (
                       <TableRow key={inspection.id}>
                         <TableCell className="font-medium">
-                          {getPropertyAddress(inspection.propertyId)}
+                          {getPropertyAddress(selectedPropertyId)}
                         </TableCell>
                         <TableCell>{inspection.type}</TableCell>
                         <TableCell>
@@ -202,7 +202,7 @@ export default function InspectionsPage() {
                         </TableCell>
                         <TableCell className="text-right">
                             <Button asChild variant="outline" size="icon">
-                                <Link href={`/dashboard/properties/${inspection.propertyId}/inspections/${inspection.id}`}>
+                                <Link href={`/dashboard/properties/${selectedPropertyId}/inspections/${inspection.id}`}>
                                     <Eye className="h-4 w-4" />
                                     <span className="sr-only">View Inspection</span>
                                 </Link>
@@ -221,11 +221,11 @@ export default function InspectionsPage() {
                         <CardHeader>
                             <div className="flex justify-between items-start">
                             <div>
-                                <CardTitle className='text-base'>{getPropertyAddress(inspection.propertyId)}</CardTitle>
+                                <CardTitle className='text-base'>{getPropertyAddress(selectedPropertyId)}</CardTitle>
                                 <CardDescription>{inspection.type}</CardDescription>
                             </div>
                             <Button asChild variant="outline" size="sm">
-                                <Link href={`/dashboard/properties/${inspection.propertyId}/inspections/${inspection.id}`}>
+                                <Link href={`/dashboard/properties/${selectedPropertyId}/inspections/${inspection.id}`}>
                                     <Eye className="mr-2 h-4 w-4" />
                                     View
                                 </Link>

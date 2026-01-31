@@ -726,14 +726,14 @@ export default function MaintenancePage() {
                         {filteredLogs?.map(log => (
                             <TableRow key={log.id}>
                                 <TableCell className="font-medium">
-                                    <Link href={`/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`} className="hover:underline">
+                                    <Link href={`/dashboard/maintenance/${log.id}?propertyId=${selectedPropertyFilter}`} className="hover:underline">
                                         {log.title}
                                     </Link>
                                 </TableCell>
                                 <TableCell>
                                     <Select
                                         value={log.status}
-                                        onValueChange={(newStatus) => handleStatusChange(log.id, log.propertyId, newStatus)}
+                                        onValueChange={(newStatus) => handleStatusChange(log.id, selectedPropertyFilter, newStatus)}
                                     >
                                         <SelectTrigger className="w-[150px]">
                                             <SelectValue placeholder="Set status" />
@@ -752,7 +752,7 @@ export default function MaintenancePage() {
                                 </TableCell>
                                 <TableCell className="text-right">
                                     <Button asChild variant="ghost" size="icon">
-                                      <Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${log.propertyId}`}>
+                                      <Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${selectedPropertyFilter}`}>
                                         <Edit className="h-4 w-4" />
                                       </Link>
                                     </Button>
@@ -780,11 +780,11 @@ export default function MaintenancePage() {
                             <div className="flex justify-between items-start">
                                 <div>
                                     <CardTitle className="text-base pr-2">
-                                        <Link href={`/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`} className="hover:underline">
+                                        <Link href={`/dashboard/maintenance/${log.id}?propertyId=${selectedPropertyFilter}`} className="hover:underline">
                                             {log.title}
                                         </Link>
                                     </CardTitle>
-                                    <CardDescription>{propertyMap[log.propertyId]}</CardDescription>
+                                    <CardDescription>{propertyMap[selectedPropertyFilter]}</CardDescription>
                                 </div>
                                 <DropdownMenu>
                                     <DropdownMenuTrigger asChild>
@@ -792,7 +792,7 @@ export default function MaintenancePage() {
                                     </DropdownMenuTrigger>
                                     <DropdownMenuContent align="end">
                                         <DropdownMenuItem asChild>
-                                            <Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${log.propertyId}`}><Edit className="mr-2 h-4 w-4" /> Edit</Link>
+                                            <Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${selectedPropertyFilter}`}><Edit className="mr-2 h-4 w-4" /> Edit</Link>
                                         </DropdownMenuItem>
                                     </DropdownMenuContent>
                                 </DropdownMenu>
@@ -803,7 +803,7 @@ export default function MaintenancePage() {
                               <span className="text-muted-foreground">Status</span>
                                <Select
                                     value={log.status}
-                                    onValueChange={(newStatus) => handleStatusChange(log.id, log.propertyId, newStatus)}
+                                    onValueChange={(newStatus) => handleStatusChange(log.id, selectedPropertyFilter, newStatus)}
                                 >
                                     <SelectTrigger className="w-[150px] h-9">
                                         <SelectValue placeholder="Set status" />
