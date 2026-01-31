@@ -4,10 +4,10 @@ import { useParams, notFound, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, User, Mail, Phone, Calendar as CalendarIcon, Edit, Archive, Home, Loader2, MoreVertical } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, Calendar as CalendarIcon, Edit, Archive, Home, Loader2, MoreVertical, UserPlus, Eye } from 'lucide-react';
 import { format } from 'date-fns';
-import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { useDoc, useFirestore, useMemoFirebase, useCollection } from '@/firebase';
+import { doc, collection, query, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import {
@@ -21,6 +21,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
 
 // Type for a Property document from Firestore
@@ -41,6 +42,13 @@ interface Tenant {
     status?: string;
 }
 
+// Type for screening record
+interface TenantScreening {
+    id: string;
+    screeningDate: { seconds: number; nanoseconds: number } | Date;
+}
+
+
 export default function TenantDetailPage() {
   const params = useParams();
   const id = params.id as string;
@@ -60,8 +68,14 @@ export default function TenantDetailPage() {
     if (!firestore || !tenant?.propertyId) return null;
     return doc(firestore, 'properties', tenant.propertyId);
   }, [firestore, tenant?.propertyId]);
-
   const { data: property, isLoading: isLoadingProperty } = useDoc<Property>(propertyRef);
+  
+  const screeningsQuery = useMemoFirebase(() => {
+    if (!firestore || !id) return null;
+    return collection(firestore, 'tenants', id, 'screenings');
+  }, [firestore, id]);
+
+  const { data: screenings, isLoading: isLoadingScreenings } = useCollection<TenantScreening>(screeningsQuery);
 
   const handleArchiveConfirm = async () => {
     if (!firestore || !tenant || !tenantRef) return;
@@ -84,7 +98,7 @@ export default function TenantDetailPage() {
     }
   };
 
-  const isLoading = isLoadingTenant || isLoadingProperty;
+  const isLoading = isLoadingTenant || isLoadingProperty || isLoadingScreenings;
 
   if (isLoading) {
     return (
@@ -209,8 +223,58 @@ export default function TenantDetailPage() {
                     </div>
                 )}
             </CardContent>
-            </Card>
-        </div>
+        </Card>
+        
+        <Card>
+            <CardHeader>
+                <div className="flex justify-between items-center">
+                    <CardTitle>Screening History</CardTitle>
+                     <Button asChild size="sm">
+                        <Link href={`/dashboard/tenants/screening?tenantId=${id}`}>
+                            <UserPlus className="mr-2 h-4 w-4" /> Start New Screening
+                        </Link>
+                    </Button>
+                </div>
+                <CardDescription>
+                    A log of all pre-tenancy screenings for this tenant.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                {isLoadingScreenings ? (
+                    <div className="flex justify-center items-center h-24">
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                ) : screenings && screenings.length > 0 ? (
+                    <div className="rounded-md border">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Screening Date</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {screenings.map(screening => (
+                                    <TableRow key={screening.id}>
+                                        <TableCell>
+                                            {format(screening.screeningDate instanceof Date ? screening.screeningDate : new Date(screening.screeningDate.seconds * 1000), 'PPP')}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <Button variant="outline" size="sm" disabled>
+                                                <Eye className="mr-2 h-4 w-4" /> View
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                ) : (
+                    <p className="text-center text-muted-foreground py-4">No screening records found for this tenant.</p>
+                )}
+            </CardContent>
+        </Card>
+    </div>
         <AlertDialog open={isArchiveDialogOpen} onOpenChange={setIsArchiveDialogOpen}>
             <AlertDialogContent>
             <AlertDialogHeader>

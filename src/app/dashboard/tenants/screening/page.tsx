@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -156,6 +156,7 @@ const NotesField = ({ form, name, placeholder }: { form: any, name: any, placeho
 
 export default function TenantScreeningPage() {
     const router = useRouter();
+    const searchParams = useSearchParams();
     const { user } = useUser();
     const firestore = useFirestore();
 
@@ -163,9 +164,14 @@ export default function TenantScreeningPage() {
         resolver: zodResolver(screeningSchema),
     });
 
+    const tenantIdFromUrl = searchParams.get('tenantId');
+
     useEffect(() => {
         form.setValue('screeningDate', new Date());
-    }, [form]);
+        if (tenantIdFromUrl) {
+            form.setValue('tenantId', tenantIdFromUrl);
+        }
+    }, [form, tenantIdFromUrl]);
 
     const tenantsQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -204,7 +210,7 @@ export default function TenantScreeningPage() {
                 title: 'Screening Record Saved',
                 description: 'The tenant screening checklist has been successfully saved.',
             });
-            router.push('/dashboard/tenants');
+            router.push(tenantId ? `/dashboard/tenants/${tenantId}` : '/dashboard/tenants');
         } catch (error) {
             console.error('Failed to save screening record:', error);
             toast({
@@ -233,7 +239,7 @@ export default function TenantScreeningPage() {
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Tenant to Screen</FormLabel>
-                                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                        <Select onValueChange={field.onChange} value={field.value} disabled={!!tenantIdFromUrl}>
                                             <FormControl>
                                                 <SelectTrigger>
                                                     <SelectValue placeholder={isLoadingTenants ? <div className='flex items-center gap-2'><Loader2 className='animate-spin' /> Loading...</div> : "Select a tenant"} />
@@ -486,7 +492,7 @@ export default function TenantScreeningPage() {
                         />
                         <div className="flex justify-end gap-2 pt-4">
                             <Button type="button" variant="outline" asChild>
-                                <Link href="/dashboard/tenants">Cancel</Link>
+                                <Link href={tenantIdFromUrl ? `/dashboard/tenants/${tenantIdFromUrl}` : '/dashboard/tenants'}>Cancel</Link>
                             </Button>
                             <Button type="submit">Save Screening Record</Button>
                         </div>
