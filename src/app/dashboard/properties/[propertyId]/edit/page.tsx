@@ -282,17 +282,15 @@ export default function EditPropertyPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Property Image</FormLabel>
-                        <div className="aspect-video w-full rounded-lg border-2 border-dashed bg-muted flex items-center justify-center overflow-hidden">
-                            {imagePreview ? (
-                                <img
-                                    key={imagePreview}
-                                    src={imagePreview}
-                                    alt="Property preview"
-                                    className="h-full w-full object-contain"
-                                />
-                            ) : (
-                                <span className="text-muted-foreground">Image Preview</span>
-                            )}
+                        <div 
+                          className="aspect-video w-full rounded-lg border-2 border-dashed bg-muted bg-contain bg-no-repeat bg-center"
+                          style={{ backgroundImage: imagePreview ? `url(${imagePreview})` : 'none' }}
+                        >
+                          {!imagePreview && (
+                              <div className="flex items-center justify-center h-full">
+                                  <span className="text-muted-foreground">Image Preview</span>
+                              </div>
+                          )}
                         </div>
                         <FormControl>
                            <Button asChild className="w-full cursor-pointer mt-2" variant="outline">
