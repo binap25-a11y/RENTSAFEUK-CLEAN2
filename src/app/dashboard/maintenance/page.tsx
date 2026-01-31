@@ -48,9 +48,8 @@ import {
   useStorage,
   useCollection,
   useMemoFirebase,
-  addDocumentNonBlocking,
 } from '@/firebase';
-import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, addDoc } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import {
   Table,
@@ -228,7 +227,7 @@ export default function MaintenancePage() {
         };
 
         const logsCollection = collection(firestore, 'properties', data.propertyId, 'maintenanceLogs');
-        await addDocumentNonBlocking(logsCollection, newLog);
+        await addDoc(logsCollection, newLog);
         
         toast({
           title: 'Maintenance Logged',

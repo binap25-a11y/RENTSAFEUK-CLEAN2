@@ -47,9 +47,8 @@ import {
   useStorage,
   useCollection,
   useMemoFirebase,
-  addDocumentNonBlocking,
 } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, addDoc } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 // Schema for the form
@@ -130,7 +129,7 @@ export default function UploadDocumentPage() {
       };
 
       const documentsCollection = collection(firestore, 'properties', data.propertyId, 'documents');
-      await addDocumentNonBlocking(documentsCollection, newDocument);
+      await addDoc(documentsCollection, newDocument);
       
       toast({
         title: 'Document Uploaded',

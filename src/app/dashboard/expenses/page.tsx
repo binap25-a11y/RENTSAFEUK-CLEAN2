@@ -61,9 +61,8 @@ import {
   useFirestore,
   useCollection,
   useMemoFirebase,
-  addDocumentNonBlocking,
 } from '@/firebase';
-import { collection, query, where, doc, setDoc } from 'firebase/firestore';
+import { collection, query, where, doc, setDoc, addDoc } from 'firebase/firestore';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -349,7 +348,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
 
     try {
       const expensesCollection = collection(firestore, 'properties', data.propertyId, 'expenses');
-      await addDocumentNonBlocking(expensesCollection, newExpense);
+      await addDoc(expensesCollection, newExpense);
       toast({
         title: 'Expense Logged',
         description: 'The new expense has been successfully logged.',

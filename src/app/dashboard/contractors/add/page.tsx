@@ -25,9 +25,8 @@ import { toast } from '@/hooks/use-toast';
 import {
   useUser,
   useFirestore,
-  addDocumentNonBlocking,
 } from '@/firebase';
-import { collection } from 'firebase/firestore';
+import { collection, addDoc } from 'firebase/firestore';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { PlusCircle } from 'lucide-react';
@@ -77,7 +76,7 @@ export default function AddContractorPage() {
                 status: 'Active'
             };
             const contractorsCollection = collection(firestore, 'contractors');
-            await addDocumentNonBlocking(contractorsCollection, newContractor);
+            await addDoc(contractorsCollection, newContractor);
             
             toast({
             title: 'Contractor Added',

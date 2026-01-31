@@ -48,9 +48,8 @@ import {
   useFirestore,
   useCollection,
   useMemoFirebase,
-  addDocumentNonBlocking,
 } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, addDoc } from 'firebase/firestore';
 
 const hmoInspectionSchema = z.object({
   // General
@@ -250,7 +249,7 @@ export default function HmoInspectionPage() {
 
         try {
             const inspectionsCollection = collection(firestore, 'properties', propertyId, 'inspections');
-            await addDocumentNonBlocking(inspectionsCollection, newInspection);
+            await addDoc(inspectionsCollection, newInspection);
             
             toast({
                 title: 'HMO Inspection Saved',

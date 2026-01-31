@@ -46,9 +46,8 @@ import {
   useFirestore,
   useCollection,
   useMemoFirebase,
-  addDocumentNonBlocking,
 } from '@/firebase';
-import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, addDoc } from 'firebase/firestore';
 
 // Zod schema for tenant form validation
 const tenantSchema = z.object({
@@ -117,7 +116,7 @@ export default function AddTenantPage() {
 
     try {
       const tenantsCollection = collection(firestore, 'tenants');
-      await addDocumentNonBlocking(tenantsCollection, newTenant);
+      await addDoc(tenantsCollection, newTenant);
       
       const propertyDocRef = doc(firestore, 'properties', data.propertyId);
       await updateDoc(propertyDocRef, { status: 'Occupied' });

@@ -48,9 +48,8 @@ import {
   useFirestore,
   useCollection,
   useMemoFirebase,
-  addDocumentNonBlocking,
 } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, addDoc } from 'firebase/firestore';
 
 
 const screeningSchema = z.object({
@@ -204,7 +203,7 @@ export default function TenantScreeningPage() {
 
         try {
             const screeningsCollection = collection(firestore, 'tenants', tenantId, 'screenings');
-            await addDocumentNonBlocking(screeningsCollection, newScreeningRecord);
+            await addDoc(screeningsCollection, newScreeningRecord);
             
             toast({
                 title: 'Screening Record Saved',
