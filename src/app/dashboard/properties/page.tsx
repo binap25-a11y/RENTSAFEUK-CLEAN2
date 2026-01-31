@@ -2,6 +2,7 @@
 
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -59,6 +60,7 @@ interface Property {
 }
 
 export default function PropertiesPage() {
+  const router = useRouter();
   const { user } = useUser();
   const firestore = useFirestore();
   const [searchTerm, setSearchTerm] = useState('');
@@ -192,29 +194,28 @@ export default function PropertiesPage() {
                     {filteredProperties.map((property) => (
                         <Card
                             key={property.id}
-                            className="group overflow-hidden flex flex-col"
+                            className="group overflow-hidden flex flex-col hover:shadow-lg transition-shadow cursor-pointer"
+                            onClick={() => router.push(`/dashboard/properties/${property.id}`)}
                         >
                             <div className="relative">
-                                <Link href={`/dashboard/properties/${property.id}`}>
-                                    <div className="overflow-hidden">
-                                        <Image
-                                            src={property.imageUrl}
-                                            alt={`Image of ${property.address.street}`}
-                                            width={400}
-                                            height={250}
-                                            className="object-cover w-full aspect-video group-hover:scale-105 transition-transform duration-300"
-                                        />
-                                    </div>
-                                    <CardHeader className="pb-2">
-                                        <CardTitle className="text-lg leading-tight font-semibold group-hover:underline">
-                                            {property.address.street}
-                                        </CardTitle>
-                                        <CardDescription className="truncate">
-                                            {`${property.address.city}, ${property.address.county ? property.address.county + ', ' : ''}${property.address.postcode}`}
-                                        </CardDescription>
-                                    </CardHeader>
-                                </Link>
-                                <div className="absolute top-2 right-2">
+                                <div className="overflow-hidden">
+                                    <Image
+                                        src={property.imageUrl}
+                                        alt={`Image of ${property.address.street}`}
+                                        width={400}
+                                        height={250}
+                                        className="object-cover w-full aspect-video group-hover:scale-105 transition-transform duration-300"
+                                    />
+                                </div>
+                                <CardHeader className="pb-2">
+                                    <CardTitle className="text-lg leading-tight font-semibold group-hover:underline">
+                                        {property.address.street}
+                                    </CardTitle>
+                                    <CardDescription className="truncate">
+                                        {`${property.address.city}, ${property.address.county ? property.address.county + ', ' : ''}${property.address.postcode}`}
+                                    </CardDescription>
+                                </CardHeader>
+                                <div className="absolute top-2 right-2" onClick={(e) => e.stopPropagation()}>
                                     <DropdownMenu>
                                         <DropdownMenuTrigger asChild>
                                             <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full">
@@ -262,12 +263,14 @@ export default function PropertiesPage() {
                         </TableHeader>
                         <TableBody>
                             {filteredProperties.map((property) => (
-                                <TableRow key={property.id}>
+                                <TableRow 
+                                  key={property.id} 
+                                  className="cursor-pointer" 
+                                  onClick={() => router.push(`/dashboard/properties/${property.id}`)}
+                                >
                                     <TableCell className="font-medium">
-                                        <Link href={`/dashboard/properties/${property.id}`} className="hover:underline">
                                           <div>{property.address.street}</div>
                                           <div className="text-xs text-muted-foreground">{`${property.address.city}, ${property.address.postcode}`}</div>
-                                        </Link>
                                     </TableCell>
                                     <TableCell>{property.propertyType}</TableCell>
                                     <TableCell>
@@ -275,7 +278,7 @@ export default function PropertiesPage() {
                                             {property.status}
                                         </Badge>
                                     </TableCell>
-                                    <TableCell className="text-right">
+                                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                       <DropdownMenu>
                                           <DropdownMenuTrigger asChild>
                                               <Button variant="ghost" size="icon" className="h-8 w-8">
