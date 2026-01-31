@@ -122,6 +122,7 @@ export default function EditTenantPage() {
     if (tenant) {
         const tenantData = {
             ...tenant,
+            notes: tenant.notes ?? '',
             tenancyStartDate: tenant.tenancyStartDate instanceof Date ? tenant.tenancyStartDate : new Date(tenant.tenancyStartDate.seconds * 1000),
             tenancyEndDate: tenant.tenancyEndDate ? (tenant.tenancyEndDate instanceof Date ? tenant.tenancyEndDate : new Date(tenant.tenancyEndDate.seconds * 1000)) : undefined,
         };

@@ -130,6 +130,11 @@ export default function EditMaintenancePage() {
         if (maintenanceLog) {
             form.reset({
                 ...maintenanceLog,
+                description: maintenanceLog.description ?? '',
+                reportedBy: maintenanceLog.reportedBy ?? '',
+                contractorName: maintenanceLog.contractorName ?? '',
+                contractorPhone: maintenanceLog.contractorPhone ?? '',
+                notes: maintenanceLog.notes ?? '',
                 reportedDate: maintenanceLog.reportedDate instanceof Date ? maintenanceLog.reportedDate : new Date(maintenanceLog.reportedDate.seconds * 1000),
                 scheduledDate: maintenanceLog.scheduledDate ? (maintenanceLog.scheduledDate instanceof Date ? maintenanceLog.scheduledDate : new Date(maintenanceLog.scheduledDate.seconds * 1000)) : undefined,
                 estimatedCost: maintenanceLog.estimatedCost ?? undefined,
@@ -265,7 +270,7 @@ export default function EditMaintenancePage() {
                                             <FormMessage />
                                         </FormItem>
                                     )} />
-                                    <FormField control={form.control} name="estimatedCost" render={({ field }) => (<FormItem><FormLabel>Estimated Cost (£)</FormLabel><FormControl><Input type="number" {...field} /></FormControl></FormItem>)} />
+                                    <FormField control={form.control} name="estimatedCost" render={({ field }) => (<FormItem><FormLabel>Estimated Cost (£)</FormLabel><FormControl><Input type="number" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} value={field.value ?? ''} /></FormControl></FormItem>)} />
                                 </div>
                             </CardContent>
                         </Card>

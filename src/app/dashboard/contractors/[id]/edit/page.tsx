@@ -75,7 +75,11 @@ export default function EditContractorPage() {
 
     useEffect(() => {
         if (contractor) {
-            form.reset(contractor);
+            form.reset({
+                ...contractor,
+                email: contractor.email ?? '',
+                notes: contractor.notes ?? '',
+            });
         }
     }, [contractor, form]);
 
