@@ -93,18 +93,48 @@ export default function EditPropertyPage() {
   }, [property, form]);
 
   async function onSubmit(data: PropertyFormValues) {
-    if (!user || !firestore || !storage) {
-        toast({
-            variant: 'destructive',
-            title: 'Authentication Error',
-            description: 'You must be logged in to update a property.',
-        });
-        return;
+    if (!user || !firestore || !storage || !propertyId) {
+      toast({
+        variant: 'destructive',
+        title: 'Save Failed',
+        description: 'An unexpected error occurred. Please try again.',
+      });
+      return;
     }
-    if (!propertyId) return;
     setIsSubmitting(true);
+
+    const propertyDataToSave: { [key: string]: any } = {
+        address: data.address,
+        propertyType: data.propertyType,
+        status: data.status,
+        bedrooms: data.bedrooms,
+        bathrooms: data.bathrooms,
+    };
+    
+    if (data.notes) {
+        propertyDataToSave.notes = data.notes;
+    } else {
+        propertyDataToSave.notes = '';
+    }
+    
+    const tenancyData: { [key: string]: any } = {};
+    if (data.tenancy) {
+        if (data.tenancy.monthlyRent !== undefined && !isNaN(data.tenancy.monthlyRent)) {
+            tenancyData.monthlyRent = data.tenancy.monthlyRent;
+        }
+        if (data.tenancy.depositAmount !== undefined && !isNaN(data.tenancy.depositAmount)) {
+            tenancyData.depositAmount = data.tenancy.depositAmount;
+        }
+        if (data.tenancy.depositScheme) {
+            tenancyData.depositScheme = data.tenancy.depositScheme;
+        }
+    }
+     if (Object.keys(tenancyData).length > 0) {
+        propertyDataToSave.tenancy = tenancyData;
+    }
+
     try {
-      let imageUrl = property?.imageUrl; // Keep existing image by default
+      let imageUrl = property?.imageUrl; 
       const imageFile = data.imageFile?.[0];
       if (imageFile) {
         const uniqueFileName = `${Date.now()}-${imageFile.name}`;
@@ -112,37 +142,10 @@ export default function EditPropertyPage() {
         const uploadResult = await uploadBytes(fileStorageRef, imageFile);
         imageUrl = await getDownloadURL(uploadResult.ref);
       }
-      
-      const propertyData: { [key: string]: any } = {
-        address: data.address,
-        propertyType: data.propertyType,
-        status: data.status,
-        bedrooms: data.bedrooms,
-        bathrooms: data.bathrooms,
-        imageUrl,
-      };
-
-      if (data.notes) {
-          propertyData.notes = data.notes;
-      } else {
-          propertyData.notes = ''; // explicitly clear if empty
-      }
-
-      const tenancyData: { [key: string]: any } = {};
-      if (data.tenancy?.monthlyRent !== undefined && !isNaN(data.tenancy.monthlyRent)) {
-        tenancyData.monthlyRent = data.tenancy.monthlyRent;
-      }
-      if (data.tenancy?.depositAmount !== undefined && !isNaN(data.tenancy.depositAmount)) {
-        tenancyData.depositAmount = data.tenancy.depositAmount;
-      }
-      if (data.tenancy?.depositScheme) {
-        tenancyData.depositScheme = data.tenancy.depositScheme;
-      }
-      
-      propertyData.tenancy = tenancyData;
+      propertyDataToSave.imageUrl = imageUrl;
       
       const propertyDocRef = doc(firestore, 'properties', propertyId);
-      await updateDoc(propertyDocRef, propertyData);
+      await updateDoc(propertyDocRef, propertyDataToSave);
 
       toast({
         title: 'Property Updated',
@@ -285,15 +288,14 @@ export default function EditPropertyPage() {
                       <FormItem>
                         <FormLabel>Property Image</FormLabel>
                         <div
-                          className="aspect-video w-full rounded-lg border-2 border-dashed bg-muted flex items-center justify-center text-muted-foreground overflow-hidden"
-                          style={{
-                            backgroundImage: `url(${imagePreview})`,
-                            backgroundSize: 'contain',
-                            backgroundPosition: 'center',
-                            backgroundRepeat: 'no-repeat',
-                          }}
+                            className="aspect-video w-full rounded-lg border-2 border-dashed bg-muted bg-contain bg-center bg-no-repeat"
+                            style={{ backgroundImage: imagePreview ? `url(${imagePreview})` : 'none' }}
                         >
-                            {!imagePreview && <span>Image Preview</span>}
+                            {!imagePreview && (
+                                <div className="flex h-full w-full items-center justify-center">
+                                    <span className="text-muted-foreground">Image Preview</span>
+                                </div>
+                            )}
                         </div>
                         <FormControl>
                            <Button asChild className="w-full cursor-pointer mt-2" variant="outline">
