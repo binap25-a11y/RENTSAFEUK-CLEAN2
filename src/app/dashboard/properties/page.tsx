@@ -191,7 +191,7 @@ export default function PropertiesPage() {
                       </Link>
                       <CardHeader className="flex-grow">
                         <div className="flex justify-between items-start gap-2">
-                          <div className='flex-1'>
+                          <div className='flex-1 min-w-0'>
                               <CardTitle className="text-lg leading-tight font-semibold truncate">
                                   <Link href={`/dashboard/properties/${property.id}`} className="hover:underline">
                                       {mainAddress}
