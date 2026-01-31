@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -125,7 +124,7 @@ export default function EditPropertyPage() {
   }, [property, form]);
 
   async function onSubmit(data: PropertyFormValues) {
-    if (!user || !firestore || !storage || !propertyId) {
+    if (!user || !firestore || !storage || !propertyId || !property) {
       toast({ variant: 'destructive', title: 'Save Failed', description: 'An unexpected error occurred. Please try again.' });
       return;
     }
@@ -135,34 +134,26 @@ export default function EditPropertyPage() {
     try {
         const propertyDocRef = doc(firestore, 'properties', propertyId);
         
-        // Create an update object with all the form data that is not the image.
-        const dataToUpdate: { [key: string]: any } = {
-             address: data.address,
-             propertyType: data.propertyType,
-             status: data.status,
-             bedrooms: data.bedrooms,
-             bathrooms: data.bathrooms,
-             notes: data.notes || '',
-             tenancy: data.tenancy || {},
-        };
-
-        // Handle image upload separately.
-        // Only if a new file is provided, upload it and add the `imageUrl` to the update object.
+        let newImageUrl: string | undefined = undefined;
         if (data.imageFile && data.imageFile.length > 0) {
             const file = data.imageFile[0];
             const uniqueFileName = `${Date.now()}-${file.name}`;
             const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
             
             await uploadBytes(fileStorageRef, file);
-            const newImageUrl = await getDownloadURL(fileStorageRef);
-            
-            dataToUpdate.imageUrl = newImageUrl;
+            newImageUrl = await getDownloadURL(fileStorageRef);
         }
+
+        const dataToUpdate = {
+            ...data,
+            ownerId: property.ownerId, // Ensure ownerId is preserved
+            imageUrl: newImageUrl ?? property.imageUrl ?? '', // Prioritize new, then existing, then empty
+        };
         
-        // Now, perform the update.
-        // updateDoc will only modify the fields present in dataToUpdate.
-        // If imageUrl was not added above, the existing one in Firestore will be untouched.
-        // The ownerId is also untouched because it's not in dataToUpdate.
+        // The form sends imageFile, but we don't want to store this in Firestore.
+        // We've already handled it by creating the imageUrl above.
+        delete (dataToUpdate as Partial<PropertyFormValues>).imageFile;
+
         await updateDoc(propertyDocRef, dataToUpdate);
 
         toast({
