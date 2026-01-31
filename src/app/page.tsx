@@ -8,7 +8,7 @@ import { GoogleIcon, Logo } from '@/components/icons';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  signInWithRedirect,
+  signInWithPopup,
   GoogleAuthProvider,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
@@ -132,14 +132,17 @@ export default function LoginPage() {
     if (auth) {
       setIsProcessing(true);
       const provider = new GoogleAuthProvider();
-      signInWithRedirect(auth, provider).catch((error) => {
-        toast({
-          variant: 'destructive',
-          title: 'Google Sign-In Failed',
-          description: error.message,
+      signInWithPopup(auth, provider)
+        .catch((error) => {
+          toast({
+            variant: 'destructive',
+            title: 'Google Sign-In Failed',
+            description: error.message,
+          });
+        })
+        .finally(() => {
+          setIsProcessing(false);
         });
-        setIsProcessing(false);
-      });
     }
   };
 

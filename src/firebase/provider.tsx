@@ -6,6 +6,7 @@ import { Firestore } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged, getRedirectResult } from 'firebase/auth';
 import { Storage } from 'firebase/storage';
 import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
+import { useToast } from '@/hooks/use-toast';
 
 interface FirebaseProviderProps {
   children: ReactNode;
@@ -71,6 +72,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     isUserLoading: true, // Start loading until first auth event
     userError: null,
   });
+  const { toast } = useToast();
 
   // Effect to subscribe to Firebase auth state changes
   useEffect(() => {
@@ -80,9 +82,24 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     }
 
     // This handles the redirect result from an OAuth provider like Google.
-    getRedirectResult(auth).catch((error) => {
+    getRedirectResult(auth)
+      .then((result) => {
+        // This will be null if there's no redirect operation.
+        if (result) {
+            toast({
+                title: "Signed in successfully",
+                description: `Welcome, ${result.user.displayName || result.user.email}!`,
+            });
+        }
+      })
+      .catch((error) => {
         // Handle Errors here.
         console.error("Error processing redirect result:", error);
+        toast({
+            variant: "destructive",
+            title: "Sign-in failed",
+            description: "Could not complete sign-in. Please try again.",
+        });
     });
 
     const unsubscribe = onAuthStateChanged(
@@ -96,7 +113,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       }
     );
     return () => unsubscribe(); // Cleanup
-  }, [auth]); // Depends on the auth instance
+  }, [auth, toast]); // Depends on the auth instance
 
   // Memoize the context value
   const contextValue = useMemo((): FirebaseContextState => {
