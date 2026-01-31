@@ -143,23 +143,42 @@ export default function EditPropertyPage() {
     setIsSubmitting(true);
 
     try {
-      let finalImageUrl = property.imageUrl; // Start with the current image URL
+      let newImageUrl = property.imageUrl; // Keep existing image by default
 
-      const imageFile = data.imageFile?.[0];
-      if (imageFile) {
-        const uniqueFileName = `${Date.now()}-${imageFile.name}`;
+      // 1. If a new image is uploaded, handle it
+      if (data.imageFile && data.imageFile.length > 0) {
+        const file = data.imageFile[0];
+        const uniqueFileName = `${Date.now()}-${file.name}`;
         const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
-        const uploadResult = await uploadBytes(fileStorageRef, imageFile);
-        finalImageUrl = await getDownloadURL(uploadResult.ref);
+        const uploadResult = await uploadBytes(fileStorageRef, file);
+        newImageUrl = await getDownloadURL(uploadResult.ref); // Get the URL of the new image
       }
 
-      const { imageFile: _, ...formData } = data;
-      
-      const dataToUpdate = {
-        ...formData,
-        imageUrl: finalImageUrl,
+      // 2. Construct the update object explicitly for safety
+      const dataToUpdate: { [key: string]: any } = {
+        address: data.address,
+        propertyType: data.propertyType,
+        status: data.status,
+        bedrooms: data.bedrooms,
+        bathrooms: data.bathrooms,
+        notes: data.notes,
+        tenancy: data.tenancy,
+        imageUrl: newImageUrl,
+        ownerId: property.ownerId, // CRITICAL: Preserve the owner ID
       };
 
+      // Remove undefined fields from tenancy to avoid Firestore errors
+      if (dataToUpdate.tenancy) {
+        if (dataToUpdate.tenancy.monthlyRent === undefined) delete dataToUpdate.tenancy.monthlyRent;
+        if (dataToUpdate.tenancy.depositAmount === undefined) delete dataToUpdate.tenancy.depositAmount;
+        if (dataToUpdate.tenancy.depositScheme === undefined || dataToUpdate.tenancy.depositScheme === '') delete dataToUpdate.tenancy.depositScheme;
+        if (Object.keys(dataToUpdate.tenancy).length === 0) {
+          delete dataToUpdate.tenancy;
+        }
+      }
+      if (dataToUpdate.notes === undefined || dataToUpdate.notes === '') delete dataToUpdate.notes;
+
+      // 3. Perform the update
       const propertyDocRef = doc(firestore, 'properties', propertyId);
       await updateDoc(propertyDocRef, dataToUpdate);
 
