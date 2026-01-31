@@ -80,8 +80,12 @@ export default function AddPropertyPage() {
     setIsSubmitting(true);
 
     try {
+      // Deep-clone and clean the data object to remove undefined values,
+      // which Firestore doesn't handle well in nested objects.
+      const cleanData = JSON.parse(JSON.stringify(data));
+
       let imageUrl = PlaceHolderImages.find(p => p.id === 'property-placeholder')?.imageUrl || `https://picsum.photos/seed/${Math.random()}/800/500`;
-      const imageFile = data.imageFile?.[0];
+      const imageFile = data.imageFile?.[0]; // Use original data for FileList
 
       if (imageFile) {
         const uniqueFileName = `${Date.now()}-${imageFile.name}`;
@@ -90,7 +94,7 @@ export default function AddPropertyPage() {
         imageUrl = await getDownloadURL(uploadResult.ref);
       }
       
-      const { imageFile: _imageFile, addressNameNo, addressLine1, addressLine2, city, county, postcode, ...formData } = data;
+      const { imageFile: _imageFile, addressNameNo, addressLine1, addressLine2, city, county, postcode, ...formData } = cleanData;
 
       const fullAddress = [
         addressNameNo,
@@ -116,12 +120,12 @@ export default function AddPropertyPage() {
         description: 'The new property has been added to your portfolio.',
       });
       router.push('/dashboard/properties');
-    } catch (error) {
+    } catch (error: any) {
         console.error('Failed to add property', error);
         toast({
             variant: 'destructive',
             title: 'Save Failed',
-            description: 'There was an error saving the property. Please try again.',
+            description: error.message || 'There was an error saving the property. Please try again.',
         });
     } finally {
       setIsSubmitting(false);
@@ -309,15 +313,15 @@ export default function AddPropertyPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Property Image</FormLabel>
-                      {imagePreview && (
-                        <div className="mt-2 relative aspect-video w-full rounded-lg border overflow-hidden">
-                          <img
-                            src={imagePreview}
-                            alt="Image preview"
-                            className="absolute h-full w-full object-cover"
-                          />
-                        </div>
-                      )}
+                       <div className="mt-2 relative aspect-video w-full rounded-lg border overflow-hidden bg-muted">
+                          {imagePreview && (
+                            <img
+                                src={imagePreview}
+                                alt="Image preview"
+                                className="absolute h-full w-full object-cover"
+                            />
+                          )}
+                       </div>
                       <FormControl>
                         <Button
                           asChild

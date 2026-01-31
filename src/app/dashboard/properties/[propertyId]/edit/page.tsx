@@ -98,8 +98,11 @@ export default function EditPropertyPage() {
     setIsSubmitting(true);
 
     try {
+       // Deep-clone and clean the data object to remove undefined values.
+      const cleanData = JSON.parse(JSON.stringify(data));
+
       let imageUrl = property?.imageUrl; // Keep existing image by default
-      const imageFile = data.imageFile?.[0];
+      const imageFile = data.imageFile?.[0]; // Use original data for FileList
 
       if (imageFile) {
         // A new image has been uploaded
@@ -109,7 +112,7 @@ export default function EditPropertyPage() {
         imageUrl = await getDownloadURL(uploadResult.ref);
       }
       
-      const { imageFile: _, ...formData } = data;
+      const { imageFile: _, ...formData } = cleanData;
 
       const propertyDocRef = doc(firestore, 'properties', propertyId);
       await updateDoc(propertyDocRef, {
@@ -122,12 +125,12 @@ export default function EditPropertyPage() {
         description: 'The property details have been successfully updated.',
       });
       router.push('/dashboard/properties');
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to update property:', error);
       toast({
         variant: 'destructive',
         title: 'Update Failed',
-        description: 'There was an error updating the property. Please try again.',
+        description: error.message || 'There was an error updating the property. Please try again.',
       });
     } finally {
         setIsSubmitting(false);
@@ -257,11 +260,15 @@ export default function EditPropertyPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Property Image</FormLabel>
-                        {imagePreview && (
-                            <div className="mt-2 relative aspect-video w-full rounded-lg border overflow-hidden">
-                                <img src={imagePreview} alt="Current property image" className="absolute h-full w-full object-cover" />
-                            </div>
-                        )}
+                        <div className="mt-2 relative aspect-video w-full rounded-lg border overflow-hidden bg-muted">
+                          {imagePreview && (
+                            <img
+                              src={imagePreview}
+                              alt="Current property image"
+                              className="absolute h-full w-full object-cover"
+                            />
+                          )}
+                        </div>
                         <FormControl>
                            <Button asChild className="w-full cursor-pointer mt-2" variant="outline">
                               <label htmlFor="image-upload">
