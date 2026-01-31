@@ -204,7 +204,7 @@ export default function DashboardPage() {
     }, {} as Record<string, string>) ?? {}
   , [properties]);
 
-  const activeProperties = useMemo(() => properties?.filter(p => p.status !== 'Deleted') ?? [], [properties]);
+  const activeProperties = useMemo(() => properties?.filter(p => ['Vacant', 'Occupied', 'Under Maintenance'].includes(p.status)) ?? [], [properties]);
   const openMaintenanceCount = useMemo(() => maintenanceLogs?.filter(log => log.status === 'Open').length ?? 0, [maintenanceLogs]);
   const upcomingInspectionsCount = useMemo(() => inspections?.filter(insp => {
       if (!insp.scheduledDate) return false;
