@@ -94,74 +94,68 @@ export default function EditPropertyPage() {
 
   async function onSubmit(data: PropertyFormValues) {
     if (!user || !firestore || !storage || !propertyId) {
-      toast({
-        variant: 'destructive',
-        title: 'Save Failed',
-        description: 'An unexpected error occurred. Please try again.',
-      });
+      toast({ variant: 'destructive', title: 'Save Failed', description: 'An unexpected error occurred. Please try again.' });
       return;
     }
     setIsSubmitting(true);
 
     try {
-      const propertyDataToSave: { [key: string]: any } = {
-        address: data.address,
-        propertyType: data.propertyType,
-        status: data.status,
-        bedrooms: data.bedrooms,
-        bathrooms: data.bathrooms,
-      };
+        const propertyDocRef = doc(firestore, 'properties', propertyId);
+        const imageFile = data.imageFile?.[0];
 
-      if (data.notes) {
-        propertyDataToSave.notes = data.notes;
-      } else {
-        propertyDataToSave.notes = '';
-      }
+        // 1. Build the object with text-based data
+        const propertyDataToSave: { [key: string]: any } = {
+            address: data.address,
+            propertyType: data.propertyType,
+            status: data.status,
+            bedrooms: data.bedrooms,
+            bathrooms: data.bathrooms,
+            notes: data.notes || '',
+        };
 
-      const tenancyData: { [key: string]: any } = {};
-      if (data.tenancy?.monthlyRent !== undefined && !isNaN(data.tenancy.monthlyRent)) {
-        tenancyData.monthlyRent = data.tenancy.monthlyRent;
-      }
-      if (data.tenancy?.depositAmount !== undefined && !isNaN(data.tenancy.depositAmount)) {
-        tenancyData.depositAmount = data.tenancy.depositAmount;
-      }
-      if (data.tenancy?.depositScheme) {
-        tenancyData.depositScheme = data.tenancy.depositScheme;
-      }
-
-      if (Object.keys(tenancyData).length > 0) {
+        const tenancyData: { [key: string]: any } = {};
+        if (data.tenancy?.monthlyRent !== undefined && !isNaN(data.tenancy.monthlyRent)) tenancyData.monthlyRent = data.tenancy.monthlyRent;
+        if (data.tenancy?.depositAmount !== undefined && !isNaN(data.tenancy.depositAmount)) tenancyData.depositAmount = data.tenancy.depositAmount;
+        if (data.tenancy?.depositScheme) tenancyData.depositScheme = data.tenancy.depositScheme;
         propertyDataToSave.tenancy = tenancyData;
-      } else {
-        propertyDataToSave.tenancy = {};
-      }
-      
-      let imageUrl = property?.imageUrl; 
-      const imageFile = data.imageFile?.[0];
-      if (imageFile) {
-        const uniqueFileName = `${Date.now()}-${imageFile.name}`;
-        const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
-        const uploadResult = await uploadBytes(fileStorageRef, imageFile);
-        imageUrl = await getDownloadURL(uploadResult.ref);
-      }
-      propertyDataToSave.imageUrl = imageUrl;
-      
-      const propertyDocRef = doc(firestore, 'properties', propertyId);
-      await updateDoc(propertyDocRef, propertyDataToSave);
+        
+        // 2. Instantly update the text data
+        await updateDoc(propertyDocRef, propertyDataToSave);
 
-      toast({
-        title: 'Property Updated',
-        description: 'The property details have been successfully updated.',
-      });
-      router.push('/dashboard/properties');
+        // 3. Navigate away immediately
+        toast({
+            title: 'Property Updated',
+            description: imageFile ? 'Your changes have been saved. The new image is now uploading.' : 'The property details have been successfully updated.',
+        });
+        router.push('/dashboard/properties');
+
+        // 4. If there's a new image, upload it and update the doc in the background
+        if (imageFile) {
+            const uniqueFileName = `${Date.now()}-${imageFile.name}`;
+            const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
+            
+            uploadBytes(fileStorageRef, imageFile)
+                .then(uploadResult => getDownloadURL(uploadResult.ref))
+                .then(finalImageUrl => {
+                    updateDoc(propertyDocRef, { imageUrl: finalImageUrl });
+                })
+                .catch(error => {
+                    console.error("Background image upload failed:", error);
+                    toast({
+                        variant: 'destructive',
+                        title: 'Image Upload Failed',
+                        description: 'The property details were saved, but the new image could not be uploaded.'
+                    });
+                });
+        }
     } catch (error: any) {
-      console.error('Failed to update property:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Update Failed',
-        description: error.message || 'There was an error updating the property. Please try again.',
-      });
-    } finally {
-        setIsSubmitting(false);
+        console.error('Failed to update property:', error);
+        toast({
+            variant: 'destructive',
+            title: 'Update Failed',
+            description: error.message || 'There was an error updating the property. Please try again.',
+        });
+        setIsSubmitting(false); // Only set this back on initial failure
     }
   }
   

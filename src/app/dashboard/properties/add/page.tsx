@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useStorage } from '@/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, updateDoc } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Loader2, Upload } from 'lucide-react';
 import { PlaceHolderImages } from '@/lib/placeholder-images';
@@ -93,60 +93,69 @@ export default function AddPropertyPage() {
       ].filter(Boolean).join(', ');
 
     try {
-      let imageUrl = PlaceHolderImages.find(p => p.id === 'property-placeholder')?.imageUrl || `https://picsum.photos/seed/${Math.random()}/800/500`;
       const imageFile = data.imageFile?.[0];
+      const placeholderImageUrl = PlaceHolderImages.find(p => p.id === 'property-placeholder')?.imageUrl || `https://picsum.photos/seed/${Math.random()}/800/500`;
 
-      if (imageFile) {
-        const uniqueFileName = `${Date.now()}-${imageFile.name}`;
-        const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
-        const uploadResult = await uploadBytes(fileStorageRef, imageFile);
-        imageUrl = await getDownloadURL(uploadResult.ref);
-      }
-      
-      const propertyDataToSave: { [key: string]: any } = {
+      // Base property data
+      const propertyData: { [key: string]: any } = {
         address: fullAddress,
         propertyType: data.propertyType,
         status: data.status,
         bedrooms: data.bedrooms,
         bathrooms: data.bathrooms,
         ownerId: user.uid,
-        imageUrl: imageUrl,
+        imageUrl: placeholderImageUrl,
       };
+      if (data.notes) propertyData.notes = data.notes;
 
-      if (data.notes) {
-        propertyDataToSave.notes = data.notes;
-      }
-      
+      // Tenancy data
       const tenancyData: { [key: string]: any } = {};
-      if (data.tenancy?.monthlyRent !== undefined && !isNaN(data.tenancy.monthlyRent)) {
-        tenancyData.monthlyRent = data.tenancy.monthlyRent;
-      }
-      if (data.tenancy?.depositAmount !== undefined && !isNaN(data.tenancy.depositAmount)) {
-        tenancyData.depositAmount = data.tenancy.depositAmount;
-      }
-      if (data.tenancy?.depositScheme) {
-        tenancyData.depositScheme = data.tenancy.depositScheme;
-      }
+      if (data.tenancy?.monthlyRent !== undefined && !isNaN(data.tenancy.monthlyRent)) tenancyData.monthlyRent = data.tenancy.monthlyRent;
+      if (data.tenancy?.depositAmount !== undefined && !isNaN(data.tenancy.depositAmount)) tenancyData.depositAmount = data.tenancy.depositAmount;
+      if (data.tenancy?.depositScheme) tenancyData.depositScheme = data.tenancy.depositScheme;
+      if (Object.keys(tenancyData).length > 0) propertyData.tenancy = tenancyData;
 
-      if (Object.keys(tenancyData).length > 0) {
-        propertyDataToSave.tenancy = tenancyData;
-      }
 
-      await addDoc(collection(firestore, 'properties'), propertyDataToSave);
+      // 1. Instantly create the document with a placeholder image
+      const docRef = await addDoc(collection(firestore, 'properties'), propertyData);
       
+      // 2. Navigate away immediately, making the UI feel fast
       toast({
         title: 'Property Saved',
-        description: 'The new property has been added to your portfolio.',
+        description: imageFile ? 'Your property has been added. The image is now uploading.' : 'The new property has been added to your portfolio.',
       });
       router.push('/dashboard/properties');
+
+      // 3. If there is an image, upload it and update the document in the background
+      if (imageFile) {
+        const uniqueFileName = `${Date.now()}-${imageFile.name}`;
+        const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
+        
+        uploadBytes(fileStorageRef, imageFile)
+          .then(uploadResult => getDownloadURL(uploadResult.ref))
+          .then(finalImageUrl => {
+            updateDoc(docRef, { imageUrl: finalImageUrl });
+            // You can optionally add a success toast for the image upload here
+          })
+          .catch(error => {
+            console.error("Background image upload failed:", error);
+            // Optionally notify the user that the image part failed
+            toast({
+                variant: 'destructive',
+                title: 'Image Upload Failed',
+                description: 'The property details were saved, but the image could not be uploaded.'
+            })
+          });
+      }
     } catch (error: any) {
+        // This will only catch errors from the initial, fast addDoc
         console.error('Failed to add property', error);
         toast({
             variant: 'destructive',
             title: 'Save Failed',
             description: error.message || 'There was an error saving the property. Please try again.',
         });
-        setIsSubmitting(false);
+        setIsSubmitting(false); // Only set this back on initial failure
     }
   }
 
