@@ -136,6 +136,7 @@ export default function EditPropertyPage() {
       const dataToSave = {
         ...formData,
         imageUrl: finalImageUrl,
+        ownerId: property.ownerId, // Explicitly preserve the owner ID
       };
 
       await setDoc(propertyDocRef, dataToSave, { merge: true });
@@ -153,7 +154,8 @@ export default function EditPropertyPage() {
         title: 'Update Failed',
         description: error.message || 'There was an error updating the property. Please try again.',
       });
-      setIsSubmitting(false);
+    } finally {
+        setIsSubmitting(false);
     }
   }
   
