@@ -75,7 +75,17 @@ export default function EditPropertyPage() {
 
   useEffect(() => {
     if (property) {
-      form.reset(property);
+      form.reset({
+        ...property,
+        bedrooms: property.bedrooms ?? 0,
+        bathrooms: property.bathrooms ?? 0,
+        notes: property.notes ?? '',
+        tenancy: {
+            monthlyRent: property.tenancy?.monthlyRent ?? undefined,
+            depositAmount: property.tenancy?.depositAmount ?? undefined,
+            depositScheme: property.tenancy?.depositScheme ?? '',
+        }
+      });
       if (property.imageUrl) {
         setImagePreview(property.imageUrl);
       }
@@ -115,21 +125,14 @@ export default function EditPropertyPage() {
         bedrooms: data.bedrooms,
         bathrooms: data.bathrooms,
         imageUrl,
+        notes: data.notes || '',
       };
 
-      if (data.notes) {
-        updatedData.notes = data.notes;
-      }
-
-      if (data.tenancy) {
-        const tenancyData: { [key: string]: any } = {};
-        if (data.tenancy.monthlyRent !== undefined) tenancyData.monthlyRent = data.tenancy.monthlyRent;
-        if (data.tenancy.depositAmount !== undefined) tenancyData.depositAmount = data.tenancy.depositAmount;
-        if (data.tenancy.depositScheme) tenancyData.depositScheme = data.tenancy.depositScheme;
-        updatedData.tenancy = tenancyData;
-      } else {
-        updatedData.tenancy = {}; // Clear tenancy info if form section is empty
-      }
+      const tenancyData: { [key: string]: any } = {};
+      if (data.tenancy?.monthlyRent !== undefined && data.tenancy.monthlyRent !== null) tenancyData.monthlyRent = data.tenancy.monthlyRent;
+      if (data.tenancy?.depositAmount !== undefined && data.tenancy.depositAmount !== null) tenancyData.depositAmount = data.tenancy.depositAmount;
+      if (data.tenancy?.depositScheme) tenancyData.depositScheme = data.tenancy.depositScheme;
+      updatedData.tenancy = tenancyData;
 
 
       const propertyDocRef = doc(firestore, 'properties', propertyId);
@@ -277,7 +280,7 @@ export default function EditPropertyPage() {
                         <FormLabel>Property Image</FormLabel>
                         <div className="mt-2 h-64 w-full relative rounded-lg border bg-muted overflow-hidden">
                             {imagePreview ? (
-                                <img src={imagePreview} alt="Image Preview" className="h-full w-full object-cover" />
+                                <img src={imagePreview} alt="Image Preview" className="h-full w-full object-contain" />
                             ) : (
                                 <div className="flex items-center justify-center h-full text-muted-foreground">Image Preview</div>
                             )}

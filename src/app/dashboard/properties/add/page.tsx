@@ -63,6 +63,12 @@ export default function AddPropertyPage() {
       city: '',
       county: '',
       postcode: '',
+      notes: '',
+      tenancy: {
+        monthlyRent: undefined,
+        depositAmount: undefined,
+        depositScheme: '',
+      }
     },
   });
 
@@ -98,7 +104,6 @@ export default function AddPropertyPage() {
         data.postcode,
       ].filter(Boolean).join(', ');
 
-      // Manually construct the object to be saved to avoid sending `undefined` values
       const newProperty: { [key: string]: any } = {
         address: fullAddress,
         propertyType: data.propertyType,
@@ -107,20 +112,16 @@ export default function AddPropertyPage() {
         bathrooms: data.bathrooms,
         ownerId: user.uid,
         imageUrl,
+        notes: data.notes || '',
       };
 
-      if (data.notes) {
-        newProperty.notes = data.notes;
-      }
-
-      if (data.tenancy) {
-        const tenancyData: { [key: string]: any } = {};
-        if (data.tenancy.monthlyRent !== undefined) tenancyData.monthlyRent = data.tenancy.monthlyRent;
-        if (data.tenancy.depositAmount !== undefined) tenancyData.depositAmount = data.tenancy.depositAmount;
-        if (data.tenancy.depositScheme) tenancyData.depositScheme = data.tenancy.depositScheme;
-        if (Object.keys(tenancyData).length > 0) {
-            newProperty.tenancy = tenancyData;
-        }
+      const tenancyData: { [key: string]: any } = {};
+      if (data.tenancy?.monthlyRent !== undefined && data.tenancy.monthlyRent !== null) tenancyData.monthlyRent = data.tenancy.monthlyRent;
+      if (data.tenancy?.depositAmount !== undefined && data.tenancy.depositAmount !== null) tenancyData.depositAmount = data.tenancy.depositAmount;
+      if (data.tenancy?.depositScheme) tenancyData.depositScheme = data.tenancy.depositScheme;
+      
+      if (Object.keys(tenancyData).length > 0) {
+        newProperty.tenancy = tenancyData;
       }
 
       await addDocumentNonBlocking(collection(firestore, 'properties'), newProperty);
@@ -325,7 +326,7 @@ export default function AddPropertyPage() {
                       <FormLabel>Property Image</FormLabel>
                        <div className="mt-2 h-64 w-full relative rounded-lg border bg-muted overflow-hidden">
                           {imagePreview ? (
-                            <img src={imagePreview} alt="Image Preview" className="h-full w-full object-cover" />
+                            <img src={imagePreview} alt="Image Preview" className="h-full w-full object-contain" />
                           ) : (
                             <div className="flex items-center justify-center h-full text-muted-foreground">Image Preview</div>
                           )}
@@ -375,7 +376,7 @@ export default function AddPropertyPage() {
                         <FormItem>
                         <FormLabel>Monthly Rent (£)</FormLabel>
                         <FormControl>
-                            <Input type="number" placeholder="1200" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} value={field.value ?? ''} />
+                            <Input type="number" placeholder="0" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -388,7 +389,7 @@ export default function AddPropertyPage() {
                         <FormItem>
                         <FormLabel>Deposit Amount (£)</FormLabel>
                         <FormControl>
-                            <Input type="number" placeholder="1500" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} value={field.value ?? ''} />
+                            <Input type="number" placeholder="0" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
