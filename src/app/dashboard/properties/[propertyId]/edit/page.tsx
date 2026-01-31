@@ -129,8 +129,8 @@ export default function EditPropertyPage() {
       };
 
       const tenancyData: { [key: string]: any } = {};
-      if (data.tenancy?.monthlyRent !== undefined && data.tenancy.monthlyRent !== null) tenancyData.monthlyRent = data.tenancy.monthlyRent;
-      if (data.tenancy?.depositAmount !== undefined && data.tenancy.depositAmount !== null) tenancyData.depositAmount = data.tenancy.depositAmount;
+      if (data.tenancy?.monthlyRent !== undefined && data.tenancy.monthlyRent !== null && !isNaN(data.tenancy.monthlyRent)) tenancyData.monthlyRent = data.tenancy.monthlyRent;
+      if (data.tenancy?.depositAmount !== undefined && data.tenancy.depositAmount !== null && !isNaN(data.tenancy.depositAmount)) tenancyData.depositAmount = data.tenancy.depositAmount;
       if (data.tenancy?.depositScheme) tenancyData.depositScheme = data.tenancy.depositScheme;
       updatedData.tenancy = tenancyData;
 
@@ -278,12 +278,14 @@ export default function EditPropertyPage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Property Image</FormLabel>
-                        <div className="mt-2 h-64 w-full relative rounded-lg border bg-muted overflow-hidden">
-                            {imagePreview ? (
-                                <img src={imagePreview} alt="Image Preview" className="h-full w-full object-contain" />
-                            ) : (
-                                <div className="flex items-center justify-center h-full text-muted-foreground">Image Preview</div>
-                            )}
+                        <div className="mt-2">
+                          {imagePreview ? (
+                              <img src={imagePreview} alt="Image Preview" className="h-64 w-full rounded-lg border bg-muted object-contain" />
+                          ) : (
+                              <div className="flex h-64 w-full items-center justify-center rounded-lg border border-dashed bg-muted text-muted-foreground">
+                                  No image provided
+                              </div>
+                          )}
                         </div>
                         <FormControl>
                            <Button asChild className="w-full cursor-pointer mt-2" variant="outline">
