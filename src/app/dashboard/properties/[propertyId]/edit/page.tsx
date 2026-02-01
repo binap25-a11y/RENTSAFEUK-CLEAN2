@@ -132,36 +132,27 @@ export default function EditPropertyPage() {
     setIsSubmitting(true);
 
     try {
-        // Start by assuming we will use the existing image URL.
         let finalImageUrl = property.imageUrl;
 
-        // If a new file was uploaded, upload it and get its new URL.
         if (data.imageFile && data.imageFile.length > 0) {
             const file = data.imageFile[0];
             const uniqueFileName = `${Date.now()}-${file.name}`;
             const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
             
             await uploadBytes(fileStorageRef, file);
-            // This new URL will replace the old one.
             finalImageUrl = await getDownloadURL(fileStorageRef);
         }
 
-        // Construct the final, complete payload for Firestore with the correct imageUrl.
-        // This ensures all fields are explicitly defined and no data is accidentally lost.
-        const updatePayload = {
-            ownerId: property.ownerId, // Always preserve ownerId
-            address: data.address,
-            propertyType: data.propertyType,
-            status: data.status,
-            bedrooms: data.bedrooms,
-            bathrooms: data.bathrooms,
-            notes: data.notes || '',
-            tenancy: data.tenancy || {},
-            imageUrl: finalImageUrl || '', // Use the determined image URL, fallback to empty string
-        };
+        // Create a clean data object for Firestore, excluding the imageFile field
+        const { imageFile, ...dataToSave } = data;
 
         const propertyDocRef = doc(firestore, 'properties', propertyId);
-        await updateDoc(propertyDocRef, updatePayload);
+        
+        await updateDoc(propertyDocRef, {
+            ...dataToSave,
+            ownerId: property.ownerId, // Explicitly preserve the original ownerId
+            imageUrl: finalImageUrl, // Use the correctly determined image URL
+        });
 
         toast({
             title: 'Property Updated',
