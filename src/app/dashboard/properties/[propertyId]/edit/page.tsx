@@ -150,6 +150,7 @@ export default function EditPropertyPage() {
         title: 'Property Updated',
         description: 'The property details have been successfully updated.',
       });
+      
       // Use router.push and router.refresh for reliable navigation and data refetching
       router.push('/dashboard/properties');
       router.refresh();
@@ -265,3 +266,5 @@ export default function EditPropertyPage() {
     </Card>
   );
 }
+
+    
