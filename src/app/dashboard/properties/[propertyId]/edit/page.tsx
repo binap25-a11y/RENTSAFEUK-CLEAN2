@@ -83,15 +83,13 @@ export default function EditPropertyPage() {
         },
     });
 
-    const { reset } = form;
-
     useEffect(() => {
-        // Wait for services to be available
+        // Wait for services and user to be available
         if (isUserLoading || !firestore) {
             return;
         }
 
-        // The layout should redirect if not logged in, but this is a safeguard.
+        // If auth check is done and there's no user, stop.
         if (!user) {
             setError("Authentication error. Please log in again.");
             setPageIsLoading(false);
@@ -135,7 +133,7 @@ export default function EditPropertyPage() {
                         depositScheme: propertyData.tenancy?.depositScheme ?? '',
                     },
                 };
-                reset(sanitizedData);
+                form.reset(sanitizedData);
             } catch (e: any) {
                 console.error("Failed to load property:", e);
                 setError("An error occurred while loading the property data.");
@@ -146,7 +144,7 @@ export default function EditPropertyPage() {
 
         fetchAndSetProperty();
 
-    }, [isUserLoading, user, firestore, propertyId, reset]);
+    }, [isUserLoading, user, firestore, propertyId, form]);
 
     async function onSubmit(data: PropertyFormValues) {
         if (!user || !firestore) return;
