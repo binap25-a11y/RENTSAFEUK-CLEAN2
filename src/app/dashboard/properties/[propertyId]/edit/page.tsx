@@ -49,7 +49,7 @@ export default function EditPropertyPage() {
     const { user } = useUser();
     const firestore = useFirestore();
     
-    const [isLoadingData, setIsLoadingData] = useState(true);
+    const [isLoading, setIsLoading] = useState(true);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [error, setError] = useState<string | null>(null);
 
@@ -66,11 +66,12 @@ export default function EditPropertyPage() {
 
     useEffect(() => {
         if (!firestore || !propertyId || !user) {
+            setIsLoading(false);
             return;
         }
 
-        const fetchProperty = async () => {
-            setIsLoadingData(true);
+        const fetchAndSetProperty = async () => {
+            setIsLoading(true);
             try {
                 const propertyRef = doc(firestore, 'properties', propertyId);
                 const propertySnap = await getDoc(propertyRef);
@@ -109,12 +110,12 @@ export default function EditPropertyPage() {
                 console.error("Error fetching property: ", e);
                 setError(e.message || "An unexpected error occurred while fetching data.");
             } finally {
-                setIsLoadingData(false);
+                setIsLoading(false);
             }
         };
 
-        fetchProperty();
-    }, [firestore, propertyId, user, form.reset]);
+        fetchAndSetProperty();
+    }, [firestore, propertyId, user, form]);
 
     async function onSubmit(data: PropertyFormValues) {
         if (!user || !firestore) {
@@ -144,7 +145,7 @@ export default function EditPropertyPage() {
         }
     }
     
-    if (isLoadingData) {
+    if (isLoading) {
         return (
             <div className="flex h-64 items-center justify-center">
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
