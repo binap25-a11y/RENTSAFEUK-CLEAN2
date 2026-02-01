@@ -119,7 +119,7 @@ export default function PropertiesPage() {
     }
   };
   
-  const defaultPlaceholderUrl = PlaceHolderImages.find(p => p.id === 'property-placeholder')?.imageUrl || 'https://placehold.co/400x250';
+  const defaultPlaceholderUrl = PlaceHolderImages.find(p => p.id === 'property-placeholder')?.imageUrl || 'https://picsum.photos/seed/placeholder/400/250';
 
   return (
     <>
