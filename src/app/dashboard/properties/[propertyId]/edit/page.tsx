@@ -63,6 +63,8 @@ export default function EditPropertyPage() {
             tenancy: { monthlyRent: undefined, depositAmount: undefined, depositScheme: '' }
         }
     });
+    
+    const { reset } = form;
 
     useEffect(() => {
         if (isUserLoading || !firestore || !user || !propertyId) {
@@ -109,7 +111,7 @@ export default function EditPropertyPage() {
                     },
                 };
                 
-                form.reset(formData);
+                reset(formData);
                 
             } catch (e) {
                 console.error("Error fetching property:", e);
@@ -121,7 +123,7 @@ export default function EditPropertyPage() {
 
         fetchAndSetData();
         
-    }, [firestore, propertyId, user, isUserLoading, form]);
+    }, [firestore, propertyId, user, isUserLoading, reset]);
 
 
     async function onSubmit(data: PropertyFormValues) {
