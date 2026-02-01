@@ -5,8 +5,8 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { useEffect, useState, useMemo } from 'react';
-import { doc, updateDoc, onSnapshot, DocumentData, Timestamp } from 'firebase/firestore';
+import { useEffect, useState } from 'react';
+import { doc, updateDoc } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { Loader2, AlertTriangle } from 'lucide-react';
 
 // Zod schema for form validation
@@ -40,19 +40,20 @@ const propertySchema = z.object({
 
 type PropertyFormValues = z.infer<typeof propertySchema>;
 
+// This is the Firestore data structure. Note that it might have missing fields.
 interface PropertyData {
   ownerId: string;
-  address: {
+  address?: {
     nameOrNumber?: string;
-    street: string;
-    city: string;
+    street?: string;
+    city?: string;
     county?: string;
-    postcode: string;
+    postcode?: string;
   };
-  propertyType: string;
-  status: string;
-  bedrooms: number;
-  bathrooms: number;
+  propertyType?: string;
+  status?: string;
+  bedrooms?: number;
+  bathrooms?: number;
   notes?: string;
   tenancy?: {
     monthlyRent?: number;
@@ -68,14 +69,17 @@ export default function EditPropertyPage() {
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
 
-    const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const form = useForm<PropertyFormValues>({
         resolver: zodResolver(propertySchema),
-        defaultValues: {
+        defaultValues: { // Start with complete default values
             address: { nameOrNumber: '', street: '', city: '', county: '', postcode: '' },
+            propertyType: '',
+            status: 'Vacant',
+            bedrooms: 0,
+            bathrooms: 0,
             notes: '',
             tenancy: { monthlyRent: undefined, depositAmount: undefined, depositScheme: '' },
         }
@@ -83,81 +87,64 @@ export default function EditPropertyPage() {
 
     const { reset } = form;
 
-    // This useEffect hook is now self-contained and handles the entire data loading and form population process.
+    // The key to stability: a memoized document reference.
+    // This reference is created only once and reused, preventing the infinite loop.
+    const propertyDocRef = useMemoFirebase(() => {
+        if (!firestore || !propertyId) return null;
+        return doc(firestore, 'properties', propertyId);
+    }, [firestore, propertyId]);
+
+    // useDoc hook subscribes to the stable reference.
+    const { data: propertyData, isLoading: isPropertyLoading, error: propertyError } = useDoc<PropertyData>(propertyDocRef);
+    
+    // This effect runs ONLY when the data (or user/reset) actually changes.
     useEffect(() => {
-        if (!user || !firestore || !propertyId) {
-            // Wait for firebase services and user to be available.
-            return;
-        }
-
-        const docRef = doc(firestore, 'properties', propertyId);
-
-        const unsubscribe = onSnapshot(docRef, 
-            (snapshot) => {
-                if (!snapshot.exists()) {
-                    setError("Property not found.");
-                    setIsLoading(false);
-                    return;
-                }
-                
-                const propertyData = snapshot.data() as PropertyData;
-
-                if (propertyData.ownerId !== user.uid) {
-                    setError("You do not have permission to view this property.");
-                    setIsLoading(false);
-                    return;
-                }
-
-                // Safely populate the form with data from Firestore
-                const safeDefaults: PropertyFormValues = {
-                    address: {
-                        nameOrNumber: propertyData.address?.nameOrNumber ?? '',
-                        street: propertyData.address?.street ?? '',
-                        city: propertyData.address?.city ?? '',
-                        county: propertyData.address?.county ?? '',
-                        postcode: propertyData.address?.postcode ?? '',
-                    },
-                    propertyType: propertyData.propertyType ?? '',
-                    status: propertyData.status ?? 'Vacant',
-                    bedrooms: propertyData.bedrooms ?? 0,
-                    bathrooms: propertyData.bathrooms ?? 0,
-                    notes: propertyData.notes ?? '',
-                    tenancy: {
-                        monthlyRent: propertyData.tenancy?.monthlyRent,
-                        depositAmount: propertyData.tenancy?.depositAmount,
-                        depositScheme: propertyData.tenancy?.depositScheme ?? '',
-                    },
-                };
-                reset(safeDefaults);
-                setError(null);
-                setIsLoading(false);
-            },
-            (err) => {
-                console.error("Firestore onSnapshot error:", err);
-                setError("Failed to load property data. You may not have permission.");
-                setIsLoading(false);
+        if (propertyError) {
+            setError(propertyError.message);
+        } else if (propertyData) {
+            // Check for permissions
+            if (user && propertyData.ownerId !== user.uid) {
+                setError("You do not have permission to view this property.");
+                return;
             }
-        );
 
-        // Cleanup subscription on unmount
-        return () => unsubscribe();
-    }, [firestore, propertyId, user, reset]); // Dependencies are stable
+            // Sanitize the data from Firestore to ensure it has all required fields for the form.
+            const sanitizedData: PropertyFormValues = {
+                address: {
+                    nameOrNumber: propertyData.address?.nameOrNumber ?? '',
+                    street: propertyData.address?.street ?? '',
+                    city: propertyData.address?.city ?? '',
+                    county: propertyData.address?.county ?? '',
+                    postcode: propertyData.address?.postcode ?? '',
+                },
+                propertyType: propertyData.propertyType ?? '',
+                status: propertyData.status ?? 'Vacant',
+                bedrooms: propertyData.bedrooms ?? 0,
+                bathrooms: propertyData.bathrooms ?? 0,
+                notes: propertyData.notes ?? '',
+                tenancy: {
+                    monthlyRent: propertyData.tenancy?.monthlyRent,
+                    depositAmount: propertyData.tenancy?.depositAmount,
+                    depositScheme: propertyData.tenancy?.depositScheme ?? '',
+                },
+            };
+            
+            // Safely populate the form with the sanitized data.
+            reset(sanitizedData);
+        }
+    }, [propertyData, propertyError, user, reset]);
+    
 
     async function onSubmit(data: PropertyFormValues) {
-        if (!user || !firestore) {
+        if (!user || !firestore || !propertyDocRef) {
             toast({ variant: 'destructive', title: 'Save Failed', description: 'Authentication or database service is missing.' });
             return;
         }
 
         setIsSubmitting(true);
-        const propertyDocRef = doc(firestore, 'properties', propertyId);
-
         try {
             await updateDoc(propertyDocRef, data);
-            toast({
-                title: 'Property Updated',
-                description: 'The property details have been successfully updated.',
-            });
+            toast({ title: 'Property Updated', description: 'The property details have been successfully updated.' });
             router.push('/dashboard/properties');
         } catch (error: any) {
             console.error('Failed to update property', error);
@@ -167,8 +154,9 @@ export default function EditPropertyPage() {
         }
     }
     
-    // Render loading state
-    if (isLoading || isUserLoading) {
+    const isLoading = isPropertyLoading || isUserLoading;
+
+    if (isLoading) {
         return (
             <div className="flex h-64 items-center justify-center">
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -176,7 +164,6 @@ export default function EditPropertyPage() {
         );
     }
     
-    // Render error state
     if (error) {
         return (
             <Card className="max-w-2xl mx-auto">
@@ -187,6 +174,24 @@ export default function EditPropertyPage() {
                 </CardHeader>
                 <CardContent>
                     <p>{error}</p>
+                    <Button asChild variant="link" className="mt-4 px-0">
+                        <Link href="/dashboard/properties">Return to Properties</Link>
+                    </Button>
+                </CardContent>
+            </Card>
+        );
+    }
+    
+    if (!propertyData && !isLoading) {
+        return (
+             <Card className="max-w-2xl mx-auto">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-destructive">
+                        <AlertTriangle /> Property Not Found
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p>The requested property could not be found.</p>
                     <Button asChild variant="link" className="mt-4 px-0">
                         <Link href="/dashboard/properties">Return to Properties</Link>
                     </Button>
@@ -264,4 +269,3 @@ export default function EditPropertyPage() {
         </Card>
     );
 }
-    
