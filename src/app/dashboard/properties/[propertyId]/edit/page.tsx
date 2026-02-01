@@ -56,6 +56,25 @@ export default function EditPropertyPage() {
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
+    defaultValues: {
+        address: {
+            nameOrNumber: '',
+            street: '',
+            city: '',
+            county: '',
+            postcode: '',
+        },
+        propertyType: '',
+        status: '',
+        bedrooms: 0,
+        bathrooms: 0,
+        notes: '',
+        tenancy: {
+            monthlyRent: undefined,
+            depositAmount: undefined,
+            depositScheme: '',
+        },
+    }
   });
 
   const propertyDocRef = useMemoFirebase(() => {
@@ -87,7 +106,7 @@ export default function EditPropertyPage() {
         },
       });
     }
-  }, [propertyData, form]);
+  }, [propertyData, form.reset]);
 
   async function onSubmit(data: PropertyFormValues) {
     if (!user || !firestore || !propertyId) {
@@ -95,7 +114,6 @@ export default function EditPropertyPage() {
       return;
     }
     
-    // Check for ownerId on the original data to ensure permission
     if (propertyData?.ownerId !== user.uid) {
         toast({ variant: 'destructive', title: 'Permission Denied', description: 'You do not have permission to edit this property.' });
         return;
@@ -142,7 +160,7 @@ export default function EditPropertyPage() {
     );
   }
 
-  if (!propertyData && !isLoading) {
+  if (!propertyData) {
     return (
         <div className="text-center py-10">
             <p>Property not found.</p>
