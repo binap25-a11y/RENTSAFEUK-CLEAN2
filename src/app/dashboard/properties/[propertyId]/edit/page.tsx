@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -134,7 +134,7 @@ export default function EditPropertyPage() {
         };
 
         const propertyDocRef = doc(firestore, 'properties', propertyId);
-        await updateDoc(propertyDocRef, dataToUpdate);
+        await setDoc(propertyDocRef, dataToUpdate, { merge: true });
 
         toast({
             title: 'Property Updated',
