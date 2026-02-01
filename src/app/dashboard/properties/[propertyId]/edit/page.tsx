@@ -91,7 +91,7 @@ export default function EditPropertyPage() {
             return;
         }
 
-        // The layout should redirect, but this is a safeguard
+        // The layout should redirect if not logged in, but this is a safeguard.
         if (!user) {
             setError("Authentication error. Please log in again.");
             setPageIsLoading(false);
@@ -110,7 +110,7 @@ export default function EditPropertyPage() {
 
                 const propertyData = propertySnap.data() as PropertyData;
                 
-                // This is a critical authentication check
+                // This is a critical authorization check.
                 if (propertyData.ownerId !== user.uid) {
                     setError("You do not have permission to edit this property.");
                     return;
