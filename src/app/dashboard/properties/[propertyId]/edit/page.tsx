@@ -77,6 +77,8 @@ export default function EditPropertyPage() {
     const form = useForm<PropertyFormValues>({
         resolver: zodResolver(propertySchema),
     });
+    
+    const { reset } = form;
 
     useEffect(() => {
         if (isUserLoading || !firestore || !user) {
@@ -91,8 +93,14 @@ export default function EditPropertyPage() {
 
         const propertyDocRef = doc(firestore, 'properties', propertyId);
 
-        getDoc(propertyDocRef)
-            .then(docSnap => {
+        let isMounted = true;
+
+        const fetchProperty = async () => {
+            try {
+                const docSnap = await getDoc(propertyDocRef);
+
+                if (!isMounted) return;
+
                 if (!docSnap.exists()) {
                     setError("Property not found.");
                     return;
@@ -124,18 +132,27 @@ export default function EditPropertyPage() {
                         depositScheme: propertyData.tenancy?.depositScheme ?? '',
                     },
                 };
-                form.reset(sanitizedData);
+                reset(sanitizedData);
 
-            })
-            .catch(err => {
+            } catch (err) {
                 console.error("Error fetching property:", err);
-                setError("Failed to load property data.");
-            })
-            .finally(() => {
-                setIsLoading(false);
-            });
+                if (isMounted) {
+                    setError("Failed to load property data.");
+                }
+            } finally {
+                if (isMounted) {
+                    setIsLoading(false);
+                }
+            }
+        };
 
-    }, [isUserLoading, firestore, user, propertyId, form]);
+        fetchProperty();
+
+        return () => {
+            isMounted = false;
+        };
+
+    }, [isUserLoading, firestore, user, propertyId, reset]);
 
     async function onSubmit(data: PropertyFormValues) {
         if (!user || !firestore) return;
