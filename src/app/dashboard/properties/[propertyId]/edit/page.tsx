@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { doc, setDoc, getDoc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -124,27 +124,9 @@ export default function EditPropertyPage() {
     const propertyDocRef = doc(firestore, 'properties', propertyId);
 
     try {
-        // 1. Get the most recent version of the document directly before writing.
-        const docSnap = await getDoc(propertyDocRef);
-
-        if (!docSnap.exists()) {
-            throw new Error("Property does not exist anymore.");
-        }
-
-        // 2. Get the original data, which is guaranteed to have the ownerId.
-        const originalData = docSnap.data() as Property;
-        
-        // 3. Create the new object for writing. Start with original data.
-        const dataToUpdate = {
-            ...originalData,
-            ...data // Overwrite original data with new form data.
-        };
-        
-        // 4. Ensure ownerId is correct, just in case.
-        dataToUpdate.ownerId = originalData.ownerId; 
-        
-        // 5. Perform a full overwrite with the merged data.
-        await setDoc(propertyDocRef, dataToUpdate);
+        // updateDoc will only change the fields present in 'data'
+        // and will not touch other fields like ownerId.
+        await updateDoc(propertyDocRef, data);
 
         toast({
             title: 'Property Updated',
