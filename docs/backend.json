@@ -1,5 +1,30 @@
 {
   "entities": {
+    "User": {
+      "title": "User Profile",
+      "type": "object",
+      "description": "Represents a user's profile data stored in Firestore.",
+      "properties": {
+        "email": {
+          "type": "string",
+          "format": "email",
+          "description": "The user's email address."
+        },
+        "displayName": {
+          "type": "string",
+          "description": "The user's display name."
+        },
+        "createdAt": {
+          "type": "string",
+          "format": "date-time",
+          "description": "The timestamp when the user account was created."
+        }
+      },
+      "required": [
+        "email",
+        "createdAt"
+      ]
+    },
     "Property": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Property",
@@ -787,3 +812,5 @@
     "reasoning": "The Firestore structure is designed to manage rental properties, tenants, maintenance logs, inspections, and documents. The top-level collections are `properties`, `tenants`, `contractors` and `users/{userId}`. The subcollections `maintenanceLogs`, `inspections`, and `documents` are nested under each `property` to ensure data locality and facilitate querying related information. This structure leverages path-based ownership for user-specific data (e.g., properties owned by a user), which simplifies security rules. The design prioritizes Authorization Independence (CRITICAL) by avoiding hierarchical authorization dependencies (`get()`).  All collections are designed to support QAPs, as listing operations will be secured by path-based rules and potentially by filtering on denormalized fields, ensuring that users can only access data they are authorized to view."
   }
 }
+
+    
