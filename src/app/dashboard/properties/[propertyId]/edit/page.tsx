@@ -134,33 +134,28 @@ export default function EditPropertyPage() {
     try {
         const { imageFile, ...formData } = data;
 
-        // Start building the data object for Firestore, ensuring we preserve critical fields.
-        const updatedData: Omit<Property, 'id'> = {
-            ownerId: property.ownerId, // CRITICAL: Preserve the original owner ID.
-            address: formData.address,
-            propertyType: formData.propertyType,
-            status: formData.status,
-            bedrooms: formData.bedrooms,
-            bathrooms: formData.bathrooms,
-            notes: formData.notes ?? '',
-            tenancy: formData.tenancy,
-            imageUrl: property.imageUrl, // Start with the original image URL. It will be overwritten if a new one is uploaded.
+        // Prepare the base update data, EXCLUDING the imageUrl for now.
+        // We explicitly include ownerId to prevent it from being removed.
+        const updatePayload: { [key: string]: any } = {
+            ...formData,
+            ownerId: property.ownerId, 
         };
 
-        // If a new file was uploaded, upload it and update the imageUrl in our data object.
+        // Handle the image separately.
+        // If a new file was uploaded, upload it and add the new URL to the payload.
         if (imageFile && imageFile.length > 0) {
             const file = imageFile[0];
             const uniqueFileName = `${Date.now()}-${file.name}`;
             const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
             
             await uploadBytes(fileStorageRef, file);
-            const newImageUrl = await getDownloadURL(fileStorageRef);
-            updatedData.imageUrl = newImageUrl; // Overwrite with the new URL
+            updatePayload.imageUrl = await getDownloadURL(fileStorageRef);
         }
+        // IMPORTANT: If no new file is uploaded, we do NOT add `imageUrl` to the `updatePayload`.
+        // This means Firestore will not touch the existing `imageUrl` field, preserving it correctly.
 
-        // Now, update the document with our cleanly constructed `updatedData` object.
         const propertyDocRef = doc(firestore, 'properties', propertyId);
-        await updateDoc(propertyDocRef, updatedData);
+        await updateDoc(propertyDocRef, updatePayload);
 
         toast({
             title: 'Property Updated',
