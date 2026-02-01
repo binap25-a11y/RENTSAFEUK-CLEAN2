@@ -34,7 +34,8 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Loader2, Eye, EyeOff } from 'lucide-react';
+import { Loader2, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -53,6 +54,7 @@ export default function LoginPage() {
   const [mode, setMode] = useState<AuthMode>('login');
   const [isProcessing, setIsProcessing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);
+  const [authError, setAuthError] = useState<string | null>(null);
 
   const form = useForm<FormValues>({
     resolver: zodResolver(formSchema),
@@ -71,6 +73,7 @@ export default function LoginPage() {
   const handleAuthAction = async (data: FormValues) => {
     if (!auth) return;
     setIsProcessing(true);
+    setAuthError(null);
     try {
       if (mode === 'signup') {
         await createUserWithEmailAndPassword(auth, data.email, data.password);
@@ -79,11 +82,15 @@ export default function LoginPage() {
       }
       // The useEffect will handle the redirect on user state change
     } catch (error: any) {
-      toast({
-        variant: 'destructive',
-        title: `Failed to ${mode}`,
-        description: error.message,
-      });
+        if (mode === 'login' && (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential')) {
+            setAuthError('Invalid email or password. Please try again.');
+        } else {
+            toast({
+                variant: 'destructive',
+                title: `Failed to ${mode}`,
+                description: error.message,
+            });
+        }
     } finally {
       setIsProcessing(false);
     }
@@ -95,11 +102,6 @@ export default function LoginPage() {
       form.setError('email', {
         type: 'manual',
         message: 'Please enter your email to reset the password.',
-      });
-      toast({
-        variant: 'destructive',
-        title: 'Email required',
-        description: 'Please enter your email address to reset your password.',
       });
       return;
     }
@@ -141,6 +143,12 @@ export default function LoginPage() {
     }
   };
 
+  const toggleMode = (newMode: AuthMode) => {
+    setMode(newMode);
+    setAuthError(null);
+    form.reset();
+  }
+
   if (isUserLoading || user) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
@@ -162,6 +170,13 @@ export default function LoginPage() {
             </CardDescription>
           </CardHeader>
           <CardContent>
+            {authError && (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Login Failed</AlertTitle>
+                <AlertDescription>{authError}</AlertDescription>
+              </Alert>
+            )}
             <Form {...form}>
               <form onSubmit={form.handleSubmit(handleAuthAction)} className="space-y-4">
                 <FormField
@@ -253,14 +268,14 @@ export default function LoginPage() {
               {mode === 'login' ? (
                 <>
                   Don&apos;t have an account?{' '}
-                  <Button variant="link" className="p-0 h-auto" onClick={() => setMode('signup')}>
+                  <Button variant="link" className="p-0 h-auto" onClick={() => toggleMode('signup')}>
                     Sign up
                   </Button>
                 </>
               ) : (
                 <>
                   Already have an account?{' '}
-                  <Button variant="link" className="p-0 h-auto" onClick={() => setMode('login')}>
+                  <Button variant="link" className="p-0 h-auto" onClick={() => toggleMode('login')}>
                     Login
                   </Button>
                 </>
