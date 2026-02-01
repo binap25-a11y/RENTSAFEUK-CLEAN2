@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, setDoc, getDoc } from 'firebase/firestore';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -115,21 +115,36 @@ export default function EditPropertyPage() {
   }, [property, form]);
 
   async function onSubmit(data: PropertyFormValues) {
-    if (!user || !firestore || !propertyId || !property) {
-      toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not load original property data. Please try again.' });
+    if (!user || !firestore || !propertyId) {
+      toast({ variant: 'destructive', title: 'Save Failed', description: 'Authentication or property data is missing.' });
       return;
     }
-    
+
     setIsSubmitting(true);
+    const propertyDocRef = doc(firestore, 'properties', propertyId);
 
     try {
-        const updatedProperty = {
-          ...data,
-          ownerId: property.ownerId, // Explicitly preserve the existing ownerId
-        };
+        // 1. Get the most recent version of the document directly before writing.
+        const docSnap = await getDoc(propertyDocRef);
 
-        const propertyDocRef = doc(firestore, 'properties', propertyId);
-        await setDoc(propertyDocRef, updatedProperty);
+        if (!docSnap.exists()) {
+            throw new Error("Property does not exist anymore.");
+        }
+
+        // 2. Get the original data, which is guaranteed to have the ownerId.
+        const originalData = docSnap.data() as Property;
+        
+        // 3. Create the new object for writing. Start with original data.
+        const dataToUpdate = {
+            ...originalData,
+            ...data // Overwrite original data with new form data.
+        };
+        
+        // 4. Ensure ownerId is correct, just in case.
+        dataToUpdate.ownerId = originalData.ownerId; 
+        
+        // 5. Perform a full overwrite with the merged data.
+        await setDoc(propertyDocRef, dataToUpdate);
 
         toast({
             title: 'Property Updated',
