@@ -56,16 +56,22 @@ export default function EditPropertyPage() {
         resolver: zodResolver(propertySchema),
     });
 
+    const { reset } = form;
+
     useEffect(() => {
-        if (!firestore || !user) {
-            if (!user) {
-                setError("You must be logged in to edit a property.");
-                setIsLoading(false);
+        if (!firestore || !user?.uid || !propertyId) {
+            if (!user?.uid && !isLoading) {
+                 setError("You must be logged in to edit a property.");
             }
+            if(!propertyId) {
+                setError("Property ID is missing.");
+            }
+            setIsLoading(false);
             return;
         };
 
         const fetchPropertyData = async () => {
+            setIsLoading(true);
             try {
                 const propertyRef = doc(firestore, 'properties', propertyId);
                 const propertySnap = await getDoc(propertyRef);
@@ -99,7 +105,7 @@ export default function EditPropertyPage() {
                             depositScheme: data.tenancy?.depositScheme ?? '',
                         },
                     };
-                    form.reset(sanitizedData);
+                    reset(sanitizedData);
                 } else {
                     setError("Property not found.");
                 }
@@ -112,7 +118,7 @@ export default function EditPropertyPage() {
         };
 
         fetchPropertyData();
-    }, [firestore, propertyId, user, form]);
+    }, [firestore, propertyId, user?.uid, reset]);
 
     async function onSubmit(data: PropertyFormValues) {
         if (!user || !firestore) {
@@ -231,3 +237,4 @@ export default function EditPropertyPage() {
         </Card>
     );
 }
+    
