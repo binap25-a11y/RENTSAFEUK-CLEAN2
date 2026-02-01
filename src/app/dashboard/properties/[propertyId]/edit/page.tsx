@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState } from 'react';
 import { doc, updateDoc, getDoc } from 'firebase/firestore';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -59,28 +59,19 @@ export default function EditPropertyPage() {
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
     defaultValues: {
-      address: {
-        nameOrNumber: '',
-        street: '',
-        city: '',
-        county: '',
-        postcode: '',
-      },
+      address: { nameOrNumber: '', street: '', city: '', county: '', postcode: '' },
       bedrooms: 0,
       bathrooms: 0,
       notes: '',
-      tenancy: {
-        monthlyRent: undefined,
-        depositAmount: undefined,
-        depositScheme: '',
-      },
+      tenancy: { monthlyRent: undefined, depositAmount: undefined, depositScheme: '' },
     },
   });
 
-  const { reset } = form;
-
   useEffect(() => {
-    if (!propertyId || !firestore || !user) return;
+    if (!propertyId || !firestore || !user) {
+        setIsLoading(false);
+        return;
+    };
 
     const fetchProperty = async () => {
       setIsLoading(true);
@@ -89,18 +80,14 @@ export default function EditPropertyPage() {
         const propertyDocRef = doc(firestore, 'properties', propertyId);
         const propertySnap = await getDoc(propertyDocRef);
 
-        if (!propertySnap.exists()) {
-          setError("Property not found.");
+        if (!propertySnap.exists() || propertySnap.data().ownerId !== user.uid) {
+          setError("Property not found or you don't have permission to edit it.");
           return;
         }
 
         const propertyData = propertySnap.data() as Property;
-        if (propertyData.ownerId !== user.uid) {
-          setError("You do not have permission to edit this property.");
-          return;
-        }
         
-        reset({
+        form.reset({
             address: {
                 nameOrNumber: propertyData.address?.nameOrNumber ?? '',
                 street: propertyData.address?.street ?? '',
@@ -119,6 +106,7 @@ export default function EditPropertyPage() {
                 depositScheme: propertyData.tenancy?.depositScheme ?? '',
             },
         });
+
       } catch (e) {
         console.error("Error fetching property: ", e);
         setError("Failed to fetch property data.");
@@ -128,7 +116,8 @@ export default function EditPropertyPage() {
     };
     
     fetchProperty();
-  }, [propertyId, firestore, user, reset]);
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [propertyId, firestore, user]);
 
   async function onSubmit(data: PropertyFormValues) {
     if (!user || !firestore || !propertyId) {
@@ -146,7 +135,6 @@ export default function EditPropertyPage() {
         description: 'The property details have been successfully updated.',
       });
       router.push('/dashboard/properties');
-      router.refresh(); 
     } catch (error: any) {
       console.error('Failed to update property', error);
       toast({
