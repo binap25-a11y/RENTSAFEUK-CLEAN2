@@ -4,19 +4,19 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { useRouter, useParams, notFound } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { useUser, useFirestore } from '@/firebase';
-import { doc, getDoc, setDoc } from 'firebase/firestore';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 import { Loader2, AlertTriangle } from 'lucide-react';
 
 const propertySchema = z.object({
@@ -41,14 +41,11 @@ const propertySchema = z.object({
 
 type PropertyFormValues = z.infer<typeof propertySchema>;
 
+// This component will only be rendered when property data is loaded.
 function EditPropertyForm({ property, onFormSubmit, isSubmitting }: { property: any, onFormSubmit: (data: PropertyFormValues) => void, isSubmitting: boolean }) {
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
-  });
-
-  useEffect(() => {
-    if (property) {
-      form.reset({
+    defaultValues: {
         address: property.address || {},
         propertyType: property.propertyType,
         status: property.status,
@@ -56,9 +53,8 @@ function EditPropertyForm({ property, onFormSubmit, isSubmitting }: { property: 
         bathrooms: property.bathrooms,
         notes: property.notes || '',
         tenancy: property.tenancy || {},
-      });
-    }
-  }, [property, form]);
+      },
+  });
 
   return (
     <Form {...form}>
@@ -119,75 +115,80 @@ function EditPropertyForm({ property, onFormSubmit, isSubmitting }: { property: 
   );
 }
 
-
+// This is the main page component that controls data fetching and state.
 export default function EditPropertyPage() {
   const router = useRouter();
   const params = useParams();
   const propertyId = params.propertyId as string;
   
-  const { user, isUserLoading } = useUser();
+  const { user } = useUser();
   const firestore = useFirestore();
   
-  const [property, setProperty] = useState<any | null>(null);
-  const [pageState, setPageState] = useState<'loading' | 'error' | 'loaded'>('loading');
-  const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    if (isUserLoading || !firestore || !user) {
-      return;
-    }
-
-    const fetchProperty = async () => {
-      setPageState('loading');
-      setError(null);
-      const docRef = doc(firestore, 'properties', propertyId);
-      
-      try {
-        const docSnap = await getDoc(docRef);
-        if (docSnap.exists()) {
-          const data = docSnap.data();
-          if (data.ownerId === user.uid) {
-            setProperty({ id: docSnap.id, ...data });
-            setPageState('loaded');
-          } else {
-            setError('You do not have permission to edit this property.');
-            setPageState('error');
-          }
-        } else {
-          setError('Property not found.');
-          setPageState('error');
-        }
-      } catch (e) {
-        console.error("Error fetching property:", e);
-        setError('Failed to load property data.');
-        setPageState('error');
-      }
-    };
-
-    fetchProperty();
-  }, [firestore, user, isUserLoading, propertyId]);
+  // Memoize the document reference to prevent re-fetching on every render
+  const propertyRef = useMemoFirebase(() => {
+    if (!firestore || !propertyId || !user) return null;
+    return doc(firestore, 'properties', propertyId);
+  }, [firestore, user, propertyId]);
   
+  // Use the useDoc hook to fetch the data
+  const { data: property, isLoading, error } = useDoc(propertyRef);
 
   async function onSubmit(data: PropertyFormValues) {
-    if (!firestore || !propertyId) {
-        toast({ variant: "destructive", title: "Error", description: "Database connection not found." });
+    if (!firestore || !propertyId || !user) {
+        toast({ variant: "destructive", title: "Error", description: "Database connection not found or user not authenticated." });
         return;
     };
+    if (property?.ownerId !== user.uid) {
+        toast({ variant: "destructive", title: "Permission Denied", description: "You do not own this property." });
+        return;
+    }
 
     setIsSubmitting(true);
     const docRef = doc(firestore, 'properties', propertyId);
 
     try {
-      await setDoc(docRef, data, { merge: true });
+      await setDoc(docRef, { ...data, ownerId: user.uid }, { merge: true });
       toast({ title: "Property Updated", description: "Your property details have been saved successfully." });
-      router.push(`/dashboard/properties/${propertyId}`);
+      router.push(`/dashboard/properties`);
     } catch (e) {
       console.error("Error updating property:", e);
       toast({ variant: "destructive", title: "Update Failed", description: "Could not save your changes. Please try again." });
     } finally {
       setIsSubmitting(false);
     }
+  }
+
+  // Render states
+  if (isLoading) {
+    return (
+      <div className="flex h-64 items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      </div>
+    );
+  }
+
+  if (error || (property && user && property.ownerId !== user.uid)) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <AlertTriangle className="h-12 w-12 text-destructive" />
+        <div className="text-center">
+            <h3 className="text-xl font-semibold">Error Loading Property</h3>
+            <p className="text-sm text-muted-foreground">{error?.message || "You don't have permission to edit this property."}</p>
+        </div>
+        <Button asChild><Link href="/dashboard/properties">Return to Properties</Link></Button>
+      </div>
+    );
+  }
+
+  if (!property) {
+    return (
+        <div className="text-center py-10">
+          <h3 className="text-xl font-semibold">Property Not Found</h3>
+          <Button asChild variant="link"><Link href="/dashboard/properties">Return to Properties</Link></Button>
+        </div>
+    );
   }
 
   return (
@@ -199,26 +200,8 @@ export default function EditPropertyPage() {
         </CardDescription>
       </CardHeader>
       <CardContent>
-        {pageState === 'loading' && (
-          <div className="flex h-64 items-center justify-center">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-          </div>
-        )}
-        {pageState === 'error' && (
-           <div className="flex flex-col items-center justify-center h-64 gap-4">
-            <AlertTriangle className="h-12 w-12 text-destructive" />
-            <div className="text-center">
-                <h3 className="text-xl font-semibold">Error Loading Property</h3>
-                <p className="text-sm text-muted-foreground">{error}</p>
-            </div>
-            <Button asChild><Link href="/dashboard/properties">Return to Properties</Link></Button>
-          </div>
-        )}
-        {pageState === 'loaded' && property && (
-            <EditPropertyForm property={property} onFormSubmit={onSubmit} isSubmitting={isSubmitting} />
-        )}
+        <EditPropertyForm property={property} onFormSubmit={onSubmit} isSubmitting={isSubmitting} />
       </CardContent>
     </Card>
   )
-
 }
