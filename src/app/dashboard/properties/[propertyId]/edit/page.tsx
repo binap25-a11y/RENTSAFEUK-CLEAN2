@@ -41,7 +41,6 @@ const propertySchema = z.object({
 
 type PropertyFormValues = z.infer<typeof propertySchema>;
 
-// The type for the data we expect from Firestore
 interface Property extends DocumentData {
     id: string;
     ownerId: string;
@@ -61,15 +60,17 @@ export default function EditPropertyPage() {
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
+    // Initialize with default values, which will be overwritten
     defaultValues: {
         address: { nameOrNumber: '', street: '', city: '', county: '', postcode: '' },
         propertyType: '', status: '', bedrooms: 0, bathrooms: 0, notes: '',
         tenancy: { monthlyRent: undefined, depositAmount: undefined, depositScheme: '' },
     },
   });
+  
   const { reset } = form;
 
-  // Effect 1: Fetch data from Firestore
+  // Effect 1: Fetch data from Firestore once
   useEffect(() => {
     if (!firestore || !propertyId || !user) {
         setIsLoading(false);
