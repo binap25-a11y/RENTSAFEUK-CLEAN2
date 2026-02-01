@@ -5,7 +5,6 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { useEffect } from 'react';
 import { doc, updateDoc, DocumentData } from 'firebase/firestore';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -47,116 +46,62 @@ interface Property extends DocumentData {
     ownerId: string;
 }
 
+// A new component to contain the form, so we can conditionally render it after data is loaded.
+function EditPropertyForm({ propertyId, propertyData }: { propertyId: string, propertyData: Property }) {
+    const router = useRouter();
+    const { user } = useUser();
+    const firestore = useFirestore();
 
-export default function EditPropertyPage() {
-  const router = useRouter();
-  const params = useParams();
-  const propertyId = params.propertyId as string;
-  const { user } = useUser();
-  const firestore = useFirestore();
+    const form = useForm<PropertyFormValues>({
+        resolver: zodResolver(propertySchema),
+        // This is the key change: use `values` to populate the form from the start.
+        values: {
+            address: {
+              nameOrNumber: propertyData.address?.nameOrNumber ?? '',
+              street: propertyData.address?.street ?? '',
+              city: propertyData.address?.city ?? '',
+              county: propertyData.address?.county ?? '',
+              postcode: propertyData.address?.postcode ?? '',
+            },
+            propertyType: propertyData.propertyType ?? '',
+            status: propertyData.status ?? '',
+            bedrooms: propertyData.bedrooms ?? 0,
+            bathrooms: propertyData.bathrooms ?? 0,
+            notes: propertyData.notes ?? '',
+            tenancy: {
+              monthlyRent: propertyData.tenancy?.monthlyRent ?? undefined,
+              depositAmount: propertyData.tenancy?.depositAmount ?? undefined,
+              depositScheme: propertyData.tenancy?.depositScheme ?? '',
+            },
+        }
+    });
 
-  const form = useForm<PropertyFormValues>({
-    resolver: zodResolver(propertySchema),
-    defaultValues: {
-      bedrooms: 0,
-      bathrooms: 0,
-      address: { nameOrNumber: '', street: '', city: '', county: '', postcode: ''},
-      notes: '',
-      tenancy: { monthlyRent: undefined, depositAmount: undefined, depositScheme: '' }
-    },
-  });
-  const { reset } = form;
+    async function handleSaveChanges(data: PropertyFormValues) {
+        if (!user || !firestore) {
+            toast({ variant: 'destructive', title: 'Save Failed', description: 'Authentication or database service is missing.' });
+            return;
+        }
 
-  // Memoize the document reference to ensure stability
-  const propertyRef = useMemoFirebase(() => {
-    if (!firestore || !propertyId) return null;
-    return doc(firestore, 'properties', propertyId);
-  }, [firestore, propertyId]);
+        const propertyRef = doc(firestore, 'properties', propertyId);
 
-  // Use the custom hook to fetch data in real-time
-  const { data: propertyData, isLoading, error } = useDoc<Property>(propertyRef);
-  
-  // Effect to populate the form once data is loaded
-  useEffect(() => {
-    if (propertyData) {
-      reset({
-        address: {
-          nameOrNumber: propertyData.address?.nameOrNumber ?? '',
-          street: propertyData.address?.street ?? '',
-          city: propertyData.address?.city ?? '',
-          county: propertyData.address?.county ?? '',
-          postcode: propertyData.address?.postcode ?? '',
-        },
-        propertyType: propertyData.propertyType ?? '',
-        status: propertyData.status ?? '',
-        bedrooms: propertyData.bedrooms ?? 0,
-        bathrooms: propertyData.bathrooms ?? 0,
-        notes: propertyData.notes ?? '',
-        tenancy: {
-          monthlyRent: propertyData.tenancy?.monthlyRent ?? undefined,
-          depositAmount: propertyData.tenancy?.depositAmount ?? undefined,
-          depositScheme: propertyData.tenancy?.depositScheme ?? '',
-        },
-      });
-    }
-  }, [propertyData, reset]);
-
-  async function handleSaveChanges(data: PropertyFormValues) {
-    if (!user || !propertyRef) {
-      toast({ variant: 'destructive', title: 'Save Failed', description: 'Authentication or property ID is missing.' });
-      return;
+        try {
+            await updateDoc(propertyRef, data);
+            toast({
+                title: 'Property Updated',
+                description: 'The property details have been successfully updated.',
+            });
+            router.push('/dashboard/properties');
+        } catch (error: any) {
+            console.error('Failed to update property', error);
+            toast({
+                variant: 'destructive',
+                title: 'Update Failed',
+                description: error.message || 'There was an error updating the property.',
+            });
+        }
     }
 
-    try {
-      await updateDoc(propertyRef, data);
-      toast({
-        title: 'Property Updated',
-        description: 'The property details have been successfully updated.',
-      });
-      router.push('/dashboard/properties');
-    } catch (error: any) {
-      console.error('Failed to update property', error);
-      toast({
-        variant: 'destructive',
-        title: 'Update Failed',
-        description: error.message || 'There was an error updating the property.',
-      });
-    }
-  }
-
-  if (isLoading) {
     return (
-      <div className="flex h-screen items-center justify-center">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-      </div>
-    );
-  }
-
-  if (error) {
-    return (
-        <div className="text-center py-10">
-            <p className="text-destructive">Error loading property data: {error.message}</p>
-            <Button asChild variant="link"><Link href="/dashboard/properties">Return to Properties List</Link></Button>
-        </div>
-    );
-  }
-
-  if (!propertyData && !isLoading) {
-    return (
-        <div className="text-center py-10">
-            <p className="text-destructive">Property not found or you do not have permission to view it.</p>
-            <Button asChild variant="link"><Link href="/dashboard/properties">Return to Properties List</Link></Button>
-        </div>
-    );
-  }
-
-  return (
-    <Card className="max-w-4xl mx-auto">
-      <CardHeader>
-        <CardTitle>Edit Property</CardTitle>
-        <CardDescription>Update the details for your property.</CardDescription>
-      </CardHeader>
-      <CardContent>
         <Form {...form}>
             <form onSubmit={form.handleSubmit(handleSaveChanges)} className="space-y-8">
                 <Card>
@@ -215,7 +160,59 @@ export default function EditPropertyPage() {
                 </div>
             </form>
         </Form>
-      </CardContent>
-    </Card>
-  );
+    );
+}
+
+export default function EditPropertyPage() {
+    const params = useParams();
+    const propertyId = params.propertyId as string;
+    const firestore = useFirestore();
+
+    // Memoize the document reference to ensure stability for the useDoc hook.
+    const propertyRef = useMemoFirebase(() => {
+        if (!firestore || !propertyId) return null;
+        return doc(firestore, 'properties', propertyId);
+    }, [firestore, propertyId]);
+
+    // Use the custom hook to fetch data in real-time.
+    const { data: propertyData, isLoading, error } = useDoc<Property>(propertyRef);
+
+    if (isLoading) {
+        return (
+            <div className="flex h-screen items-center justify-center">
+                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            </div>
+        );
+    }
+
+    if (error) {
+        return (
+            <div className="text-center py-10">
+                <p className="text-destructive">Error loading property data: {error.message}</p>
+                <Button asChild variant="link"><Link href="/dashboard/properties">Return to Properties List</Link></Button>
+            </div>
+        );
+    }
+
+    if (!propertyData && !isLoading) {
+        return (
+            <div className="text-center py-10">
+                <p className="text-destructive">Property not found or you do not have permission to view it.</p>
+                <Button asChild variant="link"><Link href="/dashboard/properties">Return to Properties List</Link></Button>
+            </div>
+        );
+    }
+    
+    return (
+        <Card className="max-w-4xl mx-auto">
+            <CardHeader>
+                <CardTitle>Edit Property</CardTitle>
+                <CardDescription>Update the details for your property.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {/* Conditionally render the form ONLY when data is available */}
+                {propertyData && <EditPropertyForm propertyId={propertyId} propertyData={propertyData} />}
+            </CardContent>
+        </Card>
+    );
 }
