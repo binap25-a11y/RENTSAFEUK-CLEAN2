@@ -236,7 +236,7 @@ export default function PropertyDetailPage() {
                   <div className="flex items-start gap-3"><Badge variant="secondary" className="mt-1">{property.status}</Badge></div>
                   <div className="flex items-start gap-3"><Bed className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" /><div><p className="text-sm font-medium">Bedrooms</p><p className="text-sm text-muted-foreground">{property.bedrooms}</p></div></div>
                   <div className="flex items-start gap-3"><Bath className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" /><div><p className="text-sm font-medium">Bathrooms</p><p className="text-sm text-muted-foreground">{property.bathrooms}</p></div></div>
-                  {property.location?.lat && property.location?.lng && (
+                  {property.address?.postcode && (
                     <div className="pt-4 border-t">
                       <h4 className="text-sm font-medium mb-2">Location</h4>
                       <div className="aspect-video w-full rounded-md overflow-hidden border">
@@ -247,7 +247,9 @@ export default function PropertyDetailPage() {
                           loading="lazy"
                           allowFullScreen
                           referrerPolicy="no-referrer-when-downgrade"
-                          src={`https://maps.google.com/maps?q=${property.location.lat},${property.location.lng}&z=15&output=embed`}
+                          src={`https://maps.google.com/maps?q=${encodeURIComponent(
+                            [property.address.street, property.address.city, property.address.postcode].filter(Boolean).join(', ')
+                          )}&output=embed`}
                         ></iframe>
                       </div>
                     </div>
