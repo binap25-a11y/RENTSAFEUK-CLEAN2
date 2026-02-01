@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -129,7 +130,7 @@ export default function PropertiesPage() {
             <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
                 <Button asChild variant="outline" className="w-full sm:w-auto">
                 <Link href="/dashboard/properties/deleted">
-                    <Archive className="mr-2 h-4 w-4" /> View Archived
+                    <Archive className="mr-2 h-4 w-4" /> View Deleted
                 </Link>
                 </Button>
                 <Button asChild className="w-full sm:w-auto">

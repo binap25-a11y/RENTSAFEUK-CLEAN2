@@ -16,7 +16,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { useUser, useFirestore } from '@/firebase';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, getDoc, setDoc } from 'firebase/firestore';
 import { Loader2, AlertTriangle } from 'lucide-react';
 
 const propertySchema = z.object({
@@ -179,7 +179,7 @@ export default function EditPropertyPage() {
     const docRef = doc(firestore, 'properties', propertyId);
 
     try {
-      await updateDoc(docRef, data as { [key: string]: any });
+      await setDoc(docRef, data, { merge: true });
       toast({ title: "Property Updated", description: "Your property details have been saved successfully." });
       router.push(`/dashboard/properties/${propertyId}`);
     } catch (e) {
