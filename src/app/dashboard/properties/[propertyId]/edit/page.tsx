@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -7,7 +6,7 @@ import { z } from 'zod';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -44,7 +43,8 @@ type PropertyFormValues = z.infer<typeof propertySchema>;
 
 // The full interface for the Firestore document
 interface Property {
-  ownerId: string; // This is not in the form, but it's in the document
+  id: string; // Added from useDoc
+  ownerId: string;
   address: {
     nameOrNumber?: string;
     street: string;
@@ -84,8 +84,6 @@ export default function EditPropertyPage() {
         county: '',
         postcode: '',
       },
-      propertyType: '',
-      status: 'Vacant',
       bedrooms: 0,
       bathrooms: 0,
       notes: '',
@@ -141,19 +139,17 @@ export default function EditPropertyPage() {
     const propertyDocRef = doc(firestore, 'properties', propertyId);
 
     try {
-      // DEFINITIVE FIX: Use `setDoc` with `{ merge: true }`.
-      // This updates only the fields present in `data` and GUARANTEES
-      // that other fields in the document (like `ownerId`) are NOT touched.
-      await setDoc(propertyDocRef, data, { merge: true });
+      // Use `updateDoc`. It only modifies the fields present in the `data` object,
+      // which is validated by Zod and does not contain `ownerId`.
+      // This is the safest way to update a document without touching other fields.
+      await updateDoc(propertyDocRef, data);
 
       toast({
         title: 'Property Updated',
         description: 'The property details have been successfully updated.',
       });
       
-      // Use router.push and router.refresh for reliable navigation and data refetching
       router.push('/dashboard/properties');
-      router.refresh();
 
     } catch (error: any) {
       console.error('Failed to update property', error);
@@ -266,5 +262,3 @@ export default function EditPropertyPage() {
     </Card>
   );
 }
-
-    
