@@ -213,11 +213,6 @@ export default function PropertiesPage() {
                                             </Button>
                                         </DropdownMenuTrigger>
                                         <DropdownMenuContent align="end">
-                                            <DropdownMenuItem asChild>
-                                                <Link href={`/dashboard/properties/${property.id}/edit`}>
-                                                    <Edit className="mr-2 h-4 w-4" /> Edit
-                                                </Link>
-                                            </DropdownMenuItem>
                                             <DropdownMenuItem onClick={() => setPropertyToDelete(property)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
                                                 <Trash2 className="mr-2 h-4 w-4" /> Delete
                                             </DropdownMenuItem>
@@ -279,11 +274,6 @@ export default function PropertiesPage() {
                                                <DropdownMenuItem asChild>
                                                   <Link href={`/dashboard/properties/${property.id}`}>
                                                       <Eye className="mr-2 h-4 w-4" /> View
-                                                  </Link>
-                                              </DropdownMenuItem>
-                                              <DropdownMenuItem asChild>
-                                                  <Link href={`/dashboard/properties/${property.id}/edit`}>
-                                                      <Edit className="mr-2 h-4 w-4" /> Edit
                                                   </Link>
                                               </DropdownMenuItem>
                                               <DropdownMenuItem onClick={() => setPropertyToDelete(property)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
