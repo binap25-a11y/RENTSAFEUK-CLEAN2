@@ -115,26 +115,21 @@ export default function EditPropertyPage() {
   }, [property, form]);
 
   async function onSubmit(data: PropertyFormValues) {
-    if (!user || !firestore || !propertyId) {
-      toast({ variant: 'destructive', title: 'Save Failed', description: 'An unexpected error occurred. Please try again.' });
+    if (!user || !firestore || !propertyId || !property) {
+      toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not load original property data. Please try again.' });
       return;
     }
     
     setIsSubmitting(true);
 
     try {
-        const dataToUpdate = {
-            address: data.address,
-            propertyType: data.propertyType,
-            status: data.status,
-            bedrooms: data.bedrooms,
-            bathrooms: data.bathrooms,
-            notes: data.notes,
-            tenancy: data.tenancy,
+        const updatedProperty = {
+          ...data,
+          ownerId: property.ownerId, // Explicitly preserve the existing ownerId
         };
 
         const propertyDocRef = doc(firestore, 'properties', propertyId);
-        await setDoc(propertyDocRef, dataToUpdate, { merge: true });
+        await setDoc(propertyDocRef, updatedProperty);
 
         toast({
             title: 'Property Updated',
