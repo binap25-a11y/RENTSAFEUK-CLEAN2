@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, getDoc, DocumentData } from 'firebase/firestore';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { Loader2 } from 'lucide-react';
 
 // Schema for the form
@@ -42,7 +42,7 @@ const propertySchema = z.object({
 type PropertyFormValues = z.infer<typeof propertySchema>;
 
 // The type for the data we expect from Firestore
-interface Property extends PropertyFormValues {
+interface Property extends DocumentData {
     id: string;
     ownerId: string;
 }
@@ -53,16 +53,13 @@ export default function EditPropertyPage() {
   const propertyId = params.propertyId as string;
   const { user } = useUser();
   const firestore = useFirestore();
+  
+  const [propertyData, setPropertyData] = useState<Property | null>(null);
+  const [isLoading, setIsLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const propertyDocRef = useMemoFirebase(() => {
-    if (!firestore || !propertyId) return null;
-    return doc(firestore, 'properties', propertyId);
-  }, [firestore, propertyId]);
-
-  const { data: propertyData, isLoading, error } = useDoc<Property>(propertyDocRef);
-
-  const { reset, ...form } = useForm<PropertyFormValues>({
+  const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
     defaultValues: {
       address: { nameOrNumber: '', street: '', city: '', county: '', postcode: '' },
@@ -76,8 +73,32 @@ export default function EditPropertyPage() {
   });
 
   useEffect(() => {
+    if (!firestore || !propertyId || !user) return;
+
+    const fetchProperty = async () => {
+      setIsLoading(true);
+      const propertyDocRef = doc(firestore, 'properties', propertyId);
+      try {
+        const docSnap = await getDoc(propertyDocRef);
+        if (docSnap.exists() && docSnap.data().ownerId === user.uid) {
+          setPropertyData({ id: docSnap.id, ...docSnap.data() } as Property);
+        } else {
+          setError('Property not found or you do not have permission to edit it.');
+        }
+      } catch (e: any) {
+        setError('Failed to load property data.');
+        console.error(e);
+      } finally {
+        setIsLoading(false);
+      }
+    };
+
+    fetchProperty();
+  }, [firestore, propertyId, user]);
+  
+  useEffect(() => {
     if (propertyData) {
-      reset({
+      form.reset({
         address: {
             nameOrNumber: propertyData.address?.nameOrNumber ?? '',
             street: propertyData.address?.street ?? '',
@@ -97,16 +118,13 @@ export default function EditPropertyPage() {
         },
       });
     }
-  }, [propertyData, reset]);
+  }, [propertyData, form.reset]);
+
 
   async function onSubmit(data: PropertyFormValues) {
     if (!user || !firestore || !propertyId) {
       toast({ variant: 'destructive', title: 'Save Failed', description: 'Authentication or property ID is missing.' });
       return;
-    }
-    if (propertyData?.ownerId !== user.uid) {
-        toast({ variant: 'destructive', title: 'Permission Denied', description: 'You do not have permission to edit this property.' });
-        return;
     }
 
     setIsSubmitting(true);
@@ -142,16 +160,7 @@ export default function EditPropertyPage() {
   if (error) {
     return (
         <div className="text-center py-10">
-            <p className="text-destructive">Error loading property: {error.message}</p>
-            <Button asChild variant="link"><Link href="/dashboard/properties">Return to Properties List</Link></Button>
-        </div>
-    );
-  }
-
-  if (!propertyData) {
-    return (
-        <div className="text-center py-10">
-            <p>Property not found.</p>
+            <p className="text-destructive">{error}</p>
             <Button asChild variant="link"><Link href="/dashboard/properties">Return to Properties List</Link></Button>
         </div>
     );
@@ -164,7 +173,7 @@ export default function EditPropertyPage() {
         <CardDescription>Update the details for your property.</CardDescription>
       </CardHeader>
       <CardContent>
-        <Form {...form} reset={reset}>
+        <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                 <Card>
                     <CardHeader><CardTitle className="text-xl">Property Address</CardTitle></CardHeader>
