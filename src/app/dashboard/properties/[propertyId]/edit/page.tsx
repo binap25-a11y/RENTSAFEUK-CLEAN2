@@ -115,7 +115,7 @@ export default function EditPropertyPage() {
   }, [property, form]);
 
   async function onSubmit(data: PropertyFormValues) {
-    if (!user || !firestore || !propertyId || !property) {
+    if (!user || !firestore || !propertyId) {
       toast({ variant: 'destructive', title: 'Save Failed', description: 'An unexpected error occurred. Please try again.' });
       return;
     }
@@ -123,12 +123,20 @@ export default function EditPropertyPage() {
     setIsSubmitting(true);
 
     try {
+        // Explicitly construct the update object from the validated form data.
+        // This prevents any unintended fields from being part of the update.
+        // `updateDoc` only modifies the fields provided; it does not touch other
+        // fields like `ownerId`, ensuring the property record remains intact.
         const dataToUpdate = {
-            ...data,
-            ownerId: property.ownerId, // Preserve ownerId
+            address: data.address,
+            propertyType: data.propertyType,
+            status: data.status,
+            bedrooms: data.bedrooms,
+            bathrooms: data.bathrooms,
+            notes: data.notes,
+            tenancy: data.tenancy,
         };
 
-        // Update the document in Firestore
         const propertyDocRef = doc(firestore, 'properties', propertyId);
         await updateDoc(propertyDocRef, dataToUpdate);
 
@@ -413,5 +421,3 @@ export default function EditPropertyPage() {
     </Card>
   );
 }
-
-    
