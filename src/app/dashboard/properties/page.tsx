@@ -203,14 +203,15 @@ export default function PropertiesPage() {
                                     {property.imageUrl ? (
                                         <Image
                                             src={property.imageUrl}
-                                            data-ai-hint="house exterior"
                                             alt={`Image of ${property.address.street}`}
                                             width={400}
                                             height={250}
                                             className="object-cover w-full aspect-video group-hover:scale-105 transition-transform duration-300"
                                         />
                                     ) : (
-                                        <div className="aspect-video w-full bg-muted" />
+                                        <div className="aspect-video w-full bg-muted flex items-center justify-center">
+                                          <span className="text-sm text-muted-foreground">No image</span>
+                                        </div>
                                     )}
                                 </div>
                                 <CardHeader className="pb-2">

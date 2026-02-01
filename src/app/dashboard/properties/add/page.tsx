@@ -19,6 +19,7 @@ import { useUser, useFirestore, useStorage } from '@/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Loader2, Upload } from 'lucide-react';
+import Image from 'next/image';
 
 const propertySchema = z.object({
   address: z.object({
@@ -306,11 +307,12 @@ export default function AddPropertyPage() {
                     <FormItem>
                       <FormLabel>Property Image</FormLabel>
                       <div 
-                        className="aspect-video w-full rounded-lg border-2 border-dashed bg-muted bg-cover bg-center"
-                        style={{ backgroundImage: imagePreview ? `url(${imagePreview})` : 'none' }}
+                        className="aspect-video w-full rounded-lg border-2 border-dashed bg-muted flex items-center justify-center"
                       >
-                        {!imagePreview && (
-                            <div className="flex items-center justify-center h-full" />
+                        {imagePreview ? (
+                            <Image src={imagePreview} alt="Image preview" width={400} height={225} className="rounded-md object-cover h-full w-full" />
+                        ) : (
+                            <span className="text-sm text-muted-foreground">No image</span>
                         )}
                       </div>
                       <FormControl>

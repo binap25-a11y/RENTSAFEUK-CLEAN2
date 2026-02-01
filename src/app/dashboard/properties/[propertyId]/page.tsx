@@ -211,9 +211,11 @@ export default function PropertyDetailPage() {
             <Card>
                 <CardContent className="p-0">
                     {property.imageUrl ? (
-                        <Image src={property.imageUrl} data-ai-hint="house exterior" alt={`Image of ${property.address.street}`} width={800} height={500} className="rounded-t-lg object-cover w-full aspect-video" />
+                        <Image src={property.imageUrl} alt={`Image of ${property.address.street}`} width={800} height={500} className="rounded-t-lg object-cover w-full aspect-video" />
                     ) : (
-                        <div className="aspect-video w-full bg-muted rounded-t-lg" />
+                        <div className="aspect-video w-full bg-muted rounded-t-lg flex items-center justify-center">
+                          <span className="text-sm text-muted-foreground">No image</span>
+                        </div>
                     )}
                 </CardContent>
             </Card>
