@@ -66,6 +66,7 @@ type TenantFormValues = z.infer<typeof tenantSchema>;
 interface Property {
   id: string;
   address: {
+    nameOrNumber?: string;
     street: string;
     city: string;
     county?: string;
@@ -142,7 +143,7 @@ export default function AddTenantPage() {
   }
 
   const formatAddress = (address: Property['address']) => {
-    return `${address.street}, ${address.city}, ${address.postcode}`;
+    return [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
   };
 
   return (
