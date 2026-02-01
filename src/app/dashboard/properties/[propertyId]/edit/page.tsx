@@ -132,27 +132,33 @@ export default function EditPropertyPage() {
     setIsSubmitting(true);
 
     try {
-        const { imageFile, ...formData } = data;
+        // Start by assuming we will use the existing image URL.
+        let finalImageUrl = property.imageUrl;
 
-        // Prepare the base update data, EXCLUDING the imageUrl for now.
-        // We explicitly include ownerId to prevent it from being removed.
-        const updatePayload: { [key: string]: any } = {
-            ...formData,
-            ownerId: property.ownerId, 
-        };
-
-        // Handle the image separately.
-        // If a new file was uploaded, upload it and add the new URL to the payload.
-        if (imageFile && imageFile.length > 0) {
-            const file = imageFile[0];
+        // If a new file was uploaded, upload it and get its new URL.
+        if (data.imageFile && data.imageFile.length > 0) {
+            const file = data.imageFile[0];
             const uniqueFileName = `${Date.now()}-${file.name}`;
             const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
             
             await uploadBytes(fileStorageRef, file);
-            updatePayload.imageUrl = await getDownloadURL(fileStorageRef);
+            // This new URL will replace the old one.
+            finalImageUrl = await getDownloadURL(fileStorageRef);
         }
-        // IMPORTANT: If no new file is uploaded, we do NOT add `imageUrl` to the `updatePayload`.
-        // This means Firestore will not touch the existing `imageUrl` field, preserving it correctly.
+
+        // Construct the final, complete payload for Firestore with the correct imageUrl.
+        // This ensures all fields are explicitly defined and no data is accidentally lost.
+        const updatePayload = {
+            ownerId: property.ownerId, // Always preserve ownerId
+            address: data.address,
+            propertyType: data.propertyType,
+            status: data.status,
+            bedrooms: data.bedrooms,
+            bathrooms: data.bathrooms,
+            notes: data.notes || '',
+            tenancy: data.tenancy || {},
+            imageUrl: finalImageUrl || '', // Use the determined image URL, fallback to empty string
+        };
 
         const propertyDocRef = doc(firestore, 'properties', propertyId);
         await updateDoc(propertyDocRef, updatePayload);
