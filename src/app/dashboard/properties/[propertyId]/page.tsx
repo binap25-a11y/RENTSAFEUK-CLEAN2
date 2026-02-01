@@ -1,7 +1,6 @@
 'use client';
 
 import { useParams, notFound, useRouter } from 'next/navigation';
-import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
@@ -38,7 +37,6 @@ interface Property {
     status: string;
     bedrooms: number;
     bathrooms: number;
-    imageUrl: string;
     notes?: string;
     tenancy?: {
         monthlyRent?: number;
@@ -208,18 +206,6 @@ export default function PropertyDetailPage() {
         
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
-            <Card>
-                <CardContent className="p-0">
-                    {property.imageUrl ? (
-                        <Image src={property.imageUrl} alt={`Image of ${property.address.street}`} width={800} height={500} className="rounded-t-lg object-cover w-full aspect-video" />
-                    ) : (
-                        <div className="aspect-video w-full bg-muted rounded-t-lg flex items-center justify-center">
-                          <span className="text-sm text-muted-foreground">No image</span>
-                        </div>
-                    )}
-                </CardContent>
-            </Card>
-
             {property.tenancy && (property.tenancy.monthlyRent || property.tenancy.depositAmount) && (
               <Card>
                 <CardHeader><CardTitle>Tenancy & Financials</CardTitle></CardHeader>

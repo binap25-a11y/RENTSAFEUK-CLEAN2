@@ -7,7 +7,6 @@ import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,9 +15,8 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { useUser, useFirestore, useStorage, useDoc, useMemoFirebase } from '@/firebase';
-import { Loader2, Upload } from 'lucide-react';
-import Image from 'next/image';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { Loader2 } from 'lucide-react';
 
 const propertySchema = z.object({
   address: z.object({
@@ -32,7 +30,6 @@ const propertySchema = z.object({
   status: z.string({ required_error: 'Please select a status.' }),
   bedrooms: z.coerce.number().min(0, 'Cannot be negative'),
   bathrooms: z.coerce.number().min(0, 'Cannot be negative'),
-  imageFile: z.custom<FileList>().optional(),
   notes: z.string().optional(),
   tenancy: z.object({
     monthlyRent: z.coerce.number().optional(),
@@ -55,7 +52,6 @@ interface Property {
   status: string;
   bedrooms: number;
   bathrooms: number;
-  imageUrl: string;
   notes?: string;
   tenancy?: {
     monthlyRent?: number;
@@ -72,9 +68,7 @@ export default function EditPropertyPage() {
 
   const { user } = useUser();
   const firestore = useFirestore();
-  const storage = useStorage();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
@@ -117,14 +111,11 @@ export default function EditPropertyPage() {
             depositScheme: property.tenancy?.depositScheme ?? '',
         }
       });
-      if (property.imageUrl) {
-        setImagePreview(property.imageUrl);
-      }
     }
   }, [property, form]);
 
   async function onSubmit(data: PropertyFormValues) {
-    if (!user || !firestore || !storage || !propertyId || !property) {
+    if (!user || !firestore || !propertyId || !property) {
       toast({ variant: 'destructive', title: 'Save Failed', description: 'An unexpected error occurred. Please try again.' });
       return;
     }
@@ -132,32 +123,12 @@ export default function EditPropertyPage() {
     setIsSubmitting(true);
 
     try {
-        let imageUrlToSave = property.imageUrl; // Start with the existing URL
-
-        // 1. If a new image was uploaded, handle it.
-        if (data.imageFile && data.imageFile.length > 0) {
-            const file = data.imageFile[0];
-            const uniqueFileName = `${Date.now()}-${file.name}`;
-            const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
-            
-            await uploadBytes(fileStorageRef, file);
-            imageUrlToSave = await getDownloadURL(fileStorageRef); // This will be the new URL.
-        }
-
-        // 2. Construct the object to update with all form data and the correct image URL.
         const dataToUpdate = {
+            ...data,
             ownerId: property.ownerId, // Preserve ownerId
-            address: data.address,
-            propertyType: data.propertyType,
-            status: data.status,
-            bedrooms: data.bedrooms,
-            bathrooms: data.bathrooms,
-            notes: data.notes || '',
-            tenancy: data.tenancy || {},
-            imageUrl: imageUrlToSave || '', // Use the correctly determined URL or empty string
         };
 
-        // 3. Update the document in Firestore
+        // Update the document in Firestore
         const propertyDocRef = doc(firestore, 'properties', propertyId);
         await updateDoc(propertyDocRef, dataToUpdate);
 
@@ -358,47 +329,6 @@ export default function EditPropertyPage() {
                     )}
                   />
                 </div>
-                 <FormField
-                    control={form.control}
-                    name="imageFile"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Property Image</FormLabel>
-                        <div className="w-full aspect-video rounded-lg border-2 border-dashed bg-muted flex items-center justify-center">
-                          {imagePreview ? (
-                            <Image src={imagePreview} alt="Property preview" width={400} height={225} className="rounded-md object-cover h-full w-full" />
-                          ) : (
-                            <span className="text-sm text-muted-foreground">No image</span>
-                          )}
-                        </div>
-                        <FormControl>
-                           <Button asChild className="w-full cursor-pointer mt-2" variant="outline">
-                              <label htmlFor="image-upload">
-                                <Upload className="mr-2 h-4 w-4" />
-                                {imagePreview ? 'Change Image' : 'Upload Image'}
-                                <Input
-                                  id="image-upload"
-                                  type="file"
-                                  className="sr-only"
-                                  accept="image/png, image/jpeg, image/webp"
-                                  onChange={(e) => {
-                                      const file = e.target.files?.[0];
-                                      if (file) {
-                                          field.onChange(e.target.files);
-                                          setImagePreview(URL.createObjectURL(file));
-                                      } else {
-                                          field.onChange(null);
-                                          setImagePreview(property?.imageUrl || null);
-                                      }
-                                  }}
-                                />
-                              </label>
-                            </Button>
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
               </CardContent>
             </Card>
 

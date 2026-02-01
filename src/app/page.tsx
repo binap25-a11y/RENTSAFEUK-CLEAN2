@@ -1,9 +1,7 @@
 'use client';
 
-import Image from 'next/image';
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 import { GoogleIcon } from '@/components/icons';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
@@ -48,9 +46,6 @@ type FormValues = z.infer<typeof formSchema>;
 type AuthMode = 'login' | 'signup';
 
 export default function LoginPage() {
-  const loginImage = PlaceHolderImages.find(
-    (img) => img.id === 'login-background'
-  );
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
   const router = useRouter();
@@ -155,8 +150,8 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="w-full lg:grid lg:min-h-screen lg:grid-cols-2">
-      <div className="flex items-center justify-center py-12">
+    <div className="w-full">
+      <div className="flex items-center justify-center py-12 min-h-screen">
         <Card className="mx-auto w-full max-w-sm">
           <CardHeader className="text-center">
             <CardTitle className="text-3xl font-bold font-headline">
@@ -284,18 +279,6 @@ export default function LoginPage() {
             </div>
           </CardFooter>
         </Card>
-      </div>
-      <div className="hidden bg-muted lg:block">
-        {loginImage && (
-          <Image
-            src={loginImage.imageUrl}
-            alt={loginImage.description}
-            data-ai-hint={loginImage.imageHint}
-            width="1200"
-            height="1800"
-            className="h-full w-full object-cover dark:brightness-[0.2] dark:grayscale"
-          />
-        )}
       </div>
     </div>
   );

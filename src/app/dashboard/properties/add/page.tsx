@@ -15,11 +15,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { useUser, useFirestore, useStorage } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { collection, addDoc } from 'firebase/firestore';
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Loader2, Upload } from 'lucide-react';
-import Image from 'next/image';
+import { Loader2 } from 'lucide-react';
 
 const propertySchema = z.object({
   address: z.object({
@@ -33,7 +31,6 @@ const propertySchema = z.object({
   status: z.string({ required_error: 'Please select a status.' }),
   bedrooms: z.coerce.number().min(0, 'Cannot be negative'),
   bathrooms: z.coerce.number().min(0, 'Cannot be negative'),
-  imageFile: z.custom<FileList>().optional(),
   notes: z.string().optional(),
   tenancy: z.object({
     monthlyRent: z.coerce.number().optional(),
@@ -48,9 +45,7 @@ export default function AddPropertyPage() {
   const router = useRouter();
   const { user } = useUser();
   const firestore = useFirestore();
-  const storage = useStorage();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [imagePreview, setImagePreview] = useState<string | null>(null);
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
@@ -75,7 +70,7 @@ export default function AddPropertyPage() {
   });
 
   async function onSubmit(data: PropertyFormValues) {
-    if (!user || !firestore || !storage) {
+    if (!user || !firestore) {
       toast({
         variant: 'destructive',
         title: 'Authentication Error',
@@ -87,7 +82,6 @@ export default function AddPropertyPage() {
     setIsSubmitting(true);
     
     try {
-      // 1. Prepare all non-image data first
       const propertyData: { [key: string]: any } = {
         ownerId: user.uid,
         address: data.address,
@@ -97,20 +91,10 @@ export default function AddPropertyPage() {
         bathrooms: data.bathrooms,
         notes: data.notes,
         tenancy: data.tenancy,
+        imageUrl: '', // Set image to empty
       };
 
-      // 2. Handle image upload if a file is selected
-      let imageUrl = '';
-      if (data.imageFile && data.imageFile.length > 0) {
-        const file = data.imageFile[0];
-        const uniqueFileName = `${Date.now()}-${file.name}`;
-        const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
-        await uploadBytes(fileStorageRef, file);
-        imageUrl = await getDownloadURL(fileStorageRef);
-      }
-      propertyData.imageUrl = imageUrl; // Add the final URL to the data object
-
-      // 3. Clean up optional empty fields
+      // Clean up optional empty fields
       if (!propertyData.notes) delete propertyData.notes;
       if (propertyData.tenancy) {
         if (propertyData.tenancy.monthlyRent === undefined) delete propertyData.tenancy.monthlyRent;
@@ -119,7 +103,7 @@ export default function AddPropertyPage() {
         if (Object.keys(propertyData.tenancy).length === 0) delete propertyData.tenancy;
       }
       
-      // 4. Add the complete document to Firestore
+      // Add the complete document to Firestore
       await addDoc(collection(firestore, 'properties'), propertyData);
 
       toast({
@@ -300,53 +284,6 @@ export default function AddPropertyPage() {
                     )}
                   />
                 </div>
-                <FormField
-                  control={form.control}
-                  name="imageFile"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Property Image</FormLabel>
-                      <div 
-                        className="aspect-video w-full rounded-lg border-2 border-dashed bg-muted flex items-center justify-center"
-                      >
-                        {imagePreview ? (
-                            <Image src={imagePreview} alt="Image preview" width={400} height={225} className="rounded-md object-cover h-full w-full" />
-                        ) : (
-                            <span className="text-sm text-muted-foreground">No image</span>
-                        )}
-                      </div>
-                      <FormControl>
-                        <Button
-                          asChild
-                          className="w-full cursor-pointer mt-2"
-                          variant="outline"
-                        >
-                          <label htmlFor="image-upload">
-                            <Upload className="mr-2 h-4 w-4" />
-                            {imagePreview ? 'Change Image' : 'Upload an Image'}
-                            <Input
-                              id="image-upload"
-                              type="file"
-                              className="sr-only"
-                              accept="image/png, image/jpeg, image/webp"
-                              onChange={(e) => {
-                                const file = e.target.files?.[0];
-                                if (file) {
-                                  field.onChange(e.target.files);
-                                  setImagePreview(URL.createObjectURL(file));
-                                } else {
-                                  field.onChange(null);
-                                  setImagePreview(null);
-                                }
-                              }}
-                            />
-                          </label>
-                        </Button>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
               </CardContent>
             </Card>
 

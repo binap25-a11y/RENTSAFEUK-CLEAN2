@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   Card,
@@ -56,7 +55,6 @@ interface Property {
   status: string;
   bedrooms: number;
   bathrooms: number;
-  imageUrl: string;
   ownerId: string;
 }
 
@@ -199,21 +197,6 @@ export default function PropertiesPage() {
                             onClick={() => router.push(`/dashboard/properties/${property.id}`)}
                         >
                             <div className="relative">
-                                <div className="overflow-hidden">
-                                    {property.imageUrl ? (
-                                        <Image
-                                            src={property.imageUrl}
-                                            alt={`Image of ${property.address.street}`}
-                                            width={400}
-                                            height={250}
-                                            className="object-cover w-full aspect-video group-hover:scale-105 transition-transform duration-300"
-                                        />
-                                    ) : (
-                                        <div className="aspect-video w-full bg-muted flex items-center justify-center">
-                                          <span className="text-sm text-muted-foreground">No image</span>
-                                        </div>
-                                    )}
-                                </div>
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-lg leading-tight font-semibold group-hover:underline">
                                         {[property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ')}
