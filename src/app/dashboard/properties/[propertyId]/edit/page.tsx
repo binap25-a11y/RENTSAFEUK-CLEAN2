@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { doc, getDoc, updateDoc, DocumentData } from 'firebase/firestore';
+import { doc, getDoc, updateDoc } from 'firebase/firestore';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,11 +41,6 @@ const propertySchema = z.object({
 
 type PropertyFormValues = z.infer<typeof propertySchema>;
 
-// Property interface from Firestore
-interface Property extends DocumentData {
-    id: string;
-    ownerId: string;
-}
 
 export default function EditPropertyPage() {
     const params = useParams();
@@ -54,46 +49,32 @@ export default function EditPropertyPage() {
     const { user } = useUser();
     const firestore = useFirestore();
     
-    const [propertyData, setPropertyData] = useState<Property | null>(null);
     const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
 
     const form = useForm<PropertyFormValues>({
         resolver: zodResolver(propertySchema),
-        defaultValues: {
-            address: { nameOrNumber: '', street: '', city: '', county: '', postcode: '' },
-            propertyType: '',
-            status: '',
-            bedrooms: 0,
-            bathrooms: 0,
-            notes: '',
-            tenancy: { monthlyRent: undefined, depositAmount: undefined, depositScheme: '' },
-        },
     });
 
     useEffect(() => {
         if (!firestore || !propertyId || !user) {
-            setIsLoading(false);
-            setError("Could not retrieve required information to fetch property.");
             return;
         }
 
         const fetchProperty = async () => {
+            setIsLoading(true);
             try {
                 const propertyRef = doc(firestore, 'properties', propertyId);
                 const propertySnap = await getDoc(propertyRef);
 
                 if (propertySnap.exists()) {
-                    const data = propertySnap.data() as Property;
+                    const data = propertySnap.data();
                     
                     if (data.ownerId !== user.uid) {
                         setError("You do not have permission to edit this property.");
                         setIsLoading(false);
                         return;
                     }
-                    
-                    const loadedData = { id: propertySnap.id, ...data };
-                    setPropertyData(loadedData);
                     
                     form.reset({
                         address: {
@@ -137,7 +118,7 @@ export default function EditPropertyPage() {
         const propertyRef = doc(firestore, 'properties', propertyId);
 
         try {
-            await updateDoc(propertyRef, data);
+            await updateDoc(propertyRef, { ...data });
             toast({
                 title: 'Property Updated',
                 description: 'The property details have been successfully updated.',
@@ -239,4 +220,3 @@ export default function EditPropertyPage() {
         </Card>
     );
 }
-    
