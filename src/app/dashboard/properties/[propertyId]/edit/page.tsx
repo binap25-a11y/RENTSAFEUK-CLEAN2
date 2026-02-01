@@ -45,33 +45,53 @@ export default function EditPropertyPage() {
     const params = useParams();
     const router = useRouter();
     const propertyId = params.propertyId as string;
-    const { user } = useUser();
+    const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
 
-    const [isLoading, setIsLoading] = useState(true);
+    const [isDataLoading, setIsDataLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
     const [isSubmitting, setIsSubmitting] = useState(false);
 
     const form = useForm<PropertyFormValues>({
         resolver: zodResolver(propertySchema),
+        defaultValues: { // Provide comprehensive default values
+            address: {
+                nameOrNumber: '',
+                street: '',
+                city: '',
+                county: '',
+                postcode: '',
+            },
+            bedrooms: 0,
+            bathrooms: 0,
+            notes: '',
+            tenancy: {
+                monthlyRent: undefined,
+                depositAmount: undefined,
+                depositScheme: '',
+            }
+        }
     });
 
     const { reset } = form;
 
     useEffect(() => {
-        if (!firestore || !user?.uid || !propertyId) {
-            if (!user?.uid && !isLoading) {
-                 setError("You must be logged in to edit a property.");
-            }
-            if(!propertyId) {
-                setError("Property ID is missing.");
-            }
-            setIsLoading(false);
+        if (isUserLoading) {
+            return; // Wait for user authentication to resolve
+        }
+        if (!user) {
+            setError("You must be logged in to edit a property.");
+            setIsDataLoading(false);
             return;
-        };
+        }
+        if (!firestore || !propertyId) {
+            setError("Could not find property identifier.");
+            setIsDataLoading(false);
+            return;
+        }
 
         const fetchPropertyData = async () => {
-            setIsLoading(true);
+            setIsDataLoading(true);
             try {
                 const propertyRef = doc(firestore, 'properties', propertyId);
                 const propertySnap = await getDoc(propertyRef);
@@ -81,7 +101,6 @@ export default function EditPropertyPage() {
 
                     if (data.ownerId !== user.uid) {
                         setError("You do not have permission to edit this property.");
-                        setIsLoading(false);
                         return;
                     }
 
@@ -113,12 +132,12 @@ export default function EditPropertyPage() {
                 console.error("Error fetching property:", e);
                 setError(e.message || "An unexpected error occurred while fetching data.");
             } finally {
-                setIsLoading(false);
+                setIsDataLoading(false);
             }
         };
 
         fetchPropertyData();
-    }, [firestore, propertyId, user?.uid, reset]);
+    }, [firestore, propertyId, user, isUserLoading, reset]);
 
     async function onSubmit(data: PropertyFormValues) {
         if (!user || !firestore) {
@@ -146,7 +165,7 @@ export default function EditPropertyPage() {
         }
     }
 
-    if (isLoading) {
+    if (isUserLoading || isDataLoading) {
         return (
             <div className="flex h-64 items-center justify-center">
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -211,14 +230,14 @@ export default function EditPropertyPage() {
                                     <FormField control={form.control} name="tenancy.monthlyRent" render={({ field }) => ( <FormItem> <FormLabel>Monthly Rent (£)</FormLabel> <FormControl> <Input type="number" placeholder="0" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} /> </FormControl> <FormMessage /> </FormItem> )} />
                                     <FormField control={form.control} name="tenancy.depositAmount" render={({ field }) => ( <FormItem> <FormLabel>Deposit Amount (£)</FormLabel> <FormControl> <Input type="number" placeholder="0" {...field} value={field.value ?? ''} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} /> </FormControl> <FormMessage /> </FormItem> )} />
                                 </div>
-                                <FormField control={form.control} name="tenancy.depositScheme" render={({ field }) => ( <FormItem> <FormLabel>Deposit Protection Scheme</FormLabel> <FormControl> <Input placeholder="e.g., DPS, MyDeposits" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
+                                <FormField control={form.control} name="tenancy.depositScheme" render={({ field }) => ( <FormItem> <FormLabel>Deposit Protection Scheme</FormLabel> <FormControl> <Input placeholder="e.g., DPS, MyDeposits" {...field} value={field.value ?? ''} /> </FormControl> <FormMessage /> </FormItem> )} />
                             </CardContent>
                         </Card>
 
                         <Card>
                             <CardHeader><CardTitle className="text-xl">Notes</CardTitle></CardHeader>
                             <CardContent>
-                                <FormField control={form.control} name="notes" render={({ field }) => ( <FormItem> <FormControl> <Textarea placeholder="Any additional notes about the property..." className="resize-none" rows={5} {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
+                                <FormField control={form.control} name="notes" render={({ field }) => ( <FormItem> <FormControl> <Textarea placeholder="Any additional notes about the property..." className="resize-none" rows={5} {...field} value={field.value ?? ''} /> </FormControl> <FormMessage /> </FormItem> )} />
                             </CardContent>
                         </Card>
 
@@ -237,4 +256,3 @@ export default function EditPropertyPage() {
         </Card>
     );
 }
-    
