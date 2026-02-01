@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import { doc, updateDoc, getDoc, DocumentData } from 'firebase/firestore';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -58,22 +58,46 @@ export default function EditPropertyPage() {
   const [isLoading, setIsLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  const formValues = useMemo(() => {
+    if (!propertyData) {
+      return {
+        address: { nameOrNumber: '', street: '', city: '', county: '', postcode: '' },
+        propertyType: '', status: '', bedrooms: 0, bathrooms: 0, notes: '',
+        tenancy: { monthlyRent: undefined, depositAmount: undefined, depositScheme: '' },
+      };
+    }
+    return {
+      address: {
+        nameOrNumber: propertyData.address?.nameOrNumber ?? '',
+        street: propertyData.address?.street ?? '',
+        city: propertyData.address?.city ?? '',
+        county: propertyData.address?.county ?? '',
+        postcode: propertyData.address?.postcode ?? '',
+      },
+      propertyType: propertyData.propertyType ?? '',
+      status: propertyData.status ?? '',
+      bedrooms: propertyData.bedrooms ?? 0,
+      bathrooms: propertyData.bathrooms ?? 0,
+      notes: propertyData.notes ?? '',
+      tenancy: {
+        monthlyRent: propertyData.tenancy?.monthlyRent ?? undefined,
+        depositAmount: propertyData.tenancy?.depositAmount ?? undefined,
+        depositScheme: propertyData.tenancy?.depositScheme ?? '',
+      },
+    };
+  }, [propertyData]);
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
-    defaultValues: {
-      address: { nameOrNumber: '', street: '', city: '', county: '', postcode: '' },
-      propertyType: '',
-      status: '',
-      bedrooms: 0,
-      bathrooms: 0,
-      notes: '',
-      tenancy: { monthlyRent: undefined, depositAmount: undefined, depositScheme: '' },
-    },
+    values: formValues, // Use memoized values to populate the form
   });
 
   useEffect(() => {
-    if (!firestore || !propertyId || !user) return;
+    if (!firestore || !propertyId || !user) {
+        setIsLoading(false);
+        return;
+    };
 
     const fetchProperty = async () => {
       setIsLoading(true);
@@ -95,30 +119,6 @@ export default function EditPropertyPage() {
 
     fetchProperty();
   }, [firestore, propertyId, user]);
-  
-  useEffect(() => {
-    if (propertyData) {
-      form.reset({
-        address: {
-            nameOrNumber: propertyData.address?.nameOrNumber ?? '',
-            street: propertyData.address?.street ?? '',
-            city: propertyData.address?.city ?? '',
-            county: propertyData.address?.county ?? '',
-            postcode: propertyData.address?.postcode ?? '',
-        },
-        propertyType: propertyData.propertyType ?? '',
-        status: propertyData.status ?? '',
-        bedrooms: propertyData.bedrooms ?? 0,
-        bathrooms: propertyData.bathrooms ?? 0,
-        notes: propertyData.notes ?? '',
-        tenancy: {
-            monthlyRent: propertyData.tenancy?.monthlyRent ?? undefined,
-            depositAmount: propertyData.tenancy?.depositAmount ?? undefined,
-            depositScheme: propertyData.tenancy?.depositScheme ?? '',
-        },
-      });
-    }
-  }, [propertyData, form.reset]);
 
 
   async function onSubmit(data: PropertyFormValues) {
