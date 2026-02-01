@@ -9,9 +9,7 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  experimental: {
-    allowedDevOrigins: ['https://6000-firebase-rentsafeuk-test-1769862118961.cluster-ikslh4rdsnbqsvu5nw3v4dqjj2.cloudworkstations.dev'],
-  },
+  allowedDevOrigins: ['https://6000-firebase-rentsafeuk-test-1769862118961.cluster-ikslh4rdsnbqsvu5nw3v4dqjj2.cloudworkstations.dev'],
 };
 
 export default nextConfig;
