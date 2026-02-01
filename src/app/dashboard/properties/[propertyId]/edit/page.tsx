@@ -132,27 +132,35 @@ export default function EditPropertyPage() {
     setIsSubmitting(true);
 
     try {
-        let finalImageUrl = property.imageUrl;
+        let imageUrlToSave = property.imageUrl; // Start with the existing image URL.
 
+        // 1. If a new image was uploaded, handle it.
         if (data.imageFile && data.imageFile.length > 0) {
             const file = data.imageFile[0];
             const uniqueFileName = `${Date.now()}-${file.name}`;
             const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
             
             await uploadBytes(fileStorageRef, file);
-            finalImageUrl = await getDownloadURL(fileStorageRef);
+            imageUrlToSave = await getDownloadURL(fileStorageRef); // This will be the new URL.
         }
 
-        // Create a clean data object for Firestore, excluding the imageFile field
-        const { imageFile, ...dataToSave } = data;
+        // 2. Manually construct the object to update. This is the crucial fix.
+        // The `imageFile` property is not included, preventing Firestore errors.
+        const dataToUpdate = {
+            ownerId: property.ownerId, // Preserve ownerId
+            address: data.address,
+            propertyType: data.propertyType,
+            status: data.status,
+            bedrooms: data.bedrooms,
+            bathrooms: data.bathrooms,
+            notes: data.notes || '',
+            tenancy: data.tenancy || {},
+            imageUrl: imageUrlToSave, // Use the correctly determined URL
+        };
 
+        // 3. Update the document in Firestore
         const propertyDocRef = doc(firestore, 'properties', propertyId);
-        
-        await updateDoc(propertyDocRef, {
-            ...dataToSave,
-            ownerId: property.ownerId, // Explicitly preserve the original ownerId
-            imageUrl: finalImageUrl, // Use the correctly determined image URL
-        });
+        await updateDoc(propertyDocRef, dataToUpdate);
 
         toast({
             title: 'Property Updated',
@@ -476,3 +484,5 @@ export default function EditPropertyPage() {
     </Card>
   );
 }
+
+    
