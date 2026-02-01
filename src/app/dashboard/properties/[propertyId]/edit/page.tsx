@@ -5,8 +5,8 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { useEffect } from 'react';
+import { doc, updateDoc } from 'firebase/firestore';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { Loader2 } from 'lucide-react';
 
 // Zod schema for form validation
@@ -41,123 +41,99 @@ const propertySchema = z.object({
 
 type PropertyFormValues = z.infer<typeof propertySchema>;
 
-// Data Loading and State Management Container
-export default function EditPropertyPage() {
-    const params = useParams();
-    const propertyId = params.propertyId as string;
-    const { user, isUserLoading } = useUser();
-    const firestore = useFirestore();
-
-    const [formDefaultValues, setFormDefaultValues] = useState<PropertyFormValues | null>(null);
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-        if (isUserLoading || !firestore || !user || !propertyId) {
-            // Don't fetch until everything is ready
-            return;
-        }
-
-        const fetchPropertyData = async () => {
-            try {
-                const propertyRef = doc(firestore, 'properties', propertyId);
-                const propertySnap = await getDoc(propertyRef);
-
-                if (!propertySnap.exists()) {
-                    setError("Property not found.");
-                    return;
-                }
-                
-                const data = propertySnap.data();
-
-                if (data.ownerId !== user.uid) {
-                    setError("You do not have permission to edit this property.");
-                    return;
-                }
-
-                // **CRITICAL**: Build a safe object for the form's defaultValues
-                const safeDefaults: PropertyFormValues = {
-                    address: {
-                        nameOrNumber: data.address?.nameOrNumber ?? '',
-                        street: data.address?.street ?? '',
-                        city: data.address?.city ?? '',
-                        county: data.address?.county ?? '',
-                        postcode: data.address?.postcode ?? '',
-                    },
-                    propertyType: data.propertyType ?? '',
-                    status: data.status ?? 'Vacant',
-                    bedrooms: data.bedrooms ?? 0,
-                    bathrooms: data.bathrooms ?? 0,
-                    notes: data.notes ?? '',
-                    tenancy: {
-                        monthlyRent: data.tenancy?.monthlyRent, // undefined is ok here
-                        depositAmount: data.tenancy?.depositAmount, // undefined is ok here
-                        depositScheme: data.tenancy?.depositScheme ?? '',
-                    },
-                };
-                
-                setFormDefaultValues(safeDefaults);
-
-            } catch (e: any) {
-                console.error("Error fetching property:", e);
-                setError(`An unexpected error occurred: ${e.message}`);
-            } finally {
-                setIsLoading(false);
-            }
-        };
-
-        fetchPropertyData();
-    }, [firestore, propertyId, user, isUserLoading]);
-
-    // This component will only be rendered once formDefaultValues is not null
-    if (isLoading || !formDefaultValues) {
-        // Show a loader if still loading or if the default values haven't been set yet.
-        return (
-            <div className="flex h-64 items-center justify-center">
-                <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            </div>
-        );
-    }
-    
-    if (error) {
-        return (
-            <Card className="max-w-4xl mx-auto">
-                <CardHeader><CardTitle className="text-destructive">Error</CardTitle></CardHeader>
-                <CardContent>
-                    <p>{error}</p>
-                    <Button asChild variant="link" className="mt-4 px-0">
-                        <Link href="/dashboard/properties">Return to Properties</Link>
-                    </Button>
-                </CardContent>
-            </Card>
-        );
-    }
-
-    // Once data is ready, render the actual form component with the data.
-    return <PropertyForm formDefaults={formDefaultValues} propertyId={propertyId} />;
+// Firestore data type
+interface PropertyData {
+  ownerId: string;
+  address: {
+    nameOrNumber?: string;
+    street: string;
+    city: string;
+    county?: string;
+    postcode: string;
+  };
+  propertyType: string;
+  status: string;
+  bedrooms: number;
+  bathrooms: number;
+  notes?: string;
+  tenancy?: {
+    monthlyRent?: number;
+    depositAmount?: number;
+    depositScheme?: string;
+  }
 }
 
-
-// The actual form component, only rendered when data is ready.
-function PropertyForm({ formDefaults, propertyId }: { formDefaults: PropertyFormValues, propertyId: string }) {
+export default function EditPropertyPage() {
     const router = useRouter();
-    const { user } = useUser(); // Still need user for ownerId on submit
+    const params = useParams();
+    const propertyId = params.propertyId as string;
+    const { user } = useUser();
     const firestore = useFirestore();
 
-    // The form is initialized here, one time, with guaranteed data.
     const form = useForm<PropertyFormValues>({
         resolver: zodResolver(propertySchema),
-        defaultValues: formDefaults,
+        defaultValues: {
+            address: {
+                nameOrNumber: '',
+                street: '',
+                city: '',
+                county: '',
+                postcode: '',
+            },
+            propertyType: '',
+            status: 'Vacant',
+            bedrooms: 0,
+            bathrooms: 0,
+            notes: '',
+            tenancy: {
+                monthlyRent: undefined,
+                depositAmount: undefined,
+                depositScheme: '',
+            },
+        }
     });
+    
+    const { reset } = form;
+
+    const propertyRef = useMemoFirebase(() => {
+        if (!firestore || !propertyId) return null;
+        return doc(firestore, 'properties', propertyId);
+    }, [firestore, propertyId]);
+    
+    const { data: property, isLoading, error } = useDoc<PropertyData>(propertyRef);
+
+    useEffect(() => {
+        if (property) {
+             const safeDefaults: PropertyFormValues = {
+                address: {
+                    nameOrNumber: property.address?.nameOrNumber ?? '',
+                    street: property.address?.street ?? '',
+                    city: property.address?.city ?? '',
+                    county: property.address?.county ?? '',
+                    postcode: property.address?.postcode ?? '',
+                },
+                propertyType: property.propertyType ?? '',
+                status: property.status ?? 'Vacant',
+                bedrooms: property.bedrooms ?? 0,
+                bathrooms: property.bathrooms ?? 0,
+                notes: property.notes ?? '',
+                tenancy: {
+                    monthlyRent: property.tenancy?.monthlyRent,
+                    depositAmount: property.tenancy?.depositAmount,
+                    depositScheme: property.tenancy?.depositScheme ?? '',
+                },
+            };
+            reset(safeDefaults);
+        }
+    }, [property, reset]);
 
     async function onSubmit(data: PropertyFormValues) {
-        if (!user || !firestore) {
+        if (!user || !firestore || !propertyRef) {
             toast({ variant: 'destructive', title: 'Save Failed', description: 'Authentication or database service is missing.' });
             return;
         }
 
         try {
-            const propertyRef = doc(firestore, 'properties', propertyId);
             await updateDoc(propertyRef, data);
             toast({
                 title: 'Property Updated',
@@ -172,6 +148,57 @@ function PropertyForm({ formDefaults, propertyId }: { formDefaults: PropertyForm
                 description: error.message || 'There was an error updating the property.',
             });
         }
+    }
+
+    if (isLoading) {
+        return (
+            <div className="flex h-64 items-center justify-center">
+                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            </div>
+        );
+    }
+    
+    if (error) {
+        return (
+            <Card className="max-w-4xl mx-auto">
+                <CardHeader><CardTitle className="text-destructive">Error Loading Property</CardTitle></CardHeader>
+                <CardContent>
+                    <p>There was an issue loading the property data. It's possible you don't have permission to view this item or it has been deleted.</p>
+                    <p className="text-sm text-muted-foreground mt-2">{error.message}</p>
+                    <Button asChild variant="link" className="mt-4 px-0">
+                        <Link href="/dashboard/properties">Return to Properties</Link>
+                    </Button>
+                </CardContent>
+            </Card>
+        );
+    }
+    
+    if (!property) {
+       return (
+            <Card className="max-w-4xl mx-auto">
+                <CardHeader><CardTitle className="text-destructive">Property Not Found</CardTitle></CardHeader>
+                <CardContent>
+                    <p>The property you are trying to edit could not be found.</p>
+                    <Button asChild variant="link" className="mt-4 px-0">
+                        <Link href="/dashboard/properties">Return to Properties</Link>
+                    </Button>
+                </CardContent>
+            </Card>
+        );
+    }
+
+    if (property.ownerId !== user?.uid) {
+         return (
+            <Card className="max-w-4xl mx-auto">
+                <CardHeader><CardTitle className="text-destructive">Access Denied</CardTitle></CardHeader>
+                <CardContent>
+                    <p>You do not have permission to edit this property.</p>
+                    <Button asChild variant="link" className="mt-4 px-0">
+                        <Link href="/dashboard/properties">Return to Properties</Link>
+                    </Button>
+                </CardContent>
+            </Card>
+        );
     }
 
     return (
@@ -200,8 +227,8 @@ function PropertyForm({ formDefaults, propertyId }: { formDefaults: PropertyForm
                             <CardHeader><CardTitle className="text-xl">Property Details</CardTitle></CardHeader>
                             <CardContent className="space-y-4">
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                    <FormField control={form.control} name="propertyType" render={({ field }) => ( <FormItem> <FormLabel>Property Type</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl> <SelectTrigger> <SelectValue placeholder="Select a type" /> </SelectTrigger> </FormControl> <SelectContent> {[ 'House', 'Flat', 'Bungalow', 'Maisonette', 'Studio', 'HMO' ].map((type) => ( <SelectItem key={type} value={type}> {type} </SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )} />
-                                    <FormField control={form.control} name="status" render={({ field }) => ( <FormItem> <FormLabel>Status</FormLabel> <Select onValueChange={field.onChange} defaultValue={field.value}> <FormControl> <SelectTrigger> <SelectValue placeholder="Select a status" /> </SelectTrigger> </FormControl> <SelectContent> {['Vacant', 'Occupied', 'Under Maintenance'].map( (status) => ( <SelectItem key={status} value={status}> {status} </SelectItem> ) )} </SelectContent> </Select> <FormMessage /> </FormItem> )} />
+                                    <FormField control={form.control} name="propertyType" render={({ field }) => ( <FormItem> <FormLabel>Property Type</FormLabel> <Select onValueChange={field.onChange} value={field.value}> <FormControl> <SelectTrigger> <SelectValue placeholder="Select a type" /> </SelectTrigger> </FormControl> <SelectContent> {[ 'House', 'Flat', 'Bungalow', 'Maisonette', 'Studio', 'HMO' ].map((type) => ( <SelectItem key={type} value={type}> {type} </SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )} />
+                                    <FormField control={form.control} name="status" render={({ field }) => ( <FormItem> <FormLabel>Status</FormLabel> <Select onValueChange={field.onChange} value={field.value}> <FormControl> <SelectTrigger> <SelectValue placeholder="Select a status" /> </SelectTrigger> </FormControl> <SelectContent> {['Vacant', 'Occupied', 'Under Maintenance'].map( (status) => ( <SelectItem key={status} value={status}> {status} </SelectItem> ) )} </SelectContent> </Select> <FormMessage /> </FormItem> )} />
                                 </div>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                     <FormField control={form.control} name="bedrooms" render={({ field }) => ( <FormItem> <FormLabel>Bedrooms</FormLabel> <FormControl> <Input type="number" min="0" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
@@ -242,3 +269,4 @@ function PropertyForm({ formDefaults, propertyId }: { formDefaults: PropertyForm
         </Card>
     );
 }
+    
