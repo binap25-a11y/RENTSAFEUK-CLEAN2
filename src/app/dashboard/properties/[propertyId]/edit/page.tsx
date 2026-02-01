@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -130,26 +130,18 @@ export default function EditPropertyPage() {
 
   // Handle form submission
   async function onSubmit(data: PropertyFormValues) {
-    if (!user || !firestore || !propertyId || !property) {
-      toast({ variant: 'destructive', title: 'Save Failed', description: 'Authentication or original property data is missing. Please try again.' });
+    if (!user || !firestore || !propertyId) {
+      toast({ variant: 'destructive', title: 'Save Failed', description: 'Authentication or property ID is missing. Please try again.' });
       return;
     }
 
     setIsSubmitting(true);
     const propertyDocRef = doc(firestore, 'properties', propertyId);
 
-    // Explicitly combine the original data (including ownerId) with the new form data
-    const dataToSave = {
-      ...property, // Start with the full, original document
-      ...data,     // Overwrite with the edited form values
-    };
-    // The `id` field from useDoc shouldn't be written back into the document body.
-    delete (dataToSave as Partial<Property> & { id?: string }).id;
-
-
     try {
-      // Use setDoc to overwrite the document with the complete, correct data.
-      await setDoc(propertyDocRef, dataToSave);
+      // Use updateDoc to only change the fields present in the form data.
+      // This is safer as it won't touch ownerId or other fields not in the form.
+      await updateDoc(propertyDocRef, data);
 
       toast({
         title: 'Property Updated',
@@ -157,6 +149,7 @@ export default function EditPropertyPage() {
       });
       
       router.push('/dashboard/properties');
+      router.refresh(); // Force a refresh of the properties page
 
     } catch (error: any) {
       console.error('Failed to update property', error);
