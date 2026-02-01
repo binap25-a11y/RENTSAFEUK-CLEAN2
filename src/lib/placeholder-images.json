@@ -1,16 +1,3 @@
 {
-  "placeholderImages": [
-    {
-      "id": "property-placeholder",
-      "description": "A generic modern house exterior.",
-      "imageUrl": "https://images.unsplash.com/photo-1613977257363-707ba9348227?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw1fHxtb2Rlcm4lMjBob3VzZXxlbnwwfHx8fDE3Njk4ODA3OTN8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "modern house"
-    },
-    {
-      "id": "login-background",
-      "description": "A stylish interior for the login page background.",
-      "imageUrl": "https://images.unsplash.com/photo-1600210492493-0946911123ea?crop=entropy&cs=tinysrgb&fit=max&fm=jpg&ixid=M3w3NDE5ODJ8MHwxfHNlYXJjaHw3fHxtb2Rlcm4lMjBpbnRlcmlvcnxlbnwwfHx8fDE3Njk4MzgzMjF8MA&ixlib=rb-4.1.0&q=80&w=1080",
-      "imageHint": "modern interior"
-    }
-  ]
+  "placeholderImages": []
 }

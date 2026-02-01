@@ -41,7 +41,6 @@ import {
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 // Define the Property type based on your Firestore structure
 interface Property {
@@ -119,8 +118,6 @@ export default function PropertiesPage() {
     }
   };
   
-  const defaultPlaceholderUrl = PlaceHolderImages.find(p => p.id === 'property-placeholder')?.imageUrl || 'https://picsum.photos/seed/placeholder/400/250';
-
   return (
     <>
       <div className="flex flex-col gap-6">
@@ -203,14 +200,18 @@ export default function PropertiesPage() {
                         >
                             <div className="relative">
                                 <div className="overflow-hidden">
-                                    <Image
-                                        src={property.imageUrl || defaultPlaceholderUrl}
-                                        data-ai-hint="house exterior"
-                                        alt={`Image of ${property.address.street}`}
-                                        width={400}
-                                        height={250}
-                                        className="object-cover w-full aspect-video group-hover:scale-105 transition-transform duration-300"
-                                    />
+                                    {property.imageUrl ? (
+                                        <Image
+                                            src={property.imageUrl}
+                                            data-ai-hint="house exterior"
+                                            alt={`Image of ${property.address.street}`}
+                                            width={400}
+                                            height={250}
+                                            className="object-cover w-full aspect-video group-hover:scale-105 transition-transform duration-300"
+                                        />
+                                    ) : (
+                                        <div className="aspect-video w-full bg-muted" />
+                                    )}
                                 </div>
                                 <CardHeader className="pb-2">
                                     <CardTitle className="text-lg leading-tight font-semibold group-hover:underline">

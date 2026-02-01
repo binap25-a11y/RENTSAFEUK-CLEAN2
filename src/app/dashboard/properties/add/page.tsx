@@ -19,7 +19,6 @@ import { useUser, useFirestore, useStorage } from '@/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Loader2, Upload } from 'lucide-react';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 const propertySchema = z.object({
   address: z.object({
@@ -100,7 +99,7 @@ export default function AddPropertyPage() {
       };
 
       // 2. Handle image upload if a file is selected
-      let imageUrl = PlaceHolderImages.find(p => p.id === 'property-placeholder')?.imageUrl || '';
+      let imageUrl = '';
       if (data.imageFile && data.imageFile.length > 0) {
         const file = data.imageFile[0];
         const uniqueFileName = `${Date.now()}-${file.name}`;
@@ -311,9 +310,7 @@ export default function AddPropertyPage() {
                         style={{ backgroundImage: imagePreview ? `url(${imagePreview})` : 'none' }}
                       >
                         {!imagePreview && (
-                            <div className="flex items-center justify-center h-full">
-                                <span className="text-muted-foreground">Image Preview</span>
-                            </div>
+                            <div className="flex items-center justify-center h-full" />
                         )}
                       </div>
                       <FormControl>

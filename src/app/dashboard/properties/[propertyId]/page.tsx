@@ -23,7 +23,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
-import { PlaceHolderImages } from '@/lib/placeholder-images';
 
 // Interfaces
 interface Property {
@@ -186,10 +185,6 @@ export default function PropertyDetailPage() {
   }
   
   if (!property) return notFound();
-  
-  const defaultPlaceholderUrl = PlaceHolderImages.find(p => p.id === 'property-placeholder')?.imageUrl;
-  const displayImageUrl = property.imageUrl || defaultPlaceholderUrl || 'https://picsum.photos/seed/default/800/500';
-
 
   return (
     <>
@@ -214,7 +209,13 @@ export default function PropertyDetailPage() {
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
             <Card>
-                <CardContent className="p-0"><Image src={displayImageUrl} data-ai-hint="house exterior" alt={`Image of ${property.address.street}`} width={800} height={500} className="rounded-t-lg object-cover w-full aspect-video" /></CardContent>
+                <CardContent className="p-0">
+                    {property.imageUrl ? (
+                        <Image src={property.imageUrl} data-ai-hint="house exterior" alt={`Image of ${property.address.street}`} width={800} height={500} className="rounded-t-lg object-cover w-full aspect-video" />
+                    ) : (
+                        <div className="aspect-video w-full bg-muted rounded-t-lg" />
+                    )}
+                </CardContent>
             </Card>
 
             {property.tenancy && (property.tenancy.monthlyRent || property.tenancy.depositAmount) && (

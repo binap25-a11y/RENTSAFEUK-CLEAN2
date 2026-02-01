@@ -144,8 +144,7 @@ export default function EditPropertyPage() {
             imageUrlToSave = await getDownloadURL(fileStorageRef); // This will be the new URL.
         }
 
-        // 2. Manually construct the object to update. This is the crucial fix.
-        // The `imageFile` property is not included, preventing Firestore errors.
+        // 2. Manually construct the object to update.
         const dataToUpdate = {
             ownerId: property.ownerId, // Preserve ownerId
             address: data.address,
@@ -366,10 +365,8 @@ export default function EditPropertyPage() {
                       <FormItem>
                         <FormLabel>Property Image</FormLabel>
                         <div className="w-full aspect-video rounded-lg border-2 border-dashed bg-muted flex items-center justify-center">
-                          {imagePreview ? (
+                          {imagePreview && (
                             <Image src={imagePreview} alt="Property preview" width={400} height={225} className="rounded-md object-cover h-full w-full" />
-                          ) : (
-                            <span className="text-muted-foreground">Image Preview</span>
                           )}
                         </div>
                         <FormControl>
