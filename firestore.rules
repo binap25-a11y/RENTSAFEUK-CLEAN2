@@ -12,6 +12,14 @@ service cloud.firestore {
       allow read, write: if request.auth.uid == userId;
     }
 
+    // SECURITY MODEL FOR USER-OWNED COLLECTIONS
+    // For collections like 'properties', 'tenants', and 'contractors', the 'list'
+    // rule allows any authenticated user to issue a query. Security is enforced
+    // by the 'get' rule, which Firestore applies to every document returned by a query.
+    // This means client-side queries MUST include a `where('ownerId', '==', request.auth.uid)`
+    // clause. If a query is not specific enough and returns documents not owned by the
+    // user, the entire request will fail with a 'permission denied' error.
+
     // PROPERTIES & SUBCOLLECTIONS
     match /properties/{propertyId} {
       allow get: if isOwner(resource.data);

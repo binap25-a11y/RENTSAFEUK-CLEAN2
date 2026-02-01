@@ -172,6 +172,7 @@ export default function FinancialsPage() {
     if (!user || !firestore || !selectedPropertyId) return null;
     return query(
       collection(firestore, 'properties', selectedPropertyId, 'rentPayments'),
+      where('ownerId', '==', user.uid),
       where('year', '==', selectedYear)
     );
   }, [firestore, user, selectedPropertyId, selectedYear]);
