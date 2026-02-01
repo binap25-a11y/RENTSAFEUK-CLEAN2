@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { doc, setDoc } from 'firebase/firestore'; // Using setDoc with merge
+import { doc, setDoc } from 'firebase/firestore';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -130,19 +130,26 @@ export default function EditPropertyPage() {
 
   // Handle form submission
   async function onSubmit(data: PropertyFormValues) {
-    if (!user || !firestore || !propertyId) {
-      toast({ variant: 'destructive', title: 'Save Failed', description: 'Authentication or property data is missing.' });
+    if (!user || !firestore || !propertyId || !property) {
+      toast({ variant: 'destructive', title: 'Save Failed', description: 'Authentication or original property data is missing. Please try again.' });
       return;
     }
 
     setIsSubmitting(true);
     const propertyDocRef = doc(firestore, 'properties', propertyId);
 
+    // Explicitly combine the original data (including ownerId) with the new form data
+    const dataToSave = {
+      ...property, // Start with the full, original document
+      ...data,     // Overwrite with the edited form values
+    };
+    // The `id` field from useDoc shouldn't be written back into the document body.
+    delete (dataToSave as Partial<Property> & { id?: string }).id;
+
+
     try {
-      // Use `setDoc` with `{ merge: true }`.
-      // This is the safest way to update a document without overwriting fields
-      // that are not in the `data` object (like ownerId).
-      await setDoc(propertyDocRef, data, { merge: true });
+      // Use setDoc to overwrite the document with the complete, correct data.
+      await setDoc(propertyDocRef, dataToSave);
 
       toast({
         title: 'Property Updated',
