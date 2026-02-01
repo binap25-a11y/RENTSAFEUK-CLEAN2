@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore'; // Using setDoc with merge
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -139,10 +139,10 @@ export default function EditPropertyPage() {
     const propertyDocRef = doc(firestore, 'properties', propertyId);
 
     try {
-      // Use `updateDoc`. It only modifies the fields present in the `data` object,
-      // which is validated by Zod and does not contain `ownerId`.
-      // This is the safest way to update a document without touching other fields.
-      await updateDoc(propertyDocRef, data);
+      // Use `setDoc` with `{ merge: true }`.
+      // This is the safest way to update a document without overwriting fields
+      // that are not in the `data` object (like ownerId).
+      await setDoc(propertyDocRef, data, { merge: true });
 
       toast({
         title: 'Property Updated',
