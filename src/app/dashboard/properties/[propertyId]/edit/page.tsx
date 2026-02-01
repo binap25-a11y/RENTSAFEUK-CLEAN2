@@ -54,36 +54,27 @@ export default function EditPropertyPage() {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  const form = useForm<PropertyFormValues>({
-    resolver: zodResolver(propertySchema),
-    defaultValues: {
-        address: {
-            nameOrNumber: '',
-            street: '',
-            city: '',
-            county: '',
-            postcode: '',
-        },
-        propertyType: '',
-        status: '',
-        bedrooms: 0,
-        bathrooms: 0,
-        notes: '',
-        tenancy: {
-            monthlyRent: undefined,
-            depositAmount: undefined,
-            depositScheme: '',
-        },
-    }
-  });
-
   const propertyDocRef = useMemoFirebase(() => {
-    if (!firestore || !propertyId || !user) return null;
+    if (!firestore || !propertyId) return null;
     return doc(firestore, 'properties', propertyId);
-  }, [firestore, propertyId, user]);
+  }, [firestore, propertyId]);
 
   const { data: propertyData, isLoading, error } = useDoc<Property>(propertyDocRef);
 
+  const form = useForm<PropertyFormValues>({
+    resolver: zodResolver(propertySchema),
+    // `defaultValues` are used for the initial render.
+    // The `useEffect` below will `reset` the form with fetched data.
+    defaultValues: {
+        address: { nameOrNumber: '', street: '', city: '', county: '', postcode: '' },
+        propertyType: '', status: '', bedrooms: 0, bathrooms: 0, notes: '',
+        tenancy: { monthlyRent: undefined, depositAmount: undefined, depositScheme: '' },
+    }
+  });
+
+  // This effect runs when the property data is fetched.
+  // It safely resets the form with the new data.
+  // The dependency array is crucial and is now correct.
   useEffect(() => {
     if (propertyData) {
       form.reset({
@@ -123,6 +114,7 @@ export default function EditPropertyPage() {
     const propertyDocRef = doc(firestore, 'properties', propertyId);
 
     try {
+      // updateDoc only updates the fields provided in `data`
       await updateDoc(propertyDocRef, data);
       toast({
         title: 'Property Updated',
