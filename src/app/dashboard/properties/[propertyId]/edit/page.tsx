@@ -48,13 +48,12 @@ export default function EditPropertyPage() {
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
 
-    const [isDataLoading, setIsDataLoading] = useState(true);
+    const [isLoading, setIsLoading] = useState(true);
     const [error, setError] = useState<string | null>(null);
-    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const form = useForm<PropertyFormValues>({
         resolver: zodResolver(propertySchema),
-        defaultValues: { // Provide comprehensive default values
+        defaultValues: { // Provide comprehensive default values to avoid uncontrolled component errors
             address: {
                 nameOrNumber: '',
                 street: '',
@@ -62,6 +61,8 @@ export default function EditPropertyPage() {
                 county: '',
                 postcode: '',
             },
+            propertyType: undefined,
+            status: undefined,
             bedrooms: 0,
             bathrooms: 0,
             notes: '',
@@ -73,25 +74,14 @@ export default function EditPropertyPage() {
         }
     });
 
-    const { reset } = form;
-
     useEffect(() => {
-        if (isUserLoading) {
-            return; // Wait for user authentication to resolve
-        }
-        if (!user) {
-            setError("You must be logged in to edit a property.");
-            setIsDataLoading(false);
-            return;
-        }
-        if (!firestore || !propertyId) {
-            setError("Could not find property identifier.");
-            setIsDataLoading(false);
-            return;
+        if (isUserLoading || !firestore || !user || !propertyId) {
+            return; // Wait for dependencies to be ready
         }
 
         const fetchPropertyData = async () => {
-            setIsDataLoading(true);
+            setIsLoading(true);
+            setError(null);
             try {
                 const propertyRef = doc(firestore, 'properties', propertyId);
                 const propertySnap = await getDoc(propertyRef);
@@ -101,11 +91,12 @@ export default function EditPropertyPage() {
 
                     if (data.ownerId !== user.uid) {
                         setError("You do not have permission to edit this property.");
+                        setIsLoading(false);
                         return;
                     }
 
-                    // Sanitize data and provide defaults to match the form schema
-                    const sanitizedData = {
+                    // Reset the form with fetched data
+                    form.reset({
                         address: {
                             nameOrNumber: data.address?.nameOrNumber ?? '',
                             street: data.address?.street ?? '',
@@ -113,18 +104,17 @@ export default function EditPropertyPage() {
                             county: data.address?.county ?? '',
                             postcode: data.address?.postcode ?? '',
                         },
-                        propertyType: data.propertyType ?? '',
-                        status: data.status ?? 'Vacant',
-                        bedrooms: data.bedrooms ?? 0,
-                        bathrooms: data.bathrooms ?? 0,
+                        propertyType: data.propertyType,
+                        status: data.status,
+                        bedrooms: data.bedrooms,
+                        bathrooms: data.bathrooms,
                         notes: data.notes ?? '',
                         tenancy: {
                             monthlyRent: data.tenancy?.monthlyRent,
                             depositAmount: data.tenancy?.depositAmount,
                             depositScheme: data.tenancy?.depositScheme ?? '',
                         },
-                    };
-                    reset(sanitizedData);
+                    });
                 } else {
                     setError("Property not found.");
                 }
@@ -132,19 +122,19 @@ export default function EditPropertyPage() {
                 console.error("Error fetching property:", e);
                 setError(e.message || "An unexpected error occurred while fetching data.");
             } finally {
-                setIsDataLoading(false);
+                setIsLoading(false);
             }
         };
 
         fetchPropertyData();
-    }, [firestore, propertyId, user, isUserLoading, reset]);
+    }, [firestore, propertyId, user, isUserLoading, form]);
 
     async function onSubmit(data: PropertyFormValues) {
         if (!user || !firestore) {
             toast({ variant: 'destructive', title: 'Save Failed', description: 'Authentication or database service is missing.' });
             return;
         }
-        setIsSubmitting(true);
+
         try {
             const propertyRef = doc(firestore, 'properties', propertyId);
             await updateDoc(propertyRef, data);
@@ -160,12 +150,10 @@ export default function EditPropertyPage() {
                 title: 'Update Failed',
                 description: error.message || 'There was an error updating the property.',
             });
-        } finally {
-            setIsSubmitting(false);
         }
     }
 
-    if (isUserLoading || isDataLoading) {
+    if (isLoading || isUserLoading) {
         return (
             <div className="flex h-64 items-center justify-center">
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -245,8 +233,7 @@ export default function EditPropertyPage() {
                             <Button type="button" variant="outline" asChild>
                                 <Link href="/dashboard/properties">Cancel</Link>
                             </Button>
-                            <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                            <Button type="submit">
                                 Save Changes
                             </Button>
                         </div>
