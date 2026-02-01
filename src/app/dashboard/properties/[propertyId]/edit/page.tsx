@@ -70,8 +70,16 @@ export default function EditPropertyPage() {
     const { user, isUserLoading } = useUser();
     const firestore = useFirestore();
 
-    const [isLoading, setIsLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
+    const [pageState, setPageState] = useState<{
+        isLoading: boolean;
+        error: string | null;
+        propertyData: PropertyData | null;
+    }>({
+        isLoading: true,
+        error: null,
+        propertyData: null,
+    });
+    
     const [isSubmitting, setIsSubmitting] = useState(false);
     
     const form = useForm<PropertyFormValues>({
@@ -80,19 +88,20 @@ export default function EditPropertyPage() {
     
     const { reset } = form;
 
+    // Effect 1: Fetch data and handle loading/error states
     useEffect(() => {
         if (isUserLoading || !firestore || !user) {
+            // Still waiting for auth to be ready, keep showing loader
+            setPageState(prev => ({ ...prev, isLoading: true }));
             return;
         }
 
         if (!propertyId) {
-            setError("No property ID provided.");
-            setIsLoading(false);
+            setPageState({ isLoading: false, error: "No property ID provided.", propertyData: null });
             return;
         }
 
         const propertyDocRef = doc(firestore, 'properties', propertyId);
-
         let isMounted = true;
 
         const fetchProperty = async () => {
@@ -102,57 +111,60 @@ export default function EditPropertyPage() {
                 if (!isMounted) return;
 
                 if (!docSnap.exists()) {
-                    setError("Property not found.");
+                    setPageState({ isLoading: false, error: "Property not found.", propertyData: null });
                     return;
                 }
 
-                const propertyData = docSnap.data() as PropertyData;
+                const data = docSnap.data() as PropertyData;
                 
-                if (propertyData.ownerId !== user.uid) {
-                    setError("You do not have permission to edit this property.");
+                if (data.ownerId !== user.uid) {
+                    setPageState({ isLoading: false, error: "You do not have permission to edit this property.", propertyData: null });
                     return;
                 }
-
-                const sanitizedData: PropertyFormValues = {
-                    address: {
-                        nameOrNumber: propertyData.address?.nameOrNumber ?? '',
-                        street: propertyData.address?.street ?? '',
-                        city: propertyData.address?.city ?? '',
-                        county: propertyData.address?.county ?? '',
-                        postcode: propertyData.address?.postcode ?? '',
-                    },
-                    propertyType: propertyData.propertyType ?? '',
-                    status: propertyData.status ?? 'Vacant',
-                    bedrooms: propertyData.bedrooms ?? 0,
-                    bathrooms: propertyData.bathrooms ?? 0,
-                    notes: propertyData.notes ?? '',
-                    tenancy: {
-                        monthlyRent: propertyData.tenancy?.monthlyRent,
-                        depositAmount: propertyData.tenancy?.depositAmount,
-                        depositScheme: propertyData.tenancy?.depositScheme ?? '',
-                    },
-                };
-                reset(sanitizedData);
+                
+                setPageState({ isLoading: false, error: null, propertyData: data });
 
             } catch (err) {
                 console.error("Error fetching property:", err);
                 if (isMounted) {
-                    setError("Failed to load property data.");
-                }
-            } finally {
-                if (isMounted) {
-                    setIsLoading(false);
+                    setPageState({ isLoading: false, error: "Failed to load property data.", propertyData: null });
                 }
             }
         };
 
         fetchProperty();
 
-        return () => {
-            isMounted = false;
-        };
+        return () => { isMounted = false; };
+    }, [isUserLoading, firestore, user, propertyId]);
 
-    }, [isUserLoading, firestore, user, propertyId, reset]);
+
+    // Effect 2: Populate form once data is successfully fetched
+    useEffect(() => {
+        if (pageState.propertyData) {
+            const data = pageState.propertyData;
+            const sanitizedData: PropertyFormValues = {
+                address: {
+                    nameOrNumber: data.address?.nameOrNumber ?? '',
+                    street: data.address?.street ?? '',
+                    city: data.address?.city ?? '',
+                    county: data.address?.county ?? '',
+                    postcode: data.address?.postcode ?? '',
+                },
+                propertyType: data.propertyType ?? '',
+                status: data.status ?? 'Vacant',
+                bedrooms: data.bedrooms ?? 0,
+                bathrooms: data.bathrooms ?? 0,
+                notes: data.notes ?? '',
+                tenancy: {
+                    monthlyRent: data.tenancy?.monthlyRent,
+                    depositAmount: data.tenancy?.depositAmount,
+                    depositScheme: data.tenancy?.depositScheme ?? '',
+                },
+            };
+            reset(sanitizedData);
+        }
+    }, [pageState.propertyData, reset]);
+
 
     async function onSubmit(data: PropertyFormValues) {
         if (!user || !firestore) return;
@@ -170,8 +182,9 @@ export default function EditPropertyPage() {
             setIsSubmitting(false);
         }
     }
-
-    if (isLoading || isUserLoading) {
+    
+    // Render based on pageState
+    if (pageState.isLoading) {
         return (
             <div className="flex h-64 items-center justify-center">
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -179,12 +192,12 @@ export default function EditPropertyPage() {
         );
     }
     
-    if (error) {
+    if (pageState.error) {
         return (
              <Card className="max-w-2xl mx-auto">
                 <CardHeader><CardTitle className="flex items-center gap-2 text-destructive"><AlertTriangle /> Error</CardTitle></CardHeader>
                 <CardContent>
-                    <p>{error}</p>
+                    <p>{pageState.error}</p>
                     <Button asChild variant="link" className="mt-4 px-0">
                         <Link href="/dashboard/properties">Return to Properties</Link>
                     </Button>
@@ -192,7 +205,8 @@ export default function EditPropertyPage() {
             </Card>
         );
     }
-
+    
+    // Render form if data is loaded and there are no errors
     return (
         <Card className="max-w-4xl mx-auto">
             <CardHeader>
