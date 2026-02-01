@@ -6,10 +6,10 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Bed, Bath, Edit, Trash2, MoreVertical, Loader2, AlertTriangle, User, Home, Wrench, CalendarCheck, FileText, Banknote, Shield, Phone, Mail, MapPin } from 'lucide-react';
-import { useUser, useFirestore } from '@/firebase';
-import { doc, getDoc, updateDoc, collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { doc, updateDoc, collection, query, where, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -26,6 +26,7 @@ import { format } from 'date-fns';
 // Interfaces
 interface Property {
     id: string;
+    ownerId: string;
     address: {
       nameOrNumber?: string;
       street: string;
@@ -74,74 +75,42 @@ export default function PropertyDetailPage() {
   const params = useParams();
   const propertyId = params.propertyId as string;
   const firestore = useFirestore();
+  const { user } = useUser();
   const router = useRouter();
   const { toast } = useToast();
   
-  // State for data
-  const [property, setProperty] = useState<Property | null>(null);
-  const [tenant, setTenant] = useState<Tenant | null>(null);
-  const [maintenanceLogs, setMaintenanceLogs] = useState<MaintenanceLog[]>([]);
-  const [inspections, setInspections] = useState<Inspection[]>([]);
-
-  // State for loading and errors
-  const [isLoading, setIsLoading] = useState(true);
-  const [error, setError] = useState<Error | null>(null);
   const [isDeleting, setIsDeleting] = useState(false);
 
-  useEffect(() => {
-    if (!firestore || !propertyId) {
-      setIsLoading(false);
-      return;
-    }
+  // --- Data Fetching using Hooks ---
+  const propertyRef = useMemoFirebase(() => doc(firestore, 'properties', propertyId), [firestore, propertyId]);
+  const { data: property, isLoading: isLoadingProperty, error: propertyError } = useDoc<Property>(propertyRef);
 
-    const fetchData = async () => {
-      setIsLoading(true);
-      const propertyDocRef = doc(firestore, 'properties', propertyId);
+  const tenantQuery = useMemoFirebase(() => 
+    query(collection(firestore, 'tenants'), where('propertyId', '==', propertyId), where('status', '==', 'Active'), limit(1)),
+    [firestore, propertyId]
+  );
+  const { data: tenants, isLoading: isLoadingTenant } = useCollection<Tenant>(tenantQuery);
+  const tenant = tenants?.[0];
 
-      try {
-        // Fetch Property
-        const propertySnap = await getDoc(propertyDocRef);
-        if (!propertySnap.exists()) {
-          setError(new Error("Not Found"));
-          setIsLoading(false);
-          return;
-        }
-        const propData = { id: propertySnap.id, ...propertySnap.data() } as Property;
-        setProperty(propData);
+  const maintenanceQuery = useMemoFirebase(() => 
+    query(collection(firestore, 'properties', propertyId, 'maintenanceLogs'), orderBy('reportedDate', 'desc'), limit(3)),
+    [firestore, propertyId]
+  );
+  const { data: maintenanceLogs, isLoading: isLoadingMaintenance } = useCollection<MaintenanceLog>(maintenanceQuery);
 
-        // Fetch related data in parallel
-        const tenantQuery = query(collection(firestore, 'tenants'), where('propertyId', '==', propertyId), where('status', '==', 'Active'), limit(1));
-        const maintenanceQuery = query(collection(propertyDocRef, 'maintenanceLogs'), orderBy('reportedDate', 'desc'), limit(3));
-        const inspectionQuery = query(collection(propertyDocRef, 'inspections'), orderBy('scheduledDate', 'desc'), limit(3));
-        
-        const [tenantSnap, maintenanceSnap, inspectionSnap] = await Promise.all([
-          getDocs(tenantQuery),
-          getDocs(maintenanceQuery),
-          getDocs(inspectionQuery),
-        ]);
+  const inspectionQuery = useMemoFirebase(() =>
+    query(collection(firestore, 'properties', propertyId, 'inspections'), orderBy('scheduledDate', 'desc'), limit(3)),
+    [firestore, propertyId]
+  );
+  const { data: inspections, isLoading: isLoadingInspections } = useCollection<Inspection>(inspectionQuery);
 
-        // Set Tenant
-        if (!tenantSnap.empty) {
-          const tenantData = tenantSnap.docs[0];
-          setTenant({ id: tenantData.id, ...tenantData.data() } as Tenant);
-        }
+  const isLoading = isLoadingProperty || isLoadingTenant || isLoadingMaintenance || isLoadingInspections;
+  const error = propertyError; // For now, we only show the main property error.
 
-        // Set Maintenance Logs
-        setMaintenanceLogs(maintenanceSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as MaintenanceLog)));
-
-        // Set Inspections
-        setInspections(inspectionSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Inspection)));
-
-      } catch (err: any) {
-        console.error("Firestore error:", err);
-        setError(err);
-      } finally {
-        setIsLoading(false);
-      }
-    };
-    
-    fetchData();
-  }, [firestore, propertyId]);
+  const hasPermission = useMemo(() => {
+    if (!property || !user) return false;
+    return property.ownerId === user.uid;
+  }, [property, user]);
 
   const handleDeleteConfirm = async () => {
     if (!firestore || !property) return;
@@ -172,7 +141,6 @@ export default function PropertyDetailPage() {
   }
 
   if (error) {
-    if (error.message === "Not Found") return notFound();
     const isPermissionError = error.message.includes('permission-denied') || (error as any).code === 'permission-denied';
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
@@ -187,6 +155,19 @@ export default function PropertyDetailPage() {
   }
   
   if (!property) return notFound();
+  
+  if (!hasPermission) {
+      return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <AlertTriangle className="h-12 w-12 text-destructive" />
+        <Card className="w-full max-w-lg text-center">
+            <CardHeader><CardTitle>Access Denied</CardTitle></CardHeader>
+            <CardContent><p className="text-sm text-muted-foreground">You do not have permission to view this property.</p></CardContent>
+            <CardFooter className="flex justify-center"><Button asChild><Link href="/dashboard/properties">Return to Properties</Link></Button></CardFooter>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <>
@@ -236,7 +217,7 @@ export default function PropertyDetailPage() {
                   <div className="flex items-start gap-3"><Badge variant="secondary" className="mt-1">{property.status}</Badge></div>
                   <div className="flex items-start gap-3"><Bed className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" /><div><p className="text-sm font-medium">Bedrooms</p><p className="text-sm text-muted-foreground">{property.bedrooms}</p></div></div>
                   <div className="flex items-start gap-3"><Bath className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" /><div><p className="text-sm font-medium">Bathrooms</p><p className="text-sm text-muted-foreground">{property.bathrooms}</p></div></div>
-                  {property.address?.postcode && (
+                  {property.address && property.address.postcode && (
                     <div className="pt-4 border-t">
                       <h4 className="text-sm font-medium mb-2">Location</h4>
                       <div className="aspect-video w-full rounded-md overflow-hidden border">
@@ -278,10 +259,10 @@ export default function PropertyDetailPage() {
             <Card>
               <CardHeader><CardTitle>Recent Activity</CardTitle></CardHeader>
               <CardContent>
-                {maintenanceLogs.length === 0 && inspections.length === 0 ? <p className="text-sm text-muted-foreground text-center py-4">No recent activity.</p> : (
+                {!maintenanceLogs?.length && !inspections?.length ? <p className="text-sm text-muted-foreground text-center py-4">No recent activity.</p> : (
                   <div className="space-y-4">
-                    {maintenanceLogs.map(log => <div key={log.id} className="text-sm"><Link href={`/dashboard/maintenance/${log.id}?propertyId=${propertyId}`} className="font-medium hover:underline">{log.title}</Link><p className="text-xs text-muted-foreground">{log.status} - Reported {format(log.reportedDate.toDate(), 'dd/MM/yy')}</p></div>)}
-                    {inspections.map(insp => <div key={insp.id} className="text-sm"><Link href={`/dashboard/inspections/${insp.id}?propertyId=${propertyId}`} className="font-medium hover:underline">{insp.type}</Link><p className="text-xs text-muted-foreground">{insp.status} - Scheduled for {format(insp.scheduledDate.toDate(), 'dd/MM/yy')}</p></div>)}
+                    {maintenanceLogs?.map(log => <div key={log.id} className="text-sm"><Link href={`/dashboard/maintenance/${log.id}?propertyId=${propertyId}`} className="font-medium hover:underline">{log.title}</Link><p className="text-xs text-muted-foreground">{log.status} - Reported {format(log.reportedDate.toDate(), 'dd/MM/yy')}</p></div>)}
+                    {inspections?.map(insp => <div key={insp.id} className="text-sm"><Link href={`/dashboard/inspections/${insp.id}?propertyId=${propertyId}`} className="font-medium hover:underline">{insp.type}</Link><p className="text-xs text-muted-foreground">{insp.status} - Scheduled for {format(insp.scheduledDate.toDate(), 'dd/MM/yy')}</p></div>)}
                   </div>
                 )}
               </CardContent>
