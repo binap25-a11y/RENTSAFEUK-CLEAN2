@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { doc, getDoc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, Timestamp } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { Loader2, AlertTriangle } from 'lucide-react';
 
 // Zod schema for form validation
@@ -40,7 +40,7 @@ const propertySchema = z.object({
 
 type PropertyFormValues = z.infer<typeof propertySchema>;
 
-// Type from Firestore, including ownerId
+// Firestore data type
 interface PropertyData {
   ownerId: string;
   address: {
@@ -62,117 +62,61 @@ interface PropertyData {
   };
 }
 
-
 export default function EditPropertyPage() {
     const router = useRouter();
     const params = useParams();
     const propertyId = params.propertyId as string;
-    const { user, isUserLoading } = useUser();
+    const { user } = useUser();
     const firestore = useFirestore();
 
-    const [pageState, setPageState] = useState<{
-        isLoading: boolean;
-        error: string | null;
-        propertyData: PropertyData | null;
-    }>({
-        isLoading: true,
-        error: null,
-        propertyData: null,
-    });
-    
     const [isSubmitting, setIsSubmitting] = useState(false);
-    
+
     const form = useForm<PropertyFormValues>({
         resolver: zodResolver(propertySchema),
     });
+
+    const propertyRef = useMemoFirebase(() => {
+        if (!firestore || !propertyId) return null;
+        return doc(firestore, 'properties', propertyId);
+    }, [firestore, propertyId]);
     
-    const { reset } = form;
+    const { data: propertyData, isLoading, error } = useDoc<PropertyData>(propertyRef);
 
-    // Effect 1: Fetch data and handle loading/error states
     useEffect(() => {
-        if (isUserLoading || !firestore || !user) {
-            // Still waiting for auth to be ready, keep showing loader
-            setPageState(prev => ({ ...prev, isLoading: true }));
-            return;
-        }
-
-        if (!propertyId) {
-            setPageState({ isLoading: false, error: "No property ID provided.", propertyData: null });
-            return;
-        }
-
-        const propertyDocRef = doc(firestore, 'properties', propertyId);
-        let isMounted = true;
-
-        const fetchProperty = async () => {
-            try {
-                const docSnap = await getDoc(propertyDocRef);
-
-                if (!isMounted) return;
-
-                if (!docSnap.exists()) {
-                    setPageState({ isLoading: false, error: "Property not found.", propertyData: null });
-                    return;
-                }
-
-                const data = docSnap.data() as PropertyData;
-                
-                if (data.ownerId !== user.uid) {
-                    setPageState({ isLoading: false, error: "You do not have permission to edit this property.", propertyData: null });
-                    return;
-                }
-                
-                setPageState({ isLoading: false, error: null, propertyData: data });
-
-            } catch (err) {
-                console.error("Error fetching property:", err);
-                if (isMounted) {
-                    setPageState({ isLoading: false, error: "Failed to load property data.", propertyData: null });
-                }
+        if (propertyData) {
+            // Check for ownership before populating the form
+            if (propertyData.ownerId !== user?.uid) {
+                // This case is handled by the error display below, but it's a good practice.
+                return;
             }
-        };
-
-        fetchProperty();
-
-        return () => { isMounted = false; };
-    }, [isUserLoading, firestore, user, propertyId]);
-
-
-    // Effect 2: Populate form once data is successfully fetched
-    useEffect(() => {
-        if (pageState.propertyData) {
-            const data = pageState.propertyData;
-            const sanitizedData: PropertyFormValues = {
+            form.reset({
                 address: {
-                    nameOrNumber: data.address?.nameOrNumber ?? '',
-                    street: data.address?.street ?? '',
-                    city: data.address?.city ?? '',
-                    county: data.address?.county ?? '',
-                    postcode: data.address?.postcode ?? '',
+                    nameOrNumber: propertyData.address?.nameOrNumber ?? '',
+                    street: propertyData.address?.street ?? '',
+                    city: propertyData.address?.city ?? '',
+                    county: propertyData.address?.county ?? '',
+                    postcode: propertyData.address?.postcode ?? '',
                 },
-                propertyType: data.propertyType ?? '',
-                status: data.status ?? 'Vacant',
-                bedrooms: data.bedrooms ?? 0,
-                bathrooms: data.bathrooms ?? 0,
-                notes: data.notes ?? '',
+                propertyType: propertyData.propertyType ?? '',
+                status: propertyData.status ?? 'Vacant',
+                bedrooms: propertyData.bedrooms ?? 0,
+                bathrooms: propertyData.bathrooms ?? 0,
+                notes: propertyData.notes ?? '',
                 tenancy: {
-                    monthlyRent: data.tenancy?.monthlyRent,
-                    depositAmount: data.tenancy?.depositAmount,
-                    depositScheme: data.tenancy?.depositScheme ?? '',
+                    monthlyRent: propertyData.tenancy?.monthlyRent,
+                    depositAmount: propertyData.tenancy?.depositAmount,
+                    depositScheme: propertyData.tenancy?.depositScheme ?? '',
                 },
-            };
-            reset(sanitizedData);
+            });
         }
-    }, [pageState.propertyData, reset]);
-
+    }, [propertyData, form, user]);
 
     async function onSubmit(data: PropertyFormValues) {
-        if (!user || !firestore) return;
+        if (!user || !propertyRef) return;
         
         setIsSubmitting(true);
         try {
-            const propertyDocRef = doc(firestore, 'properties', propertyId);
-            await updateDoc(propertyDocRef, data);
+            await updateDoc(propertyRef, data);
             toast({ title: 'Property Updated', description: 'The property details have been successfully updated.' });
             router.push('/dashboard/properties');
         } catch (error: any) {
@@ -182,9 +126,8 @@ export default function EditPropertyPage() {
             setIsSubmitting(false);
         }
     }
-    
-    // Render based on pageState
-    if (pageState.isLoading) {
+
+    if (isLoading) {
         return (
             <div className="flex h-64 items-center justify-center">
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -192,12 +135,18 @@ export default function EditPropertyPage() {
         );
     }
     
-    if (pageState.error) {
+    if (error || (propertyData && propertyData.ownerId !== user?.uid)) {
+        const isPermissionError = error?.message.includes('permission') || (propertyData && propertyData.ownerId !== user?.uid);
         return (
              <Card className="max-w-2xl mx-auto">
-                <CardHeader><CardTitle className="flex items-center gap-2 text-destructive"><AlertTriangle /> Error</CardTitle></CardHeader>
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-destructive">
+                        <AlertTriangle /> 
+                        {isPermissionError ? "Access Denied" : "Error"}
+                    </CardTitle>
+                </CardHeader>
                 <CardContent>
-                    <p>{pageState.error}</p>
+                    <p>{isPermissionError ? "You do not have permission to view or edit this property." : (error?.message || "An unexpected error occurred.")}</p>
                     <Button asChild variant="link" className="mt-4 px-0">
                         <Link href="/dashboard/properties">Return to Properties</Link>
                     </Button>
@@ -206,7 +155,25 @@ export default function EditPropertyPage() {
         );
     }
     
-    // Render form if data is loaded and there are no errors
+    if (!propertyData) {
+        return (
+            <Card className="max-w-2xl mx-auto">
+                <CardHeader>
+                    <CardTitle className="flex items-center gap-2 text-destructive">
+                        <AlertTriangle /> 
+                        Property Not Found
+                    </CardTitle>
+                </CardHeader>
+                <CardContent>
+                    <p>The requested property could not be found.</p>
+                    <Button asChild variant="link" className="mt-4 px-0">
+                        <Link href="/dashboard/properties">Return to Properties</Link>
+                    </Button>
+                </CardContent>
+            </Card>
+        );
+    }
+    
     return (
         <Card className="max-w-4xl mx-auto">
             <CardHeader>
