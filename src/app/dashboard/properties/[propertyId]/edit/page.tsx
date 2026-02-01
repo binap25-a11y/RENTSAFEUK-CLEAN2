@@ -43,7 +43,7 @@ type PropertyFormValues = z.infer<typeof propertySchema>;
 
 // The full interface for the Firestore document
 interface Property {
-  id: string; // Added from useDoc
+  id: string; 
   ownerId: string;
   address: {
     nameOrNumber?: string;
@@ -84,6 +84,8 @@ export default function EditPropertyPage() {
         county: '',
         postcode: '',
       },
+      propertyType: undefined,
+      status: undefined,
       bedrooms: 0,
       bathrooms: 0,
       notes: '',
@@ -139,8 +141,6 @@ export default function EditPropertyPage() {
     const propertyDocRef = doc(firestore, 'properties', propertyId);
 
     try {
-      // Use updateDoc to only change the fields present in the form data.
-      // This is safer as it won't touch ownerId or other fields not in the form.
       await updateDoc(propertyDocRef, data);
 
       toast({
@@ -149,7 +149,7 @@ export default function EditPropertyPage() {
       });
       
       router.push('/dashboard/properties');
-      router.refresh(); // Force a refresh of the properties page
+      router.refresh(); 
 
     } catch (error: any) {
       console.error('Failed to update property', error);
