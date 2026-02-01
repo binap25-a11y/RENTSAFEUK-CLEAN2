@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -444,7 +445,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Amount (£)</FormLabel>
-                      <FormControl><Input type="number" placeholder="100.00" {...field} /></FormControl>
+                      <FormControl><Input type="text" inputMode="decimal" placeholder="100.00" {...field} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -999,11 +1000,12 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
               </Label>
               <Input
                 id="amount"
-                type="number"
+                type="text"
+                inputMode="decimal"
                 value={partialAmount}
                 onChange={(e) => setPartialAmount(e.target.value)}
                 className="col-span-3"
-                placeholder={`e.g., 500`}
+                placeholder={`e.g., 500.00`}
               />
             </div>
           </div>

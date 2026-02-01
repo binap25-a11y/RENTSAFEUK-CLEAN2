@@ -300,7 +300,7 @@ export default function AddPropertyPage() {
                         <FormItem>
                         <FormLabel>Monthly Rent (£)</FormLabel>
                         <FormControl>
-                            <Input type="number" placeholder="0" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} value={field.value ?? ''} />
+                            <Input type="text" inputMode="decimal" placeholder="0.00" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                         </FormItem>
@@ -313,7 +313,7 @@ export default function AddPropertyPage() {
                         <FormItem>
                         <FormLabel>Deposit Amount (£)</FormLabel>
                         <FormControl>
-                            <Input type="number" placeholder="0" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} value={field.value ?? ''}/>
+                            <Input type="text" inputMode="decimal" placeholder="0.00" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} value={field.value ?? ''}/>
                         </FormControl>
                         <FormMessage />
                         </FormItem>
