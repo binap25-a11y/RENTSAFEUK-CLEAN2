@@ -123,10 +123,6 @@ export default function EditPropertyPage() {
     setIsSubmitting(true);
 
     try {
-        // Explicitly construct the update object from the validated form data.
-        // This prevents any unintended fields from being part of the update.
-        // `updateDoc` only modifies the fields provided; it does not touch other
-        // fields like `ownerId`, ensuring the property record remains intact.
         const dataToUpdate = {
             address: data.address,
             propertyType: data.propertyType,
