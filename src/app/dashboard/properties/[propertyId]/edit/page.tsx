@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,6 +18,7 @@ import { toast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { Loader2 } from 'lucide-react';
 
+// The schema should only contain fields that are on the form.
 const propertySchema = z.object({
   address: z.object({
     nameOrNumber: z.string().optional(),
@@ -40,6 +41,7 @@ const propertySchema = z.object({
 
 type PropertyFormValues = z.infer<typeof propertySchema>;
 
+// This interface represents the full document in Firestore, including ownerId.
 interface Property {
   address: {
     nameOrNumber?: string;
@@ -72,15 +74,6 @@ export default function EditPropertyPage() {
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
-    defaultValues: {
-      address: { nameOrNumber: '', street: '', city: '', county: '', postcode: '' },
-      propertyType: '',
-      status: '',
-      bedrooms: 0,
-      bathrooms: 0,
-      notes: '',
-      tenancy: { monthlyRent: undefined, depositAmount: undefined, depositScheme: '' },
-    },
   });
 
   const propertyRef = useMemoFirebase(() => {
@@ -115,7 +108,7 @@ export default function EditPropertyPage() {
   }, [property, form]);
 
   async function onSubmit(data: PropertyFormValues) {
-    if (!user || !firestore || !propertyId || !property) {
+    if (!user || !firestore || !propertyId) {
       toast({ variant: 'destructive', title: 'Save Failed', description: 'Authentication or property data is missing.' });
       return;
     }
@@ -124,29 +117,16 @@ export default function EditPropertyPage() {
     const propertyDocRef = doc(firestore, 'properties', propertyId);
 
     try {
-        // Manually construct the final, complete data object to ensure `ownerId` is preserved.
-        const finalPropertyData = {
-            // All fields from the form
-            address: data.address,
-            propertyType: data.propertyType,
-            status: data.status,
-            bedrooms: data.bedrooms,
-            bathrooms: data.bathrooms,
-            notes: data.notes || '',
-            tenancy: data.tenancy || {},
-
-            // Preserve the critical ownerId from the original document
-            ownerId: property.ownerId
-        };
-        
-        // Overwrite the document completely with the correct data using setDoc.
-        await setDoc(propertyDocRef, finalPropertyData);
+        // updateDoc is the safest method here. It only touches the fields
+        // provided in the 'data' object and leaves other fields (like ownerId) untouched.
+        await updateDoc(propertyDocRef, data);
 
         toast({
             title: 'Property Updated',
             description: 'The property details have been successfully updated.',
         });
         router.push('/dashboard/properties');
+        router.refresh();
 
     } catch (error: any) {
         console.error('Failed to update property', error);
@@ -195,73 +175,13 @@ export default function EditPropertyPage() {
                 <CardTitle className="text-xl">Property Address</CardTitle>
               </CardHeader>
               <CardContent className="space-y-4">
-                <FormField
-                    control={form.control}
-                    name="address.nameOrNumber"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Property Name / Number</FormLabel>
-                        <FormControl>
-                            <Input placeholder="e.g., The Coppice, Flat 3b" {...field} value={field.value ?? ''} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                 <FormField
-                    control={form.control}
-                    name="address.street"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Street Address</FormLabel>
-                        <FormControl>
-                            <Input placeholder="e.g., 123 Main Street" {...field} value={field.value ?? ''} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
-                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField
-                        control={form.control}
-                        name="address.city"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>City / Town</FormLabel>
-                            <FormControl>
-                                <Input placeholder="e.g., London" {...field} value={field.value ?? ''} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                    <FormField
-                        control={form.control}
-                        name="address.county"
-                        render={({ field }) => (
-                            <FormItem>
-                            <FormLabel>County</FormLabel>
-                            <FormControl>
-                                <Input placeholder="e.g., Greater London" {...field} value={field.value ?? ''} />
-                            </FormControl>
-                            <FormMessage />
-                            </FormItem>
-                        )}
-                    />
-                 </div>
-                 <FormField
-                    control={form.control}
-                    name="address.postcode"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Postcode</FormLabel>
-                        <FormControl>
-                            <Input placeholder="e.g., SW1A 0AA" {...field} value={field.value ?? ''} />
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                />
+                <FormField control={form.control} name="address.nameOrNumber" render={({ field }) => ( <FormItem> <FormLabel>Property Name / Number</FormLabel> <FormControl> <Input placeholder="e.g., The Coppice, Flat 3b" {...field} value={field.value ?? ''} /> </FormControl> <FormMessage /> </FormItem> )}/>
+                <FormField control={form.control} name="address.street" render={({ field }) => ( <FormItem> <FormLabel>Street Address</FormLabel> <FormControl> <Input placeholder="e.g., 123 Main Street" {...field} value={field.value ?? ''} /> </FormControl> <FormMessage /> </FormItem> )}/>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                    <FormField control={form.control} name="address.city" render={({ field }) => ( <FormItem> <FormLabel>City / Town</FormLabel> <FormControl> <Input placeholder="e.g., London" {...field} value={field.value ?? ''} /> </FormControl> <FormMessage /> </FormItem> )}/>
+                    <FormField control={form.control} name="address.county" render={({ field }) => ( <FormItem> <FormLabel>County</FormLabel> <FormControl> <Input placeholder="e.g., Greater London" {...field} value={field.value ?? ''} /> </FormControl> <FormMessage /> </FormItem> )}/>
+                </div>
+                <FormField control={form.control} name="address.postcode" render={({ field }) => ( <FormItem> <FormLabel>Postcode</FormLabel> <FormControl> <Input placeholder="e.g., SW1A 0AA" {...field} value={field.value ?? ''} /> </FormControl> <FormMessage /> </FormItem> )}/>
               </CardContent>
             </Card>
 
@@ -271,123 +191,26 @@ export default function EditPropertyPage() {
               </CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <FormField
-                    control={form.control}
-                    name="propertyType"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Property Type</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value} >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a type" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {[ 'House', 'Flat', 'Bungalow', 'Maisonette', 'Studio', 'HMO' ].map((type) => (
-                              <SelectItem key={type} value={type}> {type} </SelectItem>
-                            ))}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="status"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Status</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value} >
-                          <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder="Select a status" />
-                            </SelectTrigger>
-                          </FormControl>
-                          <SelectContent>
-                            {['Vacant', 'Occupied', 'Under Maintenance'].map( (status) => (
-                                <SelectItem key={status} value={status}> {status} </SelectItem>
-                              )
-                            )}
-                          </SelectContent>
-                        </Select>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <FormField control={form.control} name="propertyType" render={({ field }) => ( <FormItem> <FormLabel>Property Type</FormLabel> <Select onValueChange={field.onChange} value={field.value} > <FormControl> <SelectTrigger> <SelectValue placeholder="Select a type" /> </SelectTrigger> </FormControl> <SelectContent> {[ 'House', 'Flat', 'Bungalow', 'Maisonette', 'Studio', 'HMO' ].map((type) => ( <SelectItem key={type} value={type}> {type} </SelectItem> ))} </SelectContent> </Select> <FormMessage /> </FormItem> )}/>
+                  <FormField control={form.control} name="status" render={({ field }) => ( <FormItem> <FormLabel>Status</FormLabel> <Select onValueChange={field.onChange} value={field.value} > <FormControl> <SelectTrigger> <SelectValue placeholder="Select a status" /> </SelectTrigger> </FormControl> <SelectContent> {['Vacant', 'Occupied', 'Under Maintenance'].map( (status) => ( <SelectItem key={status} value={status}> {status} </SelectItem> ) )} </SelectContent> </Select> <FormMessage /> </FormItem> )}/>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                  <FormField control={form.control} name="bedrooms" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Bedrooms</FormLabel>
-                        <FormControl>
-                          <Input type="number" min="0" {...field} value={field.value ?? 0} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField control={form.control} name="bathrooms" render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Bathrooms</FormLabel>
-                        <FormControl>
-                          <Input type="number" min="0" {...field} value={field.value ?? 0} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
+                  <FormField control={form.control} name="bedrooms" render={({ field }) => ( <FormItem> <FormLabel>Bedrooms</FormLabel> <FormControl> <Input type="number" min="0" {...field} value={field.value ?? 0} /> </FormControl> <FormMessage /> </FormItem> )}/>
+                  <FormField control={form.control} name="bathrooms" render={({ field }) => ( <FormItem> <FormLabel>Bathrooms</FormLabel> <FormControl> <Input type="number" min="0" {...field} value={field.value ?? 0} /> </FormControl> <FormMessage /> </FormItem> )}/>
                 </div>
               </CardContent>
             </Card>
 
             <Card>
                 <CardHeader>
-                <CardTitle className="text-xl">Tenancy &amp; Financials</CardTitle>
+                    <CardTitle className="text-xl">Tenancy &amp; Financials</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField
-                    control={form.control}
-                    name="tenancy.monthlyRent"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Monthly Rent (£)</FormLabel>
-                        <FormControl>
-                            <Input type="number" placeholder="1200" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} value={field.value ?? ''}/>
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                    <FormField
-                    control={form.control}
-                    name="tenancy.depositAmount"
-                    render={({ field }) => (
-                        <FormItem>
-                        <FormLabel>Deposit Amount (£)</FormLabel>
-                        <FormControl>
-                            <Input type="number" placeholder="1500" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} value={field.value ?? ''}/>
-                        </FormControl>
-                        <FormMessage />
-                        </FormItem>
-                    )}
-                    />
-                </div>
-                <FormField
-                    control={form.control}
-                    name="tenancy.depositScheme"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Deposit Protection Scheme</FormLabel>
-                        <FormControl>
-                        <Input placeholder="e.g., DPS, MyDeposits" {...field} value={field.value ?? ''} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <FormField control={form.control} name="tenancy.monthlyRent" render={({ field }) => ( <FormItem> <FormLabel>Monthly Rent (£)</FormLabel> <FormControl> <Input type="number" placeholder="1200" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} value={field.value ?? ''}/> </FormControl> <FormMessage /> </FormItem> )}/>
+                        <FormField control={form.control} name="tenancy.depositAmount" render={({ field }) => ( <FormItem> <FormLabel>Deposit Amount (£)</FormLabel> <FormControl> <Input type="number" placeholder="1500" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} value={field.value ?? ''}/> </FormControl> <FormMessage /> </FormItem> )}/>
+                    </div>
+                    <FormField control={form.control} name="tenancy.depositScheme" render={({ field }) => ( <FormItem> <FormLabel>Deposit Protection Scheme</FormLabel> <FormControl> <Input placeholder="e.g., DPS, MyDeposits" {...field} value={field.value ?? ''} /> </FormControl> <FormMessage /> </FormItem> )}/>
                 </CardContent>
             </Card>
 
@@ -396,15 +219,7 @@ export default function EditPropertyPage() {
                 <CardTitle className="text-xl">Notes</CardTitle>
               </CardHeader>
               <CardContent>
-                <FormField control={form.control} name="notes" render={({ field }) => (
-                    <FormItem>
-                      <FormControl>
-                        <Textarea placeholder="Any additional notes about the property..." className="resize-none" rows={5} {...field} value={field.value ?? ''} />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                <FormField control={form.control} name="notes" render={({ field }) => ( <FormItem> <FormControl> <Textarea placeholder="Any additional notes about the property..." className="resize-none" rows={5} {...field} value={field.value ?? ''} /> </FormControl> <FormMessage /> </FormItem> )}/>
               </CardContent>
             </Card>
 
@@ -423,5 +238,3 @@ export default function EditPropertyPage() {
     </Card>
   );
 }
-
-    
