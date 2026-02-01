@@ -127,7 +127,7 @@ export default function EditPropertyPage() {
         };
 
         fetchPropertyData();
-    }, [firestore, propertyId, user, isUserLoading, form]);
+    }, [firestore, propertyId, user, isUserLoading]);
 
     async function onSubmit(data: PropertyFormValues) {
         if (!user || !firestore) {
