@@ -6,7 +6,7 @@ import { z } from 'zod';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useState } from 'react';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -124,9 +124,10 @@ export default function EditPropertyPage() {
     const propertyDocRef = doc(firestore, 'properties', propertyId);
 
     try {
-        // updateDoc will only change the fields present in 'data'
-        // and will not touch other fields like ownerId.
-        await updateDoc(propertyDocRef, data);
+        // Using setDoc with merge: true is the most robust way to update a document.
+        // It updates only the fields provided in the 'data' object and guarantees
+        // that other fields (like ownerId) are not accidentally removed.
+        await setDoc(propertyDocRef, data, { merge: true });
 
         toast({
             title: 'Property Updated',
