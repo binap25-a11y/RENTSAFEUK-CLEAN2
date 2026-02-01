@@ -95,6 +95,8 @@ export default function EditPropertyPage() {
     },
   });
 
+  const { reset } = form;
+
   useEffect(() => {
     if (!propertyId || !firestore || !user) {
         if(!user) {
@@ -126,7 +128,7 @@ export default function EditPropertyPage() {
             }
 
             // Populate form with fetched data
-            form.reset({
+            reset({
                 address: {
                     nameOrNumber: propertyData.address?.nameOrNumber ?? '',
                     street: propertyData.address?.street ?? '',
@@ -154,7 +156,7 @@ export default function EditPropertyPage() {
     };
     
     fetchProperty();
-  }, [propertyId, firestore, user, form]);
+  }, [propertyId, firestore, user, reset]);
 
   async function onSubmit(data: PropertyFormValues) {
     if (!user || !firestore || !propertyId) {
