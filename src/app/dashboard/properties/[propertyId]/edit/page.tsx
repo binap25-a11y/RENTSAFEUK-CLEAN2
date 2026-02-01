@@ -55,17 +55,14 @@ export default function EditPropertyPage() {
   const firestore = useFirestore();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // 1. Memoize the Firestore document reference to ensure it's stable
   const propertyDocRef = useMemoFirebase(() => {
     if (!firestore || !propertyId) return null;
     return doc(firestore, 'properties', propertyId);
   }, [firestore, propertyId]);
 
-  // 2. Fetch the document data using the stable reference
   const { data: propertyData, isLoading, error } = useDoc<Property>(propertyDocRef);
 
-  // 3. Initialize the form with default values.
-  const form = useForm<PropertyFormValues>({
+  const { reset, ...form } = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
     defaultValues: {
       address: { nameOrNumber: '', street: '', city: '', county: '', postcode: '' },
@@ -78,11 +75,9 @@ export default function EditPropertyPage() {
     },
   });
 
-  // 4. Use useEffect to populate the form *after* data has been fetched.
-  // This is the correct pattern to avoid infinite loops.
   useEffect(() => {
     if (propertyData) {
-      form.reset({
+      reset({
         address: {
             nameOrNumber: propertyData.address?.nameOrNumber ?? '',
             street: propertyData.address?.street ?? '',
@@ -102,15 +97,13 @@ export default function EditPropertyPage() {
         },
       });
     }
-  }, [propertyData, form.reset]);
+  }, [propertyData, reset]);
 
-  // 5. Handle form submission
   async function onSubmit(data: PropertyFormValues) {
     if (!user || !firestore || !propertyId) {
       toast({ variant: 'destructive', title: 'Save Failed', description: 'Authentication or property ID is missing.' });
       return;
     }
-    // Security check: ensure the user owns this property before updating
     if (propertyData?.ownerId !== user.uid) {
         toast({ variant: 'destructive', title: 'Permission Denied', description: 'You do not have permission to edit this property.' });
         return;
@@ -138,7 +131,6 @@ export default function EditPropertyPage() {
     }
   }
 
-  // 6. Handle loading and error states before rendering the form
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -165,7 +157,6 @@ export default function EditPropertyPage() {
     );
   }
 
-  // 7. Render the form now that it's safe
   return (
     <Card className="max-w-4xl mx-auto">
       <CardHeader>
@@ -173,7 +164,7 @@ export default function EditPropertyPage() {
         <CardDescription>Update the details for your property.</CardDescription>
       </CardHeader>
       <CardContent>
-        <Form {...form}>
+        <Form {...form} reset={reset}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                 <Card>
                     <CardHeader><CardTitle className="text-xl">Property Address</CardTitle></CardHeader>
