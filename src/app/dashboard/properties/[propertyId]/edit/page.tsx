@@ -64,7 +64,7 @@ export default function EditPropertyPage() {
   // 2. Fetch the document data using the stable reference
   const { data: propertyData, isLoading, error } = useDoc<Property>(propertyDocRef);
 
-  // 3. Initialize the form. It will be empty initially.
+  // 3. Initialize the form with default values.
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
     defaultValues: {
@@ -79,7 +79,7 @@ export default function EditPropertyPage() {
   });
 
   // 4. Use useEffect to populate the form *after* data has been fetched.
-  // The dependency array [propertyData, form.reset] is stable and prevents infinite loops.
+  // This is the correct pattern to avoid infinite loops.
   useEffect(() => {
     if (propertyData) {
       form.reset({
@@ -102,7 +102,7 @@ export default function EditPropertyPage() {
         },
       });
     }
-  }, [propertyData, form.reset]); // `form.reset` is a stable function from react-hook-form
+  }, [propertyData, form.reset]);
 
   // 5. Handle form submission
   async function onSubmit(data: PropertyFormValues) {
