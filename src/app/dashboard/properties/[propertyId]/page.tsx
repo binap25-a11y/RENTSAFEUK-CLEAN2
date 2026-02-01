@@ -187,8 +187,8 @@ export default function PropertyDetailPage() {
   
   if (!property) return notFound();
   
-  const defaultPlaceholder = PlaceHolderImages.find(p => p.id === 'property-placeholder');
-  const displayImageUrl = property.imageUrl || defaultPlaceholder?.imageUrl || 'https://placehold.co/800x500';
+  const defaultPlaceholderUrl = PlaceHolderImages.find(p => p.id === 'property-placeholder')?.imageUrl;
+  const displayImageUrl = property.imageUrl || defaultPlaceholderUrl || 'https://picsum.photos/seed/default/800/500';
 
 
   return (
