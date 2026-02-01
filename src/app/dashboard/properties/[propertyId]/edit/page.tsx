@@ -55,6 +55,7 @@ function EditPropertyForm({ propertyId, propertyData }: { propertyId: string, pr
     const form = useForm<PropertyFormValues>({
         resolver: zodResolver(propertySchema),
         // This is the key change: use `values` to populate the form from the start.
+        // `useForm` will manage updates internally and this is more stable than `useEffect` + `reset`.
         values: {
             address: {
               nameOrNumber: propertyData.address?.nameOrNumber ?? '',
@@ -169,6 +170,7 @@ export default function EditPropertyPage() {
     const firestore = useFirestore();
 
     // Memoize the document reference to ensure stability for the useDoc hook.
+    // THIS IS THE MOST IMPORTANT PART of the fix.
     const propertyRef = useMemoFirebase(() => {
         if (!firestore || !propertyId) return null;
         return doc(firestore, 'properties', propertyId);
