@@ -41,14 +41,8 @@ const propertySchema = z.object({
 
 type PropertyFormValues = z.infer<typeof propertySchema>;
 
-// Separate form component
-function PropertyEditForm({
-    propertyId,
-    initialData,
-}: {
-    propertyId: string;
-    initialData: PropertyFormValues;
-}) {
+// The form component
+function PropertyEditForm({ propertyId, initialData }: { propertyId: string; initialData: PropertyFormValues; }) {
     const router = useRouter();
     const { user } = useUser();
     const firestore = useFirestore();
@@ -56,9 +50,24 @@ function PropertyEditForm({
 
     const form = useForm<PropertyFormValues>({
         resolver: zodResolver(propertySchema),
-        // Use the 'values' option for asynchronous default values
-        values: initialData,
+        // Initialize with default values, NOT with initialData directly here.
+        defaultValues: {
+            address: { nameOrNumber: '', street: '', city: '', county: '', postcode: '' },
+            propertyType: '',
+            status: '',
+            bedrooms: 0,
+            bathrooms: 0,
+            notes: '',
+            tenancy: { monthlyRent: undefined, depositAmount: undefined, depositScheme: '' }
+        }
     });
+
+    // Use useEffect to reset the form when initialData is available
+    useEffect(() => {
+        if (initialData) {
+            form.reset(initialData);
+        }
+    }, [initialData, form.reset]);
 
     async function onSubmit(data: PropertyFormValues) {
         if (!user || !firestore) {
@@ -94,11 +103,11 @@ function PropertyEditForm({
                 <Card>
                     <CardHeader><CardTitle className="text-xl">Property Address</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
-                        <FormField control={form.control} name="address.nameOrNumber" render={({ field }) => ( <FormItem> <FormLabel>Property Name / Number</FormLabel> <FormControl> <Input placeholder="e.g., The Coppice, Flat 3b" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
+                        <FormField control={form.control} name="address.nameOrNumber" render={({ field }) => ( <FormItem> <FormLabel>Property Name / Number</FormLabel> <FormControl> <Input placeholder="e.g., The Coppice, Flat 3b" {...field} value={field.value ?? ''} /> </FormControl> <FormMessage /> </FormItem> )} />
                         <FormField control={form.control} name="address.street" render={({ field }) => ( <FormItem> <FormLabel>Street Address</FormLabel> <FormControl> <Input placeholder="e.g., 123 Main Street" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <FormField control={form.control} name="address.city" render={({ field }) => ( <FormItem> <FormLabel>City / Town</FormLabel> <FormControl> <Input placeholder="e.g., London" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
-                            <FormField control={form.control} name="address.county" render={({ field }) => ( <FormItem> <FormLabel>County (Optional)</FormLabel> <FormControl> <Input placeholder="e.g., Greater London" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
+                            <FormField control={form.control} name="address.county" render={({ field }) => ( <FormItem> <FormLabel>County (Optional)</FormLabel> <FormControl> <Input placeholder="e.g., Greater London" {...field} value={field.value ?? ''}/> </FormControl> <FormMessage /> </FormItem> )} />
                         </div>
                         <FormField control={form.control} name="address.postcode" render={({ field }) => ( <FormItem> <FormLabel>Postcode</FormLabel> <FormControl> <Input placeholder="e.g., SW1A 0AA" {...field} /> </FormControl> <FormMessage /> </FormItem> )} />
                     </CardContent>
@@ -181,16 +190,28 @@ export default function EditPropertyPage() {
                         return;
                     }
                     
-                    // Set the fetched data into state to pass to the form
-                    setPropertyData({
-                        address: data.address ?? { nameOrNumber: '', street: '', city: '', postcode: '' },
+                    // Sanitize the data to match the form schema exactly.
+                    const sanitizedData: PropertyFormValues = {
+                        address: {
+                            nameOrNumber: data.address?.nameOrNumber ?? '',
+                            street: data.address?.street ?? '',
+                            city: data.address?.city ?? '',
+                            county: data.address?.county ?? '',
+                            postcode: data.address?.postcode ?? '',
+                        },
                         propertyType: data.propertyType ?? '',
-                        status: data.status ?? '',
+                        status: data.status ?? 'Vacant',
                         bedrooms: data.bedrooms ?? 0,
                         bathrooms: data.bathrooms ?? 0,
                         notes: data.notes ?? '',
-                        tenancy: data.tenancy ?? { monthlyRent: undefined, depositAmount: undefined, depositScheme: '' },
-                    });
+                        tenancy: {
+                            monthlyRent: data.tenancy?.monthlyRent,
+                            depositAmount: data.tenancy?.depositAmount,
+                            depositScheme: data.tenancy?.depositScheme ?? '',
+                        },
+                    };
+                    setPropertyData(sanitizedData);
+
                 } else {
                     setError("Property not found.");
                 }
@@ -241,7 +262,6 @@ export default function EditPropertyPage() {
                 {propertyData ? (
                     <PropertyEditForm propertyId={propertyId} initialData={propertyData} />
                 ) : (
-                    // This case should ideally not be hit if loading and error are handled, but it's a good fallback.
                     <p>Could not load property data.</p>
                 )}
             </CardContent>
