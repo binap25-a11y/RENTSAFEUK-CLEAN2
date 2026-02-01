@@ -7,7 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Bed, Bath, Edit, Trash2, MoreVertical, Loader2, AlertTriangle, User, Home, Wrench, CalendarCheck, FileText, Banknote, Shield, Phone, Mail, MapPin } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc, collection, query, where, orderBy, limit, Timestamp } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, orderBy, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useMemo } from 'react';
 import {
@@ -61,14 +61,14 @@ interface MaintenanceLog {
     id: string;
     title: string;
     status: string;
-    reportedDate: Timestamp;
+    reportedDate: { seconds: number; nanoseconds: number } | Date;
 }
 
 interface Inspection {
     id: string;
     type: string;
     status: string;
-    scheduledDate: Timestamp;
+    scheduledDate: { seconds: number; nanoseconds: number } | Date;
 }
 
 export default function PropertyDetailPage() {
@@ -82,26 +82,29 @@ export default function PropertyDetailPage() {
   const [isDeleting, setIsDeleting] = useState(false);
 
   // --- Data Fetching using Hooks ---
-  const propertyRef = useMemoFirebase(() => doc(firestore, 'properties', propertyId), [firestore, propertyId]);
+  const propertyRef = useMemoFirebase(() => {
+    if (!firestore || !propertyId) return null; // Guard against missing firestore/propertyId
+    return doc(firestore, 'properties', propertyId);
+  }, [firestore, propertyId]);
   const { data: property, isLoading: isLoadingProperty, error: propertyError } = useDoc<Property>(propertyRef);
 
-  const tenantQuery = useMemoFirebase(() => 
-    query(collection(firestore, 'tenants'), where('propertyId', '==', propertyId), where('status', '==', 'Active'), limit(1)),
-    [firestore, propertyId]
-  );
+  const tenantQuery = useMemoFirebase(() => {
+    if (!firestore || !propertyId) return null;
+    return query(collection(firestore, 'tenants'), where('propertyId', '==', propertyId), where('status', '==', 'Active'), limit(1));
+  }, [firestore, propertyId]);
   const { data: tenants, isLoading: isLoadingTenant } = useCollection<Tenant>(tenantQuery);
   const tenant = tenants?.[0];
 
-  const maintenanceQuery = useMemoFirebase(() => 
-    query(collection(firestore, 'properties', propertyId, 'maintenanceLogs'), orderBy('reportedDate', 'desc'), limit(3)),
-    [firestore, propertyId]
-  );
+  const maintenanceQuery = useMemoFirebase(() => {
+    if (!firestore || !propertyId) return null;
+    return query(collection(firestore, 'properties', propertyId, 'maintenanceLogs'), orderBy('reportedDate', 'desc'), limit(3));
+  }, [firestore, propertyId]);
   const { data: maintenanceLogs, isLoading: isLoadingMaintenance } = useCollection<MaintenanceLog>(maintenanceQuery);
 
-  const inspectionQuery = useMemoFirebase(() =>
-    query(collection(firestore, 'properties', propertyId, 'inspections'), orderBy('scheduledDate', 'desc'), limit(3)),
-    [firestore, propertyId]
-  );
+  const inspectionQuery = useMemoFirebase(() => {
+    if (!firestore || !propertyId) return null;
+    return query(collection(firestore, 'properties', propertyId, 'inspections'), orderBy('scheduledDate', 'desc'), limit(3));
+  }, [firestore, propertyId]);
   const { data: inspections, isLoading: isLoadingInspections } = useCollection<Inspection>(inspectionQuery);
 
   const isLoading = isLoadingProperty || isLoadingTenant || isLoadingMaintenance || isLoadingInspections;
@@ -168,6 +171,11 @@ export default function PropertyDetailPage() {
       </div>
     );
   }
+
+  const safeFormatDate = (date: { seconds: number; nanoseconds: number } | Date, formatStr: string) => {
+    const jsDate = date instanceof Date ? date : new Date(date.seconds * 1000);
+    return format(jsDate, formatStr);
+  };
 
   return (
     <>
@@ -261,8 +269,8 @@ export default function PropertyDetailPage() {
               <CardContent>
                 {!maintenanceLogs?.length && !inspections?.length ? <p className="text-sm text-muted-foreground text-center py-4">No recent activity.</p> : (
                   <div className="space-y-4">
-                    {maintenanceLogs?.map(log => <div key={log.id} className="text-sm"><Link href={`/dashboard/maintenance/${log.id}?propertyId=${propertyId}`} className="font-medium hover:underline">{log.title}</Link><p className="text-xs text-muted-foreground">{log.status} - Reported {format(log.reportedDate.toDate(), 'dd/MM/yy')}</p></div>)}
-                    {inspections?.map(insp => <div key={insp.id} className="text-sm"><Link href={`/dashboard/inspections/${insp.id}?propertyId=${propertyId}`} className="font-medium hover:underline">{insp.type}</Link><p className="text-xs text-muted-foreground">{insp.status} - Scheduled for {format(insp.scheduledDate.toDate(), 'dd/MM/yy')}</p></div>)}
+                    {maintenanceLogs?.map(log => <div key={log.id} className="text-sm"><Link href={`/dashboard/maintenance/${log.id}?propertyId=${propertyId}`} className="font-medium hover:underline">{log.title}</Link><p className="text-xs text-muted-foreground">{log.status} - Reported {safeFormatDate(log.reportedDate, 'dd/MM/yy')}</p></div>)}
+                    {inspections?.map(insp => <div key={insp.id} className="text-sm"><Link href={`/dashboard/inspections/${insp.id}?propertyId=${propertyId}`} className="font-medium hover:underline">{insp.type}</Link><p className="text-xs text-muted-foreground">{insp.status} - Scheduled for {safeFormatDate(insp.scheduledDate, 'dd/MM/yy')}</p></div>)}
                   </div>
                 )}
               </CardContent>
@@ -280,3 +288,5 @@ export default function PropertyDetailPage() {
     </>
   );
 }
+
+    
