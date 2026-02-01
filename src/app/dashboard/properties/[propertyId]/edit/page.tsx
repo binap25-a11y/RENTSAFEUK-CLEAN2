@@ -54,24 +54,18 @@ export default function EditPropertyPage() {
 
     const form = useForm<PropertyFormValues>({
         resolver: zodResolver(propertySchema),
+        // Set empty defaults, will be populated by reset
         defaultValues: {
           address: { nameOrNumber: '', street: '', city: '', postcode: '' },
-          propertyType: undefined,
-          status: undefined,
           bedrooms: 0,
           bathrooms: 0,
           notes: '',
           tenancy: { monthlyRent: undefined, depositAmount: undefined, depositScheme: '' }
         },
     });
-    const { reset } = form;
 
     useEffect(() => {
         if (!firestore || !propertyId || !user) {
-            if (!user && !firestore) {
-                setError("Services not available. Please try again.");
-                setIsLoading(false);
-            }
             return;
         }
 
@@ -88,7 +82,8 @@ export default function EditPropertyPage() {
                         return;
                     }
                     
-                    const formData = {
+                    // Use form.reset to populate the form.
+                    form.reset({
                         address: data.address ?? { street: '', city: '', postcode: '' },
                         propertyType: data.propertyType ?? '',
                         status: data.status ?? '',
@@ -96,8 +91,7 @@ export default function EditPropertyPage() {
                         bathrooms: data.bathrooms ?? 0,
                         notes: data.notes ?? '',
                         tenancy: data.tenancy ?? { monthlyRent: undefined, depositAmount: undefined, depositScheme: '' },
-                    };
-                    reset(formData);
+                    });
                 } else {
                     setError("Property not found.");
                 }
@@ -110,7 +104,8 @@ export default function EditPropertyPage() {
         };
 
         fetchAndSetData();
-    }, [firestore, propertyId, user, reset]);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [firestore, propertyId, user, form.reset]);
 
     async function onSubmit(data: PropertyFormValues) {
         if (!user || !firestore) {
