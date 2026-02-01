@@ -230,7 +230,7 @@ export default function AddTenantPage() {
                                 mode="single"
                                 selected={field.value}
                                 onSelect={field.onChange}
-                                className="rounded-md border"
+                                className="rounded-md"
                             />
                         </FormControl>
                         <FormMessage />
@@ -248,7 +248,7 @@ export default function AddTenantPage() {
                                 mode="single"
                                 selected={field.value}
                                 onSelect={field.onChange}
-                                className="rounded-md border"
+                                className="rounded-md"
                             />
                         </FormControl>
                         <FormMessage />
