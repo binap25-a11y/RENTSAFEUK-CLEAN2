@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Bed, Bath, Edit, Trash2, MoreVertical, Loader2, AlertTriangle, User, Home, Wrench, CalendarCheck, FileText, Banknote, Shield, Phone, Mail } from 'lucide-react';
+import { ArrowLeft, Bed, Bath, Edit, Trash2, MoreVertical, Loader2, AlertTriangle, User, Home, Wrench, CalendarCheck, FileText, Banknote, Shield, Phone, Mail, MapPin } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
 import { doc, getDoc, updateDoc, collection, query, where, getDocs, orderBy, limit, Timestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -42,7 +42,11 @@ interface Property {
         monthlyRent?: number;
         depositAmount?: number;
         depositScheme?: string;
-    }
+    };
+    location?: {
+        lat: number;
+        lng: number;
+    };
 }
 
 interface Tenant {
@@ -198,6 +202,11 @@ export default function PropertyDetailPage() {
             <DropdownMenu>
                 <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                 <DropdownMenuContent align="end">
+                    <DropdownMenuItem asChild>
+                        <Link href={`/dashboard/properties/${property.id}/edit`}>
+                            <Edit className="mr-2 h-4 w-4" /> Edit
+                        </Link>
+                    </DropdownMenuItem>
                     <DropdownMenuItem onClick={() => setIsDeleting(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
@@ -227,6 +236,22 @@ export default function PropertyDetailPage() {
                   <div className="flex items-start gap-3"><Badge variant="secondary" className="mt-1">{property.status}</Badge></div>
                   <div className="flex items-start gap-3"><Bed className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" /><div><p className="text-sm font-medium">Bedrooms</p><p className="text-sm text-muted-foreground">{property.bedrooms}</p></div></div>
                   <div className="flex items-start gap-3"><Bath className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" /><div><p className="text-sm font-medium">Bathrooms</p><p className="text-sm text-muted-foreground">{property.bathrooms}</p></div></div>
+                  {property.location?.lat && property.location?.lng && (
+                    <div className="pt-4 border-t">
+                      <h4 className="text-sm font-medium mb-2">Location</h4>
+                      <div className="aspect-video w-full rounded-md overflow-hidden border">
+                        <iframe
+                          width="100%"
+                          height="100%"
+                          style={{ border: 0 }}
+                          loading="lazy"
+                          allowFullScreen
+                          referrerPolicy="no-referrer-when-downgrade"
+                          src={`https://maps.google.com/maps?q=${property.location.lat},${property.location.lng}&z=15&output=embed`}
+                        ></iframe>
+                      </div>
+                    </div>
+                  )}
               </CardContent>
             </Card>
 
