@@ -53,81 +53,76 @@ export default function EditPropertyPage() {
 
     const form = useForm<PropertyFormValues>({
         resolver: zodResolver(propertySchema),
-        defaultValues: { // Provide comprehensive default values to avoid uncontrolled component errors
-            address: {
-                nameOrNumber: '',
-                street: '',
-                city: '',
-                county: '',
-                postcode: '',
-            },
+        defaultValues: {
+            address: { nameOrNumber: '', street: '', city: '', county: '', postcode: '' },
             propertyType: undefined,
             status: undefined,
             bedrooms: 0,
             bathrooms: 0,
             notes: '',
-            tenancy: {
-                monthlyRent: undefined,
-                depositAmount: undefined,
-                depositScheme: '',
-            }
+            tenancy: { monthlyRent: undefined, depositAmount: undefined, depositScheme: '' }
         }
     });
 
     useEffect(() => {
         if (isUserLoading || !firestore || !user || !propertyId) {
-            return; // Wait for dependencies to be ready
+            return;
         }
 
-        const fetchPropertyData = async () => {
+        const fetchAndSetData = async () => {
             setIsLoading(true);
-            setError(null);
             try {
                 const propertyRef = doc(firestore, 'properties', propertyId);
                 const propertySnap = await getDoc(propertyRef);
 
-                if (propertySnap.exists()) {
-                    const data = propertySnap.data();
-
-                    if (data.ownerId !== user.uid) {
-                        setError("You do not have permission to edit this property.");
-                        setIsLoading(false);
-                        return;
-                    }
-
-                    // Reset the form with fetched data
-                    form.reset({
-                        address: {
-                            nameOrNumber: data.address?.nameOrNumber ?? '',
-                            street: data.address?.street ?? '',
-                            city: data.address?.city ?? '',
-                            county: data.address?.county ?? '',
-                            postcode: data.address?.postcode ?? '',
-                        },
-                        propertyType: data.propertyType,
-                        status: data.status,
-                        bedrooms: data.bedrooms,
-                        bathrooms: data.bathrooms,
-                        notes: data.notes ?? '',
-                        tenancy: {
-                            monthlyRent: data.tenancy?.monthlyRent,
-                            depositAmount: data.tenancy?.depositAmount,
-                            depositScheme: data.tenancy?.depositScheme ?? '',
-                        },
-                    });
-                } else {
+                if (!propertySnap.exists()) {
                     setError("Property not found.");
+                    setIsLoading(false);
+                    return;
                 }
-            } catch (e: any) {
+                
+                const data = propertySnap.data();
+
+                if (data.ownerId !== user.uid) {
+                    setError("You do not have permission to edit this property.");
+                    setIsLoading(false);
+                    return;
+                }
+
+                const formData = {
+                    address: {
+                        nameOrNumber: data.address?.nameOrNumber ?? '',
+                        street: data.address?.street ?? '',
+                        city: data.address?.city ?? '',
+                        county: data.address?.county ?? '',
+                        postcode: data.address?.postcode ?? '',
+                    },
+                    propertyType: data.propertyType,
+                    status: data.status,
+                    bedrooms: data.bedrooms,
+                    bathrooms: data.bathrooms,
+                    notes: data.notes ?? '',
+                    tenancy: {
+                        monthlyRent: data.tenancy?.monthlyRent,
+                        depositAmount: data.tenancy?.depositAmount,
+                        depositScheme: data.tenancy?.depositScheme ?? '',
+                    },
+                };
+                
+                form.reset(formData);
+                
+            } catch (e) {
                 console.error("Error fetching property:", e);
-                setError(e.message || "An unexpected error occurred while fetching data.");
+                setError("An unexpected error occurred while fetching data.");
             } finally {
                 setIsLoading(false);
             }
         };
 
-        fetchPropertyData();
-    }, [firestore, propertyId, user, isUserLoading]);
+        fetchAndSetData();
+        
+    }, [firestore, propertyId, user, isUserLoading, form]);
+
 
     async function onSubmit(data: PropertyFormValues) {
         if (!user || !firestore) {
@@ -153,7 +148,7 @@ export default function EditPropertyPage() {
         }
     }
 
-    if (isLoading || isUserLoading) {
+    if (isLoading) {
         return (
             <div className="flex h-64 items-center justify-center">
                 <Loader2 className="h-10 w-10 animate-spin text-primary" />
