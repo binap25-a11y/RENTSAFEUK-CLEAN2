@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { doc, updateDoc } from 'firebase/firestore';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
@@ -63,10 +63,24 @@ export default function EditPropertyPage() {
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
-    // The `values` prop is the recommended way to handle async default values.
-    // This will automatically update the form when `propertyData` is fetched.
-    // This replaces the problematic useEffect and solves the infinite loop.
-    values: propertyData ? {
+    // Set default values to a blank state. The form will be populated by useEffect.
+    defaultValues: {
+        address: { nameOrNumber: '', street: '', city: '', county: '', postcode: '' },
+        propertyType: '',
+        status: '',
+        bedrooms: 0,
+        bathrooms: 0,
+        notes: '',
+        tenancy: { monthlyRent: undefined, depositAmount: undefined, depositScheme: '' },
+    }
+  });
+
+  // This useEffect hook safely populates the form with data once it's loaded.
+  // It only runs when the data arrives or changes, preventing the infinite loop.
+  useEffect(() => {
+    if (propertyData) {
+      // The 'reset' function updates the form's values.
+      form.reset({
         address: {
             nameOrNumber: propertyData.address?.nameOrNumber ?? '',
             street: propertyData.address?.street ?? '',
@@ -74,8 +88,8 @@ export default function EditPropertyPage() {
             county: propertyData.address?.county ?? '',
             postcode: propertyData.address?.postcode ?? '',
         },
-        propertyType: propertyData.propertyType,
-        status: propertyData.status,
+        propertyType: propertyData.propertyType ?? '',
+        status: propertyData.status ?? '',
         bedrooms: propertyData.bedrooms ?? 0,
         bathrooms: propertyData.bathrooms ?? 0,
         notes: propertyData.notes ?? '',
@@ -84,12 +98,10 @@ export default function EditPropertyPage() {
             depositAmount: propertyData.tenancy?.depositAmount,
             depositScheme: propertyData.tenancy?.depositScheme ?? '',
         },
-      } : { // Default structure while data is loading
-        address: { nameOrNumber: '', street: '', city: '', county: '', postcode: '' },
-        propertyType: '', status: '', bedrooms: 0, bathrooms: 0, notes: '',
-        tenancy: { monthlyRent: undefined, depositAmount: undefined, depositScheme: '' },
-      },
-  });
+      });
+    }
+  }, [propertyData, form.reset]); // Dependencies are stable, preventing the loop.
+
 
   async function onSubmit(data: PropertyFormValues) {
     if (!user || !firestore || !propertyId) {
@@ -106,8 +118,6 @@ export default function EditPropertyPage() {
     const propertyDocRefToUpdate = doc(firestore, 'properties', propertyId);
 
     try {
-      // updateDoc is safe because it only updates the fields provided.
-      // The ownerId and other fields not in the form are preserved.
       await updateDoc(propertyDocRefToUpdate, data);
       toast({
         title: 'Property Updated',
