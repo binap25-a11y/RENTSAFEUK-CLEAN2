@@ -37,10 +37,18 @@ const NotesDisplay = ({ notes }: { notes: string | undefined }) => {
 
 // Component to display a whole section of the checklist
 const ChecklistSection = ({ title, data, fields }: { title: string, data: any, fields: {key: string, label: string}[] }) => {
-    if (!data) return null;
-    // Check if any field in this section has a value
-    const hasData = fields.some(field => data[field.key] !== undefined && data[field.key] !== false) || data.notes;
-    if (!hasData) return null;
+    // If the entire data object for this section is null or undefined, don't render anything.
+    if (!data) {
+        return null;
+    }
+
+    // Check if there is any meaningful data to display in this section.
+    // This prevents rendering an empty card if all checkboxes were left unchecked and there are no notes.
+    const hasMeaningfulData = fields.some(field => typeof data[field.key] === 'boolean') || (data.notes && data.notes.trim() !== '');
+
+    if (!hasMeaningfulData) {
+        return null;
+    }
 
     return (
         <Card>
@@ -50,7 +58,8 @@ const ChecklistSection = ({ title, data, fields }: { title: string, data: any, f
             <CardContent className="space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
                     {fields.map(field => (
-                        (data[field.key] === true || data[field.key] === false) &&
+                        // Explicitly check for boolean type to avoid rendering for other falsy values.
+                        (typeof data[field.key] === 'boolean') &&
                         <ChecklistItemDisplay key={field.key} label={field.label} checked={data[field.key]} />
                     ))}
                 </div>
