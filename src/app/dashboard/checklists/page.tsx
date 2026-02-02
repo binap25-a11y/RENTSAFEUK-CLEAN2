@@ -32,6 +32,8 @@ import {
   useFirestore,
   useDoc,
   useMemoFirebase,
+  errorEmitter,
+  FirestorePermissionError,
 } from '@/firebase';
 import { collection, addDoc, doc } from 'firebase/firestore';
 
@@ -171,7 +173,6 @@ export default function ChecklistPage() {
 
     setIsSubmitting(true);
     
-    // Create a deep copy of the data, which automatically removes any 'undefined' values that Firestore rejects.
     const cleanedData = JSON.parse(JSON.stringify({
         ...data,
         ownerId: user.uid,
@@ -179,15 +180,25 @@ export default function ChecklistPage() {
 
     const checklistsCollection = collection(firestore, 'properties', data.propertyId, 'checklists');
 
-    try {
-      await addDoc(checklistsCollection, cleanedData);
-      toast({
-        title: 'Checklist Saved',
-        description: 'The pre-tenancy checklist has been successfully saved.',
-      });
-      router.push(`/dashboard/tenants/${data.tenantId}`);
-    } catch (serverError: any) {
+    addDoc(checklistsCollection, cleanedData)
+      .then(() => {
+        toast({
+          title: 'Checklist Saved',
+          description: 'The pre-tenancy checklist has been successfully saved.',
+        });
+        router.push(`/dashboard/tenants/${data.tenantId}`);
+      })
+      .catch(async (serverError) => {
         console.error("Error saving checklist:", serverError);
+        // Create and emit a detailed error for debugging
+        const permissionError = new FirestorePermissionError({
+          path: checklistsCollection.path,
+          operation: 'create',
+          requestResourceData: cleanedData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+
+        // Also show a user-friendly toast
         toast({
           variant: 'destructive',
           title: 'Save Failed',
@@ -195,9 +206,10 @@ export default function ChecklistPage() {
             ? "The checklist data could not be saved. Please try again."
             : serverError.message || 'An unexpected error occurred.',
         });
-    } finally {
-      setIsSubmitting(false);
-    }
+      })
+      .finally(() => {
+        setIsSubmitting(false);
+      });
   }
 
   if (!propertyIdFromUrl || !tenantIdFromUrl) {

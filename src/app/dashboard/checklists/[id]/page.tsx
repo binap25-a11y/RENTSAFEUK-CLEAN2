@@ -10,73 +10,12 @@ import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 
-// Helper component to display a checklist item
-const ChecklistItemDisplay = ({ label, checked }: { label: string; checked?: boolean }) => (
-  <div className="flex items-center justify-between rounded-md border p-3 bg-background">
-    <p className="text-sm font-medium">{label}</p>
-    {checked === true ? (
-      <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">Pass</Badge>
-    ) : checked === false ? (
-      <Badge variant="destructive">Fail</Badge>
-    ) : (
-      <Badge variant="outline">N/A</Badge>
-    )}
-  </div>
-);
-
-// Helper component to display notes for a section
-const NotesDisplay = ({ notes }: { notes?: string }) => {
-  if (!notes) return null;
-  return (
-    <div className="mt-4 rounded-md border border-dashed bg-muted/50 p-4">
-      <h4 className="font-semibold text-sm mb-2">Notes</h4>
-      <p className="text-sm text-muted-foreground whitespace-pre-wrap">{notes}</p>
-    </div>
-  );
-};
-
-// Component to display a whole section of the checklist, rebuilt for safety.
-const ChecklistSection = ({ title, data, fields }: { title: string, data: any, fields: {key: string, label: string}[] }) => {
-    // If the data for this section is missing entirely, render nothing.
-    if (!data) {
-        return null;
-    }
-
-    // Determine if there is any content to show.
-    const hasContent = fields.some(field => typeof data[field.key] === 'boolean') || (data.notes && data.notes.trim());
-
-    if (!hasContent) {
-        return null;
-    }
-
-    return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="text-lg">{title}</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-3">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {fields.map(field => {
-                        // Only render if the data for this checkbox exists (is true or false)
-                        if (typeof data[field.key] === 'boolean') {
-                            return <ChecklistItemDisplay key={field.key} label={field.label} checked={data[field.key]} />
-                        }
-                        return null;
-                    })}
-                </div>
-                <NotesDisplay notes={data.notes} />
-            </CardContent>
-        </Card>
-    );
-};
-
 const sections = {
     beforeTenancy: { title: 'Before Tenancy Starts (Legal)', fields: [ { key: 'howToRentGuide', label: 'How to Rent Guide' }, { key: 'epc', label: 'Energy Performance Certificate' }, { key: 'gasSafety', label: 'Gas Safety Certificate' }, { key: 'eicr', label: 'Electrical Safety Report' }, { key: 'tenancyAgreement', label: 'Signed Tenancy Agreement' }, { key: 'rightToRent', label: 'Right to Rent check' } ]},
     deposit: { title: 'If Taking a Deposit', fields: [ { key: 'prescribedInfo', label: 'Deposit Prescribed Information' }, { key: 'schemeLeaflet', label: 'Deposit Scheme Leaflet' }, { key: 'protectionCertificate', label: 'Deposit protection certificate' } ]},
     atMoveIn: { title: 'At / Just After Move-In', fields: [ { key: 'inventory', label: 'Inventory & Schedule of Condition' }, { key: 'keysRecord', label: 'Keys issued record' }, { key: 'emergencyContacts', label: 'Emergency & repairs contact details' }, { key: 'privacyNotice', label: 'Privacy Notice (GDPR)' } ]},
     optional: { title: 'Optional but Smart', fields: [ { key: 'welcomeLetter', label: 'Welcome letter' }, { key: 'applianceManuals', label: 'Appliance manuals' }, { key: 'binInfo', label: 'Bin & recycling info' }, { key: 'parkingInfo', label: 'Parking / permit info' } ]},
 }
-
 
 // Main Page Component
 export default function ViewChecklistPage() {
@@ -170,11 +109,54 @@ export default function ViewChecklistPage() {
       </Card>
       
       <div className="space-y-6">
-        {Object.entries(sections).map(([key, { title, fields }]) => (
-            <ChecklistSection key={key} title={title} data={checklist[key as keyof typeof checklist]} fields={fields} />
-        ))}
-      </div>
+        {Object.entries(sections).map(([key, { title, fields }]) => {
+          const sectionData = checklist?.[key as keyof typeof checklist];
 
+          // Defensively check if the section data is a valid object with content.
+          if (typeof sectionData !== 'object' || sectionData === null) {
+            return null;
+          }
+          const hasContent = fields.some(field => typeof sectionData[field.key] === 'boolean') || (sectionData.notes && String(sectionData.notes).trim().length > 0);
+          if (!hasContent) {
+            return null;
+          }
+
+          return (
+            <Card key={key}>
+              <CardHeader>
+                <CardTitle className="text-lg">{title}</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  {fields.map(field => {
+                    const checked = sectionData[field.key];
+                    if (typeof checked === 'boolean') {
+                      return (
+                         <div key={field.key} className="flex items-center justify-between rounded-md border p-3 bg-background">
+                            <p className="text-sm font-medium">{field.label}</p>
+                            {checked === true ? (
+                            <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">Pass</Badge>
+                            ) : (
+                            <Badge variant="destructive">Fail</Badge>
+                            )}
+                        </div>
+                      )
+                    }
+                    return null;
+                  })}
+                </div>
+                
+                {sectionData.notes && String(sectionData.notes).trim().length > 0 && (
+                   <div className="mt-4 rounded-md border border-dashed bg-muted/50 p-4">
+                        <h4 className="font-semibold text-sm mb-2">Notes</h4>
+                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">{sectionData.notes}</p>
+                    </div>
+                )}
+              </CardContent>
+            </Card>
+          );
+        })}
+      </div>
     </div>
   );
 }
