@@ -112,7 +112,7 @@ export default function ViewChecklistPage() {
   
   const completedDate = checklist.completedDate?.seconds ? format(new Date(checklist.completedDate.seconds * 1000), 'PPP') : 'N/A';
   const tenantName = tenant?.name || 'Loading tenant...';
-  const propertyAddress = (property && property.address) ? `${property.address.street}, ${property.address.city}` : 'Loading property...';
+  const propertyAddress = property?.address ? [property.address.street, property.address.city].filter(Boolean).join(', ') : 'Loading property...';
 
 
   return (
