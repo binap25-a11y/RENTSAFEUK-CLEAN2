@@ -27,6 +27,7 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 // Type for a Property document from Firestore
 interface Property {
     address: {
+      nameOrNumber?: string;
       street: string;
       city: string;
       county?: string;
@@ -111,7 +112,7 @@ export default function TenantDetailPage() {
   
   const formatAddress = (address: Property['address']) => {
     if (!address) return 'N/A';
-    return `${address.street}, ${address.city}, ${address.postcode}`;
+    return [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
   };
 
   if (isLoading) {

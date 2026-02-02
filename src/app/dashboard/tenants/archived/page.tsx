@@ -37,6 +37,7 @@ interface Tenant {
 interface Property {
   id: string;
   address: {
+    nameOrNumber?: string;
     street: string;
     city: string;
     county?: string;
@@ -71,7 +72,7 @@ export default function ArchivedTenantsPage() {
     const propertyMap = useMemo(() => {
         if (!properties) return {};
         return properties.reduce((acc, prop) => {
-            acc[prop.id] = `${prop.address.street}, ${prop.address.city}`;
+            acc[prop.id] = [prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ');
             return acc;
         }, {} as Record<string, string>);
     }, [properties]);
