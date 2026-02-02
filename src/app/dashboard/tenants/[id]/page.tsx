@@ -326,7 +326,7 @@ export default function TenantDetailPage() {
                              </p>
                            </div>
                            <div className="flex gap-2">
-                               <Button asChild variant="secondary">
+                               <Button asChild>
                                     <Link href={`/dashboard/checklists/${checklist.id}?propertyId=${tenant.propertyId}&tenantId=${id}`}>
                                         <Eye className="mr-2 h-4 w-4" /> View Checklist
                                     </Link>
