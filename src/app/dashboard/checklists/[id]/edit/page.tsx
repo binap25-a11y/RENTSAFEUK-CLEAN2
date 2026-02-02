@@ -106,7 +106,7 @@ const ChecklistField = ({ form, name, label }: { form: any, name: any, label: st
     render={({ field }) => (
       <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
         <FormControl>
-          <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+          <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
         </FormControl>
         <div className="space-y-1 leading-none">
           <FormLabel className="font-normal">{label}</FormLabel>
@@ -124,7 +124,7 @@ const NotesField = ({ form, name, placeholder }: { form: any, name: any, placeho
       <FormItem className="mt-4">
         <FormLabel>Notes</FormLabel>
         <FormControl>
-          <Textarea placeholder={placeholder} {...field} />
+          <Textarea placeholder={placeholder} {...field} value={field.value ?? ''} />
         </FormControl>
         <FormMessage />
       </FormItem>
@@ -172,7 +172,7 @@ export default function EditChecklistPage() {
       // Ensure all nested objects exist to avoid render errors.
       const formData = {
         ...checklist,
-        completedDate: checklist.completedDate instanceof Date ? checklist.completedDate : new Date(checklist.completedDate.seconds * 1000),
+        completedDate: checklist.completedDate instanceof Date ? checklist.completedDate : new Date((checklist.completedDate as Timestamp).seconds * 1000),
         beforeTenancy: checklist.beforeTenancy || {},
         deposit: checklist.deposit || {},
         atMoveIn: checklist.atMoveIn || {},
@@ -194,7 +194,11 @@ export default function EditChecklistPage() {
 
     setIsSubmitting(true);
     
-    const cleanedData = JSON.parse(JSON.stringify(data));
+    // Deep clone and remove undefined values before sending to Firestore
+    const cleanedData = JSON.parse(JSON.stringify(data, (key, value) => {
+        return (value === undefined) ? null : value;
+    }));
+
 
     try {
       await updateDoc(checklistRef, cleanedData);
