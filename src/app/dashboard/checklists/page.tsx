@@ -171,38 +171,11 @@ export default function ChecklistPage() {
 
     setIsSubmitting(true);
     
-    // This robustly cleans the form data, removing any `undefined` values before saving.
-    const cleanedData: { [key: string]: any } = {
+    // Create a deep copy of the data, which automatically removes any 'undefined' values that Firestore rejects.
+    const cleanedData = JSON.parse(JSON.stringify({
+        ...data,
         ownerId: user.uid,
-        propertyId: data.propertyId,
-        tenantId: data.tenantId,
-        completedDate: data.completedDate,
-    };
-
-    const cleanSection = (section: any) => {
-        if (!section) return null;
-        const result: { [key: string]: any } = {};
-        let hasData = false;
-        for (const [key, value] of Object.entries(section)) {
-            if (value !== undefined) {
-                result[key] = value;
-                if (value === true || (typeof value === 'string' && value !== '')) {
-                    hasData = true;
-                }
-            }
-        }
-        return hasData ? result : null;
-    };
-
-    const sections: (keyof ChecklistFormValues)[] = ['beforeTenancy', 'deposit', 'atMoveIn', 'optional'];
-    sections.forEach(sectionName => {
-        if (data[sectionName]) {
-            const cleanedSection = cleanSection(data[sectionName]);
-            if (cleanedSection) {
-                cleanedData[sectionName] = cleanedSection;
-            }
-        }
-    });
+    }));
 
     const checklistsCollection = collection(firestore, 'properties', data.propertyId, 'checklists');
 
