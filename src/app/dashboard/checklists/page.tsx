@@ -145,7 +145,14 @@ export default function ChecklistPage() {
   const tenantIdFromUrl = searchParams.get('tenantId');
 
   const [isConfirmDialogOpen, setConfirmDialogOpen] = useState(false);
-  const [dataToSubmit, setDataToSubmit] = useState<ChecklistFormValues | null>(null);
+  
+  const form = useForm<ChecklistFormValues>({
+    resolver: zodResolver(checklistSchema),
+    defaultValues: {
+      propertyId: propertyIdFromUrl || '',
+      tenantId: tenantIdFromUrl || '',
+    }
+  });
 
   const propertyRef = useMemoFirebase(() => {
     if (!firestore || !propertyIdFromUrl) return null;
@@ -159,20 +166,12 @@ export default function ChecklistPage() {
   }, [firestore, tenantIdFromUrl]);
   const { data: tenant, isLoading: isLoadingTenant } = useDoc<Tenant>(tenantRef);
 
-  const form = useForm<ChecklistFormValues>({
-    resolver: zodResolver(checklistSchema),
-    defaultValues: {
-      propertyId: propertyIdFromUrl || '',
-      tenantId: tenantIdFromUrl || '',
-    }
-  });
-
   useEffect(() => {
     form.setValue('completedDate', new Date());
   }, [form]);
 
-  const handleConfirmSave = (data: ChecklistFormValues | null) => {
-    if (!data) return;
+  const handleSave = () => {
+    const data = form.getValues();
 
     if (!user || !firestore) {
       toast({
@@ -210,12 +209,13 @@ export default function ChecklistPage() {
             description: 'An unexpected error occurred. Please try again.',
           });
         }
+      })
+      .finally(() => {
+        setConfirmDialogOpen(false);
       });
-    
-    setConfirmDialogOpen(false);
   };
 
-  async function onSubmit(data: ChecklistFormValues) {
+  function onSubmit(data: ChecklistFormValues) {
     const checkValues = [
       ...Object.values(data.beforeTenancy ?? {}),
       ...Object.values(data.deposit ?? {}),
@@ -224,12 +224,10 @@ export default function ChecklistPage() {
 
     const allTasksCompleted = checkValues.every(value => typeof value !== 'boolean' || value === true);
 
-    setDataToSubmit(data);
-
     if (!allTasksCompleted) {
       setConfirmDialogOpen(true);
     } else {
-      handleConfirmSave(data);
+      handleSave();
     }
   }
 
@@ -263,7 +261,7 @@ export default function ChecklistPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>No, go back</AlertDialogCancel>
-            <AlertDialogAction onClick={() => handleConfirmSave(dataToSubmit)}>
+            <AlertDialogAction onClick={handleSave}>
               Yes, save anyway
             </AlertDialogAction>
           </AlertDialogFooter>
