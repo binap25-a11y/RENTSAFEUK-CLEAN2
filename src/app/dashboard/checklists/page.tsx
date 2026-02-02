@@ -185,22 +185,25 @@ export default function ChecklistPage() {
       });
       return;
     }
-    
-    const { propertyId, ...checklistData } = data;
-    const checklistDocumentData = { ...checklistData, ownerId: user.uid };
 
-    const checklistsCollection = collection(firestore, 'properties', propertyId, 'checklists');
-      
+    const checklistDocumentData = { ...data, ownerId: user.uid };
+
+    const checklistsCollection = collection(
+      firestore,
+      'properties',
+      data.propertyId,
+      'checklists'
+    );
+
     addDoc(checklistsCollection, checklistDocumentData)
       .then(() => {
         toast({
           title: 'Checklist Saved',
           description: 'The pre-tenancy checklist has been successfully saved.',
         });
-        router.push('/dashboard');
+        router.push(`/dashboard/tenants/${data.tenantId}`);
       })
       .catch(async (serverError) => {
-        console.error('Failed to save checklist:', serverError);
         const permissionError = new FirestorePermissionError({
           path: checklistsCollection.path,
           operation: 'create',
@@ -315,7 +318,7 @@ export default function ChecklistPage() {
 
             <div className="flex justify-end gap-2 pt-4">
               <Button type="button" variant="outline" asChild>
-                <Link href="/dashboard">Cancel</Link>
+                <Link href="/dashboard/tenants">Cancel</Link>
               </Button>
               <Button type="submit">Save Checklist</Button>
             </div>
