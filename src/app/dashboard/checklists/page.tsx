@@ -26,7 +26,7 @@ import { Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   useUser,
   useFirestore,
@@ -36,6 +36,16 @@ import {
   FirestorePermissionError,
 } from '@/firebase';
 import { collection, addDoc, doc } from 'firebase/firestore';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const checklistSchema = z.object({
   propertyId: z.string().min(1, { message: 'A property must be selected.' }),
@@ -134,6 +144,9 @@ export default function ChecklistPage() {
   const propertyIdFromUrl = searchParams.get('propertyId');
   const tenantIdFromUrl = searchParams.get('tenantId');
 
+  const [isConfirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [dataToSubmit, setDataToSubmit] = useState<ChecklistFormValues | null>(null);
+
   const propertyRef = useMemoFirebase(() => {
     if (!firestore || !propertyIdFromUrl) return null;
     return doc(firestore, 'properties', propertyIdFromUrl);
@@ -158,7 +171,9 @@ export default function ChecklistPage() {
     form.setValue('completedDate', new Date());
   }, [form]);
 
-  async function onSubmit(data: ChecklistFormValues) {
+  const handleConfirmSave = (data: ChecklistFormValues | null) => {
+    if (!data) return;
+
     if (!user || !firestore) {
       toast({
         variant: 'destructive',
@@ -169,13 +184,7 @@ export default function ChecklistPage() {
     }
 
     const checklistDocumentData = { ...data, ownerId: user.uid };
-
-    const checklistsCollection = collection(
-      firestore,
-      'properties',
-      data.propertyId,
-      'checklists'
-    );
+    const checklistsCollection = collection(firestore, 'properties', data.propertyId, 'checklists');
 
     addDoc(checklistsCollection, checklistDocumentData)
       .then(() => {
@@ -187,21 +196,41 @@ export default function ChecklistPage() {
       })
       .catch(async (serverError) => {
         if (serverError.code === 'permission-denied') {
-            const permissionError = new FirestorePermissionError({
-              path: checklistsCollection.path,
-              operation: 'create',
-              requestResourceData: checklistDocumentData,
-            });
-            errorEmitter.emit('permission-error', permissionError);
+          const permissionError = new FirestorePermissionError({
+            path: checklistsCollection.path,
+            operation: 'create',
+            requestResourceData: checklistDocumentData,
+          });
+          errorEmitter.emit('permission-error', permissionError);
         } else {
-            console.error("Error saving checklist:", serverError);
-            toast({
-                variant: 'destructive',
-                title: 'Save Failed',
-                description: 'An unexpected error occurred. Please try again.'
-            });
+          console.error("Error saving checklist:", serverError);
+          toast({
+            variant: 'destructive',
+            title: 'Save Failed',
+            description: 'An unexpected error occurred. Please try again.',
+          });
         }
       });
+    
+    setConfirmDialogOpen(false);
+  };
+
+  async function onSubmit(data: ChecklistFormValues) {
+    const checkValues = [
+      ...Object.values(data.beforeTenancy ?? {}),
+      ...Object.values(data.deposit ?? {}),
+      ...Object.values(data.atMoveIn ?? {}),
+    ];
+
+    const allTasksCompleted = checkValues.every(value => typeof value !== 'boolean' || value === true);
+
+    setDataToSubmit(data);
+
+    if (!allTasksCompleted) {
+      setConfirmDialogOpen(true);
+    } else {
+      handleConfirmSave(data);
+    }
   }
 
   if (!propertyIdFromUrl || !tenantIdFromUrl) {
@@ -223,87 +252,106 @@ export default function ChecklistPage() {
   }
 
   return (
-    <Card className="max-w-4xl mx-auto">
-      <CardHeader>
-        <CardTitle>UK Landlord Pre-Tenancy Checklist</CardTitle>
-        <CardDescription>
-          Complete these essential legal and practical checks before your tenant moves in.
-        </CardDescription>
-      </CardHeader>
-      <CardContent>
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <div className="space-y-4 rounded-lg border bg-muted/50 p-4">
-                <h3 className="font-semibold">Checklist For</h3>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                    <div>
-                        <p className="text-muted-foreground">Property</p>
-                        <p className="font-medium">
-                            {isLoadingProperty ? <Loader2 className="h-4 w-4 animate-spin" /> : property?.address ? [property.address.nameOrNumber, property.address.street, property.address.city].filter(Boolean).join(", ") : 'Property not found'}
-                        </p>
-                    </div>
-                    <div>
-                        <p className="text-muted-foreground">Tenant</p>
-                        <p className="font-medium">
-                            {isLoadingTenant ? <Loader2 className="h-4 w-4 animate-spin" /> : tenant?.name || 'Tenant not found'}
-                        </p>
-                    </div>
-                </div>
-            </div>
-            
-            <Accordion type="multiple" className="w-full space-y-4" defaultValue={['legal']}>
-              <AccordionItem value="legal" className="border rounded-lg px-4">
-                <AccordionTrigger className='text-lg font-semibold'>Before Tenancy Starts (Legal)</AccordionTrigger>
-                <AccordionContent className='pt-4 space-y-4'>
-                  <ChecklistField form={form} name="beforeTenancy.howToRentGuide" label="How to Rent Guide (latest version)" />
-                  <ChecklistField form={form} name="beforeTenancy.epc" label="Energy Performance Certificate (EPC – min E)" />
-                  <ChecklistField form={form} name="beforeTenancy.gasSafety" label="Gas Safety Certificate (CP12 – if gas)" />
-                  <ChecklistField form={form} name="beforeTenancy.eicr" label="Electrical Safety Report (EICR – valid 5 years)" />
-                  <ChecklistField form={form} name="beforeTenancy.tenancyAgreement" label="Signed Tenancy Agreement" />
-                  <ChecklistField form={form} name="beforeTenancy.rightToRent" label="Right to Rent check completed & recorded" />
-                  <NotesField form={form} name="beforeTenancy.notes" placeholder="Notes for this section..." />
-                </AccordionContent>
-              </AccordionItem>
-              <AccordionItem value="deposit" className="border rounded-lg px-4">
-                <AccordionTrigger className='text-lg font-semibold'>If Taking a Deposit</AccordionTrigger>
-                <AccordionContent className='pt-4 space-y-4'>
-                  <ChecklistField form={form} name="deposit.prescribedInfo" label="Deposit Prescribed Information" />
-                  <ChecklistField form={form} name="deposit.schemeLeaflet" label="Deposit Scheme Leaflet (DPS / TDS / MyDeposits)" />
-                  <ChecklistField form={form} name="deposit.protectionCertificate" label="Deposit protection certificate" />
-                  <NotesField form={form} name="deposit.notes" placeholder="Notes for this section..." />
-                </AccordionContent>
-              </AccordionItem>
-               <AccordionItem value="move-in" className="border rounded-lg px-4">
-                <AccordionTrigger className='text-lg font-semibold'>At / Just After Move-In</AccordionTrigger>
-                <AccordionContent className='pt-4 space-y-4'>
-                  <ChecklistField form={form} name="atMoveIn.inventory" label="Inventory & Schedule of Condition (signed)" />
-                  <ChecklistField form={form} name="atMoveIn.keysRecord" label="Keys issued record" />
-                  <ChecklistField form={form} name="atMoveIn.emergencyContacts" label="Emergency & repairs contact details" />
-                  <ChecklistField form={form} name="atMoveIn.privacyNotice" label="Privacy Notice (GDPR)" />
-                  <NotesField form={form} name="atMoveIn.notes" placeholder="Notes for this section..." />
-                </AccordionContent>
-              </AccordionItem>
-               <AccordionItem value="optional" className="border rounded-lg px-4">
-                <AccordionTrigger className='text-lg font-semibold'>Optional but Smart</AccordionTrigger>
-                <AccordionContent className='pt-4 space-y-4'>
-                  <ChecklistField form={form} name="optional.welcomeLetter" label="Welcome letter" />
-                  <ChecklistField form={form} name="optional.applianceManuals" label="Appliance manuals" />
-                  <ChecklistField form={form} name="optional.binInfo" label="Bin & recycling info" />
-                  <ChecklistField form={form} name="optional.parkingInfo" label="Parking / permit info" />
-                  <NotesField form={form} name="optional.notes" placeholder="Notes for this section..." />
-                </AccordionContent>
-              </AccordionItem>
-            </Accordion>
+    <>
+      <AlertDialog open={isConfirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure you want to continue?</AlertDialogTitle>
+            <AlertDialogDescription>
+              Not all items have been checked. This checklist may be incomplete.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>No, go back</AlertDialogCancel>
+            <AlertDialogAction onClick={() => handleConfirmSave(dataToSubmit)}>
+              Yes, save anyway
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
 
-            <div className="flex justify-end gap-2 pt-4">
-              <Button type="button" variant="outline" asChild>
-                <Link href="/dashboard/tenants">Cancel</Link>
-              </Button>
-              <Button type="submit">Save Checklist</Button>
-            </div>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+      <Card className="max-w-4xl mx-auto">
+        <CardHeader>
+          <CardTitle>UK Landlord Pre-Tenancy Checklist</CardTitle>
+          <CardDescription>
+            Complete these essential legal and practical checks before your tenant moves in.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+              <div className="space-y-4 rounded-lg border bg-muted/50 p-4">
+                  <h3 className="font-semibold">Checklist For</h3>
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                      <div>
+                          <p className="text-muted-foreground">Property</p>
+                          <p className="font-medium">
+                              {isLoadingProperty ? <Loader2 className="h-4 w-4 animate-spin" /> : property?.address ? [property.address.nameOrNumber, property.address.street, property.address.city].filter(Boolean).join(", ") : 'Property not found'}
+                          </p>
+                      </div>
+                      <div>
+                          <p className="text-muted-foreground">Tenant</p>
+                          <p className="font-medium">
+                              {isLoadingTenant ? <Loader2 className="h-4 w-4 animate-spin" /> : tenant?.name || 'Tenant not found'}
+                          </p>
+                      </div>
+                  </div>
+              </div>
+              
+              <Accordion type="multiple" className="w-full space-y-4" defaultValue={['legal']}>
+                <AccordionItem value="legal" className="border rounded-lg px-4">
+                  <AccordionTrigger className='text-lg font-semibold'>Before Tenancy Starts (Legal)</AccordionTrigger>
+                  <AccordionContent className='pt-4 space-y-4'>
+                    <ChecklistField form={form} name="beforeTenancy.howToRentGuide" label="How to Rent Guide (latest version)" />
+                    <ChecklistField form={form} name="beforeTenancy.epc" label="Energy Performance Certificate (EPC – min E)" />
+                    <ChecklistField form={form} name="beforeTenancy.gasSafety" label="Gas Safety Certificate (CP12 – if gas)" />
+                    <ChecklistField form={form} name="beforeTenancy.eicr" label="Electrical Safety Report (EICR – valid 5 years)" />
+                    <ChecklistField form={form} name="beforeTenancy.tenancyAgreement" label="Signed Tenancy Agreement" />
+                    <ChecklistField form={form} name="beforeTenancy.rightToRent" label="Right to Rent check completed & recorded" />
+                    <NotesField form={form} name="beforeTenancy.notes" placeholder="Notes for this section..." />
+                  </AccordionContent>
+                </AccordionItem>
+                <AccordionItem value="deposit" className="border rounded-lg px-4">
+                  <AccordionTrigger className='text-lg font-semibold'>If Taking a Deposit</AccordionTrigger>
+                  <AccordionContent className='pt-4 space-y-4'>
+                    <ChecklistField form={form} name="deposit.prescribedInfo" label="Deposit Prescribed Information" />
+                    <ChecklistField form={form} name="deposit.schemeLeaflet" label="Deposit Scheme Leaflet (DPS / TDS / MyDeposits)" />
+                    <ChecklistField form={form} name="deposit.protectionCertificate" label="Deposit protection certificate" />
+                    <NotesField form={form} name="deposit.notes" placeholder="Notes for this section..." />
+                  </AccordionContent>
+                </AccordionItem>
+                 <AccordionItem value="move-in" className="border rounded-lg px-4">
+                  <AccordionTrigger className='text-lg font-semibold'>At / Just After Move-In</AccordionTrigger>
+                  <AccordionContent className='pt-4 space-y-4'>
+                    <ChecklistField form={form} name="atMoveIn.inventory" label="Inventory & Schedule of Condition (signed)" />
+                    <ChecklistField form={form} name="atMoveIn.keysRecord" label="Keys issued record" />
+                    <ChecklistField form={form} name="atMoveIn.emergencyContacts" label="Emergency & repairs contact details" />
+                    <ChecklistField form={form} name="atMoveIn.privacyNotice" label="Privacy Notice (GDPR)" />
+                    <NotesField form={form} name="atMoveIn.notes" placeholder="Notes for this section..." />
+                  </AccordionContent>
+                </AccordionItem>
+                 <AccordionItem value="optional" className="border rounded-lg px-4">
+                  <AccordionTrigger className='text-lg font-semibold'>Optional but Smart</AccordionTrigger>
+                  <AccordionContent className='pt-4 space-y-4'>
+                    <ChecklistField form={form} name="optional.welcomeLetter" label="Welcome letter" />
+                    <ChecklistField form={form} name="optional.applianceManuals" label="Appliance manuals" />
+                    <ChecklistField form={form} name="optional.binInfo" label="Bin & recycling info" />
+                    <ChecklistField form={form} name="optional.parkingInfo" label="Parking / permit info" />
+                    <NotesField form={form} name="optional.notes" placeholder="Notes for this section..." />
+                  </AccordionContent>
+                </AccordionItem>
+              </Accordion>
+
+              <div className="flex justify-end gap-2 pt-4">
+                <Button type="button" variant="outline" asChild>
+                  <Link href="/dashboard/tenants">Cancel</Link>
+                </Button>
+                <Button type="submit">Save Checklist</Button>
+              </div>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+    </>
   );
 }
