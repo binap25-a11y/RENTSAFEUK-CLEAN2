@@ -23,7 +23,6 @@ import {
   Bell,
   Users,
   HardHat,
-  ListTodo,
 } from 'lucide-react';
 import * as React from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -49,6 +48,7 @@ const menuItems = [
         { href: '/dashboard/tenants', label: 'All Tenants' },
         { href: '/dashboard/tenants/add', label: 'Add Tenant' },
         { href: '/dashboard/tenants/screening', label: 'Tenant Screening' },
+        { href: '/dashboard/checklists', label: 'Pre-Tenancy Checklist' },
         { href: '/dashboard/tenants/archived', label: 'Archived Tenants' },
     ],
   },
@@ -84,7 +84,6 @@ const menuItems = [
   },
   { href: '/dashboard/expenses', label: 'Financials', icon: CreditCard },
   { href: '/dashboard/reminders', label: 'Reminders', icon: Bell },
-  { href: '/dashboard/checklists', label: 'Checklists', icon: ListTodo },
 ];
 
 export function MainNav() {
