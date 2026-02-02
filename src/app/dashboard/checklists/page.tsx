@@ -26,7 +26,7 @@ import { Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useEffect, useState, useRef } from 'react';
+import { useEffect, useState } from 'react';
 import {
   useUser,
   useFirestore,
@@ -36,16 +36,6 @@ import {
   FirestorePermissionError,
 } from '@/firebase';
 import { collection, addDoc, doc } from 'firebase/firestore';
-import {
-  AlertDialog,
-  AlertDialogAction,
-  AlertDialogCancel,
-  AlertDialogContent,
-  AlertDialogDescription,
-  AlertDialogFooter,
-  AlertDialogHeader,
-  AlertDialogTitle,
-} from '@/components/ui/alert-dialog';
 
 const checklistSchema = z.object({
   propertyId: z.string().min(1, { message: 'A property must be selected.' }),
@@ -144,8 +134,7 @@ export default function ChecklistPage() {
   const propertyIdFromUrl = searchParams.get('propertyId');
   const tenantIdFromUrl = searchParams.get('tenantId');
 
-  const [isConfirmDialogOpen, setConfirmDialogOpen] = useState(false);
-  const pendingDataRef = useRef<ChecklistFormValues | null>(null);
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<ChecklistFormValues>({
     resolver: zodResolver(checklistSchema),
@@ -171,11 +160,7 @@ export default function ChecklistPage() {
     form.setValue('completedDate', new Date());
   }, [form]);
 
-  const saveChecklist = (data: ChecklistFormValues | null) => {
-    if (!data) {
-        toast({ variant: 'destructive', title: 'Save Failed', description: 'No data available to save.' });
-        return;
-    }
+  async function onSubmit(data: ChecklistFormValues) {
     if (!user || !firestore) {
       toast({
         variant: 'destructive',
@@ -185,58 +170,35 @@ export default function ChecklistPage() {
       return;
     }
 
+    setIsSubmitting(true);
     const checklistDocumentData = { ...data, ownerId: user.uid };
     const checklistsCollection = collection(firestore, 'properties', data.propertyId, 'checklists');
 
-    addDoc(checklistsCollection, checklistDocumentData)
-      .then(() => {
-        toast({
-          title: 'Checklist Saved',
-          description: 'The pre-tenancy checklist has been successfully saved.',
-        });
-        router.push(`/dashboard/tenants/${data.tenantId}`);
-      })
-      .catch(async (serverError) => {
-        if (serverError.code === 'permission-denied') {
-          const permissionError = new FirestorePermissionError({
-            path: checklistsCollection.path,
-            operation: 'create',
-            requestResourceData: checklistDocumentData,
-          });
-          errorEmitter.emit('permission-error', permissionError);
-        } else {
-          console.error("Error saving checklist:", serverError);
-          toast({
-            variant: 'destructive',
-            title: 'Save Failed',
-            description: serverError.message || 'An unexpected error occurred. Please try again.',
-          });
-        }
-      })
-      .finally(() => {
-        setConfirmDialogOpen(false);
-        pendingDataRef.current = null;
+    try {
+      await addDoc(checklistsCollection, checklistDocumentData);
+      toast({
+        title: 'Checklist Saved',
+        description: 'The pre-tenancy checklist has been successfully saved.',
       });
-  };
-  
-  const handleConfirmSave = () => {
-    saveChecklist(pendingDataRef.current);
-  }
-
-  function onSubmit(data: ChecklistFormValues) {
-    const checkValues = [
-      ...Object.values(data.beforeTenancy ?? {}),
-      ...Object.values(data.deposit ?? {}),
-      ...Object.values(data.atMoveIn ?? {}),
-    ];
-
-    const allTasksCompleted = checkValues.filter(value => typeof value === 'boolean').every(value => value === true);
-
-    if (!allTasksCompleted) {
-      pendingDataRef.current = data;
-      setConfirmDialogOpen(true);
-    } else {
-      saveChecklist(data);
+      router.push(`/dashboard/tenants/${data.tenantId}`);
+    } catch (serverError: any) {
+      if (serverError.code === 'permission-denied') {
+        const permissionError = new FirestorePermissionError({
+          path: checklistsCollection.path,
+          operation: 'create',
+          requestResourceData: checklistDocumentData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      } else {
+        console.error("Error saving checklist:", serverError);
+        toast({
+          variant: 'destructive',
+          title: 'Save Failed',
+          description: serverError.message || 'An unexpected error occurred. Please try again.',
+        });
+      }
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -260,31 +222,6 @@ export default function ChecklistPage() {
 
   return (
     <>
-      <AlertDialog
-        open={isConfirmDialogOpen}
-        onOpenChange={(isOpen) => {
-          setConfirmDialogOpen(isOpen);
-          if (!isOpen) {
-            pendingDataRef.current = null;
-          }
-        }}
-      >
-        <AlertDialogContent>
-          <AlertDialogHeader>
-            <AlertDialogTitle>Are you sure you want to continue?</AlertDialogTitle>
-            <AlertDialogDescription>
-              Not all items have been checked. This checklist may be incomplete.
-            </AlertDialogDescription>
-          </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>No, go back</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmSave}>
-              Yes, save anyway
-            </AlertDialogAction>
-          </AlertDialogFooter>
-        </AlertDialogContent>
-      </AlertDialog>
-
       <Card className="max-w-4xl mx-auto">
         <CardHeader>
           <CardTitle>UK Landlord Pre-Tenancy Checklist</CardTitle>
@@ -361,7 +298,10 @@ export default function ChecklistPage() {
                 <Button type="button" variant="outline" asChild>
                   <Link href="/dashboard/tenants">Cancel</Link>
                 </Button>
-                <Button type="submit">Save Checklist</Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                  Save Checklist
+                </Button>
               </div>
             </form>
           </Form>
