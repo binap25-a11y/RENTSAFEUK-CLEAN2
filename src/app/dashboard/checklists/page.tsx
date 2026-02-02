@@ -26,7 +26,7 @@ import { Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import {
   useUser,
   useFirestore,
@@ -171,31 +171,43 @@ export default function ChecklistPage() {
 
     setIsSubmitting(true);
     
-    // This is a robust way to clean the form data and ensure no 'undefined' values are sent.
-    const checklistDocumentData: { [key: string]: any } = {
-      ownerId: user.uid,
-      propertyId: data.propertyId,
-      tenantId: data.tenantId,
-      completedDate: data.completedDate,
+    // This robustly cleans the form data, removing any `undefined` values before saving.
+    const cleanedData: { [key: string]: any } = {
+        ownerId: user.uid,
+        propertyId: data.propertyId,
+        tenantId: data.tenantId,
+        completedDate: data.completedDate,
     };
-    
-    // Helper function to only add sections if they contain actual data.
-    const addSection = (sectionName: keyof ChecklistFormValues, sectionData: any) => {
-        // Check if there's any meaningful data in the section object.
-        if (sectionData && Object.values(sectionData).some(value => value !== false && value !== undefined && value !== '')) {
-            checklistDocumentData[sectionName] = sectionData;
+
+    const cleanSection = (section: any) => {
+        if (!section) return null;
+        const result: { [key: string]: any } = {};
+        let hasData = false;
+        for (const [key, value] of Object.entries(section)) {
+            if (value !== undefined) {
+                result[key] = value;
+                if (value === true || (typeof value === 'string' && value !== '')) {
+                    hasData = true;
+                }
+            }
         }
+        return hasData ? result : null;
     };
-    
-    addSection('beforeTenancy', data.beforeTenancy);
-    addSection('deposit', data.deposit);
-    addSection('atMoveIn', data.atMoveIn);
-    addSection('optional', data.optional);
+
+    const sections: (keyof ChecklistFormValues)[] = ['beforeTenancy', 'deposit', 'atMoveIn', 'optional'];
+    sections.forEach(sectionName => {
+        if (data[sectionName]) {
+            const cleanedSection = cleanSection(data[sectionName]);
+            if (cleanedSection) {
+                cleanedData[sectionName] = cleanedSection;
+            }
+        }
+    });
 
     const checklistsCollection = collection(firestore, 'properties', data.propertyId, 'checklists');
 
     try {
-      await addDoc(checklistsCollection, checklistDocumentData);
+      await addDoc(checklistsCollection, cleanedData);
       toast({
         title: 'Checklist Saved',
         description: 'The pre-tenancy checklist has been successfully saved.',
