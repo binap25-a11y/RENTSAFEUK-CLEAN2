@@ -32,8 +32,6 @@ import {
   useFirestore,
   useDoc,
   useMemoFirebase,
-  errorEmitter,
-  FirestorePermissionError,
 } from '@/firebase';
 import { collection, addDoc, doc } from 'firebase/firestore';
 
@@ -171,10 +169,26 @@ export default function ChecklistPage() {
     }
 
     setIsSubmitting(true);
-    const checklistDocumentData = { ...data, ownerId: user.uid };
+    
+    // The data from react-hook-form can contain `undefined` values for optional fields,
+    // which Firestore rejects. This cleans the data before saving.
+    const { propertyId, tenantId, completedDate, ...rest } = data;
+    
+    // This is a safe way to deep clone and remove any `undefined` values from nested objects.
+    const cleanedRest = JSON.parse(JSON.stringify(rest));
+
+    const checklistDocumentData = {
+      ownerId: user.uid,
+      propertyId,
+      tenantId,
+      completedDate, // Keep the Date object which Firestore handles correctly.
+      ...cleanedRest,
+    };
+    
     const checklistsCollection = collection(firestore, 'properties', data.propertyId, 'checklists');
 
     try {
+      // Using the cleaned data object for the save operation.
       await addDoc(checklistsCollection, checklistDocumentData);
       toast({
         title: 'Checklist Saved',
@@ -182,21 +196,12 @@ export default function ChecklistPage() {
       });
       router.push(`/dashboard/tenants/${data.tenantId}`);
     } catch (serverError: any) {
-      if (serverError.code === 'permission-denied') {
-        const permissionError = new FirestorePermissionError({
-          path: checklistsCollection.path,
-          operation: 'create',
-          requestResourceData: checklistDocumentData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-      } else {
         console.error("Error saving checklist:", serverError);
         toast({
           variant: 'destructive',
           title: 'Save Failed',
           description: serverError.message || 'An unexpected error occurred. Please try again.',
         });
-      }
     } finally {
       setIsSubmitting(false);
     }
