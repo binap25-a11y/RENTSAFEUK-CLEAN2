@@ -21,13 +21,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -37,16 +30,16 @@ import { useEffect } from 'react';
 import {
   useUser,
   useFirestore,
-  useCollection,
+  useDoc,
   useMemoFirebase,
   errorEmitter,
   FirestorePermissionError,
 } from '@/firebase';
-import { collection, query, where, addDoc } from 'firebase/firestore';
+import { collection, addDoc, doc } from 'firebase/firestore';
 
 const checklistSchema = z.object({
-  propertyId: z.string().min(1, { message: 'Please select a property.' }),
-  tenantId: z.string().min(1, { message: 'Please select a tenant.' }),
+  propertyId: z.string().min(1, { message: 'A property must be selected.' }),
+  tenantId: z.string().min(1, { message: 'A tenant must be selected.' }),
   completedDate: z.coerce.date(),
   
   beforeTenancy: z.object({
@@ -141,6 +134,18 @@ export default function ChecklistPage() {
   const propertyIdFromUrl = searchParams.get('propertyId');
   const tenantIdFromUrl = searchParams.get('tenantId');
 
+  const propertyRef = useMemoFirebase(() => {
+    if (!firestore || !propertyIdFromUrl) return null;
+    return doc(firestore, 'properties', propertyIdFromUrl);
+  }, [firestore, propertyIdFromUrl]);
+  const { data: property, isLoading: isLoadingProperty } = useDoc<Property>(propertyRef);
+
+  const tenantRef = useMemoFirebase(() => {
+      if (!firestore || !tenantIdFromUrl) return null;
+      return doc(firestore, 'tenants', tenantIdFromUrl);
+  }, [firestore, tenantIdFromUrl]);
+  const { data: tenant, isLoading: isLoadingTenant } = useDoc<Tenant>(tenantRef);
+
   const form = useForm<ChecklistFormValues>({
     resolver: zodResolver(checklistSchema),
     defaultValues: {
@@ -152,28 +157,6 @@ export default function ChecklistPage() {
   useEffect(() => {
     form.setValue('completedDate', new Date());
   }, [form]);
-
-  // This query already correctly filters for the logged-in user's properties.
-  const propertiesQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    return query(collection(firestore, 'properties'), where('ownerId', '==', user.uid));
-  }, [firestore, user]);
-  const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
-  
-  // Watch the selected property to filter tenants
-  const selectedPropertyId = form.watch('propertyId');
-  
-  // This query now filters tenants based on the selected property.
-  const tenantsQuery = useMemoFirebase(() => {
-    if (!user || !selectedPropertyId) return null;
-    return query(
-        collection(firestore, 'tenants'), 
-        where('ownerId', '==', user.uid), 
-        where('propertyId', '==', selectedPropertyId),
-        where('status', '==', 'Active')
-    );
-  }, [firestore, user, selectedPropertyId]);
-  const { data: tenants, isLoading: isLoadingTenants } = useCollection<Tenant>(tenantsQuery);
 
   async function onSubmit(data: ChecklistFormValues) {
     if (!user || !firestore) {
@@ -221,6 +204,24 @@ export default function ChecklistPage() {
       });
   }
 
+  if (!propertyIdFromUrl || !tenantIdFromUrl) {
+    return (
+        <Card className="max-w-4xl mx-auto">
+            <CardHeader>
+                <CardTitle>Invalid Checklist</CardTitle>
+                <CardDescription>
+                    To create a checklist, please start from a specific tenant's detail page.
+                </CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Button asChild>
+                    <Link href="/dashboard/tenants">Go to Tenants</Link>
+                </Button>
+            </CardContent>
+        </Card>
+    )
+  }
+
   return (
     <Card className="max-w-4xl mx-auto">
       <CardHeader>
@@ -232,54 +233,24 @@ export default function ChecklistPage() {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="propertyId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Property</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder={isLoadingProperties ? 'Loading...' : 'Select a property'} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {properties?.map((p) => <SelectItem key={p.id} value={p.id}>{[p.address.nameOrNumber, p.address.street, p.address.city].filter(Boolean).join(", ")}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="tenantId"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Tenant</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value} disabled={!selectedPropertyId || isLoadingTenants}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder={
-                              !selectedPropertyId 
-                                ? 'Select a property first' 
-                                : isLoadingTenants 
-                                ? 'Loading...' 
-                                : 'Select a tenant'
-                          } />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {tenants?.map((t) => <SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>)}
-                      </SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+            <div className="space-y-4 rounded-lg border bg-muted/50 p-4">
+                <h3 className="font-semibold">Checklist For</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                    <div>
+                        <p className="text-muted-foreground">Property</p>
+                        <p className="font-medium">
+                            {isLoadingProperty ? <Loader2 className="h-4 w-4 animate-spin" /> : property?.address ? [property.address.nameOrNumber, property.address.street, property.address.city].filter(Boolean).join(", ") : 'Property not found'}
+                        </p>
+                    </div>
+                    <div>
+                        <p className="text-muted-foreground">Tenant</p>
+                        <p className="font-medium">
+                            {isLoadingTenant ? <Loader2 className="h-4 w-4 animate-spin" /> : tenant?.name || 'Tenant not found'}
+                        </p>
+                    </div>
+                </div>
             </div>
+            
             <Accordion type="multiple" className="w-full space-y-4" defaultValue={['legal']}>
               <AccordionItem value="legal" className="border rounded-lg px-4">
                 <AccordionTrigger className='text-lg font-semibold'>Before Tenancy Starts (Legal)</AccordionTrigger>
