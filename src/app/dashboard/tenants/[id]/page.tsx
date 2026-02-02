@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { ArrowLeft, User, Mail, Phone, Calendar as CalendarIcon, Edit, Archive, Home, Loader2, MoreVertical, UserPlus, Eye, ListTodo } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
-import { doc, collection, query, updateDoc, where } from 'firebase/firestore';
+import { doc, collection, query, updateDoc, where, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import {
@@ -97,11 +97,13 @@ export default function TenantDetailPage() {
     return query(
         collection(firestore, 'properties', tenant.propertyId, 'checklists'),
         where('ownerId', '==', user.uid),
-        where('tenantId', '==', id)
+        where('tenantId', '==', id),
+        limit(1)
     );
   }, [firestore, user, tenant?.propertyId, id]);
   const { data: checklists, isLoading: isLoadingChecklists } = useCollection<Checklist>(checklistsQuery);
 
+  const checklist = checklists?.[0];
 
   const handleArchiveConfirm = async () => {
     if (!firestore || !tenant || !tenantRef) return;
@@ -258,108 +260,85 @@ export default function TenantDetailPage() {
 
         <Card>
             <CardHeader>
-                <CardTitle>Next Steps</CardTitle>
-                <CardDescription>Actions for {tenant.name}.</CardDescription>
+                <CardTitle>Onboarding &amp; Compliance</CardTitle>
+                <CardDescription>Manage screening records and pre-tenancy tasks for {tenant.name}.</CardDescription>
             </CardHeader>
-            <CardContent className="flex flex-col sm:flex-row gap-2">
-                <Button asChild size="sm">
-                    <Link href={`/dashboard/tenants/screening?tenantId=${id}`}>
-                        <UserPlus className="mr-2 h-4 w-4" /> Start New Screening
-                    </Link>
-                </Button>
-                <Button asChild variant="outline" size="sm">
-                    <Link href={`/dashboard/checklists?propertyId=${tenant?.propertyId}&tenantId=${id}`}>
-                        <ListTodo className="mr-2 h-4 w-4" /> Pre-Tenancy Checklist
-                    </Link>
-                </Button>
-            </CardContent>
-        </Card>
-        
-        <Card>
-            <CardHeader>
-                <CardTitle>Screening History</CardTitle>
-                <CardDescription>
-                    A log of all pre-tenancy screenings for this tenant.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                {isLoadingScreenings ? (
-                    <div className="flex justify-center items-center h-24">
-                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+            <CardContent className="space-y-6">
+                 <div>
+                    <h3 className="text-lg font-semibold">Tenant Screening</h3>
+                    <div className="flex items-center gap-2 mt-2 mb-4">
+                        <Button asChild size="sm">
+                            <Link href={`/dashboard/tenants/screening?tenantId=${id}`}>
+                                <UserPlus className="mr-2 h-4 w-4" /> Start New Screening
+                            </Link>
+                        </Button>
                     </div>
-                ) : screenings && screenings.length > 0 ? (
-                    <div className="rounded-md border">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Screening Date</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {screenings.map(screening => (
-                                    <TableRow key={screening.id}>
-                                        <TableCell>
-                                            {format(screening.screeningDate instanceof Date ? screening.screeningDate : new Date(screening.screeningDate.seconds * 1000), 'PPP')}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <Button asChild variant="outline" size="sm">
-                                                <Link href={`/dashboard/tenants/${id}/screenings/${screening.id}`}>
-                                                    <Eye className="mr-2 h-4 w-4" /> View
-                                                </Link>
-                                            </Button>
-                                        </TableCell>
+                     {isLoadingScreenings ? (
+                        <div className="flex justify-center items-center h-24">
+                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                        </div>
+                    ) : screenings && screenings.length > 0 ? (
+                        <div className="rounded-md border">
+                            <Table>
+                                <TableHeader>
+                                    <TableRow>
+                                        <TableHead>Screening Date</TableHead>
+                                        <TableHead className="text-right">Actions</TableHead>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                ) : (
-                    <p className="text-center text-muted-foreground py-4">No screening records found for this tenant.</p>
-                )}
-            </CardContent>
-        </Card>
-        
-        <Card>
-            <CardHeader>
-                <CardTitle>Checklist History</CardTitle>
-                <CardDescription>A log of all pre-tenancy checklists for this tenant.</CardDescription>
-            </CardHeader>
-            <CardContent>
-                {isLoadingChecklists ? (
-                    <div className="flex justify-center items-center h-24">
-                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                    </div>
-                ) : checklists && checklists.length > 0 ? (
-                    <div className="rounded-md border">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                    <TableHead>Completed Date</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {checklists.map(checklist => (
-                                    <TableRow key={checklist.id}>
-                                        <TableCell>
-                                            {format(checklist.completedDate instanceof Date ? checklist.completedDate : new Date(checklist.completedDate.seconds * 1000), 'PPP')}
-                                        </TableCell>
-                                        <TableCell className="text-right">
-                                            <Button asChild variant="outline" size="sm">
-                                                <Link href={`/dashboard/checklists/${checklist.id}?propertyId=${tenant.propertyId}&tenantId=${id}`}>
-                                                    <Eye className="mr-2 h-4 w-4" /> View
-                                                </Link>
-                                            </Button>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                ) : (
-                    <p className="text-center text-muted-foreground py-4">No checklists found for this tenant.</p>
-                )}
+                                </TableHeader>
+                                <TableBody>
+                                    {screenings.map(screening => (
+                                        <TableRow key={screening.id}>
+                                            <TableCell>
+                                                {format(screening.screeningDate instanceof Date ? screening.screeningDate : new Date(screening.screeningDate.seconds * 1000), 'PPP')}
+                                            </TableCell>
+                                            <TableCell className="text-right">
+                                                <Button asChild variant="outline" size="sm">
+                                                    <Link href={`/dashboard/tenants/${id}/screenings/${screening.id}`}>
+                                                        <Eye className="mr-2 h-4 w-4" /> View
+                                                    </Link>
+                                                </Button>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+                    ) : (
+                        <p className="text-center text-muted-foreground py-4">No screening records found.</p>
+                    )}
+                </div>
+
+                <div className="border-t pt-6">
+                     <h3 className="text-lg font-semibold">Pre-Tenancy Checklist</h3>
+                     <p className="text-sm text-muted-foreground mb-4">A single checklist can be created for this tenant's current tenancy.</p>
+                     {isLoadingChecklists ? (
+                        <div className="flex items-center gap-2">
+                           <Loader2 className="h-5 w-5 animate-spin" />
+                           <span>Loading checklist status...</span>
+                        </div>
+                     ) : checklist ? (
+                        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between p-4 border rounded-lg bg-muted/50">
+                           <div>
+                             <p className="font-medium">Checklist Completed</p>
+                             <p className="text-sm text-muted-foreground">
+                               {format(checklist.completedDate instanceof Date ? checklist.completedDate : new Date(checklist.completedDate.seconds * 1000), 'PPP')}
+                             </p>
+                           </div>
+                           <Button asChild variant="secondary">
+                                <Link href={`/dashboard/checklists/${checklist.id}?propertyId=${tenant.propertyId}&tenantId=${id}`}>
+                                    <Eye className="mr-2 h-4 w-4" /> View Checklist
+                                </Link>
+                           </Button>
+                        </div>
+                     ) : (
+                        <Button asChild>
+                            <Link href={`/dashboard/checklists?propertyId=${tenant?.propertyId}&tenantId=${id}`}>
+                                <ListTodo className="mr-2 h-4 w-4" /> Create Pre-Tenancy Checklist
+                            </Link>
+                        </Button>
+                     )}
+                </div>
             </CardContent>
         </Card>
     </div>
