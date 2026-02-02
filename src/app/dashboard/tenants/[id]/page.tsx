@@ -336,7 +336,7 @@ export default function TenantDetailPage() {
                      ) : (
                         <Button asChild>
                             <Link href={`/dashboard/checklists?propertyId=${tenant?.propertyId}&tenantId=${id}`}>
-                                <ListTodo className="mr-2 h-4 w-4" /> Pre-Tenancy Checklist
+                                <ListTodo className="mr-2 h-4 w-4" /> Create Pre-Tenancy Checklist
                             </Link>
                         </Button>
                      )}
