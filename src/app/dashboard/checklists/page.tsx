@@ -26,7 +26,7 @@ import { Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useRef } from 'react';
 import {
   useUser,
   useFirestore,
@@ -145,7 +145,7 @@ export default function ChecklistPage() {
   const tenantIdFromUrl = searchParams.get('tenantId');
 
   const [isConfirmDialogOpen, setConfirmDialogOpen] = useState(false);
-  const [pendingData, setPendingData] = useState<ChecklistFormValues | null>(null);
+  const pendingDataRef = useRef<ChecklistFormValues | null>(null);
 
   const form = useForm<ChecklistFormValues>({
     resolver: zodResolver(checklistSchema),
@@ -171,7 +171,11 @@ export default function ChecklistPage() {
     form.setValue('completedDate', new Date());
   }, [form]);
 
-  const handleSave = (data: ChecklistFormValues) => {
+  const saveChecklist = (data: ChecklistFormValues | null) => {
+    if (!data) {
+        toast({ variant: 'destructive', title: 'Save Failed', description: 'No data available to save.' });
+        return;
+    }
     if (!user || !firestore) {
       toast({
         variant: 'destructive',
@@ -211,14 +215,12 @@ export default function ChecklistPage() {
       })
       .finally(() => {
         setConfirmDialogOpen(false);
-        setPendingData(null);
+        pendingDataRef.current = null;
       });
   };
   
   const handleConfirmSave = () => {
-      if(pendingData) {
-          handleSave(pendingData);
-      }
+    saveChecklist(pendingDataRef.current);
   }
 
   function onSubmit(data: ChecklistFormValues) {
@@ -228,13 +230,13 @@ export default function ChecklistPage() {
       ...Object.values(data.atMoveIn ?? {}),
     ];
 
-    const allTasksCompleted = checkValues.every(value => typeof value !== 'boolean' || value === true);
+    const allTasksCompleted = checkValues.filter(value => typeof value === 'boolean').every(value => value === true);
 
     if (!allTasksCompleted) {
-      setPendingData(data);
+      pendingDataRef.current = data;
       setConfirmDialogOpen(true);
     } else {
-      handleSave(data);
+      saveChecklist(data);
     }
   }
 
@@ -263,7 +265,7 @@ export default function ChecklistPage() {
         onOpenChange={(isOpen) => {
           setConfirmDialogOpen(isOpen);
           if (!isOpen) {
-            setPendingData(null);
+            pendingDataRef.current = null;
           }
         }}
       >
