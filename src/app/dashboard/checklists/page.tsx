@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -135,14 +135,18 @@ const NotesField = ({ form, name, placeholder }: { form: any, name: any, placeho
 
 export default function ChecklistPage() {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const { user } = useUser();
   const firestore = useFirestore();
+
+  const propertyIdFromUrl = searchParams.get('propertyId');
+  const tenantIdFromUrl = searchParams.get('tenantId');
 
   const form = useForm<ChecklistFormValues>({
     resolver: zodResolver(checklistSchema),
     defaultValues: {
-      propertyId: '',
-      tenantId: '',
+      propertyId: propertyIdFromUrl || '',
+      tenantId: tenantIdFromUrl || '',
     }
   });
 
@@ -171,11 +175,6 @@ export default function ChecklistPage() {
     );
   }, [firestore, user, selectedPropertyId]);
   const { data: tenants, isLoading: isLoadingTenants } = useCollection<Tenant>(tenantsQuery);
-
-  // When a new property is selected, reset the tenant selection.
-  useEffect(() => {
-      form.resetField('tenantId');
-  }, [selectedPropertyId, form]);
 
   async function onSubmit(data: ChecklistFormValues) {
     if (!user || !firestore) {

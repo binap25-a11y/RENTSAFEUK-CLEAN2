@@ -4,7 +4,7 @@ import { useParams, notFound, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, User, Mail, Phone, Calendar as CalendarIcon, Edit, Archive, Home, Loader2, MoreVertical, UserPlus, Eye } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, Calendar as CalendarIcon, Edit, Archive, Home, Loader2, MoreVertical, UserPlus, Eye, ListTodo } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
 import { doc, collection, query, updateDoc, where } from 'firebase/firestore';
@@ -239,17 +239,29 @@ export default function TenantDetailPage() {
                 )}
             </CardContent>
         </Card>
+
+        <Card>
+            <CardHeader>
+                <CardTitle>Next Steps</CardTitle>
+                <CardDescription>Actions for {tenant.name}.</CardDescription>
+            </CardHeader>
+            <CardContent className="flex flex-col sm:flex-row gap-2">
+                <Button asChild size="sm">
+                    <Link href={`/dashboard/tenants/screening?tenantId=${id}`}>
+                        <UserPlus className="mr-2 h-4 w-4" /> Start New Screening
+                    </Link>
+                </Button>
+                <Button asChild variant="outline" size="sm">
+                    <Link href={`/dashboard/checklists?propertyId=${tenant?.propertyId}&tenantId=${id}`}>
+                        <ListTodo className="mr-2 h-4 w-4" /> Create Pre-Tenancy Checklist
+                    </Link>
+                </Button>
+            </CardContent>
+        </Card>
         
         <Card>
             <CardHeader>
-                <div className="flex justify-between items-center">
-                    <CardTitle>Screening History</CardTitle>
-                     <Button asChild size="sm">
-                        <Link href={`/dashboard/tenants/screening?tenantId=${id}`}>
-                            <UserPlus className="mr-2 h-4 w-4" /> Start New Screening
-                        </Link>
-                    </Button>
-                </div>
+                <CardTitle>Screening History</CardTitle>
                 <CardDescription>
                     A log of all pre-tenancy screenings for this tenant.
                 </CardDescription>

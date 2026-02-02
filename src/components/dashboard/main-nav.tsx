@@ -48,7 +48,6 @@ const menuItems = [
         { href: '/dashboard/tenants', label: 'All Tenants' },
         { href: '/dashboard/tenants/add', label: 'Add Tenant' },
         { href: '/dashboard/tenants/screening', label: 'Tenant Screening' },
-        { href: '/dashboard/checklists', label: 'Pre-Tenancy Checklist' },
         { href: '/dashboard/tenants/archived', label: 'Archived Tenants' },
     ],
   },
