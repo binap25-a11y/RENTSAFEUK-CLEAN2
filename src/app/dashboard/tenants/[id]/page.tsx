@@ -54,6 +54,12 @@ interface TenantScreening {
     screeningDate: { seconds: number; nanoseconds: number } | Date;
 }
 
+// Type for checklist record
+interface Checklist {
+    id: string;
+    completedDate: { seconds: number; nanoseconds: number } | Date;
+}
+
 
 export default function TenantDetailPage() {
   const params = useParams();
@@ -84,8 +90,18 @@ export default function TenantDetailPage() {
         where('ownerId', '==', user.uid)
     );
   }, [firestore, id, user]);
-
   const { data: screenings, isLoading: isLoadingScreenings } = useCollection<TenantScreening>(screeningsQuery);
+  
+  const checklistsQuery = useMemoFirebase(() => {
+    if (!firestore || !tenant?.propertyId || !id || !user) return null;
+    return query(
+        collection(firestore, 'properties', tenant.propertyId, 'checklists'),
+        where('ownerId', '==', user.uid),
+        where('tenantId', '==', id)
+    );
+  }, [firestore, user, tenant?.propertyId, id]);
+  const { data: checklists, isLoading: isLoadingChecklists } = useCollection<Checklist>(checklistsQuery);
+
 
   const handleArchiveConfirm = async () => {
     if (!firestore || !tenant || !tenantRef) return;
@@ -108,7 +124,7 @@ export default function TenantDetailPage() {
     }
   };
 
-  const isLoading = isLoadingTenant || isLoadingProperty || isLoadingScreenings;
+  const isLoading = isLoadingTenant || isLoadingProperty || isLoadingScreenings || isLoadingChecklists;
   
   const formatAddress = (address: Property['address']) => {
     if (!address) return 'N/A';
@@ -300,6 +316,49 @@ export default function TenantDetailPage() {
                     </div>
                 ) : (
                     <p className="text-center text-muted-foreground py-4">No screening records found for this tenant.</p>
+                )}
+            </CardContent>
+        </Card>
+        
+        <Card>
+            <CardHeader>
+                <CardTitle>Checklist History</CardTitle>
+                <CardDescription>A log of all pre-tenancy checklists for this tenant.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {isLoadingChecklists ? (
+                    <div className="flex justify-center items-center h-24">
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                ) : checklists && checklists.length > 0 ? (
+                    <div className="rounded-md border">
+                        <Table>
+                            <TableHeader>
+                                <TableRow>
+                                    <TableHead>Completed Date</TableHead>
+                                    <TableHead className="text-right">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {checklists.map(checklist => (
+                                    <TableRow key={checklist.id}>
+                                        <TableCell>
+                                            {format(checklist.completedDate instanceof Date ? checklist.completedDate : new Date(checklist.completedDate.seconds * 1000), 'PPP')}
+                                        </TableCell>
+                                        <TableCell className="text-right">
+                                            <Button asChild variant="outline" size="sm">
+                                                <Link href={`/dashboard/checklists/${checklist.id}?propertyId=${tenant.propertyId}&tenantId=${id}`}>
+                                                    <Eye className="mr-2 h-4 w-4" /> View
+                                                </Link>
+                                            </Button>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                ) : (
+                    <p className="text-center text-muted-foreground py-4">No checklists found for this tenant.</p>
                 )}
             </CardContent>
         </Card>
