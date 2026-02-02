@@ -331,11 +331,6 @@ export default function TenantDetailPage() {
                                         <Eye className="mr-2 h-4 w-4" /> View Checklist
                                     </Link>
                                </Button>
-                               <Button asChild variant="outline">
-                                    <Link href={`/dashboard/checklists/${checklist.id}/edit?propertyId=${tenant.propertyId}&tenantId=${id}`}>
-                                        <Edit className="mr-2 h-4 w-4" /> Edit
-                                    </Link>
-                               </Button>
                            </div>
                         </div>
                      ) : (
