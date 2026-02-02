@@ -145,6 +145,7 @@ export default function ChecklistPage() {
   const tenantIdFromUrl = searchParams.get('tenantId');
 
   const [isConfirmDialogOpen, setConfirmDialogOpen] = useState(false);
+  const [pendingData, setPendingData] = useState<ChecklistFormValues | null>(null);
 
   const form = useForm<ChecklistFormValues>({
     resolver: zodResolver(checklistSchema),
@@ -204,14 +205,21 @@ export default function ChecklistPage() {
           toast({
             variant: 'destructive',
             title: 'Save Failed',
-            description: 'An unexpected error occurred. Please try again.',
+            description: serverError.message || 'An unexpected error occurred. Please try again.',
           });
         }
       })
       .finally(() => {
         setConfirmDialogOpen(false);
+        setPendingData(null);
       });
   };
+  
+  const handleConfirmSave = () => {
+      if(pendingData) {
+          handleSave(pendingData);
+      }
+  }
 
   function onSubmit(data: ChecklistFormValues) {
     const checkValues = [
@@ -223,6 +231,7 @@ export default function ChecklistPage() {
     const allTasksCompleted = checkValues.every(value => typeof value !== 'boolean' || value === true);
 
     if (!allTasksCompleted) {
+      setPendingData(data);
       setConfirmDialogOpen(true);
     } else {
       handleSave(data);
@@ -251,7 +260,12 @@ export default function ChecklistPage() {
     <>
       <AlertDialog
         open={isConfirmDialogOpen}
-        onOpenChange={setConfirmDialogOpen}
+        onOpenChange={(isOpen) => {
+          setConfirmDialogOpen(isOpen);
+          if (!isOpen) {
+            setPendingData(null);
+          }
+        }}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -262,9 +276,7 @@ export default function ChecklistPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel>No, go back</AlertDialogCancel>
-            <AlertDialogAction
-              onClick={() => handleSave(form.getValues())}
-            >
+            <AlertDialogAction onClick={handleConfirmSave}>
               Yes, save anyway
             </AlertDialogAction>
           </AlertDialogFooter>
