@@ -138,23 +138,42 @@ export default function ChecklistPage() {
 
   const form = useForm<ChecklistFormValues>({
     resolver: zodResolver(checklistSchema),
+    defaultValues: {
+      propertyId: '',
+      tenantId: '',
+    }
   });
 
   useEffect(() => {
     form.setValue('completedDate', new Date());
   }, [form]);
 
+  // This query already correctly filters for the logged-in user's properties.
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(collection(firestore, 'properties'), where('ownerId', '==', user.uid));
   }, [firestore, user]);
   const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
-
+  
+  // Watch the selected property to filter tenants
+  const selectedPropertyId = form.watch('propertyId');
+  
+  // This query now filters tenants based on the selected property.
   const tenantsQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    return query(collection(firestore, 'tenants'), where('ownerId', '==', user.uid), where('status', '==', 'Active'));
-  }, [firestore, user]);
+    if (!user || !selectedPropertyId) return null;
+    return query(
+        collection(firestore, 'tenants'), 
+        where('ownerId', '==', user.uid), 
+        where('propertyId', '==', selectedPropertyId),
+        where('status', '==', 'Active')
+    );
+  }, [firestore, user, selectedPropertyId]);
   const { data: tenants, isLoading: isLoadingTenants } = useCollection<Tenant>(tenantsQuery);
+
+  // When a new property is selected, reset the tenant selection.
+  useEffect(() => {
+      form.resetField('tenantId');
+  }, [selectedPropertyId, form]);
 
   async function onSubmit(data: ChecklistFormValues) {
     if (!user || !firestore) {
@@ -225,10 +244,16 @@ export default function ChecklistPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Tenant</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select onValueChange={field.onChange} value={field.value} disabled={!selectedPropertyId || isLoadingTenants}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder={isLoadingTenants ? 'Loading...' : 'Select a tenant'} />
+                          <SelectValue placeholder={
+                              !selectedPropertyId 
+                                ? 'Select a property first' 
+                                : isLoadingTenants 
+                                ? 'Loading...' 
+                                : 'Select a tenant'
+                          } />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
