@@ -11,7 +11,7 @@ import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
 
 // Helper component to display a checklist item
-const ChecklistItemDisplay = ({ label, checked }: { label: string; checked: boolean | undefined }) => (
+const ChecklistItemDisplay = ({ label, checked }: { label: string; checked?: boolean }) => (
   <div className="flex items-center justify-between rounded-md border p-3 bg-background">
     <p className="text-sm font-medium">{label}</p>
     {checked === true ? (
@@ -25,7 +25,7 @@ const ChecklistItemDisplay = ({ label, checked }: { label: string; checked: bool
 );
 
 // Helper component to display notes for a section
-const NotesDisplay = ({ notes }: { notes: string | undefined }) => {
+const NotesDisplay = ({ notes }: { notes?: string }) => {
   if (!notes) return null;
   return (
     <div className="mt-4 rounded-md border border-dashed bg-muted/50 p-4">
@@ -35,18 +35,17 @@ const NotesDisplay = ({ notes }: { notes: string | undefined }) => {
   );
 };
 
-// Component to display a whole section of the checklist
+// Component to display a whole section of the checklist, rebuilt for safety.
 const ChecklistSection = ({ title, data, fields }: { title: string, data: any, fields: {key: string, label: string}[] }) => {
-    // If the entire data object for this section is null or undefined, don't render anything.
+    // If the data for this section is missing entirely, render nothing.
     if (!data) {
         return null;
     }
 
-    // Check if there is any meaningful data to display in this section.
-    // This prevents rendering an empty card if all checkboxes were left unchecked and there are no notes.
-    const hasMeaningfulData = fields.some(field => typeof data[field.key] === 'boolean') || (data.notes && data.notes.trim() !== '');
+    // Determine if there is any content to show.
+    const hasContent = fields.some(field => typeof data[field.key] === 'boolean') || (data.notes && data.notes.trim());
 
-    if (!hasMeaningfulData) {
+    if (!hasContent) {
         return null;
     }
 
@@ -57,11 +56,13 @@ const ChecklistSection = ({ title, data, fields }: { title: string, data: any, f
             </CardHeader>
             <CardContent className="space-y-3">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-                    {fields.map(field => (
-                        // Explicitly check for boolean type to avoid rendering for other falsy values.
-                        (typeof data[field.key] === 'boolean') &&
-                        <ChecklistItemDisplay key={field.key} label={field.label} checked={data[field.key]} />
-                    ))}
+                    {fields.map(field => {
+                        // Only render if the data for this checkbox exists (is true or false)
+                        if (typeof data[field.key] === 'boolean') {
+                            return <ChecklistItemDisplay key={field.key} label={field.label} checked={data[field.key]} />
+                        }
+                        return null;
+                    })}
                 </div>
                 <NotesDisplay notes={data.notes} />
             </CardContent>
@@ -119,9 +120,10 @@ export default function ViewChecklistPage() {
     return notFound();
   }
   
+  // Safe data access
   const completedDate = checklist.completedDate?.seconds ? format(new Date(checklist.completedDate.seconds * 1000), 'PPP') : 'N/A';
-  const tenantName = tenant?.name || 'Loading tenant...';
-  const propertyAddress = property?.address ? [property.address.street, property.address.city].filter(Boolean).join(', ') : 'Loading property...';
+  const tenantName = tenant?.name || 'N/A';
+  const propertyAddress = property?.address ? [property.address.street, property.address.city].filter(Boolean).join(', ') : 'N/A';
 
 
   return (
@@ -169,7 +171,7 @@ export default function ViewChecklistPage() {
       
       <div className="space-y-6">
         {Object.entries(sections).map(([key, { title, fields }]) => (
-            <ChecklistSection key={key} title={title} data={checklist[key]} fields={fields} />
+            <ChecklistSection key={key} title={title} data={checklist[key as keyof typeof checklist]} fields={fields} />
         ))}
       </div>
 

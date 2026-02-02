@@ -191,7 +191,9 @@ export default function ChecklistPage() {
         toast({
           variant: 'destructive',
           title: 'Save Failed',
-          description: serverError.message || 'An unexpected error occurred. Please try again.',
+          description: serverError.message.includes("invalid data") 
+            ? "The checklist data could not be saved. Please try again."
+            : serverError.message || 'An unexpected error occurred.',
         });
     } finally {
       setIsSubmitting(false);
