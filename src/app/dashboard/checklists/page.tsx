@@ -86,7 +86,11 @@ type ChecklistFormValues = z.infer<typeof checklistSchema>;
 
 interface Property {
   id: string;
-  address: string;
+  address: {
+    nameOrNumber?: string;
+    street: string;
+    city: string;
+  };
 }
 
 interface Tenant {
@@ -208,7 +212,7 @@ export default function ChecklistPage() {
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {properties?.map((p) => <SelectItem key={p.id} value={p.id}>{p.address}</SelectItem>)}
+                        {properties?.map((p) => <SelectItem key={p.id} value={p.id}>{[p.address.nameOrNumber, p.address.street, p.address.city].filter(Boolean).join(", ")}</SelectItem>)}
                       </SelectContent>
                     </Select>
                     <FormMessage />
