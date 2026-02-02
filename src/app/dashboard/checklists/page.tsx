@@ -40,6 +40,8 @@ import {
   useFirestore,
   useCollection,
   useMemoFirebase,
+  errorEmitter,
+  FirestorePermissionError,
 } from '@/firebase';
 import { collection, query, where, addDoc } from 'firebase/firestore';
 
@@ -186,24 +188,27 @@ export default function ChecklistPage() {
     }
     
     const { propertyId, ...checklistData } = data;
+    const checklistDocumentData = { ...checklistData, ownerId: user.uid };
 
-    try {
-      const checklistsCollection = collection(firestore, 'properties', propertyId, 'checklists');
-      await addDoc(checklistsCollection, { ...checklistData, ownerId: user.uid });
+    const checklistsCollection = collection(firestore, 'properties', propertyId, 'checklists');
       
-      toast({
-        title: 'Checklist Saved',
-        description: 'The pre-tenancy checklist has been successfully saved.',
+    addDoc(checklistsCollection, checklistDocumentData)
+      .then(() => {
+        toast({
+          title: 'Checklist Saved',
+          description: 'The pre-tenancy checklist has been successfully saved.',
+        });
+        router.push('/dashboard');
+      })
+      .catch(async (serverError) => {
+        console.error('Failed to save checklist:', serverError);
+        const permissionError = new FirestorePermissionError({
+          path: checklistsCollection.path,
+          operation: 'create',
+          requestResourceData: checklistDocumentData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
       });
-      router.push('/dashboard');
-    } catch (error) {
-      console.error('Failed to save checklist:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Save Failed',
-        description: 'There was an error saving the checklist. Please try again.',
-      });
-    }
   }
 
   return (
