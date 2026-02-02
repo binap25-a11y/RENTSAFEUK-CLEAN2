@@ -52,6 +52,11 @@ service cloud.firestore {
         allow list: if request.auth.uid != null;
         allow create: if isOwner(request.resource.data);
       }
+      match /checklists/{checklistId} {
+        allow get, update, delete: if isOwner(resource.data);
+        allow list: if request.auth.uid != null;
+        allow create: if isOwner(request.resource.data);
+      }
     }
 
     // TENANTS & SUBCOLLECTIONS

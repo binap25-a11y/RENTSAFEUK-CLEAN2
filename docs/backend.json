@@ -624,6 +624,139 @@
         "trade",
         "phone"
       ]
+    },
+    "PreTenancyChecklist": {
+      "title": "Pre-Tenancy Checklist",
+      "type": "object",
+      "description": "A checklist for legal and recommended tasks before a tenancy begins.",
+      "properties": {
+        "id": {
+          "type": "string"
+        },
+        "ownerId": {
+          "type": "string"
+        },
+        "propertyId": {
+          "type": "string"
+        },
+        "tenantId": {
+          "type": "string"
+        },
+        "completedDate": {
+          "type": "string",
+          "format": "date-time"
+        },
+        "beforeTenancy": {
+          "type": "object",
+          "properties": {
+            "howToRentGuide": {
+              "type": "boolean",
+              "description": "Provided the latest 'How to Rent' guide."
+            },
+            "epc": {
+              "type": "boolean",
+              "description": "Energy Performance Certificate (EPC) is valid (min E)."
+            },
+            "gasSafety": {
+              "type": "boolean",
+              "description": "Gas Safety Certificate (CP12) is valid."
+            },
+            "eicr": {
+              "type": "boolean",
+              "description": "Electrical Installation Condition Report (EICR) is valid."
+            },
+            "tenancyAgreement": {
+              "type": "boolean",
+              "description": "Tenancy Agreement is signed by all parties."
+            },
+            "rightToRent": {
+              "type": "boolean",
+              "description": "Right to Rent check completed and recorded."
+            },
+            "notes": {
+              "type": "string",
+              "description": "Notes for this section."
+            }
+          }
+        },
+        "deposit": {
+          "type": "object",
+          "properties": {
+            "prescribedInfo": {
+              "type": "boolean",
+              "description": "Provided deposit Prescribed Information."
+            },
+            "schemeLeaflet": {
+              "type": "boolean",
+              "description": "Provided the relevant deposit scheme leaflet."
+            },
+            "protectionCertificate": {
+              "type": "boolean",
+              "description": "Deposit protection certificate is valid and provided."
+            },
+            "notes": {
+              "type": "string",
+              "description": "Notes for this section."
+            }
+          }
+        },
+        "atMoveIn": {
+          "type": "object",
+          "properties": {
+            "inventory": {
+              "type": "boolean",
+              "description": "Inventory & Schedule of Condition signed."
+            },
+            "keysRecord": {
+              "type": "boolean",
+              "description": "Record of keys issued to tenant."
+            },
+            "emergencyContacts": {
+              "type": "boolean",
+              "description": "Provided emergency and repairs contact details."
+            },
+            "privacyNotice": {
+              "type": "boolean",
+              "description": "Provided a GDPR-compliant Privacy Notice."
+            },
+            "notes": {
+              "type": "string",
+              "description": "Notes for this section."
+            }
+          }
+        },
+        "optional": {
+          "type": "object",
+          "properties": {
+            "welcomeLetter": {
+              "type": "boolean",
+              "description": "Provided a welcome letter."
+            },
+            "applianceManuals": {
+              "type": "boolean",
+              "description": "Provided appliance manuals."
+            },
+            "binInfo": {
+              "type": "boolean",
+              "description": "Provided bin and recycling information."
+            },
+            "parkingInfo": {
+              "type": "boolean",
+              "description": "Provided parking/permit information."
+            },
+            "notes": {
+              "type": "string",
+              "description": "Notes for this section."
+            }
+          }
+        }
+      },
+      "required": [
+        "ownerId",
+        "propertyId",
+        "tenantId",
+        "completedDate"
+      ]
     }
   },
   "auth": {
@@ -767,6 +900,16 @@
         }
       },
       {
+        "path": "/properties/{propertyId}/checklists/{checklistId}",
+        "definition": {
+          "entityName": "PreTenancyChecklist",
+          "schema": {
+            "$ref": "#/backend/entities/PreTenancyChecklist"
+          },
+          "description": "Subcollection to store pre-tenancy checklists for each property."
+        }
+      },
+      {
         "path": "/tenants/{tenantId}",
         "definition": {
           "entityName": "Tenant",
@@ -812,5 +955,3 @@
     "reasoning": "The Firestore structure is designed to manage rental properties, tenants, maintenance logs, inspections, and documents. The top-level collections are `properties`, `tenants`, `contractors` and `users/{userId}`. The subcollections `maintenanceLogs`, `inspections`, and `documents` are nested under each `property` to ensure data locality and facilitate querying related information. This structure leverages path-based ownership for user-specific data (e.g., properties owned by a user), which simplifies security rules. The design prioritizes Authorization Independence (CRITICAL) by avoiding hierarchical authorization dependencies (`get()`).  All collections are designed to support QAPs, as listing operations will be secured by path-based rules and potentially by filtering on denormalized fields, ensuring that users can only access data they are authorized to view."
   }
 }
-
-    
