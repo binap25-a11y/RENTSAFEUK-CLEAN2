@@ -145,13 +145,14 @@ export default function ChecklistPage() {
   const tenantIdFromUrl = searchParams.get('tenantId');
 
   const [isConfirmDialogOpen, setConfirmDialogOpen] = useState(false);
-  
+  const [dataToSave, setDataToSave] = useState<ChecklistFormValues | null>(null);
+
   const form = useForm<ChecklistFormValues>({
     resolver: zodResolver(checklistSchema),
     defaultValues: {
       propertyId: propertyIdFromUrl || '',
       tenantId: tenantIdFromUrl || '',
-    }
+    },
   });
 
   const propertyRef = useMemoFirebase(() => {
@@ -161,8 +162,8 @@ export default function ChecklistPage() {
   const { data: property, isLoading: isLoadingProperty } = useDoc<Property>(propertyRef);
 
   const tenantRef = useMemoFirebase(() => {
-      if (!firestore || !tenantIdFromUrl) return null;
-      return doc(firestore, 'tenants', tenantIdFromUrl);
+    if (!firestore || !tenantIdFromUrl) return null;
+    return doc(firestore, 'tenants', tenantIdFromUrl);
   }, [firestore, tenantIdFromUrl]);
   const { data: tenant, isLoading: isLoadingTenant } = useDoc<Tenant>(tenantRef);
 
@@ -170,9 +171,7 @@ export default function ChecklistPage() {
     form.setValue('completedDate', new Date());
   }, [form]);
 
-  const handleSave = () => {
-    const data = form.getValues();
-
+  const handleSave = (data: ChecklistFormValues) => {
     if (!user || !firestore) {
       toast({
         variant: 'destructive',
@@ -212,6 +211,7 @@ export default function ChecklistPage() {
       })
       .finally(() => {
         setConfirmDialogOpen(false);
+        setDataToSave(null);
       });
   };
 
@@ -225,33 +225,42 @@ export default function ChecklistPage() {
     const allTasksCompleted = checkValues.every(value => typeof value !== 'boolean' || value === true);
 
     if (!allTasksCompleted) {
+      setDataToSave(data);
       setConfirmDialogOpen(true);
     } else {
-      handleSave();
+      handleSave(data);
     }
   }
 
   if (!propertyIdFromUrl || !tenantIdFromUrl) {
     return (
-        <Card className="max-w-4xl mx-auto">
-            <CardHeader>
-                <CardTitle>Invalid Checklist</CardTitle>
-                <CardDescription>
-                    To create a checklist, please start from a specific tenant's detail page.
-                </CardDescription>
-            </CardHeader>
-            <CardContent>
-                <Button asChild>
-                    <Link href="/dashboard/tenants">Go to Tenants</Link>
-                </Button>
-            </CardContent>
-        </Card>
-    )
+      <Card className="max-w-4xl mx-auto">
+        <CardHeader>
+          <CardTitle>Invalid Checklist</CardTitle>
+          <CardDescription>
+            To create a checklist, please start from a specific tenant's detail page.
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <Button asChild>
+            <Link href="/dashboard/tenants">Go to Tenants</Link>
+          </Button>
+        </CardContent>
+      </Card>
+    );
   }
 
   return (
     <>
-      <AlertDialog open={isConfirmDialogOpen} onOpenChange={setConfirmDialogOpen}>
+      <AlertDialog
+        open={isConfirmDialogOpen}
+        onOpenChange={(open) => {
+          setConfirmDialogOpen(open);
+          if (!open) {
+            setDataToSave(null);
+          }
+        }}
+      >
         <AlertDialogContent>
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure you want to continue?</AlertDialogTitle>
@@ -260,8 +269,14 @@ export default function ChecklistPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel>No, go back</AlertDialogCancel>
-            <AlertDialogAction onClick={handleSave}>
+            <AlertDialogCancel onClick={() => setDataToSave(null)}>No, go back</AlertDialogCancel>
+            <AlertDialogAction
+              onClick={() => {
+                if (dataToSave) {
+                  handleSave(dataToSave);
+                }
+              }}
+            >
               Yes, save anyway
             </AlertDialogAction>
           </AlertDialogFooter>
@@ -279,23 +294,23 @@ export default function ChecklistPage() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
               <div className="space-y-4 rounded-lg border bg-muted/50 p-4">
-                  <h3 className="font-semibold">Checklist For</h3>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
-                      <div>
-                          <p className="text-muted-foreground">Property</p>
-                          <p className="font-medium">
-                              {isLoadingProperty ? <Loader2 className="h-4 w-4 animate-spin" /> : property?.address ? [property.address.nameOrNumber, property.address.street, property.address.city].filter(Boolean).join(", ") : 'Property not found'}
-                          </p>
-                      </div>
-                      <div>
-                          <p className="text-muted-foreground">Tenant</p>
-                          <p className="font-medium">
-                              {isLoadingTenant ? <Loader2 className="h-4 w-4 animate-spin" /> : tenant?.name || 'Tenant not found'}
-                          </p>
-                      </div>
+                <h3 className="font-semibold">Checklist For</h3>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 text-sm">
+                  <div>
+                    <p className="text-muted-foreground">Property</p>
+                    <p className="font-medium">
+                      {isLoadingProperty ? <Loader2 className="h-4 w-4 animate-spin" /> : property?.address ? [property.address.nameOrNumber, property.address.street, property.address.city].filter(Boolean).join(", ") : 'Property not found'}
+                    </p>
                   </div>
+                  <div>
+                    <p className="text-muted-foreground">Tenant</p>
+                    <p className="font-medium">
+                      {isLoadingTenant ? <Loader2 className="h-4 w-4 animate-spin" /> : tenant?.name || 'Tenant not found'}
+                    </p>
+                  </div>
+                </div>
               </div>
-              
+
               <Accordion type="multiple" className="w-full space-y-4" defaultValue={['legal']}>
                 <AccordionItem value="legal" className="border rounded-lg px-4">
                   <AccordionTrigger className='text-lg font-semibold'>Before Tenancy Starts (Legal)</AccordionTrigger>
@@ -318,7 +333,7 @@ export default function ChecklistPage() {
                     <NotesField form={form} name="deposit.notes" placeholder="Notes for this section..." />
                   </AccordionContent>
                 </AccordionItem>
-                 <AccordionItem value="move-in" className="border rounded-lg px-4">
+                <AccordionItem value="move-in" className="border rounded-lg px-4">
                   <AccordionTrigger className='text-lg font-semibold'>At / Just After Move-In</AccordionTrigger>
                   <AccordionContent className='pt-4 space-y-4'>
                     <ChecklistField form={form} name="atMoveIn.inventory" label="Inventory & Schedule of Condition (signed)" />
@@ -328,7 +343,7 @@ export default function ChecklistPage() {
                     <NotesField form={form} name="atMoveIn.notes" placeholder="Notes for this section..." />
                   </AccordionContent>
                 </AccordionItem>
-                 <AccordionItem value="optional" className="border rounded-lg px-4">
+                <AccordionItem value="optional" className="border rounded-lg px-4">
                   <AccordionTrigger className='text-lg font-semibold'>Optional but Smart</AccordionTrigger>
                   <AccordionContent className='pt-4 space-y-4'>
                     <ChecklistField form={form} name="optional.welcomeLetter" label="Welcome letter" />
