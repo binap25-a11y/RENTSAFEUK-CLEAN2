@@ -40,6 +40,8 @@ import {
   useFirestore,
   useCollection,
   useMemoFirebase,
+  errorEmitter,
+  FirestorePermissionError,
 } from '@/firebase';
 import { collection, query, where, addDoc } from 'firebase/firestore';
 
@@ -194,23 +196,24 @@ export default function TenantScreeningPage() {
             tenantId: tenantId,
         };
 
-        try {
-            const screeningsCollection = collection(firestore, 'tenants', tenantId, 'screenings');
-            await addDoc(screeningsCollection, newScreeningRecord);
-            
+        const screeningsCollection = collection(firestore, 'tenants', tenantId, 'screenings');
+
+        addDoc(screeningsCollection, newScreeningRecord)
+          .then(() => {
             toast({
                 title: 'Screening Record Saved',
                 description: 'The tenant screening checklist has been successfully saved.',
             });
             router.push(tenantId ? `/dashboard/tenants/${tenantId}` : '/dashboard/tenants');
-        } catch (error) {
-            console.error('Failed to save screening record:', error);
-            toast({
-                variant: 'destructive',
-                title: 'Save Failed',
-                description: 'There was an error saving the record. Please try again.',
+          })
+          .catch(async (serverError) => {
+             const permissionError = new FirestorePermissionError({
+                path: screeningsCollection.path,
+                operation: 'create',
+                requestResourceData: newScreeningRecord,
             });
-        }
+            errorEmitter.emit('permission-error', permissionError);
+          });
     }
 
     return (
@@ -231,7 +234,7 @@ export default function TenantScreeningPage() {
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Tenant to Screen</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value} disabled={!!tenantIdFromUrl}>
+                                        <Select onValueChange={field.onChange} value={field.value}>
                                             <FormControl>
                                                 <SelectTrigger>
                                                     <SelectValue placeholder={isLoadingTenants ? <div className='flex items-center gap-2'><Loader2 className='animate-spin' /> Loading...</div> : "Select a tenant"} />
