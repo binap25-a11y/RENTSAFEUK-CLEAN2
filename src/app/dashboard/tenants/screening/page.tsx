@@ -76,8 +76,9 @@ const screeningSchema = z.object({
     notes: z.string().optional(),
   }).optional(),
   landlordReference: z.object({
-    name: z.string().optional(),
-    email: z.string().optional(),
+    firstName: z.string().optional(),
+    lastName: z.string().optional(),
+    email: z.string().email({ message: "Invalid email address." }).optional().or(z.literal('')),
     phone: z.string().optional(),
     rentOnTime: z.boolean().default(false),
     anyArrears: z.boolean().default(false),
@@ -230,7 +231,7 @@ export default function TenantScreeningPage() {
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Tenant to Screen</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value}>
+                                        <Select onValueChange={field.onChange} value={field.value} disabled={!!tenantIdFromUrl}>
                                             <FormControl>
                                                 <SelectTrigger>
                                                     <SelectValue placeholder={isLoadingTenants ? <div className='flex items-center gap-2'><Loader2 className='animate-spin' /> Loading...</div> : "Select a tenant"} />
@@ -357,10 +358,11 @@ export default function TenantScreeningPage() {
                              <AccordionItem value="landlord-reference" className='border rounded-lg px-4'>
                                 <AccordionTrigger className='text-lg font-semibold'>Previous Landlord Reference</AccordionTrigger>
                                 <AccordionContent className='pt-4 space-y-4'>
-                                    <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
-                                         <FormField control={form.control} name="landlordReference.name" render={({ field }) => (<FormItem><FormLabel>Landlord Name</FormLabel><FormControl><Input {...field} /></FormControl></FormItem>)} />
-                                         <FormField control={form.control} name="landlordReference.email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" {...field} /></FormControl></FormItem>)} />
-                                         <FormField control={form.control} name="landlordReference.phone" render={({ field }) => (<FormItem><FormLabel>Phone (Optional)</FormLabel><FormControl><Input type="tel" {...field} /></FormControl></FormItem>)} />
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                         <FormField control={form.control} name="landlordReference.firstName" render={({ field }) => (<FormItem><FormLabel>Landlord First Name</FormLabel><FormControl><Input placeholder="e.g., John" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                         <FormField control={form.control} name="landlordReference.lastName" render={({ field }) => (<FormItem><FormLabel>Landlord Last Name</FormLabel><FormControl><Input placeholder="e.g., Smith" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                         <FormField control={form.control} name="landlordReference.email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="john.smith@example.com" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                         <FormField control={form.control} name="landlordReference.phone" render={({ field }) => (<FormItem><FormLabel>Phone (Optional)</FormLabel><FormControl><Input type="tel" placeholder="07123456789" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <ChecklistItem form={form} name="landlordReference.rentOnTime" label="Paid rent on time?" />
