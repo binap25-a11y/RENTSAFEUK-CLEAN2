@@ -325,11 +325,18 @@ export default function TenantDetailPage() {
                                {format(checklist.completedDate instanceof Date ? checklist.completedDate : new Date(checklist.completedDate.seconds * 1000), 'PPP')}
                              </p>
                            </div>
-                           <Button asChild variant="secondary">
-                                <Link href={`/dashboard/checklists/${checklist.id}?propertyId=${tenant.propertyId}&tenantId=${id}`}>
-                                    <Eye className="mr-2 h-4 w-4" /> View Checklist
-                                </Link>
-                           </Button>
+                           <div className="flex gap-2">
+                               <Button asChild variant="secondary">
+                                    <Link href={`/dashboard/checklists/${checklist.id}?propertyId=${tenant.propertyId}&tenantId=${id}`}>
+                                        <Eye className="mr-2 h-4 w-4" /> View Checklist
+                                    </Link>
+                               </Button>
+                               <Button asChild variant="outline">
+                                    <Link href={`/dashboard/checklists/${checklist.id}/edit?propertyId=${tenant.propertyId}&tenantId=${id}`}>
+                                        <Edit className="mr-2 h-4 w-4" /> Edit
+                                    </Link>
+                               </Button>
+                           </div>
                         </div>
                      ) : (
                         <Button asChild>
