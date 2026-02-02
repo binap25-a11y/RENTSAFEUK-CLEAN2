@@ -169,10 +169,14 @@ export default function EditChecklistPage() {
 
   useEffect(() => {
     if (checklist) {
-      // Need to convert Firestore Timestamps to JS Dates for the form
+      // Ensure all nested objects exist to avoid render errors.
       const formData = {
         ...checklist,
         completedDate: checklist.completedDate instanceof Date ? checklist.completedDate : new Date(checklist.completedDate.seconds * 1000),
+        beforeTenancy: checklist.beforeTenancy || {},
+        deposit: checklist.deposit || {},
+        atMoveIn: checklist.atMoveIn || {},
+        optional: checklist.optional || {},
       };
       form.reset(formData);
     }

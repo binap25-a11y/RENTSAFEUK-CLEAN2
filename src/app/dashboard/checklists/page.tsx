@@ -139,6 +139,11 @@ export default function ChecklistPage() {
     defaultValues: {
       propertyId: propertyIdFromUrl || '',
       tenantId: tenantIdFromUrl || '',
+      completedDate: new Date(),
+      beforeTenancy: {},
+      deposit: {},
+      atMoveIn: {},
+      optional: {},
     },
   });
 
@@ -154,10 +159,6 @@ export default function ChecklistPage() {
   }, [firestore, tenantIdFromUrl]);
   const { data: tenant, isLoading: isLoadingTenant } = useDoc<Tenant>(tenantRef);
 
-  useEffect(() => {
-    form.setValue('completedDate', new Date());
-  }, [form]);
-
   async function onSubmit(data: ChecklistFormValues) {
     if (!user || !firestore) {
       toast({
@@ -170,25 +171,16 @@ export default function ChecklistPage() {
 
     setIsSubmitting(true);
     
-    // The data from react-hook-form can contain `undefined` values for optional fields,
-    // which Firestore rejects. This cleans the data before saving.
-    const { propertyId, tenantId, completedDate, ...rest } = data;
-    
-    // This is a safe way to deep clone and remove any `undefined` values from nested objects.
-    const cleanedRest = JSON.parse(JSON.stringify(rest));
+    const cleanedData = JSON.parse(JSON.stringify(data));
 
     const checklistDocumentData = {
+      ...cleanedData,
       ownerId: user.uid,
-      propertyId,
-      tenantId,
-      completedDate, // Keep the Date object which Firestore handles correctly.
-      ...cleanedRest,
     };
     
     const checklistsCollection = collection(firestore, 'properties', data.propertyId, 'checklists');
 
     try {
-      // Using the cleaned data object for the save operation.
       await addDoc(checklistsCollection, checklistDocumentData);
       toast({
         title: 'Checklist Saved',
