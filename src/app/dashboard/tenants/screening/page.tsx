@@ -30,15 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -54,9 +46,9 @@ import { collection, query, where, addDoc } from 'firebase/firestore';
 
 const screeningSchema = z.object({
   tenantId: z.string({ required_error: 'Please select a tenant.' }),
-  screeningDate: z.date(),
+  screeningDate: z.coerce.date(),
   rightToRent: z.object({
-    checkDate: z.date().optional(),
+    checkDate: z.coerce.date().optional(),
     ukPassport: z.boolean().default(false),
     shareCode: z.boolean().default(false),
     visaPermit: z.boolean().default(false),
@@ -254,21 +246,15 @@ export default function TenantScreeningPage() {
                                 control={form.control}
                                 name="screeningDate"
                                 render={({ field }) => (
-                                    <FormItem className="flex flex-col">
+                                    <FormItem>
                                         <FormLabel>Date of Screening</FormLabel>
-                                        <Popover>
-                                            <PopoverTrigger asChild>
-                                                <FormControl>
-                                                    <Button suppressHydrationWarning variant={'outline'} className={cn('pl-3 text-left font-normal', !field.value && 'text-muted-foreground')}>
-                                                        {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
-                                                        <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                    </Button>
-                                                </FormControl>
-                                            </PopoverTrigger>
-                                            <PopoverContent className="w-auto p-0" align="start">
-                                                <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
-                                            </PopoverContent>
-                                        </Popover>
+                                        <FormControl>
+                                            <Input
+                                                type="date"
+                                                value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                                                onChange={(e) => field.onChange(e.target.value)}
+                                            />
+                                        </FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )}
@@ -283,19 +269,15 @@ export default function TenantScreeningPage() {
                                         control={form.control}
                                         name="rightToRent.checkDate"
                                         render={({ field }) => (
-                                            <FormItem className="flex flex-col max-w-sm">
+                                            <FormItem>
                                                 <FormLabel>Date of Check</FormLabel>
-                                                <Popover>
-                                                    <PopoverTrigger asChild>
-                                                        <FormControl>
-                                                            <Button suppressHydrationWarning variant={'outline'} className={cn('pl-3 text-left font-normal', !field.value && 'text-muted-foreground')}>
-                                                                {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
-                                                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                            </Button>
-                                                        </FormControl>
-                                                    </PopoverTrigger>
-                                                    <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange}/></PopoverContent>
-                                                </Popover>
+                                                <FormControl>
+                                                    <Input
+                                                        type="date"
+                                                        value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                                                        onChange={(e) => field.onChange(e.target.value)}
+                                                    />
+                                                </FormControl>
                                                 <FormMessage />
                                             </FormItem>
                                         )}

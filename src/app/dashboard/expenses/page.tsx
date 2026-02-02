@@ -32,11 +32,6 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import {
   Dialog,
   DialogContent,
   DialogHeader,
@@ -44,10 +39,8 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Clock, PoundSterling, TrendingDown, TrendingUp, Loader2, CheckCircle2, XCircle, AlertCircle, Download } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { format, getYear, startOfYear, endOfYear } from 'date-fns';
+import { Clock, PoundSterling, TrendingDown, TrendingUp, Loader2, CheckCircle2, XCircle, AlertCircle, Download } from 'lucide-react';
+import { getYear, startOfYear, endOfYear } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import {
   Table,
@@ -122,7 +115,7 @@ interface RentPayment {
 // Schema for the expense form
 const expenseSchema = z.object({
   propertyId: z.string({ required_error: 'Please select a property.' }),
-  date: z.date({ required_error: 'Please select a date.' }),
+  date: z.coerce.date({ required_error: 'Please select a date.' }),
   expenseType: z.string({ required_error: 'Please select an expense type.' }),
   amount: z.coerce.number().min(0.01, 'Amount must be greater than 0.'),
   paidBy: z.string().min(1, 'This field is required.'),
@@ -230,7 +223,7 @@ export default function FinancialsPage() {
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className={cn("text-2xl font-bold", netIncome < 0 && "text-destructive")}>
+                    <div className={"text-2xl font-bold" + (netIncome < 0 ? " text-destructive" : "")}>
                         {isLoading && selectedPropertyId ? <Loader2 className="h-6 w-6 animate-spin" /> : selectedPropertyId ? `£${netIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`: '-'}
                     </div>
                      <p className="text-xs text-muted-foreground">Income minus expenses</p>
@@ -402,19 +395,15 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
                 <FormField
                   control={form.control} name="date"
                   render={({ field }) => (
-                    <FormItem className="flex flex-col">
+                    <FormItem>
                       <FormLabel>Date</FormLabel>
-                      <Popover>
-                        <PopoverTrigger asChild>
-                          <FormControl>
-                            <Button variant={'outline'} className={cn('pl-3 text-left font-normal',!field.value && 'text-muted-foreground')}>
-                              {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
-                              <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
-                          </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start"><Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus/></PopoverContent>
-                      </Popover>
+                      <FormControl>
+                        <Input
+                            type="date"
+                            value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                            onChange={(e) => field.onChange(e.target.value)}
+                        />
+                      </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -500,7 +489,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
                       <TableBody>
                           {expenses?.map((expense) => (
                           <TableRow key={expense.id}>
-                              <TableCell>{format(expense.date instanceof Date ? expense.date : new Date(expense.date.seconds * 1000),'dd/MM/yyyy')}</TableCell>
+                              <TableCell>{new Date(expense.date.seconds * 1000).toLocaleDateString()}</TableCell>
                               <TableCell>{expense.expenseType}</TableCell>
                               <TableCell>{expense.paidBy}</TableCell>
                               <TableCell className="text-right font-medium">£{expense.amount.toFixed(2)}</TableCell>
@@ -515,7 +504,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
                           <Card key={expense.id}>
                               <CardHeader>
                                   <CardTitle className="text-base">{expense.expenseType}</CardTitle>
-                                  <CardDescription>{format(expense.date instanceof Date ? expense.date : new Date(expense.date.seconds * 1000),'PPP')}</CardDescription>
+                                  <CardDescription>{new Date(expense.date.seconds * 1000).toLocaleDateString()}</CardDescription>
                               </CardHeader>
                               <CardContent className="space-y-2 text-sm pt-0">
                                   <div className="flex justify-between items-center border-t pt-2">
@@ -722,7 +711,7 @@ function AnnualSummary({
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                     {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <div className={cn("text-2xl font-bold", netIncome < 0 && "text-destructive")}>£{netIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>}
+                     {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <div className={"text-2xl font-bold" + (netIncome < 0 ? " text-destructive" : "")}>£{netIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>}
                     <p className="text-xs text-muted-foreground">Income minus expenses</p>
                 </CardContent>
             </Card>
@@ -838,7 +827,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
   const [editingPayment, setEditingPayment] = useState<{ month: string; expectedAmount: number } | null>(null);
   const [partialAmount, setPartialAmount] = useState('');
   
-  const months = useMemo(() => Array.from({ length: 12 }, (_, i) => format(new Date(selectedYear, i, 1), 'MMMM')), [selectedYear]);
+  const months = useMemo(() => Array.from({ length: 12 }, (_, i) => new Date(selectedYear, i, 1).toLocaleString('default', { month: 'long' })), [selectedYear]);
 
   const statement = useMemo(() => {
     const rent = selectedProperty?.tenancy?.monthlyRent || 0;
@@ -1037,7 +1026,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                             <TableCell>£{row.rent.toFixed(2)}</TableCell>
                             <TableCell>
                                 <Select value={row.status} onValueChange={(newStatus) => handleStatusChange(row.month, newStatus as PaymentStatus)}>
-                                <SelectTrigger className={cn("w-[150px]", className)}>
+                                <SelectTrigger className={"w-[150px] " + className}>
                                     <div className="flex items-center gap-2">
                                     <Icon className="h-4 w-4" />
                                     <SelectValue />
@@ -1069,7 +1058,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                                 </CardHeader>
                                 <CardContent>
                                     <Select value={row.status} onValueChange={(newStatus) => handleStatusChange(row.month, newStatus as PaymentStatus)}>
-                                    <SelectTrigger className={cn("w-full", className)}>
+                                    <SelectTrigger className={"w-full " + className}>
                                         <div className="flex items-center gap-2">
                                         <Icon className="h-4 w-4" />
                                         <SelectValue />

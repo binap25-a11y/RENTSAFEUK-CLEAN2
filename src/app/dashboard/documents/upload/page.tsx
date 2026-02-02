@@ -30,15 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Upload, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { Upload, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -57,8 +49,8 @@ const documentSchema = z.object({
   title: z.string().min(3, 'Title is too short'),
   propertyId: z.string({ required_error: 'Please select a property.' }),
   documentType: z.string({ required_error: 'Please select a document type.' }),
-  issueDate: z.date({ required_error: 'Please select an issue date.' }),
-  expiryDate: z.date({ required_error: 'Please select an expiry date.' }),
+  issueDate: z.coerce.date({ required_error: 'Please select an issue date.' }),
+  expiryDate: z.coerce.date({ required_error: 'Please select an expiry date.' }),
   documentFile: z
     .custom<FileList>()
     .refine((files) => files?.length === 1, 'Document file is required.')
@@ -222,49 +214,37 @@ export default function UploadDocumentPage() {
             </div>
              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                  <FormField
-                     control={form.control}
-                     name="issueDate"
-                     render={({ field }) => (
-                     <FormItem className="flex flex-col">
-                         <FormLabel>Issue Date</FormLabel>
-                         <Popover>
-                         <PopoverTrigger asChild>
-                             <FormControl>
-                             <Button variant={'outline'} className={cn('pl-3 text-left font-normal',!field.value && 'text-muted-foreground')}>
-                                 {field.value ? (format(field.value, 'PPP')) : (<span>Pick a date</span>)}
-                                 <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                             </Button>
-                             </FormControl>
-                         </PopoverTrigger>
-                         <PopoverContent className="w-auto p-0" align="start">
-                             <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus/>
-                         </PopoverContent>
-                         </Popover>
-                         <FormMessage />
-                     </FormItem>
-                     )}
+                    control={form.control}
+                    name="issueDate"
+                    render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Issue Date</FormLabel>
+                            <FormControl>
+                                <Input
+                                    type="date"
+                                    value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                                    onChange={(e) => field.onChange(e.target.value)}
+                                />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )}
                  />
                 <FormField
                     control={form.control}
                     name="expiryDate"
                     render={({ field }) => (
-                    <FormItem className="flex flex-col">
-                        <FormLabel>Expiry Date</FormLabel>
-                        <Popover>
-                        <PopoverTrigger asChild>
+                        <FormItem>
+                            <FormLabel>Expiry Date</FormLabel>
                             <FormControl>
-                            <Button variant={'outline'} className={cn('pl-3 text-left font-normal',!field.value && 'text-muted-foreground')}>
-                                {field.value ? (format(field.value, 'PPP')) : (<span>Pick a date</span>)}
-                                <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                            </Button>
+                                <Input
+                                    type="date"
+                                    value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                                    onChange={(e) => field.onChange(e.target.value)}
+                                />
                             </FormControl>
-                        </PopoverTrigger>
-                        <PopoverContent className="w-auto p-0" align="start">
-                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus/>
-                        </PopoverContent>
-                        </Popover>
-                        <FormMessage />
-                    </FormItem>
+                            <FormMessage />
+                        </FormItem>
                     )}
                 />
             </div>

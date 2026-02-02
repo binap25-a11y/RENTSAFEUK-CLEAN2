@@ -30,14 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Upload, Loader2, Wand2, Search, MoreVertical, Edit } from 'lucide-react';
-import { cn } from '@/lib/utils';
+import { Upload, Loader2, Wand2, Search, MoreVertical, Edit } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import { useState, useMemo, useEffect } from 'react';
@@ -74,10 +67,10 @@ const maintenanceSchema = z.object({
   category: z.string({ required_error: 'Please select a category.' }),
   priority: z.string({ required_error: 'Please select a priority.' }),
   reportedBy: z.string().optional(),
-  reportedDate: z.date(),
+  reportedDate: z.coerce.date(),
   contractorName: z.string().optional(),
   contractorPhone: z.string().optional(),
-  scheduledDate: z.date().optional(),
+  scheduledDate: z.coerce.date().optional(),
   estimatedCost: z.coerce.number().optional(),
   photos: z.custom<FileList>().optional(),
   notes: z.string().optional(),
@@ -442,24 +435,15 @@ export default function MaintenancePage() {
                       control={form.control}
                       name="reportedDate"
                       render={({ field }) => (
-                        <FormItem className="flex flex-col">
+                        <FormItem>
                           <FormLabel>Reported Date</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant={'outline'}
-                                  className={cn('pl-3 text-left font-normal', !field.value && 'text-muted-foreground')}
-                                >
-                                  {field.value ? (format(field.value, 'PPP')) : (<span>Pick a date</span>)}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
-                            </PopoverContent>
-                          </Popover>
+                           <FormControl>
+                                <Input
+                                    type="date"
+                                    value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                                    onChange={(e) => field.onChange(e.target.value)}
+                                />
+                            </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -533,24 +517,15 @@ export default function MaintenancePage() {
                       control={form.control}
                       name="scheduledDate"
                       render={({ field }) => (
-                        <FormItem className="flex flex-col">
+                        <FormItem>
                           <FormLabel>Scheduled Date</FormLabel>
-                          <Popover>
-                            <PopoverTrigger asChild>
-                              <FormControl>
-                                <Button
-                                  variant={'outline'}
-                                  className={cn('pl-3 text-left font-normal', !field.value && 'text-muted-foreground')}
-                                >
-                                  {field.value ? (format(field.value, 'PPP')) : (<span>Pick a date</span>)}
-                                  <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                              </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                              <Calendar mode="single" selected={field.value} onSelect={field.onChange} />
-                            </PopoverContent>
-                          </Popover>
+                            <FormControl>
+                                <Input
+                                    type="date"
+                                    value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                                    onChange={(e) => field.onChange(e.target.value)}
+                                />
+                            </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}

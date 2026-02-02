@@ -31,15 +31,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
   useUser,
@@ -56,8 +48,8 @@ const tenantSchema = z.object({
   email: z.string().email('Invalid email address'),
   telephone: z.string().min(10, 'Invalid phone number'),
   propertyId: z.string({ required_error: 'Please select a property.' }),
-  tenancyStartDate: z.date({ required_error: 'Please select a start date.' }),
-  tenancyEndDate: z.date().optional(),
+  tenancyStartDate: z.coerce.date({ required_error: 'Please select a start date.' }),
+  tenancyEndDate: z.coerce.date().optional(),
   notes: z.string().optional(),
 });
 
@@ -271,36 +263,15 @@ export default function EditTenantPage() {
                     control={form.control}
                     name="tenancyStartDate"
                     render={({ field }) => (
-                    <FormItem className="flex flex-col">
+                    <FormItem>
                         <FormLabel>Tenancy Start Date</FormLabel>
-                         <Popover>
-                            <PopoverTrigger asChild>
-                                <FormControl>
-                                <Button
-                                    variant={'outline'}
-                                    className={cn(
-                                    'pl-3 text-left font-normal',
-                                    !field.value && 'text-muted-foreground'
-                                    )}
-                                >
-                                    {field.value ? (
-                                    format(field.value, 'PPP')
-                                    ) : (
-                                    <span>Pick a date</span>
-                                    )}
-                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                                </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                mode="single"
-                                selected={field.value}
-                                onSelect={field.onChange}
-                                initialFocus
-                                />
-                            </PopoverContent>
-                        </Popover>
+                         <FormControl>
+                            <Input
+                                type="date"
+                                value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                                onChange={(e) => field.onChange(e.target.value)}
+                            />
+                        </FormControl>
                         <FormMessage />
                     </FormItem>
                     )}
@@ -309,36 +280,15 @@ export default function EditTenantPage() {
                     control={form.control}
                     name="tenancyEndDate"
                     render={({ field }) => (
-                    <FormItem className="flex flex-col">
+                    <FormItem>
                         <FormLabel>Tenancy End Date (Optional)</FormLabel>
-                        <Popover>
-                            <PopoverTrigger asChild>
-                                <FormControl>
-                                <Button
-                                    variant={'outline'}
-                                    className={cn(
-                                    'pl-3 text-left font-normal',
-                                    !field.value && 'text-muted-foreground'
-                                    )}
-                                >
-                                    {field.value ? (
-                                    format(field.value, 'PPP')
-                                    ) : (
-                                    <span>Pick a date</span>
-                                    )}
-                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                </Button>
-                                </FormControl>
-                            </PopoverTrigger>
-                            <PopoverContent className="w-auto p-0" align="start">
-                                <Calendar
-                                mode="single"
-                                selected={field.value}
-                                onSelect={field.onChange}
-                                initialFocus
-                                />
-                            </PopoverContent>
-                        </Popover>
+                        <FormControl>
+                            <Input
+                                type="date"
+                                value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                                onChange={(e) => field.onChange(e.target.value)}
+                            />
+                        </FormControl>
                         <FormMessage />
                     </FormItem>
                     )}

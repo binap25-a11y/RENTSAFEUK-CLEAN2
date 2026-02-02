@@ -30,15 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Popover,
-  PopoverContent,
-  PopoverTrigger,
-} from '@/components/ui/popover';
-import { Calendar } from '@/components/ui/calendar';
-import { CalendarIcon, Loader2 } from 'lucide-react';
-import { cn } from '@/lib/utils';
-import { format } from 'date-fns';
+import { Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -53,11 +45,11 @@ import { collection, query, where, addDoc } from 'firebase/firestore';
 
 const hmoInspectionSchema = z.object({
   // General
-  inspectionDate: z.date(),
+  inspectionDate: z.coerce.date(),
   inspectorName: z.string().min(1, "Inspector name is required"),
   propertyId: z.string({ required_error: 'Please select a property.' }),
   occupantCount: z.coerce.number().min(1, "Number of occupants is required"),
-  licenceExpiryDate: z.date().optional(),
+  licenceExpiryDate: z.coerce.date().optional(),
 
   // Fire Safety
   fireSafety: z.object({
@@ -157,7 +149,7 @@ const hmoInspectionSchema = z.object({
     urgentSafetyIssues: z.boolean().default(false),
     maintenanceScheduled: z.boolean().default(false),
     notes: z.string().optional(),
-    nextInspectionDate: z.date().optional(),
+    nextInspectionDate: z.coerce.date().optional(),
   }).optional(),
 });
 
@@ -286,21 +278,15 @@ export default function HmoInspectionPage() {
                                             control={form.control}
                                             name="inspectionDate"
                                             render={({ field }) => (
-                                                <FormItem className="flex flex-col">
+                                                <FormItem>
                                                     <FormLabel>Date of Inspection</FormLabel>
-                                                    <Popover>
-                                                        <PopoverTrigger asChild>
-                                                            <FormControl>
-                                                                <Button suppressHydrationWarning variant={'outline'} className={cn('pl-3 text-left font-normal', !field.value && 'text-muted-foreground')}>
-                                                                    {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
-                                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                                </Button>
-                                                            </FormControl>
-                                                        </PopoverTrigger>
-                                                        <PopoverContent className="w-auto p-0" align="start">
-                                                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} initialFocus />
-                                                        </PopoverContent>
-                                                    </Popover>
+                                                    <FormControl>
+                                                        <Input
+                                                            type="date"
+                                                            value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                                                            onChange={(e) => field.onChange(e.target.value)}
+                                                        />
+                                                    </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
@@ -351,21 +337,15 @@ export default function HmoInspectionPage() {
                                             control={form.control}
                                             name="licenceExpiryDate"
                                             render={({ field }) => (
-                                                <FormItem className="flex flex-col">
+                                                <FormItem>
                                                     <FormLabel>Licence Expiry Date</FormLabel>
-                                                    <Popover>
-                                                        <PopoverTrigger asChild>
-                                                            <FormControl>
-                                                                <Button suppressHydrationWarning variant={'outline'} className={cn('pl-3 text-left font-normal', !field.value && 'text-muted-foreground')}>
-                                                                    {field.value ? format(field.value, 'PPP') : <span>Pick a date (if applicable)</span>}
-                                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                                </Button>
-                                                            </FormControl>
-                                                        </PopoverTrigger>
-                                                        <PopoverContent className="w-auto p-0" align="start">
-                                                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} />
-                                                        </PopoverContent>
-                                                    </Popover>
+                                                    <FormControl>
+                                                        <Input
+                                                            type="date"
+                                                            value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                                                            onChange={(e) => field.onChange(e.target.value)}
+                                                        />
+                                                    </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
@@ -535,21 +515,15 @@ export default function HmoInspectionPage() {
                                             control={form.control}
                                             name="followUp.nextInspectionDate"
                                             render={({ field }) => (
-                                                <FormItem className="flex flex-col">
+                                                <FormItem>
                                                     <FormLabel>Next Inspection Date</FormLabel>
-                                                    <Popover>
-                                                        <PopoverTrigger asChild>
-                                                            <FormControl>
-                                                                <Button suppressHydrationWarning variant={'outline'} className={cn('pl-3 text-left font-normal', !field.value && 'text-muted-foreground')}>
-                                                                    {field.value ? format(field.value, 'PPP') : <span>Pick a date</span>}
-                                                                    <CalendarIcon className="ml-auto h-4 w-4 opacity-50" />
-                                                                </Button>
-                                                            </FormControl>
-                                                        </PopoverTrigger>
-                                                        <PopoverContent className="w-auto p-0" align="start">
-                                                            <Calendar mode="single" selected={field.value} onSelect={field.onChange} />
-                                                        </PopoverContent>
-                                                    </Popover>
+                                                    <FormControl>
+                                                        <Input
+                                                            type="date"
+                                                            value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                                                            onChange={(e) => field.onChange(e.target.value)}
+                                                        />
+                                                    </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
