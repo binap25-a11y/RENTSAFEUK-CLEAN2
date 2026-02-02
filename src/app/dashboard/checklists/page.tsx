@@ -171,16 +171,27 @@ export default function ChecklistPage() {
 
     setIsSubmitting(true);
     
-    const cleanedData = JSON.parse(JSON.stringify(data, (key, value) => {
-        return (value === undefined) ? null : value;
-    }));
-
-
-    const checklistDocumentData = {
-      ...cleanedData,
+    // This is a robust way to clean the form data and ensure no 'undefined' values are sent.
+    const checklistDocumentData: { [key: string]: any } = {
       ownerId: user.uid,
+      propertyId: data.propertyId,
+      tenantId: data.tenantId,
+      completedDate: data.completedDate,
     };
     
+    // Helper function to only add sections if they contain actual data.
+    const addSection = (sectionName: keyof ChecklistFormValues, sectionData: any) => {
+        // Check if there's any meaningful data in the section object.
+        if (sectionData && Object.values(sectionData).some(value => value !== false && value !== undefined && value !== '')) {
+            checklistDocumentData[sectionName] = sectionData;
+        }
+    };
+    
+    addSection('beforeTenancy', data.beforeTenancy);
+    addSection('deposit', data.deposit);
+    addSection('atMoveIn', data.atMoveIn);
+    addSection('optional', data.optional);
+
     const checklistsCollection = collection(firestore, 'properties', data.propertyId, 'checklists');
 
     try {
