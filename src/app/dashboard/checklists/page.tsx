@@ -21,7 +21,6 @@ import {
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
-import { Input } from '@/components/ui/input';
 import {
   Select,
   SelectContent,
@@ -46,8 +45,8 @@ import {
 import { collection, query, where, addDoc } from 'firebase/firestore';
 
 const checklistSchema = z.object({
-  propertyId: z.string({ required_error: 'Please select a property.' }),
-  tenantId: z.string({ required_error: 'Please select a tenant.' }),
+  propertyId: z.string().min(1, { message: 'Please select a property.' }),
+  tenantId: z.string().min(1, { message: 'Please select a tenant.' }),
   completedDate: z.coerce.date(),
   
   beforeTenancy: z.object({
@@ -204,12 +203,21 @@ export default function ChecklistPage() {
         router.push(`/dashboard/tenants/${data.tenantId}`);
       })
       .catch(async (serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: checklistsCollection.path,
-          operation: 'create',
-          requestResourceData: checklistDocumentData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
+        if (serverError.code === 'permission-denied') {
+            const permissionError = new FirestorePermissionError({
+              path: checklistsCollection.path,
+              operation: 'create',
+              requestResourceData: checklistDocumentData,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+        } else {
+            console.error("Error saving checklist:", serverError);
+            toast({
+                variant: 'destructive',
+                title: 'Save Failed',
+                description: 'An unexpected error occurred. Please try again.'
+            });
+        }
       });
   }
 
