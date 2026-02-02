@@ -230,7 +230,7 @@ export default function TenantScreeningPage() {
                                 render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>Tenant to Screen</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value} disabled={!!tenantIdFromUrl}>
+                                        <Select onValueChange={field.onChange} value={field.value}>
                                             <FormControl>
                                                 <SelectTrigger>
                                                     <SelectValue placeholder={isLoadingTenants ? <div className='flex items-center gap-2'><Loader2 className='animate-spin' /> Loading...</div> : "Select a tenant"} />
