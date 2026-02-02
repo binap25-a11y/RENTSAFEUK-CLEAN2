@@ -145,7 +145,6 @@ export default function ChecklistPage() {
   const tenantIdFromUrl = searchParams.get('tenantId');
 
   const [isConfirmDialogOpen, setConfirmDialogOpen] = useState(false);
-  const [dataToSave, setDataToSave] = useState<ChecklistFormValues | null>(null);
 
   const form = useForm<ChecklistFormValues>({
     resolver: zodResolver(checklistSchema),
@@ -211,7 +210,6 @@ export default function ChecklistPage() {
       })
       .finally(() => {
         setConfirmDialogOpen(false);
-        setDataToSave(null);
       });
   };
 
@@ -225,7 +223,6 @@ export default function ChecklistPage() {
     const allTasksCompleted = checkValues.every(value => typeof value !== 'boolean' || value === true);
 
     if (!allTasksCompleted) {
-      setDataToSave(data);
       setConfirmDialogOpen(true);
     } else {
       handleSave(data);
@@ -254,12 +251,7 @@ export default function ChecklistPage() {
     <>
       <AlertDialog
         open={isConfirmDialogOpen}
-        onOpenChange={(open) => {
-          setConfirmDialogOpen(open);
-          if (!open) {
-            setDataToSave(null);
-          }
-        }}
+        onOpenChange={setConfirmDialogOpen}
       >
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -269,13 +261,9 @@ export default function ChecklistPage() {
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setDataToSave(null)}>No, go back</AlertDialogCancel>
+            <AlertDialogCancel>No, go back</AlertDialogCancel>
             <AlertDialogAction
-              onClick={() => {
-                if (dataToSave) {
-                  handleSave(dataToSave);
-                }
-              }}
+              onClick={() => handleSave(form.getValues())}
             >
               Yes, save anyway
             </AlertDialogAction>
