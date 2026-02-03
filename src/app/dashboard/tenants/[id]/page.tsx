@@ -122,6 +122,8 @@ export default function TenantDetailPage() {
   const { data: checklists, isLoading: isLoadingChecklists } = useCollection<Checklist>(checklistsQuery);
 
   const checklist = checklists?.[0];
+  const firstScreening = screenings?.[0];
+
 
   const handleArchiveConfirm = async () => {
     if (!firestore || !tenant || !tenantRef) return;
@@ -285,47 +287,40 @@ export default function TenantDetailPage() {
             <CardContent className="space-y-6">
                  <div>
                     <h3 className="text-lg font-semibold">Tenant Screening</h3>
-                    <div className="flex items-center gap-2 mt-2 mb-4">
-                        <Button asChild size="sm">
-                            <Link href={`/dashboard/tenants/screening?tenantId=${id}`}>
-                                <UserPlus className="mr-2 h-4 w-4" /> Start New Screening
-                            </Link>
-                        </Button>
-                    </div>
                      {isLoadingScreenings ? (
                         <div className="flex justify-center items-center h-24">
                             <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                         </div>
-                    ) : screenings && screenings.length > 0 ? (
-                        <div className="rounded-md border">
-                            <Table>
-                                <TableHeader>
-                                    <TableRow>
-                                        <TableHead>Screening Date</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
-                                    </TableRow>
-                                </TableHeader>
-                                <TableBody>
-                                    {screenings.map(screening => {
-                                        const screeningDate = safeCreateDate(screening.screeningDate);
-                                        return (
-                                            <TableRow key={screening.id}>
-                                                <TableCell>{screeningDate ? format(screeningDate, 'PPP') : 'N/A'}</TableCell>
-                                                <TableCell className="text-right">
-                                                    <Button asChild variant="outline" size="sm">
-                                                        <Link href={`/dashboard/tenants/${id}/screenings/${screening.id}`}>
-                                                            <Eye className="mr-2 h-4 w-4" /> View
-                                                        </Link>
-                                                    </Button>
-                                                </TableCell>
-                                            </TableRow>
-                                        );
-                                    })}
-                                </TableBody>
-                            </Table>
+                    ) : firstScreening ? (
+                        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between p-4 border rounded-lg bg-muted/50 mt-2">
+                           <div>
+                             <p className="font-medium">Screening on File</p>
+                             <p className="text-sm text-muted-foreground">
+                               Completed on {safeCreateDate(firstScreening.screeningDate) ? format(safeCreateDate(firstScreening.screeningDate)!, 'PPP') : 'N/A'}
+                             </p>
+                           </div>
+                           <div className="flex gap-2">
+                               <Button asChild variant="outline">
+                                    <Link href={`/dashboard/tenants/${id}/screenings/${firstScreening.id}`}>
+                                        <Eye className="mr-2 h-4 w-4" /> View
+                                    </Link>
+                               </Button>
+                                <Button asChild>
+                                    <Link href={`/dashboard/tenants/${id}/screenings/${firstScreening.id}/edit`}>
+                                        <Edit className="mr-2 h-4 w-4" /> Edit
+                                    </Link>
+                               </Button>
+                           </div>
                         </div>
                     ) : (
-                        <p className="text-center text-muted-foreground py-4">No screening records found.</p>
+                        <div className="text-center border-2 border-dashed rounded-lg p-6 mt-2">
+                            <p className="text-muted-foreground mb-4">No screening record found for this tenant.</p>
+                            <Button asChild size="sm">
+                                <Link href={`/dashboard/tenants/screening?tenantId=${id}`}>
+                                    <UserPlus className="mr-2 h-4 w-4" /> Create Screening Record
+                                </Link>
+                            </Button>
+                        </div>
                     )}
                 </div>
 
