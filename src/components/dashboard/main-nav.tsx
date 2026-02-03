@@ -47,7 +47,6 @@ const menuItems = [
     subItems: [
         { href: '/dashboard/tenants', label: 'All Tenants' },
         { href: '/dashboard/tenants/add', label: 'Add Tenant' },
-        { href: '/dashboard/tenants/screening', label: 'Tenant Screening' },
         { href: '/dashboard/tenants/archived', label: 'Archived Tenants' },
     ],
   },

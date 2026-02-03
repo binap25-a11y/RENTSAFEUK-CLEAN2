@@ -114,16 +114,16 @@ export default function AddTenantPage() {
 
     try {
       const tenantsCollection = collection(firestore, 'tenants');
-      await addDoc(tenantsCollection, newTenant);
+      const docRef = await addDoc(tenantsCollection, newTenant);
       
       const propertyDocRef = doc(firestore, 'properties', data.propertyId);
       await updateDoc(propertyDocRef, { status: 'Occupied' });
 
       toast({
         title: 'Tenant Saved',
-        description: `${data.name} has been added and assigned to the property.`,
+        description: `${data.name} has been added. Now proceeding to tenant screening.`,
       });
-      router.push(`/dashboard/properties/${data.propertyId}`);
+      router.push(`/dashboard/tenants/screening?tenantId=${docRef.id}`);
     } catch (error) {
       console.error('Failed to add tenant:', error);
       toast({
@@ -277,7 +277,7 @@ export default function AddTenantPage() {
                 <Button type="button" variant="outline" asChild>
                     <Link href={propertyId ? `/dashboard/properties/${propertyId}` : '/dashboard/tenants'}>Cancel</Link>
                 </Button>
-                <Button type="submit">Save Tenant</Button>
+                <Button type="submit">Save and Screen Tenant</Button>
             </div>
           </form>
         </Form>
