@@ -36,6 +36,17 @@ import {
   FirestorePermissionError,
 } from '@/firebase';
 import { doc, updateDoc, Timestamp } from 'firebase/firestore';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+
 
 const checklistSchema = z.object({
   beforeTenancy: z.object({
@@ -135,6 +146,8 @@ export default function EditChecklistPage() {
   const tenantId = searchParams.get('tenantId');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [formDataToSave, setFormDataToSave] = useState<ChecklistFormValues | null>(null);
 
   const form = useForm<ChecklistFormValues>({
     resolver: zodResolver(checklistSchema),
@@ -172,7 +185,7 @@ export default function EditChecklistPage() {
   }, [checklist, form]);
 
 
-  async function onSubmit(data: ChecklistFormValues) {
+  async function proceedToSave(data: ChecklistFormValues) {
     if (!user || !firestore || !checklistRef) {
       toast({
         variant: 'destructive',
@@ -213,6 +226,41 @@ export default function EditChecklistPage() {
         setIsSubmitting(false);
       });
   }
+
+  async function onSubmit(data: ChecklistFormValues) {
+    const requiredSections = ['beforeTenancy', 'deposit', 'atMoveIn'] as const;
+    let allRequiredTicked = true;
+
+    for (const sectionName of requiredSections) {
+        const sectionData = data[sectionName];
+        if (sectionData) {
+            for (const key in sectionData) {
+                if (typeof sectionData[key as keyof typeof sectionData] === 'boolean') {
+                    if (!sectionData[key as keyof typeof sectionData]) {
+                        allRequiredTicked = false;
+                        break;
+                    }
+                }
+            }
+        }
+        if (!allRequiredTicked) break;
+    }
+
+    if (allRequiredTicked) {
+      await proceedToSave(data);
+    } else {
+      setFormDataToSave(data);
+      setIsConfirmDialogOpen(true);
+    }
+  }
+
+  const handleConfirmSave = async () => {
+    setIsConfirmDialogOpen(false);
+    if (formDataToSave) {
+        await proceedToSave(formDataToSave);
+    }
+    setFormDataToSave(null);
+  };
   
   const isLoading = isLoadingChecklist || isLoadingProperty || isLoadingTenant;
 
@@ -311,6 +359,28 @@ export default function EditChecklistPage() {
           </Form>
         </CardContent>
       </Card>
+      
+      <AlertDialog open={isConfirmDialogOpen} onOpenChange={(open) => {
+        setIsConfirmDialogOpen(open);
+        if (!open) {
+            setFormDataToSave(null);
+        }
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Incomplete Checklist</AlertDialogTitle>
+            <AlertDialogDescription>
+              Some checklist items are not ticked. Are you sure you want to save anyway?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setFormDataToSave(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmSave} disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Save Anyway'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }
