@@ -42,8 +42,8 @@ interface Tenant {
     email: string;
     telephone: string;
     propertyId: string;
-    tenancyStartDate: { seconds: number, nanoseconds: number } | Date;
-    tenancyEndDate?: { seconds: number, nanoseconds: number } | Date;
+    tenancyStartDate: { seconds: number, nanoseconds: number } | Date | string;
+    tenancyEndDate?: { seconds: number, nanoseconds: number } | Date | string;
     notes?: string;
     status?: string;
 }
@@ -51,13 +51,31 @@ interface Tenant {
 // Type for screening record
 interface TenantScreening {
     id: string;
-    screeningDate: { seconds: number; nanoseconds: number } | Date;
+    screeningDate: { seconds: number; nanoseconds: number } | Date | string;
 }
 
 // Type for checklist record
 interface Checklist {
     id: string;
-    completedDate: { seconds: number; nanoseconds: number } | Date;
+    completedDate: { seconds: number; nanoseconds: number } | Date | string;
+}
+
+// A robust function to handle various date formats
+function safeCreateDate(dateValue: any): Date | null {
+    if (!dateValue) return null;
+    // If it's already a Date object, return it
+    if (dateValue instanceof Date) return dateValue;
+    // Handle Firestore Timestamp object
+    if (typeof dateValue === 'object' && dateValue.seconds !== undefined) {
+        return new Date(dateValue.seconds * 1000);
+    }
+    // Handle ISO string or other date-parsable strings/numbers
+    const d = new Date(dateValue);
+    // Check if the parsed date is valid
+    if (!isNaN(d.getTime())) {
+        return d;
+    }
+    return null;
 }
 
 
@@ -128,7 +146,7 @@ export default function TenantDetailPage() {
 
   const isLoading = isLoadingTenant || isLoadingProperty || isLoadingScreenings || isLoadingChecklists;
   
-  const formatAddress = (address: Property['address']) => {
+  const formatAddress = (address: Property['address'] | undefined) => {
     if (!address) return 'N/A';
     return [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
   };
@@ -149,8 +167,9 @@ export default function TenantDetailPage() {
     return notFound();
   }
 
-  const startDate = tenant.tenancyStartDate ? (tenant.tenancyStartDate instanceof Date ? tenant.tenancyStartDate : new Date(tenant.tenancyStartDate.seconds * 1000)) : null;
-  const endDate = tenant.tenancyEndDate ? (tenant.tenancyEndDate instanceof Date ? tenant.tenancyEndDate : new Date(tenant.tenancyEndDate.seconds * 1000)) : null;
+  const startDate = safeCreateDate(tenant.tenancyStartDate);
+  const endDate = safeCreateDate(tenant.tenancyEndDate);
+  const completedDate = checklist ? safeCreateDate(checklist.completedDate) : null;
 
   return (
     <>
@@ -241,15 +260,13 @@ export default function TenantDetailPage() {
                             <p>{startDate ? format(startDate, 'PPP') : 'N/A'}</p>
                         </div>
                     </div>
-                    {endDate && (
-                        <div className="flex items-start gap-4">
-                            <CalendarIcon className="h-5 w-5 text-muted-foreground mt-1" />
-                            <div>
-                                <p className="text-sm text-muted-foreground">Tenancy End</p>
-                                <p>{format(endDate, 'PPP')}</p>
-                            </div>
+                    <div className="flex items-start gap-4">
+                        <CalendarIcon className="h-5 w-5 text-muted-foreground mt-1" />
+                        <div>
+                            <p className="text-sm text-muted-foreground">Tenancy End</p>
+                            <p>{endDate ? format(endDate, 'PPP') : 'N/A'}</p>
                         </div>
-                    )}
+                    </div>
                 </div>
                 {tenant.notes && (
                     <div className="border-t pt-4 mt-4">
@@ -290,12 +307,10 @@ export default function TenantDetailPage() {
                                 </TableHeader>
                                 <TableBody>
                                     {screenings.map(screening => {
-                                        const screeningDate = screening.screeningDate
-                                            ? format(screening.screeningDate instanceof Date ? screening.screeningDate : new Date(screening.screeningDate.seconds * 1000), 'PPP')
-                                            : 'N/A';
+                                        const screeningDate = safeCreateDate(screening.screeningDate);
                                         return (
                                             <TableRow key={screening.id}>
-                                                <TableCell>{screeningDate}</TableCell>
+                                                <TableCell>{screeningDate ? format(screeningDate, 'PPP') : 'N/A'}</TableCell>
                                                 <TableCell className="text-right">
                                                     <Button asChild variant="outline" size="sm">
                                                         <Link href={`/dashboard/tenants/${id}/screenings/${screening.id}`}>
@@ -327,7 +342,7 @@ export default function TenantDetailPage() {
                            <div>
                              <p className="font-medium">Checklist Completed</p>
                              <p className="text-sm text-muted-foreground">
-                               {checklist.completedDate ? format(checklist.completedDate instanceof Date ? checklist.completedDate : new Date(checklist.completedDate.seconds * 1000), 'PPP') : 'N/A'}
+                               {completedDate ? format(completedDate, 'PPP') : 'N/A'}
                              </p>
                            </div>
                            <div className="flex gap-2">
