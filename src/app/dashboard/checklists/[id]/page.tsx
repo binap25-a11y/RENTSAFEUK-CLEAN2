@@ -17,6 +17,24 @@ const sections = {
     optional: { title: 'Optional but Smart', fields: [ { key: 'welcomeLetter', label: 'Welcome letter' }, { key: 'applianceManuals', label: 'Appliance manuals' }, { key: 'binInfo', label: 'Bin & recycling info' }, { key: 'parkingInfo', label: 'Parking / permit info' } ]},
 }
 
+// A robust function to handle various date formats
+function safeCreateDate(dateValue: any): Date | null {
+    if (!dateValue) return null;
+    // If it's already a Date object, return it
+    if (dateValue instanceof Date) return dateValue;
+    // Handle Firestore Timestamp object
+    if (typeof dateValue === 'object' && dateValue.seconds !== undefined) {
+        return new Date(dateValue.seconds * 1000);
+    }
+    // Handle ISO string or other date-parsable strings/numbers
+    const d = new Date(dateValue);
+    // Check if the parsed date is valid
+    if (!isNaN(d.getTime())) {
+        return d;
+    }
+    return null;
+}
+
 // Main Page Component
 export default function ViewChecklistPage() {
   const params = useParams();
@@ -60,7 +78,7 @@ export default function ViewChecklistPage() {
   }
   
   // Safe data access
-  const completedDate = checklist.completedDate?.seconds ? format(new Date(checklist.completedDate.seconds * 1000), 'PPP') : 'N/A';
+  const completedDate = safeCreateDate(checklist.completedDate);
   const tenantName = tenant?.name || 'N/A';
   const propertyAddress = property?.address ? [property.address.street, property.address.city].filter(Boolean).join(', ') : 'N/A';
 
@@ -93,7 +111,7 @@ export default function ViewChecklistPage() {
                 <CalendarIcon className="h-5 w-5 text-muted-foreground mt-1" />
                 <div>
                     <p className="text-sm text-muted-foreground">Completed Date</p>
-                    <p>{completedDate}</p>
+                    <p>{completedDate ? format(completedDate, 'PPP') : 'N/A'}</p>
                 </div>
             </div>
              <div className="flex items-start gap-4">
