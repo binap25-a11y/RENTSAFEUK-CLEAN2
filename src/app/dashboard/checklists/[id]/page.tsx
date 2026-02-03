@@ -5,7 +5,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Loader2, Calendar as CalendarIcon, User, Home } from 'lucide-react';
+import { ArrowLeft, Loader2, Calendar as CalendarIcon, User, Home, Edit } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -77,6 +77,11 @@ export default function ViewChecklistPage() {
                 <p className="text-muted-foreground">{propertyAddress}</p>
             </div>
         </div>
+        <Button asChild>
+          <Link href={`/dashboard/checklists/${id}/edit?propertyId=${propertyId}&tenantId=${tenantId}`}>
+            <Edit className="mr-2 h-4 w-4" /> Edit
+          </Link>
+        </Button>
       </div>
       
       <Card>
