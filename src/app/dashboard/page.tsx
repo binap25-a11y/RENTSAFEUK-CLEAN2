@@ -18,7 +18,8 @@ import {
   ListTodo,
   FileText,
   Loader2,
-  PoundSterling
+  PoundSterling,
+  UserPlus,
 } from 'lucide-react';
 import {
   Table,
@@ -367,6 +368,12 @@ export default function DashboardPage() {
       description: 'Onboard a new rental property.',
     },
     {
+      title: 'Add Tenant',
+      href: '/dashboard/tenants/add',
+      icon: UserPlus,
+      description: 'Onboard a new tenant for a property.',
+    },
+    {
       title: 'Log Maintenance',
       href: '/dashboard/maintenance',
       icon: Wrench,
@@ -403,7 +410,7 @@ export default function DashboardPage() {
         ))}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
         {actionCards.map((action) => (
           <Card
             key={action.title}
