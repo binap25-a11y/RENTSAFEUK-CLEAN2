@@ -214,12 +214,14 @@ export default function TenantDetailPage() {
                 <CardContent className="space-y-2">
                     <div className="flex items-center gap-4">
                         <Home className="h-5 w-5 text-muted-foreground" />
-                        {property ? (
+                        {isLoadingProperty ? (
+                            <span>Loading property...</span>
+                        ) : property ? (
                             <Link href={`/dashboard/properties/${tenant.propertyId}`} className="text-primary hover:underline">
                                 {formatAddress(property.address)}
                             </Link>
                         ) : (
-                            <span>Loading property...</span>
+                            <span>Property not found</span>
                         )}
                     </div>
                 </CardContent>
@@ -287,20 +289,23 @@ export default function TenantDetailPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {screenings.map(screening => (
-                                        <TableRow key={screening.id}>
-                                            <TableCell>
-                                                {format(screening.screeningDate instanceof Date ? screening.screeningDate : new Date(screening.screeningDate.seconds * 1000), 'PPP')}
-                                            </TableCell>
-                                            <TableCell className="text-right">
-                                                <Button asChild variant="outline" size="sm">
-                                                    <Link href={`/dashboard/tenants/${id}/screenings/${screening.id}`}>
-                                                        <Eye className="mr-2 h-4 w-4" /> View
-                                                    </Link>
-                                                </Button>
-                                            </TableCell>
-                                        </TableRow>
-                                    ))}
+                                    {screenings.map(screening => {
+                                        const screeningDate = screening.screeningDate
+                                            ? format(screening.screeningDate instanceof Date ? screening.screeningDate : new Date(screening.screeningDate.seconds * 1000), 'PPP')
+                                            : 'N/A';
+                                        return (
+                                            <TableRow key={screening.id}>
+                                                <TableCell>{screeningDate}</TableCell>
+                                                <TableCell className="text-right">
+                                                    <Button asChild variant="outline" size="sm">
+                                                        <Link href={`/dashboard/tenants/${id}/screenings/${screening.id}`}>
+                                                            <Eye className="mr-2 h-4 w-4" /> View
+                                                        </Link>
+                                                    </Button>
+                                                </TableCell>
+                                            </TableRow>
+                                        );
+                                    })}
                                 </TableBody>
                             </Table>
                         </div>
@@ -322,7 +327,7 @@ export default function TenantDetailPage() {
                            <div>
                              <p className="font-medium">Checklist Completed</p>
                              <p className="text-sm text-muted-foreground">
-                               {format(checklist.completedDate instanceof Date ? checklist.completedDate : new Date(checklist.completedDate.seconds * 1000), 'PPP')}
+                               {checklist.completedDate ? format(checklist.completedDate instanceof Date ? checklist.completedDate : new Date(checklist.completedDate.seconds * 1000), 'PPP') : 'N/A'}
                              </p>
                            </div>
                            <div className="flex gap-2">
@@ -334,11 +339,16 @@ export default function TenantDetailPage() {
                            </div>
                         </div>
                      ) : (
-                        <Button asChild>
-                            <Link href={`/dashboard/checklists?propertyId=${tenant?.propertyId}&tenantId=${id}`}>
-                                <ListTodo className="mr-2 h-4 w-4" /> Create Pre-Tenancy Checklist
-                            </Link>
-                        </Button>
+                        <>
+                            <Button asChild disabled={!tenant.propertyId}>
+                                <Link href={tenant.propertyId ? `/dashboard/checklists?propertyId=${tenant.propertyId}&tenantId=${id}` : '#'}>
+                                    <ListTodo className="mr-2 h-4 w-4" /> Create Pre-Tenancy Checklist
+                                </Link>
+                            </Button>
+                            {!tenant.propertyId && (
+                                <p className="text-xs text-muted-foreground mt-2">A property must be assigned to the tenant to create a checklist.</p>
+                            )}
+                        </>
                      )}
                 </div>
             </CardContent>
