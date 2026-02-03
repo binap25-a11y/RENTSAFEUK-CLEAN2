@@ -4,7 +4,7 @@ import { useParams, notFound, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, User, Mail, Phone, Calendar as CalendarIcon, Edit, Archive, Home, Loader2, MoreVertical, UserPlus, Eye, ListTodo } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, Calendar as CalendarIcon, Edit, Trash2, Home, Loader2, MoreVertical, UserPlus, Eye, ListTodo } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
 import { doc, collection, query, updateDoc, where, limit } from 'firebase/firestore';
@@ -86,7 +86,7 @@ export default function TenantDetailPage() {
   const router = useRouter();
   const { toast } = useToast();
   const { user } = useUser();
-  const [isArchiveDialogOpen, setIsArchiveDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const tenantRef = useMemoFirebase(() => {
     if (!firestore || !id) return null;
@@ -125,24 +125,24 @@ export default function TenantDetailPage() {
   const firstScreening = screenings?.[0];
 
 
-  const handleArchiveConfirm = async () => {
+  const handleDeleteConfirm = async () => {
     if (!firestore || !tenant || !tenantRef) return;
     try {
       await updateDoc(tenantRef, { status: 'Archived' });
       toast({
-        title: 'Tenant Archived',
-        description: `${tenant.name} has been moved to the archives.`,
+        title: 'Tenant Deleted',
+        description: `${tenant.name} has been moved to the archived tenants list.`,
       });
       router.push('/dashboard/tenants');
     } catch (e) {
-      console.error('Error archiving tenant:', e);
+      console.error('Error deleting tenant:', e);
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Could not archive the tenant. Please try again.',
+        description: 'Could not delete the tenant. Please try again.',
       });
     } finally {
-        setIsArchiveDialogOpen(false);
+        setIsDeleteDialogOpen(false);
     }
   };
 
@@ -198,8 +198,8 @@ export default function TenantDetailPage() {
                             </Link>
                         </DropdownMenuItem>
                         {tenant.status !== 'Archived' && (
-                            <DropdownMenuItem onClick={() => setIsArchiveDialogOpen(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                                <Archive className="mr-2 h-4 w-4" /> Archive
+                            <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                <Trash2 className="mr-2 h-4 w-4" /> Delete
                             </DropdownMenuItem>
                         )}
                     </DropdownMenuContent>
@@ -364,21 +364,21 @@ export default function TenantDetailPage() {
             </CardContent>
         </Card>
     </div>
-        <AlertDialog open={isArchiveDialogOpen} onOpenChange={setIsArchiveDialogOpen}>
+        <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
             <AlertDialogContent>
             <AlertDialogHeader>
                 <AlertDialogTitle>Are you sure?</AlertDialogTitle>
                 <AlertDialogDescription>
-                This will archive {tenant.name}. You can restore them later.
+                This will move {tenant.name} to the archived tenants list. You can restore them later.
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
                 <AlertDialogCancel>Cancel</AlertDialogCancel>
                 <AlertDialogAction
                 className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                onClick={handleArchiveConfirm}
+                onClick={handleDeleteConfirm}
                 >
-                Archive
+                Delete
                 </AlertDialogAction>
             </AlertDialogFooter>
             </AlertDialogContent>
