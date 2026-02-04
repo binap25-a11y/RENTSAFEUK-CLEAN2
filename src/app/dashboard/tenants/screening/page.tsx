@@ -42,8 +42,9 @@ import {
   useMemoFirebase,
   errorEmitter,
   FirestorePermissionError,
+  useDoc,
 } from '@/firebase';
-import { collection, query, where, addDoc } from 'firebase/firestore';
+import { collection, query, where, addDoc, doc } from 'firebase/firestore';
 
 
 const screeningSchema = z.object({
@@ -160,6 +161,13 @@ export default function TenantScreeningPage() {
 
     const tenantIdFromUrl = searchParams.get('tenantId');
 
+    const tenantRef = useMemoFirebase(() => {
+        if (!firestore || !tenantIdFromUrl) return null;
+        return doc(firestore, 'tenants', tenantIdFromUrl);
+    }, [firestore, tenantIdFromUrl]);
+    const { data: selectedTenant, isLoading: isLoadingSelectedTenant } = useDoc<Tenant>(tenantRef);
+
+
     useEffect(() => {
         form.setValue('screeningDate', new Date());
         if (tenantIdFromUrl) {
@@ -168,13 +176,13 @@ export default function TenantScreeningPage() {
     }, [form, tenantIdFromUrl]);
 
     const tenantsQuery = useMemoFirebase(() => {
-        if (!user) return null;
+        if (!user || tenantIdFromUrl) return null;
         return query(
             collection(firestore, 'tenants'),
             where('ownerId', '==', user.uid),
             where('status', '==', 'Active')
         );
-    }, [firestore, user]);
+    }, [firestore, user, tenantIdFromUrl]);
     const { data: tenants, isLoading: isLoadingTenants } = useCollection<Tenant>(tenantsQuery);
 
 
@@ -228,24 +236,37 @@ export default function TenantScreeningPage() {
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                             <FormField
-                                control={form.control}
-                                name="tenantId"
-                                render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel>Tenant to Screen</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value}>
-                                            <FormControl>
-                                                <SelectTrigger>
-                                                    <SelectValue placeholder={isLoadingTenants ? <div className='flex items-center gap-2'><Loader2 className='animate-spin' /> Loading...</div> : "Select a tenant"} />
-                                                </SelectTrigger>
-                                            </FormControl>
-                                            <SelectContent>{tenants?.map((t) => (<SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>))}</SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                )}
-                            />
+                             {tenantIdFromUrl ? (
+                                <div className="space-y-2">
+                                    <FormLabel>Tenant to Screen</FormLabel>
+                                    <div className="flex items-center justify-between rounded-md border p-3 bg-muted min-h-[40px]">
+                                        {isLoadingSelectedTenant ? (
+                                            <Loader2 className="h-4 w-4 animate-spin" />
+                                        ) : (
+                                            <p className="font-medium text-sm">{selectedTenant ? selectedTenant.name : 'Tenant not found'}</p>
+                                        )}
+                                    </div>
+                                </div>
+                             ) : (
+                                 <FormField
+                                    control={form.control}
+                                    name="tenantId"
+                                    render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel>Tenant to Screen</FormLabel>
+                                            <Select onValueChange={field.onChange} value={field.value}>
+                                                <FormControl>
+                                                    <SelectTrigger>
+                                                        <SelectValue placeholder={isLoadingTenants ? <div className='flex items-center gap-2'><Loader2 className='animate-spin' /> Loading...</div> : "Select a tenant"} />
+                                                    </SelectTrigger>
+                                                </FormControl>
+                                                <SelectContent>{tenants?.map((t) => (<SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>))}</SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )}
+                                />
+                             )}
                             <FormField
                                 control={form.control}
                                 name="screeningDate"
