@@ -132,14 +132,14 @@ export default function PropertyDetailPage() {
 
 
   const maintenanceQuery = useMemoFirebase(() => {
-    if (!firestore || !propertyId) return null;
-    return query(collection(firestore, 'properties', propertyId, 'maintenanceLogs'), where('status', '!=', 'Cancelled'), where('ownerId', '==', user?.uid), limit(3));
+    if (!firestore || !propertyId || !user) return null;
+    return query(collection(firestore, 'properties', propertyId, 'maintenanceLogs'), where('status', '!=', 'Cancelled'), where('ownerId', '==', user.uid));
   }, [firestore, propertyId, user]);
   const { data: maintenanceLogs, isLoading: isLoadingMaintenance, error: maintenanceError } = useCollection<MaintenanceLog>(maintenanceQuery);
 
   const inspectionQuery = useMemoFirebase(() => {
-    if (!firestore || !propertyId) return null;
-    return query(collection(firestore, 'properties', propertyId, 'inspections'), where('status', '!=', 'Cancelled'), where('ownerId', '==', user?.uid), limit(3));
+    if (!firestore || !propertyId || !user) return null;
+    return query(collection(firestore, 'properties', propertyId, 'inspections'), where('status', '!=', 'Cancelled'), where('ownerId', '==', user.uid));
   }, [firestore, propertyId, user]);
   const { data: inspections, isLoading: isLoadingInspections, error: inspectionError } = useCollection<Inspection>(inspectionQuery);
 
