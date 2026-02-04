@@ -87,27 +87,23 @@ export default function PropertyDetailPage() {
 
   // --- Data Fetching using Hooks ---
   const propertyRef = useMemoFirebase(() => {
-    if (!firestore || !propertyId) return null; // Guard against missing firestore/propertyId
+    if (!firestore || !propertyId) return null;
     return doc(firestore, 'properties', propertyId);
   }, [firestore, propertyId]);
   const { data: property, isLoading: isLoadingProperty, error: propertyError } = useDoc<Property>(propertyRef);
 
-  // Fetch ALL tenants for the user, then filter on the client.
-  // This is less efficient for very large tenant lists, but more robust against potential composite index issues.
-  const tenantsForUserQuery = useMemoFirebase(() => {
-    if (!firestore || !user) return null;
+  const tenantQuery = useMemoFirebase(() => {
+    if (!firestore || !user || !propertyId) return null;
     return query(
       collection(firestore, 'tenants'),
-      where('ownerId', '==', user.uid)
+      where('ownerId', '==', user.uid),
+      where('propertyId', '==', propertyId),
+      where('status', '==', 'Active'),
+      limit(1)
     );
-  }, [firestore, user]);
-  const { data: allUserTenants, isLoading: isLoadingTenant, error: tenantError } = useCollection<Tenant>(tenantsForUserQuery);
-
-  // Find the active tenant for the specific property on the client side.
-  const tenant = useMemo(() => {
-    if (!allUserTenants || !propertyId) return undefined;
-    return allUserTenants.find(t => t.propertyId === propertyId && t.status === 'Active');
-  }, [allUserTenants, propertyId]);
+  }, [firestore, user, propertyId]);
+  const { data: tenants, isLoading: isLoadingTenant, error: tenantError } = useCollection<Tenant>(tenantQuery);
+  const tenant = useMemo(() => tenants?.[0], [tenants]);
 
 
   const maintenanceQuery = useMemoFirebase(() => {
@@ -159,13 +155,12 @@ export default function PropertyDetailPage() {
   }
 
   if (error) {
-    const isPermissionError = error.message.includes('permission-denied') || (error as any).code === 'permission-denied';
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <AlertTriangle className="h-12 w-12 text-destructive" />
         <Card className="w-full max-w-lg text-center">
-            <CardHeader><CardTitle>{isPermissionError ? "Access Denied" : "Error Loading Property"}</CardTitle></CardHeader>
-            <CardContent><p className="text-sm text-muted-foreground">{isPermissionError ? "You do not have permission to view this property." : "An unexpected error occurred."}</p></CardContent>
+            <CardHeader><CardTitle>Error Loading Data</CardTitle></CardHeader>
+            <CardContent><p className="text-sm text-muted-foreground">{error.message}</p></CardContent>
             <CardFooter className="flex justify-center"><Button asChild><Link href="/dashboard/properties">Return to Properties</Link></Button></CardFooter>
         </Card>
       </div>
