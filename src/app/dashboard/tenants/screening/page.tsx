@@ -34,7 +34,6 @@ import { Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useEffect } from 'react';
 import {
   useUser,
   useFirestore,
@@ -48,7 +47,7 @@ import { collection, query, where, addDoc, doc } from 'firebase/firestore';
 
 
 const screeningSchema = z.object({
-  tenantId: z.string({ required_error: 'Please select a tenant.' }),
+  tenantId: z.string({ required_error: 'Please select a tenant.' }).min(1, "Please select a tenant."),
   screeningDate: z.coerce.date(),
   rightToRent: z.object({
     checkDate: z.coerce.date().optional(),
@@ -122,7 +121,7 @@ const ChecklistItem = ({ form, name, label }: { form: any, name: any, label: str
         render={({ field }) => (
             <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                 <FormControl>
-                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                    <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                 </FormControl>
                 <div className="space-y-1 leading-none">
                     <FormLabel className="font-normal">{label}</FormLabel>
@@ -148,18 +147,27 @@ const NotesField = ({ form, name, placeholder }: { form: any, name: any, placeho
     />
 );
 
+export default function TenantScreeningPageWrapper() {
+  const searchParams = useSearchParams();
+  const tenantIdFromUrl = searchParams.get('tenantId');
 
-export default function TenantScreeningPage() {
+  // The key prop ensures that if we navigate from a URL without the param to one with it,
+  // the form component is completely re-rendered and re-initialized with the correct defaults.
+  return <TenantScreeningPage key={tenantIdFromUrl} tenantIdFromUrl={tenantIdFromUrl} />;
+}
+
+function TenantScreeningPage({ tenantIdFromUrl }: { tenantIdFromUrl: string | null }) {
     const router = useRouter();
-    const searchParams = useSearchParams();
     const { user } = useUser();
     const firestore = useFirestore();
 
     const form = useForm<ScreeningFormValues>({
         resolver: zodResolver(screeningSchema),
+        defaultValues: {
+            screeningDate: new Date(),
+            tenantId: tenantIdFromUrl || '',
+        }
     });
-
-    const tenantIdFromUrl = searchParams.get('tenantId');
 
     const tenantRef = useMemoFirebase(() => {
         if (!firestore || !tenantIdFromUrl) return null;
@@ -167,16 +175,8 @@ export default function TenantScreeningPage() {
     }, [firestore, tenantIdFromUrl]);
     const { data: selectedTenant, isLoading: isLoadingSelectedTenant } = useDoc<Tenant>(tenantRef);
 
-
-    useEffect(() => {
-        form.setValue('screeningDate', new Date());
-        if (tenantIdFromUrl) {
-            form.setValue('tenantId', tenantIdFromUrl);
-        }
-    }, [form, tenantIdFromUrl]);
-
     const tenantsQuery = useMemoFirebase(() => {
-        if (!user || tenantIdFromUrl) return null;
+        if (!user || tenantIdFromUrl) return null; // Only query if no specific tenant is selected from URL
         return query(
             collection(firestore, 'tenants'),
             where('ownerId', '==', user.uid),
@@ -184,7 +184,6 @@ export default function TenantScreeningPage() {
         );
     }, [firestore, user, tenantIdFromUrl]);
     const { data: tenants, isLoading: isLoadingTenants } = useCollection<Tenant>(tenantsQuery);
-
 
     async function onSubmit(data: ScreeningFormValues) {
         if (!user || !firestore) {
@@ -221,6 +220,11 @@ export default function TenantScreeningPage() {
                 requestResourceData: newScreeningRecord,
             });
             errorEmitter.emit('permission-error', permissionError);
+            toast({
+                variant: "destructive",
+                title: "Save Failed",
+                description: serverError.message || "An error occurred while saving the screening record.",
+            });
           });
     }
 
@@ -509,3 +513,5 @@ export default function TenantScreeningPage() {
         </Card>
     );
 }
+
+    
