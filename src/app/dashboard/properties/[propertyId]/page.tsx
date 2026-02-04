@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Bed, Bath, Edit, Trash2, MoreVertical, Loader2, AlertTriangle, User, Home, Wrench, CalendarCheck, FileText, Banknote, Shield, Phone, Mail, MapPin } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc, collection, query, where, orderBy, limit } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useMemo } from 'react';
 import {
@@ -56,6 +56,9 @@ interface Tenant {
     name: string;
     email: string;
     telephone: string;
+    propertyId: string;
+    ownerId: string;
+    status?: string;
 }
 
 interface MaintenanceLog {
@@ -94,23 +97,21 @@ export default function PropertyDetailPage() {
     return query(
       collection(firestore, 'tenants'),
       where('ownerId', '==', user.uid),
-      where('propertyId', '==', propertyId),
-      where('status', '==', 'Active'),
-      limit(1)
+      where('propertyId', '==', propertyId)
     );
   }, [firestore, propertyId, user]);
   const { data: tenants, isLoading: isLoadingTenant } = useCollection<Tenant>(tenantQuery);
-  const tenant = tenants?.[0];
+  const tenant = useMemo(() => tenants?.find(t => t.status === 'Active'), [tenants]);
 
   const maintenanceQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId) return null;
-    return query(collection(firestore, 'properties', propertyId, 'maintenanceLogs'), orderBy('reportedDate', 'desc'), limit(3));
+    return query(collection(firestore, 'properties', propertyId, 'maintenanceLogs'), where('status', '!=', 'Cancelled'), limit(3));
   }, [firestore, propertyId]);
   const { data: maintenanceLogs, isLoading: isLoadingMaintenance } = useCollection<MaintenanceLog>(maintenanceQuery);
 
   const inspectionQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId) return null;
-    return query(collection(firestore, 'properties', propertyId, 'inspections'), orderBy('scheduledDate', 'desc'), limit(3));
+    return query(collection(firestore, 'properties', propertyId, 'inspections'), where('status', '!=', 'Cancelled'), limit(3));
   }, [firestore, propertyId]);
   const { data: inspections, isLoading: isLoadingInspections } = useCollection<Inspection>(inspectionQuery);
 
