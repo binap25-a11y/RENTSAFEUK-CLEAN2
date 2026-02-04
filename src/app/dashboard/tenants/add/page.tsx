@@ -37,6 +37,7 @@ import {
   useFirestore,
   useCollection,
   useMemoFirebase,
+  useDoc,
 } from '@/firebase';
 import { collection, query, where, doc, updateDoc, addDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
@@ -76,7 +77,7 @@ export default function AddTenantPage() {
   const form = useForm<TenantFormValues>({
     resolver: zodResolver(tenantSchema),
     defaultValues: {
-      propertyId: '', // Initialize as empty string
+      propertyId: propertyIdFromUrl || '',
       tenancyStartDate: new Date(),
       name: '',
       email: '',
@@ -85,23 +86,29 @@ export default function AddTenantPage() {
     },
   });
 
-  // Fetch properties for the dropdown
+  // Fetch properties for the dropdown if no specific property is pre-selected
   const propertiesQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user || propertyIdFromUrl) return null; // Only fetch if we need the dropdown
     return query(
       collection(firestore, 'properties'),
       where('ownerId', '==', user.uid),
       where('status', 'in', ['Vacant', 'Occupied'])
     );
-  }, [firestore, user]);
+  }, [firestore, user, propertyIdFromUrl]);
   const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
   
-  // This effect reliably sets the property ID from the URL when it becomes available.
+  // Fetch the specific property if an ID is in the URL
+  const propertyRef = useMemoFirebase(() => {
+    if (!firestore || !propertyIdFromUrl) return null;
+    return doc(firestore, 'properties', propertyIdFromUrl);
+  }, [firestore, propertyIdFromUrl]);
+  const { data: selectedProperty, isLoading: isLoadingSelectedProperty } = useDoc<Property>(propertyRef);
+  
   useEffect(() => {
     if (propertyIdFromUrl) {
       form.setValue('propertyId', propertyIdFromUrl, { shouldValidate: true });
     }
-  }, [propertyIdFromUrl, form.setValue]);
+  }, [propertyIdFromUrl, form]);
 
 
   async function onSubmit(data: TenantFormValues) {
@@ -157,30 +164,43 @@ export default function AddTenantPage() {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            <FormField
-              control={form.control}
-              name="propertyId"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Assign to Property</FormLabel>
-                  <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder={isLoadingProperties ? <div className='flex items-center gap-2'><Loader2 className='animate-spin' /> Loading...</div> : "Select a property"} />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {properties?.map((prop) => (
-                        <SelectItem key={prop.id} value={prop.id}>
-                          {formatAddress(prop.address)}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            {propertyIdFromUrl ? (
+                <div className="space-y-2">
+                    <FormLabel>Assign to Property</FormLabel>
+                    <div className="flex items-center justify-between rounded-md border p-3 bg-muted min-h-[40px]">
+                        {isLoadingSelectedProperty ? (
+                        <Loader2 className="h-4 w-4 animate-spin" />
+                        ) : (
+                        <p className="font-medium text-sm">{selectedProperty ? formatAddress(selectedProperty.address) : 'Property not found'}</p>
+                        )}
+                    </div>
+                </div>
+            ) : (
+                <FormField
+                control={form.control}
+                name="propertyId"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Assign to Property</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl>
+                        <SelectTrigger>
+                            <SelectValue placeholder={isLoadingProperties ? <div className='flex items-center gap-2'><Loader2 className='animate-spin' /> Loading...</div> : "Select a property"} />
+                        </SelectTrigger>
+                        </FormControl>
+                        <SelectContent>
+                        {properties?.map((prop) => (
+                            <SelectItem key={prop.id} value={prop.id}>
+                            {formatAddress(prop.address)}
+                            </SelectItem>
+                        ))}
+                        </SelectContent>
+                    </Select>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+            )}
             
             <FormField
               control={form.control}
