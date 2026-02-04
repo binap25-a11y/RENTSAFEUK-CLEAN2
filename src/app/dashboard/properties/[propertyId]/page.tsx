@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Bed, Bath, Edit, Trash2, MoreVertical, Loader2, AlertTriangle, User, Home, Wrench, CalendarCheck, FileText, Banknote, Shield, Phone, Mail, MapPin } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc, collection, query, where } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useMemo } from 'react';
 import {
@@ -58,7 +58,6 @@ interface Tenant {
     telephone: string;
     propertyId: string;
     ownerId: string;
-    status?: string;
 }
 
 interface MaintenanceLog {
@@ -97,11 +96,13 @@ export default function PropertyDetailPage() {
     return query(
       collection(firestore, 'tenants'),
       where('ownerId', '==', user.uid),
-      where('propertyId', '==', propertyId)
+      where('propertyId', '==', propertyId),
+      where('status', '==', 'Active'),
+      limit(1)
     );
   }, [firestore, propertyId, user]);
   const { data: tenants, isLoading: isLoadingTenant } = useCollection<Tenant>(tenantQuery);
-  const tenant = useMemo(() => tenants?.find(t => t.status === 'Active'), [tenants]);
+  const tenant = useMemo(() => tenants?.[0], [tenants]);
 
   const maintenanceQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId) return null;
