@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -5,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   Card,
   CardContent,
@@ -38,6 +39,8 @@ import {
   useCollection,
   useMemoFirebase,
   useDoc,
+  errorEmitter,
+  FirestorePermissionError,
 } from '@/firebase';
 import { collection, query, where, doc, updateDoc, addDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
@@ -127,26 +130,43 @@ export default function AddTenantPage() {
       status: 'Active',
     };
 
-    try {
-      const tenantsCollection = collection(firestore, 'tenants');
-      const docRef = await addDoc(tenantsCollection, newTenant);
-      
-      const propertyDocRef = doc(firestore, 'properties', data.propertyId);
-      await updateDoc(propertyDocRef, { status: 'Occupied' });
+    const tenantsCollection = collection(firestore, 'tenants');
+    
+    addDoc(tenantsCollection, newTenant)
+      .then((docRef) => {
+        const propertyDocRef = doc(firestore, 'properties', data.propertyId);
+        // Fire-and-forget the update, but catch potential errors
+        updateDoc(propertyDocRef, { status: 'Occupied' }).catch((updateError: any) => {
+            const permissionError = new FirestorePermissionError({
+              path: propertyDocRef.path,
+              operation: 'update',
+              requestResourceData: { status: 'Occupied' },
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            // Log this error, but don't bother the user since the main action succeeded.
+            console.error("Failed to update property status:", updateError);
+        });
 
-      toast({
-        title: 'Tenant Saved',
-        description: `${data.name} has been added. Now proceeding to tenant screening.`,
+        toast({
+          title: 'Tenant Saved',
+          description: `${data.name} has been added. Now proceeding to tenant screening.`,
+        });
+        router.push(`/dashboard/tenants/screening?tenantId=${docRef.id}`);
+      })
+      .catch((addError: any) => {
+        const permissionError = new FirestorePermissionError({
+          path: tenantsCollection.path,
+          operation: 'create',
+          requestResourceData: newTenant,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+
+        toast({
+          variant: 'destructive',
+          title: 'Save Failed',
+          description: addError.message || 'An unexpected error occurred while saving the tenant.',
+        });
       });
-      router.push(`/dashboard/tenants/screening?tenantId=${docRef.id}`);
-    } catch (error) {
-      console.error('Failed to add tenant:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Save Failed',
-        description: 'There was an error saving the tenant. Please try again.',
-      });
-    }
   }
 
   const formatAddress = (address: Property['address']) => {

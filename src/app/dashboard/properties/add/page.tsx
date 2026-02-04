@@ -15,7 +15,12 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { useUser, useFirestore } from '@/firebase';
+import {
+  useUser,
+  useFirestore,
+  errorEmitter,
+  FirestorePermissionError,
+} from '@/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { Loader2 } from 'lucide-react';
 
@@ -80,40 +85,49 @@ export default function AddPropertyPage() {
     }
 
     setIsSubmitting(true);
-    
-    try {
-      const propertyData: { [key: string]: any } = {
-        ownerId: user.uid,
-        ...data,
-      };
 
-      // Clean up optional empty fields
-      if (!propertyData.notes) delete propertyData.notes;
-      if (propertyData.tenancy) {
-        if (propertyData.tenancy.monthlyRent === undefined) delete propertyData.tenancy.monthlyRent;
-        if (propertyData.tenancy.depositAmount === undefined) delete propertyData.tenancy.depositAmount;
-        if (!propertyData.tenancy.depositScheme) delete propertyData.tenancy.depositScheme;
-        if (Object.keys(propertyData.tenancy).length === 0) delete propertyData.tenancy;
-      }
-      
-      await addDoc(collection(firestore, 'properties'), propertyData);
+    const propertyData: { [key: string]: any } = {
+      ownerId: user.uid,
+      ...data,
+    };
 
-      toast({
-        title: 'Property Added',
-        description: 'The new property has been added to your portfolio.',
-      });
-      router.push('/dashboard/properties');
-
-    } catch (error: any) {
-        console.error('Failed to add property', error);
-        toast({
-            variant: 'destructive',
-            title: 'Save Failed',
-            description: error.message || 'There was an error saving the property. Please try again.',
-        });
-    } finally {
-        setIsSubmitting(false);
+    // Clean up optional empty fields
+    if (!propertyData.notes) delete propertyData.notes;
+    if (propertyData.tenancy) {
+      if (propertyData.tenancy.monthlyRent === undefined) delete propertyData.tenancy.monthlyRent;
+      if (propertyData.tenancy.depositAmount === undefined) delete propertyData.tenancy.depositAmount;
+      if (!propertyData.tenancy.depositScheme) delete propertyData.tenancy.depositScheme;
+      if (Object.keys(propertyData.tenancy).length === 0) delete propertyData.tenancy;
     }
+
+    const propertiesCollection = collection(firestore, 'properties');
+
+    addDoc(propertiesCollection, propertyData)
+      .then(() => {
+        toast({
+          title: 'Property Added',
+          description: 'The new property has been added to your portfolio.',
+        });
+        router.push('/dashboard/properties');
+      })
+      .catch((serverError: any) => {
+        const permissionError = new FirestorePermissionError({
+          path: propertiesCollection.path,
+          operation: 'create',
+          requestResourceData: propertyData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+
+        console.error('Failed to add property', serverError);
+        toast({
+          variant: 'destructive',
+          title: 'Save Failed',
+          description: serverError.message || 'There was an error saving the property. Please try again.',
+        });
+      })
+      .finally(() => {
+        setIsSubmitting(false);
+      });
   }
 
   return (
