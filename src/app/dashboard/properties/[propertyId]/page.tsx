@@ -90,9 +90,15 @@ export default function PropertyDetailPage() {
   const { data: property, isLoading: isLoadingProperty, error: propertyError } = useDoc<Property>(propertyRef);
 
   const tenantQuery = useMemoFirebase(() => {
-    if (!firestore || !propertyId) return null;
-    return query(collection(firestore, 'tenants'), where('propertyId', '==', propertyId), where('status', '==', 'Active'), limit(1));
-  }, [firestore, propertyId]);
+    if (!firestore || !propertyId || !user) return null;
+    return query(
+      collection(firestore, 'tenants'),
+      where('ownerId', '==', user.uid),
+      where('propertyId', '==', propertyId),
+      where('status', '==', 'Active'),
+      limit(1)
+    );
+  }, [firestore, propertyId, user]);
   const { data: tenants, isLoading: isLoadingTenant } = useCollection<Tenant>(tenantQuery);
   const tenant = tenants?.[0];
 
@@ -289,5 +295,4 @@ export default function PropertyDetailPage() {
     </>
   );
 }
-
     
