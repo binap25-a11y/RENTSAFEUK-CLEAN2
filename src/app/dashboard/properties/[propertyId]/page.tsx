@@ -58,6 +58,7 @@ interface Tenant {
     telephone: string;
     propertyId: string;
     ownerId: string;
+    status?: string;
 }
 
 interface MaintenanceLog {
@@ -93,16 +94,16 @@ export default function PropertyDetailPage() {
 
   const tenantQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
+    // Query for all tenants of this property, not just active ones
     return query(
       collection(firestore, 'tenants'),
       where('ownerId', '==', user.uid),
-      where('propertyId', '==', propertyId),
-      where('status', '==', 'Active'),
-      limit(1)
+      where('propertyId', '==', propertyId)
     );
   }, [firestore, propertyId, user]);
   const { data: tenants, isLoading: isLoadingTenant } = useCollection<Tenant>(tenantQuery);
-  const tenant = useMemo(() => tenants?.[0], [tenants]);
+  // Find the active tenant from the results on the client side
+  const tenant = useMemo(() => tenants?.find(t => t.status === 'Active'), [tenants]);
 
   const maintenanceQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId) return null;
