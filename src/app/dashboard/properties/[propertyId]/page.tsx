@@ -101,7 +101,7 @@ export default function PropertyDetailPage() {
       where('propertyId', '==', propertyId)
     );
   }, [firestore, propertyId, user]);
-  const { data: tenants, isLoading: isLoadingTenant } = useCollection<Tenant>(tenantQuery);
+  const { data: tenants, isLoading: isLoadingTenant, error: tenantError } = useCollection<Tenant>(tenantQuery);
   // Find the active tenant from the results on the client side
   const tenant = useMemo(() => tenants?.find(t => t.status === 'Active'), [tenants]);
 
@@ -109,16 +109,16 @@ export default function PropertyDetailPage() {
     if (!firestore || !propertyId) return null;
     return query(collection(firestore, 'properties', propertyId, 'maintenanceLogs'), where('status', '!=', 'Cancelled'), limit(3));
   }, [firestore, propertyId]);
-  const { data: maintenanceLogs, isLoading: isLoadingMaintenance } = useCollection<MaintenanceLog>(maintenanceQuery);
+  const { data: maintenanceLogs, isLoading: isLoadingMaintenance, error: maintenanceError } = useCollection<MaintenanceLog>(maintenanceQuery);
 
   const inspectionQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId) return null;
     return query(collection(firestore, 'properties', propertyId, 'inspections'), where('status', '!=', 'Cancelled'), limit(3));
   }, [firestore, propertyId]);
-  const { data: inspections, isLoading: isLoadingInspections } = useCollection<Inspection>(inspectionQuery);
+  const { data: inspections, isLoading: isLoadingInspections, error: inspectionError } = useCollection<Inspection>(inspectionQuery);
 
   const isLoading = isLoadingProperty || isLoadingTenant || isLoadingMaintenance || isLoadingInspections;
-  const error = propertyError; // For now, we only show the main property error.
+  const error = propertyError || tenantError || maintenanceError || inspectionError;
 
   const hasPermission = useMemo(() => {
     if (!property || !user) return false;
