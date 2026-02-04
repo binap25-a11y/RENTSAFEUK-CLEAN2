@@ -8,9 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Bed, Bath, Edit, Trash2, MoreVertical, Loader2, AlertTriangle, User, Home, Wrench, CalendarCheck, FileText, Banknote, Shield, Phone, Mail, MapPin } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc, collection, query, where, limit } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, limit, getDocs } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -84,6 +84,10 @@ export default function PropertyDetailPage() {
   const { toast } = useToast();
   
   const [isDeleting, setIsDeleting] = useState(false);
+  
+  const [tenant, setTenant] = useState<Tenant | null>(null);
+  const [isLoadingTenant, setIsLoadingTenant] = useState(true);
+  const [tenantError, setTenantError] = useState<Error | null>(null);
 
   // --- Data Fetching using Hooks ---
   const propertyRef = useMemoFirebase(() => {
@@ -91,19 +95,43 @@ export default function PropertyDetailPage() {
     return doc(firestore, 'properties', propertyId);
   }, [firestore, propertyId]);
   const { data: property, isLoading: isLoadingProperty, error: propertyError } = useDoc<Property>(propertyRef);
+  
+  useEffect(() => {
+    if (!firestore || !user || !propertyId) {
+        setIsLoadingTenant(false);
+        return;
+    }
 
-  const tenantQuery = useMemoFirebase(() => {
-    if (!firestore || !user || !propertyId) return null;
-    return query(
-      collection(firestore, 'tenants'),
-      where('ownerId', '==', user.uid),
-      where('propertyId', '==', propertyId),
-      where('status', '==', 'Active'),
-      limit(1)
-    );
+    const fetchTenant = async () => {
+        setIsLoadingTenant(true);
+        setTenantError(null);
+        try {
+            const tenantQuery = query(
+                collection(firestore, 'tenants'),
+                where('ownerId', '==', user.uid),
+                where('propertyId', '==', propertyId),
+                where('status', '==', 'Active'),
+                limit(1)
+            );
+
+            const querySnapshot = await getDocs(tenantQuery);
+            
+            if (!querySnapshot.empty) {
+                const tenantDoc = querySnapshot.docs[0];
+                setTenant({ id: tenantDoc.id, ...tenantDoc.data() } as Tenant);
+            } else {
+                setTenant(null);
+            }
+        } catch (e: any) {
+            console.error("Failed to fetch tenant: ", e);
+            setTenantError(e); // This will display the raw error
+        } finally {
+            setIsLoadingTenant(false);
+        }
+    };
+
+    fetchTenant();
   }, [firestore, user, propertyId]);
-  const { data: tenants, isLoading: isLoadingTenant, error: tenantError } = useCollection<Tenant>(tenantQuery);
-  const tenant = useMemo(() => tenants?.[0], [tenants]);
 
 
   const maintenanceQuery = useMemoFirebase(() => {
@@ -298,4 +326,6 @@ export default function PropertyDetailPage() {
     </>
   );
 }
+    
+
     
