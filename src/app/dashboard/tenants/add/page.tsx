@@ -76,6 +76,7 @@ export default function AddTenantPage() {
   const { user } = useUser();
   const firestore = useFirestore();
   const propertyIdFromUrl = searchParams.get('propertyId');
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<TenantFormValues>({
     resolver: zodResolver(tenantSchema),
@@ -124,49 +125,42 @@ export default function AddTenantPage() {
       return;
     }
 
-    const newTenant = {
-      ...data,
-      ownerId: user.uid,
-      status: 'Active',
-    };
+    setIsSubmitting(true);
 
-    const tenantsCollection = collection(firestore, 'tenants');
-    
-    addDoc(tenantsCollection, newTenant)
-      .then((docRef) => {
-        const propertyDocRef = doc(firestore, 'properties', data.propertyId);
-        // Fire-and-forget the update, but catch potential errors
-        updateDoc(propertyDocRef, { status: 'Occupied' }).catch((updateError: any) => {
-            const permissionError = new FirestorePermissionError({
-              path: propertyDocRef.path,
-              operation: 'update',
-              requestResourceData: { status: 'Occupied' },
-            });
-            errorEmitter.emit('permission-error', permissionError);
-            // Log this error, but don't bother the user since the main action succeeded.
-            console.error("Failed to update property status:", updateError);
-        });
+    try {
+      const newTenant = {
+        ...data,
+        ownerId: user.uid,
+        status: 'Active',
+      };
+      const tenantsCollection = collection(firestore, 'tenants');
+      const docRef = await addDoc(tenantsCollection, newTenant);
 
-        toast({
-          title: 'Tenant Saved',
-          description: `${data.name} has been added. Now proceeding to tenant screening.`,
-        });
-        router.push(`/dashboard/tenants/screening?tenantId=${docRef.id}`);
-      })
-      .catch((addError: any) => {
-        const permissionError = new FirestorePermissionError({
+      const propertyDocRef = doc(firestore, 'properties', data.propertyId);
+      await updateDoc(propertyDocRef, { status: 'Occupied' });
+
+      toast({
+        title: 'Tenant Saved',
+        description: `${data.name} has been added. Now proceeding to tenant screening.`,
+      });
+      router.push(`/dashboard/tenants/screening?tenantId=${docRef.id}`);
+
+    } catch (error: any) {
+      const tenantsCollection = collection(firestore, 'tenants');
+       const permissionError = new FirestorePermissionError({
           path: tenantsCollection.path,
           operation: 'create',
-          requestResourceData: newTenant,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-
-        toast({
-          variant: 'destructive',
-          title: 'Save Failed',
-          description: addError.message || 'An unexpected error occurred while saving the tenant.',
-        });
+          requestResourceData: { ...data, ownerId: user.uid, status: 'Active' },
       });
+      errorEmitter.emit('permission-error', permissionError);
+      
+      toast({
+        variant: 'destructive',
+        title: 'Save Failed',
+        description: error.message || 'An unexpected error occurred while saving the tenant.',
+      });
+      setIsSubmitting(false);
+    }
   }
 
   const formatAddress = (address: Property['address']) => {
@@ -325,7 +319,16 @@ export default function AddTenantPage() {
                 <Button type="button" variant="outline" asChild>
                     <Link href={propertyIdFromUrl ? `/dashboard/properties/${propertyIdFromUrl}` : '/dashboard/tenants'}>Cancel</Link>
                 </Button>
-                <Button type="submit">Save and Screen Tenant</Button>
+                <Button type="submit" disabled={isSubmitting}>
+                  {isSubmitting ? (
+                    <>
+                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                      Saving...
+                    </>
+                  ) : (
+                    'Save and Screen Tenant'
+                  )}
+                </Button>
             </div>
           </form>
         </Form>
