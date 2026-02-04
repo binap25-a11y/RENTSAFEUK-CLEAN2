@@ -46,7 +46,7 @@ const tenantSchema = z.object({
   name: z.string().min(2, 'Name is too short'),
   email: z.string().email('Invalid email address'),
   telephone: z.string().min(10, 'Invalid phone number'),
-  propertyId: z.string({ required_error: 'Please select a property.' }),
+  propertyId: z.string({ required_error: 'Please select a property.' }).min(1, 'Please select a property.'),
   tenancyStartDate: z.coerce.date({ required_error: 'Please select a start date.' }),
   tenancyEndDate: z.coerce.date().optional(),
   notes: z.string().optional(),
@@ -76,7 +76,12 @@ export default function AddTenantPage() {
   const form = useForm<TenantFormValues>({
     resolver: zodResolver(tenantSchema),
     defaultValues: {
-      propertyId: propertyIdFromUrl || undefined,
+      propertyId: '', // Initialize as empty string
+      tenancyStartDate: new Date(),
+      name: '',
+      email: '',
+      telephone: '',
+      notes: '',
     },
   });
 
@@ -91,15 +96,12 @@ export default function AddTenantPage() {
   }, [firestore, user]);
   const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
   
+  // This effect reliably sets the property ID from the URL when it becomes available.
   useEffect(() => {
-    // Set default start date to today
-    form.setValue('tenancyStartDate', new Date());
-
-    // If a property ID is in the URL, ensure the form field is set
     if (propertyIdFromUrl) {
-      form.setValue('propertyId', propertyIdFromUrl);
+      form.setValue('propertyId', propertyIdFromUrl, { shouldValidate: true });
     }
-  }, [propertyIdFromUrl, form]);
+  }, [propertyIdFromUrl, form.setValue]);
 
 
   async function onSubmit(data: TenantFormValues) {
