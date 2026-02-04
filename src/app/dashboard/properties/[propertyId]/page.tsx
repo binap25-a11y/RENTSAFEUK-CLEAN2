@@ -8,9 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Bed, Bath, Edit, Trash2, MoreVertical, Loader2, AlertTriangle, User, Home, Wrench, CalendarCheck, FileText, Banknote, Shield, Phone, Mail, MapPin } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc, collection, query, where, limit, getDocs } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -84,10 +84,6 @@ export default function PropertyDetailPage() {
   const { toast } = useToast();
   
   const [isDeleting, setIsDeleting] = useState(false);
-  
-  const [tenant, setTenant] = useState<Tenant | null>(null);
-  const [isLoadingTenant, setIsLoadingTenant] = useState(true);
-  const [tenantError, setTenantError] = useState<Error | null>(null);
 
   // --- Data Fetching using Hooks ---
   const propertyRef = useMemoFirebase(() => {
@@ -96,42 +92,18 @@ export default function PropertyDetailPage() {
   }, [firestore, propertyId]);
   const { data: property, isLoading: isLoadingProperty, error: propertyError } = useDoc<Property>(propertyRef);
   
-  useEffect(() => {
-    if (!firestore || !user || !propertyId) {
-        setIsLoadingTenant(false);
-        return;
-    }
+  // Fetch all tenants for the user (robust query)
+  const tenantsQuery = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return query(collection(firestore, 'tenants'), where('ownerId', '==', user.uid));
+  }, [firestore, user]);
+  const { data: allTenants, isLoading: isLoadingTenants, error: tenantsError } = useCollection<Tenant>(tenantsQuery);
 
-    const fetchTenant = async () => {
-        setIsLoadingTenant(true);
-        setTenantError(null);
-        try {
-            const tenantQuery = query(
-                collection(firestore, 'tenants'),
-                where('ownerId', '==', user.uid),
-                where('propertyId', '==', propertyId),
-                where('status', '==', 'Active'),
-                limit(1)
-            );
-
-            const querySnapshot = await getDocs(tenantQuery);
-            
-            if (!querySnapshot.empty) {
-                const tenantDoc = querySnapshot.docs[0];
-                setTenant({ id: tenantDoc.id, ...tenantDoc.data() } as Tenant);
-            } else {
-                setTenant(null);
-            }
-        } catch (e: any) {
-            console.error("Failed to fetch tenant: ", e);
-            setTenantError(e); // This will display the raw error
-        } finally {
-            setIsLoadingTenant(false);
-        }
-    };
-
-    fetchTenant();
-  }, [firestore, user, propertyId]);
+  // Find the current active tenant for this property on the client-side
+  const tenant = useMemo(() => {
+    if (!allTenants || !propertyId) return null;
+    return allTenants.find(t => t.propertyId === propertyId && t.status === 'Active') || null;
+  }, [allTenants, propertyId]);
 
 
   const maintenanceQuery = useMemoFirebase(() => {
@@ -146,8 +118,8 @@ export default function PropertyDetailPage() {
   }, [firestore, propertyId]);
   const { data: inspections, isLoading: isLoadingInspections, error: inspectionError } = useCollection<Inspection>(inspectionQuery);
 
-  const isLoading = isLoadingProperty || isLoadingTenant || isLoadingMaintenance || isLoadingInspections;
-  const error = propertyError || tenantError || maintenanceError || inspectionError;
+  const isLoading = isLoadingProperty || isLoadingTenants || isLoadingMaintenance || isLoadingInspections;
+  const error = propertyError || tenantsError || maintenanceError || inspectionError;
 
   const hasPermission = useMemo(() => {
     if (!property || !user) return false;
@@ -326,6 +298,3 @@ export default function PropertyDetailPage() {
     </>
   );
 }
-    
-
-    
