@@ -86,11 +86,14 @@ export default function AddPropertyPage() {
     setIsSubmitting(true);
     
     try {
+      const docRef = await addDoc(collection(firestore, 'properties'), { ownerId: user.uid /* pre-add with ownerId */ });
+      const propertyId = docRef.id;
+
       const imageUrls: string[] = [];
       if (data.images && data.images.length > 0) {
         for (const file of Array.from(data.images)) {
           const uniqueFileName = `${Date.now()}-${file.name}`;
-          const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
+          const fileStorageRef = storageRef(storage, `properties/${user.uid}/${propertyId}/${uniqueFileName}`);
           const uploadResult = await uploadBytes(fileStorageRef, file);
           imageUrls.push(await getDownloadURL(uploadResult.ref));
         }
@@ -119,14 +122,14 @@ export default function AddPropertyPage() {
         if (Object.keys(propertyData.tenancy).length === 0) delete propertyData.tenancy;
       }
       
-      // Add the complete document to Firestore
+      // Update the document with the complete data
       await addDoc(collection(firestore, 'properties'), propertyData);
 
       toast({
         title: 'Property Added',
         description: 'The new property has been added to your portfolio.',
       });
-      router.push('/dashboard/properties');
+      router.push(`/dashboard/properties/${propertyId}`);
 
     } catch (error: any) {
         console.error('Failed to add property', error);

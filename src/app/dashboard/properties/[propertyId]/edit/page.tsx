@@ -214,7 +214,7 @@ export default function EditPropertyPage() {
       await setDoc(docRef, { ...formData, ownerId: user.uid, imageUrls: imageUrls }, { merge: true });
 
       toast({ title: "Property Updated", description: "Your property details have been saved successfully." });
-      router.push(`/dashboard/properties`);
+      router.push(`/dashboard/properties/${propertyId}`);
     } catch (e) {
       console.error("Error updating property:", e);
       toast({ variant: "destructive", title: "Update Failed", description: "Could not save your changes. Please try again." });
