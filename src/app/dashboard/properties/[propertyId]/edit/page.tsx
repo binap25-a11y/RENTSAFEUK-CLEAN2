@@ -105,9 +105,29 @@ function EditPropertyForm({ property, onFormSubmit, isSubmitting }: { property: 
                     <FormItem>
                         <FormLabel>{existingImages.length > 0 ? 'Upload New Photos (replaces old ones)' : 'Upload Photos'}</FormLabel>
                         <FormControl>
-                            <Input type="file" multiple onChange={(e) => { field.onChange(e.target.files); setNewImageFiles(e.target.files); }} />
+                            <Button asChild variant="outline" className="w-full cursor-pointer">
+                                <label htmlFor="photos-upload">
+                                <Upload className="mr-2 h-4 w-4" />
+                                Choose Files
+                                <Input
+                                    id="photos-upload"
+                                    type="file"
+                                    multiple
+                                    className="sr-only"
+                                    onChange={(e) => {
+                                        field.onChange(e.target.files);
+                                        setNewImageFiles(e.target.files);
+                                    }}
+                                />
+                                </label>
+                            </Button>
                         </FormControl>
                         <FormMessage />
+                        {newImageFiles && newImageFiles.length > 0 && (
+                            <div className="text-sm text-muted-foreground pt-2">
+                                <p>Selected: {Array.from(newImageFiles).map(f => f.name).join(', ')}</p>
+                            </div>
+                        )}
                     </FormItem>
                 )} />
             </CardContent>
@@ -245,3 +265,5 @@ export default function EditPropertyPage() {
     </Card>
   )
 }
+
+    

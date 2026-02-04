@@ -18,7 +18,7 @@ import { toast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useStorage } from '@/firebase';
 import { collection, addDoc } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Upload } from 'lucide-react';
 
 const propertySchema = z.object({
   address: z.object({
@@ -49,6 +49,7 @@ export default function AddPropertyPage() {
   const firestore = useFirestore();
   const storage = useStorage();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [fileNames, setFileNames] = useState<string[]>([]);
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
@@ -306,9 +307,36 @@ export default function AddPropertyPage() {
                     <FormItem>
                       <FormLabel>Property Photos</FormLabel>
                       <FormControl>
-                        <Input type="file" multiple onChange={(e) => field.onChange(e.target.files)} />
+                        <Button asChild variant="outline" className="w-full cursor-pointer">
+                            <label htmlFor="photos-upload">
+                              <Upload className="mr-2 h-4 w-4" />
+                              Choose Files
+                              <Input
+                                id="photos-upload"
+                                type="file"
+                                multiple
+                                className="sr-only"
+                                onChange={(e) => {
+                                    field.onChange(e.target.files);
+                                    if (e.target.files) {
+                                        setFileNames(Array.from(e.target.files).map(f => f.name));
+                                    } else {
+                                        setFileNames([]);
+                                    }
+                                }}
+                              />
+                            </label>
+                          </Button>
                       </FormControl>
                       <FormMessage />
+                      {fileNames.length > 0 && (
+                            <div className="text-sm text-muted-foreground pt-2">
+                                <p>Selected file(s):</p>
+                                <ul className="list-disc pl-5">
+                                    {fileNames.map(name => <li key={name}>{name}</li>)}
+                                </ul>
+                            </div>
+                        )}
                     </FormItem>
                   )}
                 />
@@ -399,3 +427,5 @@ export default function AddPropertyPage() {
     </Card>
   );
 }
+
+    
