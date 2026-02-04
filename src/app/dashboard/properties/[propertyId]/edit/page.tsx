@@ -7,6 +7,7 @@ import { z } from 'zod';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useState, useEffect } from 'react';
+import Image from 'next/image';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -15,9 +16,10 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useDoc, useMemoFirebase, useStorage } from '@/firebase';
 import { doc, setDoc } from 'firebase/firestore';
-import { Loader2, AlertTriangle } from 'lucide-react';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { Loader2, AlertTriangle, Upload } from 'lucide-react';
 
 const propertySchema = z.object({
   address: z.object({
@@ -37,6 +39,7 @@ const propertySchema = z.object({
     depositAmount: z.coerce.number().optional(),
     depositScheme: z.string().optional(),
   }).optional(),
+  images: z.custom<FileList>().optional(),
 });
 
 type PropertyFormValues = z.infer<typeof propertySchema>;
@@ -55,6 +58,9 @@ function EditPropertyForm({ property, onFormSubmit, isSubmitting }: { property: 
         tenancy: property.tenancy || {},
       },
   });
+
+  const [existingImages, setExistingImages] = useState<string[]>(property.imageUrls || []);
+  const [newImageFiles, setNewImageFiles] = useState<FileList | null>(null);
 
   return (
     <Form {...form}>
@@ -87,6 +93,26 @@ function EditPropertyForm({ property, onFormSubmit, isSubmitting }: { property: 
           </CardContent>
         </Card>
         
+        <Card>
+            <CardHeader><CardTitle className="text-xl">Property Photos</CardTitle></CardHeader>
+            <CardContent>
+                {existingImages.length > 0 && !newImageFiles && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
+                        {existingImages.map(url => <Image key={url} src={url} alt="Property photo" width={100} height={100} className="rounded-md object-cover aspect-square"/>)}
+                    </div>
+                )}
+                <FormField control={form.control} name="images" render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>{existingImages.length > 0 ? 'Upload New Photos (replaces old ones)' : 'Upload Photos'}</FormLabel>
+                        <FormControl>
+                            <Input type="file" multiple onChange={(e) => { field.onChange(e.target.files); setNewImageFiles(e.target.files); }} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                )} />
+            </CardContent>
+        </Card>
+
         <Card>
             <CardHeader><CardTitle className="text-xl">Tenancy &amp; Financials (Optional)</CardTitle></CardHeader>
             <CardContent className="space-y-4">
@@ -123,6 +149,7 @@ export default function EditPropertyPage() {
   
   const { user } = useUser();
   const firestore = useFirestore();
+  const storage = useStorage();
   
   const [isSubmitting, setIsSubmitting] = useState(false);
 
@@ -136,7 +163,7 @@ export default function EditPropertyPage() {
   const { data: property, isLoading, error } = useDoc(propertyRef);
 
   async function onSubmit(data: PropertyFormValues) {
-    if (!firestore || !propertyId || !user) {
+    if (!firestore || !storage || !propertyId || !user) {
         toast({ variant: "destructive", title: "Error", description: "Database connection not found or user not authenticated." });
         return;
     };
@@ -149,7 +176,20 @@ export default function EditPropertyPage() {
     const docRef = doc(firestore, 'properties', propertyId);
 
     try {
-      await setDoc(docRef, { ...data, ownerId: user.uid }, { merge: true });
+      let imageUrls = property.imageUrls || [];
+      if (data.images && data.images.length > 0) {
+          imageUrls = []; // Replace old photos
+          for (const file of Array.from(data.images)) {
+              const uniqueFileName = `${Date.now()}-${file.name}`;
+              const fileStorageRef = storageRef(storage, `properties/${user.uid}/${propertyId}/${uniqueFileName}`);
+              const uploadResult = await uploadBytes(fileStorageRef, file);
+              imageUrls.push(await getDownloadURL(uploadResult.ref));
+          }
+      }
+      
+      const { images, ...formData } = data;
+      await setDoc(docRef, { ...formData, ownerId: user.uid, imageUrls: imageUrls }, { merge: true });
+
       toast({ title: "Property Updated", description: "Your property details have been saved successfully." });
       router.push(`/dashboard/properties`);
     } catch (e) {

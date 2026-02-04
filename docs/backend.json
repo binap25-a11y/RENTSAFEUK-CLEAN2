@@ -86,6 +86,14 @@
           "type": "number",
           "description": "Number of bathrooms in the property."
         },
+        "imageUrls": {
+          "type": "array",
+          "description": "An array of URLs for photos of the property.",
+          "items": {
+            "type": "string",
+            "format": "uri"
+          }
+        },
         "notes": {
           "type": "string",
           "description": "Additional notes about the property."

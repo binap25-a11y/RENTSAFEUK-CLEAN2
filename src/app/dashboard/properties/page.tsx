@@ -3,6 +3,7 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import Image from 'next/image';
 import {
   Card,
   CardContent,
@@ -12,7 +13,7 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Bed, Bath, Trash2, Archive, Loader2, Edit, MoreVertical, Search, LayoutGrid, List, Eye } from 'lucide-react';
+import { PlusCircle, Bed, Bath, Trash2, Archive, Loader2, Edit, MoreVertical, Search, LayoutGrid, List, Eye, Home } from 'lucide-react';
 import {
   useUser,
   useFirestore,
@@ -57,6 +58,7 @@ interface Property {
   bedrooms: number;
   bathrooms: number;
   ownerId: string;
+  imageUrls?: string[];
 }
 
 export default function PropertiesPage() {
@@ -194,40 +196,52 @@ export default function PropertiesPage() {
                     {filteredProperties.map((property) => (
                         <Card
                             key={property.id}
-                            className="group overflow-hidden flex flex-col hover:shadow-lg transition-shadow cursor-pointer"
-                            onClick={() => router.push(`/dashboard/properties/${property.id}`)}
+                            className="group overflow-hidden flex flex-col hover:shadow-lg transition-shadow"
                         >
-                            <div className="relative">
-                                <CardHeader className="pb-2">
-                                    <CardTitle className="text-lg leading-tight font-semibold group-hover:underline">
-                                        {[property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ')}
-                                    </CardTitle>
-                                    <CardDescription className="truncate">
-                                        {[property.address.city, property.address.county, property.address.postcode].filter(Boolean).join(', ')}
-                                    </CardDescription>
-                                </CardHeader>
-                                <div className="absolute top-2 right-2" onClick={(e) => e.stopPropagation()}>
-                                    <DropdownMenu>
-                                        <DropdownMenuTrigger asChild>
-                                            <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full">
-                                                <MoreVertical className="h-4 w-4" />
-                                            </Button>
-                                        </DropdownMenuTrigger>
-                                        <DropdownMenuContent align="end">
-                                            <DropdownMenuItem asChild>
-                                                <Link href={`/dashboard/properties/${property.id}/edit`}>
-                                                    <Edit className="mr-2 h-4 w-4" /> Edit
-                                                </Link>
-                                            </DropdownMenuItem>
-                                            <DropdownMenuItem onClick={() => setPropertyToDelete(property)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                                                <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                            </DropdownMenuItem>
-                                        </DropdownMenuContent>
-                                    </DropdownMenu>
+                            <div className="relative cursor-pointer" onClick={() => router.push(`/dashboard/properties/${property.id}`)}>
+                                <div className="aspect-[16/10] bg-muted overflow-hidden">
+                                  {property.imageUrls && property.imageUrls.length > 0 ? (
+                                      <Image
+                                          src={property.imageUrls[0]}
+                                          alt={[property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ')}
+                                          fill
+                                          className="object-cover transition-transform group-hover:scale-105"
+                                      />
+                                  ) : (
+                                      <div className="w-full h-full flex items-center justify-center">
+                                          <Home className="w-12 h-12 text-muted-foreground" />
+                                      </div>
+                                  )}
                                 </div>
                             </div>
+                            <CardHeader className="pb-2 cursor-pointer relative" onClick={() => router.push(`/dashboard/properties/${property.id}`)}>
+                                <CardTitle className="text-lg leading-tight font-semibold group-hover:underline pr-10">
+                                    {[property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ')}
+                                </CardTitle>
+                                <CardDescription className="truncate">
+                                    {[property.address.city, property.address.county, property.address.postcode].filter(Boolean).join(', ')}
+                                </CardDescription>
+                            </CardHeader>
+                            
+                             <div className="absolute top-2 right-2" onClick={(e) => e.stopPropagation()}>
+                                <DropdownMenu>
+                                    <DropdownMenuTrigger asChild>
+                                        <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full">
+                                            <MoreVertical className="h-4 w-4" />
+                                        </Button>
+                                    </DropdownMenuTrigger>
+                                    <DropdownMenuContent align="end">
+                                        <DropdownMenuItem onSelect={() => router.push(`/dashboard/properties/${property.id}/edit`)}>
+                                          <Edit className="mr-2 h-4 w-4" /> Edit
+                                        </DropdownMenuItem>
+                                        <DropdownMenuItem onSelect={() => setPropertyToDelete(property)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                        </DropdownMenuItem>
+                                    </DropdownMenuContent>
+                                </DropdownMenu>
+                            </div>
 
-                            <CardContent className="flex-grow flex flex-col justify-end">
+                            <CardContent className="flex-grow flex flex-col justify-end cursor-pointer mt-auto" onClick={() => router.push(`/dashboard/properties/${property.id}`)}>
                                 <div className="flex justify-between items-center pt-4 border-t">
                                     <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
                                         <span>{property.propertyType}</span>

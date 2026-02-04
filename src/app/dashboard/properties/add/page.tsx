@@ -15,8 +15,9 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, useStorage } from '@/firebase';
 import { collection, addDoc } from 'firebase/firestore';
+import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Loader2 } from 'lucide-react';
 
 const propertySchema = z.object({
@@ -37,6 +38,7 @@ const propertySchema = z.object({
     depositAmount: z.coerce.number().optional(),
     depositScheme: z.string().optional(),
   }).optional(),
+  images: z.custom<FileList>().optional(),
 });
 
 type PropertyFormValues = z.infer<typeof propertySchema>;
@@ -45,6 +47,7 @@ export default function AddPropertyPage() {
   const router = useRouter();
   const { user } = useUser();
   const firestore = useFirestore();
+  const storage = useStorage();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<PropertyFormValues>({
@@ -70,7 +73,7 @@ export default function AddPropertyPage() {
   });
 
   async function onSubmit(data: PropertyFormValues) {
-    if (!user || !firestore) {
+    if (!user || !firestore || !storage) {
       toast({
         variant: 'destructive',
         title: 'Authentication Error',
@@ -82,16 +85,28 @@ export default function AddPropertyPage() {
     setIsSubmitting(true);
     
     try {
+      const imageUrls: string[] = [];
+      if (data.images && data.images.length > 0) {
+        for (const file of Array.from(data.images)) {
+          const uniqueFileName = `${Date.now()}-${file.name}`;
+          const fileStorageRef = storageRef(storage, `properties/${user.uid}/${uniqueFileName}`);
+          const uploadResult = await uploadBytes(fileStorageRef, file);
+          imageUrls.push(await getDownloadURL(uploadResult.ref));
+        }
+      }
+
+      const { images, ...formData } = data;
+      
       const propertyData: { [key: string]: any } = {
         ownerId: user.uid,
-        address: data.address,
-        propertyType: data.propertyType,
-        status: data.status,
-        bedrooms: data.bedrooms,
-        bathrooms: data.bathrooms,
-        notes: data.notes,
-        tenancy: data.tenancy,
-        imageUrl: '', // Set image to empty
+        address: formData.address,
+        propertyType: formData.propertyType,
+        status: formData.status,
+        bedrooms: formData.bedrooms,
+        bathrooms: formData.bathrooms,
+        notes: formData.notes,
+        tenancy: formData.tenancy,
+        imageUrls: imageUrls,
       };
 
       // Clean up optional empty fields
@@ -284,6 +299,19 @@ export default function AddPropertyPage() {
                     )}
                   />
                 </div>
+                <FormField
+                  control={form.control}
+                  name="images"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Property Photos</FormLabel>
+                      <FormControl>
+                        <Input type="file" multiple onChange={(e) => field.onChange(e.target.files)} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
               </CardContent>
             </Card>
 
