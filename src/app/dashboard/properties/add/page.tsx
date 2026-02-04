@@ -10,15 +10,14 @@ import { useState } from 'react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormDescription, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { useUser, useFirestore, useStorage } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { collection, addDoc } from 'firebase/firestore';
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Loader2, Upload } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 
 const propertySchema = z.object({
   address: z.object({
@@ -38,7 +37,6 @@ const propertySchema = z.object({
     depositAmount: z.coerce.number().optional(),
     depositScheme: z.string().optional(),
   }).optional(),
-  images: z.custom<FileList>().optional(),
 });
 
 type PropertyFormValues = z.infer<typeof propertySchema>;
@@ -47,9 +45,7 @@ export default function AddPropertyPage() {
   const router = useRouter();
   const { user } = useUser();
   const firestore = useFirestore();
-  const storage = useStorage();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [fileNames, setFileNames] = useState<string[]>([]);
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
@@ -74,7 +70,7 @@ export default function AddPropertyPage() {
   });
 
   async function onSubmit(data: PropertyFormValues) {
-    if (!user || !firestore || !storage) {
+    if (!user || !firestore) {
       toast({
         variant: 'destructive',
         title: 'Authentication Error',
@@ -86,31 +82,9 @@ export default function AddPropertyPage() {
     setIsSubmitting(true);
     
     try {
-      const docRef = await addDoc(collection(firestore, 'properties'), { ownerId: user.uid /* pre-add with ownerId */ });
-      const propertyId = docRef.id;
-
-      const imageUrls: string[] = [];
-      if (data.images && data.images.length > 0) {
-        for (const file of Array.from(data.images)) {
-          const uniqueFileName = `${Date.now()}-${file.name}`;
-          const fileStorageRef = storageRef(storage, `properties/${user.uid}/${propertyId}/${uniqueFileName}`);
-          const uploadResult = await uploadBytes(fileStorageRef, file);
-          imageUrls.push(await getDownloadURL(uploadResult.ref));
-        }
-      }
-
-      const { images, ...formData } = data;
-      
       const propertyData: { [key: string]: any } = {
         ownerId: user.uid,
-        address: formData.address,
-        propertyType: formData.propertyType,
-        status: formData.status,
-        bedrooms: formData.bedrooms,
-        bathrooms: formData.bathrooms,
-        notes: formData.notes,
-        tenancy: formData.tenancy,
-        imageUrls: imageUrls,
+        ...data,
       };
 
       // Clean up optional empty fields
@@ -122,14 +96,13 @@ export default function AddPropertyPage() {
         if (Object.keys(propertyData.tenancy).length === 0) delete propertyData.tenancy;
       }
       
-      // Update the document with the complete data
       await addDoc(collection(firestore, 'properties'), propertyData);
 
       toast({
         title: 'Property Added',
         description: 'The new property has been added to your portfolio.',
       });
-      router.push(`/dashboard/properties/${propertyId}`);
+      router.push('/dashboard/properties');
 
     } catch (error: any) {
         console.error('Failed to add property', error);
@@ -303,49 +276,6 @@ export default function AddPropertyPage() {
                     )}
                   />
                 </div>
-                <FormField
-                  control={form.control}
-                  name="images"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Property Photos</FormLabel>
-                      <FormControl>
-                        <Button asChild variant="outline" className="w-full cursor-pointer">
-                            <label htmlFor="photos-upload">
-                              <Upload className="mr-2 h-4 w-4" />
-                              Choose Files
-                              <Input
-                                id="photos-upload"
-                                type="file"
-                                multiple
-                                className="sr-only"
-                                onChange={(e) => {
-                                    field.onChange(e.target.files);
-                                    if (e.target.files) {
-                                        setFileNames(Array.from(e.target.files).map(f => f.name));
-                                    } else {
-                                        setFileNames([]);
-                                    }
-                                }}
-                              />
-                            </label>
-                          </Button>
-                      </FormControl>
-                      <FormDescription>
-                        For faster uploads, try to keep image sizes below 1-2MB each.
-                      </FormDescription>
-                      <FormMessage />
-                      {fileNames.length > 0 && (
-                            <div className="text-sm text-muted-foreground pt-2">
-                                <p>Selected file(s):</p>
-                                <ul className="list-disc pl-5">
-                                    {fileNames.map(name => <li key={name}>{name}</li>)}
-                                </ul>
-                            </div>
-                        )}
-                    </FormItem>
-                  )}
-                />
               </CardContent>
             </Card>
 

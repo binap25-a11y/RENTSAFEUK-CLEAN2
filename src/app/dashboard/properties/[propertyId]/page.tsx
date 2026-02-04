@@ -3,7 +3,6 @@
 
 import { useParams, notFound, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -46,7 +45,6 @@ interface Property {
         depositAmount?: number;
         depositScheme?: string;
     };
-    imageUrls?: string[];
     location?: {
         lat: number;
         lng: number;
@@ -206,27 +204,6 @@ export default function PropertyDetailPage() {
         
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
-            {property.imageUrls && property.imageUrls.length > 0 && (
-              <Card>
-                <CardHeader>
-                  <CardTitle>Photos</CardTitle>
-                </CardHeader>
-                <CardContent className="grid grid-cols-2 md:grid-cols-3 gap-4">
-                  {property.imageUrls.map((url, index) => (
-                    <Link href={url} key={index} target="_blank" rel="noopener noreferrer" className="overflow-hidden rounded-md group">
-                      <Image
-                        src={url}
-                        alt={`Property photo ${index + 1}`}
-                        width={200}
-                        height={200}
-                        className="object-cover w-full aspect-square transition-transform group-hover:scale-105"
-                      />
-                    </Link>
-                  ))}
-                </CardContent>
-              </Card>
-            )}
-
             {property.tenancy && (property.tenancy.monthlyRent || property.tenancy.depositAmount) && (
               <Card>
                 <CardHeader><CardTitle>Tenancy & Financials</CardTitle></CardHeader>

@@ -3,7 +3,6 @@
 
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
 import {
   Card,
   CardContent,
@@ -58,7 +57,6 @@ interface Property {
   bedrooms: number;
   bathrooms: number;
   ownerId: string;
-  imageUrls?: string[];
 }
 
 export default function PropertiesPage() {
@@ -200,18 +198,9 @@ export default function PropertiesPage() {
                       >
                           <div className="relative cursor-pointer" onClick={() => router.push(`/dashboard/properties/${property.id}`)}>
                               <div className="aspect-[16/10] bg-muted overflow-hidden">
-                                {property.imageUrls && property.imageUrls.length > 0 ? (
-                                    <Image
-                                        src={property.imageUrls[0]}
-                                        alt={[property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ')}
-                                        fill
-                                        className="object-cover transition-transform group-hover:scale-105"
-                                    />
-                                ) : (
-                                    <div className="w-full h-full flex items-center justify-center">
-                                        <Home className="w-12 h-12 text-muted-foreground" />
-                                    </div>
-                                )}
+                                  <div className="w-full h-full flex items-center justify-center">
+                                      <Home className="w-12 h-12 text-muted-foreground" />
+                                  </div>
                               </div>
                           </div>
                           <CardHeader className="flex flex-row items-start justify-between pb-2">
