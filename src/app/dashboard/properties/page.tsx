@@ -194,64 +194,71 @@ export default function PropertiesPage() {
                 view === 'grid' ? (
                 <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
                     {filteredProperties.map((property) => (
-                        <Card
-                            key={property.id}
-                            className="group overflow-hidden flex flex-col hover:shadow-lg transition-shadow"
-                        >
-                            <div className="relative cursor-pointer" onClick={() => router.push(`/dashboard/properties/${property.id}`)}>
-                                <div className="aspect-[16/10] bg-muted overflow-hidden">
-                                  {property.imageUrls && property.imageUrls.length > 0 ? (
-                                      <Image
-                                          src={property.imageUrls[0]}
-                                          alt={[property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ')}
-                                          fill
-                                          className="object-cover transition-transform group-hover:scale-105"
-                                      />
-                                  ) : (
-                                      <div className="w-full h-full flex items-center justify-center">
-                                          <Home className="w-12 h-12 text-muted-foreground" />
-                                      </div>
-                                  )}
-                                </div>
-                            </div>
-                            <CardHeader className="pb-2 cursor-pointer relative" onClick={() => router.push(`/dashboard/properties/${property.id}`)}>
-                                <CardTitle className="text-lg leading-tight font-semibold group-hover:underline pr-10">
-                                    {[property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ')}
-                                </CardTitle>
-                                <CardDescription className="truncate">
-                                    {[property.address.city, property.address.county, property.address.postcode].filter(Boolean).join(', ')}
-                                </CardDescription>
-                            </CardHeader>
-                            
-                             <div className="absolute top-2 right-2" onClick={(e) => e.stopPropagation()}>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="secondary" size="icon" className="h-8 w-8 rounded-full">
-                                            <MoreVertical className="h-4 w-4" />
-                                        </Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem onSelect={() => router.push(`/dashboard/properties/${property.id}/edit`)}>
-                                          <Edit className="mr-2 h-4 w-4" /> Edit
-                                        </DropdownMenuItem>
-                                        <DropdownMenuItem onSelect={() => setPropertyToDelete(property)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </div>
-
-                            <CardContent className="flex-grow flex flex-col justify-end cursor-pointer mt-auto" onClick={() => router.push(`/dashboard/properties/${property.id}`)}>
-                                <div className="flex justify-between items-center pt-4 border-t">
-                                    <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
-                                        <span>{property.propertyType}</span>
-                                        <span className="flex items-center gap-1"><Bed className="h-4 w-4" /> {property.bedrooms}</span>
-                                        <span className="flex items-center gap-1"><Bath className="h-4 w-4" /> {property.bathrooms}</span>
+                      <Card
+                          key={property.id}
+                          className="group overflow-hidden flex flex-col hover:shadow-lg transition-shadow"
+                      >
+                          <div className="relative cursor-pointer" onClick={() => router.push(`/dashboard/properties/${property.id}`)}>
+                              <div className="aspect-[16/10] bg-muted overflow-hidden">
+                                {property.imageUrls && property.imageUrls.length > 0 ? (
+                                    <Image
+                                        src={property.imageUrls[0]}
+                                        alt={[property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ')}
+                                        fill
+                                        className="object-cover transition-transform group-hover:scale-105"
+                                    />
+                                ) : (
+                                    <div className="w-full h-full flex items-center justify-center">
+                                        <Home className="w-12 h-12 text-muted-foreground" />
                                     </div>
-                                    <Badge variant={property.status === 'Occupied' ? 'default' : 'secondary'} className="h-fit">{property.status}</Badge>
-                                </div>
-                            </CardContent>
-                        </Card>
+                                )}
+                              </div>
+                          </div>
+                          <CardHeader className="flex flex-row items-start justify-between pb-2">
+                              <div className="space-y-1.5 cursor-pointer flex-grow" onClick={() => router.push(`/dashboard/properties/${property.id}`)}>
+                                  <CardTitle className="text-lg leading-tight font-semibold group-hover:underline">
+                                      {[property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ')}
+                                  </CardTitle>
+                                  <CardDescription className="truncate">
+                                      {[property.address.city, property.address.county, property.address.postcode].filter(Boolean).join(', ')}
+                                  </CardDescription>
+                              </div>
+                              <div className="flex-shrink-0" onClick={(e) => { e.stopPropagation() }}>
+                                  <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                          <Button variant="ghost" size="icon" className="h-8 w-8 -mt-1 -mr-2 text-muted-foreground">
+                                              <MoreVertical className="h-4 w-4" />
+                                          </Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                          <DropdownMenuItem asChild>
+                                              <Link href={`/dashboard/properties/${property.id}`}>
+                                                  <Eye className="mr-2 h-4 w-4" /> View
+                                              </Link>
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem asChild>
+                                              <Link href={`/dashboard/properties/${property.id}/edit`}>
+                                                  <Edit className="mr-2 h-4 w-4" /> Edit
+                                              </Link>
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onSelect={() => setPropertyToDelete(property)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                              <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                          </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                  </DropdownMenu>
+                              </div>
+                          </CardHeader>
+                          <CardContent className="flex-grow flex flex-col justify-end cursor-pointer mt-auto" onClick={() => router.push(`/dashboard/properties/${property.id}`)}>
+                              <div className="flex justify-between items-center pt-4 border-t">
+                                  <div className="flex items-center flex-wrap gap-x-4 gap-y-1 text-sm text-muted-foreground">
+                                      <span>{property.propertyType}</span>
+                                      <span className="flex items-center gap-1"><Bed className="h-4 w-4" /> {property.bedrooms}</span>
+                                      <span className="flex items-center gap-1"><Bath className="h-4 w-4" /> {property.bathrooms}</span>
+                                  </div>
+                                  <Badge variant={property.status === 'Occupied' ? 'default' : 'secondary'} className="h-fit">{property.status}</Badge>
+                              </div>
+                          </CardContent>
+                      </Card>
                     )
                     )}
                 </div>
