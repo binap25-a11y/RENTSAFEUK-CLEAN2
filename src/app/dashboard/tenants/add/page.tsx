@@ -92,7 +92,7 @@ export default function AddTenantPage() {
     return query(
       collection(firestore, 'properties'),
       where('ownerId', '==', user.uid),
-      where('status', 'in', ['Vacant', 'Occupied'])
+      where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
     );
   }, [firestore, user, propertyIdFromUrl]);
   const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
