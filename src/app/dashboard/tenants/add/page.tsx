@@ -71,12 +71,14 @@ export default function AddTenantPage() {
   const searchParams = useSearchParams();
   const { user } = useUser();
   const firestore = useFirestore();
+  const propertyIdFromUrl = searchParams.get('propertyId');
 
   const form = useForm<TenantFormValues>({
     resolver: zodResolver(tenantSchema),
+    defaultValues: {
+      propertyId: propertyIdFromUrl || undefined,
+    },
   });
-
-  const propertyId = searchParams.get('propertyId');
 
   // Fetch properties for the dropdown
   const propertiesQuery = useMemoFirebase(() => {
@@ -90,10 +92,14 @@ export default function AddTenantPage() {
   const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
   
   useEffect(() => {
-    if (propertyId) {
-      form.setValue('propertyId', propertyId);
+    // Set default start date to today
+    form.setValue('tenancyStartDate', new Date());
+
+    // If a property ID is in the URL, ensure the form field is set
+    if (propertyIdFromUrl) {
+      form.setValue('propertyId', propertyIdFromUrl);
     }
-  }, [propertyId, form]);
+  }, [propertyIdFromUrl, form]);
 
 
   async function onSubmit(data: TenantFormValues) {
@@ -275,7 +281,7 @@ export default function AddTenantPage() {
 
             <div className="flex justify-end gap-2 pt-4">
                 <Button type="button" variant="outline" asChild>
-                    <Link href={propertyId ? `/dashboard/properties/${propertyId}` : '/dashboard/tenants'}>Cancel</Link>
+                    <Link href={propertyIdFromUrl ? `/dashboard/properties/${propertyIdFromUrl}` : '/dashboard/tenants'}>Cancel</Link>
                 </Button>
                 <Button type="submit">Save and Screen Tenant</Button>
             </div>
