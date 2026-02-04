@@ -92,18 +92,23 @@ export default function PropertyDetailPage() {
   }, [firestore, propertyId]);
   const { data: property, isLoading: isLoadingProperty, error: propertyError } = useDoc<Property>(propertyRef);
 
-  const tenantQuery = useMemoFirebase(() => {
-    if (!firestore || !propertyId || !user) return null;
-    // Query for all tenants of this property, not just active ones
+  // Fetch ALL tenants for the user, then filter on the client.
+  // This is less efficient for very large tenant lists, but more robust against potential composite index issues.
+  const tenantsForUserQuery = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
     return query(
       collection(firestore, 'tenants'),
-      where('ownerId', '==', user.uid),
-      where('propertyId', '==', propertyId)
+      where('ownerId', '==', user.uid)
     );
-  }, [firestore, propertyId, user]);
-  const { data: tenants, isLoading: isLoadingTenant, error: tenantError } = useCollection<Tenant>(tenantQuery);
-  // Find the active tenant from the results on the client side
-  const tenant = useMemo(() => tenants?.find(t => t.status === 'Active'), [tenants]);
+  }, [firestore, user]);
+  const { data: allUserTenants, isLoading: isLoadingTenant, error: tenantError } = useCollection<Tenant>(tenantsForUserQuery);
+
+  // Find the active tenant for the specific property on the client side.
+  const tenant = useMemo(() => {
+    if (!allUserTenants || !propertyId) return undefined;
+    return allUserTenants.find(t => t.propertyId === propertyId && t.status === 'Active');
+  }, [allUserTenants, propertyId]);
+
 
   const maintenanceQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId) return null;
