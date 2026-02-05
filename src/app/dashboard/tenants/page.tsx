@@ -88,10 +88,11 @@ export default function TenantsPage() {
     if (!user) return null;
     return query(
       collection(firestore, 'tenants'),
-      where('ownerId', '==', user.uid)
+      where('ownerId', '==', user.uid),
+      where('status', '==', 'Active')
     );
   }, [firestore, user]);
-  const { data: tenants, isLoading: isLoadingTenants, error: tenantsError } = useCollection<Tenant>(tenantsQuery);
+  const { data: activeTenants, isLoading: isLoadingTenants, error: tenantsError } = useCollection<Tenant>(tenantsQuery);
   
   // Fetch properties to map propertyId to address
   const propertiesQuery = useMemoFirebase(() => {
@@ -103,8 +104,6 @@ export default function TenantsPage() {
   }, [firestore, user]);
   const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
   
-  const activeTenants = useMemo(() => tenants?.filter(t => t.status !== 'Archived') ?? [], [tenants]);
-
   const filteredTenants = useMemo(() => {
     if (!activeTenants) return [];
     if (!searchTerm) return activeTenants;
