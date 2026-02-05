@@ -13,21 +13,21 @@ service cloud.firestore {
     // PROPERTIES
     match /properties/{propertyId} {
       allow get, update, delete: if request.auth.uid == resource.data.ownerId;
-      allow create: if request.resource.data.ownerId == request.auth.uid;
+      allow create: if request.auth.uid != null;
       allow list: if request.auth.uid != null;
     }
 
     // TENANTS
     match /tenants/{tenantId} {
       allow get, update, delete: if request.auth.uid == resource.data.ownerId;
-      allow create: if request.resource.data.ownerId == request.auth.uid;
+      allow create: if request.auth.uid != null;
       allow list: if request.auth.uid != null;
     }
     
     // CONTRACTORS
     match /contractors/{contractorId} {
       allow get, update, delete: if request.auth.uid == resource.data.ownerId;
-      allow create: if request.resource.data.ownerId == request.auth.uid;
+      allow create: if request.auth.uid != null;
       allow list: if request.auth.uid != null;
     }
 
@@ -36,39 +36,39 @@ service cloud.firestore {
     // PROPERTIES SUB-COLLECTIONS
     match /properties/{propertyId}/maintenanceLogs/{logId} {
       allow get, update, delete: if request.auth.uid == resource.data.ownerId;
-      allow create: if request.resource.data.ownerId == request.auth.uid;
+      allow create: if request.auth.uid != null;
       allow list: if request.auth.uid != null;
     }
     match /properties/{propertyId}/inspections/{inspectionId} {
       allow get, update, delete: if request.auth.uid == resource.data.ownerId;
-      allow create: if request.resource.data.ownerId == request.auth.uid;
+      allow create: if request.auth.uid != null;
       allow list: if request.auth.uid != null;
     }
     match /properties/{propertyId}/documents/{documentId} {
       allow get, update, delete: if request.auth.uid == resource.data.ownerId;
-      allow create: if request.resource.data.ownerId == request.auth.uid;
+      allow create: if request.auth.uid != null;
       allow list: if request.auth.uid != null;
     }
     match /properties/{propertyId}/expenses/{expenseId} {
       allow get, update, delete: if request.auth.uid == resource.data.ownerId;
-      allow create: if request.resource.data.ownerId == request.auth.uid;
+      allow create: if request.auth.uid != null;
       allow list: if request.auth.uid != null;
     }
     match /properties/{propertyId}/rentPayments/{rentPaymentId} {
       allow get, update, delete: if request.auth.uid == resource.data.ownerId;
-      allow create: if request.resource.data.ownerId == request.auth.uid;
+      allow create: if request.auth.uid != null;
       allow list: if request.auth.uid != null;
     }
     match /properties/{propertyId}/checklists/{checklistId} {
       allow get, update, delete: if request.auth.uid == resource.data.ownerId;
-      allow create: if request.resource.data.ownerId == request.auth.uid;
+      allow create: if request.auth.uid != null;
       allow list: if request.auth.uid != null;
     }
 
     // TENANTS SUB-COLLECTIONS
     match /tenants/{tenantId}/screenings/{screeningId} {
       allow get, update, delete: if request.auth.uid == resource.data.ownerId;
-      allow create: if request.resource.data.ownerId == request.auth.uid;
+      allow create: if request.auth.uid != null;
       allow list: if request.auth.uid != null;
     }
   }
