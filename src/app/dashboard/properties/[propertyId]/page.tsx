@@ -131,7 +131,7 @@ export default function PropertyDetailPage() {
     return allInspections?.filter(insp => insp.status !== 'Cancelled') ?? null;
   }, [allInspections]);
 
-  const isLoading = isLoadingProperty || isLoadingMaintenance || isLoadingInspections || isLoadingTenants;
+  const isLoading = isLoadingProperty || isLoadingMaintenance || isLoadingInspections;
   const error = propertyError || maintenanceError || inspectionError;
 
   const hasPermission = useMemo(() => {
@@ -283,25 +283,39 @@ export default function PropertyDetailPage() {
               <CardHeader><CardTitle>Current Tenant</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 {isLoadingTenants ? (
-                    <div className="flex justify-center items-center h-24">
-                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                    </div>
-                ) : tenantError ? (
-                    <Alert variant="destructive">
-                        <AlertTriangle className="h-4 w-4" />
-                        <AlertTitle>Error Loading Tenant</AlertTitle>
-                        <AlertDescription>{(tenantError as Error).message}</AlertDescription>
-                    </Alert>
+                  <div className="flex justify-center items-center h-24">
+                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                  </div>
                 ) : tenant ? (
                   <>
-                    <div className="flex items-start gap-3"><User className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" /><div><p className="text-sm font-medium">{tenant.name}</p><Link href={`/dashboard/tenants/${tenant.id}`} className="text-sm text-primary hover:underline">View Profile</Link></div></div>
-                    <div className="flex items-start gap-3"><Mail className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" /><div><p className="text-sm font-medium">Email</p><a href={`mailto:${tenant.email}`} className="text-sm text-muted-foreground hover:underline">{tenant.email}</a></div></div>
-                    <div className="flex items-start gap-3"><Phone className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" /><div><p className="text-sm font-medium">Phone</p><p className="text-sm text-muted-foreground">{tenant.telephone}</p></div></div>
+                    <div className="flex items-start gap-3">
+                      <User className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
+                      <div>
+                        <p className="text-sm font-medium">{tenant.name}</p>
+                        <Link href={`/dashboard/tenants/${tenant.id}`} className="text-sm text-primary hover:underline">View Profile</Link>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Mail className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
+                      <div>
+                        <p className="text-sm font-medium">Email</p>
+                        <a href={`mailto:${tenant.email}`} className="text-sm text-muted-foreground hover:underline">{tenant.email}</a>
+                      </div>
+                    </div>
+                    <div className="flex items-start gap-3">
+                      <Phone className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
+                      <div>
+                        <p className="text-sm font-medium">Phone</p>
+                        <p className="text-sm text-muted-foreground">{tenant.telephone}</p>
+                      </div>
+                    </div>
                   </>
                 ) : (
                   <>
                     <p className="text-sm text-muted-foreground text-center py-4">No active tenant assigned.</p>
-                    <Button asChild variant="secondary" className="w-full"><Link href={`/dashboard/tenants/add?propertyId=${propertyId}`}>Assign Tenant</Link></Button>
+                    <Button asChild variant="secondary" className="w-full">
+                      <Link href={`/dashboard/tenants/add?propertyId=${propertyId}`}>Assign Tenant</Link>
+                    </Button>
                   </>
                 )}
               </CardContent>
