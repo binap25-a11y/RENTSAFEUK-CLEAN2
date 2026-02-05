@@ -2,62 +2,11 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    
-    // --- USER DATA ---
-    match /users/{userId} {
-      // Users can manage their own profile document.
-      allow get, update, delete, create: if request.auth.uid == userId;
-
-      // --- TENANTS SUB-COLLECTION ---
-      match /tenants/{tenantId} {
-        // Users can get, update, and delete their own tenants.
-        allow get, update, delete: if request.auth.uid == userId;
-      }
-      match /tenants {
-        // Users can list their own tenants.
-        allow list: if request.auth.uid == userId;
-        // Users can create tenants within their own user document,
-        // but only if they correctly set the ownerId on the new tenant record.
-        allow create: if request.auth.uid == userId 
-                      && request.resource.data.ownerId == request.auth.uid;
-      }
-      
-      // --- TENANT SCREENINGS SUB-COLLECTION ---
-      match /tenants/{tenantId}/screenings/{screeningId} {
-        allow get, update, delete: if request.auth.uid == userId;
-      }
-      match /tenants/{tenantId}/screenings {
-        allow create, list: if request.auth.uid == userId;
-      }
-    }
-    
-    // --- PROPERTIES ---
-    match /properties/{propertyId} {
-      // An authenticated user can only get, update, or delete a property if they are the owner.
-      allow get, update, delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
-      
-      // --- PROPERTY SUB-COLLECTIONS (Maintenance, Inspections, etc.) ---
-      // This rule applies to all subcollections of a property document.
-      match /{subcollection}/{docId} {
-        allow read, write: if request.auth != null 
-                           && get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
-      }
-    }
-    match /properties {
-      // An authenticated user can create a property if they set themselves as the owner.
-      allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
-      // Users can list properties, but the client query MUST include a "where" clause
-      // to filter by their own ownerId.
-      allow list: if request.auth != null && request.query.where.ownerId == request.auth.uid;
-    }
-
-    // --- CONTRACTORS ---
-    match /contractors/{contractorId} {
-      allow get, update, delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
-    }
-    match /contractors {
-      allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
-      allow list: if request.auth != null && request.query.where.ownerId == request.auth.uid;
+    // WARNING: These rules are for development and testing only.
+    // They allow any authenticated user to read and write to the entire database.
+    // This is not secure for a production environment.
+    match /{document=**} {
+      allow read, write: if request.auth != null;
     }
   }
 }
