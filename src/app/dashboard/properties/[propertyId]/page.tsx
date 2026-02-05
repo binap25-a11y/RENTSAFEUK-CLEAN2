@@ -10,7 +10,7 @@ import { ArrowLeft, Bed, Bath, Edit, Trash2, MoreVertical, Loader2, AlertTriangl
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, collection, query, where, FirestoreError, getDocs, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -86,10 +86,6 @@ export default function PropertyDetailPage() {
   const { toast } = useToast();
   
   const [isDeleting, setIsDeleting] = useState(false);
-  const [tenant, setTenant] = useState<Tenant | null>(null);
-  const [isLoadingTenant, setIsLoadingTenant] = useState(true);
-  const [tenantError, setTenantError] = useState<string | null>(null);
-
 
   // --- Data Fetching using Hooks ---
   const propertyRef = useMemoFirebase(() => {
@@ -98,43 +94,21 @@ export default function PropertyDetailPage() {
   }, [firestore, propertyId]);
   const { data: property, isLoading: isLoadingProperty, error: propertyError } = useDoc<Property>(propertyRef);
   
-  useEffect(() => {
-    if (!user || !firestore || !propertyId) {
-      setIsLoadingTenant(false);
-      return;
-    }
+  const tenantsForPropertyQuery = useMemoFirebase(() => {
+    if (!user || !firestore || !propertyId) return null;
+    // Simplified query to avoid needing a composite index. We will filter for 'Active' status on the client.
+    return query(
+      collection(firestore, 'users', user.uid, 'tenants'),
+      where('propertyId', '==', propertyId)
+    );
+  }, [firestore, user, propertyId]);
 
-    const fetchTenant = async () => {
-      setIsLoadingTenant(true);
-      setTenantError(null);
-      setTenant(null);
+  const { data: tenants, isLoading: isLoadingTenants, error: tenantError } = useCollection<Tenant>(tenantsForPropertyQuery);
 
-      try {
-        const tenantsCollectionRef = collection(firestore, 'users', user.uid, 'tenants');
-        const q = query(
-            tenantsCollectionRef, 
-            where('propertyId', '==', propertyId), 
-            where('status', '==', 'Active'),
-            limit(1)
-        );
-        
-        const querySnapshot = await getDocs(q);
-        
-        if (!querySnapshot.empty) {
-            const tenantDoc = querySnapshot.docs[0];
-            setTenant({ id: tenantDoc.id, ...tenantDoc.data() } as Tenant);
-        }
-
-      } catch (e: any) {
-        console.error("Error fetching tenant data:", e);
-        setTenantError(e.message);
-      } finally {
-        setIsLoadingTenant(false);
-      }
-    };
-
-    fetchTenant();
-  }, [user, firestore, propertyId]);
+  const tenant = useMemo(() => {
+    if (!tenants) return null;
+    return tenants.find(t => t.status === 'Active') || null;
+  }, [tenants]);
 
   const maintenanceQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
@@ -157,7 +131,7 @@ export default function PropertyDetailPage() {
     return allInspections?.filter(insp => insp.status !== 'Cancelled') ?? null;
   }, [allInspections]);
 
-  const isLoading = isLoadingProperty || isLoadingMaintenance || isLoadingInspections;
+  const isLoading = isLoadingProperty || isLoadingMaintenance || isLoadingInspections || isLoadingTenants;
   const error = propertyError || maintenanceError || inspectionError;
 
   const hasPermission = useMemo(() => {
@@ -189,7 +163,7 @@ export default function PropertyDetailPage() {
     }
   };
   
-  if (isLoading) {
+  if (isLoadingProperty) { // Only show main loader for property, sub-sections can have their own
     return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
   }
 
@@ -308,7 +282,7 @@ export default function PropertyDetailPage() {
             <Card>
               <CardHeader><CardTitle>Current Tenant</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                {isLoadingTenant ? (
+                {isLoadingTenants ? (
                     <div className="flex justify-center items-center h-24">
                         <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                     </div>
@@ -316,7 +290,7 @@ export default function PropertyDetailPage() {
                     <Alert variant="destructive">
                         <AlertTriangle className="h-4 w-4" />
                         <AlertTitle>Error Loading Tenant</AlertTitle>
-                        <AlertDescription>{tenantError}</AlertDescription>
+                        <AlertDescription>{(tenantError as Error).message}</AlertDescription>
                     </Alert>
                 ) : tenant ? (
                   <>
@@ -336,7 +310,8 @@ export default function PropertyDetailPage() {
             <Card>
               <CardHeader><CardTitle>Recent Activity</CardTitle></CardHeader>
               <CardContent>
-                {!maintenanceLogs?.length && !inspections?.length ? <p className="text-sm text-muted-foreground text-center py-4">No recent activity.</p> : (
+                {isLoadingMaintenance || isLoadingInspections ? <div className="flex justify-center items-center h-24"><Loader2 className="h-6 w-6 animate-spin" /></div>
+                : !maintenanceLogs?.length && !inspections?.length ? <p className="text-sm text-muted-foreground text-center py-4">No recent activity.</p> : (
                   <div className="space-y-4">
                     {maintenanceLogs?.map(log => <div key={log.id} className="text-sm"><Link href={`/dashboard/maintenance/${log.id}?propertyId=${propertyId}`} className="font-medium hover:underline">{log.title}</Link><p className="text-xs text-muted-foreground">{log.status} - Reported {safeFormatDate(log.reportedDate, 'dd/MM/yy')}</p></div>)}
                     {inspections?.map(insp => <div key={insp.id} className="text-sm"><Link href={`/dashboard/inspections/${insp.id}?propertyId=${propertyId}`} className="font-medium hover:underline">{insp.type}</Link><p className="text-xs text-muted-foreground">{insp.status} - Scheduled for {safeFormatDate(insp.scheduledDate, 'dd/MM/yy')}</p></div>)}
@@ -357,5 +332,3 @@ export default function PropertyDetailPage() {
     </>
   );
 }
-
-    
