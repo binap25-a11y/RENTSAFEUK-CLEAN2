@@ -784,6 +784,36 @@
         }
       },
       {
+        "path": "/users/{userId}/tenants/{tenantId}",
+        "definition": {
+          "entityName": "Tenant",
+          "schema": {
+            "$ref": "#/backend/entities/Tenant"
+          },
+          "description": "Subcollection to store tenant information for a specific user.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier for the user."
+            },
+            {
+              "name": "tenantId",
+              "description": "The unique identifier for the tenant."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/tenants/{tenantId}/screenings/{screeningId}",
+        "definition": {
+          "entityName": "TenantScreening",
+          "schema": {
+            "$ref": "#/backend/entities/TenantScreening"
+          },
+          "description": "Subcollection to store tenant screening records for each tenant."
+        }
+      },
+      {
         "path": "/properties/{propertyId}",
         "definition": {
           "entityName": "Property",
@@ -910,32 +940,6 @@
         }
       },
       {
-        "path": "/tenants/{tenantId}",
-        "definition": {
-          "entityName": "Tenant",
-          "schema": {
-            "$ref": "#/backend/entities/Tenant"
-          },
-          "description": "Collection to store tenant information.  Stores details about tenants renting properties managed within the application.",
-          "params": [
-            {
-              "name": "tenantId",
-              "description": "The unique identifier for the tenant."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/tenants/{tenantId}/screenings/{screeningId}",
-        "definition": {
-          "entityName": "TenantScreening",
-          "schema": {
-            "$ref": "#/backend/entities/TenantScreening"
-          },
-          "description": "Subcollection to store tenant screening records for each tenant."
-        }
-      },
-      {
         "path": "/contractors/{contractorId}",
         "definition": {
           "entityName": "Contractor",
@@ -952,6 +956,8 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to manage rental properties, tenants, maintenance logs, inspections, and documents. The top-level collections are `properties`, `tenants`, `contractors` and `users/{userId}`. The subcollections `maintenanceLogs`, `inspections`, and `documents` are nested under each `property` to ensure data locality and facilitate querying related information. This structure leverages path-based ownership for user-specific data (e.g., properties owned by a user), which simplifies security rules. The design prioritizes Authorization Independence (CRITICAL) by avoiding hierarchical authorization dependencies (`get()`).  All collections are designed to support QAPs, as listing operations will be secured by path-based rules and potentially by filtering on denormalized fields, ensuring that users can only access data they are authorized to view."
+    "reasoning": "The Firestore structure is designed to manage rental properties, tenants, maintenance logs, inspections, and documents. The top-level collections are `properties`, `tenants`, `contractors` and `users`. By nesting `tenants` under `users`, we create a clear ownership hierarchy that simplifies security rules and aligns the data model with the application's user-centric design. The subcollections `maintenanceLogs`, `inspections`, `documents`, etc. are nested under each `property` to ensure data locality and facilitate querying related information. This structure leverages path-based ownership for all user-specific data, simplifying security rules and eliminating complex queries."
   }
 }
+
+    

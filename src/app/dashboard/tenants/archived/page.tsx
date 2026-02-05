@@ -64,8 +64,7 @@ export default function ArchivedTenantsPage() {
     const tenantsQuery = useMemoFirebase(() => {
         if (!user) return null;
         return query(
-            collection(firestore, 'tenants'),
-            where('ownerId', '==', user.uid),
+            collection(firestore, 'users', user.uid, 'tenants'),
             where('status', '==', 'Archived')
         );
     }, [firestore, user]);
@@ -89,9 +88,9 @@ export default function ArchivedTenantsPage() {
     }, [properties]);
 
     const handleRestore = async (tenantId: string, tenantName: string) => {
-        if (!firestore) return;
+        if (!firestore || !user) return;
         try {
-            const docRef = doc(firestore, 'tenants', tenantId);
+            const docRef = doc(firestore, 'users', user.uid, 'tenants', tenantId);
             await updateDoc(docRef, { status: 'Active' });
             toast({
                 title: 'Tenant Restored',
@@ -108,9 +107,9 @@ export default function ArchivedTenantsPage() {
     };
 
     const handleDeletePermanently = async () => {
-        if (!firestore || !tenantToDelete) return;
+        if (!firestore || !user || !tenantToDelete) return;
         try {
-            const docRef = doc(firestore, 'tenants', tenantToDelete.id);
+            const docRef = doc(firestore, 'users', user.uid, 'tenants', tenantToDelete.id);
             await deleteDoc(docRef);
             toast({
                 title: 'Tenant Permanently Deleted',
@@ -254,3 +253,5 @@ export default function ArchivedTenantsPage() {
     </>
   );
 }
+
+    

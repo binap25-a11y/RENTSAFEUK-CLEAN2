@@ -29,6 +29,7 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Checkbox } from '@/components/ui/checkbox';
 import { useEffect, useMemo } from 'react';
 import {
+  useUser,
   useFirestore,
   useDoc,
   useMemoFirebase,
@@ -154,7 +155,7 @@ export default function EditTenantScreeningPage() {
     const params = useParams();
     const tenantId = params.id as string;
     const screeningId = params.screeningId as string;
-
+    const { user } = useUser();
     const firestore = useFirestore();
 
     const form = useForm<ScreeningEditFormValues>({
@@ -162,15 +163,15 @@ export default function EditTenantScreeningPage() {
     });
 
     const screeningRef = useMemoFirebase(() => {
-        if (!firestore || !tenantId || !screeningId) return null;
-        return doc(firestore, 'tenants', tenantId, 'screenings', screeningId);
-    }, [firestore, tenantId, screeningId]);
+        if (!firestore || !user || !tenantId || !screeningId) return null;
+        return doc(firestore, 'users', user.uid, 'tenants', tenantId, 'screenings', screeningId);
+    }, [firestore, user, tenantId, screeningId]);
     const { data: screening, isLoading: isLoadingScreening } = useDoc(screeningRef);
 
     const tenantRef = useMemoFirebase(() => {
-        if (!firestore || !tenantId) return null;
-        return doc(firestore, 'tenants', tenantId);
-    }, [firestore, tenantId]);
+        if (!firestore || !user || !tenantId) return null;
+        return doc(firestore, 'users', user.uid, 'tenants', tenantId);
+    }, [firestore, user, tenantId]);
     const { data: tenant, isLoading: isLoadingTenant } = useDoc(tenantRef);
 
     useEffect(() => {
@@ -490,3 +491,5 @@ export default function EditTenantScreeningPage() {
         </Card>
     );
 }
+
+    

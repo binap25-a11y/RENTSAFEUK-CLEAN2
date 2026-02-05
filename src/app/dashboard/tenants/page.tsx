@@ -87,8 +87,7 @@ export default function TenantsPage() {
   const tenantsQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
-      collection(firestore, 'tenants'),
-      where('ownerId', '==', user.uid),
+      collection(firestore, 'users', user.uid, 'tenants'),
       where('status', '==', 'Active')
     );
   }, [firestore, user]);
@@ -123,9 +122,9 @@ export default function TenantsPage() {
 
 
   const handleArchiveConfirm = async () => {
-    if (!firestore || !tenantToArchive) return;
+    if (!firestore || !user || !tenantToArchive) return;
     try {
-      await updateDoc(doc(firestore, 'tenants', tenantToArchive.id), { status: 'Archived' });
+      await updateDoc(doc(firestore, 'users', user.uid, 'tenants', tenantToArchive.id), { status: 'Archived' });
       toast({
         title: 'Tenant Archived',
         description: `${tenantToArchive.name} has been moved to the archives.`,
@@ -311,3 +310,5 @@ export default function TenantsPage() {
     </>
   );
 }
+
+    

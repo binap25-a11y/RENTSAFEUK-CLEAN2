@@ -110,24 +110,23 @@ export default function PropertyDetailPage() {
       setTenant(null);
 
       try {
-        const tenantsCollectionRef = collection(firestore, 'tenants');
-        // This is the most robust query. It finds all tenants owned by the user.
-        const q = query(tenantsCollectionRef, where('ownerId', '==', user.uid));
+        const tenantsCollectionRef = collection(firestore, 'users', user.uid, 'tenants');
+        const q = query(
+            tenantsCollectionRef, 
+            where('propertyId', '==', propertyId), 
+            where('status', '==', 'Active'),
+            limit(1)
+        );
         
         const querySnapshot = await getDocs(q);
         
-        const allTenantsForUser = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tenant));
-        
-        // We then filter on the client side to find the active tenant for THIS property.
-        // This avoids needing a composite index in Firestore.
-        const activeTenantForThisProperty = allTenantsForUser.find(
-          t => t.propertyId === propertyId && t.status === 'Active'
-        );
+        if (!querySnapshot.empty) {
+            const tenantDoc = querySnapshot.docs[0];
+            setTenant({ id: tenantDoc.id, ...tenantDoc.data() } as Tenant);
+        }
 
-        setTenant(activeTenantForThisProperty || null);
       } catch (e: any) {
         console.error("Error fetching tenant data:", e);
-        // Set the raw error message to be displayed in the UI
         setTenantError(e.message);
       } finally {
         setIsLoadingTenant(false);
@@ -358,3 +357,5 @@ export default function PropertyDetailPage() {
     </>
   );
 }
+
+    

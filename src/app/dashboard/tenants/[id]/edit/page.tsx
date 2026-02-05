@@ -93,9 +93,9 @@ export default function EditTenantPage() {
   
   // Fetch the specific tenant to edit
   const tenantRef = useMemoFirebase(() => {
-    if (!firestore || !tenantId) return null;
-    return doc(firestore, 'tenants', tenantId);
-  }, [firestore, tenantId]);
+    if (!firestore || !user || !tenantId) return null;
+    return doc(firestore, 'users', user.uid, 'tenants', tenantId);
+  }, [firestore, user, tenantId]);
 
   const { data: tenant, isLoading: isLoadingTenant } = useDoc<Tenant>(tenantRef);
 
@@ -135,7 +135,7 @@ export default function EditTenantPage() {
     }
     
     try {
-      const tenantDocRef = doc(firestore, 'tenants', tenantId);
+      const tenantDocRef = doc(firestore, 'users', user.uid, 'tenants', tenantId);
       await updateDoc(tenantDocRef, {
           ...data,
           ownerId: user.uid, // ensure ownerId is preserved
@@ -326,3 +326,5 @@ export default function EditTenantPage() {
     </Card>
   );
 }
+
+    

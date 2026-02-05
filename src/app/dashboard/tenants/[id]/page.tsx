@@ -89,9 +89,9 @@ export default function TenantDetailPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const tenantRef = useMemoFirebase(() => {
-    if (!firestore || !id) return null;
-    return doc(firestore, 'tenants', id);
-  }, [firestore, id]);
+    if (!firestore || !user || !id) return null;
+    return doc(firestore, 'users', user.uid, 'tenants', id);
+  }, [firestore, user, id]);
 
   const { data: tenant, isLoading: isLoadingTenant, error } = useDoc<Tenant>(tenantRef);
   
@@ -104,8 +104,7 @@ export default function TenantDetailPage() {
   const screeningsQuery = useMemoFirebase(() => {
     if (!firestore || !id || !user) return null;
     return query(
-        collection(firestore, 'tenants', id, 'screenings'),
-        where('ownerId', '==', user.uid)
+        collection(firestore, 'users', user.uid, 'tenants', id, 'screenings')
     );
   }, [firestore, id, user]);
   const { data: screenings, isLoading: isLoadingScreenings } = useCollection<TenantScreening>(screeningsQuery);
@@ -309,7 +308,7 @@ export default function TenantDetailPage() {
                                     <Link href={`/dashboard/tenants/${id}/screenings/${firstScreening.id}/edit`}>
                                         <Edit className="mr-2 h-4 w-4" /> Edit
                                     </Link>
-                               </Button>
+                                </Button>
                            </div>
                         </div>
                     ) : (
@@ -386,3 +385,5 @@ export default function TenantDetailPage() {
     </>
   );
 }
+
+    

@@ -133,7 +133,7 @@ export default function AddTenantPage() {
         ownerId: user.uid,
         status: 'Active',
       };
-      const tenantsCollection = collection(firestore, 'tenants');
+      const tenantsCollection = collection(firestore, 'users', user.uid, 'tenants');
       await addDoc(tenantsCollection, newTenant);
 
       const propertyDocRef = doc(firestore, 'properties', data.propertyId);
@@ -146,7 +146,7 @@ export default function AddTenantPage() {
       router.push(`/dashboard/properties/${data.propertyId}`);
 
     } catch (error: any) {
-      const tenantsCollection = collection(firestore, 'tenants');
+      const tenantsCollection = collection(firestore, 'users', user.uid, 'tenants');
        const permissionError = new FirestorePermissionError({
           path: tenantsCollection.path,
           operation: 'create',
@@ -159,7 +159,8 @@ export default function AddTenantPage() {
         title: 'Save Failed',
         description: error.message || 'An unexpected error occurred while saving the tenant.',
       });
-      setIsSubmitting(false);
+    } finally {
+        setIsSubmitting(false);
     }
   }
 
@@ -336,3 +337,5 @@ export default function AddTenantPage() {
     </Card>
   );
 }
+
+    
