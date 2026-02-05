@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Loader2, Calendar as CalendarIcon, User, Download } from 'lucide-react';
 import { format } from 'date-fns';
-import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -103,17 +103,18 @@ export default function ViewScreeningPage() {
   const tenantId = params.id as string;
   const screeningId = params.screeningId as string;
   const firestore = useFirestore();
+  const { user } = useUser();
 
   const screeningRef = useMemoFirebase(() => {
-    if (!firestore || !tenantId || !screeningId) return null;
-    return doc(firestore, 'tenants', tenantId, 'screenings', screeningId);
-  }, [firestore, tenantId, screeningId]);
+    if (!firestore || !user || !tenantId || !screeningId) return null;
+    return doc(firestore, 'users', user.uid, 'tenants', tenantId, 'screenings', screeningId);
+  }, [firestore, user, tenantId, screeningId]);
   const { data: screening, isLoading: isLoadingScreening, error: screeningError } = useDoc(screeningRef);
   
   const tenantRef = useMemoFirebase(() => {
-    if(!firestore || !tenantId) return null;
-    return doc(firestore, 'tenants', tenantId);
-  }, [firestore, tenantId]);
+    if(!firestore || !user || !tenantId) return null;
+    return doc(firestore, 'users', user.uid, 'tenants', tenantId);
+  }, [firestore, user, tenantId]);
   const { data: tenant, isLoading: isLoadingTenant } = useDoc(tenantRef);
 
   const generatePDF = () => {
