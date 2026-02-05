@@ -3,43 +3,60 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // Users can only read and write to their own user document.
+    // --- User Profile ---
+    // Users can only read and write their own document.
     match /users/{userId} {
-      allow read, update, create: if request.auth != null && request.auth.uid == userId;
+      allow read, update, create: if request.auth.uid == userId;
     }
 
-    // --- Top-Level Collections ---
+    // --- Properties Collection ---
+    match /properties {
+      // Anyone authenticated can create a property, as long as they set themselves as the owner.
+      allow create: if request.auth.uid == request.resource.data.ownerId;
+      // Anyone authenticated can query the collection, but client-side must filter by ownerId.
+      allow list: if request.auth.uid != null;
+    }
 
-    // Properties
+    // --- Single Property Document ---
     match /properties/{propertyId} {
-       allow read, update, delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
-       allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
+      // Only the owner can get, update, or delete their property document.
+      allow get, update, delete: if request.auth.uid == resource.data.ownerId;
     }
 
-    // Tenants
+    // --- Tenants Collection ---
+    match /tenants {
+      allow create: if request.auth.uid == request.resource.data.ownerId;
+      allow list: if request.auth.uid != null;
+    }
+
+    // --- Single Tenant Document ---
     match /tenants/{tenantId} {
-       allow read, update, delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
-       allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
+      allow get, update, delete: if request.auth.uid == resource.data.ownerId;
     }
 
-    // Contractors
+    // --- Contractors Collection ---
+    match /contractors {
+      allow create: if request.auth.uid == request.resource.data.ownerId;
+      allow list: if request.auth.uid != null;
+    }
+
+    // --- Single Contractor Document ---
     match /contractors/{contractorId} {
-       allow read, update, delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
-       allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
+      allow get, update, delete: if request.auth.uid == resource.data.ownerId;
     }
 
-    // --- Sub-Collections ---
+    // --- Generic Sub-Collection Rules ---
 
-    // Rule for all sub-collections under a property.
-    // Allows access if the user owns the parent property document.
-    match /properties/{propertyId}/{subcollection}/{subDocId} {
-        allow read, write: if request.auth != null && get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
+    // This rule applies to ALL sub-collections under any property.
+    // It allows read/write access only if the user owns the parent property document.
+    match /properties/{propertyId}/{subcollection}/{docId} {
+      allow read, write: if get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
     }
-    
-    // Rule for all sub-collections under a tenant.
-    // Allows access if the user owns the parent tenant document.
-    match /tenants/{tenantId}/{subcollection}/{subDocId} {
-      allow read, write: if request.auth != null && get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid;
+
+    // This rule applies to ALL sub-collections under any tenant.
+    // It allows read/write access only if the user owns the parent tenant document.
+    match /tenants/{tenantId}/{subcollection}/{docId} {
+      allow read, write: if get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid;
     }
   }
 }
