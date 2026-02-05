@@ -2,11 +2,63 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // WARNING: These rules are for development and testing only.
-    // They allow any authenticated user to read and write to the entire database.
-    // This is not secure for a production environment.
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+
+    // A user must be authenticated and their ID must match the userId in the path.
+    function isOwner(userId) {
+      return request.auth != null && request.auth.uid == userId;
+    }
+
+    // USER DATA
+    match /users/{userId} {
+      // Users can get and update their own user profile document.
+      allow get, update: if isOwner(userId);
+      
+      // TENANTS subcollection
+      // This rule is required to allow a user to query their own tenants.
+      match /tenants {
+        allow list: if isOwner(userId);
+      }
+      
+      // This rule allows a user to get, create, update, or delete a specific tenant document.
+      match /tenants/{tenantId} {
+        allow get, update, delete: if isOwner(userId);
+        // On create, ensures the ownerId in the document matches the user.
+        allow create: if isOwner(userId) && request.resource.data.ownerId == userId;
+      }
+      
+      // SCREENINGS sub-subcollection
+      match /tenants/{tenantId}/screenings/{screeningId} {
+        // Users can read and write screening documents for tenants they own.
+        allow read, write: if isOwner(userId);
+      }
+    }
+
+    // PROPERTIES collection
+    match /properties/{propertyId} {
+      // Allow authenticated users to get or list properties.
+      // The application code is responsible for filtering these lists to only show the user's own properties.
+      allow get, list: if request.auth != null;
+
+      // Only the owner can create, update, or delete a property.
+      allow create: if isOwner(request.resource.data.ownerId);
+      allow update, delete: if isOwner(resource.data.ownerId);
+      
+      // PROPERTY SUBCOLLECTIONS (Maintenance, Inspections, Documents, etc.)
+      match /{subcollection}/{docId} {
+         // To read or write to a property's subcollection, the user must own the parent property.
+         allow read, write: if isOwner(get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId);
+      }
+    }
+    
+    // CONTRACTORS collection
+    match /contractors/{contractorId} {
+       // Allow authenticated users to get or list contractors.
+       // The application will filter this list to show only the user's contractors.
+       allow get, list: if request.auth != null;
+
+       // Only the owner can create, update, or delete their own contractors.
+       allow create: if isOwner(request.resource.data.ownerId);
+       allow update, delete: if isOwner(resource.data.ownerId);
     }
   }
 }
