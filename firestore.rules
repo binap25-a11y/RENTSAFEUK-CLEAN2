@@ -14,15 +14,23 @@ service cloud.firestore {
     
     // USER data can only be read/written by the user themselves
     match /users/{userId} {
-      allow read, update, delete: if isOwner(userId);
-      allow create: if request.auth.uid == userId;
+      // Allow user to get, update, delete their own profile document
+      allow get, update, delete: if isOwner(userId);
+      // Allow a user to create their own profile document
+      allow create: if isOwner(userId);
 
-      // TENANTS are owned by the user
+      // Rule for LISTING tenants collection
+      match /tenants {
+        allow list: if isOwner(userId);
+      }
+
+      // Rule for GETTING/WRITING individual tenant documents
       match /tenants/{tenantId} {
-        allow read, write: if isOwner(userId);
+        allow get, create, update, delete: if isOwner(userId);
         
         // SCREENINGS are owned by the user via the tenant
         match /screenings/{screeningId} {
+            // A user can read/write screenings for their own tenants
             allow read, write: if isOwner(userId);
         }
       }
@@ -46,5 +54,3 @@ service cloud.firestore {
     }
   }
 }
-
-    
