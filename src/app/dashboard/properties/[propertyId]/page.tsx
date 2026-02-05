@@ -8,9 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Bed, Bath, Edit, Trash2, MoreVertical, Loader2, AlertTriangle, User, Home, Wrench, CalendarCheck, FileText, Banknote, Shield, Phone, Mail, MapPin } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc, collection, query, where, FirestoreError } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, FirestoreError, getDocs, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -84,6 +84,7 @@ export default function PropertyDetailPage() {
   const { toast } = useToast();
   
   const [isDeleting, setIsDeleting] = useState(false);
+  const [tenant, setTenant] = useState<Tenant | null>(null);
 
   // --- Data Fetching using Hooks ---
   const propertyRef = useMemoFirebase(() => {
@@ -92,18 +93,31 @@ export default function PropertyDetailPage() {
   }, [firestore, propertyId]);
   const { data: property, isLoading: isLoadingProperty, error: propertyError } = useDoc<Property>(propertyRef);
   
-  // Fetch all tenants for the user. This query is simple and reliably indexed.
   const tenantsQuery = useMemoFirebase(() => {
+    if (!user || !firestore || !propertyId) return null;
+    return query(collection(firestore, 'tenants'), where('propertyId', '==', propertyId), where('status', '==', 'Active'), limit(1));
+  }, [user, firestore, propertyId]);
+
+  const { data: tenants, isLoading: isLoadingTenants, error: tenantsError } = useCollection<Tenant>(tenantsQuery);
+
+  const allTenantsForUserQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(collection(firestore, 'tenants'), where('ownerId', '==', user.uid));
   }, [user, firestore]);
-  const { data: allTenants, isLoading: isLoadingTenants, error: tenantsError } = useCollection<Tenant>(tenantsQuery);
+  const { data: allTenants, isLoading: isLoadingAllTenants, error: allTenantsError } = useCollection<Tenant>(allTenantsForUserQuery);
 
-  // Derive the active tenant for this specific property from the fetched list.
-  const tenant = useMemo(() => {
+  const activeTenantForTest = useMemo(() => {
     if (!allTenants || !propertyId) return null;
     return allTenants.find(t => t.propertyId === propertyId && t.status === 'Active');
   }, [allTenants, propertyId]);
+
+  useEffect(() => {
+    if (tenants && tenants.length > 0) {
+      setTenant(tenants[0]);
+    } else {
+      setTenant(null);
+    }
+  }, [tenants]);
 
   const maintenanceQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
@@ -126,8 +140,8 @@ export default function PropertyDetailPage() {
     return allInspections?.filter(insp => insp.status !== 'Cancelled') ?? null;
   }, [allInspections]);
 
-  const isLoading = isLoadingProperty || isLoadingTenants || isLoadingMaintenance || isLoadingInspections;
-  const error = propertyError || tenantsError || maintenanceError || inspectionError;
+  const isLoading = isLoadingProperty || isLoadingTenants || isLoadingMaintenance || isLoadingInspections || isLoadingAllTenants;
+  const error = propertyError || tenantsError || maintenanceError || inspectionError || allTenantsError;
 
   const hasPermission = useMemo(() => {
     if (!property || !user) return false;
@@ -291,6 +305,26 @@ export default function PropertyDetailPage() {
                 )}
               </CardContent>
             </Card>
+
+            <Card>
+              <CardHeader><CardTitle>Tenant Info (Test)</CardTitle></CardHeader>
+              <CardContent className="space-y-4">
+                {isLoadingAllTenants ? (
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Loader2 className="h-4 w-4 animate-spin" />
+                    <span>Loading Test Data...</span>
+                  </div>
+                ) : activeTenantForTest ? (
+                  <>
+                    <div className="flex items-start gap-3"><User className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" /><div><p className="text-sm font-medium">{activeTenantForTest.name}</p><Link href={`/dashboard/tenants/${activeTenantForTest.id}`} className="text-sm text-primary hover:underline">View Profile</Link></div></div>
+                    <div className="flex items-start gap-3"><Mail className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" /><div><p className="text-sm font-medium">Email</p><a href={`mailto:${activeTenantForTest.email}`} className="text-sm text-muted-foreground hover:underline">{activeTenantForTest.email}</a></div></div>
+                    <div className="flex items-start gap-3"><Phone className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" /><div><p className="text-sm font-medium">Phone</p><p className="text-sm text-muted-foreground">{activeTenantForTest.telephone}</p></div></div>
+                  </>
+                ) : (
+                  <p className="text-sm text-muted-foreground text-center py-4">No active tenant found for this property with the new logic.</p>
+                )}
+              </CardContent>
+            </Card>
             
             <Card>
               <CardHeader><CardTitle>Recent Activity</CardTitle></CardHeader>
@@ -316,3 +350,4 @@ export default function PropertyDetailPage() {
     </>
   );
 }
+
