@@ -95,53 +95,52 @@ export default function PropertyDetailPage() {
   }, [firestore, propertyId]);
   const { data: property, isLoading: isLoadingProperty, error: propertyError } = useDoc<Property>(propertyRef);
   
+  // Fetch all tenants for the user
+  const tenantsQuery = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return query(collection(firestore, 'tenants'), where('ownerId', '==', user.uid));
+  }, [user, firestore]);
+  const { data: allTenants, isLoading: isLoadingTenants, error: tenantsError } = useCollection<Tenant>(tenantsQuery);
+
+  // Find the active tenant for the current property from the fetched list
   useEffect(() => {
-    if (!firestore || !user || !propertyId) {
-        setIsTenantLoading(false);
-        return;
+    if (isLoadingTenants) {
+      setIsTenantLoading(true);
+      return;
     }
-
-    const fetchTenant = async () => {
-        setIsTenantLoading(true);
-        setTenantError(null);
-        try {
-            const tenantsQuery = query(
-                collection(firestore, 'tenants'),
-                where('ownerId', '==', user.uid),
-                where('propertyId', '==', propertyId),
-                where('status', '==', 'Active')
-            );
-            const querySnapshot = await getDocs(tenantsQuery);
-            if (!querySnapshot.empty) {
-                const tenantDoc = querySnapshot.docs[0];
-                setTenant({ id: tenantDoc.id, ...tenantDoc.data() } as Tenant);
-            } else {
-                setTenant(null);
-            }
-        } catch (e: any) {
-            console.error("Error fetching tenant:", e);
-            setTenantError(e.message || "Could not load tenant information.");
-        } finally {
-            setIsTenantLoading(false);
-        }
-    };
-    
-    fetchTenant();
-
-  }, [firestore, user, propertyId]);
+    if (tenantsError) {
+      setTenantError(tenantsError.message);
+      setIsTenantLoading(false);
+      return;
+    }
+    if (allTenants) {
+      const activeTenantForProperty = allTenants.find(t => t.propertyId === propertyId && t.status === 'Active');
+      setTenant(activeTenantForProperty || null);
+    }
+    setIsTenantLoading(false);
+  }, [allTenants, isLoadingTenants, tenantsError, propertyId]);
 
 
   const maintenanceQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
-    return query(collection(firestore, 'properties', propertyId, 'maintenanceLogs'), where('status', '!=', 'Cancelled'), where('ownerId', '==', user.uid));
+    return query(collection(firestore, 'properties', propertyId, 'maintenanceLogs'), where('ownerId', '==', user.uid));
   }, [firestore, propertyId, user]);
-  const { data: maintenanceLogs, isLoading: isLoadingMaintenance, error: maintenanceError } = useCollection<MaintenanceLog>(maintenanceQuery);
+  const { data: allMaintenanceLogs, isLoading: isLoadingMaintenance, error: maintenanceError } = useCollection<MaintenanceLog>(maintenanceQuery);
 
   const inspectionQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
-    return query(collection(firestore, 'properties', propertyId, 'inspections'), where('status', '!=', 'Cancelled'), where('ownerId', '==', user.uid));
+    return query(collection(firestore, 'properties', propertyId, 'inspections'), where('ownerId', '==', user.uid));
   }, [firestore, propertyId, user]);
-  const { data: inspections, isLoading: isLoadingInspections, error: inspectionError } = useCollection<Inspection>(inspectionQuery);
+  const { data: allInspections, isLoading: isLoadingInspections, error: inspectionError } = useCollection<Inspection>(inspectionQuery);
+
+  // Client-side filtering
+  const maintenanceLogs = useMemo(() => {
+    return allMaintenanceLogs?.filter(log => log.status !== 'Cancelled') ?? null;
+  }, [allMaintenanceLogs]);
+
+  const inspections = useMemo(() => {
+    return allInspections?.filter(insp => insp.status !== 'Cancelled') ?? null;
+  }, [allInspections]);
 
   const isLoading = isLoadingProperty || isTenantLoading || isLoadingMaintenance || isLoadingInspections;
   const error = propertyError || tenantError || maintenanceError || inspectionError;
@@ -180,12 +179,22 @@ export default function PropertyDetailPage() {
   }
 
   if (error) {
+    const errorMessage = typeof error === 'string' ? error : (error as Error).message;
+    const isIndexError = errorMessage.includes('The query requires an index');
+
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <AlertTriangle className="h-12 w-12 text-destructive" />
         <Card className="w-full max-w-lg text-center">
-            <CardHeader><CardTitle>Error Loading Data</CardTitle></CardHeader>
-            <CardContent><p className="text-sm text-muted-foreground">{typeof error === 'string' ? error : (error as Error).message}</p></CardContent>
+            <CardHeader><CardTitle>{isIndexError ? 'Database Index Required' : 'Error Loading Data'}</CardTitle></CardHeader>
+            <CardContent>
+                <p className="text-sm text-muted-foreground">{errorMessage}</p>
+                {isIndexError && (
+                    <Button asChild variant="link" className="mt-2">
+                        <a href={errorMessage.substring(errorMessage.indexOf('https://'))} target="_blank" rel="noopener noreferrer">Create Index in Firebase</a>
+                    </Button>
+                )}
+            </CardContent>
             <CardFooter className="flex justify-center"><Button asChild><Link href="/dashboard/properties">Return to Properties</Link></Button></CardFooter>
         </Card>
       </div>
@@ -323,3 +332,4 @@ export default function PropertyDetailPage() {
     </>
   );
 }
+
