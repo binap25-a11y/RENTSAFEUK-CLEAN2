@@ -33,7 +33,7 @@ service cloud.firestore {
     match /contractors/{contractorId} {
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
-     match /contractors {
+    match /contractors {
       allow create: if request.resource.data.ownerId == request.auth.uid;
       allow list: if request.auth.uid != null;
     }
