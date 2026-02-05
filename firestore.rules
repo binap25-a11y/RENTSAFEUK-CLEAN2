@@ -8,17 +8,11 @@ service cloud.firestore {
       allow read, write: if request.auth.uid == userId;
     }
 
-    // SECURITY MODEL FOR USER-OWNED COLLECTIONS
-    // For collections like 'properties', 'tenants', and 'contractors', security is
-    // enforced by checking the 'ownerId' field on existing documents.
-    //
-    // The 'create' operation is permitted for any authenticated user, as the client
-    // is responsible for setting the 'ownerId'. Stricter rules on read/update/delete
-    // prevent unauthorized access.
-
     // PROPERTIES & SUBCOLLECTIONS
     match /properties/{propertyId} {
       allow get, update, delete: if request.auth.uid == resource.data.ownerId;
+      allow create: if request.resource.data.ownerId == request.auth.uid;
+      allow list: if request.auth.uid != null;
 
       // Sub-collection rules remain nested.
       // These rules trust the client to set the correct ownerId on sub-collection documents.
@@ -47,33 +41,24 @@ service cloud.firestore {
         allow list, create: if request.auth.uid != null;
       }
     }
-    match /properties {
-      allow list: if request.auth.uid != null;
-      allow create: if request.auth.uid != null;
-    }
-
 
     // TENANTS & SUBCOLLECTIONS
     match /tenants/{tenantId} {
       allow get, update, delete: if request.auth.uid == resource.data.ownerId;
+      allow create: if request.resource.data.ownerId == request.auth.uid;
+      allow list: if request.auth.uid != null;
       
       match /screenings/{screeningId} {
         allow get, update, delete: if request.auth.uid == resource.data.ownerId;
         allow list, create: if request.auth.uid != null;
       }
     }
-    match /tenants {
-       allow list: if request.auth.uid != null;
-       allow create: if request.auth.uid != null;
-    }
 
     // CONTRACTORS
     match /contractors/{contractorId} {
       allow get, update, delete: if request.auth.uid == resource.data.ownerId;
-    }
-    match /contractors {
+      allow create: if request.resource.data.ownerId == request.auth.uid;
       allow list: if request.auth.uid != null;
-      allow create: if request.auth.uid != null;
     }
   }
 }
