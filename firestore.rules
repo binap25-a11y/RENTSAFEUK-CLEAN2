@@ -4,6 +4,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // USER PROFILE
+    // Only the authenticated user can access their own profile.
     match /users/{userId} {
       allow read, write: if request.auth.uid == userId;
     }
@@ -11,40 +12,51 @@ service cloud.firestore {
     // --- TOP-LEVEL COLLECTIONS ---
 
     // Properties
-    match /properties {
-      allow create: if request.auth.uid != null;
-      allow list: if request.auth.uid != null;
-    }
     match /properties/{propertyId} {
+      // Users can only get, update, or delete their own properties.
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
+    }
+    match /properties {
+      // Any authenticated user can create a property, as long as they set themselves as the owner.
+      allow create: if request.resource.data.ownerId == request.auth.uid;
+      // Any authenticated user can list properties, but the client-side query must filter by ownerId.
+      allow list: if request.auth.uid != null;
     }
 
     // Tenants
-    match /tenants {
-      allow create: if request.auth.uid != null;
-      allow list: if request.auth.uid != null;
-    }
     match /tenants/{tenantId} {
+      // Users can only get, update, or delete their own tenants.
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
+    }
+    match /tenants {
+      // Any authenticated user can create a tenant, as long as they set themselves as the owner.
+      allow create: if request.resource.data.ownerId == request.auth.uid;
+      // Any authenticated user can list tenants, but the client-side query must filter by ownerId.
+      allow list: if request.auth.uid != null;
     }
     
     // Contractors
-    match /contractors {
-      allow create: if request.auth.uid != null;
-      allow list: if request.auth.uid != null;
-    }
     match /contractors/{contractorId} {
+      // Users can only get, update, or delete their own contractors.
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
+    }
+    match /contractors {
+      // Any authenticated user can create a contractor, as long as they set themselves as the owner.
+      allow create: if request.resource.data.ownerId == request.auth.uid;
+      // Any authenticated user can list contractors, but the client-side query must filter by ownerId.
+      allow list: if request.auth.uid != null;
     }
 
     // --- SUB-COLLECTIONS ---
+    // Note: Security for subcollections relies on the data within the subcollection document itself,
+    // not on the parent document. This avoids extra `get` calls and is more performant.
 
     // Maintenance Logs
     match /properties/{propertyId}/maintenanceLogs/{logId} {
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
     match /properties/{propertyId}/maintenanceLogs {
-      allow create: if request.auth.uid != null;
+      allow create: if request.resource.data.ownerId == request.auth.uid;
       allow list: if request.auth.uid != null;
     }
 
@@ -53,7 +65,7 @@ service cloud.firestore {
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
     match /properties/{propertyId}/inspections {
-      allow create: if request.auth.uid != null;
+      allow create: if request.resource.data.ownerId == request.auth.uid;
       allow list: if request.auth.uid != null;
     }
 
@@ -62,7 +74,7 @@ service cloud.firestore {
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
     match /properties/{propertyId}/documents {
-      allow create: if request.auth.uid != null;
+      allow create: if request.resource.data.ownerId == request.auth.uid;
       allow list: if request.auth.uid != null;
     }
     
@@ -71,7 +83,7 @@ service cloud.firestore {
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
     match /properties/{propertyId}/expenses {
-      allow create: if request.auth.uid != null;
+      allow create: if request.resource.data.ownerId == request.auth.uid;
       allow list: if request.auth.uid != null;
     }
 
@@ -80,7 +92,7 @@ service cloud.firestore {
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
     match /properties/{propertyId}/rentPayments {
-      allow create: if request.auth.uid != null;
+      allow create: if request.resource.data.ownerId == request.auth.uid;
       allow list: if request.auth.uid != null;
     }
 
@@ -89,7 +101,7 @@ service cloud.firestore {
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
     match /properties/{propertyId}/checklists {
-      allow create: if request.auth.uid != null;
+      allow create: if request.resource.data.ownerId == request.auth.uid;
       allow list: if request.auth.uid != null;
     }
 
@@ -98,7 +110,7 @@ service cloud.firestore {
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
      match /tenants/{tenantId}/screenings {
-      allow create: if request.auth.uid != null;
+      allow create: if request.resource.data.ownerId == request.auth.uid;
       allow list: if request.auth.uid != null;
     }
   }
