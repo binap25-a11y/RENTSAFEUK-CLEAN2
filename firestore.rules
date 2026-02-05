@@ -40,64 +40,64 @@ service cloud.firestore {
 
     // --- SUB-COLLECTIONS ---
 
-    // Maintenance Logs
+    // Maintenance Logs for a Property
     match /properties/{propertyId}/maintenanceLogs {
-      allow create: if request.resource.data.ownerId == request.auth.uid;
-      allow list: if request.auth.uid != null;
+        allow create: if request.resource.data.ownerId == request.auth.uid;
+        allow list: if get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
     }
     match /properties/{propertyId}/maintenanceLogs/{logId} {
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
 
-    // Inspections
+    // Inspections for a Property
     match /properties/{propertyId}/inspections {
-      allow create: if request.resource.data.ownerId == request.auth.uid;
-      allow list: if request.auth.uid != null;
+        allow create: if request.resource.data.ownerId == request.auth.uid;
+        allow list: if get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
     }
     match /properties/{propertyId}/inspections/{inspectionId} {
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
 
-    // Documents
+    // Documents for a Property
     match /properties/{propertyId}/documents {
-      allow create: if request.resource.data.ownerId == request.auth.uid;
-      allow list: if request.auth.uid != null;
+        allow create: if request.resource.data.ownerId == request.auth.uid;
+        allow list: if get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
     }
     match /properties/{propertyId}/documents/{documentId} {
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
     
-    // Expenses
+    // Expenses for a Property
     match /properties/{propertyId}/expenses {
-      allow create: if request.resource.data.ownerId == request.auth.uid;
-      allow list: if request.auth.uid != null;
+        allow create: if request.resource.data.ownerId == request.auth.uid;
+        allow list: if get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
     }
     match /properties/{propertyId}/expenses/{expenseId} {
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
 
-    // Rent Payments
+    // Rent Payments for a Property
     match /properties/{propertyId}/rentPayments {
-      allow create: if request.resource.data.ownerId == request.auth.uid;
-      allow list: if request.auth.uid != null;
+        allow create: if request.resource.data.ownerId == request.auth.uid;
+        allow list: if get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
     }
     match /properties/{propertyId}/rentPayments/{rentPaymentId} {
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
 
-    // Checklists
+    // Checklists for a Property
     match /properties/{propertyId}/checklists {
-      allow create: if request.resource.data.ownerId == request.auth.uid;
-      allow list: if request.auth.uid != null;
+        allow create: if request.resource.data.ownerId == request.auth.uid;
+        allow list: if get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
     }
      match /properties/{propertyId}/checklists/{checklistId} {
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
 
-    // Tenant Screenings
+    // Tenant Screenings for a Tenant
      match /tenants/{tenantId}/screenings {
-      allow create: if request.resource.data.ownerId == request.auth.uid;
-      allow list: if request.auth.uid != null;
+        allow create: if request.resource.data.ownerId == request.auth.uid;
+        allow list: if get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid;
     }
     match /tenants/{tenantId}/screenings/{screeningId} {
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
