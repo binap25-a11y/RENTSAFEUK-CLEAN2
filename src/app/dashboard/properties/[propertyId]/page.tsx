@@ -8,9 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Bed, Bath, Edit, Trash2, MoreVertical, Loader2, AlertTriangle, User, Home, Wrench, CalendarCheck, FileText, Banknote, Shield, Phone, Mail, MapPin } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc, collection, query, where, getDocs, FirestoreError } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, FirestoreError } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -84,9 +84,6 @@ export default function PropertyDetailPage() {
   const { toast } = useToast();
   
   const [isDeleting, setIsDeleting] = useState(false);
-  const [tenant, setTenant] = useState<Tenant | null>(null);
-  const [isTenantLoading, setIsTenantLoading] = useState(true);
-  const [tenantError, setTenantError] = useState<string | null>(null);
 
   // --- Data Fetching using Hooks ---
   const propertyRef = useMemoFirebase(() => {
@@ -95,31 +92,18 @@ export default function PropertyDetailPage() {
   }, [firestore, propertyId]);
   const { data: property, isLoading: isLoadingProperty, error: propertyError } = useDoc<Property>(propertyRef);
   
-  // Fetch all tenants for the user
+  // Fetch all tenants for the user. This query is simple and reliably indexed.
   const tenantsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(collection(firestore, 'tenants'), where('ownerId', '==', user.uid));
   }, [user, firestore]);
   const { data: allTenants, isLoading: isLoadingTenants, error: tenantsError } = useCollection<Tenant>(tenantsQuery);
 
-  // Find the active tenant for the current property from the fetched list
-  useEffect(() => {
-    if (isLoadingTenants) {
-      setIsTenantLoading(true);
-      return;
-    }
-    if (tenantsError) {
-      setTenantError(tenantsError.message);
-      setIsTenantLoading(false);
-      return;
-    }
-    if (allTenants) {
-      const activeTenantForProperty = allTenants.find(t => t.propertyId === propertyId && t.status === 'Active');
-      setTenant(activeTenantForProperty || null);
-    }
-    setIsTenantLoading(false);
-  }, [allTenants, isLoadingTenants, tenantsError, propertyId]);
-
+  // Derive the active tenant for this specific property from the fetched list.
+  const tenant = useMemo(() => {
+    if (!allTenants || !propertyId) return null;
+    return allTenants.find(t => t.propertyId === propertyId && t.status === 'Active');
+  }, [allTenants, propertyId]);
 
   const maintenanceQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
@@ -142,8 +126,8 @@ export default function PropertyDetailPage() {
     return allInspections?.filter(insp => insp.status !== 'Cancelled') ?? null;
   }, [allInspections]);
 
-  const isLoading = isLoadingProperty || isTenantLoading || isLoadingMaintenance || isLoadingInspections;
-  const error = propertyError || tenantError || maintenanceError || inspectionError;
+  const isLoading = isLoadingProperty || isLoadingTenants || isLoadingMaintenance || isLoadingInspections;
+  const error = propertyError || tenantsError || maintenanceError || inspectionError;
 
   const hasPermission = useMemo(() => {
     if (!property || !user) return false;
@@ -179,7 +163,7 @@ export default function PropertyDetailPage() {
   }
 
   if (error) {
-    const errorMessage = typeof error === 'string' ? error : (error as Error).message;
+    const errorMessage = (error as Error).message;
     const isIndexError = errorMessage.includes('The query requires an index');
 
     return (
@@ -332,4 +316,3 @@ export default function PropertyDetailPage() {
     </>
   );
 }
-
