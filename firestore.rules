@@ -11,30 +11,30 @@ service cloud.firestore {
     // --- TOP-LEVEL COLLECTIONS ---
 
     // Properties
+    match /properties {
+      allow create: if request.auth.uid != null;
+      allow list: if request.auth.uid != null;
+    }
     match /properties/{propertyId} {
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
-    match /properties {
-      allow create: if request.resource.data.ownerId == request.auth.uid;
-      allow list: if request.auth.uid != null;
-    }
 
     // Tenants
+    match /tenants {
+      allow create: if request.auth.uid != null;
+      allow list: if request.auth.uid != null;
+    }
     match /tenants/{tenantId} {
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
-    match /tenants {
-      allow create: if request.resource.data.ownerId == request.auth.uid;
-      allow list: if request.auth.uid != null;
-    }
     
     // Contractors
+    match /contractors {
+      allow create: if request.auth.uid != null;
+      allow list: if request.auth.uid != null;
+    }
     match /contractors/{contractorId} {
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
-    }
-    match /contractors {
-      allow create: if request.resource.data.ownerId == request.auth.uid;
-      allow list: if request.auth.uid != null;
     }
 
     // --- SUB-COLLECTIONS ---
@@ -44,7 +44,7 @@ service cloud.firestore {
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
     match /properties/{propertyId}/maintenanceLogs {
-      allow create: if request.resource.data.ownerId == request.auth.uid;
+      allow create: if request.auth.uid != null;
       allow list: if request.auth.uid != null;
     }
 
@@ -53,7 +53,7 @@ service cloud.firestore {
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
     match /properties/{propertyId}/inspections {
-      allow create: if request.resource.data.ownerId == request.auth.uid;
+      allow create: if request.auth.uid != null;
       allow list: if request.auth.uid != null;
     }
 
@@ -62,7 +62,7 @@ service cloud.firestore {
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
     match /properties/{propertyId}/documents {
-      allow create: if request.resource.data.ownerId == request.auth.uid;
+      allow create: if request.auth.uid != null;
       allow list: if request.auth.uid != null;
     }
     
@@ -71,7 +71,7 @@ service cloud.firestore {
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
     match /properties/{propertyId}/expenses {
-      allow create: if request.resource.data.ownerId == request.auth.uid;
+      allow create: if request.auth.uid != null;
       allow list: if request.auth.uid != null;
     }
 
@@ -80,7 +80,7 @@ service cloud.firestore {
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
     match /properties/{propertyId}/rentPayments {
-      allow create: if request.resource.data.ownerId == request.auth.uid;
+      allow create: if request.auth.uid != null;
       allow list: if request.auth.uid != null;
     }
 
@@ -89,7 +89,7 @@ service cloud.firestore {
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
     match /properties/{propertyId}/checklists {
-      allow create: if request.resource.data.ownerId == request.auth.uid;
+      allow create: if request.auth.uid != null;
       allow list: if request.auth.uid != null;
     }
 
@@ -98,7 +98,7 @@ service cloud.firestore {
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
      match /tenants/{tenantId}/screenings {
-      allow create: if request.resource.data.ownerId == request.auth.uid;
+      allow create: if request.auth.uid != null;
       allow list: if request.auth.uid != null;
     }
   }
