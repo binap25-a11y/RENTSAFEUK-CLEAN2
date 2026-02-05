@@ -1,57 +1,8 @@
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
-
-    function isParentOwner(parentCollection, parentId) {
-      return get(/databases/$(database)/documents/$(parentCollection)/$(parentId)).data.ownerId == request.auth.uid;
-    }
-
-    // --- User Profile ---
-    match /users/{userId} {
-      allow get, update: if request.auth.uid == userId;
-    }
-
-    // --- Properties Collection ---
-    match /properties/{propertyId} {
-      allow get, update, delete: if resource.data.ownerId == request.auth.uid;
-    }
-    match /properties {
-      allow create: if request.resource.data.ownerId == request.auth.uid;
-      allow list: if request.auth.uid != null;
-    }
-    
-    // --- Tenants Collection ---
-    match /tenants/{tenantId} {
-      allow get, update, delete: if resource.data.ownerId == request.auth.uid;
-    }
-    match /tenants {
-      allow create: if request.resource.data.ownerId == request.auth.uid;
-      allow list: if request.auth.uid != null;
-    }
-
-    // --- Contractors Collection ---
-    match /contractors/{contractorId} {
-      allow get, update, delete: if resource.data.ownerId == request.auth.uid;
-    }
-    match /contractors {
-      allow create: if request.resource.data.ownerId == request.auth.uid;
-      allow list: if request.auth.uid != null;
-    }
-
-    // --- Properties Sub-Collections ---
-    match /properties/{propertyId}/{subcollection}/{docId} {
-      allow get, update, delete: if isParentOwner('properties', propertyId);
-    }
-    match /properties/{propertyId}/{subcollection} {
-      allow create, list: if isParentOwner('properties', propertyId);
-    }
-
-    // --- Tenants Sub-Collections ---
-    match /tenants/{tenantId}/{subcollection}/{docId} {
-      allow get, update, delete: if isParentOwner('tenants', tenantId);
-    }
-    match /tenants/{tenantId}/{subcollection} {
-      allow create, list: if isParentOwner('tenants', tenantId);
+    match /{document=**} {
+      allow read, write: if request.auth != null;
     }
   }
 }
