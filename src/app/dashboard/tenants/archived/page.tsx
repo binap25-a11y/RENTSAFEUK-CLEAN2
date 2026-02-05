@@ -215,11 +215,11 @@ export default function ArchivedTenantsPage() {
                                             </div>
                                         )}
                                     </CardContent>
-                                    <CardFooter className="grid grid-cols-2 gap-2">
-                                        <Button size="sm" variant="outline" className="w-full" onClick={() => handleRestore(tenant.id, tenant.name)}>
+                                    <CardFooter className="flex justify-end gap-2">
+                                        <Button size="sm" variant="outline" onClick={() => handleRestore(tenant.id, tenant.name)}>
                                             <RefreshCw className="mr-2 h-4 w-4" /> Restore
                                         </Button>
-                                        <Button size="sm" variant="destructive" className="w-full" onClick={() => setTenantToDelete(tenant)}>
+                                        <Button size="sm" variant="destructive" onClick={() => setTenantToDelete(tenant)}>
                                             <Trash2 className="mr-2 h-4 w-4" /> Delete
                                         </Button>
                                     </CardFooter>
