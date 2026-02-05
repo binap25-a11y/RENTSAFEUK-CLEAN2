@@ -134,16 +134,16 @@ export default function AddTenantPage() {
         status: 'Active',
       };
       const tenantsCollection = collection(firestore, 'tenants');
-      const docRef = await addDoc(tenantsCollection, newTenant);
+      await addDoc(tenantsCollection, newTenant);
 
       const propertyDocRef = doc(firestore, 'properties', data.propertyId);
       await updateDoc(propertyDocRef, { status: 'Occupied' });
 
       toast({
-        title: 'Tenant Saved',
-        description: `${data.name} has been added. Now proceeding to tenant screening.`,
+        title: 'Tenant Assigned',
+        description: `${data.name} has been assigned to the property.`,
       });
-      router.push(`/dashboard/tenants/screening?tenantId=${docRef.id}`);
+      router.push(`/dashboard/properties/${data.propertyId}`);
 
     } catch (error: any) {
       const tenantsCollection = collection(firestore, 'tenants');
@@ -326,7 +326,7 @@ export default function AddTenantPage() {
                       Saving...
                     </>
                   ) : (
-                    'Save and Screen Tenant'
+                    'Save Tenant'
                   )}
                 </Button>
             </div>
