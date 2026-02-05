@@ -182,10 +182,10 @@ export default function ArchivedTenantsPage() {
                                         <TableCell>{tenant.email}</TableCell>
                                         <TableCell>{propertyMap[tenant.propertyId] || 'N/A'}</TableCell>
                                         <TableCell className="text-right space-x-2">
-                                            <Button size="sm" variant="outline" onClick={() => handleRestore(tenant.id, tenant.name)}>
+                                            <Button size="sm" variant="outline" className="w-28 justify-center" onClick={() => handleRestore(tenant.id, tenant.name)}>
                                                 <RefreshCw className="mr-2 h-4 w-4" /> Restore
                                             </Button>
-                                            <Button size="sm" variant="destructive" onClick={() => setTenantToDelete(tenant)}>
+                                            <Button size="sm" variant="destructive" className="w-28 justify-center" onClick={() => setTenantToDelete(tenant)}>
                                                 <Trash2 className="mr-2 h-4 w-4" /> Delete
                                             </Button>
                                         </TableCell>
@@ -215,7 +215,7 @@ export default function ArchivedTenantsPage() {
                                             </div>
                                         )}
                                     </CardContent>
-                                    <CardFooter className="flex justify-end gap-2">
+                                    <CardFooter className="grid grid-cols-2 gap-2">
                                         <Button size="sm" variant="outline" onClick={() => handleRestore(tenant.id, tenant.name)}>
                                             <RefreshCw className="mr-2 h-4 w-4" /> Restore
                                         </Button>
