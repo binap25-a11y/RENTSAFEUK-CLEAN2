@@ -94,21 +94,18 @@ export default function PropertyDetailPage() {
   }, [firestore, propertyId]);
   const { data: property, isLoading: isLoadingProperty, error: propertyError } = useDoc<Property>(propertyRef);
   
-  const tenantsForPropertyQuery = useMemoFirebase(() => {
-    if (!user || !firestore || !propertyId) return null;
-    // Simplified query to avoid needing a composite index. We will filter for 'Active' status on the client.
-    return query(
-      collection(firestore, 'users', user.uid, 'tenants'),
-      where('propertyId', '==', propertyId)
-    );
-  }, [firestore, user, propertyId]);
+  const tenantsForUserQuery = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return query(collection(firestore, 'users', user.uid, 'tenants'));
+  }, [firestore, user]);
 
-  const { data: tenants, isLoading: isLoadingTenants, error: tenantError } = useCollection<Tenant>(tenantsForPropertyQuery);
+  const { data: allUserTenants, isLoading: isLoadingTenants, error: tenantError } = useCollection<Tenant>(tenantsForUserQuery);
 
   const tenant = useMemo(() => {
-    if (!tenants) return null;
-    return tenants.find(t => t.status === 'Active') || null;
-  }, [tenants]);
+    if (!allUserTenants) return null;
+    // Find the active tenant for the current property
+    return allUserTenants.find(t => t.propertyId === propertyId && t.status === 'Active') || null;
+  }, [allUserTenants, propertyId]);
 
   const maintenanceQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
@@ -132,7 +129,7 @@ export default function PropertyDetailPage() {
   }, [allInspections]);
 
   const isLoading = isLoadingProperty || isLoadingMaintenance || isLoadingInspections;
-  const error = propertyError || maintenanceError || inspectionError;
+  const error = propertyError || maintenanceError || inspectionError || tenantError;
 
   const hasPermission = useMemo(() => {
     if (!property || !user) return false;
@@ -167,8 +164,8 @@ export default function PropertyDetailPage() {
     return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
   }
 
-  if (error) {
-    const errorMessage = (error as Error).message;
+  if (propertyError) {
+    const errorMessage = (propertyError as Error).message;
     const isIndexError = errorMessage.includes('The query requires an index');
 
     return (
@@ -286,6 +283,13 @@ export default function PropertyDetailPage() {
                   <div className="flex justify-center items-center h-24">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   </div>
+                ) : tenantError ? (
+                    <div className="text-center text-muted-foreground py-4">
+                        <p>No active tenant assigned.</p>
+                        <Button asChild variant="secondary" className="w-full mt-2">
+                          <Link href={`/dashboard/tenants/add?propertyId=${propertyId}`}>Assign Tenant</Link>
+                        </Button>
+                    </div>
                 ) : tenant ? (
                   <>
                     <div className="flex items-start gap-3">
