@@ -10,7 +10,9 @@ service cloud.firestore {
     
     // USER data can only be read/written by the user themselves
     match /users/{userId} {
+      // allow get/update/delete on the user document itself
       allow get, update, delete: if isOwner(userId);
+      // allow creation of the user document
       allow create: if isOwner(userId);
 
       // Rule for GETTING/WRITING individual tenant documents
