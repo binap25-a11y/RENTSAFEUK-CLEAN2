@@ -2,13 +2,8 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- Helper Functions ---
-    function isOwner(docData) {
-      return request.auth.uid == docData.ownerId;
-    }
-
     function isParentOwner(parentCollection, parentId) {
-        return get(/databases/$(database)/documents/$(parentCollection)/$(parentId)).data.ownerId == request.auth.uid;
+      return get(/databases/$(database)/documents/$(parentCollection)/$(parentId)).data.ownerId == request.auth.uid;
     }
 
     // --- User Profile ---
@@ -18,28 +13,28 @@ service cloud.firestore {
 
     // --- Properties Collection ---
     match /properties/{propertyId} {
-      allow get, update, delete: if isOwner(resource.data);
+      allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
     match /properties {
-      allow create: if isOwner(request.resource.data);
+      allow create: if request.resource.data.ownerId == request.auth.uid;
       allow list: if request.auth.uid != null;
     }
     
     // --- Tenants Collection ---
     match /tenants/{tenantId} {
-      allow get, update, delete: if isOwner(resource.data);
+      allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
     match /tenants {
-      allow create: if isOwner(request.resource.data);
+      allow create: if request.resource.data.ownerId == request.auth.uid;
       allow list: if request.auth.uid != null;
     }
 
     // --- Contractors Collection ---
     match /contractors/{contractorId} {
-      allow get, update, delete: if isOwner(resource.data);
+      allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
      match /contractors {
-      allow create: if isOwner(request.resource.data);
+      allow create: if request.resource.data.ownerId == request.auth.uid;
       allow list: if request.auth.uid != null;
     }
 
