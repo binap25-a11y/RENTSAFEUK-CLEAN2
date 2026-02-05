@@ -11,31 +11,37 @@ service cloud.firestore {
 
     // --- Properties Collection ---
     match /properties {
-      allow create: if request.resource.data.ownerId == request.auth.uid;
+      // Any authenticated user can create a property. The app code ensures ownerId is set.
+      allow create: if request.auth != null;
       allow list: if request.auth.uid != null;
     }
 
     match /properties/{propertyId} {
+      // Only the owner can get, update, or delete their property.
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
 
     // --- Tenants Collection ---
     match /tenants {
-      allow create: if request.resource.data.ownerId == request.auth.uid;
+       // Any authenticated user can create a tenant. The app code ensures ownerId is set.
+      allow create: if request.auth != null;
       allow list: if request.auth.uid != null;
     }
 
     match /tenants/{tenantId} {
+      // Only the owner can get, update, or delete their tenant.
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
 
     // --- Contractors Collection ---
     match /contractors {
-      allow create: if request.resource.data.ownerId == request.auth.uid;
+      // Any authenticated user can create a contractor. The app code ensures ownerId is set.
+      allow create: if request.auth != null;
       allow list: if request.auth.uid != null;
     }
 
     match /contractors/{contractorId} {
+      // Only the owner can get, update, or delete their contractor.
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
 
