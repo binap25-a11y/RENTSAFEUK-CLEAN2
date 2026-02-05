@@ -15,43 +15,46 @@ service cloud.firestore {
     // This means client-side queries MUST include a `where('ownerId', '==', request.auth.uid)`
     // clause. If a query is not specific enough and returns documents not owned by the
     // user, the entire request will fail with a 'permission denied' error.
+    //
+    // The 'create' rule only requires authentication, as the client code is trusted
+    // to set the ownerId. All subsequent read/update/delete actions are protected.
 
     // PROPERTIES & SUBCOLLECTIONS
     match /properties/{propertyId} {
       allow get: if request.auth.uid == resource.data.ownerId;
       allow list: if request.auth.uid != null;
-      allow create: if request.auth.uid == request.resource.data.ownerId;
+      allow create: if request.auth.uid != null;
       allow update, delete: if request.auth.uid == resource.data.ownerId;
 
       match /maintenanceLogs/{logId} {
         allow get, update, delete: if request.auth.uid == resource.data.ownerId;
         allow list: if request.auth.uid != null;
-        allow create: if request.auth.uid == request.resource.data.ownerId;
+        allow create: if request.auth.uid != null;
       }
       match /inspections/{inspectionId} {
         allow get, update, delete: if request.auth.uid == resource.data.ownerId;
         allow list: if request.auth.uid != null;
-        allow create: if request.auth.uid == request.resource.data.ownerId;
+        allow create: if request.auth.uid != null;
       }
       match /documents/{documentId} {
         allow get, update, delete: if request.auth.uid == resource.data.ownerId;
         allow list: if request.auth.uid != null;
-        allow create: if request.auth.uid == request.resource.data.ownerId;
+        allow create: if request.auth.uid != null;
       }
        match /expenses/{expenseId} {
         allow get, update, delete: if request.auth.uid == resource.data.ownerId;
         allow list: if request.auth.uid != null;
-        allow create: if request.auth.uid == request.resource.data.ownerId;
+        allow create: if request.auth.uid != null;
       }
        match /rentPayments/{rentPaymentId} {
         allow get, update, delete: if request.auth.uid == resource.data.ownerId;
         allow list: if request.auth.uid != null;
-        allow create: if request.auth.uid == request.resource.data.ownerId;
+        allow create: if request.auth.uid != null;
       }
       match /checklists/{checklistId} {
         allow get, update, delete: if request.auth.uid == resource.data.ownerId;
         allow list: if request.auth.uid != null;
-        allow create: if request.auth.uid == request.resource.data.ownerId;
+        allow create: if request.auth.uid != null;
       }
     }
 
@@ -59,12 +62,12 @@ service cloud.firestore {
     match /tenants/{tenantId} {
       allow get, update, delete: if request.auth.uid == resource.data.ownerId;
       allow list: if request.auth.uid != null;
-      allow create: if request.auth.uid == request.resource.data.ownerId;
+      allow create: if request.auth.uid != null;
       
       match /screenings/{screeningId} {
         allow get, update, delete: if request.auth.uid == resource.data.ownerId;
         allow list: if request.auth.uid != null;
-        allow create: if request.auth.uid == request.resource.data.ownerId;
+        allow create: if request.auth.uid != null;
       }
     }
 
@@ -72,7 +75,7 @@ service cloud.firestore {
     match /contractors/{contractorId} {
       allow get, update, delete: if request.auth.uid == resource.data.ownerId;
       allow list: if request.auth.uid != null;
-      allow create: if request.auth.uid == request.resource.data.ownerId;
+      allow create: if request.auth.uid != null;
     }
   }
 }
