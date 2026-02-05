@@ -1,11 +1,14 @@
 rules_version = '2';
-
 service cloud.firestore {
   match /databases/{database}/documents {
 
     // --- Helper Functions ---
     function isOwner(docData) {
       return request.auth.uid == docData.ownerId;
+    }
+
+    function isParentOwner(parentCollection, parentId) {
+        return get(/databases/$(database)/documents/$(parentCollection)/$(parentId)).data.ownerId == request.auth.uid;
     }
 
     // --- User Profile ---
@@ -40,23 +43,20 @@ service cloud.firestore {
       allow list: if request.auth.uid != null;
     }
 
-    // --- Sub-Collection Rules ---
-    function isParentOwner(parentCollection, parentId) {
-        return get(/databases/$(database)/documents/$(parentCollection)/$(parentId)).data.ownerId == request.auth.uid;
-    }
-
+    // --- Properties Sub-Collections ---
     match /properties/{propertyId}/{subcollection}/{docId} {
-      allow get, update, delete, create: if isParentOwner('properties', propertyId);
+      allow get, update, delete: if isParentOwner('properties', propertyId);
     }
     match /properties/{propertyId}/{subcollection} {
-      allow list: if isParentOwner('properties', propertyId);
+      allow create, list: if isParentOwner('properties', propertyId);
     }
 
+    // --- Tenants Sub-Collections ---
     match /tenants/{tenantId}/{subcollection}/{docId} {
-      allow get, update, delete, create: if isParentOwner('tenants', tenantId);
+      allow get, update, delete: if isParentOwner('tenants', tenantId);
     }
     match /tenants/{tenantId}/{subcollection} {
-      allow list: if isParentOwner('tenants', tenantId);
+      allow create, list: if isParentOwner('tenants', tenantId);
     }
   }
 }
