@@ -3,60 +3,60 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // --- Helper Functions ---
+    function isOwner(docData) {
+      return request.auth.uid == docData.ownerId;
+    }
+
     // --- User Profile ---
-    // Users can only read and write their own document.
     match /users/{userId} {
-      allow read, update: if request.auth.uid == userId;
+      allow get, update: if request.auth.uid == userId;
     }
 
     // --- Properties Collection ---
-    match /properties {
-      // Any authenticated user can create a property. The app code ensures ownerId is set.
-      allow create: if request.auth != null;
-      allow list: if request.auth.uid != null;
-    }
-
     match /properties/{propertyId} {
-      // Only the owner can get, update, or delete their property.
-      allow get, update, delete: if resource.data.ownerId == request.auth.uid;
+      allow get, update, delete: if isOwner(resource.data);
     }
-
-    // --- Tenants Collection ---
-    match /tenants {
-       // Any authenticated user can create a tenant. The app code ensures ownerId is set.
-      allow create: if request.auth != null;
+    match /properties {
+      allow create: if isOwner(request.resource.data);
       allow list: if request.auth.uid != null;
     }
-
+    
+    // --- Tenants Collection ---
     match /tenants/{tenantId} {
-      // Only the owner can get, update, or delete their tenant.
-      allow get, update, delete: if resource.data.ownerId == request.auth.uid;
+      allow get, update, delete: if isOwner(resource.data);
+    }
+    match /tenants {
+      allow create: if isOwner(request.resource.data);
+      allow list: if request.auth.uid != null;
     }
 
     // --- Contractors Collection ---
-    match /contractors {
-      // Any authenticated user can create a contractor. The app code ensures ownerId is set.
-      allow create: if request.auth != null;
+    match /contractors/{contractorId} {
+      allow get, update, delete: if isOwner(resource.data);
+    }
+     match /contractors {
+      allow create: if isOwner(request.resource.data);
       allow list: if request.auth.uid != null;
     }
 
-    match /contractors/{contractorId} {
-      // Only the owner can get, update, or delete their contractor.
-      allow get, update, delete: if resource.data.ownerId == request.auth.uid;
+    // --- Sub-Collection Rules ---
+    function isParentOwner(parentCollection, parentId) {
+        return get(/databases/$(database)/documents/$(parentCollection)/$(parentId)).data.ownerId == request.auth.uid;
     }
 
-    // --- Generic Sub-Collection Rules ---
-
-    // This rule applies to ALL sub-collections under any property.
-    // It allows read/write access only if the user owns the parent property document.
     match /properties/{propertyId}/{subcollection}/{docId} {
-      allow read, write: if get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
+      allow get, update, delete, create: if isParentOwner('properties', propertyId);
+    }
+    match /properties/{propertyId}/{subcollection} {
+      allow list: if isParentOwner('properties', propertyId);
     }
 
-    // This rule applies to ALL sub-collections under any tenant.
-    // It allows read/write access only if the user owns the parent tenant document.
     match /tenants/{tenantId}/{subcollection}/{docId} {
-      allow read, write: if get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid;
+      allow get, update, delete, create: if isParentOwner('tenants', tenantId);
+    }
+    match /tenants/{tenantId}/{subcollection} {
+      allow list: if isParentOwner('tenants', tenantId);
     }
   }
 }
