@@ -23,6 +23,8 @@ import {
 } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+
 
 // Interfaces
 interface Property {
@@ -85,11 +87,8 @@ export default function PropertyDetailPage() {
   
   const [isDeleting, setIsDeleting] = useState(false);
   const [tenant, setTenant] = useState<Tenant | null>(null);
-  
-  // State for the new test card logic
-  const [testTenant, setTestTenant] = useState<Tenant | null>(null);
-  const [isTestLoading, setIsTestLoading] = useState(true);
-  const [testError, setTestError] = useState<string | null>(null);
+  const [isLoadingTenant, setIsLoadingTenant] = useState(true);
+  const [tenantError, setTenantError] = useState<string | null>(null);
 
 
   // --- Data Fetching using Hooks ---
@@ -99,58 +98,44 @@ export default function PropertyDetailPage() {
   }, [firestore, propertyId]);
   const { data: property, isLoading: isLoadingProperty, error: propertyError } = useDoc<Property>(propertyRef);
   
-  const tenantsQuery = useMemoFirebase(() => {
-    if (!user || !firestore || !propertyId) return null;
-    return query(collection(firestore, 'tenants'), where('propertyId', '==', propertyId), where('status', '==', 'Active'), limit(1));
-  }, [user, firestore, propertyId]);
-
-  const { data: tenants, isLoading: isLoadingTenants, error: tenantsError } = useCollection<Tenant>(tenantsQuery);
-
   useEffect(() => {
-    if (tenants && tenants.length > 0) {
-      setTenant(tenants[0]);
-    } else {
-      setTenant(null);
+    if (!user || !firestore || !propertyId) {
+      setIsLoadingTenant(false);
+      return;
     }
-  }, [tenants]);
 
-    // New useEffect for the test card logic
-    useEffect(() => {
-        if (!user || !firestore || !propertyId) {
-        setIsTestLoading(false);
-        return;
-        }
+    const fetchTenant = async () => {
+      setIsLoadingTenant(true);
+      setTenantError(null);
+      setTenant(null);
 
-        const fetchTestTenant = async () => {
-        setIsTestLoading(true);
-        setTestError(null);
-        try {
-            const tenantsCollectionRef = collection(firestore, 'tenants');
-            // Query for ALL tenants belonging to the user
-            const q = query(tenantsCollectionRef, where('ownerId', '==', user.uid));
-            
-            const querySnapshot = await getDocs(q);
-            
-            const allTenantsForUser = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tenant));
-            
-            // Now filter on the client-side
-            const activeTenantForThisProperty = allTenantsForUser.find(
-            t => t.propertyId === propertyId && t.status === 'Active'
-            );
+      try {
+        const tenantsCollectionRef = collection(firestore, 'tenants');
+        // This is the most robust query. It finds all tenants owned by the user.
+        const q = query(tenantsCollectionRef, where('ownerId', '==', user.uid));
+        
+        const querySnapshot = await getDocs(q);
+        
+        const allTenantsForUser = querySnapshot.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tenant));
+        
+        // We then filter on the client side to find the active tenant for THIS property.
+        // This avoids needing a composite index in Firestore.
+        const activeTenantForThisProperty = allTenantsForUser.find(
+          t => t.propertyId === propertyId && t.status === 'Active'
+        );
 
-            setTestTenant(activeTenantForThisProperty || null);
+        setTenant(activeTenantForThisProperty || null);
+      } catch (e: any) {
+        console.error("Error fetching tenant data:", e);
+        // Set the raw error message to be displayed in the UI
+        setTenantError(e.message);
+      } finally {
+        setIsLoadingTenant(false);
+      }
+    };
 
-        } catch (e: any) {
-            console.error("Test tenant fetch error:", e);
-            setTestError(`Failed to load tenant data. Error: ${e.message}. This might be due to a missing database index. Please check the server logs for a link to create it.`);
-        } finally {
-            setIsTestLoading(false);
-        }
-        };
-
-        fetchTestTenant();
-
-    }, [user, firestore, propertyId]);
+    fetchTenant();
+  }, [user, firestore, propertyId]);
 
   const maintenanceQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
@@ -173,8 +158,8 @@ export default function PropertyDetailPage() {
     return allInspections?.filter(insp => insp.status !== 'Cancelled') ?? null;
   }, [allInspections]);
 
-  const isLoading = isLoadingProperty || isLoadingTenants || isLoadingMaintenance || isLoadingInspections;
-  const error = propertyError || tenantsError || maintenanceError || inspectionError;
+  const isLoading = isLoadingProperty || isLoadingMaintenance || isLoadingInspections;
+  const error = propertyError || maintenanceError || inspectionError;
 
   const hasPermission = useMemo(() => {
     if (!property || !user) return false;
@@ -324,7 +309,17 @@ export default function PropertyDetailPage() {
             <Card>
               <CardHeader><CardTitle>Current Tenant</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                {tenant ? (
+                {isLoadingTenant ? (
+                    <div className="flex justify-center items-center h-24">
+                        <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                ) : tenantError ? (
+                    <Alert variant="destructive">
+                        <AlertTriangle className="h-4 w-4" />
+                        <AlertTitle>Error Loading Tenant</AlertTitle>
+                        <AlertDescription>{tenantError}</AlertDescription>
+                    </Alert>
+                ) : tenant ? (
                   <>
                     <div className="flex items-start gap-3"><User className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" /><div><p className="text-sm font-medium">{tenant.name}</p><Link href={`/dashboard/tenants/${tenant.id}`} className="text-sm text-primary hover:underline">View Profile</Link></div></div>
                     <div className="flex items-start gap-3"><Mail className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" /><div><p className="text-sm font-medium">Email</p><a href={`mailto:${tenant.email}`} className="text-sm text-muted-foreground hover:underline">{tenant.email}</a></div></div>
@@ -337,28 +332,6 @@ export default function PropertyDetailPage() {
                   </>
                 )}
               </CardContent>
-            </Card>
-
-            <Card>
-                <CardHeader><CardTitle>Tenant Info (Test)</CardTitle></CardHeader>
-                <CardContent className="space-y-4">
-                {isTestLoading ? (
-                    <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                    <Loader2 className="h-4 w-4 animate-spin" />
-                    <span>Loading Test Data...</span>
-                    </div>
-                ) : testError ? (
-                    <p className="text-sm text-destructive text-center py-4">{testError}</p>
-                ) : testTenant ? (
-                    <>
-                    <div className="flex items-start gap-3"><User className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" /><div><p className="text-sm font-medium">{testTenant.name}</p><Link href={`/dashboard/tenants/${testTenant.id}`} className="text-sm text-primary hover:underline">View Profile</Link></div></div>
-                    <div className="flex items-start gap-3"><Mail className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" /><div><p className="text-sm font-medium">Email</p><a href={`mailto:${testTenant.email}`} className="text-sm text-muted-foreground hover:underline">{testTenant.email}</a></div></div>
-                    <div className="flex items-start gap-3"><Phone className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" /><div><p className="text-sm font-medium">Phone</p><p className="text-sm text-muted-foreground">{testTenant.telephone}</p></div></div>
-                    </>
-                ) : (
-                    <p className="text-sm text-muted-foreground text-center py-4">No active tenant found for this property with the new logic.</p>
-                )}
-                </CardContent>
             </Card>
             
             <Card>
@@ -385,4 +358,3 @@ export default function PropertyDetailPage() {
     </>
   );
 }
-
