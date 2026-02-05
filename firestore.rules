@@ -3,26 +3,15 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper functions
-    function isOwner(ownerId) {
-      return request.auth.uid == ownerId;
-    }
-
-    function isParentOwner(parentPath) {
-      return isOwner(get(parentPath).data.ownerId);
+    // Helper function to check ownership
+    function isOwner(userId) {
+      return request.auth.uid == userId;
     }
     
     // USER data can only be read/written by the user themselves
     match /users/{userId} {
-      // Allow user to get, update, delete their own profile document
       allow get, update, delete: if isOwner(userId);
-      // Allow a user to create their own profile document
       allow create: if isOwner(userId);
-
-      // Rule for LISTING tenants collection
-      match /tenants {
-        allow list: if isOwner(userId);
-      }
 
       // Rule for GETTING/WRITING individual tenant documents
       match /tenants/{tenantId} {
@@ -30,27 +19,38 @@ service cloud.firestore {
         
         // SCREENINGS are owned by the user via the tenant
         match /screenings/{screeningId} {
-            // A user can read/write screenings for their own tenants
             allow read, write: if isOwner(userId);
         }
       }
+      
+      // Rule for LISTING tenants collection
+      match /tenants {
+        allow list: if isOwner(userId);
+      }
     }
     
-    // PROPERTIES can only be managed by their owner
+    // PROPERTIES
     match /properties/{propertyId} {
-      allow read, update, delete: if isOwner(get(resource.data.ownerId));
-      allow create: if isOwner(request.resource.data.ownerId);
+      // A user can read, update, or delete a property if they are the owner.
+      // The `read` permission covers both `get` (single doc) and `list` (queries).
+      // For queries, Firestore checks if the query's `where` clause guarantees
+      // that this rule will pass for all potential documents.
+      allow read, update, delete: if resource.data.ownerId == request.auth.uid;
+      
+      // A user can create a property if the `ownerId` in the new document
+      // matches their own user ID.
+      allow create: if request.resource.data.ownerId == request.auth.uid;
 
       // PROPERTY SUBCOLLECTIONS can only be managed by the property owner
       match /{subcollection}/{docId} {
-        allow read, write: if isParentOwner(/databases/$(database)/documents/properties/$(propertyId));
+        allow read, write: if get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
       }
     }
     
     // CONTRACTORS can only be managed by their owner
     match /contractors/{contractorId} {
-       allow read, update, delete: if isOwner(resource.data.ownerId);
-       allow create: if isOwner(request.resource.data.ownerId);
+       allow read, update, delete: if resource.data.ownerId == request.auth.uid;
+       allow create: if request.resource.data.ownerId == request.auth.uid;
     }
   }
 }
