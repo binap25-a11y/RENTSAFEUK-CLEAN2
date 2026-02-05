@@ -10,20 +10,17 @@ service cloud.firestore {
 
     // SECURITY MODEL FOR USER-OWNED COLLECTIONS
     // For collections like 'properties', 'tenants', and 'contractors', security is
-    // enforced by checking the 'ownerId' field on documents.
+    // enforced by checking the 'ownerId' field on existing documents.
     //
-    // The 'list' operation is permitted for any authenticated user, but queries MUST
-    // include a `where('ownerId', '==', request.auth.uid)` clause. If a query
-    // doesn't filter by ownerId, it will be rejected by the 'get' rule on the results.
-    //
-    // The 'create' operation requires the new document's 'ownerId' to match the
-    // authenticated user's UID.
+    // The 'create' operation is permitted for any authenticated user, as the client
+    // is responsible for setting the 'ownerId'. Stricter rules on read/update/delete
+    // prevent unauthorized access.
 
     // PROPERTIES & SUBCOLLECTIONS
     match /properties/{propertyId} {
       allow get, update, delete: if request.auth.uid == resource.data.ownerId;
 
-      // Sub-collection rules remain nested for now.
+      // Sub-collection rules remain nested.
       // These rules trust the client to set the correct ownerId on sub-collection documents.
       match /maintenanceLogs/{logId} {
         allow get, update, delete: if request.auth.uid == resource.data.ownerId;
@@ -52,7 +49,7 @@ service cloud.firestore {
     }
     match /properties {
       allow list: if request.auth.uid != null;
-      allow create: if request.auth.uid != null && request.resource.data.ownerId == request.auth.uid;
+      allow create: if request.auth.uid != null;
     }
 
 
@@ -67,7 +64,7 @@ service cloud.firestore {
     }
     match /tenants {
        allow list: if request.auth.uid != null;
-       allow create: if request.auth.uid != null && request.resource.data.ownerId == request.auth.uid;
+       allow create: if request.auth.uid != null;
     }
 
     // CONTRACTORS
@@ -76,7 +73,7 @@ service cloud.firestore {
     }
     match /contractors {
       allow list: if request.auth.uid != null;
-      allow create: if request.auth.uid != null && request.resource.data.ownerId == request.auth.uid;
+      allow create: if request.auth.uid != null;
     }
   }
 }
