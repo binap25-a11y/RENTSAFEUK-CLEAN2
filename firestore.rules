@@ -3,73 +3,61 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
     
-    // Helper function to check if the user owns the parent property.
-    function isParentOwner(propertyId) {
-      return get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
-    }
-
     // --- USER DATA ---
     match /users/{userId} {
+      // Users can manage their own profile document.
       allow get, update, delete, create: if request.auth.uid == userId;
 
       // --- TENANTS SUB-COLLECTION ---
-      // Rules for individual tenant documents.
       match /tenants/{tenantId} {
+        // Users can get, update, and delete their own tenants.
         allow get, update, delete: if request.auth.uid == userId;
-        
-        // --- SCREENINGS SUB-SUB-COLLECTION ---
-        match /screenings/{screeningId} {
-          allow get, update, delete: if request.auth.uid == userId;
-        }
-        match /screenings {
-           allow create, list: if request.auth.uid == userId;
-        }
       }
-      // Rules for the tenants collection as a whole.
       match /tenants {
+        // Users can list their own tenants.
+        allow list: if request.auth.uid == userId;
+        // Users can create tenants within their own user document,
+        // but only if they correctly set the ownerId on the new tenant record.
+        allow create: if request.auth.uid == userId 
+                      && request.resource.data.ownerId == request.auth.uid;
+      }
+      
+      // --- TENANT SCREENINGS SUB-COLLECTION ---
+      match /tenants/{tenantId}/screenings/{screeningId} {
+        allow get, update, delete: if request.auth.uid == userId;
+      }
+      match /tenants/{tenantId}/screenings {
         allow create, list: if request.auth.uid == userId;
       }
     }
     
     // --- PROPERTIES ---
-    // Rules for individual property documents.
     match /properties/{propertyId} {
-      allow get, update, delete: if resource.data.ownerId == request.auth.uid;
-
-      // --- PROPERTY SUB-COLLECTIONS ---
-      match /maintenanceLogs/{docId} { allow get, update, delete: if isParentOwner(propertyId); }
-      match /maintenanceLogs { allow create, list: if isParentOwner(propertyId); }
+      // An authenticated user can only get, update, or delete a property if they are the owner.
+      allow get, update, delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
       
-      match /inspections/{docId} { allow get, update, delete: if isParentOwner(propertyId); }
-      match /inspections { allow create, list: if isParentOwner(propertyId); }
-
-      match /documents/{docId} { allow get, update, delete: if isParentOwner(propertyId); }
-      match /documents { allow create, list: if isParentOwner(propertyId); }
-      
-      match /expenses/{docId} { allow get, update, delete: if isParentOwner(propertyId); }
-      match /expenses { allow create, list: if isParentOwner(propertyId); }
-      
-      match /rentPayments/{docId} { allow get, update, delete: if isParentOwner(propertyId); }
-      match /rentPayments { allow create, list: if isParentOwner(propertyId); }
-      
-      match /checklists/{docId} { allow get, update, delete: if isParentOwner(propertyId); }
-      match /checklists { allow create, list: if isParentOwner(propertyId); }
+      // --- PROPERTY SUB-COLLECTIONS (Maintenance, Inspections, etc.) ---
+      // This rule applies to all subcollections of a property document.
+      match /{subcollection}/{docId} {
+        allow read, write: if request.auth != null 
+                           && get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
+      }
     }
-    // Rules for the properties collection as a whole.
     match /properties {
-      allow create: if request.resource.data.ownerId == request.auth.uid;
-      allow list: if request.query.where.ownerId == request.auth.uid;
+      // An authenticated user can create a property if they set themselves as the owner.
+      allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
+      // Users can list properties, but the client query MUST include a "where" clause
+      // to filter by their own ownerId.
+      allow list: if request.auth != null && request.query.where.ownerId == request.auth.uid;
     }
 
     // --- CONTRACTORS ---
-    // Rules for individual contractor documents.
     match /contractors/{contractorId} {
-      allow get, update, delete: if resource.data.ownerId == request.auth.uid;
+      allow get, update, delete: if request.auth != null && resource.data.ownerId == request.auth.uid;
     }
-    // Rules for the contractors collection.
     match /contractors {
-      allow create: if request.resource.data.ownerId == request.auth.uid;
-      allow list: if request.query.where.ownerId == request.auth.uid;
+      allow create: if request.auth != null && request.resource.data.ownerId == request.auth.uid;
+      allow list: if request.auth != null && request.query.where.ownerId == request.auth.uid;
     }
   }
 }
