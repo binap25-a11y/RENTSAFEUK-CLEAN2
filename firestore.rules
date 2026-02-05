@@ -6,43 +6,37 @@ service cloud.firestore {
     // --- User Profile ---
     // Users can only read and write their own document.
     match /users/{userId} {
-      allow read, update, create: if request.auth.uid == userId;
+      allow read, update: if request.auth.uid == userId;
     }
 
     // --- Properties Collection ---
     match /properties {
-      // Anyone authenticated can create a property, as long as they set themselves as the owner.
-      allow create: if request.auth.uid == request.resource.data.ownerId;
-      // Anyone authenticated can query the collection, but client-side must filter by ownerId.
+      allow create: if request.resource.data.ownerId == request.auth.uid;
       allow list: if request.auth.uid != null;
     }
 
-    // --- Single Property Document ---
     match /properties/{propertyId} {
-      // Only the owner can get, update, or delete their property document.
-      allow get, update, delete: if request.auth.uid == resource.data.ownerId;
+      allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
 
     // --- Tenants Collection ---
     match /tenants {
-      allow create: if request.auth.uid == request.resource.data.ownerId;
+      allow create: if request.resource.data.ownerId == request.auth.uid;
       allow list: if request.auth.uid != null;
     }
 
-    // --- Single Tenant Document ---
     match /tenants/{tenantId} {
-      allow get, update, delete: if request.auth.uid == resource.data.ownerId;
+      allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
 
     // --- Contractors Collection ---
     match /contractors {
-      allow create: if request.auth.uid == request.resource.data.ownerId;
+      allow create: if request.resource.data.ownerId == request.auth.uid;
       allow list: if request.auth.uid != null;
     }
 
-    // --- Single Contractor Document ---
     match /contractors/{contractorId} {
-      allow get, update, delete: if request.auth.uid == resource.data.ownerId;
+      allow get, update, delete: if resource.data.ownerId == request.auth.uid;
     }
 
     // --- Generic Sub-Collection Rules ---
