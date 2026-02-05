@@ -126,6 +126,8 @@ export default function AddTenantPage() {
     }
 
     setIsSubmitting(true);
+    
+    let tenantsCollection;
 
     try {
       const newTenant = {
@@ -133,7 +135,7 @@ export default function AddTenantPage() {
         ownerId: user.uid,
         status: 'Active',
       };
-      const tenantsCollection = collection(firestore, 'users', user.uid, 'tenants');
+      tenantsCollection = collection(firestore, 'users', user.uid, 'tenants');
       await addDoc(tenantsCollection, newTenant);
 
       const propertyDocRef = doc(firestore, 'properties', data.propertyId);
@@ -146,7 +148,9 @@ export default function AddTenantPage() {
       router.push(`/dashboard/properties/${data.propertyId}`);
 
     } catch (error: any) {
-      const tenantsCollection = collection(firestore, 'users', user.uid, 'tenants');
+      if (!tenantsCollection) {
+          tenantsCollection = collection(firestore, 'users', user.uid, 'tenants');
+      }
        const permissionError = new FirestorePermissionError({
           path: tenantsCollection.path,
           operation: 'create',
@@ -337,5 +341,3 @@ export default function AddTenantPage() {
     </Card>
   );
 }
-
-    
