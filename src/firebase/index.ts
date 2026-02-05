@@ -2,9 +2,9 @@
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth, connectAuthEmulator } from 'firebase/auth';
-import { getFirestore, connectFirestoreEmulator } from 'firebase/firestore';
-import { getStorage, connectStorageEmulator } from 'firebase/storage';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
@@ -33,34 +33,12 @@ export function initializeFirebase() {
   return getSdks(getApp());
 }
 
-let emulatorsConnected = false;
-
 export function getSdks(firebaseApp: FirebaseApp) {
   const auth = getAuth(firebaseApp);
   const firestore = getFirestore(firebaseApp);
   const storage = firebaseConfig.storageBucket
     ? getStorage(firebaseApp, `gs://${firebaseConfig.storageBucket}`)
     : getStorage(firebaseApp);
-
-  if (process.env.NODE_ENV !== 'production' && !emulatorsConnected) {
-    try {
-      // Note: As of firebase@11.9.1, connectAuthEmulator throws an error if called multiple times.
-      // This can happen with React StrictMode or HMR. The try/catch block handles this gracefully.
-      connectAuthEmulator(auth, 'http://localhost:9099');
-      connectFirestoreEmulator(firestore, 'localhost', 8080);
-      if (firebaseConfig.storageBucket) {
-        connectStorageEmulator(storage, 'localhost', 9199);
-      }
-      emulatorsConnected = true;
-      console.log("Successfully connected to Firebase emulators.");
-    } catch (e: any) {
-      // If the error indicates it's already connected, we can ignore it.
-      // This is a common occurrence during development with hot-reloading.
-      if (!e.message.includes('already connected')) {
-         console.error("Error connecting to Firebase emulators. Please ensure they are running.", e);
-      }
-    }
-  }
 
   return {
     firebaseApp,
