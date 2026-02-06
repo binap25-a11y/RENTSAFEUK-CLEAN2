@@ -94,18 +94,21 @@ export default function PropertyDetailPage() {
   }, [firestore, propertyId]);
   const { data: property, isLoading: isLoadingProperty, error: propertyError } = useDoc<Property>(propertyRef);
   
-  const tenantsForUserQuery = useMemoFirebase(() => {
-    if (!user || !firestore) return null;
-    return query(collection(firestore, 'users', user.uid, 'tenants'));
-  }, [firestore, user]);
+  const tenantForPropertyQuery = useMemoFirebase(() => {
+    if (!user || !firestore || !propertyId) return null;
+    return query(
+      collection(firestore, 'users', user.uid, 'tenants'),
+      where('propertyId', '==', propertyId),
+      where('status', '==', 'Active'),
+      limit(1)
+    );
+  }, [firestore, user, propertyId]);
 
-  const { data: allUserTenants, isLoading: isLoadingTenants, error: tenantError } = useCollection<Tenant>(tenantsForUserQuery);
-
+  const { data: tenants, isLoading: isLoadingTenants, error: tenantError } = useCollection<Tenant>(tenantForPropertyQuery);
+  
   const tenant = useMemo(() => {
-    if (!allUserTenants) return null;
-    // Find the active tenant for the current property
-    return allUserTenants.find(t => t.propertyId === propertyId && t.status === 'Active') || null;
-  }, [allUserTenants, propertyId]);
+    return tenants?.[0] || null;
+  }, [tenants]);
 
   const maintenanceQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
