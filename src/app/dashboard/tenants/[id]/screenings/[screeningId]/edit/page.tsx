@@ -70,8 +70,7 @@ const screeningEditSchema = z.object({
     notes: z.string().optional(),
   }).optional(),
   landlordReference: z.object({
-    firstName: z.string().optional(),
-    lastName: z.string().optional(),
+    name: z.string().optional(),
     email: z.string().email({ message: "Invalid email address." }).optional().or(z.literal('')),
     phone: z.string().optional(),
     rentOnTime: z.boolean().default(false),
@@ -361,8 +360,7 @@ export default function EditTenantScreeningPage() {
                                 <AccordionTrigger className='text-lg font-semibold'>Previous Landlord Reference</AccordionTrigger>
                                 <AccordionContent className='pt-4 space-y-4'>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                         <FormField control={form.control} name="landlordReference.firstName" render={({ field }) => (<FormItem><FormLabel>Landlord First Name</FormLabel><FormControl><Input placeholder="e.g., John" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
-                                         <FormField control={form.control} name="landlordReference.lastName" render={({ field }) => (<FormItem><FormLabel>Landlord Last Name</FormLabel><FormControl><Input placeholder="e.g., Smith" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                                         <FormField control={form.control} name="landlordReference.name" render={({ field }) => (<FormItem className="sm:col-span-2"><FormLabel>Landlord Name</FormLabel><FormControl><Input placeholder="e.g., John Smith" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                                          <FormField control={form.control} name="landlordReference.email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="john.smith@example.com" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                                          <FormField control={form.control} name="landlordReference.phone" render={({ field }) => (<FormItem><FormLabel>Phone (Optional)</FormLabel><FormControl><Input type="tel" placeholder="07123456789" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                                     </div>

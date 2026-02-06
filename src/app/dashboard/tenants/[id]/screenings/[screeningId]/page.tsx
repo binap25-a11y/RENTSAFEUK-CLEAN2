@@ -45,14 +45,13 @@ const NotesDisplay = ({ notes, title = "Notes" }: { notes: string | undefined, t
 };
 
 const LandlordContactInfo = ({ data }: { data: any }) => {
-  if (!data || (!data.firstName && !data.lastName && !data.email && !data.phone)) {
+  if (!data || (!data.name && !data.email && !data.phone)) {
     return null;
   }
   return (
     <div className="mb-4 grid grid-cols-1 gap-x-4 gap-y-2 rounded-md border p-4 sm:grid-cols-2">
       <h4 className="sm:col-span-2 text-base font-semibold mb-2">Landlord Contact Details</h4>
-      {data.firstName && <div className="text-sm"><p className="font-medium">First Name</p><p className="text-muted-foreground">{data.firstName}</p></div>}
-      {data.lastName && <div className="text-sm"><p className="font-medium">Last Name</p><p className="text-muted-foreground">{data.lastName}</p></div>}
+      {data.name && <div className="text-sm sm:col-span-2"><p className="font-medium">Name</p><p className="text-muted-foreground">{data.name}</p></div>}
       {data.email && <div className="text-sm"><p className="font-medium">Email</p><p className="text-muted-foreground">{data.email}</p></div>}
       {data.phone && <div className="text-sm"><p className="font-medium">Phone</p><p className="text-muted-foreground">{data.phone}</p></div>}
     </div>
@@ -134,7 +133,7 @@ export default function ViewScreeningPage() {
     finalY = 45;
 
     const addSectionToPdf = (title: string, data: any, fields: {key: string, label: string}[]) => {
-      const hasData = fields.some(field => data[field.key]) || data.notes || (title === 'Previous Landlord Reference' && (data.firstName || data.lastName || data.email || data.phone));
+      const hasData = fields.some(field => data[field.key]) || data.notes || (title === 'Previous Landlord Reference' && (data.name || data.email || data.phone));
       if (!data || !hasData) return;
 
       doc.setFontSize(14);
@@ -143,8 +142,7 @@ export default function ViewScreeningPage() {
 
       if (title === 'Previous Landlord Reference' && data) {
         const details = [
-            data.firstName && ['First Name', data.firstName],
-            data.lastName && ['Last Name', data.lastName],
+            data.name && ['Name', data.name],
             data.email && ['Email', data.email],
             data.phone && ['Phone', data.phone],
         ].filter(Boolean) as string[][];
