@@ -20,7 +20,11 @@ import { format, isBefore, addDays, isFuture } from 'date-fns';
 // Interfaces from other parts of the app
 interface Property {
   id: string;
-  address: string;
+  address: {
+    nameOrNumber?: string;
+    street: string;
+    city: string;
+  };
 }
 
 interface Document {
@@ -98,7 +102,11 @@ export function Notifications() {
   const propertyMap = useMemo(() => {
     return (
       properties?.reduce((map, prop) => {
-        map[prop.id] = prop.address;
+        if (prop.address) {
+          map[prop.id] = [prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ');
+        } else {
+            map[prop.id] = 'Unknown';
+        }
         return map;
       }, {} as Record<string, string>) ?? {}
     );

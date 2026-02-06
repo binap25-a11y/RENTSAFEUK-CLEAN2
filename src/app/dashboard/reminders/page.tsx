@@ -40,7 +40,11 @@ declare module 'jspdf' {
 
 interface Property {
   id: string;
-  address: string;
+  address: {
+    nameOrNumber?: string;
+    street: string;
+    city: string;
+  };
 }
 
 interface Document {
@@ -144,7 +148,11 @@ export default function RemindersPage() {
   const propertyMap = useMemo(() => {
     return (
       properties?.reduce((map, prop) => {
-        map[prop.id] = prop.address;
+        if (prop.address) {
+          map[prop.id] = [prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ');
+        } else {
+          map[prop.id] = 'Unknown Property';
+        }
         return map;
       }, {} as Record<string, string>) ?? {}
     );
