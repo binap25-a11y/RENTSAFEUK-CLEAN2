@@ -3,20 +3,36 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- USER DATA ---
-    // A user can access their own document and all sub-collections within it.
-    // This single rule grants access to /users/{userId}, /users/{userId}/tenants,
-    // and /users/{userId}/tenants/{tenantId}/screenings, as long as the
-    // request is made by the authenticated owner.
-    match /users/{userId}/{path=**} {
-      allow read, write: if request.auth.uid == userId;
+    // --- USER DATA: Explicit Rules ---
+    // This section explicitly grants permissions for the tenants sub-collection
+    // to avoid any ambiguity with recursive wildcards.
+    
+    // Allow a user to read/update their own user document.
+    match /users/{userId} {
+      allow get, update: if request.auth.uid == userId;
+    }
+    
+    // Allow a user to LIST their own tenants collection.
+    // This is the specific rule that fixes the error on the property details page.
+    match /users/{userId}/tenants {
+      allow list, create: if request.auth.uid == userId;
+    }
+
+    // Allow a user to access individual tenant documents they own.
+    match /users/{userId}/tenants/{tenantId} {
+      allow get, update, delete: if request.auth.uid == userId;
+    }
+    
+    // Allow a user to access screening documents for their own tenants.
+    match /users/{userId}/tenants/{tenantId}/screenings/{screeningId} {
+        allow read, write: if request.auth.uid == userId;
     }
 
     // --- TOP-LEVEL COLLECTIONS ---
 
     // PROPERTIES
     // Allow an authenticated user to LIST their own properties.
-    // The client-side query MUST filter by ownerId, which the app does.
+    // The client-side query MUST filter by ownerId.
     match /properties {
       allow list: if request.auth != null;
     }
@@ -29,7 +45,7 @@ service cloud.firestore {
 
     // CONTRACTORS
     // Allow an authenticated user to LIST their own contractors.
-    // The client-side query must filter by ownerId, which the app does.
+    // The client-side query must filter by ownerId.
     match /contractors {
        allow list: if request.auth != null;
     }
