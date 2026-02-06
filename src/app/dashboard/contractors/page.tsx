@@ -33,6 +33,7 @@ import {
   Mail,
   Phone,
   HardHat,
+  Eye,
 } from 'lucide-react';
 import {
   useUser,
@@ -180,11 +181,20 @@ export default function ContractorsPage() {
                     <TableBody>
                       {filteredContractors.map((c) => (
                         <TableRow key={c.id}>
-                          <TableCell className="font-medium">{c.name}</TableCell>
+                          <TableCell className="font-medium">
+                            <Link href={`/dashboard/contractors/${c.id}`} className="hover:underline">
+                              {c.name}
+                            </Link>
+                          </TableCell>
                           <TableCell>{c.trade}</TableCell>
                           <TableCell>{c.phone}</TableCell>
                           <TableCell>{c.email}</TableCell>
                           <TableCell className="text-right">
+                            <Button asChild variant="ghost" size="icon">
+                              <Link href={`/dashboard/contractors/${c.id}`}>
+                                <Eye className="h-4 w-4" />
+                              </Link>
+                            </Button>
                             <Button asChild variant="ghost" size="icon">
                               <Link href={`/dashboard/contractors/${c.id}/edit`}>
                                 <Edit className="h-4 w-4" />
@@ -207,7 +217,11 @@ export default function ContractorsPage() {
                       <CardHeader>
                         <div className="flex justify-between items-start">
                           <div>
-                            <CardTitle className="text-base">{c.name}</CardTitle>
+                            <CardTitle className="text-base">
+                               <Link href={`/dashboard/contractors/${c.id}`} className="hover:underline">
+                                {c.name}
+                               </Link>
+                            </CardTitle>
                             <CardDescription>{c.trade}</CardDescription>
                           </div>
                           <DropdownMenu>
@@ -217,6 +231,11 @@ export default function ContractorsPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
+                              <DropdownMenuItem asChild>
+                                <Link href={`/dashboard/contractors/${c.id}`}>
+                                  <Eye className="mr-2 h-4 w-4" /> View
+                                </Link>
+                              </DropdownMenuItem>
                               <DropdownMenuItem asChild>
                                 <Link href={`/dashboard/contractors/${c.id}/edit`}>
                                   <Edit className="mr-2 h-4 w-4" /> Edit
