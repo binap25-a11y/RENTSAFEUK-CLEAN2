@@ -230,13 +230,13 @@ export default function MaintenancePage() {
     try {
         let photoUrls: string[] = [];
         if (data.photos && data.photos.length > 0) {
-            const uploadPromises = Array.from(data.photos).map(async (file) => {
+            for (const file of Array.from(data.photos)) {
                 const uniqueFileName = `${Date.now()}-${file.name}`;
                 const fileStorageRef = storageRef(storage, `maintenance/${user.uid}/${uniqueFileName}`);
                 await uploadBytes(fileStorageRef, file);
-                return getDownloadURL(fileStorageRef);
-            });
-            photoUrls = await Promise.all(uploadPromises);
+                const url = await getDownloadURL(fileStorageRef);
+                photoUrls.push(url);
+            }
         }
         
         const { photos, ...formData } = data;
@@ -719,7 +719,7 @@ export default function MaintenancePage() {
                       reportedBy: '',
                       contractorName: '',
                       contractorPhone: '',
-                      notes: '',
+notes: '',
                       reportedDate: new Date(),
                       scheduledDate: undefined,
                       estimatedCost: undefined,
