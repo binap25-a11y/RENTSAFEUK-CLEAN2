@@ -1,13 +1,13 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Card,
   CardContent,
   CardHeader,
   CardTitle,
   CardDescription,
-  CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -78,6 +78,7 @@ interface Property {
 }
 
 export default function TenantsPage() {
+  const router = useRouter();
   const { user } = useUser();
   const firestore = useFirestore();
   const [searchTerm, setSearchTerm] = useState('');
@@ -130,6 +131,7 @@ export default function TenantsPage() {
         title: 'Tenant Archived',
         description: `${tenantToArchive.name} has been moved to the archives.`,
       });
+      router.refresh();
     } catch (e) {
       console.error('Error archiving tenant:', e);
       toast({

@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -57,6 +58,7 @@ interface Property {
 
 export default function ArchivedTenantsPage() {
     const { toast } = useToast();
+    const router = useRouter();
     const { user } = useUser();
     const firestore = useFirestore();
     const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null);
@@ -97,6 +99,7 @@ export default function ArchivedTenantsPage() {
                 title: 'Tenant Restored',
                 description: `${tenantName} has been restored to your active tenants list.`,
             });
+            router.refresh();
         } catch (e) {
             console.error('Error restoring tenant:', e);
             toast({
@@ -116,6 +119,7 @@ export default function ArchivedTenantsPage() {
                 title: 'Tenant Permanently Deleted',
                 description: `${tenantToDelete.name} has been removed from the database. This action cannot be undone.`,
             });
+            router.refresh();
         } catch (e) {
             console.error('Error deleting tenant permanently:', e);
             toast({
