@@ -139,7 +139,7 @@ const NotesField = ({ form, name, placeholder }: { form: any, name: any, placeho
             <FormItem className="mt-4">
                 <FormLabel>Notes</FormLabel>
                 <FormControl>
-                    <Textarea placeholder={placeholder} {...field} />
+                    <Textarea placeholder={placeholder} {...field} value={field.value ?? ''} />
                 </FormControl>
                 <FormMessage />
             </FormItem>
@@ -342,7 +342,7 @@ function TenantScreeningPage({ tenantIdFromUrl }: { tenantIdFromUrl: string | nu
                                             <FormItem>
                                                 <FormLabel>Agency/Service Used</FormLabel>
                                                 <FormControl>
-                                                    <Input placeholder="e.g., OpenRent, Experian" {...field} />
+                                                    <Input placeholder="e.g., OpenRent, Experian" {...field} value={field.value ?? ''} />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -373,7 +373,7 @@ function TenantScreeningPage({ tenantIdFromUrl }: { tenantIdFromUrl: string | nu
                                                 <FormItem className="mt-4 sm:col-span-2">
                                                     <FormLabel>Notes</FormLabel>
                                                     <FormControl>
-                                                        <Textarea rows={4} placeholder="Notes on income verification..." {...field} />
+                                                        <Textarea rows={4} placeholder="Notes on income verification..." {...field} value={field.value ?? ''} />
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
@@ -387,10 +387,10 @@ function TenantScreeningPage({ tenantIdFromUrl }: { tenantIdFromUrl: string | nu
                                 <AccordionTrigger className='text-lg font-semibold'>Previous Landlord Reference</AccordionTrigger>
                                 <AccordionContent className='pt-4 space-y-4'>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                         <FormField control={form.control} name="landlordReference.firstName" render={({ field }) => (<FormItem><FormLabel>Landlord First Name</FormLabel><FormControl><Input placeholder="e.g., John" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                         <FormField control={form.control} name="landlordReference.lastName" render={({ field }) => (<FormItem><FormLabel>Landlord Last Name</FormLabel><FormControl><Input placeholder="e.g., Smith" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                         <FormField control={form.control} name="landlordReference.email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="john.smith@example.com" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                         <FormField control={form.control} name="landlordReference.phone" render={({ field }) => (<FormItem><FormLabel>Phone (Optional)</FormLabel><FormControl><Input type="tel" placeholder="07123456789" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                         <FormField control={form.control} name="landlordReference.firstName" render={({ field }) => (<FormItem><FormLabel>Landlord First Name</FormLabel><FormControl><Input placeholder="e.g., John" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                                         <FormField control={form.control} name="landlordReference.lastName" render={({ field }) => (<FormItem><FormLabel>Landlord Last Name</FormLabel><FormControl><Input placeholder="e.g., Smith" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                                         <FormField control={form.control} name="landlordReference.email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="john.smith@example.com" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                                         <FormField control={form.control} name="landlordReference.phone" render={({ field }) => (<FormItem><FormLabel>Phone (Optional)</FormLabel><FormControl><Input type="tel" placeholder="07123456789" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <ChecklistItem form={form} name="landlordReference.rentOnTime" label="Paid rent on time?" />
@@ -409,6 +409,7 @@ function TenantScreeningPage({ tenantIdFromUrl }: { tenantIdFromUrl: string | nu
                                                         rows={4}
                                                         placeholder="Notes on landlord reference..."
                                                         {...field}
+                                                        value={field.value ?? ''}
                                                     />
                                                 </FormControl>
                                                 <FormMessage />
@@ -444,6 +445,7 @@ function TenantScreeningPage({ tenantIdFromUrl }: { tenantIdFromUrl: string | nu
                                                             rows={4}
                                                             placeholder="Notes on affordability..."
                                                             {...field}
+                                                            value={field.value ?? ''}
                                                         />
                                                     </FormControl>
                                                     <FormMessage />
@@ -473,6 +475,7 @@ function TenantScreeningPage({ tenantIdFromUrl }: { tenantIdFromUrl: string | nu
                                                             rows={4}
                                                             placeholder="Notes on guarantor checks..."
                                                             {...field}
+                                                            value={field.value ?? ''}
                                                         />
                                                     </FormControl>
                                                     <FormMessage />
@@ -495,6 +498,7 @@ function TenantScreeningPage({ tenantIdFromUrl }: { tenantIdFromUrl: string | nu
                                     className="resize-none"
                                     rows={5}
                                     {...field}
+                                    value={field.value ?? ''}
                                     />
                                 </FormControl>
                                 <FormMessage />
