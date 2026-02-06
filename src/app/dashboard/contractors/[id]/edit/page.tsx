@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -64,6 +65,13 @@ export default function EditContractorPage() {
 
     const form = useForm<ContractorFormValues>({
         resolver: zodResolver(contractorSchema),
+        defaultValues: {
+            name: '',
+            trade: '',
+            phone: '',
+            email: '',
+            notes: '',
+        },
     });
 
     const contractorRef = useMemoFirebase(() => {
