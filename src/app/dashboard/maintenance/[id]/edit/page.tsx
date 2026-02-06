@@ -99,7 +99,7 @@ export default function EditMaintenancePage() {
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [existingPhotos, setExistingPhotos] = useState<string[]>([]);
-    const [newPhotoNames, setNewPhotoNames] = useState<string[]>([]);
+    const [newPhotoPreviews, setNewPhotoPreviews] = useState<string[]>([]);
 
     const form = useForm<MaintenanceFormValues>({
         resolver: zodResolver(maintenanceEditSchema),
@@ -285,18 +285,42 @@ export default function EditMaintenancePage() {
                         <Card>
                             <CardHeader><CardTitle className="text-lg">Photos</CardTitle></CardHeader>
                             <CardContent>
-                                {existingPhotos.length > 0 && newPhotoNames.length === 0 && (
+                                {(newPhotoPreviews.length > 0 || existingPhotos.length > 0) && (
                                     <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
-                                        {existingPhotos.map(url => <Image key={url} src={url} alt="Existing photo" width={100} height={100} className="rounded-md object-cover aspect-square"/>)}
+                                        {(newPhotoPreviews.length > 0 ? newPhotoPreviews : existingPhotos).map((url, index) => (
+                                            <div key={index} className="relative aspect-square">
+                                                <Image src={url} alt={`Photo ${index + 1}`} fill className="rounded-md object-cover" />
+                                            </div>
+                                        ))}
                                     </div>
                                 )}
                                 <FormField control={form.control} name="photos" render={({ field }) => (
                                     <FormItem>
                                         <FormLabel>{existingPhotos.length > 0 ? 'Upload New Photos (replaces old ones)' : 'Upload Photos'}</FormLabel>
                                         <FormControl>
-                                            <Button asChild variant="outline" className="w-full"><label htmlFor="photos-upload" className="cursor-pointer flex items-center justify-center gap-2"><Upload className="h-4 w-4" />Choose Files<Input id="photos-upload" type="file" multiple className="sr-only" onChange={(e) => { field.onChange(e.target.files); setNewPhotoNames(e.target.files ? Array.from(e.target.files).map(f => f.name) : []); }} /></label></Button>
+                                            <Button asChild variant="outline" className="w-full"><label htmlFor="photos-upload" className="cursor-pointer flex items-center justify-center gap-2"><Upload className="h-4 w-4" />Choose Files<Input id="photos-upload" type="file" multiple accept="image/*" className="sr-only" onChange={(e) => { 
+                                                const files = e.target.files;
+                                                field.onChange(files);
+                                                if (files && files.length > 0) {
+                                                    const fileArray = Array.from(files);
+                                                    const promises = fileArray.map(file => {
+                                                        return new Promise<string>((resolve, reject) => {
+                                                            const reader = new FileReader();
+                                                            reader.onloadend = () => resolve(reader.result as string);
+                                                            reader.onerror = reject;
+                                                            reader.readAsDataURL(file);
+                                                        });
+                                                    });
+                                                    
+                                                    Promise.all(promises).then(setNewPhotoPreviews).catch(error => {
+                                                        console.error("Error creating image previews:", error);
+                                                        toast({ variant: 'destructive', title: 'Preview Error', description: 'Could not create image previews.' });
+                                                    });
+                                                } else {
+                                                    setNewPhotoPreviews([]);
+                                                }
+                                             }} /></label></Button>
                                         </FormControl>
-                                        {newPhotoNames.length > 0 && <div className="text-sm text-muted-foreground pt-2">Selected: {newPhotoNames.join(', ')}</div>}
                                         <FormMessage />
                                     </FormItem>
                                 )} />

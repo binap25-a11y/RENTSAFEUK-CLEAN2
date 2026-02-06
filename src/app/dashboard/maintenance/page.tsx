@@ -35,6 +35,7 @@ import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
+import Image from 'next/image';
 import {
   useUser,
   useFirestore,
@@ -128,7 +129,7 @@ export default function MaintenancePage() {
   const [selectedPropertyFilter, setSelectedPropertyFilter] = useState<string>('');
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
-  const [fileNames, setFileNames] = useState<string[]>([]);
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [logToCancel, setLogToCancel] = useState<MaintenanceLog | null>(null);
 
@@ -268,7 +269,7 @@ export default function MaintenancePage() {
           scheduledDate: undefined,
           estimatedCost: undefined,
         });
-        setFileNames([]);
+        setPhotoPreviews([]);
         // If no filter is set, set it to the property we just added a log for
         if (!selectedPropertyFilter) {
             setSelectedPropertyFilter(data.propertyId);
@@ -620,6 +621,15 @@ export default function MaintenancePage() {
                     <CardTitle className="text-xl">Upload Photos</CardTitle>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {photoPreviews.length > 0 && (
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                            {photoPreviews.map((url, index) => (
+                                <div key={index} className="relative aspect-square">
+                                    <Image src={url} alt={`Preview ${index + 1}`} fill className="rounded-md object-cover" />
+                                </div>
+                            ))}
+                        </div>
+                    )}
                     <FormField
                       control={form.control}
                       name="photos"
@@ -635,13 +645,32 @@ export default function MaintenancePage() {
                                   id="photos-upload"
                                   type="file"
                                   multiple
+                                  accept="image/*"
                                   className="sr-only"
                                   onChange={(e) => {
-                                      field.onChange(e.target.files);
-                                      if (e.target.files) {
-                                          setFileNames(Array.from(e.target.files).map(f => f.name));
+                                      const files = e.target.files;
+                                      field.onChange(files);
+                                      if (files && files.length > 0) {
+                                          const fileArray = Array.from(files);
+                                          const promises = fileArray.map(file => {
+                                              return new Promise<string>((resolve, reject) => {
+                                                  const reader = new FileReader();
+                                                  reader.onloadend = () => resolve(reader.result as string);
+                                                  reader.onerror = reject;
+                                                  reader.readAsDataURL(file);
+                                              });
+                                          });
+
+                                          Promise.all(promises)
+                                              .then(previews => {
+                                                  setPhotoPreviews(previews);
+                                              })
+                                              .catch(error => {
+                                                  console.error("Error creating image previews:", error);
+                                                  toast({ variant: 'destructive', title: 'Preview Error', description: 'Could not create image previews.' });
+                                              });
                                       } else {
-                                          setFileNames([]);
+                                          setPhotoPreviews([]);
                                       }
                                   }}
                                 />
@@ -649,14 +678,6 @@ export default function MaintenancePage() {
                             </Button>
                           </FormControl>
                           <FormMessage />
-                          {fileNames.length > 0 && (
-                              <div className="text-sm text-muted-foreground pt-2">
-                                  <p>Selected file(s):</p>
-                                  <ul className="list-disc pl-5">
-                                      {fileNames.map(name => <li key={name}>{name}</li>)}
-                                  </ul>
-                              </div>
-                          )}
                         </FormItem>
                       )}
                     />
@@ -703,7 +724,7 @@ export default function MaintenancePage() {
                       scheduledDate: undefined,
                       estimatedCost: undefined,
                     });
-                    setFileNames([]);
+                    setPhotoPreviews([]);
                   }}>
                     Cancel
                   </Button>
