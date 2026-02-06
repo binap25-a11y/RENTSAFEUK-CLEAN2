@@ -89,9 +89,9 @@ export default function TenantDetailPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const tenantRef = useMemoFirebase(() => {
-    if (!firestore || !user || !id) return null;
-    return doc(firestore, 'users', user.uid, 'tenants', id);
-  }, [firestore, user, id]);
+    if (!firestore || !id) return null;
+    return doc(firestore, 'tenants', id);
+  }, [firestore, id]);
 
   const { data: tenant, isLoading: isLoadingTenant, error } = useDoc<Tenant>(tenantRef);
   
@@ -102,11 +102,11 @@ export default function TenantDetailPage() {
   const { data: property, isLoading: isLoadingProperty } = useDoc<Property>(propertyRef);
   
   const screeningsQuery = useMemoFirebase(() => {
-    if (!firestore || !id || !user) return null;
+    if (!firestore || !id) return null;
     return query(
-        collection(firestore, 'users', user.uid, 'tenants', id, 'screenings')
+        collection(firestore, 'tenants', id, 'screenings')
     );
-  }, [firestore, id, user]);
+  }, [firestore, id]);
   const { data: screenings, isLoading: isLoadingScreenings } = useCollection<TenantScreening>(screeningsQuery);
   
   const checklistsQuery = useMemoFirebase(() => {
@@ -385,5 +385,3 @@ export default function TenantDetailPage() {
     </>
   );
 }
-
-    

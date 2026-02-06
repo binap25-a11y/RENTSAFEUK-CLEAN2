@@ -784,27 +784,16 @@
         }
       },
       {
-        "path": "/users/{userId}/tenants/{tenantId}",
+        "path": "/tenants/{tenantId}",
         "definition": {
-          "entityName": "Tenant",
-          "schema": {
-            "$ref": "#/backend/entities/Tenant"
-          },
-          "description": "Subcollection to store tenant information for a specific user.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user."
-            },
-            {
-              "name": "tenantId",
-              "description": "The unique identifier for the tenant."
-            }
-          ]
+            "entityName": "Tenant",
+            "schema": { "$ref": "#/backend/entities/Tenant" },
+            "description": "Top-level collection to store all tenant information. Each document contains an 'ownerId' field to link it to a user.",
+            "params": [{ "name": "tenantId", "description": "The unique identifier for the tenant." }]
         }
       },
       {
-        "path": "/users/{userId}/tenants/{tenantId}/screenings/{screeningId}",
+        "path": "/tenants/{tenantId}/screenings/{screeningId}",
         "definition": {
           "entityName": "TenantScreening",
           "schema": {
@@ -956,8 +945,6 @@
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to manage rental properties, tenants, maintenance logs, inspections, and documents. The top-level collections are `properties`, `tenants`, `contractors` and `users`. By nesting `tenants` under `users`, we create a clear ownership hierarchy that simplifies security rules and aligns the data model with the application's user-centric design. The subcollections `maintenanceLogs`, `inspections`, `documents`, etc. are nested under each `property` to ensure data locality and facilitate querying related information. This structure leverages path-based ownership for all user-specific data, simplifying security rules and eliminating complex queries."
+    "reasoning": "The Firestore structure is designed to manage rental properties, tenants, and related data. Tenants have been moved to a top-level collection to resolve persistent security rule issues related to querying subcollections. Each tenant document has an 'ownerId' to maintain data ownership. This simplified, flat structure is more robust and less prone to complex rule evaluation problems."
   }
 }
-
-    

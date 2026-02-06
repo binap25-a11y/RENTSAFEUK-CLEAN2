@@ -163,15 +163,15 @@ export default function EditTenantScreeningPage() {
     });
 
     const screeningRef = useMemoFirebase(() => {
-        if (!firestore || !user || !tenantId || !screeningId) return null;
-        return doc(firestore, 'users', user.uid, 'tenants', tenantId, 'screenings', screeningId);
-    }, [firestore, user, tenantId, screeningId]);
+        if (!firestore || !tenantId || !screeningId) return null;
+        return doc(firestore, 'tenants', tenantId, 'screenings', screeningId);
+    }, [firestore, tenantId, screeningId]);
     const { data: screening, isLoading: isLoadingScreening } = useDoc(screeningRef);
 
     const tenantRef = useMemoFirebase(() => {
-        if (!firestore || !user || !tenantId) return null;
-        return doc(firestore, 'users', user.uid, 'tenants', tenantId);
-    }, [firestore, user, tenantId]);
+        if (!firestore || !tenantId) return null;
+        return doc(firestore, 'tenants', tenantId);
+    }, [firestore, tenantId]);
     const { data: tenant, isLoading: isLoadingTenant } = useDoc(tenantRef);
 
     useEffect(() => {
@@ -491,5 +491,3 @@ export default function EditTenantScreeningPage() {
         </Card>
     );
 }
-
-    

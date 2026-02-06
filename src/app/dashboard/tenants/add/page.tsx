@@ -127,45 +127,42 @@ export default function AddTenantPage() {
 
     setIsSubmitting(true);
     
-    let tenantsCollection;
-
-    try {
-      const newTenant = {
+    const tenantsCollection = collection(firestore, 'tenants');
+    const newTenant = {
         ...data,
         ownerId: user.uid,
         status: 'Active',
-      };
-      tenantsCollection = collection(firestore, 'users', user.uid, 'tenants');
-      await addDoc(tenantsCollection, newTenant);
+    };
 
-      const propertyDocRef = doc(firestore, 'properties', data.propertyId);
-      await updateDoc(propertyDocRef, { status: 'Occupied' });
-
-      toast({
-        title: 'Tenant Assigned',
-        description: `${data.name} has been assigned to the property.`,
+    addDoc(tenantsCollection, newTenant)
+      .then(async () => {
+        // After successfully adding tenant, update property status
+        const propertyDocRef = doc(firestore, 'properties', data.propertyId);
+        await updateDoc(propertyDocRef, { status: 'Occupied' });
+        
+        toast({
+          title: 'Tenant Assigned',
+          description: `${data.name} has been assigned to the property.`,
+        });
+        router.push(`/dashboard/properties/${data.propertyId}`);
+      })
+      .catch((serverError: any) => {
+        const permissionError = new FirestorePermissionError({
+            path: tenantsCollection.path,
+            operation: 'create',
+            requestResourceData: newTenant,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        
+        toast({
+          variant: 'destructive',
+          title: 'Save Failed',
+          description: serverError.message || 'An unexpected error occurred while saving the tenant.',
+        });
+      })
+      .finally(() => {
+          setIsSubmitting(false);
       });
-      router.push(`/dashboard/properties/${data.propertyId}`);
-
-    } catch (error: any) {
-      if (!tenantsCollection) {
-          tenantsCollection = collection(firestore, 'users', user.uid, 'tenants');
-      }
-       const permissionError = new FirestorePermissionError({
-          path: tenantsCollection.path,
-          operation: 'create',
-          requestResourceData: { ...data, ownerId: user.uid, status: 'Active' },
-      });
-      errorEmitter.emit('permission-error', permissionError);
-      
-      toast({
-        variant: 'destructive',
-        title: 'Save Failed',
-        description: error.message || 'An unexpected error occurred while saving the tenant.',
-      });
-    } finally {
-        setIsSubmitting(false);
-    }
   }
 
   const formatAddress = (address: Property['address']) => {

@@ -170,15 +170,16 @@ function TenantScreeningPage({ tenantIdFromUrl }: { tenantIdFromUrl: string | nu
     });
 
     const tenantRef = useMemoFirebase(() => {
-        if (!firestore || !user || !tenantIdFromUrl) return null;
-        return doc(firestore, 'users', user.uid, 'tenants', tenantIdFromUrl);
-    }, [firestore, user, tenantIdFromUrl]);
+        if (!firestore || !tenantIdFromUrl) return null;
+        return doc(firestore, 'tenants', tenantIdFromUrl);
+    }, [firestore, tenantIdFromUrl]);
     const { data: selectedTenant, isLoading: isLoadingSelectedTenant } = useDoc<Tenant>(tenantRef);
 
     const tenantsQuery = useMemoFirebase(() => {
         if (!user || tenantIdFromUrl) return null; // Only query if no specific tenant is selected from URL
         return query(
-            collection(firestore, 'users', user.uid, 'tenants'),
+            collection(firestore, 'tenants'),
+            where('ownerId', '==', user.uid),
             where('status', '==', 'Active')
         );
     }, [firestore, user, tenantIdFromUrl]);
@@ -202,7 +203,7 @@ function TenantScreeningPage({ tenantIdFromUrl }: { tenantIdFromUrl: string | nu
             tenantId: tenantId,
         };
 
-        const screeningsCollection = collection(firestore, 'users', user.uid, 'tenants', tenantId, 'screenings');
+        const screeningsCollection = collection(firestore, 'tenants', tenantId, 'screenings');
 
         addDoc(screeningsCollection, newScreeningRecord)
           .then(() => {
@@ -512,7 +513,3 @@ function TenantScreeningPage({ tenantIdFromUrl }: { tenantIdFromUrl: string | nu
         </Card>
     );
 }
-
-    
-
-    

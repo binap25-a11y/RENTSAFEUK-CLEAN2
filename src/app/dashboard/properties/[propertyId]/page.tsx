@@ -97,7 +97,8 @@ export default function PropertyDetailPage() {
   const tenantForPropertyQuery = useMemoFirebase(() => {
     if (!user || !firestore || !propertyId) return null;
     return query(
-      collection(firestore, 'users', user.uid, 'tenants'),
+      collection(firestore, 'tenants'),
+      where('ownerId', '==', user.uid),
       where('propertyId', '==', propertyId),
       where('status', '==', 'Active'),
       limit(1)
