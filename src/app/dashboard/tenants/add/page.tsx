@@ -134,7 +134,10 @@ export default function AddTenantPage() {
         status: 'Active',
     };
 
-    addDoc(tenantsCollection, newTenant)
+    // Firestore doesn't support 'undefined'. This removes any fields that are undefined.
+    const cleanedTenantData = JSON.parse(JSON.stringify(newTenant));
+
+    addDoc(tenantsCollection, cleanedTenantData)
       .then(async () => {
         // After successfully adding tenant, update property status
         const propertyDocRef = doc(firestore, 'properties', data.propertyId);
@@ -150,7 +153,7 @@ export default function AddTenantPage() {
         const permissionError = new FirestorePermissionError({
             path: tenantsCollection.path,
             operation: 'create',
-            requestResourceData: newTenant,
+            requestResourceData: cleanedTenantData,
         });
         errorEmitter.emit('permission-error', permissionError);
         

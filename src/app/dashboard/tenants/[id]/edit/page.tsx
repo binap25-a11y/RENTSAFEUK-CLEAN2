@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -136,10 +137,15 @@ export default function EditTenantPage() {
     
     try {
       const tenantDocRef = doc(firestore, 'tenants', tenantId);
-      await updateDoc(tenantDocRef, {
+      const updateData = {
           ...data,
           ownerId: user.uid, // ensure ownerId is preserved
-      });
+      };
+
+      // Firestore doesn't support 'undefined'. This removes any fields that are undefined.
+      const cleanedUpdateData = JSON.parse(JSON.stringify(updateData));
+
+      await updateDoc(tenantDocRef, cleanedUpdateData);
 
       toast({
         title: 'Tenant Updated',
