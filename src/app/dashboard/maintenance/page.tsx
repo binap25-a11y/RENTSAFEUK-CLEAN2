@@ -80,6 +80,7 @@ type MaintenanceFormValues = z.infer<typeof maintenanceSchema>;
 
 // Type for property documents from Firestore
 interface Property {
+  id: string;
   address: {
     nameOrNumber?: string;
     street: string;
@@ -281,6 +282,10 @@ export default function MaintenancePage() {
       default: return 'outline';
     }
   };
+  
+  const formatAddress = (address: Property['address']) => {
+    return [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
+  };
 
   return (
     <div className="space-y-6">
@@ -326,7 +331,7 @@ export default function MaintenancePage() {
                           <SelectContent>
                             {properties?.map((prop) => (
                               <SelectItem key={prop.id} value={prop.id}>
-                                {[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}
+                                {formatAddress(prop.address)}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -541,7 +546,7 @@ export default function MaintenancePage() {
                         <FormItem>
                           <FormLabel>Estimated Cost (£)</FormLabel>
                           <FormControl>
-                            <Input type="number" placeholder="150" {...field} />
+                            <Input type="text" inputMode="decimal" placeholder="150.00" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} value={field.value ?? ''} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -659,7 +664,7 @@ export default function MaintenancePage() {
                         </SelectTrigger>
                         <SelectContent>
                             {properties?.map(prop => (
-                                <SelectItem key={prop.id} value={prop.id}>{[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}</SelectItem>
+                                <SelectItem key={prop.id} value={prop.id}>{formatAddress(prop.address)}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
