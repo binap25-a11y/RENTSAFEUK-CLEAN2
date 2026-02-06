@@ -3,40 +3,55 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // USER DATA
-    // Grants a user access to their own user document and all documents
-    // in all sub-collections (like tenants, screenings, etc.).
-    // This is a secure and common pattern for user-owned data.
-    match /users/{userId}/{path=**} {
+    // --- USER DATA ---
+
+    // Grants a user read/write access to their own user document.
+    match /users/{userId} {
+      allow read, write: if request.auth.uid == userId;
+    }
+
+    // TENANTS SUB-COLLECTION
+    // Allow a user to query (list) their own tenants.
+    match /users/{userId}/tenants {
+      allow list: if request.auth.uid == userId;
+    }
+    // Allow full access to a specific tenant document they own.
+    match /users/{userId}/tenants/{tenantId} {
+      allow read, write: if request.auth.uid == userId;
+    }
+
+    // SCREENINGS SUB-SUB-COLLECTION
+    // Allow a user to manage screenings for their own tenants.
+    match /users/{userId}/tenants/{tenantId}/screenings/{screeningId} {
       allow read, write: if request.auth.uid == userId;
     }
 
     // --- TOP-LEVEL COLLECTIONS ---
 
     // PROPERTIES
-    match /properties/{propertyId} {
-      // Only allow a user to get/update/delete their OWN properties.
-      allow get, update, delete: if resource.data.ownerId == request.auth.uid;
-      // Allow a user to create a property if the ownerId matches their UID.
-      allow create: if request.resource.data.ownerId == request.auth.uid;
-    }
     // Allow an authenticated user to LIST properties.
     // The client-side query MUST filter by ownerId to be secure, which the app already does.
     match /properties {
       allow list: if request.auth != null;
     }
-
-    // CONTRACTORS
-    match /contractors/{contractorId} {
-      // Only allow a user to get/update/delete their OWN contractors.
+    // Allow a user to get, update, or delete their OWN property document.
+    match /properties/{propertyId} {
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
-      // Allow a user to create a contractor if the ownerId matches their UID.
+      // Allow a user to create a property if the ownerId matches their UID.
       allow create: if request.resource.data.ownerId == request.auth.uid;
     }
+
+    // CONTRACTORS
     // Allow an authenticated user to LIST contractors.
     // The client-side query must filter by ownerId, which the app already does.
     match /contractors {
        allow list: if request.auth != null;
+    }
+    // Allow a user to get, update, or delete their OWN contractor document.
+    match /contractors/{contractorId} {
+      allow get, update, delete: if resource.data.ownerId == request.auth.uid;
+      // Allow a user to create a contractor if the ownerId matches their UID.
+      allow create: if request.resource.data.ownerId == request.auth.uid;
     }
 
     // --- PROPERTY SUB-COLLECTIONS ---
