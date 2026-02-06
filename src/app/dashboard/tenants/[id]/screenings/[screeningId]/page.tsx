@@ -133,8 +133,9 @@ export default function ViewScreeningPage() {
     finalY = 45;
 
     const addSectionToPdf = (title: string, data: any, fields: {key: string, label: string}[]) => {
+      if (!data) return;
       const hasData = fields.some(field => data[field.key]) || data.notes || (title === 'Previous Landlord Reference' && (data.name || data.email || data.phone));
-      if (!data || !hasData) return;
+      if (!hasData) return;
 
       doc.setFontSize(14);
       doc.text(title, 14, finalY);
