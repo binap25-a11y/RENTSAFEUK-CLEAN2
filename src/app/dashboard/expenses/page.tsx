@@ -83,7 +83,11 @@ declare module 'jspdf' {
 // Main interface for a Property document from Firestore
 interface Property {
   id: string;
-  address: string;
+  address: {
+    nameOrNumber?: string;
+    street: string;
+    city: string;
+  };
   tenancy?: {
     monthlyRent: number;
   };
@@ -246,7 +250,7 @@ export default function FinancialsPage() {
                         <SelectContent>
                         {properties?.map((prop) => (
                             <SelectItem key={prop.id} value={prop.id}>
-                            {prop.address}
+                                {[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}
                             </SelectItem>
                         ))}
                         </SelectContent>
@@ -383,7 +387,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
                       </FormControl>
                       <SelectContent>
                         {properties?.map((prop) => (
-                          <SelectItem key={prop.id} value={prop.id}>{prop.address}</SelectItem>
+                          <SelectItem key={prop.id} value={prop.id}>{[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}</SelectItem>
                         ))}
                       </SelectContent>
                     </Select>
@@ -606,12 +610,13 @@ function AnnualSummary({
 
     const doc = new jsPDF();
     let finalY = 0;
+    const addressString = [selectedProperty.address.nameOrNumber, selectedProperty.address.street, selectedProperty.address.city].filter(Boolean).join(', ');
 
     // Header
     doc.setFontSize(20);
     doc.text(`Financial Summary for ${selectedYear}`, 14, 22);
     doc.setFontSize(12);
-    doc.text(`Property: ${selectedProperty.address}`, 14, 30);
+    doc.text(`Property: ${addressString}`, 14, 30);
     doc.setLineWidth(0.5);
     doc.line(14, 32, 196, 32);
 
@@ -671,7 +676,7 @@ function AnnualSummary({
         });
       }
     }
-    const safeAddress = selectedProperty.address.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+    const safeAddress = addressString.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
     doc.save(`Financial-Statement-${safeAddress}-${selectedYear}.pdf`);
   };
 
@@ -702,7 +707,7 @@ function AnnualSummary({
                 </CardHeader>
                 <CardContent>
                     {isLoadingExpenses ? <Loader2 className="h-6 w-6 animate-spin" /> : <div className="text-2xl font-bold">£{totalExpenses.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>}
-                    <p className="text-xs text-muted-foreground truncate">{selectedProperty ? selectedProperty.address : 'No property selected'}</p>
+                    <p className="text-xs text-muted-foreground truncate">{selectedProperty ? [selectedProperty.address.nameOrNumber, selectedProperty.address.street].filter(Boolean).join(', ') : 'No property selected'}</p>
                 </CardContent>
             </Card>
             <Card>
@@ -720,7 +725,7 @@ function AnnualSummary({
             <Card>
                 <CardContent className="pt-6">
                     <p className="text-lg font-semibold">Expense Breakdown</p>
-                    <p className="text-sm text-muted-foreground mb-4">For {selectedProperty ? selectedProperty.address : 'the selected property'} for {selectedYear}.</p>
+                    <p className="text-sm text-muted-foreground mb-4">For {selectedProperty ? [selectedProperty.address.nameOrNumber, selectedProperty.address.street].filter(Boolean).join(', ') : 'the selected property'} for {selectedYear}.</p>
                     
                     {isLoadingExpenses && (
                         <div className="flex h-48 items-center justify-center">
@@ -1012,7 +1017,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                 </div>
             ) : (
             <>
-                <p className="text-sm text-muted-foreground mb-4">Update the payment status for each month for {selectedProperty.address}.</p>
+                <p className="text-sm text-muted-foreground mb-4">Update the payment status for each month for {[selectedProperty.address.nameOrNumber, selectedProperty.address.street].filter(Boolean).join(', ')}.</p>
                 {/* Desktop Table View */}
                 <div className="hidden rounded-md border md:block">
                     <Table>

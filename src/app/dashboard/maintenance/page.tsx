@@ -80,7 +80,11 @@ type MaintenanceFormValues = z.infer<typeof maintenanceSchema>;
 
 // Type for property documents from Firestore
 interface Property {
-  address: string;
+  address: {
+    nameOrNumber?: string;
+    street: string;
+    city: string;
+  };
   ownerId: string;
 }
 
@@ -138,7 +142,7 @@ export default function MaintenancePage() {
   const propertyMap = useMemo(() => {
     if (!properties) return {};
     return properties.reduce((acc, prop) => {
-        acc[prop.id] = prop.address;
+        acc[prop.id] = [prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ');
         return acc;
     }, {} as Record<string, string>);
   }, [properties]);
@@ -322,7 +326,7 @@ export default function MaintenancePage() {
                           <SelectContent>
                             {properties?.map((prop) => (
                               <SelectItem key={prop.id} value={prop.id}>
-                                {prop.address}
+                                {[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}
                               </SelectItem>
                             ))}
                           </SelectContent>
@@ -655,7 +659,7 @@ export default function MaintenancePage() {
                         </SelectTrigger>
                         <SelectContent>
                             {properties?.map(prop => (
-                                <SelectItem key={prop.id} value={prop.id}>{prop.address}</SelectItem>
+                                <SelectItem key={prop.id} value={prop.id}>{[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>

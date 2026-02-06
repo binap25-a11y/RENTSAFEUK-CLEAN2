@@ -41,7 +41,11 @@ import { Label } from '@/components/ui/label';
 // Type for property documents from Firestore
 interface Property {
   id: string;
-  address: string;
+  address: {
+    nameOrNumber?: string;
+    street: string;
+    city: string;
+  };
   ownerId: string;
 }
 
@@ -133,7 +137,9 @@ export default function DocumentsPage() {
     const validCount = documentsWithStatus.filter(d => d.status === 'Valid').length;
     
     const getPropertyAddress = (propertyId: string) => {
-        return properties?.find(p => p.id === propertyId)?.address || 'Unknown Property';
+        const property = properties?.find(p => p.id === propertyId);
+        if (!property) return 'Unknown Property';
+        return [property.address.nameOrNumber, property.address.street, property.address.city].filter(Boolean).join(', ');
     };
 
   return (
@@ -196,7 +202,7 @@ export default function DocumentsPage() {
                         </SelectTrigger>
                         <SelectContent>
                             {properties?.map(prop => (
-                                <SelectItem key={prop.id} value={prop.id}>{prop.address}</SelectItem>
+                                <SelectItem key={prop.id} value={prop.id}>{[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>

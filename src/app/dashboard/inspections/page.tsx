@@ -40,7 +40,11 @@ import { Label } from '@/components/ui/label';
 // Type for property documents from Firestore
 interface Property {
   id: string;
-  address: string;
+  address: {
+    nameOrNumber?: string;
+    street: string;
+    city: string;
+  };
 }
 
 // Type for inspection documents from Firestore
@@ -93,7 +97,9 @@ export default function InspectionsPage() {
     useCollection<Inspection>(inspectionsQuery);
 
   const getPropertyAddress = (propertyId: string) => {
-    return properties?.find((p) => p.id === propertyId)?.address || 'Unknown';
+    const property = properties?.find((p) => p.id === propertyId);
+    if (!property) return 'Unknown';
+    return [property.address.nameOrNumber, property.address.street, property.address.city].filter(Boolean).join(', ');
   };
 
   return (
@@ -149,7 +155,7 @@ export default function InspectionsPage() {
               <SelectContent>
                 {properties?.map((prop) => (
                   <SelectItem key={prop.id} value={prop.id}>
-                    {prop.address}
+                    {[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}
                   </SelectItem>
                 ))}
               </SelectContent>

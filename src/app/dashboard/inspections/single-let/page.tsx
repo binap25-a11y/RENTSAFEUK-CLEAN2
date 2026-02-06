@@ -145,7 +145,11 @@ type InspectionFormValues = z.infer<typeof inspectionSchema>;
 
 interface Property {
   id: string;
-  address: string;
+  address: {
+    nameOrNumber?: string;
+    street: string;
+    city: string;
+  };
 }
 
 const ChecklistItem = ({ form, name, label }: { form: any, name: any, label: string }) => {
@@ -283,7 +287,7 @@ export default function SingleLetInspectionPage() {
                         <SelectContent>
                           {properties?.map((prop) => (
                             <SelectItem key={prop.id} value={prop.id}>
-                              {prop.address}
+                              {[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}
                             </SelectItem>
                           ))}
                         </SelectContent>

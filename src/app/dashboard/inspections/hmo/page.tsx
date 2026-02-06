@@ -157,7 +157,11 @@ type HmoInspectionFormValues = z.infer<typeof hmoInspectionSchema>;
 
 interface Property {
   id: string;
-  address: string;
+  address: {
+    nameOrNumber?: string;
+    street: string;
+    city: string;
+  };
 }
 
 const ChecklistItem = ({ form, name, label }: { form: any, name: any, label: string }) => (
@@ -315,7 +319,7 @@ export default function HmoInspectionPage() {
                                                             <SelectValue placeholder={isLoadingProperties ? <div className='flex items-center gap-2'><Loader2 className='animate-spin' /> Loading...</div> : "Select an HMO property"} />
                                                         </SelectTrigger>
                                                     </FormControl>
-                                                    <SelectContent>{properties?.map((prop) => (<SelectItem key={prop.id} value={prop.id}>{prop.address}</SelectItem>))}</SelectContent>
+                                                    <SelectContent>{properties?.map((prop) => (<SelectItem key={prop.id} value={prop.id}>{[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}</SelectItem>))}</SelectContent>
                                                 </Select>
                                                 <FormMessage />
                                             </FormItem>

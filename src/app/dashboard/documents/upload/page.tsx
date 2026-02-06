@@ -62,7 +62,11 @@ type DocumentFormValues = z.infer<typeof documentSchema>;
 
 // Type for property documents from Firestore
 interface Property {
-  address: string;
+  address: {
+    nameOrNumber?: string;
+    street: string;
+    city: string;
+  };
   ownerId: string;
 }
 
@@ -180,7 +184,7 @@ export default function UploadDocumentPage() {
                         <SelectContent>
                         {properties?.map((prop) => (
                             <SelectItem key={prop.id} value={prop.id}>
-                            {prop.address}
+                                {[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}
                             </SelectItem>
                         ))}
                         </SelectContent>
