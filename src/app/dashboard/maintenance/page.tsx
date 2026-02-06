@@ -244,7 +244,7 @@ export default function MaintenancePage() {
           title: 'Maintenance Logged',
           description: 'The new maintenance issue has been successfully logged.',
         });
-        form.reset({ reportedDate: new Date() });
+        form.reset();
         setFileNames([]);
         // If no filter is set, set it to the property we just added a log for
         if (!selectedPropertyFilter) {
@@ -643,7 +643,10 @@ export default function MaintenancePage() {
               </Card>
 
               <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline">
+                <Button type="button" variant="outline" onClick={() => {
+                  form.reset();
+                  setFileNames([]);
+                }}>
                   Cancel
                 </Button>
                 <Button type="submit" disabled={isUploading}>
