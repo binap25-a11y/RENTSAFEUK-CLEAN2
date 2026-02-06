@@ -4,56 +4,42 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // --- USER DATA ---
-    // Rule for the user's own profile document
-    match /users/{userId} {
-      allow get, update: if request.auth.uid == userId;
-    }
-    
-    // Rule for the 'tenants' subcollection
-    match /users/{userId}/tenants {
-      // THIS IS THE KEY FIX: Explicitly allow a user to LIST and CREATE tenants in their own subcollection.
-      allow list, create: if request.auth.uid == userId;
-    }
-
-    // Rule for a specific tenant document
-    match /users/{userId}/tenants/{tenantId} {
-      // Allow a user to GET, UPDATE, and DELETE their own individual tenant documents.
-      allow get, update, delete: if request.auth.uid == userId;
-    }
-    
-    // Rule for the 'screenings' sub-subcollection
-    match /users/{userId}/tenants/{tenantId}/screenings/{screeningId} {
-      // A user has full access to screening documents for tenants they own.
+    // This single rule grants a user full read/write access to their own
+    // user document and ALL of its subcollections (like tenants, screenings).
+    // This is the most robust way to handle user-owned nested data.
+    match /users/{userId}/{path=**} {
       allow read, write: if request.auth.uid == userId;
     }
 
-    // --- TOP-LEVEL PROPERTIES COLLECTION ---
-    // This allows a client to query the collection. The query itself MUST include `where('ownerId', '==', request.auth.uid)`
+    // --- TOP-LEVEL COLLECTIONS ---
+
+    // This rule allows a client to LIST properties, but the client-side query
+    // MUST be constrained with `where('ownerId', '==', request.auth.uid)`.
     match /properties {
-       allow list: if request.auth != null;
+      allow list: if request.auth != null;
     }
+
+    // This rule allows GET, CREATE, UPDATE, and DELETE operations on individual
+    // property documents, checking the ownerId for security.
     match /properties/{propertyId} {
-      // Allow get/update/delete only if the user is the owner.
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
-      // Allow create if the new document's ownerId is the user's uid.
       allow create: if request.resource.data.ownerId == request.auth.uid;
     }
 
-    // --- TOP-LEVEL CONTRACTORS COLLECTION ---
-    // This allows a client to query the collection. The query itself MUST include `where('ownerId', '==', request.auth.uid)`
-     match /contractors {
-       allow list: if request.auth != null;
+    // This rule allows a client to LIST contractors, constrained by ownerId.
+    match /contractors {
+      allow list: if request.auth != null;
     }
+
+    // This rule handles individual contractor documents.
     match /contractors/{contractorId} {
-      // Allow get/update/delete only if the user is the owner.
       allow get, update, delete: if resource.data.ownerId == request.auth.uid;
-      // Allow create if the new document's ownerId is the user's uid.
       allow create: if request.resource.data.ownerId == request.auth.uid;
     }
 
     // --- PROPERTY SUB-COLLECTIONS (Maintenance, Inspections, etc.) ---
-    // This rule secures all sub-collections under any property.
-    // It works by checking the `ownerId` of the parent property document.
+    // This single rule secures all sub-collections under any property
+    // by checking the ownerId of the parent property document.
     match /properties/{propertyId}/{subcollection}/{docId} {
       allow read, write: if get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
     }
