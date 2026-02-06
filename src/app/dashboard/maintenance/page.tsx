@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,7 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Upload, Loader2, Wand2, Search, MoreVertical, Edit } from 'lucide-react';
+import { Upload, Loader2, Wand2, Search, MoreVertical, Edit, Eye, XCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import { useState, useMemo, useEffect } from 'react';
@@ -58,6 +57,16 @@ import { Label } from '@/components/ui/label';
 import { MaintenanceAssistantDialog } from '@/components/dashboard/maintenance-assistant-dialog';
 import type { MaintenanceAssistantOutput } from '@/ai/flows/maintenance-assistant-flow';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 
 // Schema for the form
@@ -121,6 +130,7 @@ export default function MaintenancePage() {
   const [isUploading, setIsUploading] = useState(false);
   const [fileNames, setFileNames] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
+  const [logToCancel, setLogToCancel] = useState<MaintenanceLog | null>(null);
 
   const form = useForm<MaintenanceFormValues>({
     resolver: zodResolver(maintenanceSchema),
@@ -244,7 +254,20 @@ export default function MaintenancePage() {
           title: 'Maintenance Logged',
           description: 'The new maintenance issue has been successfully logged.',
         });
-        form.reset();
+        form.reset({
+          propertyId: '',
+          title: '',
+          description: '',
+          category: '',
+          priority: '',
+          reportedBy: '',
+          contractorName: '',
+          contractorPhone: '',
+          notes: '',
+          reportedDate: new Date(),
+          scheduledDate: undefined,
+          estimatedCost: undefined,
+        });
         setFileNames([]);
         // If no filter is set, set it to the property we just added a log for
         if (!selectedPropertyFilter) {
@@ -288,6 +311,27 @@ export default function MaintenancePage() {
     }
   };
 
+  const handleCancelConfirm = async () => {
+    if (!firestore || !logToCancel) return;
+    try {
+      const logRef = doc(firestore, 'properties', logToCancel.propertyId, 'maintenanceLogs', logToCancel.id);
+      await updateDoc(logRef, { status: 'Cancelled' });
+      toast({
+        title: 'Maintenance Log Cancelled',
+        description: `The log "${logToCancel.title}" has been marked as cancelled.`,
+      });
+    } catch (error) {
+      console.error('Failed to cancel log:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Update Failed',
+        description: 'There was an error cancelling the log. Please try again.',
+      });
+    } finally {
+      setLogToCancel(null);
+    }
+  };
+
   const getPriorityVariant = (priority: string) => {
     switch (priority) {
       case 'Emergency': return 'destructive';
@@ -301,535 +345,586 @@ export default function MaintenancePage() {
   };
 
   return (
-    <div className="space-y-6">
-       <MaintenanceAssistantDialog 
-          isOpen={isAssistantOpen} 
-          onOpenChange={setIsAssistantOpen}
-          onLogIssue={handleLogFromAssistant}
-      />
-      <Card>
-        <CardHeader>
-          <CardTitle>Log Maintenance Issue</CardTitle>
-          <CardDescription>
-            Fill in the details below or use our AI assistant to get started.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <div className="mb-6">
-            <Button onClick={() => setIsAssistantOpen(true)} variant="outline">
-                <Wand2 className="mr-2 h-4 w-4" />
-                AI Assistant
-            </Button>
-          </div>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-              {/* Issue Details Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-xl">Issue Details</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="propertyId"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Property</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
+    <>
+      <div className="space-y-6">
+        <MaintenanceAssistantDialog 
+            isOpen={isAssistantOpen} 
+            onOpenChange={setIsAssistantOpen}
+            onLogIssue={handleLogFromAssistant}
+        />
+        <Card>
+          <CardHeader>
+            <CardTitle>Log Maintenance Issue</CardTitle>
+            <CardDescription>
+              Fill in the details below or use our AI assistant to get started.
+            </CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="mb-6">
+              <Button onClick={() => setIsAssistantOpen(true)} variant="outline">
+                  <Wand2 className="mr-2 h-4 w-4" />
+                  AI Assistant
+              </Button>
+            </div>
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
+                {/* Issue Details Section */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-xl">Issue Details</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <FormField
+                      control={form.control}
+                      name="propertyId"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Property</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger>
+                                <SelectValue placeholder={isLoadingProperties ? 'Loading properties...' : 'Select a property'} />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {properties?.map((prop) => (
+                                <SelectItem key={prop.id} value={prop.id}>
+                                  {formatAddress(prop.address)}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="title"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Issue Title</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., Leaking kitchen sink" {...field} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="description"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Description</FormLabel>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Provide a detailed description of the issue."
+                              {...field}
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="category"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Category</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select a category" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {[
+                                  'Plumbing', 'Electrical', 'Heating', 'Structural', 'Appliances', 'Garden', 'Cleaning', 'Pest Control', 'Other'
+                                ].map((cat) => (
+                                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="priority"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Priority</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger>
+                                  <SelectValue placeholder="Select a priority" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {['Emergency', 'Urgent', 'Routine', 'Low'].map((p) => (
+                                  <SelectItem key={p} value={p}>{p}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Reporting Information Section */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-xl">Reporting Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="reportedBy"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Reported By</FormLabel>
+                            <FormControl>
+                              <Input placeholder="e.g., Tenant name" {...field} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="reportedDate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Reported Date</FormLabel>
+                            <FormControl>
+                                  <Input
+                                      type="date"
+                                      value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                                      onChange={(e) => field.onChange(e.target.value)}
+                                  />
+                              </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
+
+                {/* Contractor Information Section */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-xl">Contractor Information</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <FormItem>
+                        <FormLabel>Select a saved contractor</FormLabel>
+                        <Select onValueChange={(contractorId) => {
+                            const contractor = contractors?.find(c => c.id === contractorId);
+                            if (contractor) {
+                                form.setValue('contractorName', contractor.name);
+                                form.setValue('contractorPhone', contractor.phone);
+                            }
+                        }}>
                           <FormControl>
                             <SelectTrigger>
-                              <SelectValue placeholder={isLoadingProperties ? 'Loading properties...' : 'Select a property'} />
+                              <SelectValue placeholder="Select from your directory" />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
-                            {properties?.map((prop) => (
-                              <SelectItem key={prop.id} value={prop.id}>
-                                {formatAddress(prop.address)}
+                            {contractors?.map((c) => (
+                              <SelectItem key={c.id} value={c.id}>
+                                {c.name} ({c.trade})
                               </SelectItem>
                             ))}
                           </SelectContent>
                         </Select>
-                        <FormMessage />
+                        <FormDescription>
+                          Or enter new contractor details below.
+                        </FormDescription>
                       </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="title"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Issue Title</FormLabel>
-                        <FormControl>
-                          <Input placeholder="e.g., Leaking kitchen sink" {...field} />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <FormField
-                    control={form.control}
-                    name="description"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Description</FormLabel>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Provide a detailed description of the issue."
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="category"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Category</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="contractorName"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Contractor Name</FormLabel>
                             <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select a category" />
-                              </SelectTrigger>
+                              <Input placeholder="e.g., ABC Plumbers" {...field} />
                             </FormControl>
-                            <SelectContent>
-                              {[
-                                'Plumbing', 'Electrical', 'Heating', 'Structural', 'Appliances', 'Garden', 'Cleaning', 'Pest Control', 'Other'
-                              ].map((cat) => (
-                                <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="priority"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Priority</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="contractorPhone"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Contractor Phone</FormLabel>
                             <FormControl>
-                              <SelectTrigger>
-                                <SelectValue placeholder="Select a priority" />
-                              </SelectTrigger>
+                              <Input placeholder="07123456789" {...field} />
                             </FormControl>
-                            <SelectContent>
-                              {['Emergency', 'Urgent', 'Routine', 'Low'].map((p) => (
-                                <SelectItem key={p} value={p}>{p}</SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name="scheduledDate"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Scheduled Date</FormLabel>
+                              <FormControl>
+                                  <Input
+                                      type="date"
+                                      value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                                      onChange={(e) => field.onChange(e.target.value)}
+                                  />
+                              </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                      <FormField
+                        control={form.control}
+                        name="estimatedCost"
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel>Estimated Cost (£)</FormLabel>
+                            <FormControl>
+                              <Input type="text" inputMode="decimal" placeholder="150.00" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} value={field.value ?? ''} />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </CardContent>
+                </Card>
 
-              {/* Reporting Information Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-xl">Reporting Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {/* Photos & Notes Section */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-xl">Upload Photos</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
                     <FormField
                       control={form.control}
-                      name="reportedBy"
+                      name="photos"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Reported By</FormLabel>
+                          <FormLabel>Upload Photos of Issue</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g., Tenant name" {...field} />
+                            <Button asChild variant="outline" className="w-full cursor-pointer">
+                              <label htmlFor="photos-upload">
+                                <Upload className="mr-2 h-4 w-4" />
+                                Choose Files
+                                <Input
+                                  id="photos-upload"
+                                  type="file"
+                                  multiple
+                                  className="sr-only"
+                                  onChange={(e) => {
+                                      field.onChange(e.target.files);
+                                      if (e.target.files) {
+                                          setFileNames(Array.from(e.target.files).map(f => f.name));
+                                      } else {
+                                          setFileNames([]);
+                                      }
+                                  }}
+                                />
+                              </label>
+                            </Button>
+                          </FormControl>
+                          <FormMessage />
+                          {fileNames.length > 0 && (
+                              <div className="text-sm text-muted-foreground pt-2">
+                                  <p>Selected file(s):</p>
+                                  <ul className="list-disc pl-5">
+                                      {fileNames.map(name => <li key={name}>{name}</li>)}
+                                  </ul>
+                              </div>
+                          )}
+                        </FormItem>
+                      )}
+                    />
+                  </CardContent>
+                </Card>
+                <Card>
+                  <CardHeader>
+                    <CardTitle className='text-xl'>Additional Notes</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    <FormField
+                      control={form.control}
+                      name="notes"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormControl>
+                            <Textarea
+                              placeholder="Any additional notes..."
+                              className="resize-none"
+                              rows={5}
+                              {...field}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
-                    <FormField
-                      control={form.control}
-                      name="reportedDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Reported Date</FormLabel>
-                           <FormControl>
-                                <Input
-                                    type="date"
-                                    value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
-                                    onChange={(e) => field.onChange(e.target.value)}
-                                />
-                            </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                  </div>
-                </CardContent>
-              </Card>
+                  </CardContent>
+                </Card>
 
-              {/* Contractor Information Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-xl">Contractor Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                   <FormItem>
-                      <FormLabel>Select a saved contractor</FormLabel>
-                      <Select onValueChange={(contractorId) => {
-                          const contractor = contractors?.find(c => c.id === contractorId);
-                          if (contractor) {
-                              form.setValue('contractorName', contractor.name);
-                              form.setValue('contractorPhone', contractor.phone);
-                          }
-                      }}>
-                        <FormControl>
-                          <SelectTrigger>
-                            <SelectValue placeholder="Select from your directory" />
+                <div className="flex justify-end gap-2">
+                  <Button type="button" variant="outline" onClick={() => {
+                    form.reset({
+                      propertyId: '',
+                      title: '',
+                      description: '',
+                      category: '',
+                      priority: '',
+                      reportedBy: '',
+                      contractorName: '',
+                      contractorPhone: '',
+                      notes: '',
+                      reportedDate: new Date(),
+                      scheduledDate: undefined,
+                      estimatedCost: undefined,
+                    });
+                    setFileNames([]);
+                  }}>
+                    Cancel
+                  </Button>
+                  <Button type="submit" disabled={isUploading}>
+                    {isUploading ? (
+                      <>
+                        <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                        Logging...
+                      </>
+                    ) : (
+                      'Log Maintenance'
+                    )}
+                  </Button>
+                </div>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+        
+        <Card>
+          <CardHeader>
+            <CardTitle>Maintenance History</CardTitle>
+            <CardDescription>View and manage logged maintenance issues for your properties.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+              <div className="flex flex-col md:flex-row gap-4">
+                  <div className="flex items-center gap-2">
+                      <Label htmlFor="property-filter" className="sr-only">Filter by Property</Label>
+                      <Select value={selectedPropertyFilter} onValueChange={setSelectedPropertyFilter}>
+                          <SelectTrigger id="property-filter" className="w-full md:w-[300px]">
+                              <SelectValue placeholder={isLoadingProperties ? 'Loading...' : 'Select a property'} />
                           </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {contractors?.map((c) => (
-                            <SelectItem key={c.id} value={c.id}>
-                              {c.name} ({c.trade})
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
+                          <SelectContent>
+                              {properties?.map(prop => (
+                                  <SelectItem key={prop.id} value={prop.id}>{formatAddress(prop.address)}</SelectItem>
+                              ))}
+                          </SelectContent>
                       </Select>
-                      <FormDescription>
-                        Or enter new contractor details below.
-                      </FormDescription>
-                    </FormItem>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="contractorName"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Contractor Name</FormLabel>
-                          <FormControl>
-                            <Input placeholder="e.g., ABC Plumbers" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="contractorPhone"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Contractor Phone</FormLabel>
-                          <FormControl>
-                            <Input placeholder="07123456789" {...field} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
                   </div>
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField
-                      control={form.control}
-                      name="scheduledDate"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Scheduled Date</FormLabel>
-                            <FormControl>
-                                <Input
-                                    type="date"
-                                    value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
-                                    onChange={(e) => field.onChange(e.target.value)}
-                                />
-                            </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="estimatedCost"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Estimated Cost (£)</FormLabel>
-                          <FormControl>
-                            <Input type="text" inputMode="decimal" placeholder="150.00" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} value={field.value ?? ''} />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                  <div className="relative w-full md:max-w-sm">
+                      <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                      <Input 
+                          placeholder="Search by issue title..." 
+                          className="pl-8" 
+                          value={searchTerm} 
+                          onChange={e => setSearchTerm(e.target.value)}
+                      />
                   </div>
-                </CardContent>
-              </Card>
-
-              {/* Photos & Notes Section */}
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-xl">Upload Photos</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                  <FormField
-                    control={form.control}
-                    name="photos"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Upload Photos of Issue</FormLabel>
-                        <FormControl>
-                          <Button asChild variant="outline" className="w-full cursor-pointer">
-                            <label htmlFor="photos-upload">
-                              <Upload className="mr-2 h-4 w-4" />
-                              Choose Files
-                              <Input
-                                id="photos-upload"
-                                type="file"
-                                multiple
-                                className="sr-only"
-                                onChange={(e) => {
-                                    field.onChange(e.target.files);
-                                    if (e.target.files) {
-                                        setFileNames(Array.from(e.target.files).map(f => f.name));
-                                    } else {
-                                        setFileNames([]);
-                                    }
-                                }}
-                              />
-                            </label>
-                          </Button>
-                        </FormControl>
-                        <FormMessage />
-                        {fileNames.length > 0 && (
-                            <div className="text-sm text-muted-foreground pt-2">
-                                <p>Selected file(s):</p>
-                                <ul className="list-disc pl-5">
-                                    {fileNames.map(name => <li key={name}>{name}</li>)}
-                                </ul>
-                            </div>
-                        )}
-                      </FormItem>
-                    )}
-                  />
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader>
-                  <CardTitle className='text-xl'>Additional Notes</CardTitle>
-                </CardHeader>
-                <CardContent>
-                  <FormField
-                    control={form.control}
-                    name="notes"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormControl>
-                          <Textarea
-                            placeholder="Any additional notes..."
-                            className="resize-none"
-                            rows={5}
-                            {...field}
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                </CardContent>
-              </Card>
-
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" onClick={() => {
-                  form.reset();
-                  setFileNames([]);
-                }}>
-                  Cancel
-                </Button>
-                <Button type="submit" disabled={isUploading}>
-                  {isUploading ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Logging...
-                    </>
-                  ) : (
-                    'Log Maintenance'
-                  )}
-                </Button>
               </div>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
-      
-       <Card>
-        <CardHeader>
-          <CardTitle>Maintenance History</CardTitle>
-          <CardDescription>View and manage logged maintenance issues for your properties.</CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-            <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex items-center gap-2">
-                    <Label htmlFor="property-filter" className="sr-only">Filter by Property</Label>
-                    <Select value={selectedPropertyFilter} onValueChange={setSelectedPropertyFilter}>
-                        <SelectTrigger id="property-filter" className="w-full md:w-[300px]">
-                            <SelectValue placeholder={isLoadingProperties ? 'Loading...' : 'Select a property'} />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {properties?.map(prop => (
-                                <SelectItem key={prop.id} value={prop.id}>{formatAddress(prop.address)}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-                <div className="relative w-full md:max-w-sm">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                        placeholder="Search by issue title..." 
-                        className="pl-8" 
-                        value={searchTerm} 
-                        onChange={e => setSearchTerm(e.target.value)}
-                    />
-                </div>
-            </div>
-             
-             {/* Desktop Table View */}
-             <div className="hidden rounded-md border md:block">
-                <Table>
-                    <TableHeader>
-                        <TableRow>
-                            <TableHead>Title</TableHead>
-                            <TableHead>Status</TableHead>
-                            <TableHead>Priority</TableHead>
-                            <TableHead>Reported</TableHead>
-                            <TableHead className="text-right">Actions</TableHead>
-                        </TableRow>
-                    </TableHeader>
-                    <TableBody>
-                        {isLoadingLogs && (
-                            <TableRow>
-                                <TableCell colSpan={5} className="h-24 text-center">
-                                    <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
-                                </TableCell>
-                            </TableRow>
-                        )}
-                        {!isLoadingLogs && filteredLogs?.length === 0 && (
-                            <TableRow>
-                                <TableCell colSpan={5} className="h-24 text-center">
-                                    {selectedPropertyFilter ? 'No maintenance logs for this property.' : 'Select a property to view logs.'}
-                                </TableCell>
-                            </TableRow>
-                        )}
-                        {filteredLogs?.map(log => (
-                            <TableRow key={log.id}>
-                                <TableCell className="font-medium">
-                                    <Link href={`/dashboard/maintenance/${log.id}?propertyId=${selectedPropertyFilter}`} className="hover:underline">
-                                        {log.title}
-                                    </Link>
-                                </TableCell>
-                                <TableCell>
-                                    <Select
-                                        value={log.status}
-                                        onValueChange={(newStatus) => handleStatusChange(log.id, selectedPropertyFilter, newStatus)}
-                                    >
-                                        <SelectTrigger className="w-[150px]">
-                                            <SelectValue placeholder="Set status" />
-                                        </SelectTrigger>
-                                        <SelectContent>
-                                            <SelectItem value="Open">Open</SelectItem>
-                                            <SelectItem value="In Progress">In Progress</SelectItem>
-                                            <SelectItem value="Completed">Completed</SelectItem>
-                                            <SelectItem value="Cancelled">Cancelled</SelectItem>
-                                        </SelectContent>
-                                    </Select>
-                                </TableCell>
-                                <TableCell><Badge variant={getPriorityVariant(log.priority)}>{log.priority}</Badge></TableCell>
-                                <TableCell>
-                                    {log.reportedDate instanceof Date ? format(log.reportedDate, 'dd/MM/yyyy') : format(new Date(log.reportedDate.seconds * 1000), 'dd/MM/yyyy')}
-                                </TableCell>
-                                <TableCell className="text-right">
-                                    <Button asChild variant="ghost" size="icon">
-                                      <Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${selectedPropertyFilter}`}>
-                                        <Edit className="h-4 w-4" />
+              
+              {/* Desktop Table View */}
+              <div className="hidden rounded-md border md:block">
+                  <Table>
+                      <TableHeader>
+                          <TableRow>
+                              <TableHead>Title</TableHead>
+                              <TableHead>Status</TableHead>
+                              <TableHead>Priority</TableHead>
+                              <TableHead>Reported</TableHead>
+                              <TableHead className="text-right">Actions</TableHead>
+                          </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                          {isLoadingLogs && (
+                              <TableRow>
+                                  <TableCell colSpan={5} className="h-24 text-center">
+                                      <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+                                  </TableCell>
+                              </TableRow>
+                          )}
+                          {!isLoadingLogs && filteredLogs?.length === 0 && (
+                              <TableRow>
+                                  <TableCell colSpan={5} className="h-24 text-center">
+                                      {selectedPropertyFilter ? 'No maintenance logs for this property.' : 'Select a property to view logs.'}
+                                  </TableCell>
+                              </TableRow>
+                          )}
+                          {filteredLogs?.map(log => (
+                              <TableRow key={log.id}>
+                                  <TableCell className="font-medium">
+                                      <Link href={`/dashboard/maintenance/${log.id}?propertyId=${selectedPropertyFilter}`} className="hover:underline">
+                                          {log.title}
                                       </Link>
-                                    </Button>
-                                </TableCell>
-                            </TableRow>
-                        ))}
-                    </TableBody>
-                </Table>
-             </div>
-
-            {/* Mobile Card View */}
-            <div className="space-y-4 md:hidden">
-              {isLoadingLogs ? (
-                  <div className="flex justify-center items-center h-24">
-                      <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
-                  </div>
-              ) : filteredLogs?.length === 0 ? (
-                  <div className="text-center py-10 text-muted-foreground">
-                      {selectedPropertyFilter ? 'No maintenance logs for this property.' : 'Select a property to view logs.'}
-                  </div>
-              ) : (
-                filteredLogs.map(log => (
-                    <Card key={log.id}>
-                        <CardHeader>
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <CardTitle className="text-base pr-2">
-                                        <Link href={`/dashboard/maintenance/${log.id}?propertyId=${selectedPropertyFilter}`} className="hover:underline">
-                                            {log.title}
+                                  </TableCell>
+                                  <TableCell>
+                                      <Select
+                                          value={log.status}
+                                          onValueChange={(newStatus) => handleStatusChange(log.id, selectedPropertyFilter, newStatus)}
+                                      >
+                                          <SelectTrigger className="w-[150px]">
+                                              <SelectValue placeholder="Set status" />
+                                          </SelectTrigger>
+                                          <SelectContent>
+                                              <SelectItem value="Open">Open</SelectItem>
+                                              <SelectItem value="In Progress">In Progress</SelectItem>
+                                              <SelectItem value="Completed">Completed</SelectItem>
+                                              <SelectItem value="Cancelled">Cancelled</SelectItem>
+                                          </SelectContent>
+                                      </Select>
+                                  </TableCell>
+                                  <TableCell><Badge variant={getPriorityVariant(log.priority)}>{log.priority}</Badge></TableCell>
+                                  <TableCell>
+                                      {log.reportedDate instanceof Date ? format(log.reportedDate, 'dd/MM/yyyy') : format(new Date(log.reportedDate.seconds * 1000), 'dd/MM/yyyy')}
+                                  </TableCell>
+                                  <TableCell className="text-right">
+                                      <Button asChild variant="ghost" size="icon">
+                                          <Link href={`/dashboard/maintenance/${log.id}?propertyId=${selectedPropertyFilter}`}>
+                                              <Eye className="h-4 w-4" />
+                                          </Link>
+                                      </Button>
+                                      <Button asChild variant="ghost" size="icon">
+                                        <Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${selectedPropertyFilter}`}>
+                                          <Edit className="h-4 w-4" />
                                         </Link>
-                                    </CardTitle>
-                                    <CardDescription>{propertyMap[selectedPropertyFilter]}</CardDescription>
-                                </div>
-                                <DropdownMenu>
-                                    <DropdownMenuTrigger asChild>
-                                        <Button variant="ghost" size="icon" className="-mr-2 -mt-2"><MoreVertical className="h-4 w-4" /></Button>
-                                    </DropdownMenuTrigger>
-                                    <DropdownMenuContent align="end">
-                                        <DropdownMenuItem asChild>
-                                            <Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${selectedPropertyFilter}`}><Edit className="mr-2 h-4 w-4" /> Edit</Link>
-                                        </DropdownMenuItem>
-                                    </DropdownMenuContent>
-                                </DropdownMenu>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                             <div className="flex items-center justify-between text-sm">
-                              <span className="text-muted-foreground">Status</span>
-                               <Select
-                                    value={log.status}
-                                    onValueChange={(newStatus) => handleStatusChange(log.id, selectedPropertyFilter, newStatus)}
-                                >
-                                    <SelectTrigger className="w-[150px] h-9">
-                                        <SelectValue placeholder="Set status" />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        <SelectItem value="Open">Open</SelectItem>
-                                        <SelectItem value="In Progress">In Progress</SelectItem>
-                                        <SelectItem value="Completed">Completed</SelectItem>
-                                        <SelectItem value="Cancelled">Cancelled</SelectItem>
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                             <div className="flex items-center justify-between text-sm">
-                                <span className="text-muted-foreground">Priority</span>
-                                <Badge variant={getPriorityVariant(log.priority)}>{log.priority}</Badge>
-                             </div>
-                        </CardContent>
-                        <CardFooter className="text-xs justify-end text-muted-foreground pt-4">
-                            Reported on {log.reportedDate instanceof Date ? format(log.reportedDate, 'dd/MM/yyyy') : format(new Date(log.reportedDate.seconds * 1000), 'dd/MM/yyyy')}
-                        </CardFooter>
-                    </Card>
-                ))
-              )}
-            </div>
-        </CardContent>
-       </Card>
-    </div>
+                                      </Button>
+                                      <Button variant="ghost" size="icon" onClick={() => setLogToCancel(log)}>
+                                          <XCircle className="h-4 w-4 text-destructive" />
+                                      </Button>
+                                  </TableCell>
+                              </TableRow>
+                          ))}
+                      </TableBody>
+                  </Table>
+              </div>
+
+              {/* Mobile Card View */}
+              <div className="space-y-4 md:hidden">
+                {isLoadingLogs ? (
+                    <div className="flex justify-center items-center h-24">
+                        <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+                    </div>
+                ) : filteredLogs?.length === 0 ? (
+                    <div className="text-center py-10 text-muted-foreground">
+                        {selectedPropertyFilter ? 'No maintenance logs for this property.' : 'Select a property to view logs.'}
+                    </div>
+                ) : (
+                  filteredLogs.map(log => (
+                      <Card key={log.id}>
+                          <CardHeader>
+                              <div className="flex justify-between items-start">
+                                  <div>
+                                      <CardTitle className="text-base pr-2">
+                                          <Link href={`/dashboard/maintenance/${log.id}?propertyId=${selectedPropertyFilter}`} className="hover:underline">
+                                              {log.title}
+                                          </Link>
+                                      </CardTitle>
+                                      <CardDescription>{propertyMap[selectedPropertyFilter]}</CardDescription>
+                                  </div>
+                                  <DropdownMenu>
+                                      <DropdownMenuTrigger asChild>
+                                          <Button variant="ghost" size="icon" className="-mr-2 -mt-2"><MoreVertical className="h-4 w-4" /></Button>
+                                      </DropdownMenuTrigger>
+                                      <DropdownMenuContent align="end">
+                                            <DropdownMenuItem asChild>
+                                                <Link href={`/dashboard/maintenance/${log.id}?propertyId=${selectedPropertyFilter}`}>
+                                                    <Eye className="mr-2 h-4 w-4" /> View
+                                                </Link>
+                                            </DropdownMenuItem>
+                                          <DropdownMenuItem asChild>
+                                              <Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${selectedPropertyFilter}`}><Edit className="mr-2 h-4 w-4" /> Edit</Link>
+                                          </DropdownMenuItem>
+                                          <DropdownMenuItem onClick={() => setLogToCancel(log)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                              <XCircle className="mr-2 h-4 w-4" /> Cancel Log
+                                          </DropdownMenuItem>
+                                      </DropdownMenuContent>
+                                  </DropdownMenu>
+                              </div>
+                          </CardHeader>
+                          <CardContent className="space-y-4">
+                              <div className="flex items-center justify-between text-sm">
+                                <span className="text-muted-foreground">Status</span>
+                                <Select
+                                      value={log.status}
+                                      onValueChange={(newStatus) => handleStatusChange(log.id, selectedPropertyFilter, newStatus)}
+                                  >
+                                      <SelectTrigger className="w-[150px] h-9">
+                                          <SelectValue placeholder="Set status" />
+                                      </SelectTrigger>
+                                      <SelectContent>
+                                          <SelectItem value="Open">Open</SelectItem>
+                                          <SelectItem value="In Progress">In Progress</SelectItem>
+                                          <SelectItem value="Completed">Completed</SelectItem>
+                                          <SelectItem value="Cancelled">Cancelled</SelectItem>
+                                      </SelectContent>
+                                  </Select>
+                              </div>
+                              <div className="flex items-center justify-between text-sm">
+                                  <span className="text-muted-foreground">Priority</span>
+                                  <Badge variant={getPriorityVariant(log.priority)}>{log.priority}</Badge>
+                              </div>
+                          </CardContent>
+                          <CardFooter className="text-xs justify-end text-muted-foreground pt-4">
+                              Reported on {log.reportedDate instanceof Date ? format(log.reportedDate, 'dd/MM/yyyy') : format(new Date(log.reportedDate.seconds * 1000), 'dd/MM/yyyy')}
+                          </CardFooter>
+                      </Card>
+                  ))
+                )}
+              </div>
+          </CardContent>
+        </Card>
+      </div>
+
+       <AlertDialog open={!!logToCancel} onOpenChange={(open) => !open && setLogToCancel(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will cancel the maintenance log: "{logToCancel?.title}". This action can be undone by editing the log.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Back</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleCancelConfirm}
+            >
+              Yes, Cancel Log
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+    </>
   );
 }
