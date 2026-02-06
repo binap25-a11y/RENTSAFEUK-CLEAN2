@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -61,7 +62,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 
 // Schema for the form
 const maintenanceSchema = z.object({
-  propertyId: z.string({ required_error: 'Please select a property.' }),
+  propertyId: z.string({ required_error: 'Please select a property.' }).min(1, 'Please select a property.'),
   title: z.string().min(3, 'Title is too short'),
   description: z.string().optional(),
   category: z.string({ required_error: 'Please select a category.' }),
@@ -85,6 +86,7 @@ interface Property {
     nameOrNumber?: string;
     street: string;
     city: string;
+    postcode: string;
   };
   ownerId: string;
 }
@@ -122,6 +124,17 @@ export default function MaintenancePage() {
 
   const form = useForm<MaintenanceFormValues>({
     resolver: zodResolver(maintenanceSchema),
+    defaultValues: {
+      propertyId: '',
+      title: '',
+      description: '',
+      category: '',
+      priority: '',
+      reportedBy: '',
+      contractorName: '',
+      contractorPhone: '',
+      notes: '',
+    },
   });
 
   useEffect(() => {
@@ -322,7 +335,7 @@ export default function MaintenancePage() {
                     render={({ field }) => (
                       <FormItem>
                         <FormLabel>Property</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
                             <SelectTrigger>
                               <SelectValue placeholder={isLoadingProperties ? 'Loading properties...' : 'Select a property'} />
