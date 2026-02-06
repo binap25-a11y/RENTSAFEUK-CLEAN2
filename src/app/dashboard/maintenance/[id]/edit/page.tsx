@@ -144,25 +144,26 @@ export default function EditMaintenancePage() {
         }
         setIsSubmitting(true);
         try {
-            let photoUrls = existingPhotos;
+            let finalPhotoUrls = existingPhotos;
             if (data.photos && data.photos.length > 0) {
-                photoUrls = []; // Replace old photos if new ones are uploaded
-                for (const file of Array.from(data.photos)) {
+                const uploadPromises = Array.from(data.photos).map(async (file) => {
                     const uniqueFileName = `${Date.now()}-${file.name}`;
                     const fileStorageRef = storageRef(storage, `maintenance/${user.uid}/${uniqueFileName}`);
-                    const uploadResult = await uploadBytes(fileStorageRef, file);
-                    photoUrls.push(await getDownloadURL(uploadResult.ref));
-                }
+                    await uploadBytes(fileStorageRef, file);
+                    return getDownloadURL(fileStorageRef);
+                });
+                finalPhotoUrls = await Promise.all(uploadPromises);
             }
 
             const { photos, ...formData } = data;
-            await updateDoc(maintenanceLogRef, { ...formData, photoUrls });
+            await updateDoc(maintenanceLogRef, { ...formData, photoUrls: finalPhotoUrls });
 
             toast({ title: 'Maintenance Log Updated', description: 'The changes have been saved.' });
             router.push(`/dashboard/maintenance/${logId}?propertyId=${propertyId}`);
         } catch (error) {
             console.error('Failed to update maintenance log', error);
-            toast({ variant: 'destructive', title: 'Update Failed', description: 'There was an error updating the log.' });
+            const anyError = error as any;
+            toast({ variant: 'destructive', title: 'Update Failed', description: anyError.message || 'There was an error updating the log.' });
         } finally {
             setIsSubmitting(false);
         }
