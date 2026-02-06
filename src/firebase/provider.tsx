@@ -5,8 +5,30 @@ import { FirebaseApp } from 'firebase/app';
 import { Firestore, doc, getDoc, setDoc, serverTimestamp } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged, getRedirectResult } from 'firebase/auth';
 import { Storage } from 'firebase/storage';
-import { FirebaseErrorListener } from '@/components/FirebaseErrorListener'
 import { useToast } from '@/hooks/use-toast';
+import { errorEmitter } from './error-emitter';
+import { FirestorePermissionError } from './errors';
+
+
+// This component is defined here to avoid circular dependencies
+function FirebaseErrorListener() {
+  const [error, setError] = useState<FirestorePermissionError | null>(null);
+
+  useEffect(() => {
+    const handleError = (error: FirestorePermissionError) => {
+      setError(error);
+    };
+    errorEmitter.on('permission-error', handleError);
+    return () => {
+      errorEmitter.off('permission-error', handleError);
+    };
+  }, []);
+
+  if (error) {
+    throw error;
+  }
+  return null;
+}
 
 interface FirebaseProviderProps {
   children: ReactNode;
@@ -226,5 +248,3 @@ export const useUser = (): UserHookResult => { // Renamed from useAuthUser
   const { user, isUserLoading, userError } = useFirebase(); // Leverages the main hook
   return { user, isUserLoading, userError };
 };
-
-    
