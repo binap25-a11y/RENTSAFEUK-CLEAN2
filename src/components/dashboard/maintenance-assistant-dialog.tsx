@@ -113,7 +113,7 @@ export function MaintenanceAssistantDialog({
           {result && (
             <Alert>
               <AlertTitle className="font-bold">{result.suggestedTitle}</AlertTitle>
-              <AlertDescription asChild>
+              <AlertDescription>
                 <div className="space-y-4 mt-2">
                    <div>
                         <p className="font-semibold text-foreground">Urgency</p>
