@@ -2,11 +2,50 @@ rules_version = '2';
 
 service cloud.firestore {
   match /databases/{database}/documents {
-    // WARNING: This rule allows any authenticated user to read and write to the
-    // entire database. This is intended for development and debugging purposes only.
-    // Replace with more secure rules before moving to production.
-    match /{document=**} {
-      allow read, write: if request.auth != null;
+
+    // --- Users & Subcollections (Tenants, Screenings) ---
+    // A user can read and write their own documents. This covers getting user profile,
+    // and also listing/getting/writing to the tenants and screenings subcollections.
+    match /users/{userId}/{path=**} {
+      allow read, write: if request.auth.uid == userId;
+    }
+
+    // --- Properties Collection ---
+    // Any authenticated user can list the properties.
+    match /properties {
+      allow list: if request.auth != null;
+    }
+    
+    // Permissions for a single property document and its subcollections.
+    match /properties/{propertyId} {
+      // Any authenticated user can get a single property.
+      allow get: if request.auth != null;
+      
+      // Only the owner can create, update, or delete a property.
+      allow create: if request.auth.uid == request.resource.data.ownerId;
+      allow update, delete: if get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
+
+      // --- Property Subcollections (maintenance, inspections, documents, etc.) ---
+      // The owner of the parent property can read and write all documents in all subcollections.
+      match /{subcollection}/{docId=**} {
+        allow read, write: if get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
+      }
+    }
+
+    // --- Contractors Collection ---
+    // Any authenticated user can list the contractors.
+    match /contractors {
+      allow list: if request.auth != null;
+    }
+
+    // Permissions for a single contractor document.
+    match /contractors/{contractorId} {
+      // Any authenticated user can get a single contractor.
+      allow get: if request.auth != null;
+      
+      // Only the owner can create, update, or delete a contractor.
+      allow create: if request.auth.uid == request.resource.data.ownerId;
+      allow update, delete: if get(/databases/$(database)/documents/contractors/$(contractorId)).data.ownerId == request.auth.uid;
     }
   }
 }
