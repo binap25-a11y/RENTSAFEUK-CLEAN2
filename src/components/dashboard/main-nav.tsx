@@ -57,7 +57,6 @@ const menuItems = [
     subItems: [
         { href: '/dashboard/contractors', label: 'All Contractors' },
         { href: '/dashboard/contractors/add', label: 'Add Contractor' },
-        { href: '/dashboard/contractors/archived', label: 'Archived Contractors' },
     ],
   },
   { href: '/dashboard/maintenance', label: 'Maintenance', icon: Wrench },
