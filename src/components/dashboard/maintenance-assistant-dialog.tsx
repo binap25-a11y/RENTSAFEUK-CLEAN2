@@ -89,7 +89,7 @@ export function MaintenanceAssistantDialog({
             suggest troubleshooting steps, and assess the urgency.
           </DialogDescription>
         </DialogHeader>
-        <div className="grid gap-4 py-4">
+        <div className="grid gap-4 py-4 max-h-[60vh] overflow-y-auto pr-4">
           <Textarea
             placeholder="e.g., 'The upstairs radiator is cold but all the others are hot.' or 'There's a damp patch on the ceiling in the living room.'"
             value={problemDescription}
