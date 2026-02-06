@@ -16,7 +16,16 @@ interface Searchable {
   id: string;
   [key: string]: any;
 }
-interface Property extends Searchable { address: string; status?: string; }
+interface Property extends Searchable {
+  address: {
+    nameOrNumber?: string;
+    street: string;
+    city: string;
+    county?: string;
+    postcode: string;
+  };
+  status?: string;
+}
 interface Tenant extends Searchable { name: string; email: string; status?: string; }
 interface Contractor extends Searchable { name: string; trade: string; status?: string; }
 interface MaintenanceLog extends Searchable { title: string; propertyId: string; }
@@ -112,12 +121,17 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
     const term = searchTerm.toLowerCase();
     const results: SearchResultGroup[] = [];
 
+    const formatAddress = (address: Property['address']) => {
+        if (!address) return 'Unknown Property';
+        return [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
+    }
+
     // Search Properties
     const propertyItems = allData.properties
-      .filter(p => p.status !== 'Deleted' && p.address.toLowerCase().includes(term))
+      .filter(p => p.status !== 'Deleted' && formatAddress(p.address).toLowerCase().includes(term))
       .map(p => ({
         id: p.id,
-        title: p.address,
+        title: formatAddress(p.address),
         description: 'Property',
         href: `/dashboard/properties/${p.id}`,
       }));

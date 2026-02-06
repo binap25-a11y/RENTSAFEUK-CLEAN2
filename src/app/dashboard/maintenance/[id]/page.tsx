@@ -44,7 +44,13 @@ interface MaintenanceLog {
 
 // Interface for a Property document from Firestore
 interface Property {
-    address: string;
+    address: {
+      nameOrNumber?: string;
+      street: string;
+      city: string;
+      county?: string;
+      postcode: string;
+    };
 }
 
 export default function MaintenanceDetailPage() {
@@ -104,6 +110,7 @@ export default function MaintenanceDetailPage() {
 
   const reportedDate = maintenanceLog.reportedDate ? (maintenanceLog.reportedDate instanceof Date ? maintenanceLog.reportedDate : new Date(maintenanceLog.reportedDate.seconds * 1000)) : null;
   const scheduledDate = maintenanceLog.scheduledDate ? (maintenanceLog.scheduledDate instanceof Date ? maintenanceLog.scheduledDate : new Date(maintenanceLog.scheduledDate.seconds * 1000)) : null;
+  const propertyAddress = property?.address ? [property.address.nameOrNumber, property.address.street, property.address.city, property.address.postcode].filter(Boolean).join(', ') : 'Loading...';
 
    const getPriorityVariant = (priority: string) => {
     switch (priority) {
@@ -125,7 +132,7 @@ export default function MaintenanceDetailPage() {
             </Button>
             <div>
                 <h1 className="text-2xl font-bold">{maintenanceLog.title}</h1>
-                <p className="text-muted-foreground">{property?.address || 'Loading...'}</p>
+                <p className="text-muted-foreground">{propertyAddress}</p>
             </div>
             </div>
              <DropdownMenu>

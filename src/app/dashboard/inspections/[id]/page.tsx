@@ -19,6 +19,21 @@ declare module 'jspdf' {
   }
 }
 
+interface Property {
+    address: {
+      nameOrNumber?: string;
+      street: string;
+      city: string;
+      county?: string;
+      postcode: string;
+    };
+}
+
+const formatAddress = (address: Property['address']) => {
+    if (!address) return 'Unknown Property';
+    return [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
+};
+
 // A helper component to display a checklist item
 const ChecklistItemDisplay = ({ label, checked }: { label: string; checked: boolean | undefined }) => (
   <div className="flex items-center justify-between rounded-md border p-3 bg-background">
@@ -112,7 +127,7 @@ export default function ViewInspectionPage() {
     if(!firestore || !propertyId) return null;
     return doc(firestore, 'properties', propertyId);
   }, [firestore, propertyId]);
-  const { data: property, isLoading: isLoadingProperty } = useDoc(propertyRef);
+  const { data: property, isLoading: isLoadingProperty } = useDoc<Property>(propertyRef);
 
 
   const generatePDF = () => {
@@ -123,12 +138,13 @@ export default function ViewInspectionPage() {
     const inspectionType = inspection.type || 'N/A';
     const pageHeight = doc.internal.pageSize.getHeight();
     let finalY = 0;
+    const propertyAddress = formatAddress(property.address);
 
     // --- HEADER ---
     doc.setFontSize(20);
     doc.text('Inspection Report', 14, 22);
     doc.setFontSize(12);
-    doc.text(`Property: ${property.address}`, 14, 30);
+    doc.text(`Property: ${propertyAddress}`, 14, 30);
     doc.setLineWidth(0.5);
     doc.line(14, 32, 200, 32);
 
@@ -152,6 +168,9 @@ export default function ViewInspectionPage() {
     const addSectionToPdf = (title: string, data: any, fields: {key: string, label: string}[], notesKey: string, concernsNote: string | null = null) => {
         if (!data && !concernsNote) return;
 
+        const hasData = data && (fields.some(field => data[field.key] !== undefined && data[field.key] !== false && data[field.key] !== '') || data[notesKey]);
+        if (!hasData && !concernsNote) return;
+
         // Check if we need a new page
         if (finalY > pageHeight - 60) { // Margin for content and footer
             doc.addPage();
@@ -169,13 +188,15 @@ export default function ViewInspectionPage() {
                 return [field.label, status];
             });
 
-            doc.autoTable({
-                startY: finalY,
-                head: [['Checklist Item', 'Status']],
-                body: tableBody,
-                theme: 'grid'
-            });
-            finalY = (doc as any).lastAutoTable.finalY;
+            if (tableBody.some(row => row[1] !== 'N/A')) {
+                doc.autoTable({
+                    startY: finalY,
+                    head: [['Checklist Item', 'Status']],
+                    body: tableBody.filter(row => row[1] !== 'N/A'),
+                    theme: 'grid'
+                });
+                finalY = (doc as any).lastAutoTable.finalY;
+            }
         }
 
         const notes = data?.[notesKey];
@@ -251,7 +272,7 @@ export default function ViewInspectionPage() {
     }
     
     // --- SAVE ---
-    const safeAddress = property.address.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
+    const safeAddress = propertyAddress.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
     doc.save(`Inspection-Report-${safeAddress}.pdf`);
   };
 
@@ -272,6 +293,7 @@ export default function ViewInspectionPage() {
   
   const inspectionDate = inspection.scheduledDate?.seconds ? format(new Date(inspection.scheduledDate.seconds * 1000), 'PPP') : 'N/A';
   const nextInspectionDate = inspection.followUp?.nextInspectionDate?.seconds ? format(new Date(inspection.followUp.nextInspectionDate.seconds * 1000), 'PPP') : null;
+  const propertyAddress = property ? formatAddress(property.address) : 'Loading property...';
 
 
   return (
@@ -283,7 +305,7 @@ export default function ViewInspectionPage() {
             </Button>
             <div>
                 <h1 className="text-2xl font-bold">Inspection Report</h1>
-                <p className="text-muted-foreground">{property?.address || 'Loading property...'}</p>
+                <p className="text-muted-foreground">{propertyAddress}</p>
             </div>
         </div>
         <Button onClick={generatePDF} disabled={!inspection || !property}>
