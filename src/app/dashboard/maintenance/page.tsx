@@ -131,6 +131,7 @@ export default function MaintenancePage() {
   const [selectedPropertyFilter, setSelectedPropertyFilter] = useState<string>('');
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
+  const [photosToUpload, setPhotosToUpload] = useState<FileList | null>(null);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [logToCancel, setLogToCancel] = useState<MaintenanceLog | null>(null);
@@ -231,18 +232,18 @@ export default function MaintenancePage() {
 
     try {
         let photoUrls: string[] = [];
-        if (data.photos && data.photos.length > 0) {
+        if (photosToUpload && photosToUpload.length > 0) {
             toast({
                 title: 'Uploading images...',
-                description: `Uploading ${data.photos.length} photo(s). Please wait.`,
+                description: `Uploading ${photosToUpload.length} photo(s). Please wait.`,
             });
-            for (const file of Array.from(data.photos)) {
+            const uploadPromises = Array.from(photosToUpload).map(async (file) => {
                 const uniqueFileName = `${Date.now()}-${file.name}`;
                 const fileStorageRef = storageRef(storage, `maintenance/${user.uid}/${uniqueFileName}`);
                 await uploadBytes(fileStorageRef, file);
-                const url = await getDownloadURL(fileStorageRef);
-                photoUrls.push(url);
-            }
+                return getDownloadURL(fileStorageRef);
+            });
+            photoUrls = await Promise.all(uploadPromises);
         }
         
         const { photos, ...formData } = data;
@@ -272,6 +273,8 @@ export default function MaintenancePage() {
         });
     } finally {
         setIsUploading(false);
+        setPhotosToUpload(null);
+        setPhotoPreviews([]);
     }
   }
 
@@ -659,26 +662,12 @@ export default function MaintenancePage() {
                                   className="sr-only"
                                   onChange={(e) => {
                                       const files = e.target.files;
-                                      field.onChange(files);
+                                      field.onChange(files); // For validation
+                                      setPhotosToUpload(files); // For upload
                                       if (files && files.length > 0) {
                                           const fileArray = Array.from(files);
-                                          const promises = fileArray.map(file => {
-                                              return new Promise<string>((resolve, reject) => {
-                                                  const reader = new FileReader();
-                                                  reader.onloadend = () => resolve(reader.result as string);
-                                                  reader.onerror = reject;
-                                                  reader.readAsDataURL(file);
-                                              });
-                                          });
-
-                                          Promise.all(promises)
-                                              .then(previews => {
-                                                  setPhotoPreviews(previews);
-                                              })
-                                              .catch(error => {
-                                                  console.error("Error creating image previews:", error);
-                                                  toast({ variant: 'destructive', title: 'Preview Error', description: 'Could not create image previews.' });
-                                              });
+                                          const previews = fileArray.map(file => URL.createObjectURL(file));
+                                          setPhotoPreviews(previews);
                                       } else {
                                           setPhotoPreviews([]);
                                       }
@@ -735,6 +724,7 @@ export default function MaintenancePage() {
                       estimatedCost: undefined,
                     });
                     setPhotoPreviews([]);
+                    setPhotosToUpload(null);
                   }}>
                     Cancel
                   </Button>

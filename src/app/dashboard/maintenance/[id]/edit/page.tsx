@@ -99,6 +99,7 @@ export default function EditMaintenancePage() {
 
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [existingPhotos, setExistingPhotos] = useState<string[]>([]);
+    const [newPhotosToUpload, setNewPhotosToUpload] = useState<FileList | null>(null);
     const [newPhotoPreviews, setNewPhotoPreviews] = useState<string[]>([]);
 
     const form = useForm<MaintenanceFormValues>({
@@ -145,21 +146,20 @@ export default function EditMaintenancePage() {
         setIsSubmitting(true);
         try {
             let finalPhotoUrls = existingPhotos;
-            if (data.photos && data.photos.length > 0) {
+            if (newPhotosToUpload && newPhotosToUpload.length > 0) {
                  toast({
                     title: 'Uploading new photos...',
-                    description: `Uploading ${data.photos.length} photo(s). This will replace any existing photos.`,
+                    description: `Uploading ${newPhotosToUpload.length} photo(s). This will replace any existing photos.`,
                 });
                 
-                const newUrls = [];
-                for (const file of Array.from(data.photos)) {
+                const uploadPromises = Array.from(newPhotosToUpload).map(async (file) => {
                     const uniqueFileName = `${Date.now()}-${file.name}`;
                     const fileStorageRef = storageRef(storage, `maintenance/${user.uid}/${uniqueFileName}`);
                     await uploadBytes(fileStorageRef, file);
-                    const url = await getDownloadURL(fileStorageRef);
-                    newUrls.push(url);
-                }
-                finalPhotoUrls = newUrls;
+                    return getDownloadURL(fileStorageRef);
+                });
+                
+                finalPhotoUrls = await Promise.all(uploadPromises);
             }
 
             const { photos, ...formData } = data;
@@ -308,21 +308,11 @@ export default function EditMaintenancePage() {
                                             <Button asChild variant="outline" className="w-full"><label htmlFor="photos-upload" className="cursor-pointer flex items-center justify-center gap-2"><Upload className="h-4 w-4" />Choose Files<Input id="photos-upload" type="file" multiple accept="image/*" className="sr-only" onChange={(e) => { 
                                                 const files = e.target.files;
                                                 field.onChange(files);
+                                                setNewPhotosToUpload(files);
                                                 if (files && files.length > 0) {
                                                     const fileArray = Array.from(files);
-                                                    const promises = fileArray.map(file => {
-                                                        return new Promise<string>((resolve, reject) => {
-                                                            const reader = new FileReader();
-                                                            reader.onloadend = () => resolve(reader.result as string);
-                                                            reader.onerror = reject;
-                                                            reader.readAsDataURL(file);
-                                                        });
-                                                    });
-                                                    
-                                                    Promise.all(promises).then(setNewPhotoPreviews).catch(error => {
-                                                        console.error("Error creating image previews:", error);
-                                                        toast({ variant: 'destructive', title: 'Preview Error', description: 'Could not create image previews.' });
-                                                    });
+                                                    const previews = fileArray.map(file => URL.createObjectURL(file));
+                                                    setNewPhotoPreviews(previews);
                                                 } else {
                                                     setNewPhotoPreviews([]);
                                                 }
