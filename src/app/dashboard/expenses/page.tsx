@@ -38,7 +38,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Clock, PoundSterling, TrendingDown, TrendingUp, Loader2, CheckCircle2, XCircle, AlertCircle, Download, Filter } from 'lucide-react';
+import { Clock, PoundSterling, TrendingDown, TrendingUp, Loader2, CheckCircle2, XCircle, AlertCircle, Download, Filter, Banknote } from 'lucide-react';
 import { getYear, startOfYear, endOfYear } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -205,10 +205,10 @@ export default function FinancialsPage() {
 
   return (
     <div className="flex flex-col gap-6">
-        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-3">
+        <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Annual Portfolio Income</CardTitle>
+                <CardTitle className="text-sm font-medium">Annual Portfolio Rent</CardTitle>
                 <PoundSterling className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
@@ -218,26 +218,38 @@ export default function FinancialsPage() {
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Selected Property Expenses</CardTitle>
+                <CardTitle className="text-sm font-medium">Annual Income Received</CardTitle>
+                <TrendingUp className="h-4 w-4 text-green-500" />
+                </CardHeader>
+                <CardContent>
+                    <div className="text-2xl font-bold">
+                        {isLoading && selectedPropertyId ? <Loader2 className="h-6 w-6 animate-spin" /> : selectedPropertyId ? `£${totalPaidRent.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`: '-'}
+                    </div>
+                    <p className="text-xs text-muted-foreground">Rent received in {selectedYear}</p>
+                </CardContent>
+            </Card>
+            <Card>
+                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-sm font-medium">Annual Expenses</CardTitle>
                 <TrendingDown className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">
                         {isLoading && selectedPropertyId ? <Loader2 className="h-6 w-6 animate-spin" /> : selectedPropertyId ? `£${totalExpenses.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`: '-'}
                     </div>
-                    <p className="text-xs text-muted-foreground">Select a property & year</p>
+                    <p className="text-xs text-muted-foreground">Expenses in {selectedYear}</p>
                 </CardContent>
             </Card>
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Selected Property Net</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+                <CardTitle className="text-sm font-medium">Annual Net Position</CardTitle>
+                <Banknote className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className={"text-2xl font-bold" + (netIncome < 0 ? " text-destructive" : "")}>
+                    <div className={"text-2xl font-bold" + (netIncome < 0 ? " text-destructive" : " text-primary")}>
                         {isLoading && selectedPropertyId ? <Loader2 className="h-6 w-6 animate-spin" /> : selectedPropertyId ? `£${netIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`: '-'}
                     </div>
-                     <p className="text-xs text-muted-foreground">Income minus expenses</p>
+                     <p className="text-xs text-muted-foreground">Net for {selectedYear}</p>
                 </CardContent>
             </Card>
         </div>
@@ -254,7 +266,7 @@ export default function FinancialsPage() {
                         Active Property
                     </Label>
                     <Select onValueChange={setSelectedPropertyId} value={selectedPropertyId}>
-                        <SelectTrigger id="property-filter" className="w-full sm:w-[400px] h-12 bg-background">
+                        <SelectTrigger id="property-filter" className="w-full md:w-[400px] h-12 bg-background">
                         <SelectValue placeholder={isLoadingProperties ? "Loading portfolio..." : "Select an active property"} />
                         </SelectTrigger>
                         <SelectContent>
@@ -707,7 +719,7 @@ function AnnualSummary({
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Total Portfolio Income</CardTitle>
+                <CardTitle className="text-sm font-medium">Total Portfolio Rent</CardTitle>
                 <PoundSterling className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
