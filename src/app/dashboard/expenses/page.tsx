@@ -259,14 +259,14 @@ export default function FinancialsPage() {
           <CardDescription>Select an active property and year to view detailed financials.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-           <div className="flex flex-col sm:flex-row gap-4">
-                <div className="grid w-full sm:w-auto gap-1.5">
-                    <Label htmlFor="property-filter" className="flex items-center gap-2">
+           <div className="flex flex-col gap-6 max-w-md">
+                <div className="grid w-full gap-1.5">
+                    <Label htmlFor="property-filter" className="flex items-center gap-2 font-semibold">
                         <Filter className="h-3 w-3" />
                         Active Property
                     </Label>
                     <Select onValueChange={setSelectedPropertyId} value={selectedPropertyId}>
-                        <SelectTrigger id="property-filter" className="w-full md:w-[400px] h-12 bg-background">
+                        <SelectTrigger id="property-filter" className="w-full h-12 bg-background">
                         <SelectValue placeholder={isLoadingProperties ? "Loading portfolio..." : "Select an active property"} />
                         </SelectTrigger>
                         <SelectContent>
@@ -278,10 +278,10 @@ export default function FinancialsPage() {
                         </SelectContent>
                     </Select>
                 </div>
-                <div className="grid w-full sm:w-auto gap-1.5">
-                    <Label htmlFor="year-filter">Year</Label>
+                <div className="grid w-full gap-1.5">
+                    <Label htmlFor="year-filter" className="font-semibold">Year</Label>
                     <Select onValueChange={(value) => setSelectedYear(Number(value))} value={String(selectedYear)}>
-                        <SelectTrigger id="year-filter" className="w-full sm:w-[120px] h-12 bg-background">
+                        <SelectTrigger id="year-filter" className="w-full h-12 bg-background">
                             <SelectValue placeholder="Year" />
                         </SelectTrigger>
                         <SelectContent>
