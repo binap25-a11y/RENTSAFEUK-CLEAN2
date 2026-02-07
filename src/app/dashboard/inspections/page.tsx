@@ -19,7 +19,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Loader2, Eye, CalendarCheck } from 'lucide-react';
+import { PlusCircle, Loader2, Eye, CalendarCheck, Filter } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   useUser,
@@ -138,18 +138,20 @@ export default function InspectionsPage() {
         </div>
       </div>
 
-      <Card className="border-none shadow-lg">
-        <CardHeader className="border-b bg-muted/30 pb-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+      <Card className="border-none shadow-lg overflow-hidden">
+        <CardHeader className="bg-muted/30 border-b pb-8">
+          <div className="flex flex-col gap-6">
             <div>
-              <CardTitle>Inspection History</CardTitle>
+              <CardTitle className="text-xl">Inspection History</CardTitle>
               <CardDescription>
                 Filter and view records from previous property checks.
               </CardDescription>
             </div>
-            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
-              <Label htmlFor="property-filter" className="text-sm font-semibold whitespace-nowrap">
-                Property
+            
+            <div className="flex flex-col space-y-2 max-w-md">
+              <Label htmlFor="property-filter" className="text-sm font-semibold flex items-center gap-2">
+                <Filter className="h-3.5 w-3.5" />
+                Select Property to View Logs
               </Label>
               <Select
                 onValueChange={setSelectedPropertyId}
@@ -157,13 +159,13 @@ export default function InspectionsPage() {
               >
                 <SelectTrigger
                   id="property-filter"
-                  className="w-full md:w-[320px] bg-background"
+                  className="w-full bg-background border-primary/20 shadow-sm focus:ring-primary"
                 >
                   <SelectValue
                     placeholder={
                       isLoadingProperties
                         ? 'Loading properties...'
-                        : 'Select a property to view logs'
+                        : 'Choose a property...'
                     }
                   />
                 </SelectTrigger>
@@ -184,34 +186,34 @@ export default function InspectionsPage() {
                 <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
               </div>
           ) : !inspections?.length ? (
-              <div className="text-center py-20 px-6 text-muted-foreground">
-                <div className="bg-muted/50 rounded-full h-16 w-16 flex items-center justify-center mx-auto mb-4">
-                  <CalendarCheck className="h-8 w-8 opacity-20" />
+              <div className="text-center py-24 px-6 text-muted-foreground">
+                <div className="bg-muted/50 rounded-full h-20 w-20 flex items-center justify-center mx-auto mb-6">
+                  <CalendarCheck className="h-10 w-10 opacity-20" />
                 </div>
-                <p className="text-lg font-medium text-foreground mb-1">
-                  {selectedPropertyId ? 'No inspection records found.' : 'Select a property above'}
+                <p className="text-xl font-medium text-foreground mb-2">
+                  {selectedPropertyId ? 'No records for this property' : 'Select a property above'}
                 </p>
-                <p className="text-sm">
+                <p className="text-sm max-w-sm mx-auto">
                   {selectedPropertyId 
                     ? 'Start a new inspection using the buttons above to populate this list.' 
-                    : 'Choose a property from your portfolio to see its history.'}
+                    : 'Choose a property from your portfolio to see its specific history.'}
                 </p>
               </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
-                <TableHeader className="bg-muted/50">
+                <TableHeader className="bg-muted/20">
                   <TableRow>
-                    <TableHead className="pl-6">Type</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead>Inspection Date</TableHead>
-                    <TableHead className="text-right pr-6">Actions</TableHead>
+                    <TableHead className="pl-6 font-bold uppercase tracking-wider text-[10px]">Report Type</TableHead>
+                    <TableHead className="font-bold uppercase tracking-wider text-[10px]">Status</TableHead>
+                    <TableHead className="font-bold uppercase tracking-wider text-[10px]">Date</TableHead>
+                    <TableHead className="text-right pr-6 font-bold uppercase tracking-wider text-[10px]">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {inspections?.map((inspection) => (
-                    <TableRow key={inspection.id} className="hover:bg-muted/30 transition-colors">
-                      <TableCell className="font-semibold pl-6">
+                    <TableRow key={inspection.id} className="hover:bg-muted/30 transition-colors group">
+                      <TableCell className="font-semibold pl-6 py-4">
                         {inspection.type}
                       </TableCell>
                       <TableCell>
@@ -219,14 +221,14 @@ export default function InspectionsPage() {
                           {inspection.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-muted-foreground">
+                      <TableCell className="text-muted-foreground tabular-nums">
                         {safeFormatDate(inspection.scheduledDate)}
                       </TableCell>
                       <TableCell className="text-right pr-6">
-                          <Button asChild variant="ghost" size="sm" className="hover:bg-primary/10 hover:text-primary">
+                          <Button asChild variant="ghost" size="sm" className="hover:bg-primary hover:text-primary-foreground">
                               <Link href={`/dashboard/inspections/${inspection.id}?propertyId=${selectedPropertyId}`}>
                                   <Eye className="mr-2 h-4 w-4" />
-                                  View Details
+                                  View Report
                               </Link>
                           </Button>
                       </TableCell>
