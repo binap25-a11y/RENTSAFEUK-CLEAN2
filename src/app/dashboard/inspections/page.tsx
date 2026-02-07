@@ -96,10 +96,24 @@ export default function InspectionsPage() {
   const { data: inspections, isLoading: isLoadingInspections } =
     useCollection<Inspection>(inspectionsQuery);
 
-  const getPropertyAddress = (propertyId: string) => {
-    const property = properties?.find((p) => p.id === propertyId);
-    if (!property) return 'Unknown';
-    return [property.address.nameOrNumber, property.address.street, property.address.city].filter(Boolean).join(', ');
+  // Safe date formatting helper to prevent RangeError
+  const safeFormatDate = (dateValue: any) => {
+    if (!dateValue) return 'N/A';
+    try {
+      let d: Date;
+      if (dateValue instanceof Date) {
+        d = dateValue;
+      } else if (typeof dateValue === 'object' && dateValue.seconds !== undefined) {
+        d = new Date(dateValue.seconds * 1000);
+      } else {
+        d = new Date(dateValue);
+      }
+      
+      if (isNaN(d.getTime())) return 'Invalid Date';
+      return format(d, 'PPP');
+    } catch (e) {
+      return 'Invalid Date';
+    }
   };
 
   return (
@@ -211,12 +225,7 @@ export default function InspectionsPage() {
                         </Badge>
                       </TableCell>
                       <TableCell className="text-muted-foreground">
-                        {format(
-                          inspection.scheduledDate instanceof Date
-                            ? inspection.scheduledDate
-                            : new Date(inspection.scheduledDate.seconds * 1000),
-                          'PPP'
-                        )}
+                        {safeFormatDate(inspection.scheduledDate)}
                       </TableCell>
                       <TableCell className="text-right pr-6">
                           <Button asChild variant="ghost" size="sm" className="hover:bg-primary/10 hover:text-primary">

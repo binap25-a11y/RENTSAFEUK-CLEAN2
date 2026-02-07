@@ -218,17 +218,13 @@ export default function SingleLetInspectionPage() {
     form.setValue('scheduledDate', new Date());
   }, [form]);
 
-  // Helper to remove undefined values and non-serializable fields
+  // Helper to remove undefined values and non-serializable fields to prevent addDoc crashes
   const prepareForFirestore = (obj: any): any => {
-    // 1. Convert undefined to null or remove them
-    // 2. Destructure out special objects like FileList
-    const cleaned = JSON.parse(JSON.stringify(obj, (key, value) => {
+    return JSON.parse(JSON.stringify(obj, (key, value) => {
         if (value === undefined) return null;
-        // Strip out FileList and other complex objects that JSON.stringify can't handle well
         if (value && typeof value === 'object' && value.constructor.name === 'FileList') return null;
         return value;
     }));
-    return cleaned;
   };
 
   async function onSubmit(data: InspectionFormValues) {
@@ -245,9 +241,6 @@ export default function SingleLetInspectionPage() {
 
     try {
       const { propertyId, report, ...inspectionData } = data;
-
-      // Note: In a real app, 'report' (FileList) would be uploaded to Storage first.
-      // For this prototype fix, we ensure it's not passed to Firestore to avoid the crash.
       
       const newInspection = {
         ...inspectionData,
