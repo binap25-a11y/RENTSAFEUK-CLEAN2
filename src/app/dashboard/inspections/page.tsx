@@ -19,7 +19,16 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Loader2, Eye, CalendarCheck, Filter } from 'lucide-react';
+import {
+  PlusCircle,
+  Loader2,
+  Eye,
+  CalendarCheck,
+  Filter,
+  Edit,
+  Trash2,
+  MoreVertical,
+} from 'lucide-react';
 import { format } from 'date-fns';
 import {
   useUser,
@@ -27,7 +36,7 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
 import {
   Select,
   SelectContent,
@@ -36,6 +45,23 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Label } from '@/components/ui/label';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import { toast } from '@/hooks/use-toast';
 
 // Type for property documents from Firestore
 interface Property {
@@ -56,12 +82,16 @@ interface Inspection {
   scheduledDate: { seconds: number; nanoseconds: number } | Date;
 }
 
-const getStatusVariant = (status: string): "default" | "secondary" | "outline" | "destructive" | null | undefined => {
+const getStatusVariant = (
+  status: string
+): 'default' | 'secondary' | 'outline' | 'destructive' | null | undefined => {
   switch (status) {
     case 'Scheduled':
       return 'secondary';
     case 'Completed':
       return 'default';
+    case 'Cancelled':
+      return 'destructive';
     default:
       return 'outline';
   }
@@ -70,7 +100,8 @@ const getStatusVariant = (status: string): "default" | "secondary" | "outline" |
 const toDate = (val: any): Date | null => {
   if (!val) return null;
   if (val instanceof Date) return val;
-  if (typeof val === 'object' && 'seconds' in val) return new Date(val.seconds * 1000);
+  if (typeof val === 'object' && 'seconds' in val)
+    return new Date(val.seconds * 1000);
   const d = new Date(val);
   return isNaN(d.getTime()) ? null : d;
 };
@@ -79,6 +110,9 @@ export default function InspectionsPage() {
   const { user } = useUser();
   const firestore = useFirestore();
   const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
+  const [inspectionToDelete, setInspectionToDelete] = useState<Inspection | null>(
+    null
+  );
 
   // Fetch properties for the filter dropdown
   const propertiesQuery = useMemoFirebase(() => {
@@ -104,11 +138,44 @@ export default function InspectionsPage() {
   const { data: inspections, isLoading: isLoadingInspections } =
     useCollection<Inspection>(inspectionsQuery);
 
+  // Filter out deleted/cancelled inspections if necessary
+  const activeInspections = useMemo(() => {
+    return inspections?.filter((i) => i.status !== 'Deleted') ?? [];
+  }, [inspections]);
+
   // Safe date formatting helper to prevent RangeError
   const safeFormatDate = (dateValue: any) => {
     const d = toDate(dateValue);
     if (!d) return 'N/A';
     return format(d, 'PPP');
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!firestore || !inspectionToDelete || !selectedPropertyId) return;
+    try {
+      // We'll mark as 'Deleted' to preserve records but hide from standard views
+      const docRef = doc(
+        firestore,
+        'properties',
+        selectedPropertyId,
+        'inspections',
+        inspectionToDelete.id
+      );
+      await updateDoc(docRef, { status: 'Deleted' });
+      toast({
+        title: 'Inspection Deleted',
+        description: 'The inspection record has been successfully removed.',
+      });
+    } catch (e) {
+      console.error('Error deleting inspection:', e);
+      toast({
+        variant: 'destructive',
+        title: 'Error',
+        description: 'Could not delete the inspection. Please try again.',
+      });
+    } finally {
+      setInspectionToDelete(null);
+    }
   };
 
   return (
@@ -117,20 +184,32 @@ export default function InspectionsPage() {
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-primary">
             <CalendarCheck className="h-6 w-6" />
-            <h1 className="text-3xl font-bold font-headline tracking-tight">Property Inspections</h1>
+            <h1 className="text-3xl font-bold font-headline tracking-tight">
+              Property Inspections
+            </h1>
           </div>
           <p className="text-muted-foreground text-lg max-w-3xl">
-            Streamline your portfolio management with digital walk-throughs. Choose a report type below to start recording findings.
+            Streamline your portfolio management with digital walk-throughs.
+            Choose a report type below to start recording findings.
           </p>
         </div>
-        
+
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
-          <Button asChild size="lg" className="h-16 text-lg shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]">
+          <Button
+            asChild
+            size="lg"
+            className="h-16 text-lg shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]"
+          >
             <Link href="/dashboard/inspections/single-let">
               <PlusCircle className="mr-3 h-6 w-6" /> Single-Let Report
             </Link>
           </Button>
-          <Button asChild variant="outline" size="lg" className="h-16 text-lg shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] bg-background">
+          <Button
+            asChild
+            variant="outline"
+            size="lg"
+            className="h-16 text-lg shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] bg-background"
+          >
             <Link href="/dashboard/inspections/hmo">
               <PlusCircle className="mr-3 h-6 w-6" /> HMO Report
             </Link>
@@ -147,9 +226,12 @@ export default function InspectionsPage() {
                 Filter and view records from previous property checks.
               </CardDescription>
             </div>
-            
+
             <div className="flex flex-col space-y-2 max-w-md">
-              <Label htmlFor="property-filter" className="text-sm font-semibold flex items-center gap-2">
+              <Label
+                htmlFor="property-filter"
+                className="text-sm font-semibold flex items-center gap-2"
+              >
                 <Filter className="h-3.5 w-3.5" />
                 Select Property to View Logs
               </Label>
@@ -172,7 +254,13 @@ export default function InspectionsPage() {
                 <SelectContent>
                   {properties?.map((prop) => (
                     <SelectItem key={prop.id} value={prop.id}>
-                      {[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}
+                      {[
+                        prop.address.nameOrNumber,
+                        prop.address.street,
+                        prop.address.city,
+                      ]
+                        .filter(Boolean)
+                        .join(', ')}
                     </SelectItem>
                   ))}
                 </SelectContent>
@@ -182,42 +270,58 @@ export default function InspectionsPage() {
         </CardHeader>
         <CardContent className="p-0">
           {isLoadingInspections ? (
-              <div className="flex justify-center items-center h-64">
-                <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+            <div className="flex justify-center items-center h-64">
+              <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : !activeInspections?.length ? (
+            <div className="text-center py-24 px-6 text-muted-foreground">
+              <div className="bg-muted/50 rounded-full h-20 w-20 flex items-center justify-center mx-auto mb-6">
+                <CalendarCheck className="h-10 w-10 opacity-20" />
               </div>
-          ) : !inspections?.length ? (
-              <div className="text-center py-24 px-6 text-muted-foreground">
-                <div className="bg-muted/50 rounded-full h-20 w-20 flex items-center justify-center mx-auto mb-6">
-                  <CalendarCheck className="h-10 w-10 opacity-20" />
-                </div>
-                <p className="text-xl font-medium text-foreground mb-2">
-                  {selectedPropertyId ? 'No records for this property' : 'Select a property above'}
-                </p>
-                <p className="text-sm max-w-sm mx-auto">
-                  {selectedPropertyId 
-                    ? 'Start a new inspection using the buttons above to populate this list.' 
-                    : 'Choose a property from your portfolio to see its specific history.'}
-                </p>
-              </div>
+              <p className="text-xl font-medium text-foreground mb-2">
+                {selectedPropertyId
+                  ? 'No records for this property'
+                  : 'Select a property above'}
+              </p>
+              <p className="text-sm max-w-sm mx-auto">
+                {selectedPropertyId
+                  ? 'Start a new inspection using the buttons above to populate this list.'
+                  : 'Choose a property from your portfolio to see its specific history.'}
+              </p>
+            </div>
           ) : (
             <div className="overflow-x-auto">
               <Table>
                 <TableHeader className="bg-muted/20">
                   <TableRow>
-                    <TableHead className="pl-6 font-bold uppercase tracking-wider text-[10px]">Report Type</TableHead>
-                    <TableHead className="font-bold uppercase tracking-wider text-[10px]">Status</TableHead>
-                    <TableHead className="font-bold uppercase tracking-wider text-[10px]">Date</TableHead>
-                    <TableHead className="text-right pr-6 font-bold uppercase tracking-wider text-[10px]">Actions</TableHead>
+                    <TableHead className="pl-6 font-bold uppercase tracking-wider text-[10px]">
+                      Report Type
+                    </TableHead>
+                    <TableHead className="font-bold uppercase tracking-wider text-[10px]">
+                      Status
+                    </TableHead>
+                    <TableHead className="font-bold uppercase tracking-wider text-[10px]">
+                      Date
+                    </TableHead>
+                    <TableHead className="text-right pr-6 font-bold uppercase tracking-wider text-[10px]">
+                      Actions
+                    </TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {inspections?.map((inspection) => (
-                    <TableRow key={inspection.id} className="hover:bg-muted/30 transition-colors group">
+                  {activeInspections.map((inspection) => (
+                    <TableRow
+                      key={inspection.id}
+                      className="hover:bg-muted/30 transition-colors group"
+                    >
                       <TableCell className="font-semibold pl-6 py-4">
                         {inspection.type}
                       </TableCell>
                       <TableCell>
-                        <Badge variant={getStatusVariant(inspection.status)} className="capitalize">
+                        <Badge
+                          variant={getStatusVariant(inspection.status)}
+                          className="capitalize"
+                        >
                           {inspection.status}
                         </Badge>
                       </TableCell>
@@ -225,12 +329,42 @@ export default function InspectionsPage() {
                         {safeFormatDate(inspection.scheduledDate)}
                       </TableCell>
                       <TableCell className="text-right pr-6">
-                          <Button asChild variant="ghost" size="sm" className="hover:bg-primary hover:text-primary-foreground">
-                              <Link href={`/dashboard/inspections/${inspection.id}?propertyId=${selectedPropertyId}`}>
-                                  <Eye className="mr-2 h-4 w-4" />
-                                  View Report
-                              </Link>
+                        <div className="flex justify-end gap-2">
+                          <Button
+                            asChild
+                            variant="ghost"
+                            size="icon"
+                            title="View Report"
+                          >
+                            <Link
+                              href={`/dashboard/inspections/${inspection.id}?propertyId=${selectedPropertyId}`}
+                            >
+                              <Eye className="h-4 w-4" />
+                            </Link>
                           </Button>
+                          <DropdownMenu>
+                            <DropdownMenuTrigger asChild>
+                              <Button variant="ghost" size="icon">
+                                <MoreVertical className="h-4 w-4" />
+                              </Button>
+                            </DropdownMenuTrigger>
+                            <DropdownMenuContent align="end">
+                              <DropdownMenuItem asChild disabled>
+                                <div className="flex items-center">
+                                  <Edit className="mr-2 h-4 w-4" />
+                                  Edit Report
+                                </div>
+                              </DropdownMenuItem>
+                              <DropdownMenuItem
+                                className="text-destructive focus:text-destructive focus:bg-destructive/10"
+                                onClick={() => setInspectionToDelete(inspection)}
+                              >
+                                <Trash2 className="mr-2 h-4 w-4" />
+                                Delete
+                              </DropdownMenuItem>
+                            </DropdownMenuContent>
+                          </DropdownMenu>
+                        </div>
                       </TableCell>
                     </TableRow>
                   ))}
@@ -240,6 +374,30 @@ export default function InspectionsPage() {
           )}
         </CardContent>
       </Card>
+
+      <AlertDialog
+        open={!!inspectionToDelete}
+        onOpenChange={(open) => !open && setInspectionToDelete(null)}
+      >
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This will permanently delete this inspection record for report type "
+              {inspectionToDelete?.type}". This action cannot be undone.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleDeleteConfirm}
+            >
+              Delete
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }

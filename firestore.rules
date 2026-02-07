@@ -7,18 +7,18 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+    function isOwner(ownerId) {
+      return isSignedIn() && request.auth.uid == ownerId;
     }
 
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
 
     match /properties/{propertyId} {
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn() && (resource == null || resource.data.ownerId == request.auth.uid);
+      allow list: if isSignedIn() && request.query.limit <= 100 && (resource == null || resource.data.ownerId == request.auth.uid);
       allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
 
       match /{allSubcollections=**} {
@@ -36,7 +36,7 @@ service cloud.firestore {
     match /tenants/{tenantId} {
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn() && (resource == null || resource.data.ownerId == request.auth.uid);
+      allow list: if isSignedIn() && request.query.limit <= 100 && (resource == null || resource.data.ownerId == request.auth.uid);
       allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       
       match /{allSubcollections=**} {
@@ -54,7 +54,7 @@ service cloud.firestore {
     match /contractors/{contractorId} {
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn() && (resource == null || resource.data.ownerId == request.auth.uid);
+      allow list: if isSignedIn() && request.query.limit <= 100 && (resource == null || resource.data.ownerId == request.auth.uid);
       allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
   }

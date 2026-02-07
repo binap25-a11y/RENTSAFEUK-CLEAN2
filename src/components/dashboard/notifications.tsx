@@ -197,7 +197,7 @@ export function Notifications() {
                         </div>
                         <div className="pl-6 space-y-0.5">
                             <p className="text-[11px] text-muted-foreground font-medium">{reminder.property}</p>
-                            <p className="text-[10px] text-muted-foreground/70">Due: {format(reminder.dueDate, 'PPP')}</p>
+                            <p className="text-[10px] text-muted-foreground/70">Due: {format(reminder.dueDate, 'PP')}</p>
                         </div>
                     </Link>
                 </DropdownMenuItem>
