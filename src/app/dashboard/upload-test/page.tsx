@@ -1,118 +1,29 @@
 'use client';
 
-import { useState } from 'react';
-import { Button } from '@/components/ui/button';
-import { useStorage, useUser } from '@/firebase';
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { toast } from '@/hooks/use-toast';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
-import { Loader2, Upload } from 'lucide-react';
+// This diagnostic page is no longer needed as the core functionality
+// has been fixed on the main maintenance pages.
+// This file can be safely removed in the future.
+
 import Link from 'next/link';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 
-export default function UploadTestPage() {
-  const { user } = useUser();
-  const storage = useStorage();
-  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadedUrl, setUploadedUrl] = useState<string>('');
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    setUploadedUrl('');
-    if (e.target.files && e.target.files.length > 0) {
-        setFileToUpload(e.target.files[0]);
-    } else {
-        setFileToUpload(null);
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!storage) {
-      toast({ variant: 'destructive', title: 'Storage service not available.' });
-      console.error('Firebase Storage instance is not available.');
-      return;
-    }
-    if (!user) {
-      toast({ variant: 'destructive', title: 'You must be logged in to upload.' });
-      console.error('User is not authenticated.');
-      return;
-    }
-    if (!fileToUpload) {
-      toast({ variant: 'destructive', title: 'No file selected.' });
-      return;
-    }
-
-    setIsUploading(true);
-    setUploadedUrl('');
-    
-    // Using a simplified path for maximum reliability during diagnostics
-    const uniqueFileName = `test-uploads/${Date.now()}-${fileToUpload.name}`;
-    const fileRef = storageRef(storage, uniqueFileName);
-
-    try {
-        toast({ title: 'Uploading...', description: `Starting upload for ${fileToUpload.name}` });
-        const snapshot = await uploadBytes(fileRef, fileToUpload);
-        const url = await getDownloadURL(snapshot.ref);
-        
-        setUploadedUrl(url);
-        console.log('File available at', url);
-        toast({ title: 'Success!', description: `${fileToUpload.name} uploaded.` });
-
-    } catch (error: any) {
-        console.error(`Failed to upload ${fileToUpload.name}:`, error);
-        toast({
-            variant: 'destructive',
-            title: `Upload Failed`,
-            description: `Error: ${error.code} - ${error.message}`,
-        });
-    } finally {
-        setIsUploading(false);
-    }
-  };
-
+export default function DeprecatedUploadTestPage() {
   return (
-    <Card className="max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle>Upload Test Page (Simplified)</CardTitle>
-        <CardDescription>
-          This is a diagnostic page to test a single file upload to a designated test area in Firebase Storage.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="space-y-6">
-        <div className="space-y-2">
-          <label htmlFor="file-upload" className="font-medium">1. Select a Single File</label>
-          <input
-            id="file-upload"
-            type="file"
-            onChange={handleFileChange}
-            className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          />
-        </div>
-
-        <Button onClick={handleUpload} disabled={isUploading || !fileToUpload} className="w-full">
-          {isUploading ? (
-            <>
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              Uploading...
-            </>
-          ) : (
-             <>
-              <Upload className="mr-2 h-4 w-4" />
-              2. Upload Photo to Test Directory
-             </>
-          )}
-        </Button>
-
-        {uploadedUrl && (
-          <div className="space-y-4 pt-4 border-t">
-              <h3 className="font-semibold">Successfully Uploaded File:</h3>
-              <div className="text-sm">
-                <Link href={uploadedUrl} target="_blank" rel="noopener noreferrer" className="text-primary underline break-all">
-                  View Uploaded Image
-                </Link>
-              </div>
-          </div>
-        )}
-      </CardContent>
-    </Card>
+    <div className="flex items-center justify-center h-full">
+        <Card className="w-full max-w-md text-center">
+            <CardHeader>
+                <CardTitle>Page Removed</CardTitle>
+                <CardDescription>This diagnostic page has been removed. Upload functionality is now available on the Maintenance page.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <Button asChild>
+                    <Link href="/dashboard/maintenance">
+                        Go to Maintenance Page
+                    </Link>
+                </Button>
+            </CardContent>
+        </Card>
+    </div>
   );
 }

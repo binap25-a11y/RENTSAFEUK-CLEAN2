@@ -13,7 +13,7 @@ export default function DeprecatedMaintenancePage() {
     <div className="flex items-center justify-center h-full">
         <Card className="w-full max-w-md text-center">
             <CardHeader>
-                <CardTitle>Page Not Found</CardTitle>
+                <CardTitle>Page Removed</CardTitle>
                 <CardDescription>This test page has been removed. All functionality has been integrated into the main Maintenance page.</CardDescription>
             </CardHeader>
             <CardContent>

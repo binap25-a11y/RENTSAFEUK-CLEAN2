@@ -40,6 +40,8 @@ import {
   useCollection,
   useDoc,
   useMemoFirebase,
+  errorEmitter,
+  FirestorePermissionError,
 } from '@/firebase';
 import { collection, query, where, doc, updateDoc, Timestamp } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -102,7 +104,6 @@ export default function EditMaintenancePage() {
     const [newPhotosToUpload, setNewPhotosToUpload] = useState<FileList | null>(null);
     const [newPhotoPreviews, setNewPhotoPreviews] = useState<string[]>([]);
 
-
     const form = useForm<MaintenanceFormValues>({
         resolver: zodResolver(maintenanceEditSchema),
     });
@@ -133,7 +134,7 @@ export default function EditMaintenancePage() {
         }
     }, [maintenanceLog, form]);
     
-    async function onSubmit(data: MaintenanceFormValues) {
+    async function handleFormSubmit(data: MaintenanceFormValues) {
         if (!user || !firestore || !storage || !maintenanceLogRef) {
             toast({ variant: 'destructive', title: 'Error', description: 'Could not save. Please try again.' });
             return;
@@ -141,39 +142,35 @@ export default function EditMaintenancePage() {
         setIsSubmitting(true);
         let finalPhotoUrls = existingPhotos;
 
-        // --- Step 1: Upload new photos if they exist ---
-        if (newPhotosToUpload && newPhotosToUpload.length > 0) {
-            toast({ title: 'Uploading new photos...', description: `Uploading ${newPhotosToUpload.length} image(s).` });
-            try {
-                const uploadPromises = Array.from(newPhotosToUpload).map(file => {
+        try {
+            if (newPhotosToUpload && newPhotosToUpload.length > 0) {
+                toast({ title: 'Uploading new photos...', description: `Uploading ${newPhotosToUpload.length} image(s).` });
+                let uploadedUrls: string[] = [];
+                for (const file of Array.from(newPhotosToUpload)) {
                     const uniqueFileName = `${Date.now()}-${file.name}`;
                     const fileStorageRef = storageRef(storage, `maintenance/${user.uid}/${uniqueFileName}`);
-                    return uploadBytes(fileStorageRef, file).then(snapshot => getDownloadURL(snapshot.ref));
-                });
-                // If new photos are uploaded, they replace the old ones.
-                finalPhotoUrls = await Promise.all(uploadPromises);
-            } catch (error) {
-                console.error('Photo upload failed:', error);
-                toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload new photos. Please try again.' });
-                setIsSubmitting(false); // Stop if uploads fail
-                return;
+                    const snapshot = await uploadBytes(fileStorageRef, file);
+                    const url = await getDownloadURL(snapshot.ref);
+                    uploadedUrls.push(url);
+                }
+                // New photos replace old ones
+                finalPhotoUrls = uploadedUrls;
             }
-        }
 
-        // --- Step 2: Update the Firestore document ---
-        try {
             await updateDoc(maintenanceLogRef, { ...data, photoUrls: finalPhotoUrls });
 
             toast({ title: 'Maintenance Log Updated', description: 'The changes have been saved.' });
             router.push(`/dashboard/maintenance/${logId}?propertyId=${propertyId}`);
         } catch (error) {
             console.error('Failed to update maintenance log', error);
-            const anyError = error as any;
-            toast({ variant: 'destructive', title: 'Update Failed', description: anyError.message || 'There was an error updating the log.' });
+             const permissionError = new FirestorePermissionError({ path: maintenanceLogRef.path, operation: 'update', requestResourceData: data });
+             errorEmitter.emit('permission-error', permissionError);
+            toast({ variant: 'destructive', title: 'Update Failed', description: (error as Error).message || 'There was an error updating the log.' });
         } finally {
             setIsSubmitting(false);
         }
     }
+
 
     if (isLoadingLog) {
         return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -190,7 +187,7 @@ export default function EditMaintenancePage() {
             </CardHeader>
             <CardContent>
                 <Form {...form}>
-                    <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                    <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-6">
                         <FormField control={form.control} name="title" render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Issue Title</FormLabel>
@@ -266,11 +263,7 @@ export default function EditMaintenancePage() {
                                         <FormItem>
                                             <FormLabel>Scheduled Date</FormLabel>
                                             <FormControl>
-                                                <Input
-                                                    type="date"
-                                                    value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
-                                                    onChange={(e) => field.onChange(e.target.value)}
-                                                />
+                                                <Input type="date" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} />
                                             </FormControl>
                                             <FormMessage />
                                         </FormItem>
@@ -304,17 +297,16 @@ export default function EditMaintenancePage() {
                                     </div>
                                 )}
                                 <div className="space-y-2">
-                                    <Label>{existingPhotos.length > 0 ? 'Upload New Photos (replaces old ones)' : 'Upload Photos'}</Label>
+                                    <Label htmlFor="new-photo-upload">{existingPhotos.length > 0 ? 'Upload New Photos (replaces old ones)' : 'Upload Photos'}</Label>
                                     <Input
+                                        id="new-photo-upload"
                                         type="file"
                                         multiple
                                         accept="image/*"
                                         onChange={(e) => {
-                                            const files = e.target.files;
-                                            setNewPhotosToUpload(files);
-                                            if (files) {
-                                                const newPreviews = Array.from(files).map(file => URL.createObjectURL(file));
-                                                setNewPhotoPreviews(newPreviews);
+                                            setNewPhotosToUpload(e.target.files);
+                                            if (e.target.files) {
+                                                setNewPhotoPreviews(Array.from(e.target.files).map(file => URL.createObjectURL(file)));
                                             } else {
                                                 setNewPhotoPreviews([]);
                                             }
