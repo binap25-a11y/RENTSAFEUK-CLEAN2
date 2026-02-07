@@ -58,7 +58,7 @@ interface MaintenanceLog {
   title: string;
   propertyId: string;
   status: string;
-  reportedDate: Timestamp | Date;
+  reportedDate: Timestamp | Date | { seconds: number; nanoseconds: number };
 }
 
 interface Inspection {
@@ -66,14 +66,14 @@ interface Inspection {
   type: string;
   propertyId: string;
   status: string;
-  scheduledDate: Timestamp | Date;
+  scheduledDate: Timestamp | Date | { seconds: number; nanoseconds: number };
 }
 
 interface Document {
   id: string;
   title: string;
   propertyId: string;
-  expiryDate: Timestamp | Date;
+  expiryDate: Timestamp | Date | { seconds: number; nanoseconds: number };
 }
 
 interface RentPayment {
@@ -83,6 +83,14 @@ interface RentPayment {
   year: number;
   month: string;
 }
+
+const toDate = (val: any): Date | null => {
+  if (!val) return null;
+  if (val instanceof Date) return val;
+  if (typeof val === 'object' && 'seconds' in val) return new Date(val.seconds * 1000);
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? null : d;
+};
 
 const getDocumentStatus = (expiryDate: Date) => {
     const today = new Date();
@@ -192,37 +200,36 @@ export default function DashboardPage() {
   const openMaintenanceCount = useMemo(() => maintenanceLogs.filter(log => log.status === 'Open').length, [maintenanceLogs]);
   
   const upcomingInspectionsCount = useMemo(() => inspections.filter(insp => {
-      if (!insp.scheduledDate) return false;
-      const scheduledDate = insp.scheduledDate instanceof Date ? insp.scheduledDate : (insp.scheduledDate as Timestamp).toDate();
+      const scheduledDate = toDate(insp.scheduledDate);
+      if (!scheduledDate) return false;
       return insp.status === 'Scheduled' && isFuture(scheduledDate);
   }).length, [inspections]);
 
   const recentActivities = useMemo(() => 
     maintenanceLogs
         .sort((a, b) => {
-            const dateA = a.reportedDate instanceof Date ? a.reportedDate : (a.reportedDate as Timestamp).toDate();
-            const dateB = b.reportedDate instanceof Date ? b.reportedDate : (b.reportedDate as Timestamp).toDate();
+            const dateA = toDate(a.reportedDate) || new Date(0);
+            const dateB = toDate(b.reportedDate) || new Date(0);
             return dateB.getTime() - dateA.getTime();
         })
         .slice(0, 4)
-        .map(log => ({
-            id: log.id,
-            property: propertyMap[log.propertyId] ? formatAddress(propertyMap[log.propertyId]) : 'Portfolio Wide',
-            activity: log.title,
-            date: format(log.reportedDate instanceof Date ? log.reportedDate : (log.reportedDate as Timestamp).toDate(), 'dd/MM/yyyy'),
-            href: `/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`
-        }))
+        .map(log => {
+            const date = toDate(log.reportedDate) || new Date();
+            return {
+                id: log.id,
+                property: propertyMap[log.propertyId] ? formatAddress(propertyMap[log.propertyId]) : 'Portfolio Wide',
+                activity: log.title,
+                date: format(date, 'dd/MM/yyyy'),
+                href: `/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`
+            };
+        })
   , [maintenanceLogs, propertyMap]);
 
   const upcomingTasks = useMemo(() => {
     const inspectionTasks = inspections
-        .filter(insp => {
-            if (!insp.scheduledDate) return false;
-            const scheduledDate = insp.scheduledDate instanceof Date ? insp.scheduledDate : (insp.scheduledDate as Timestamp).toDate();
-            return insp.status === 'Scheduled' && isFuture(scheduledDate)
-        })
         .map(insp => {
-            const date = insp.scheduledDate instanceof Date ? insp.scheduledDate : (insp.scheduledDate as Timestamp).toDate();
+            const date = toDate(insp.scheduledDate);
+            if (!date || insp.status !== 'Scheduled' || !isFuture(date)) return null;
             return {
                 id: `insp-${insp.id}`,
                 task: insp.type || 'Inspection',
@@ -231,23 +238,25 @@ export default function DashboardPage() {
                 dueDate: date,
                 href: `/dashboard/inspections/${insp.id}?propertyId=${insp.propertyId}`
             };
-        });
+        })
+        .filter((t): t is NonNullable<typeof t> => t !== null);
     
     const documentTasks = documents
         .map(doc => {
-            if (!doc.expiryDate) return null;
-            const expiry = doc.expiryDate instanceof Date ? doc.expiryDate : (doc.expiryDate as Timestamp).toDate();
-            return { ...doc, status: getDocumentStatus(expiry), expiryDate: expiry };
+            const expiry = toDate(doc.expiryDate);
+            if (!expiry) return null;
+            const status = getDocumentStatus(expiry);
+            if (status === 'Valid') return null;
+            return {
+                id: `doc-${doc.id}`,
+                task: doc.title,
+                property: propertyMap[doc.propertyId] ? formatAddress(propertyMap[doc.propertyId]) : 'Portfolio Wide',
+                status: status,
+                dueDate: expiry,
+                href: '/dashboard/documents'
+            };
         })
-        .filter((doc): doc is NonNullable<typeof doc> => doc !== null && (doc.status === 'Expired' || doc.status === 'Expiring Soon'))
-        .map(doc => ({
-            id: `doc-${doc.id}`,
-            task: doc.title,
-            property: propertyMap[doc.propertyId] ? formatAddress(propertyMap[doc.propertyId]) : 'Portfolio Wide',
-            status: doc.status,
-            dueDate: doc.expiryDate,
-            href: '/dashboard/documents'
-        }));
+        .filter((t): t is NonNullable<typeof t> => t !== null);
 
         return [...inspectionTasks, ...documentTasks]
             .sort((a,b) => a.dueDate.getTime() - b.dueDate.getTime())

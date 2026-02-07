@@ -51,7 +51,7 @@ interface Document {
   id: string;
   title: string;
   propertyId: string;
-  expiryDate: Timestamp | Date;
+  expiryDate: Timestamp | Date | { seconds: number; nanoseconds: number };
 }
 
 interface Inspection {
@@ -60,8 +60,16 @@ interface Inspection {
   inspectionType?: string;
   type: string;
   status: string;
-  scheduledDate: Timestamp | Date;
+  scheduledDate: Timestamp | Date | { seconds: number; nanoseconds: number };
 }
+
+const toDate = (val: any): Date | null => {
+  if (!val) return null;
+  if (val instanceof Date) return val;
+  if (typeof val === 'object' && 'seconds' in val) return new Date(val.seconds * 1000);
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? null : d;
+};
 
 const getDocumentStatus = (expiryDate: Date) => {
   const today = new Date();
@@ -142,10 +150,11 @@ export default function RemindersPage() {
   const allReminders = useMemo(() => {
     const documentReminders = allDocuments
         .map((doc) => {
-          const expiry = doc.expiryDate instanceof Date ? doc.expiryDate : (doc.expiryDate as Timestamp).toDate();
+          const expiry = toDate(doc.expiryDate);
+          if (!expiry) return null;
           return { ...doc, expiryDate: expiry, status: getDocumentStatus(expiry) };
         })
-        .filter(doc => doc.status !== 'Valid')
+        .filter((doc): doc is NonNullable<typeof doc> => doc !== null && doc.status !== 'Valid')
         .map((doc) => ({
           id: `doc-${doc.id}`,
           type: 'Compliance',
@@ -157,12 +166,12 @@ export default function RemindersPage() {
         }));
 
     const inspectionReminders = allInspections
-        .filter(insp => insp.status === 'Scheduled')
         .map((insp) => {
-          const scheduled = insp.scheduledDate instanceof Date ? insp.scheduledDate : (insp.scheduledDate as Timestamp).toDate();
+          const scheduled = toDate(insp.scheduledDate);
+          if (!scheduled || insp.status !== 'Scheduled') return null;
           return { ...insp, scheduledDate: scheduled };
         })
-        .filter(insp => isFuture(insp.scheduledDate))
+        .filter((insp): insp is NonNullable<typeof insp> => insp !== null && isFuture(insp.scheduledDate))
         .map((insp) => ({
           id: `insp-${insp.id}`,
           type: 'Task',

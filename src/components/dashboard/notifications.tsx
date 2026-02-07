@@ -31,7 +31,7 @@ interface Document {
   id: string;
   title: string;
   propertyId: string;
-  expiryDate: Timestamp | Date;
+  expiryDate: Timestamp | Date | { seconds: number; nanoseconds: number };
 }
 
 interface Inspection {
@@ -40,8 +40,16 @@ interface Inspection {
   inspectionType?: string;
   type: string;
   status: string;
-  scheduledDate: Timestamp | Date;
+  scheduledDate: Timestamp | Date | { seconds: number; nanoseconds: number };
 }
+
+const toDate = (val: any): Date | null => {
+  if (!val) return null;
+  if (val instanceof Date) return val;
+  if (typeof val === 'object' && 'seconds' in val) return new Date(val.seconds * 1000);
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? null : d;
+};
 
 const getDocumentStatus = (expiryDate: Date) => {
   const today = new Date();
@@ -113,8 +121,8 @@ export function Notifications() {
   const allReminders = useMemo(() => {
     const documentReminders = allDocuments
         .map((doc) => {
-          if (!doc.expiryDate) return null;
-          const expiry = doc.expiryDate instanceof Date ? doc.expiryDate : (doc.expiryDate as Timestamp).toDate();
+          const expiry = toDate(doc.expiryDate);
+          if (!expiry) return null;
           return { ...doc, expiryDate: expiry, status: getDocumentStatus(expiry) };
         })
         .filter((doc): doc is NonNullable<typeof doc> => doc !== null && (doc.status === 'Expired' || doc.status === 'Expiring Soon'))
@@ -129,16 +137,17 @@ export function Notifications() {
         }));
 
     const inspectionReminders = allInspections
-        .filter((insp) => {
-          if (!insp.scheduledDate || insp.status !== 'Scheduled') return false;
-          const scheduled = insp.scheduledDate instanceof Date ? insp.scheduledDate : (insp.scheduledDate as Timestamp).toDate();
-          return isFuture(scheduled);
+        .map((insp) => {
+          const scheduled = toDate(insp.scheduledDate);
+          if (!scheduled || insp.status !== 'Scheduled') return null;
+          return { ...insp, scheduledDate: scheduled };
         })
+        .filter((insp): insp is NonNullable<typeof insp> => insp !== null && isFuture(insp.scheduledDate))
         .map((insp) => ({
           id: `insp-${insp.id}`,
           description: insp.inspectionType || insp.type || 'Inspection',
           property: propertyMap[insp.propertyId] || 'Portfolio',
-          dueDate: insp.scheduledDate instanceof Date ? insp.scheduledDate : (insp.scheduledDate as Timestamp).toDate(),
+          dueDate: insp.scheduledDate,
           status: 'Scheduled',
           icon: CalendarClock,
           href: `/dashboard/inspections/${insp.id}?propertyId=${insp.propertyId}`

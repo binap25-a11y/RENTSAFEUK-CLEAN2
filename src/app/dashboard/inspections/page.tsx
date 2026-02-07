@@ -67,6 +67,14 @@ const getStatusVariant = (status: string): "default" | "secondary" | "outline" |
   }
 };
 
+const toDate = (val: any): Date | null => {
+  if (!val) return null;
+  if (val instanceof Date) return val;
+  if (typeof val === 'object' && 'seconds' in val) return new Date(val.seconds * 1000);
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? null : d;
+};
+
 export default function InspectionsPage() {
   const { user } = useUser();
   const firestore = useFirestore();
@@ -98,22 +106,9 @@ export default function InspectionsPage() {
 
   // Safe date formatting helper to prevent RangeError
   const safeFormatDate = (dateValue: any) => {
-    if (!dateValue) return 'N/A';
-    try {
-      let d: Date;
-      if (dateValue instanceof Date) {
-        d = dateValue;
-      } else if (typeof dateValue === 'object' && dateValue.seconds !== undefined) {
-        d = new Date(dateValue.seconds * 1000);
-      } else {
-        d = new Date(dateValue);
-      }
-      
-      if (isNaN(d.getTime())) return 'Invalid Date';
-      return format(d, 'PPP');
-    } catch (e) {
-      return 'Invalid Date';
-    }
+    const d = toDate(dateValue);
+    if (!d) return 'N/A';
+    return format(d, 'PPP');
   };
 
   return (
@@ -129,15 +124,15 @@ export default function InspectionsPage() {
           </p>
         </div>
         
-        <div className="flex flex-wrap gap-4">
-          <Button asChild size="lg" className="shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]">
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 max-w-2xl">
+          <Button asChild size="lg" className="h-16 text-lg shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]">
             <Link href="/dashboard/inspections/single-let">
-              <PlusCircle className="mr-2 h-5 w-5" /> Start Single-Let Inspection
+              <PlusCircle className="mr-3 h-6 w-6" /> Single-Let Report
             </Link>
           </Button>
-          <Button asChild variant="outline" size="lg" className="shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] bg-background">
+          <Button asChild variant="outline" size="lg" className="h-16 text-lg shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] bg-background">
             <Link href="/dashboard/inspections/hmo">
-              <PlusCircle className="mr-2 h-5 w-5" /> Start HMO Inspection
+              <PlusCircle className="mr-3 h-6 w-6" /> HMO Report
             </Link>
           </Button>
         </div>
