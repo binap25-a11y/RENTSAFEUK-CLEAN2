@@ -273,8 +273,6 @@ export default function MaintenancePage() {
         });
     } finally {
         setIsUploading(false);
-        setPhotosToUpload(null);
-        setPhotoPreviews([]);
     }
   }
 
@@ -646,7 +644,7 @@ export default function MaintenancePage() {
                     <FormField
                       control={form.control}
                       name="photos"
-                      render={({ field }) => (
+                      render={({ field: { onChange, ...fieldProps } }) => (
                         <FormItem>
                           <FormLabel>Upload Photos of Issue</FormLabel>
                           <FormControl>
@@ -660,9 +658,10 @@ export default function MaintenancePage() {
                                   multiple
                                   accept="image/*"
                                   className="sr-only"
+                                  {...fieldProps}
                                   onChange={(e) => {
                                       const files = e.target.files;
-                                      field.onChange(files); // For validation
+                                      onChange(files); // For validation
                                       setPhotosToUpload(files); // For upload
                                       if (files && files.length > 0) {
                                           const fileArray = Array.from(files);

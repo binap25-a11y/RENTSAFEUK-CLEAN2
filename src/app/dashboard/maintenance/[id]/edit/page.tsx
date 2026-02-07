@@ -301,13 +301,16 @@ export default function EditMaintenancePage() {
                                         ))}
                                     </div>
                                 )}
-                                <FormField control={form.control} name="photos" render={({ field }) => (
+                                <FormField
+                                  control={form.control}
+                                  name="photos"
+                                  render={({ field: { onChange, ...fieldProps } }) => (
                                     <FormItem>
                                         <FormLabel>{existingPhotos.length > 0 ? 'Upload New Photos (replaces old ones)' : 'Upload Photos'}</FormLabel>
                                         <FormControl>
-                                            <Button asChild variant="outline" className="w-full"><label htmlFor="photos-upload" className="cursor-pointer flex items-center justify-center gap-2"><Upload className="h-4 w-4" />Choose Files<Input id="photos-upload" type="file" multiple accept="image/*" className="sr-only" onChange={(e) => { 
+                                            <Button asChild variant="outline" className="w-full"><label htmlFor="photos-upload" className="cursor-pointer flex items-center justify-center gap-2"><Upload className="h-4 w-4" />Choose Files<Input id="photos-upload" type="file" multiple accept="image/*" className="sr-only" {...fieldProps} onChange={(e) => { 
                                                 const files = e.target.files;
-                                                field.onChange(files);
+                                                onChange(files);
                                                 setNewPhotosToUpload(files);
                                                 if (files && files.length > 0) {
                                                     const fileArray = Array.from(files);
