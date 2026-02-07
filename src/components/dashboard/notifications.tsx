@@ -66,7 +66,7 @@ export function Notifications() {
   // Primary Properties Listener
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
-    return query(collection(firestore, 'properties'), where('ownerId', '==', user.uid), where('status', '!=', 'Deleted'));
+    return query(collection(firestore, 'properties'), where('ownerId', '==', user.uid));
   }, [firestore, user]);
   const { data: properties } = useCollection<Property>(propertiesQuery);
 

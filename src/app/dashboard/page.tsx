@@ -127,9 +127,9 @@ export default function DashboardPage() {
   // Primary Properties Listener
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
-    return query(collection(firestore, 'properties'), where('ownerId', '==', user.uid), where('status', '!=', 'Deleted'));
+    return query(collection(firestore, 'properties'), where('ownerId', '==', user.uid));
   }, [user, firestore]);
-  const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
+  const { data: allProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
 
   // States for aggregated data
   const [maintenanceLogs, setMaintenanceLogs] = useState<MaintenanceLog[]>([]);
@@ -137,6 +137,11 @@ export default function DashboardPage() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [allRentPayments, setAllRentPayments] = useState<RentPayment[]>([]);
   const [isAggregating, setIsAggregating] = useState(false);
+
+  // Filter in-memory to avoid index requirements for combined filters
+  const properties = useMemo(() => {
+    return allProperties?.filter(p => p.status !== 'Deleted') ?? [];
+  }, [allProperties]);
 
   // Aggregation Effect: Fetch sub-collections for each property in parallel
   useEffect(() => {

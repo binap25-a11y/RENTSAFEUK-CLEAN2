@@ -150,6 +150,7 @@ interface Property {
     street: string;
     city: string;
   };
+  status?: string;
 }
 
 const ChecklistItem = ({ form, name, label }: { form: any, name: any, label: string }) => {
@@ -207,12 +208,15 @@ export default function SingleLetInspectionPage() {
     if (!user) return null;
     return query(
         collection(firestore, 'properties'),
-        where('ownerId', '==', user.uid),
-        where('status', 'in', ['Vacant', 'Occupied'])
+        where('ownerId', '==', user.uid)
     );
   }, [firestore, user]);
 
-  const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
+  const { data: allProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
+
+  const properties = useMemo(() => {
+    return allProperties?.filter(p => p.status !== 'Deleted') ?? [];
+  }, [allProperties]);
 
   useEffect(() => {
     form.setValue('scheduledDate', new Date());
@@ -222,7 +226,7 @@ export default function SingleLetInspectionPage() {
   const prepareForFirestore = (obj: any): any => {
     return JSON.parse(JSON.stringify(obj, (key, value) => {
         if (value === undefined) return null;
-        if (value && typeof value === 'object' && value.constructor.name === 'FileList') return null;
+        if (value && typeof value === 'object' && (value.constructor.name === 'FileList' || value.constructor.name === 'File')) return null;
         return value;
     }));
   };
@@ -247,6 +251,7 @@ export default function SingleLetInspectionPage() {
         ownerId: user.uid,
         propertyId: propertyId,
         type: 'Single-Let',
+        status: data.status || 'Completed',
       };
 
       // Ensure no undefineds or FileLists are sent to Firestore
@@ -597,7 +602,7 @@ export default function SingleLetInspectionPage() {
                     name="report"
                     render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Upload File</FormLabel>
+                        <FormLabel>Upload File (Optional)</FormLabel>
                         <FormControl>
                         <Button asChild variant="outline" className="w-full">
                             <label className="cursor-pointer">

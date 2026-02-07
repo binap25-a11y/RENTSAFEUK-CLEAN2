@@ -16,15 +16,20 @@ service cloud.firestore {
     }
 
     match /properties/{propertyId} {
+      allow get, list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
 
       match /{allSubcollections=**} {
+        allow get, list: if isSignedIn() && (
+          resource.data.ownerId == request.auth.uid || 
+          get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid
+        );
         allow create: if isSignedIn() && (
           request.resource.data.ownerId == request.auth.uid || 
           get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid
         );
-        allow read, update, delete: if isSignedIn() && (
+        allow update, delete: if isSignedIn() && (
           resource.data.ownerId == request.auth.uid ||
           get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid
         );
@@ -32,15 +37,20 @@ service cloud.firestore {
     }
 
     match /tenants/{tenantId} {
+      allow get, list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       
       match /{allSubcollections=**} {
+        allow get, list: if isSignedIn() && (
+          resource.data.ownerId == request.auth.uid || 
+          get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid
+        );
         allow create: if isSignedIn() && (
           request.resource.data.ownerId == request.auth.uid || 
           get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid
         );
-        allow read, update, delete: if isSignedIn() && (
+        allow update, delete: if isSignedIn() && (
           resource.data.ownerId == request.auth.uid ||
           get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid
         );
@@ -48,8 +58,9 @@ service cloud.firestore {
     }
 
     match /contractors/{contractorId} {
+      allow get, list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
   }
 }

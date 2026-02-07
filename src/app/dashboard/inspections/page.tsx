@@ -36,7 +36,7 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import {
   Select,
   SelectContent,
@@ -71,6 +71,7 @@ interface Property {
     street: string;
     city: string;
   };
+  status?: string;
 }
 
 // Type for inspection documents from Firestore
@@ -114,17 +115,21 @@ export default function InspectionsPage() {
     null
   );
 
-  // Fetch properties for the filter dropdown
+  // Fetch properties - simplified query to bypass index requirements
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
       collection(firestore, 'properties'),
-      where('ownerId', '==', user.uid),
-      where('status', '!=', 'Deleted')
+      where('ownerId', '==', user.uid)
     );
   }, [firestore, user]);
-  const { data: properties, isLoading: isLoadingProperties } =
+  const { data: allProperties, isLoading: isLoadingProperties } =
     useCollection<Property>(propertiesQuery);
+
+  // Filter properties in-memory
+  const properties = useMemo(() => {
+    return allProperties?.filter(p => p.status !== 'Deleted') ?? [];
+  }, [allProperties]);
 
   // Fetch inspections for the selected property
   const inspectionsQuery = useMemoFirebase(() => {
@@ -147,13 +152,16 @@ export default function InspectionsPage() {
   const safeFormatDate = (dateValue: any) => {
     const d = toDate(dateValue);
     if (!d) return 'N/A';
-    return format(d, 'PPP');
+    try {
+        return format(d, 'PPP');
+    } catch (e) {
+        return 'Invalid Date';
+    }
   };
 
   const handleDeleteConfirm = async () => {
     if (!firestore || !inspectionToDelete || !selectedPropertyId) return;
     try {
-      // We'll mark as 'Deleted' to preserve records but hide from standard views
       const docRef = doc(
         firestore,
         'properties',
@@ -161,10 +169,10 @@ export default function InspectionsPage() {
         'inspections',
         inspectionToDelete.id
       );
-      await updateDoc(docRef, { status: 'Deleted' });
+      await deleteDoc(docRef);
       toast({
         title: 'Inspection Deleted',
-        description: 'The inspection record has been successfully removed.',
+        description: 'The inspection record has been permanently removed.',
       });
     } catch (e) {
       console.error('Error deleting inspection:', e);
@@ -224,7 +232,7 @@ export default function InspectionsPage() {
               <div>
                 <CardTitle className="text-xl">Inspection History</CardTitle>
                 <CardDescription>
-                  Filter and view records from previous property checks.
+                  View and manage records from previous property checks.
                 </CardDescription>
               </div>
 
@@ -234,7 +242,7 @@ export default function InspectionsPage() {
                   className="text-sm font-semibold flex items-center gap-2"
                 >
                   <Filter className="h-3.5 w-3.5" />
-                  Filter by Property
+                  Select Property to View History
                 </Label>
                 <Select
                   onValueChange={setSelectedPropertyId}
@@ -242,13 +250,13 @@ export default function InspectionsPage() {
                 >
                   <SelectTrigger
                     id="property-filter"
-                    className="w-full bg-background border-primary/20 shadow-sm focus:ring-primary"
+                    className="w-full bg-background border-primary/20 shadow-sm focus:ring-primary h-12"
                   >
                     <SelectValue
                       placeholder={
                         isLoadingProperties
                           ? 'Loading properties...'
-                          : 'Choose a property...'
+                          : 'Choose a property from your portfolio'
                       }
                     />
                   </SelectTrigger>
@@ -275,20 +283,28 @@ export default function InspectionsPage() {
             <div className="flex justify-center items-center h-64">
               <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
             </div>
+          ) : !selectedPropertyId ? (
+            <div className="text-center py-24 px-6 text-muted-foreground">
+              <div className="bg-muted/50 rounded-full h-20 w-20 flex items-center justify-center mx-auto mb-6">
+                <Filter className="h-10 w-10 opacity-20" />
+              </div>
+              <p className="text-xl font-medium text-foreground mb-2">
+                No Property Selected
+              </p>
+              <p className="text-sm max-w-sm mx-auto">
+                Choose a property from the dropdown above to view its specific inspection history and manage existing reports.
+              </p>
+            </div>
           ) : !activeInspections?.length ? (
             <div className="text-center py-24 px-6 text-muted-foreground">
               <div className="bg-muted/50 rounded-full h-20 w-20 flex items-center justify-center mx-auto mb-6">
                 <CalendarCheck className="h-10 w-10 opacity-20" />
               </div>
               <p className="text-xl font-medium text-foreground mb-2">
-                {selectedPropertyId
-                  ? 'No records for this property'
-                  : 'Select a property above'}
+                No records for this property
               </p>
               <p className="text-sm max-w-sm mx-auto">
-                {selectedPropertyId
-                  ? 'Start a new inspection using the buttons above to populate this list.'
-                  : 'Choose a property from your portfolio to see its specific history.'}
+                Start a new inspection using the buttons at the top of the page to populate this list.
               </p>
             </div>
           ) : (
