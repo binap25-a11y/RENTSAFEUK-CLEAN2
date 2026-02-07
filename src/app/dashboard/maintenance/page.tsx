@@ -29,8 +29,15 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Wand2, Search, MoreVertical, Edit, Eye, XCircle, Trash2, Upload } from 'lucide-react';
+import { Loader2, Wand2, Search, MoreVertical, Edit, Eye, XCircle, Trash2, Upload, List } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import { useState, useMemo } from 'react';
@@ -70,13 +77,6 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import {
-  DropdownMenu,
-  DropdownMenuContent,
-  DropdownMenuItem,
-  DropdownMenuSeparator,
-  DropdownMenuTrigger,
-} from '@/components/ui/dropdown-menu';
 
 
 // Schema for the form, file input is handled separately
@@ -332,9 +332,30 @@ export default function MaintenancePage() {
     return [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
   };
 
+  const scrollToHistory = () => {
+    const element = document.getElementById('maintenance-logged-section');
+    if (element) {
+      element.scrollIntoView({ behavior: 'smooth' });
+    }
+  };
+
   return (
     <>
       <div className="space-y-6">
+        <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between sm:items-center">
+          <div>
+            <h1 className="text-3xl font-bold">Maintenance</h1>
+            <p className="text-muted-foreground">
+              Manage repairs and maintenance tasks across your portfolio.
+            </p>
+          </div>
+          <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+              <Button onClick={scrollToHistory} variant="outline" className="w-full sm:w-auto">
+                  <List className="mr-2 h-4 w-4" /> Maintenance Logged
+              </Button>
+          </div>
+        </div>
+
         <MaintenanceAssistantDialog 
             isOpen={isAssistantOpen} 
             onOpenChange={setIsAssistantOpen}
@@ -482,8 +503,8 @@ export default function MaintenancePage() {
           </CardContent>
         </Card>
         
-        <Card>
-          <CardHeader><CardTitle>Maintenance History</CardTitle><CardDescription>View and manage logged maintenance issues for your properties.</CardDescription></CardHeader>
+        <Card id="maintenance-logged-section">
+          <CardHeader><CardTitle>Maintenance Logged</CardTitle><CardDescription>View and manage your logged maintenance issues.</CardDescription></CardHeader>
           <CardContent className="space-y-4">
               <div className="flex flex-col md:flex-row gap-4">
                   <div className="flex items-center gap-2">
@@ -505,7 +526,7 @@ export default function MaintenancePage() {
                       <TableBody>
                           {isLoadingLogs && <TableRow><TableCell colSpan={5} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" /></TableCell></TableRow>}
                           {!isLoadingLogs && filteredLogs?.length === 0 && <TableRow><TableCell colSpan={5} className="h-24 text-center">{selectedPropertyFilter ? 'No maintenance logs for this property.' : 'Select a property to view logs.'}</TableCell></TableRow>}
-                          {filteredLogs?.map(log => (<TableRow key={log.id}><TableCell className="font-medium"><Link href={`/dashboard/maintenance/${log.id}?propertyId=${selectedPropertyFilter}`} className="hover:underline">{log.title}</Link></TableCell><TableCell><Select value={log.status} onValueChange={(newStatus) => handleStatusChange(log.id, selectedPropertyFilter, newStatus)}><SelectTrigger className="w-[150px]"><SelectValue placeholder="Set status" /></SelectTrigger><SelectContent><SelectItem value="Open">Open</SelectItem><SelectItem value="In Progress">In Progress</SelectItem><SelectItem value="Completed">Completed</SelectItem><SelectItem value="Cancelled">Cancelled</SelectItem></SelectContent></Select></TableCell><TableCell><Badge variant={getPriorityVariant(log.priority)}>{log.priority}</Badge></TableCell><TableCell>{log.reportedDate instanceof Date ? format(log.reportedDate, 'dd/MM/yyyy') : format(new Date(log.reportedDate.seconds * 1000), 'dd/MM/yyyy')}</TableCell><TableCell className="text-right"><Button asChild variant="ghost" size="icon"><Link href={`/dashboard/maintenance/${log.id}?propertyId=${selectedPropertyFilter}`}><Eye className="h-4 w-4" /></Link></Button><Button asChild variant="ghost" size="icon"><Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${selectedPropertyFilter}`}><Edit className="h-4 w-4" /></Link></Button><Button variant="ghost" size="icon" onClick={() => setLogToCancel(log)}><XCircle className="h-4 w-4" /></Button><Button variant="ghost" size="icon" onClick={() => setLogToDelete(log)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell></TableRow>))}
+                          {filteredLogs?.map(log => (<TableRow key={log.id}><TableCell className="font-medium"><Link href={`/dashboard/maintenance/${log.id}?propertyId=${selectedPropertyFilter}`} className="hover:underline">{log.title}</Link></TableCell><TableCell><Select value={log.status} onValueChange={(newStatus) => handleStatusChange(log.id, selectedPropertyFilter, newStatus)}><SelectTrigger className="w-[150px]"><SelectValue placeholder="Set status" /></SelectTrigger><SelectContent><SelectItem value="Open">Open</SelectItem><SelectItem value="In Progress">In Progress</SelectItem><SelectItem value="Completed">Completed</SelectItem><SelectItem value="Cancelled">Cancelled</SelectItem></SelectContent></Select></TableCell><TableCell><Badge variant={getPriorityVariant(log.priority)}>{log.priority}</Badge></TableCell><TableCell>{log.reportedDate instanceof Date ? format(log.reportedDate, 'dd/MM/yyyy') : format(new Date(log.reportedDate.seconds * 1000), 'dd/MM/yyyy')}</TableCell><TableCell className="text-right"><Button asChild variant="ghost" size="icon"><Link href={`/dashboard/maintenance/${log.id}?propertyId=${selectedPropertyFilter}`}><Eye className="h-4 w-4" /></Link></Button><Button asChild variant="ghost" size="icon"><Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${selectedPropertyFilter}`}><Edit className="mr-2 h-4 w-4" /></Link></Button><Button variant="ghost" size="icon" onClick={() => setLogToCancel(log)}><XCircle className="h-4 w-4" /></Button><Button variant="ghost" size="icon" onClick={() => setLogToDelete(log)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell></TableRow>))}
                       </TableBody>
                   </Table>
               </div>
