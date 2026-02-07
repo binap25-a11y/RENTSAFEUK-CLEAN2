@@ -13,22 +13,39 @@ import {
 import { MainNav } from '@/components/dashboard/main-nav';
 import { UserNav } from '@/components/dashboard/user-nav';
 import { Logo } from '@/components/icons';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Share2 } from 'lucide-react';
 import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import { Notifications } from '@/components/dashboard/notifications';
 import { BackToTopButton } from '@/components/ui/back-to-top-button';
+import { Button } from '@/components/ui/button';
+import { ShareDialog } from '@/components/dashboard/share-dialog';
 
 function DashboardHeader() {
+  const [isShareOpen, setIsShareOpen] = useState(false);
+
   return (
     <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
       <SidebarTrigger className="md:hidden" />
       <div className="w-full flex-1">
         {/* Search functionality is now handled on specific pages like Properties. */}
       </div>
-      <Notifications />
-      <UserNav />
+      <div className="flex items-center gap-2">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={() => setIsShareOpen(true)} 
+          className="text-muted-foreground hover:text-primary hidden sm:flex"
+          title="Share App"
+        >
+          <Share2 className="h-5 w-5" />
+          <span className="sr-only">Share App</span>
+        </Button>
+        <ShareDialog isOpen={isShareOpen} onOpenChange={setIsShareOpen} />
+        <Notifications />
+        <UserNav />
+      </div>
     </header>
   );
 }
