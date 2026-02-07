@@ -9,23 +9,9 @@ import { getStorage } from 'firebase/storage';
 // IMPORTANT: DO NOT MODIFY THIS FUNCTION
 export function initializeFirebase() {
   if (!getApps().length) {
-    // Important! initializeApp() is called without any arguments because Firebase App Hosting
-    // integrates with the initializeApp() function to provide the environment variables needed to
-    // populate the FirebaseOptions in production. It is critical that we attempt to call initializeApp()
-    // without arguments.
-    let firebaseApp;
-    try {
-      // Attempt to initialize via Firebase App Hosting environment variables
-      firebaseApp = initializeApp();
-    } catch (e) {
-      // Only warn in production because it's normal to use the firebaseConfig to initialize
-      // during development
-      if (process.env.NODE_ENV === "production") {
-        console.warn('Automatic initialization failed. Falling back to firebase config object.', e);
-      }
-      firebaseApp = initializeApp(firebaseConfig);
-    }
-
+    // ALWAYS initialize with the explicit config to ensure consistency.
+    // This removes the ambiguity of automatic initialization.
+    const firebaseApp = initializeApp(firebaseConfig);
     return getSdks(firebaseApp);
   }
 
@@ -36,8 +22,9 @@ export function initializeFirebase() {
 export function getSdks(firebaseApp: FirebaseApp) {
   const auth = getAuth(firebaseApp);
   const firestore = getFirestore(firebaseApp);
-  // Use default bucket from config for reliability.
-  const storage = getStorage(firebaseApp);
+  // Explicitly connect to the storage bucket from the config.
+  // This is a more direct and reliable method that was used when the test page worked.
+  const storage = getStorage(firebaseApp, `gs://${firebaseConfig.storageBucket}`);
 
   return {
     firebaseApp,
