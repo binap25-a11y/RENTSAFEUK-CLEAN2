@@ -4,6 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -39,7 +40,6 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 import { 
-  Clock, 
   PoundSterling, 
   TrendingDown, 
   TrendingUp, 
@@ -51,9 +51,9 @@ import {
   Filter, 
   Banknote,
   AlertTriangle,
-  ArrowRight,
   PieChart as PieChartIcon,
-  List
+  List,
+  Clock
 } from 'lucide-react';
 import { getYear, startOfYear, endOfYear, format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -220,7 +220,7 @@ export default function FinancialsPage() {
                 </CardHeader>
                 <CardContent>
                 <div className="text-2xl font-bold">£{portfolioIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-                <p className="text-xs text-muted-foreground truncate">{activeProperties.length} active properties</p>
+                <p className="text-xs text-muted-foreground">{activeProperties.length} active properties</p>
                 </CardContent>
             </Card>
             <Card>
@@ -232,7 +232,7 @@ export default function FinancialsPage() {
                     <div className="text-2xl font-bold">
                         {isLoading && selectedPropertyId ? <Loader2 className="h-6 w-6 animate-spin" /> : selectedPropertyId ? `£${totalPaidRent.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`: '£0.00'}
                     </div>
-                    <p className="text-xs text-muted-foreground truncate">Rent received in {selectedYear}</p>
+                    <p className="text-xs text-muted-foreground">Rent received in {selectedYear}</p>
                 </CardContent>
             </Card>
             <Card>
@@ -244,7 +244,7 @@ export default function FinancialsPage() {
                     <div className="text-2xl font-bold">
                         {isLoading && selectedPropertyId ? <Loader2 className="h-6 w-6 animate-spin" /> : selectedPropertyId ? `£${totalExpenses.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`: '£0.00'}
                     </div>
-                    <p className="text-xs text-muted-foreground truncate">Expenses in {selectedYear}</p>
+                    <p className="text-xs text-muted-foreground">Expenses in {selectedYear}</p>
                 </CardContent>
             </Card>
             <Card>
@@ -256,7 +256,7 @@ export default function FinancialsPage() {
                     <div className={"text-2xl font-bold " + (netIncome < 0 ? " text-destructive" : " text-primary")}>
                         {isLoading && selectedPropertyId ? <Loader2 className="h-6 w-6 animate-spin" /> : selectedPropertyId ? `£${netIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`: '£0.00'}
                     </div>
-                     <p className="text-xs text-muted-foreground truncate">Net for {selectedYear}</p>
+                     <p className="text-xs text-muted-foreground">Net for {selectedYear}</p>
                 </CardContent>
             </Card>
         </div>
@@ -351,6 +351,7 @@ export default function FinancialsPage() {
 function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, selectedYear, expenses, isLoadingExpenses }: { properties: Property[], selectedPropertyId: string, isLoadingProperties: boolean, selectedYear: number, expenses: Expense[] | null, isLoadingExpenses: boolean }) {
   const { user } = useUser();
   const firestore = useFirestore();
+  const router = useRouter();
 
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseSchema),
@@ -380,6 +381,8 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
         title: 'Expense Logged',
         description: 'The new expense has been successfully logged.',
       });
+      // Refresh the page to update the list and clear the form visually
+      router.refresh();
       form.reset({ ...form.getValues(), expenseType: '', amount: undefined, notes: '' });
     } catch (error) {
       console.error('Failed to log expense', error);
@@ -689,7 +692,7 @@ function AnnualSummary({
                 </CardHeader>
                 <CardContent>
                     {isLoadingExpenses ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <div className="text-2xl font-bold">£{totalExpenses.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>}
-                    <p className="text-[10px] text-muted-foreground font-medium mt-1 truncate">
+                    <p className="text-[10px] text-muted-foreground font-medium mt-1">
                         {selectedProperty ? [selectedProperty.address.nameOrNumber, selectedProperty.address.street].filter(Boolean).join(', ') : 'No property selected'}
                     </p>
                 </CardContent>
