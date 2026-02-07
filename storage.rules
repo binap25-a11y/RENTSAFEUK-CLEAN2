@@ -2,11 +2,11 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow users to manage files within their own designated folders for documents and maintenance.
+    // Allow users to manage files within their own designated folders.
     // This ensures a user can only access their own files.
     match /{folder}/{userId}/{allPaths=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId &&
-                           (folder == 'documents' || folder == 'maintenance');
+                           (folder == 'documents' || folder == 'maintenance' || folder == 'images');
     }
   }
 }
