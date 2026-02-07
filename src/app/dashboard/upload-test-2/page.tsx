@@ -6,11 +6,11 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Input } from '@/components/ui/input';
 import { useStorage } from '@/firebase';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Loader2, Upload, Link as LinkIcon, AlertTriangle } from 'lucide-react';
+import { Loader2, Upload, Link as LinkIcon } from 'lucide-react';
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
-export default function EnhancedUploadTestPage() {
+export default function StorageTestPage() {
   const storage = useStorage();
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
@@ -41,7 +41,7 @@ export default function EnhancedUploadTestPage() {
       
       setFeedback({
         type: 'success',
-        message: 'Upload successful! The connection to Firebase Storage is working correctly. The CORS policy has been successfully applied.',
+        message: 'Upload successful! The connection to Firebase Storage is working correctly.',
         url: url,
       });
 
@@ -49,7 +49,7 @@ export default function EnhancedUploadTestPage() {
       console.error('[DIAGNOSTIC] Upload Error:', error);
       setFeedback({
         type: 'error',
-        message: `Upload Failed after applying fix. Code: ${error.code}. Message: ${error.message}. This indicates a deeper project or network issue.`,
+        message: `Upload Failed. Code: ${error.code}. Message: ${error.message}. This may indicate a network issue or incorrect project configuration.`,
       });
     } finally {
       setIsUploading(false);
@@ -60,13 +60,13 @@ export default function EnhancedUploadTestPage() {
     <div className="space-y-6">
       <Card className="max-w-4xl mx-auto">
           <CardHeader>
-              <CardTitle>Test Storage Connection</CardTitle>
-              <CardDescription>Now that the CORS fix has been applied, please select an image file and run the upload test to verify the connection.</CardDescription>
+              <CardTitle>Storage Connection Test</CardTitle>
+              <CardDescription>Use this page to test file uploads to Firebase Storage. This helps diagnose connection or permission issues.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
               <div className="space-y-2">
-                  <label htmlFor="file-upload" className="font-medium">Select an image file</label>
-                  <Input id="file-upload" type="file" onChange={handleFileChange} accept="image/*" />
+                  <label htmlFor="file-upload" className="font-medium">Select a test file</label>
+                  <Input id="file-upload" type="file" onChange={handleFileChange} />
               </div>
 
               <Button onClick={handleUpload} disabled={!file || isUploading} className="w-full">
