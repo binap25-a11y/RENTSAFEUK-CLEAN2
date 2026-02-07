@@ -1,130 +1,52 @@
 'use client';
 
-import { useState } from 'react';
-import { initializeApp } from 'firebase/app';
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { firebaseConfig } from '@/firebase/config';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
-import { Loader2, UploadCloud, CheckCircle, AlertCircle } from 'lucide-react';
-import { Label } from '@/components/ui/label';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Terminal } from 'lucide-react';
+import Link from 'next/link';
+import { Button } from '@/components/ui/button';
 
-// Self-contained Firebase initialization
-let app;
-try {
-  app = initializeApp(firebaseConfig);
-} catch (e) {
-  // app already initialized
-}
-const storage = getStorage(app);
-
-
-export default function UploadTest2Page() {
-  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
-  const [isUploading, setIsUploading] = useState(false);
-  const [statusMessage, setStatusMessage] = useState<string | null>(null);
-  const [error, setError] = useState<string | null>(null);
-  const [downloadUrl, setDownloadUrl] = useState<string | null>(null);
-
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (file) {
-      setFileToUpload(file);
-      setStatusMessage(`File selected: ${file.name}`);
-      setError(null);
-      setDownloadUrl(null);
-    }
-  };
-
-  const handleUpload = async () => {
-    if (!fileToUpload) {
-      setError('Please select a file first.');
-      return;
-    }
-
-    setIsUploading(true);
-    setStatusMessage('Starting upload...');
-    setError(null);
-    setDownloadUrl(null);
-
-    // Use a public path for testing to bypass security rules
-    const testPath = `public-test-uploads/${Date.now()}-${fileToUpload.name}`;
-    const fileRef = ref(storage, testPath);
-
-    try {
-      setStatusMessage(`Uploading to: ${fileRef.fullPath}`);
-      const uploadResult = await uploadBytes(fileRef, fileToUpload);
-      setStatusMessage('Upload complete. Getting download URL...');
-      const url = await getDownloadURL(uploadResult.ref);
-      setDownloadUrl(url);
-      setStatusMessage('Success! File is now hosted on Firebase Storage.');
-    } catch (e: any) {
-      console.error('Upload Error:', e);
-      let errorMessage = `An error occurred during upload. Code: ${e.code}. Message: ${e.message}.`;
-      if (e.code === 'storage/retry-limit-exceeded') {
-        errorMessage += ' This is a network timeout, often caused by incorrect CORS configuration on your GCS bucket. Please ensure your cors.json is correctly applied.';
-      }
-      setError(errorMessage);
-      setStatusMessage('Upload failed.');
-    } finally {
-      setIsUploading(false);
-    }
-  };
+export default function StorageFixPage() {
+  const bucketName = "studio-7375290328-5d091.appspot.com";
 
   return (
     <div className="space-y-6">
       <Card>
         <CardHeader>
-          <CardTitle>Storage Connection Test</CardTitle>
+          <CardTitle>Fixing the Storage Connection Timeout</CardTitle>
           <CardDescription>
-            This page provides a direct, isolated test of your Firebase Storage connection.
+            The "retry-limit-exceeded" error indicates a network security issue, not a problem with the app's code. It's caused by a missing CORS policy on your Google Cloud Storage bucket.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-          <div className="grid w-full max-w-sm items-center gap-1.5">
-            <Label htmlFor="image-upload">Select a file</Label>
-            <Input id="image-upload" type="file" onChange={handleFileChange} />
-          </div>
-          <Button onClick={handleUpload} disabled={isUploading || !fileToUpload}>
-            {isUploading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <UploadCloud className="mr-2 h-4 w-4" />
-            )}
-            Upload and Test Connection
-          </Button>
-
-          <div className="space-y-2 pt-4">
-            {statusMessage && (
-              <Alert variant={error ? "destructive" : "default"}>
-                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Status</AlertTitle>
-                <AlertDescription className="break-words">{statusMessage}</AlertDescription>
-              </Alert>
-            )}
-
-            {error && (
-              <Alert variant="destructive">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Error Details</AlertTitle>
-                <AlertDescription className="break-words">{error}</AlertDescription>
-              </Alert>
-            )}
-
-            {downloadUrl && (
-              <Alert variant="default" className="bg-green-50 border-green-200">
-                <CheckCircle className="h-4 w-4 text-green-600" />
-                <AlertTitle>Success! Download URL</AlertTitle>
-                <AlertDescription className="break-words">
-                  <a href={downloadUrl} target="_blank" rel="noopener noreferrer" className="text-green-700 underline">
-                    {downloadUrl}
-                  </a>
-                </AlertDescription>
-              </Alert>
-            )}
-          </div>
+          <Alert>
+            <Terminal className="h-4 w-4" />
+            <AlertTitle>Action Required</AlertTitle>
+            <AlertDescription>
+              <p className="mb-4">To fix the upload timeout, you must run the following command in your terminal. This updates your project's security policy to allow uploads from the app.</p>
+              <pre className="p-4 rounded-md bg-muted text-sm overflow-x-auto">
+                <code>{`gcloud storage buckets update gs://${bucketName} --cors-file=cors.json`}</code>
+              </pre>
+              <p className="mt-4 text-xs text-muted-foreground">
+                This command uses the <code>cors.json</code> file in your project root. Ensure you are authenticated with the correct Google Cloud account in your terminal before running it. After running the command, you can use the file upload features throughout the app.
+              </p>
+            </AlertDescription>
+          </Alert>
+           <div className="text-center pt-4">
+              <Button asChild>
+                <Link href="/dashboard/documents/upload">Test with Document Upload</Link>
+              </Button>
+           </div>
+        </CardContent>
+      </Card>
+      <Card>
+        <CardHeader>
+          <CardTitle>What is CORS?</CardTitle>
+        </CardHeader>
+        <CardContent>
+            <p className="text-sm text-muted-foreground">
+                Cross-Origin Resource Sharing (CORS) is a security feature that browsers use to restrict how resources on a web page can be requested from another domain. Your app runs on one domain, and Firebase Storage is on another. For your app to upload files, the storage server must explicitly tell the browser that it's allowed. The <code>gcloud</code> command applies a configuration file (<code>cors.json</code>) to your storage bucket that grants this permission.
+            </p>
         </CardContent>
       </Card>
     </div>

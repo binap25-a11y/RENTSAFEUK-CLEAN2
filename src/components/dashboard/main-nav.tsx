@@ -23,7 +23,7 @@ import {
   Bell,
   Users,
   HardHat,
-  FileImage,
+  AlertCircle,
 } from 'lucide-react';
 import * as React from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -158,10 +158,10 @@ export function MainNav() {
         </SidebarMenuItem>
       ))}
        <SidebarMenuItem>
-          <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/upload-test-2')} tooltip="Storage Test">
+          <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/upload-test-2')} tooltip="Fix Storage Upload">
               <Link href="/dashboard/upload-test-2" onClick={handleLinkClick}>
-                <FileImage />
-                <span>Storage Test</span>
+                <AlertCircle className="text-yellow-500" />
+                <span className="text-yellow-500">Fix Storage Upload</span>
               </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
