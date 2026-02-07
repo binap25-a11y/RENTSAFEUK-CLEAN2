@@ -36,9 +36,8 @@ export function initializeFirebase() {
 export function getSdks(firebaseApp: FirebaseApp) {
   const auth = getAuth(firebaseApp);
   const firestore = getFirestore(firebaseApp);
-  // Let Firebase automatically determine the storage bucket from the app's configuration.
-  // This is more robust than manually constructing the URL.
-  const storage = getStorage(firebaseApp);
+  // Reverted to explicit bucket URL for reliability.
+  const storage = getStorage(firebaseApp, `gs://${firebaseConfig.storageBucket}`);
 
   return {
     firebaseApp,

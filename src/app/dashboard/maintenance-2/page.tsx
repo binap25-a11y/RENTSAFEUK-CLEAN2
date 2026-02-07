@@ -12,61 +12,57 @@ import Link from 'next/link';
 export default function Maintenance2Page() {
   const { user } = useUser();
   const storage = useStorage();
-  const [filesToUpload, setFilesToUpload] = useState<FileList | null>(null);
+  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
+  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
   
   return (
     <div className="p-8 space-y-6 max-w-xl mx-auto border rounded-lg bg-card text-card-foreground">
       <h1 className="text-xl font-bold">File Upload Test Page</h1>
       <p className="text-sm text-muted-foreground">
-        This is a barebones page to test the Firebase Storage upload functionality.
+        This is a simplified test environment. Please select a single file to upload to diagnose the issue.
       </p>
       
       <div className="space-y-2">
-        <label htmlFor="file-input" className="font-medium text-sm">Step 1: Select files</label>
+        <label htmlFor="file-input" className="font-medium text-sm">Step 1: Select a single file</label>
         <Input 
           id="file-input"
           type="file" 
-          multiple 
           onChange={(e) => {
-            setFilesToUpload(e.target.files);
-            setUploadedUrls([]);
+            if (e.target.files && e.target.files.length > 0) {
+                setFileToUpload(e.target.files[0]);
+                setUploadedUrl(null);
+            } else {
+                setFileToUpload(null);
+            }
           }} 
         />
       </div>
 
       <Button
         onClick={async () => {
-          if (!filesToUpload || filesToUpload.length === 0) {
-            toast({ variant: 'destructive', title: 'No files selected' });
+          if (!fileToUpload) {
+            toast({ variant: 'destructive', title: 'No file selected' });
             return;
           }
           if (!user || !storage) {
-            toast({ variant: 'destructive', title: 'Not authenticated' });
+            toast({ variant: 'destructive', title: 'Not authenticated or storage not ready.' });
             return;
           }
 
           setIsUploading(true);
-          setUploadedUrls([]);
-          toast({ title: 'Upload started...' });
+          setUploadedUrl(null);
+          toast({ title: 'Upload started...', description: `Uploading ${fileToUpload.name}` });
 
-          const urls: string[] = [];
           try {
-            for (let i = 0; i < filesToUpload.length; i++) {
-              const file = filesToUpload[i];
-              const uniqueFileName = `${Date.now()}-${file.name}`;
-              const fileRef = storageRef(storage, `test-uploads/${user.uid}/${uniqueFileName}`);
-              
-              toast({ title: `Uploading ${i + 1}/${filesToUpload.length}`, description: file.name });
+            const uniqueFileName = `${Date.now()}-${fileToUpload.name}`;
+            const fileRef = storageRef(storage, `test-uploads/${user.uid}/${uniqueFileName}`);
+            
+            const uploadResult = await uploadBytes(fileRef, fileToUpload);
+            const url = await getDownloadURL(uploadResult.ref);
 
-              await uploadBytes(fileRef, file);
-              const url = await getDownloadURL(fileRef);
-              urls.push(url);
-            }
-
-            setUploadedUrls(urls);
-            toast({ title: 'Upload successful!', description: `${urls.length} file(s) uploaded.` });
+            setUploadedUrl(url);
+            toast({ title: 'Upload successful!', description: `File has been uploaded.` });
 
           } catch (error: any) {
             console.error('Upload failed:', error);
@@ -79,24 +75,20 @@ export default function Maintenance2Page() {
             setIsUploading(false);
           }
         }}
-        disabled={isUploading || !filesToUpload}
+        disabled={isUploading || !fileToUpload}
       >
         {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-        Step 2: Upload Photos
+        Step 2: Upload Photo
       </Button>
 
-      {uploadedUrls.length > 0 && (
+      {uploadedUrl && (
         <div className="space-y-4 pt-4 border-t">
-          <h2 className="font-semibold">Successfully Uploaded Files:</h2>
-          <ul className="space-y-2">
-            {uploadedUrls.map((url, index) => (
-              <li key={index} className="text-sm">
-                <Link href={url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
-                  {`File ${index + 1}: ${url}`}
-                </Link>
-              </li>
-            ))}
-          </ul>
+          <h2 className="font-semibold">Successfully Uploaded File:</h2>
+          <div className="text-sm">
+            <Link href={uploadedUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
+              {uploadedUrl}
+            </Link>
+          </div>
         </div>
       )}
     </div>
