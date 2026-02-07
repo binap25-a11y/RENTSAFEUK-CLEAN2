@@ -14,25 +14,12 @@ import {
   Wrench,
   CalendarCheck,
   Files,
-  PlusCircle,
   Activity,
   ListTodo,
-  FileText,
   Loader2,
   PoundSterling,
-  UserPlus,
   ArrowRight,
-  CheckCircle2,
-  AlertTriangle,
 } from 'lucide-react';
-import {
-  Table,
-  TableBody,
-  TableCell,
-  TableHead,
-  TableHeader,
-  TableRow,
-} from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import {
@@ -41,8 +28,8 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, Timestamp, collectionGroup } from 'firebase/firestore';
-import { useMemo } from 'react';
+import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { useMemo, useState, useEffect } from 'react';
 import { format, isFuture, isBefore, addDays } from 'date-fns';
 import {
   ChartContainer,
@@ -129,53 +116,69 @@ export default function DashboardPage() {
   const { user } = useUser();
   const firestore = useFirestore();
 
-  // --- Resilient Global Queries (Sorted in memory to avoid index requirement) ---
-  
+  // Primary Properties Listener
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(collection(firestore, 'properties'), where('ownerId', '==', user.uid));
   }, [user, firestore]);
   const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
 
-  const maintenanceQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    return query(
-      collectionGroup(firestore, 'maintenanceLogs'), 
-      where('ownerId', '==', user.uid)
-    );
-  }, [user, firestore]);
-  const { data: maintenanceLogs, isLoading: isLoadingMaintenance } = useCollection<MaintenanceLog>(maintenanceQuery);
+  // States for aggregated data
+  const [maintenanceLogs, setMaintenanceLogs] = useState<MaintenanceLog[]>([]);
+  const [inspections, setInspections] = useState<Inspection[]>([]);
+  const [documents, setDocuments] = useState<Document[]>([]);
+  const [allRentPayments, setAllRentPayments] = useState<RentPayment[]>([]);
+  const [isAggregating, setIsAggregating] = useState(false);
 
-  const inspectionsQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    return query(
-      collectionGroup(firestore, 'inspections'), 
-      where('ownerId', '==', user.uid)
-    );
-  }, [user, firestore]);
-  const { data: inspections, isLoading: isLoadingInspections } = useCollection<Inspection>(inspectionsQuery);
+  // Aggregation Effect: Fetch sub-collections for each property in parallel
+  // This avoids Collection Group index requirements while maintaining high speed.
+  useEffect(() => {
+    if (!user || !properties || properties.length === 0) {
+        setMaintenanceLogs([]);
+        setInspections([]);
+        setDocuments([]);
+        setAllRentPayments([]);
+        return;
+    }
 
-  const documentsQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    return query(
-      collectionGroup(firestore, 'documents'), 
-      where('ownerId', '==', user.uid)
-    );
-  }, [user, firestore]);
-  const { data: documents, isLoading: isLoadingDocuments } = useCollection<Document>(documentsQuery);
+    const aggregateData = async () => {
+        setIsAggregating(true);
+        try {
+            const maintPromises: Promise<any>[] = [];
+            const inspPromises: Promise<any>[] = [];
+            const docPromises: Promise<any>[] = [];
+            const rentPromises: Promise<any>[] = [];
 
-  const currentYear = new Date().getFullYear();
-  const currentMonth = format(new Date(), 'MMMM');
-  const rentQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    return query(
-      collectionGroup(firestore, 'rentPayments'), 
-      where('ownerId', '==', user.uid)
-    );
-  }, [user, firestore]);
-  const { data: allRentPayments, isLoading: isLoadingRent } = useCollection<RentPayment>(rentQuery);
+            properties.forEach(prop => {
+                const ownerFilter = where('ownerId', '==', user.uid);
+                maintPromises.push(getDocs(query(collection(firestore, 'properties', prop.id, 'maintenanceLogs'), ownerFilter)));
+                inspPromises.push(getDocs(query(collection(firestore, 'properties', prop.id, 'inspections'), ownerFilter)));
+                docPromises.push(getDocs(query(collection(firestore, 'properties', prop.id, 'documents'), ownerFilter)));
+                rentPromises.push(getDocs(query(collection(firestore, 'properties', prop.id, 'rentPayments'), ownerFilter)));
+            });
 
-  const isLoading = isLoadingProperties || isLoadingMaintenance || isLoadingInspections || isLoadingDocuments || isLoadingRent;
+            const [maintSnaps, inspSnaps, docSnaps, rentSnaps] = await Promise.all([
+                Promise.all(maintPromises),
+                Promise.all(inspPromises),
+                Promise.all(docPromises),
+                Promise.all(rentPromises)
+            ]);
+
+            setMaintenanceLogs(maintSnaps.flatMap(snap => snap.docs.map((d: any) => ({ id: d.id, ...d.data() } as MaintenanceLog))));
+            setInspections(inspSnaps.flatMap(snap => snap.docs.map((d: any) => ({ id: d.id, ...d.data() } as Inspection))));
+            setDocuments(docSnaps.flatMap(snap => snap.docs.map((d: any) => ({ id: d.id, ...d.data() } as Document))));
+            setAllRentPayments(rentSnaps.flatMap(snap => snap.docs.map((d: any) => ({ id: d.id, ...d.data() } as RentPayment))));
+        } catch (err) {
+            console.error("Aggregation failed:", err);
+        } finally {
+            setIsAggregating(false);
+        }
+    };
+
+    aggregateData();
+  }, [user, properties, firestore]);
+
+  const isLoading = isLoadingProperties || isAggregating;
 
   // --- Processed Data ---
 
@@ -187,17 +190,17 @@ export default function DashboardPage() {
   , [properties]);
 
   const activeProperties = useMemo(() => properties?.filter(p => ['Vacant', 'Occupied', 'Under Maintenance'].includes(p.status)) ?? [], [properties]);
-  const openMaintenanceCount = useMemo(() => maintenanceLogs?.filter(log => log.status === 'Open').length ?? 0, [maintenanceLogs]);
+  const openMaintenanceCount = useMemo(() => maintenanceLogs.filter(log => log.status === 'Open').length, [maintenanceLogs]);
   
-  const upcomingInspectionsCount = useMemo(() => inspections?.filter(insp => {
+  const upcomingInspectionsCount = useMemo(() => inspections.filter(insp => {
       if (!insp.scheduledDate) return false;
       const scheduledDate = insp.scheduledDate instanceof Date ? insp.scheduledDate : (insp.scheduledDate as Timestamp).toDate();
       return insp.status === 'Scheduled' && isFuture(scheduledDate);
-  }).length ?? 0, [inspections]);
+  }).length, [inspections]);
 
   const recentActivities = useMemo(() => 
     maintenanceLogs
-        ?.sort((a, b) => {
+        .sort((a, b) => {
             const dateA = a.reportedDate instanceof Date ? a.reportedDate : (a.reportedDate as Timestamp).toDate();
             const dateB = b.reportedDate instanceof Date ? b.reportedDate : (b.reportedDate as Timestamp).toDate();
             return dateB.getTime() - dateA.getTime();
@@ -209,12 +212,12 @@ export default function DashboardPage() {
             activity: log.title,
             date: format(log.reportedDate instanceof Date ? log.reportedDate : (log.reportedDate as Timestamp).toDate(), 'dd/MM/yyyy'),
             href: `/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`
-        })) ?? []
+        }))
   , [maintenanceLogs, propertyMap]);
 
   const upcomingTasks = useMemo(() => {
     const inspectionTasks = inspections
-        ?.filter(insp => {
+        .filter(insp => {
             if (!insp.scheduledDate) return false;
             const scheduledDate = insp.scheduledDate instanceof Date ? insp.scheduledDate : (insp.scheduledDate as Timestamp).toDate();
             return insp.status === 'Scheduled' && isFuture(scheduledDate)
@@ -229,10 +232,10 @@ export default function DashboardPage() {
                 dueDate: date,
                 href: `/dashboard/inspections/${insp.id}?propertyId=${insp.propertyId}`
             };
-        }) ?? [];
+        });
     
     const documentTasks = documents
-        ?.map(doc => {
+        .map(doc => {
             if (!doc.expiryDate) return null;
             const expiry = doc.expiryDate instanceof Date ? doc.expiryDate : (doc.expiryDate as Timestamp).toDate();
             return { ...doc, status: getDocumentStatus(expiry), expiryDate: expiry };
@@ -245,7 +248,7 @@ export default function DashboardPage() {
             status: doc.status,
             dueDate: doc.expiryDate,
             href: '/dashboard/documents'
-        })) ?? [];
+        }));
 
         return [...inspectionTasks, ...documentTasks]
             .sort((a,b) => a.dueDate.getTime() - b.dueDate.getTime())
@@ -256,12 +259,15 @@ export default function DashboardPage() {
             }));
   }, [inspections, documents, propertyMap]);
   
+  const currentYear = new Date().getFullYear();
+  const currentMonth = format(new Date(), 'MMMM');
+
   const rentStatusData = useMemo(() => {
     if (isLoading || !properties) return [];
     const occupiedPropertiesCount = properties.filter(p => p.status === 'Occupied').length;
     
     // Filter payments for current month only
-    const monthlyPayments = allRentPayments?.filter(p => p.year === currentYear && p.month === currentMonth) ?? [];
+    const monthlyPayments = allRentPayments.filter(p => p.year === currentYear && p.month === currentMonth);
     
     const statusCounts: Record<'Paid' | 'Partially Paid' | 'Unpaid', number> = { 'Paid': 0, 'Partially Paid': 0, 'Unpaid': 0 };
     monthlyPayments.forEach(payment => { if (statusCounts[payment.status] !== undefined) statusCounts[payment.status]++; });
@@ -289,10 +295,10 @@ export default function DashboardPage() {
     { title: 'Total Properties', value: isLoading ? '-' : activeProperties.length, icon: Home, description: 'Active properties' },
     { title: 'Open Maintenance', value: isLoading ? '-' : openMaintenanceCount, icon: Wrench, description: 'Issues needing attention' },
     { title: 'Upcoming Inspections', value: isLoading ? '-' : upcomingInspectionsCount, icon: CalendarCheck, description: 'Scheduled tasks' },
-    { title: 'Total Documents', value: isLoading ? '-' : documents?.length ?? 0, icon: Files, description: 'Compliance records' },
+    { title: 'Total Documents', value: isLoading ? '-' : documents.length, icon: Files, description: 'Compliance records' },
   ];
 
-  if (!isLoading && activeProperties.length === 0) {
+  if (!isLoading && properties?.length === 0) {
     return (
       <div className="flex flex-col gap-8 max-w-4xl mx-auto py-12">
         <div className="text-center space-y-4">

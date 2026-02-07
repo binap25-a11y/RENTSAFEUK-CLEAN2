@@ -8,41 +8,40 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
     // --- Users Collection ---
     match /users/{userId} {
-      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      allow read, write: if isOwner(userId);
     }
 
     // --- Tenants Collection ---
     match /tenants/{tenantId} {
-      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-
+      allow read, write: if isSignedIn() && (resource == null || resource.data.ownerId == request.auth.uid) && (request.resource == null || request.resource.data.ownerId == request.auth.uid);
+      
       match /screenings/{screeningId} {
-        allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-        allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+        allow read, write: if isSignedIn() && (resource == null || resource.data.ownerId == request.auth.uid) && (request.resource == null || request.resource.data.ownerId == request.auth.uid);
       }
     }
 
     // --- Properties Collection ---
     match /properties/{propertyId} {
-      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow read, write: if isSignedIn() && (resource == null || resource.data.ownerId == request.auth.uid) && (request.resource == null || request.resource.data.ownerId == request.auth.uid);
 
       // Sub-collections: maintenanceLogs, inspections, documents, expenses, rentPayments, checklists
       match /{subcollection}/{docId=**} {
-        allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-        allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+        allow read, write: if isSignedIn() && (resource == null || resource.data.ownerId == request.auth.uid) && (request.resource == null || request.resource.data.ownerId == request.auth.uid);
       }
     }
 
     // --- Contractors Collection ---
     match /contractors/{contractorId} {
-      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow read, write: if isSignedIn() && (resource == null || resource.data.ownerId == request.auth.uid) && (request.resource == null || request.resource.data.ownerId == request.auth.uid);
     }
 
-    // --- Collection Group Rules (Critical for Performance & Global Queries) ---
+    // --- Collection Group Rules (Broad Read for Aggregation) ---
     match /{path=**}/maintenanceLogs/{id} {
       allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }

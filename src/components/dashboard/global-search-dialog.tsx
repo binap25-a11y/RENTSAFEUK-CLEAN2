@@ -11,8 +11,8 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, query, where, getDocs, collectionGroup, limit } from 'firebase/firestore';
-import { Home, Users, HardHat, Wrench, CalendarCheck, Loader2, Search } from 'lucide-react';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { Home, Users, HardHat, Loader2, Search } from 'lucide-react';
 
 // Data types
 interface Searchable {
@@ -25,8 +25,6 @@ interface Property extends Searchable {
 }
 interface Tenant extends Searchable { name: string; email: string; status?: string; }
 interface Contractor extends Searchable { name: string; trade: string; status?: string; }
-interface MaintenanceLog extends Searchable { title: string; propertyId: string; }
-interface Inspection extends Searchable { type: string; propertyId: string; }
 
 // Result group type
 interface SearchResultGroup {
@@ -56,11 +54,10 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
     properties: Property[];
     tenants: Tenant[];
     contractors: Contractor[];
-    maintenanceLogs: MaintenanceLog[];
-    inspections: Inspection[];
   } | null>(null);
 
-  // Load data efficiently when search is opened
+  // Load data efficiently when search is opened. 
+  // We avoid collectionGroup queries here to bypass index requirements.
   useEffect(() => {
     if (isOpen && !allData && user && firestore) {
       const fetchData = async () => {
@@ -68,23 +65,18 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
         try {
           const ownerFilter = where('ownerId', '==', user.uid);
           
-          // Use parallel collection group queries for high speed
           const queries = [
-            getDocs(query(collection(firestore, 'properties'), ownerFilter)),
-            getDocs(query(collection(firestore, 'tenants'), ownerFilter)),
-            getDocs(query(collection(firestore, 'contractors'), ownerFilter)),
-            getDocs(query(collectionGroup(firestore, 'maintenanceLogs'), ownerFilter, limit(100))),
-            getDocs(query(collectionGroup(firestore, 'inspections'), ownerFilter, limit(100))),
+            getDocs(query(collection(firestore, 'properties'), ownerFilter, limit(100))),
+            getDocs(query(collection(firestore, 'tenants'), ownerFilter, limit(100))),
+            getDocs(query(collection(firestore, 'contractors'), ownerFilter, limit(100))),
           ];
           
-          const [propSnap, tenantSnap, contractorSnap, maintSnap, inspSnap] = await Promise.all(queries);
+          const [propSnap, tenantSnap, contractorSnap] = await Promise.all(queries);
           
           setAllData({
             properties: propSnap.docs.map(d => ({ id: d.id, ...d.data() } as Property)),
             tenants: tenantSnap.docs.map(d => ({ id: d.id, ...d.data() } as Tenant)),
             contractors: contractorSnap.docs.map(d => ({ id: d.id, ...d.data() } as Contractor)),
-            maintenanceLogs: maintSnap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog)),
-            inspections: inspSnap.docs.map(d => ({ id: d.id, ...d.data() } as Inspection)),
           });
         } catch (error) {
           console.error("Failed to fetch search data:", error);
@@ -124,18 +116,6 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
       .map(c => ({ id: c.id, title: c.name, description: 'Contractor', href: `/dashboard/contractors/${c.id}/edit` }));
     if (contractorItems.length) results.push({ title: 'Contractors', icon: HardHat, items: contractorItems.slice(0, 5) });
 
-    // Maintenance
-    const maintenanceItems = allData.maintenanceLogs
-      .filter(m => m.title.toLowerCase().includes(term))
-      .map(m => ({ id: m.id, title: m.title, description: 'Maintenance Log', href: `/dashboard/maintenance/${m.id}?propertyId=${m.propertyId}` }));
-    if (maintenanceItems.length) results.push({ title: 'Maintenance', icon: Wrench, items: maintenanceItems.slice(0, 5) });
-    
-    // Inspections
-    const inspectionItems = allData.inspections
-      .filter(i => (i.type || '').toLowerCase().includes(term))
-      .map(i => ({ id: i.id, title: `${i.type} Inspection`, description: 'Inspection Record', href: `/dashboard/inspections/${i.id}?propertyId=${i.propertyId}` }));
-    if (inspectionItems.length) results.push({ title: 'Inspections', icon: CalendarCheck, items: inspectionItems.slice(0, 5) });
-
     return results;
   }, [searchTerm, allData]);
 
@@ -150,7 +130,7 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
       <DialogContent className="p-0 gap-0 max-w-3xl overflow-hidden border-none shadow-2xl">
         <DialogHeader className="sr-only">
           <DialogTitle>Search Portfolio</DialogTitle>
-          <DialogDescription>Search properties, tenants, and maintenance tasks.</DialogDescription>
+          <DialogDescription>Search properties, tenants, and contractors across your entire portfolio.</DialogDescription>
         </DialogHeader>
         <div className="flex items-center px-6 border-b bg-background h-16">
           <Search className="h-5 w-5 text-muted-foreground mr-4" />
@@ -172,7 +152,7 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
                 <div className="flex flex-col items-center justify-center py-20 text-center px-6">
                     <Search className="h-12 w-12 text-muted-foreground/10 mb-4" />
                     <p className="text-lg font-medium text-muted-foreground">No matches found for "{searchTerm}"</p>
-                    <p className="text-sm text-muted-foreground/60 max-w-xs mt-1">Try searching for a street name, tenant name, or maintenance issue.</p>
+                    <p className="text-sm text-muted-foreground/60 max-w-xs mt-1">Try searching for a street name or tenant name.</p>
                 </div>
             ) : !searchTerm ? (
                 <div className="p-8 space-y-6">

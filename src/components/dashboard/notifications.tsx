@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   DropdownMenu,
@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Bell, FileWarning, CalendarClock, Loader2 } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, Timestamp, collectionGroup } from 'firebase/firestore';
+import { collection, query, where, Timestamp, getDocs } from 'firebase/firestore';
 import { format, isBefore, addDays, isFuture } from 'date-fns';
 
 // Interfaces
@@ -55,30 +55,53 @@ export function Notifications() {
   const { user } = useUser();
   const firestore = useFirestore();
 
-  // Optimized high-performance listeners (Simplified filters to avoid index requirement)
+  // Primary Properties Listener
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(collection(firestore, 'properties'), where('ownerId', '==', user.uid));
   }, [firestore, user]);
   const { data: properties } = useCollection<Property>(propertiesQuery);
 
-  const docsQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    return query(
-      collectionGroup(firestore, 'documents'), 
-      where('ownerId', '==', user.uid)
-    );
-  }, [firestore, user]);
-  const { data: allDocuments, isLoading: isLoadingDocs } = useCollection<Document>(docsQuery);
+  const [allDocuments, setAllDocuments] = useState<Document[]>([]);
+  const [allInspections, setAllInspections] = useState<Inspection[]>([]);
+  const [isLoadingAggregates, setIsLoadingAggregates] = useState(false);
 
-  const inspsQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    return query(
-      collectionGroup(firestore, 'inspections'), 
-      where('ownerId', '==', user.uid)
-    );
-  }, [firestore, user]);
-  const { data: allInspections, isLoading: isLoadingInsps } = useCollection<Inspection>(inspsQuery);
+  // Manual Aggregation Effect
+  useEffect(() => {
+    if (!user || !properties || properties.length === 0) {
+        setAllDocuments([]);
+        setAllInspections([]);
+        return;
+    }
+
+    const fetchAggregates = async () => {
+        setIsLoadingAggregates(true);
+        try {
+            const docPromises: Promise<any>[] = [];
+            const inspPromises: Promise<any>[] = [];
+
+            properties.forEach(prop => {
+                const ownerFilter = where('ownerId', '==', user.uid);
+                docPromises.push(getDocs(query(collection(firestore, 'properties', prop.id, 'documents'), ownerFilter)));
+                inspPromises.push(getDocs(query(collection(firestore, 'properties', prop.id, 'inspections'), ownerFilter)));
+            });
+
+            const [docSnaps, inspSnaps] = await Promise.all([
+                Promise.all(docPromises),
+                Promise.all(inspPromises)
+            ]);
+
+            setAllDocuments(docSnaps.flatMap(snap => snap.docs.map((d: any) => ({ id: d.id, ...d.data() } as Document))));
+            setAllInspections(inspSnaps.flatMap(snap => snap.docs.map((d: any) => ({ id: d.id, ...d.data() } as Inspection))));
+        } catch (err) {
+            console.error("Notification aggregation failed:", err);
+        } finally {
+            setIsLoadingAggregates(false);
+        }
+    };
+
+    fetchAggregates();
+  }, [user, properties, firestore]);
 
   const propertyMap = useMemo(() => {
     return properties?.reduce((map, prop) => {
@@ -89,7 +112,7 @@ export function Notifications() {
   
   const allReminders = useMemo(() => {
     const documentReminders = allDocuments
-        ?.map((doc) => {
+        .map((doc) => {
           if (!doc.expiryDate) return null;
           const expiry = doc.expiryDate instanceof Date ? doc.expiryDate : (doc.expiryDate as Timestamp).toDate();
           return { ...doc, expiryDate: expiry, status: getDocumentStatus(expiry) };
@@ -103,10 +126,10 @@ export function Notifications() {
           status: doc.status,
           icon: FileWarning,
           href: '/dashboard/documents'
-        })) ?? [];
+        }));
 
     const inspectionReminders = allInspections
-        ?.filter((insp) => {
+        .filter((insp) => {
           if (!insp.scheduledDate || insp.status !== 'Scheduled') return false;
           const scheduled = insp.scheduledDate instanceof Date ? insp.scheduledDate : (insp.scheduledDate as Timestamp).toDate();
           return isFuture(scheduled);
@@ -119,19 +142,18 @@ export function Notifications() {
           status: 'Scheduled',
           icon: CalendarClock,
           href: `/dashboard/inspections/${insp.id}?propertyId=${insp.propertyId}`
-        })) ?? [];
+        }));
 
     return [...documentReminders, ...inspectionReminders].sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
   }, [allDocuments, allInspections, propertyMap]);
 
-  const isLoading = isLoadingDocs || isLoadingInsps;
   const notificationCount = allReminders.length;
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : <Bell className="h-5 w-5" />}
+          {isLoadingAggregates ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : <Bell className="h-5 w-5" />}
           {notificationCount > 0 && (
             <Badge className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full p-0 text-[10px]" variant="destructive">
               {notificationCount}

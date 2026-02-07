@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Card,
@@ -27,7 +27,7 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, Timestamp, collectionGroup } from 'firebase/firestore';
+import { collection, query, where, Timestamp, getDocs } from 'firebase/firestore';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -84,24 +84,53 @@ export default function RemindersPage() {
   const { user } = useUser();
   const firestore = useFirestore();
 
-  // Simplified filters to avoid index requirement
+  // Primary Properties Listener
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(collection(firestore, 'properties'), where('ownerId', '==', user.uid));
   }, [firestore, user]);
   const { data: properties, isLoading: isLoadingProps } = useCollection<Property>(propertiesQuery);
 
-  const docsQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    return query(collectionGroup(firestore, 'documents'), where('ownerId', '==', user.uid));
-  }, [firestore, user]);
-  const { data: allDocuments, isLoading: isLoadingDocs } = useCollection<Document>(docsQuery);
+  const [allDocuments, setAllDocuments] = useState<Document[]>([]);
+  const [allInspections, setAllInspections] = useState<Inspection[]>([]);
+  const [isAggregating, setIsAggregating] = useState(false);
 
-  const inspsQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    return query(collectionGroup(firestore, 'inspections'), where('ownerId', '==', user.uid));
-  }, [firestore, user]);
-  const { data: allInspections, isLoading: isLoadingInsps } = useCollection<Inspection>(inspsQuery);
+  // Manual Aggregation Effect
+  useEffect(() => {
+    if (!user || !properties || properties.length === 0) {
+        setAllDocuments([]);
+        setAllInspections([]);
+        return;
+    }
+
+    const fetchAggregates = async () => {
+        setIsAggregating(true);
+        try {
+            const docPromises: Promise<any>[] = [];
+            const inspPromises: Promise<any>[] = [];
+
+            properties.forEach(prop => {
+                const ownerFilter = where('ownerId', '==', user.uid);
+                docPromises.push(getDocs(query(collection(firestore, 'properties', prop.id, 'documents'), ownerFilter)));
+                inspPromises.push(getDocs(query(collection(firestore, 'properties', prop.id, 'inspections'), ownerFilter)));
+            });
+
+            const [docSnaps, inspSnaps] = await Promise.all([
+                Promise.all(docPromises),
+                Promise.all(inspPromises)
+            ]);
+
+            setAllDocuments(docSnaps.flatMap(snap => snap.docs.map((d: any) => ({ id: d.id, ...d.data() } as Document))));
+            setAllInspections(inspSnaps.flatMap(snap => snap.docs.map((d: any) => ({ id: d.id, ...d.data() } as Inspection))));
+        } catch (err) {
+            console.error("Aggregation failed:", err);
+        } finally {
+            setIsAggregating(false);
+        }
+    };
+
+    fetchAggregates();
+  }, [user, properties, firestore]);
 
   const propertyMap = useMemo(() => {
     return properties?.reduce((map, prop) => {
@@ -112,7 +141,7 @@ export default function RemindersPage() {
 
   const allReminders = useMemo(() => {
     const documentReminders = allDocuments
-        ?.map((doc) => {
+        .map((doc) => {
           const expiry = doc.expiryDate instanceof Date ? doc.expiryDate : (doc.expiryDate as Timestamp).toDate();
           return { ...doc, expiryDate: expiry, status: getDocumentStatus(expiry) };
         })
@@ -125,10 +154,10 @@ export default function RemindersPage() {
           dueDate: doc.expiryDate,
           status: doc.status,
           href: '/dashboard/documents'
-        })) ?? [];
+        }));
 
     const inspectionReminders = allInspections
-        ?.filter(insp => insp.status === 'Scheduled')
+        .filter(insp => insp.status === 'Scheduled')
         .map((insp) => {
           const scheduled = insp.scheduledDate instanceof Date ? insp.scheduledDate : (insp.scheduledDate as Timestamp).toDate();
           return { ...insp, scheduledDate: scheduled };
@@ -142,7 +171,7 @@ export default function RemindersPage() {
           dueDate: insp.scheduledDate,
           status: 'Scheduled',
           href: `/dashboard/inspections/${insp.id}?propertyId=${insp.propertyId}`
-        })) ?? [];
+        }));
 
     return [...documentReminders, ...inspectionReminders].sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
   }, [allDocuments, allInspections, propertyMap]);
@@ -150,7 +179,7 @@ export default function RemindersPage() {
   const urgentCount = useMemo(() => allReminders.filter(r => r.status === 'Expired').length, [allReminders]);
   const upcomingCount = useMemo(() => allReminders.filter(r => r.status !== 'Expired').length, [allReminders]);
 
-  const isLoading = isLoadingProps || isLoadingDocs || isLoadingInsps;
+  const isLoading = isLoadingProps || isAggregating;
 
   const exportToPDF = () => {
     const doc = new jsPDF();
