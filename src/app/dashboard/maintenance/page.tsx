@@ -129,7 +129,7 @@ export default function MaintenancePage() {
   const router = useRouter();
   const [selectedPropertyFilter, setSelectedPropertyFilter] = useState<string>('');
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
+  const [isSubmitting, setIsSubmitting] = useState(false);
   const [photosToUpload, setPhotosToUpload] = useState<FileList | null>(null);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
@@ -227,7 +227,7 @@ export default function MaintenancePage() {
       return;
     }
 
-    setIsUploading(true);
+    setIsSubmitting(true);
 
     try {
         let photoUrls: string[] = [];
@@ -269,7 +269,7 @@ export default function MaintenancePage() {
             description: 'There was an error saving the maintenance log. Please try again.',
         });
     } finally {
-        setIsUploading(false);
+        setIsSubmitting(false);
     }
   }
 
@@ -624,48 +624,44 @@ export default function MaintenancePage() {
                 </Card>
 
                 {/* Photos & Notes Section */}
-                <Card>
-                  <CardHeader>
-                    <CardTitle className="text-xl">Upload Photos</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    {photoPreviews.length > 0 && (
-                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
-                            {photoPreviews.map((url, index) => (
-                                <div key={index} className="relative aspect-square">
-                                    <Image src={url} alt={`Preview ${index + 1}`} fill className="rounded-md object-cover" />
-                                </div>
-                            ))}
-                        </div>
-                    )}
-                    <FormItem>
-                        <FormLabel>Upload Photos of Issue</FormLabel>
-                          <Button asChild variant="outline" className="w-full cursor-pointer">
-                            <label htmlFor="photos-upload">
-                              <Upload className="mr-2 h-4 w-4" />
-                              Choose Files
-                              <Input
-                                id="photos-upload"
-                                type="file"
-                                multiple
-                                accept="image/*"
-                                className="sr-only"
-                                onChange={(e) => {
-                                    const files = e.target.files;
-                                    setPhotosToUpload(files);
-                                    if (files && files.length > 0) {
-                                        const fileArray = Array.from(files);
-                                        const previews = fileArray.map(file => URL.createObjectURL(file));
-                                        setPhotoPreviews(previews);
-                                    } else {
-                                        setPhotoPreviews([]);
-                                    }
-                                }}
-                              />
-                            </label>
-                          </Button>
-                      </FormItem>
-                  </CardContent>
+                 <Card>
+                    <CardHeader><CardTitle className="text-xl">Upload Photos</CardTitle></CardHeader>
+                    <CardContent className="space-y-4">
+                        {photoPreviews.length > 0 && (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                                {photoPreviews.map((url, index) => (
+                                    <div key={index} className="relative aspect-square">
+                                        <Image src={url} alt={`Preview ${index + 1}`} fill className="rounded-md object-cover" />
+                                    </div>
+                                ))}
+                            </div>
+                        )}
+                        <FormItem>
+                            <FormLabel>Upload Photos of Issue</FormLabel>
+                            <FormControl>
+                                <Input
+                                    type="file"
+                                    multiple
+                                    accept="image/*"
+                                    className="w-full"
+                                    onChange={(e) => {
+                                        const files = e.target.files;
+                                        setPhotosToUpload(files);
+                                        if (files && files.length > 0) {
+                                            const fileArray = Array.from(files);
+                                            // Clean up old previews
+                                            photoPreviews.forEach(url => URL.revokeObjectURL(url));
+                                            const newPreviews = fileArray.map(file => URL.createObjectURL(file));
+                                            setPhotoPreviews(newPreviews);
+                                        } else {
+                                            setPhotoPreviews([]);
+                                        }
+                                    }}
+                                />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    </CardContent>
                 </Card>
                 <Card>
                   <CardHeader>
@@ -713,8 +709,8 @@ export default function MaintenancePage() {
                   }}>
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={isUploading}>
-                    {isUploading ? (
+                  <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                         Logging...

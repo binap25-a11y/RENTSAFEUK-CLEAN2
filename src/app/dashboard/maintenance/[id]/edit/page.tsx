@@ -287,7 +287,7 @@ export default function EditMaintenancePage() {
                             </CardContent>
                         </Card>
                         
-                        <Card>
+                         <Card>
                             <CardHeader><CardTitle className="text-lg">Photos</CardTitle></CardHeader>
                             <CardContent>
                                 {(newPhotoPreviews.length > 0 || existingPhotos.length > 0) && (
@@ -301,30 +301,28 @@ export default function EditMaintenancePage() {
                                 )}
                                 <FormItem>
                                     <FormLabel>{existingPhotos.length > 0 ? 'Upload New Photos (replaces old ones)' : 'Upload Photos'}</FormLabel>
-                                    <Button asChild variant="outline" className="w-full">
-                                        <label htmlFor="photos-upload" className="cursor-pointer flex items-center justify-center gap-2">
-                                            <Upload className="h-4 w-4" />
-                                            Choose Files
-                                            <Input 
-                                                id="photos-upload" 
-                                                type="file" 
-                                                multiple 
-                                                accept="image/*" 
-                                                className="sr-only" 
-                                                onChange={(e) => { 
-                                                    const files = e.target.files;
-                                                    setNewPhotosToUpload(files);
-                                                    if (files && files.length > 0) {
-                                                        const fileArray = Array.from(files);
-                                                        const previews = fileArray.map(file => URL.createObjectURL(file));
-                                                        setNewPhotoPreviews(previews);
-                                                    } else {
-                                                        setNewPhotoPreviews([]);
-                                                    }
-                                                }}
-                                            />
-                                        </label>
-                                    </Button>
+                                     <FormControl>
+                                        <Input
+                                            type="file"
+                                            multiple
+                                            accept="image/*"
+                                            className="w-full"
+                                            onChange={(e) => {
+                                                const files = e.target.files;
+                                                setNewPhotosToUpload(files);
+                                                if (files && files.length > 0) {
+                                                    const fileArray = Array.from(files);
+                                                    // Clean up old previews
+                                                    newPhotoPreviews.forEach(url => URL.revokeObjectURL(url));
+                                                    const previews = fileArray.map(file => URL.createObjectURL(file));
+                                                    setNewPhotoPreviews(previews);
+                                                } else {
+                                                    setNewPhotoPreviews([]);
+                                                }
+                                            }}
+                                        />
+                                    </FormControl>
+                                    <FormMessage />
                                 </FormItem>
                             </CardContent>
                         </Card>
