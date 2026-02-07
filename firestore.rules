@@ -13,33 +13,36 @@ service cloud.firestore {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
 
-    // --- Properties Collection (Root and Sub-collections) ---
+    // --- Properties Collection ---
     match /properties/{propertyId} {
-      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      // Allow creation if the ownerId matches the authenticated user
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      
+      // Allow reading (get/list), updating, and deleting if the user is the owner
+      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
 
-      // Maintenance Logs, Inspections, Documents, Expenses, Rent Payments, Checklists
+      // Rules for all sub-collections (Maintenance, Inspections, etc.)
       match /{allSubcollections=**} {
-        allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
         allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+        allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       }
     }
 
     // --- Tenants Collection ---
     match /tenants/{tenantId} {
-      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       
       match /{allSubcollections=**} {
-        allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
         allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+        allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       }
     }
 
     // --- Contractors Collection ---
     match /contractors/{contractorId} {
-      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
+      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
   }
 }
