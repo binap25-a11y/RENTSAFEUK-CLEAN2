@@ -5,6 +5,9 @@ import { useRouter } from 'next/navigation';
 import {
   Dialog,
   DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useUser, useFirestore } from '@/firebase';
@@ -195,6 +198,10 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
         if (!open) setSearchTerm('');
     }}>
       <DialogContent className="p-0 gap-0 max-w-2xl overflow-hidden">
+        <DialogHeader className="sr-only">
+          <DialogTitle>Global Search</DialogTitle>
+          <DialogDescription>Search properties, tenants, contractors, and maintenance tasks across your portfolio.</DialogDescription>
+        </DialogHeader>
         <div className="p-4 border-b">
            <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
