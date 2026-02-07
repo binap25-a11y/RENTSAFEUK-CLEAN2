@@ -31,7 +31,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Upload } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
   useUser,
@@ -99,10 +99,11 @@ export default function EditMaintenancePage() {
     const logId = params.id as string;
     const propertyId = searchParams.get('propertyId');
 
-    const [isSubmitting, setIsSubmitting] = useState(false);
+    const [isSaving, setIsSaving] = useState(false);
+    const [isUploading, setIsUploading] = useState(false);
     const [existingPhotos, setExistingPhotos] = useState<string[]>([]);
     const [newPhotosToUpload, setNewPhotosToUpload] = useState<FileList | null>(null);
-    const [newPhotoPreviews, setNewPhotoPreviews] = useState<string[]>([]);
+    const [newlyUploadedUrls, setNewlyUploadedUrls] = useState<string[]>([]);
 
     const form = useForm<MaintenanceFormValues>({
         resolver: zodResolver(maintenanceEditSchema),
@@ -133,30 +134,47 @@ export default function EditMaintenancePage() {
             }
         }
     }, [maintenanceLog, form]);
+
+    async function handlePhotoUpload() {
+        if (!newPhotosToUpload || newPhotosToUpload.length === 0) {
+            toast({ variant: 'destructive', title: 'No new files selected', description: 'Please choose photo files to upload.' });
+            return;
+        }
+        if (!user || !storage) {
+            toast({ variant: 'destructive', title: 'Error', description: 'Cannot upload files. User not logged in.' });
+            return;
+        }
+
+        setIsUploading(true);
+        const newUrls: string[] = [];
+        try {
+            for (const file of Array.from(newPhotosToUpload)) {
+                const uniqueFileName = `${Date.now()}-${file.name}`;
+                const fileStorageRef = storageRef(storage, `maintenance/${user.uid}/${uniqueFileName}`);
+                const snapshot = await uploadBytes(fileStorageRef, file);
+                const url = await getDownloadURL(snapshot.ref);
+                newUrls.push(url);
+            }
+            setNewlyUploadedUrls(prev => [...prev, ...newUrls]);
+            toast({ title: 'Upload Successful', description: `${newUrls.length} new photo(s) added.` });
+            setNewPhotosToUpload(null);
+        } catch (error) {
+            console.error('Failed to upload new photos:', error);
+            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload new photos. Please check your connection and try again.' });
+        } finally {
+            setIsUploading(false);
+        }
+    }
     
     async function handleFormSubmit(data: MaintenanceFormValues) {
-        if (!user || !firestore || !storage || !maintenanceLogRef) {
+        if (!user || !firestore || !maintenanceLogRef) {
             toast({ variant: 'destructive', title: 'Error', description: 'Could not save. Please try again.' });
             return;
         }
-        setIsSubmitting(true);
-        let finalPhotoUrls = existingPhotos;
+        setIsSaving(true);
+        const finalPhotoUrls = [...existingPhotos, ...newlyUploadedUrls];
 
         try {
-            if (newPhotosToUpload && newPhotosToUpload.length > 0) {
-                toast({ title: 'Uploading new photos...', description: `Uploading ${newPhotosToUpload.length} image(s).` });
-                let uploadedUrls: string[] = [];
-                for (const file of Array.from(newPhotosToUpload)) {
-                    const uniqueFileName = `${Date.now()}-${file.name}`;
-                    const fileStorageRef = storageRef(storage, `maintenance/${user.uid}/${uniqueFileName}`);
-                    const snapshot = await uploadBytes(fileStorageRef, file);
-                    const url = await getDownloadURL(snapshot.ref);
-                    uploadedUrls.push(url);
-                }
-                // New photos replace old ones
-                finalPhotoUrls = uploadedUrls;
-            }
-
             await updateDoc(maintenanceLogRef, { ...data, photoUrls: finalPhotoUrls });
 
             toast({ title: 'Maintenance Log Updated', description: 'The changes have been saved.' });
@@ -167,7 +185,7 @@ export default function EditMaintenancePage() {
              errorEmitter.emit('permission-error', permissionError);
             toast({ variant: 'destructive', title: 'Update Failed', description: (error as Error).message || 'There was an error updating the log.' });
         } finally {
-            setIsSubmitting(false);
+            setIsSaving(false);
         }
     }
 
@@ -297,30 +315,32 @@ export default function EditMaintenancePage() {
                                     </div>
                                 )}
                                 <div className="space-y-2">
-                                    <Label htmlFor="new-photo-upload">{existingPhotos.length > 0 ? 'Upload New Photos (replaces old ones)' : 'Upload Photos'}</Label>
-                                    <Input
-                                        id="new-photo-upload"
-                                        type="file"
-                                        multiple
-                                        accept="image/*"
-                                        onChange={(e) => {
-                                            setNewPhotosToUpload(e.target.files);
-                                            if (e.target.files) {
-                                                setNewPhotoPreviews(Array.from(e.target.files).map(file => URL.createObjectURL(file)));
-                                            } else {
-                                                setNewPhotoPreviews([]);
-                                            }
-                                        }}
-                                    />
+                                    <Label htmlFor="new-photo-upload">Add More Photos</Label>
+                                    <div className="flex gap-2">
+                                        <Input
+                                            id="new-photo-upload"
+                                            type="file"
+                                            multiple
+                                            accept="image/*"
+                                            onChange={(e) => setNewPhotosToUpload(e.target.files)}
+                                        />
+                                        <Button type="button" onClick={handlePhotoUpload} disabled={isUploading || !newPhotosToUpload}>
+                                            {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                                            Upload
+                                        </Button>
+                                    </div>
                                 </div>
 
-                                 {newPhotoPreviews.length > 0 && (
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2">
-                                        {newPhotoPreviews.map((url, index) => (
-                                            <div key={index} className="relative aspect-square">
-                                                <Image src={url} alt={`Preview ${index + 1}`} fill className="rounded-md object-cover" />
-                                            </div>
-                                        ))}
+                                 {newlyUploadedUrls.length > 0 && (
+                                    <div>
+                                        <Label>Newly Uploaded Photos</Label>
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
+                                            {newlyUploadedUrls.map((url, index) => (
+                                                <div key={index} className="relative aspect-square">
+                                                    <Image src={url} alt={`Preview ${index + 1}`} fill className="rounded-md object-cover" />
+                                                </div>
+                                            ))}
+                                        </div>
                                     </div>
                                 )}
                             </CardContent>
@@ -336,8 +356,8 @@ export default function EditMaintenancePage() {
 
                         <div className="flex justify-end gap-2">
                             <Button type="button" variant="outline" asChild><Link href={`/dashboard/maintenance/${logId}?propertyId=${propertyId}`}>Cancel</Link></Button>
-                            <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Save Changes'}
+                            <Button type="submit" disabled={isSaving}>
+                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Save Changes'}
                             </Button>
                         </div>
                     </form>

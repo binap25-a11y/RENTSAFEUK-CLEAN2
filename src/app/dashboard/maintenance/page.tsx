@@ -131,8 +131,9 @@ export default function MaintenancePage() {
   const [selectedPropertyFilter, setSelectedPropertyFilter] = useState<string>('');
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   const [photosToUpload, setPhotosToUpload] = useState<FileList | null>(null);
-  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
+  const [uploadedPhotoUrls, setUploadedPhotoUrls] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [logToCancel, setLogToCancel] = useState<MaintenanceLog | null>(null);
   const [logToDelete, setLogToDelete] = useState<MaintenanceLog | null>(null);
@@ -218,28 +219,46 @@ export default function MaintenancePage() {
     });
   };
 
+  async function handlePhotoUpload() {
+    if (!photosToUpload || photosToUpload.length === 0) {
+        toast({ variant: 'destructive', title: 'No files selected', description: 'Please choose photo files to upload.' });
+        return;
+    }
+    if (!user || !storage) {
+        toast({ variant: 'destructive', title: 'Error', description: 'Cannot upload files. User not logged in.' });
+        return;
+    }
+
+    setIsUploading(true);
+    const newUrls: string[] = [];
+    try {
+        for (const file of Array.from(photosToUpload)) {
+            const uniqueFileName = `${Date.now()}-${file.name}`;
+            const fileStorageRef = storageRef(storage, `maintenance/${user.uid}/${uniqueFileName}`);
+            const snapshot = await uploadBytes(fileStorageRef, file);
+            const url = await getDownloadURL(snapshot.ref);
+            newUrls.push(url);
+        }
+        setUploadedPhotoUrls(prev => [...prev, ...newUrls]);
+        toast({ title: 'Upload Successful', description: `${newUrls.length} photo(s) have been uploaded.` });
+        setPhotosToUpload(null); 
+    } catch (error) {
+        console.error('Failed to upload photos:', error);
+        toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload photos. Please check your connection and try again.' });
+    } finally {
+        setIsUploading(false);
+    }
+  }
+
   async function handleFormSubmit(data: MaintenanceFormValues) {
-    if (!user || !firestore || !storage) {
+    if (!user || !firestore) {
       toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
       return;
     }
     setIsSubmitting(true);
 
-    let uploadedUrls: string[] = [];
     try {
-      if (photosToUpload && photosToUpload.length > 0) {
-        toast({ title: 'Uploading photos...', description: `Uploading ${photosToUpload.length} image(s).` });
-        
-        for (const file of Array.from(photosToUpload)) {
-          const uniqueFileName = `${Date.now()}-${file.name}`;
-          const fileStorageRef = storageRef(storage, `maintenance/${user.uid}/${uniqueFileName}`);
-          const snapshot = await uploadBytes(fileStorageRef, file);
-          const url = await getDownloadURL(snapshot.ref);
-          uploadedUrls.push(url);
-        }
-      }
-
-      const newLog = { ...data, ownerId: user.uid, status: 'Open', photoUrls: uploadedUrls };
+      const newLog = { ...data, ownerId: user.uid, status: 'Open', photoUrls: uploadedPhotoUrls };
       const logsCollection = collection(firestore, 'properties', data.propertyId, 'maintenanceLogs');
       const newDocRef = await addDoc(logsCollection, newLog);
 
@@ -415,27 +434,29 @@ export default function MaintenancePage() {
                   <CardContent className="space-y-4">
                     <div className="space-y-2">
                         <Label htmlFor="photo-upload">Upload Photos of Issue</Label>
-                        <Input
-                          id="photo-upload"
-                          type="file"
-                          multiple
-                          accept="image/*"
-                          onChange={(e) => {
-                            setPhotosToUpload(e.target.files);
-                            if (e.target.files) {
-                              setPhotoPreviews(Array.from(e.target.files).map(file => URL.createObjectURL(file)));
-                            } else {
-                              setPhotoPreviews([]);
-                            }
-                          }}
-                        />
-                         {photoPreviews.length > 0 && (
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2">
-                                {photoPreviews.map((url, index) => (
-                                    <div key={index} className="relative aspect-square">
-                                        <Image src={url} alt={`Preview ${index + 1}`} fill className="rounded-md object-cover" />
-                                    </div>
-                                ))}
+                        <div className="flex gap-2">
+                           <Input
+                              id="photo-upload"
+                              type="file"
+                              multiple
+                              accept="image/*"
+                              onChange={(e) => setPhotosToUpload(e.target.files)}
+                           />
+                           <Button type="button" onClick={handlePhotoUpload} disabled={isUploading || !photosToUpload}>
+                              {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                              Upload
+                           </Button>
+                        </div>
+                         {uploadedPhotoUrls.length > 0 && (
+                            <div className="pt-4">
+                              <p className="text-sm font-medium">Uploaded Photos:</p>
+                              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2">
+                                  {uploadedPhotoUrls.map((url, index) => (
+                                      <div key={index} className="relative aspect-square">
+                                          <Image src={url} alt={`Uploaded photo ${index + 1}`} fill className="rounded-md object-cover" />
+                                      </div>
+                                  ))}
+                              </div>
                             </div>
                         )}
                     </div>
