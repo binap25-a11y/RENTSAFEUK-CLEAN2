@@ -374,7 +374,7 @@ export default function MaintenancePage() {
         </Card>
 
         <div className="flex justify-center pt-4">
-            <Button asChild variant="outline" className="w-full sm:w-auto">
+            <Button asChild variant="default" className="w-full sm:w-auto">
                 <Link href="/dashboard/maintenance/logged">
                     <List className="mr-2 h-4 w-4" /> View Maintenance Logged
                 </Link>
