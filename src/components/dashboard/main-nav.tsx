@@ -60,7 +60,6 @@ const menuItems = [
     ],
   },
   { href: '/dashboard/maintenance', label: 'Maintenance', icon: Wrench },
-  { href: '/dashboard/maintenance-2', label: 'Maintenance 2', icon: FlaskConical },
   { 
     href: '/dashboard/inspections', 
     label: 'Inspections', 
