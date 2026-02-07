@@ -2,16 +2,26 @@ rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
-    // Allow users to manage files within their own designated folders.
-    // This ensures a user can only access their own files.
-    match /{folder}/{userId}/{allPaths=**} {
-      allow read, write: if request.auth != null && request.auth.uid == userId &&
-                           (folder == 'documents' || folder == 'maintenance' || folder == 'images');
+
+    // Allow users to write to their own 'documents' folder.
+    match /documents/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-    
-    // EXTREMELY PERMISSIVE DIAGNOSTIC RULE. This allows anyone to read/write.
+
+    // Allow users to write to their own 'maintenance' folder.
+    match /maintenance/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // Allow users to write to their own 'images' folder.
+    match /images/{userId}/{allPaths=**} {
+      allow read, write: if request.auth != null && request.auth.uid == userId;
+    }
+
+    // EXTREMELY PERMISSIVE DIAGNOSTIC RULE.
+    // This allows any request to this specific path.
     match /test-uploads/{allPaths=**} {
-      allow read, write;
+      allow read, write: if true;
     }
   }
 }

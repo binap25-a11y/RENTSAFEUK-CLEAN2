@@ -25,7 +25,7 @@ export default function UploadTest2Page() {
   };
 
   const handleUpload = async () => {
-    if (!file || !storage || !user) {
+    if (!file || !storage) {
       toast({
         variant: 'destructive',
         title: 'Upload failed',
@@ -37,8 +37,8 @@ export default function UploadTest2Page() {
     setIsUploading(true);
     setDownloadURL('');
 
-    // Use a simplified path to avoid security rule conflicts with other rules.
-    const filePath = `test-uploads/${Date.now()}-${file.name}`;
+    // Use a simplified path for the test upload.
+    const filePath = `test-uploads/${file.name}`;
     const fileRef = storageRef(storage, filePath);
 
     try {
