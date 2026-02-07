@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -219,7 +220,7 @@ export default function MaintenancePage() {
       <div className="space-y-6">
         <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between sm:items-center">
           <div>
-            <h1 className="text-3xl font-bold">Maintenance</h1>
+            <h1 className="text-3xl font-bold font-headline">Maintenance</h1>
             <p className="text-muted-foreground">
               Manage repairs and maintenance tasks across your portfolio.
             </p>
@@ -247,7 +248,6 @@ export default function MaintenancePage() {
             </div>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-8">
-                {/* Issue Details Section */}
                 <Card>
                   <CardHeader>
                     <CardTitle className="text-xl">Issue Details</CardTitle>
@@ -286,7 +286,6 @@ export default function MaintenancePage() {
                   </CardContent>
                 </Card>
 
-                {/* Reporting Information Section */}
                 <Card>
                   <CardHeader><CardTitle className="text-xl">Reporting Information</CardTitle></CardHeader>
                   <CardContent className="space-y-4">
@@ -297,7 +296,6 @@ export default function MaintenancePage() {
                   </CardContent>
                 </Card>
 
-                {/* Contractor Information Section */}
                 <Card>
                   <CardHeader><CardTitle className="text-xl">Contractor Information</CardTitle></CardHeader>
                   <CardContent className="space-y-4">
@@ -326,7 +324,6 @@ export default function MaintenancePage() {
                   </CardContent>
                 </Card>
 
-                {/* Photos & Notes Section */}
                 <Card>
                   <CardHeader><CardTitle className="text-xl">Photos &amp; Notes</CardTitle></CardHeader>
                   <CardContent className="space-y-4">
@@ -364,7 +361,7 @@ export default function MaintenancePage() {
 
                 <div className="flex justify-end gap-2">
                   <Button type="button" variant="outline" onClick={() => form.reset()}>Cancel</Button>
-                  <Button type="submit" disabled={isSubmitting}>
+                  <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
                     {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Logging...</> : 'Log Maintenance'}
                   </Button>
                 </div>

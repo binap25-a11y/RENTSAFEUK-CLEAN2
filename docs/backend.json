@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -85,6 +86,11 @@
         "bathrooms": {
           "type": "number",
           "description": "Number of bathrooms in the property."
+        },
+        "imageUrl": {
+          "type": "string",
+          "format": "uri",
+          "description": "URL of the primary property image."
         },
         "notes": {
           "type": "string",
@@ -464,299 +470,6 @@
         "status",
         "expectedAmount"
       ]
-    },
-    "TenantScreening": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
-      "title": "TenantScreening",
-      "type": "object",
-      "description": "Represents a tenant screening and background check record.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the screening record."
-        },
-        "ownerId": {
-          "type": "string",
-          "description": "The UID of the user who owns this screening record."
-        },
-        "tenantId": {
-          "type": "string",
-          "description": "The ID of the tenant this screening record is associated with."
-        },
-        "screeningDate": {
-          "type": "string",
-          "format": "date-time",
-          "description": "The date the screening was conducted."
-        },
-        "rightToRent": {
-          "type": "object",
-          "properties": {
-            "checkDate": { "type": "string", "format": "date-time" },
-            "ukPassport": { "type": "boolean" },
-            "shareCode": { "type": "boolean" },
-            "visaPermit": { "type": "boolean" },
-            "notes": { "type": "string" }
-          }
-        },
-        "idVerification": {
-          "type": "object",
-          "properties": {
-            "photoMatch": { "type": "boolean" },
-            "nameMatch": { "type": "boolean" },
-            "dobConsistent": { "type": "boolean" },
-            "notes": { "type": "string" }
-          }
-        },
-        "creditCheck": {
-          "type": "object",
-          "properties": {
-            "agencyUsed": { "type": "string" },
-            "reportReceived": { "type": "boolean" },
-            "passed": { "type": "boolean" },
-            "notes": { "type": "string" }
-          }
-        },
-        "employmentIncome": {
-          "type": "object",
-          "properties": {
-            "bankStatements": { "type": "boolean" },
-            "payslips": { "type": "boolean" },
-            "employmentContract": { "type": "boolean" },
-            "employerReference": { "type": "boolean" },
-            "sa302": { "type": "boolean" },
-            "accountantReference": { "type": "boolean" },
-            "notes": { "type": "string" }
-          }
-        },
-        "landlordReference": {
-          "type": "object",
-          "properties": {
-            "name": { "type": "string" },
-            "email": { "type": "string", "format": "email" },
-            "phone": { "type": "string" },
-            "rentOnTime": { "type": "boolean" },
-            "anyArrears": { "type": "boolean" },
-            "propertyConditionGood": { "type": "boolean" },
-            "wouldRentAgain": { "type": "boolean" },
-            "notes": { "type": "string" }
-          }
-        },
-        "addressHistory": {
-          "type": "object",
-          "properties": {
-            "verified": { "type": "boolean" },
-            "notes": { "type": "string" }
-          }
-        },
-        "affordability": {
-          "type": "object",
-          "properties": {
-            "passed": { "type": "boolean" },
-            "guarantorConsidered": { "type": "boolean" },
-            "notes": { "type": "string" }
-          }
-        },
-        "guarantor": {
-          "type": "object",
-          "properties": {
-            "required": { "type": "boolean" },
-            "idCheck": { "type": "boolean" },
-            "creditCheck": { "type": "boolean" },
-            "incomeVerified": { "type": "boolean" },
-            "notes": { "type": "string" }
-          }
-        },
-        "overallNotes": {
-          "type": "string",
-          "description": "Overall summary and decision of the screening process."
-        }
-      },
-      "required": [
-        "id",
-        "ownerId",
-        "tenantId",
-        "screeningDate"
-      ]
-    },
-    "Contractor": {
-      "title": "Contractor",
-      "type": "object",
-      "description": "Represents a contractor or tradesperson.",
-      "properties": {
-        "id": {
-          "type": "string",
-          "description": "Unique identifier for the contractor."
-        },
-        "ownerId": {
-          "type": "string",
-          "description": "The UID of the user who owns this contractor entry."
-        },
-        "name": {
-          "type": "string",
-          "description": "Name of the contractor or company."
-        },
-        "trade": {
-          "type": "string",
-          "description": "Primary trade (e.g., Plumbing, Electrical)."
-        },
-        "phone": {
-          "type": "string",
-          "description": "Contact phone number."
-        },
-        "email": {
-          "type": "string",
-          "format": "email",
-          "description": "Contact email address."
-        },
-        "notes": {
-          "type": "string",
-          "description": "Additional notes about the contractor."
-        },
-        "status": {
-          "type": "string",
-          "description": "The status of the contractor (e.g., Active, Archived)."
-        }
-      },
-      "required": [
-        "id",
-        "ownerId",
-        "name",
-        "trade",
-        "phone"
-      ]
-    },
-    "PreTenancyChecklist": {
-      "title": "Pre-Tenancy Checklist",
-      "type": "object",
-      "description": "A checklist for legal and recommended tasks before a tenancy begins.",
-      "properties": {
-        "id": {
-          "type": "string"
-        },
-        "ownerId": {
-          "type": "string"
-        },
-        "propertyId": {
-          "type": "string"
-        },
-        "tenantId": {
-          "type": "string"
-        },
-        "completedDate": {
-          "type": "string",
-          "format": "date-time"
-        },
-        "beforeTenancy": {
-          "type": "object",
-          "properties": {
-            "howToRentGuide": {
-              "type": "boolean",
-              "description": "Provided the latest 'How to Rent' guide."
-            },
-            "epc": {
-              "type": "boolean",
-              "description": "Energy Performance Certificate (EPC) is valid (min E)."
-            },
-            "gasSafety": {
-              "type": "boolean",
-              "description": "Gas Safety Certificate (CP12) is valid."
-            },
-            "eicr": {
-              "type": "boolean",
-              "description": "Electrical Installation Condition Report (EICR) is valid."
-            },
-            "tenancyAgreement": {
-              "type": "boolean",
-              "description": "Tenancy Agreement is signed by all parties."
-            },
-            "rightToRent": {
-              "type": "boolean",
-              "description": "Right to Rent check completed and recorded."
-            },
-            "notes": {
-              "type": "string",
-              "description": "Notes for this section."
-            }
-          }
-        },
-        "deposit": {
-          "type": "object",
-          "properties": {
-            "prescribedInfo": {
-              "type": "boolean",
-              "description": "Provided deposit Prescribed Information."
-            },
-            "schemeLeaflet": {
-              "type": "boolean",
-              "description": "Provided the relevant deposit scheme leaflet."
-            },
-            "protectionCertificate": {
-              "type": "boolean",
-              "description": "Deposit protection certificate is valid and provided."
-            },
-            "notes": {
-              "type": "string",
-              "description": "Notes for this section."
-            }
-          }
-        },
-        "atMoveIn": {
-          "type": "object",
-          "properties": {
-            "inventory": {
-              "type": "boolean",
-              "description": "Inventory & Schedule of Condition signed."
-            },
-            "keysRecord": {
-              "type": "boolean",
-              "description": "Record of keys issued to tenant."
-            },
-            "emergencyContacts": {
-              "type": "boolean",
-              "description": "Provided emergency and repairs contact details."
-            },
-            "privacyNotice": {
-              "type": "boolean",
-              "description": "Provided a GDPR-compliant Privacy Notice."
-            },
-            "notes": {
-              "type": "string",
-              "description": "Notes for this section."
-            }
-          }
-        },
-        "optional": {
-          "type": "object",
-          "properties": {
-            "welcomeLetter": {
-              "type": "boolean",
-              "description": "Provided a welcome letter."
-            },
-            "applianceManuals": {
-              "type": "boolean",
-              "description": "Provided appliance manuals."
-            },
-            "binInfo": {
-              "type": "boolean",
-              "description": "Provided bin and recycling information."
-            },
-            "parkingInfo": {
-              "type": "boolean",
-              "description": "Provided parking/permit information."
-            },
-            "notes": {
-              "type": "string",
-              "description": "Notes for this section."
-            }
-          }
-        }
-      },
-      "required": [
-        "ownerId",
-        "propertyId",
-        "tenantId",
-        "completedDate"
-      ]
     }
   },
   "auth": {
@@ -774,13 +487,7 @@
           "schema": {
             "$ref": "#/backend/entities/User"
           },
-          "description": "Collection to store user-related data.  Security rules will enforce that only the authenticated user can access their own document. This path contains user profile information.",
-          "params": [
-            {
-              "name": "userId",
-              "description": "The unique identifier for the user."
-            }
-          ]
+          "description": "Collection to store user-related data."
         }
       },
       {
@@ -788,18 +495,7 @@
         "definition": {
             "entityName": "Tenant",
             "schema": { "$ref": "#/backend/entities/Tenant" },
-            "description": "Top-level collection to store all tenant information. Each document contains an 'ownerId' field to link it to a user.",
-            "params": [{ "name": "tenantId", "description": "The unique identifier for the tenant." }]
-        }
-      },
-      {
-        "path": "/tenants/{tenantId}/screenings/{screeningId}",
-        "definition": {
-          "entityName": "TenantScreening",
-          "schema": {
-            "$ref": "#/backend/entities/TenantScreening"
-          },
-          "description": "Subcollection to store tenant screening records for each tenant."
+            "description": "Top-level collection to store all tenant information."
         }
       },
       {
@@ -809,13 +505,7 @@
           "schema": {
             "$ref": "#/backend/entities/Property"
           },
-          "description": "Collection to store rental property information. This collection contains properties that are managed within the application.",
-          "params": [
-            {
-              "name": "propertyId",
-              "description": "The unique identifier for the property."
-            }
-          ]
+          "description": "Collection to store rental property information."
         }
       },
       {
@@ -825,17 +515,7 @@
           "schema": {
             "$ref": "#/backend/entities/MaintenanceLog"
           },
-          "description": "Subcollection to store maintenance logs for each property. This provides a clear hierarchy for managing maintenance records related to a specific property.",
-          "params": [
-            {
-              "name": "propertyId",
-              "description": "The unique identifier for the property."
-            },
-            {
-              "name": "maintenanceLogId",
-              "description": "The unique identifier for the maintenance log entry."
-            }
-          ]
+          "description": "Subcollection to store maintenance logs for each property."
         }
       },
       {
@@ -845,17 +525,7 @@
           "schema": {
             "$ref": "#/backend/entities/Inspection"
           },
-          "description": "Subcollection to store inspection schedules for each property.  Maintains inspection records specific to a property, aiding in organized tracking.",
-          "params": [
-            {
-              "name": "propertyId",
-              "description": "The unique identifier for the property."
-            },
-            {
-              "name": "inspectionId",
-              "description": "The unique identifier for the inspection."
-            }
-          ]
+          "description": "Subcollection to store inspection schedules for each property."
         }
       },
       {
@@ -865,17 +535,7 @@
           "schema": {
             "$ref": "#/backend/entities/Document"
           },
-          "description": "Subcollection to store documents related to each property. Provides structured storage for property-related documents.",
-          "params": [
-            {
-              "name": "propertyId",
-              "description": "The unique identifier for the property."
-            },
-            {
-              "name": "documentId",
-              "description": "The unique identifier for the document."
-            }
-          ]
+          "description": "Subcollection to store documents related to each property."
         }
       },
       {
@@ -885,17 +545,7 @@
           "schema": {
             "$ref": "#/backend/entities/Expense"
           },
-          "description": "Subcollection to store expenses for each property.",
-          "params": [
-            {
-              "name": "propertyId",
-              "description": "The unique identifier for the property."
-            },
-            {
-              "name": "expenseId",
-              "description": "The unique identifier for the expense."
-            }
-          ]
+          "description": "Subcollection to store expenses for each property."
         }
       },
       {
@@ -905,46 +555,10 @@
           "schema": {
             "$ref": "#/backend/entities/RentPayment"
           },
-          "description": "Subcollection to store rent payment status for each property and month.",
-          "params": [
-            {
-              "name": "propertyId",
-              "description": "The unique identifier for the property."
-            },
-            {
-              "name": "rentPaymentId",
-              "description": "The unique identifier for the rent payment, formatted as YYYY-Month."
-            }
-          ]
-        }
-      },
-      {
-        "path": "/properties/{propertyId}/checklists/{checklistId}",
-        "definition": {
-          "entityName": "PreTenancyChecklist",
-          "schema": {
-            "$ref": "#/backend/entities/PreTenancyChecklist"
-          },
-          "description": "Subcollection to store pre-tenancy checklists for each property."
-        }
-      },
-      {
-        "path": "/contractors/{contractorId}",
-        "definition": {
-          "entityName": "Contractor",
-          "schema": {
-            "$ref": "#/backend/entities/Contractor"
-          },
-          "description": "Collection to store contractor information. Security rules will enforce that only the owner can manage their own list of contractors.",
-          "params": [
-            {
-              "name": "contractorId",
-              "description": "The unique identifier for the contractor."
-            }
-          ]
+          "description": "Subcollection to store rent payment status."
         }
       }
     ],
-    "reasoning": "The Firestore structure is designed to manage rental properties, tenants, and related data. Tenants have been moved to a top-level collection to resolve persistent security rule issues related to querying subcollections. Each tenant document has an 'ownerId' to maintain data ownership. This simplified, flat structure is more robust and less prone to complex rule evaluation problems."
+    "reasoning": "The structure organizes property management data with properties at the center, using subcollections for specific event logs while keeping tenants at the top level for robust querying."
   }
 }

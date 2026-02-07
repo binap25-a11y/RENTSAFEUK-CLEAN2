@@ -3,12 +3,13 @@
 
 import { useParams, notFound, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Bed, Bath, Edit, Trash2, MoreVertical, Loader2, AlertTriangle, User, Home, Wrench, CalendarCheck, FileText, Banknote, Shield, Phone, Mail, MapPin } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc, collection, query, where, FirestoreError, getDocs, limit } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useMemo } from 'react';
 import {
@@ -23,7 +24,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 
 // Interfaces
@@ -41,15 +41,12 @@ interface Property {
     status: string;
     bedrooms: number;
     bathrooms: number;
+    imageUrl?: string;
     notes?: string;
     tenancy?: {
         monthlyRent?: number;
         depositAmount?: number;
         depositScheme?: string;
-    };
-    location?: {
-        lat: number;
-        lng: number;
     };
 }
 
@@ -113,13 +110,19 @@ export default function PropertyDetailPage() {
 
   const maintenanceQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
-    return query(collection(firestore, 'properties', propertyId, 'maintenanceLogs'), where('ownerId', '==', user.uid));
+    return query(
+        collection(firestore, 'properties', propertyId, 'maintenanceLogs'), 
+        where('ownerId', '==', user.uid)
+    );
   }, [firestore, propertyId, user]);
   const { data: allMaintenanceLogs, isLoading: isLoadingMaintenance, error: maintenanceError } = useCollection<MaintenanceLog>(maintenanceQuery);
 
   const inspectionQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
-    return query(collection(firestore, 'properties', propertyId, 'inspections'), where('ownerId', '==', user.uid));
+    return query(
+        collection(firestore, 'properties', propertyId, 'inspections'), 
+        where('ownerId', '==', user.uid)
+    );
   }, [firestore, propertyId, user]);
   const { data: allInspections, isLoading: isLoadingInspections, error: inspectionError } = useCollection<Inspection>(inspectionQuery);
 
@@ -133,7 +136,6 @@ export default function PropertyDetailPage() {
   }, [allInspections]);
 
   const isLoading = isLoadingProperty || isLoadingMaintenance || isLoadingInspections;
-  const error = propertyError || maintenanceError || inspectionError || tenantError;
 
   const hasPermission = useMemo(() => {
     if (!property || !user) return false;
@@ -143,7 +145,6 @@ export default function PropertyDetailPage() {
   const handleDeleteConfirm = async () => {
     if (!firestore || !property) return;
     
-    setIsDeleting(true);
     try {
       const docRef = doc(firestore, 'properties', propertyId);
       await updateDoc(docRef, { status: 'Deleted' });
@@ -164,27 +165,17 @@ export default function PropertyDetailPage() {
     }
   };
   
-  if (isLoadingProperty) { // Only show main loader for property, sub-sections can have their own
+  if (isLoadingProperty) {
     return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
   }
 
   if (propertyError) {
-    const errorMessage = (propertyError as Error).message;
-    const isIndexError = errorMessage.includes('The query requires an index');
-
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <AlertTriangle className="h-12 w-12 text-destructive" />
         <Card className="w-full max-w-lg text-center">
-            <CardHeader><CardTitle>{isIndexError ? 'Database Index Required' : 'Error Loading Data'}</CardTitle></CardHeader>
-            <CardContent>
-                <p className="text-sm text-muted-foreground">{errorMessage}</p>
-                {isIndexError && (
-                    <Button asChild variant="link" className="mt-2">
-                        <a href={errorMessage.substring(errorMessage.indexOf('https://'))} target="_blank" rel="noopener noreferrer">Create Index in Firebase</a>
-                    </Button>
-                )}
-            </CardContent>
+            <CardHeader><CardTitle>Error Loading Property</CardTitle></CardHeader>
+            <CardContent><p className="text-sm text-muted-foreground">{(propertyError as Error).message}</p></CardContent>
             <CardFooter className="flex justify-center"><Button asChild><Link href="/dashboard/properties">Return to Properties</Link></Button></CardFooter>
         </Card>
       </div>
@@ -197,11 +188,11 @@ export default function PropertyDetailPage() {
       return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <AlertTriangle className="h-12 w-12 text-destructive" />
-        <Card className="w-full max-w-lg text-center">
-            <CardHeader><CardTitle>Access Denied</CardTitle></CardHeader>
-            <CardContent><p className="text-sm text-muted-foreground">You do not have permission to view this property.</p></CardContent>
-            <CardFooter className="flex justify-center"><Button asChild><Link href="/dashboard/properties">Return to Properties</Link></Button></CardFooter>
-        </Card>
+        <div className="text-center">
+            <h3 className="text-xl font-semibold">Access Denied</h3>
+            <p className="text-sm text-muted-foreground">You do not have permission to view this property.</p>
+        </div>
+        <Button asChild><Link href="/dashboard/properties">Return to Properties</Link></Button>
       </div>
     );
   }
@@ -218,7 +209,7 @@ export default function PropertyDetailPage() {
             <div className="flex items-center gap-4">
                 <Button variant="outline" size="icon" asChild><Link href="/dashboard/properties"><ArrowLeft className="h-4 w-4" /></Link></Button>
                 <div>
-                    <h1 className="text-2xl font-bold">{[property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ')}</h1>
+                    <h1 className="text-2xl font-bold font-headline">{[property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ')}</h1>
                     <p className="text-muted-foreground">{`${property.address.city}, ${property.address.county ? property.address.county + ', ' : ''}${property.address.postcode}`}</p>
                 </div>
             </div>
@@ -235,11 +226,42 @@ export default function PropertyDetailPage() {
             </DropdownMenu>
         </div>
         
+        {property.imageUrl && (
+            <div className="relative w-full aspect-[21/9] rounded-xl overflow-hidden shadow-md border bg-muted">
+                <Image src={property.imageUrl} alt="Property Header" fill className="object-cover" priority />
+            </div>
+        )}
+
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
+            <Card>
+              <CardHeader><CardTitle className="font-headline">Property Overview</CardTitle></CardHeader>
+              <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  <div className="p-4 rounded-lg bg-muted/50 flex flex-col items-center gap-1">
+                      <Home className="h-5 w-5 text-primary mb-1" />
+                      <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider text-center">Type</span>
+                      <span className="text-sm font-semibold">{property.propertyType}</span>
+                  </div>
+                  <div className="p-4 rounded-lg bg-muted/50 flex flex-col items-center gap-1">
+                      <Bed className="h-5 w-5 text-primary mb-1" />
+                      <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider text-center">Bedrooms</span>
+                      <span className="text-sm font-semibold">{property.bedrooms}</span>
+                  </div>
+                  <div className="p-4 rounded-lg bg-muted/50 flex flex-col items-center gap-1">
+                      <Bath className="h-5 w-5 text-primary mb-1" />
+                      <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider text-center">Bathrooms</span>
+                      <span className="text-sm font-semibold">{property.bathrooms}</span>
+                  </div>
+                  <div className="p-4 rounded-lg bg-muted/50 flex flex-col items-center gap-1">
+                      <Badge variant="secondary" className="mb-1">{property.status}</Badge>
+                      <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider text-center">Status</span>
+                  </div>
+              </CardContent>
+            </Card>
+
             {property.tenancy && (property.tenancy.monthlyRent || property.tenancy.depositAmount) && (
               <Card>
-                <CardHeader><CardTitle>Tenancy & Financials</CardTitle></CardHeader>
+                <CardHeader><CardTitle className="font-headline">Tenancy & Financials</CardTitle></CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-6">
                   {property.tenancy.monthlyRent && <div className="flex items-start gap-3"><Banknote className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" /><div><p className="text-sm font-medium">Monthly Rent</p><p className="text-sm text-muted-foreground">£{property.tenancy.monthlyRent.toLocaleString()}</p></div></div>}
                   {property.tenancy.depositAmount && <div className="flex items-start gap-3"><Shield className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" /><div><p className="text-sm font-medium">Deposit Held</p><p className="text-sm text-muted-foreground">£{property.tenancy.depositAmount.toLocaleString()}</p></div></div>}
@@ -248,40 +270,12 @@ export default function PropertyDetailPage() {
               </Card>
             )}
 
-            {property.notes && (<Card><CardHeader><CardTitle>Notes</CardTitle></CardHeader><CardContent><p className="text-muted-foreground whitespace-pre-wrap">{property.notes}</p></CardContent></Card>)}
+            {property.notes && (<Card><CardHeader><CardTitle className="font-headline">Notes & Description</CardTitle></CardHeader><CardContent><p className="text-muted-foreground whitespace-pre-wrap leading-relaxed">{property.notes}</p></CardContent></Card>)}
           </div>
           
           <div className="space-y-6">
             <Card>
-              <CardHeader><CardTitle>Property Details</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                  <div className="flex items-start gap-3"><Home className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" /><div><p className="text-sm font-medium">Type</p><p className="text-sm text-muted-foreground">{property.propertyType}</p></div></div>
-                  <div className="flex items-start gap-3"><Badge variant="secondary" className="mt-1">{property.status}</Badge></div>
-                  <div className="flex items-start gap-3"><Bed className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" /><div><p className="text-sm font-medium">Bedrooms</p><p className="text-sm text-muted-foreground">{property.bedrooms}</p></div></div>
-                  <div className="flex items-start gap-3"><Bath className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" /><div><p className="text-sm font-medium">Bathrooms</p><p className="text-sm text-muted-foreground">{property.bathrooms}</p></div></div>
-                  {property.address && property.address.postcode && (
-                    <div className="pt-4 border-t">
-                      <h4 className="text-sm font-medium mb-2">Location</h4>
-                      <div className="aspect-video w-full rounded-md overflow-hidden border">
-                        <iframe
-                          width="100%"
-                          height="100%"
-                          style={{ border: 0 }}
-                          loading="lazy"
-                          allowFullScreen
-                          referrerPolicy="no-referrer-when-downgrade"
-                          src={`https://maps.google.com/maps?q=${encodeURIComponent(
-                            [property.address.street, property.address.city, property.address.postcode].filter(Boolean).join(', ')
-                          )}&output=embed`}
-                        ></iframe>
-                      </div>
-                    </div>
-                  )}
-              </CardContent>
-            </Card>
-
-            <Card>
-              <CardHeader><CardTitle>Current Tenant</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="font-headline">Current Tenant</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 {isLoadingTenants ? (
                   <div className="flex justify-center items-center h-24">
@@ -330,13 +324,36 @@ export default function PropertyDetailPage() {
             </Card>
             
             <Card>
-              <CardHeader><CardTitle>Recent Activity</CardTitle></CardHeader>
+              <CardHeader><CardTitle className="font-headline">Location</CardTitle></CardHeader>
+              <CardContent>
+                  {property.address && property.address.postcode ? (
+                    <div className="aspect-square w-full rounded-md overflow-hidden border shadow-inner">
+                        <iframe
+                          width="100%"
+                          height="100%"
+                          style={{ border: 0 }}
+                          loading="lazy"
+                          allowFullScreen
+                          referrerPolicy="no-referrer-when-downgrade"
+                          src={`https://maps.google.com/maps?q=${encodeURIComponent(
+                            [property.address.street, property.address.city, property.address.postcode].filter(Boolean).join(', ')
+                          )}&output=embed`}
+                        ></iframe>
+                    </div>
+                  ) : (
+                      <p className="text-sm text-muted-foreground text-center py-4">Address details incomplete for map display.</p>
+                  )}
+              </CardContent>
+            </Card>
+
+            <Card>
+              <CardHeader><CardTitle className="font-headline">Recent Activity</CardTitle></CardHeader>
               <CardContent>
                 {isLoadingMaintenance || isLoadingInspections ? <div className="flex justify-center items-center h-24"><Loader2 className="h-6 w-6 animate-spin" /></div>
-                : !maintenanceLogs?.length && !inspections?.length ? <p className="text-sm text-muted-foreground text-center py-4">No recent activity.</p> : (
+                : !maintenanceLogs?.length && !inspections?.length ? <p className="text-sm text-muted-foreground text-center py-4">No recent activity logged.</p> : (
                   <div className="space-y-4">
-                    {maintenanceLogs?.map(log => <div key={log.id} className="text-sm"><Link href={`/dashboard/maintenance/${log.id}?propertyId=${propertyId}`} className="font-medium hover:underline">{log.title}</Link><p className="text-xs text-muted-foreground">{log.status} - Reported {safeFormatDate(log.reportedDate, 'dd/MM/yy')}</p></div>)}
-                    {inspections?.map(insp => <div key={insp.id} className="text-sm"><Link href={`/dashboard/inspections/${insp.id}?propertyId=${propertyId}`} className="font-medium hover:underline">{insp.type}</Link><p className="text-xs text-muted-foreground">{insp.status} - Scheduled for {safeFormatDate(insp.scheduledDate, 'dd/MM/yy')}</p></div>)}
+                    {maintenanceLogs?.slice(0, 3).map(log => <div key={log.id} className="text-sm border-l-2 border-primary pl-3 py-1"><Link href={`/dashboard/maintenance/${log.id}?propertyId=${propertyId}`} className="font-medium hover:underline block">{log.title}</Link><p className="text-xs text-muted-foreground">{log.status} • {safeFormatDate(log.reportedDate, 'dd MMM')}</p></div>)}
+                    {inspections?.slice(0, 3).map(insp => <div key={insp.id} className="text-sm border-l-2 border-accent pl-3 py-1"><Link href={`/dashboard/inspections/${insp.id}?propertyId=${propertyId}`} className="font-medium hover:underline block">{insp.type}</Link><p className="text-xs text-muted-foreground">{insp.status} • Scheduled for {safeFormatDate(insp.scheduledDate, 'dd MMM')}</p></div>)}
                   </div>
                 )}
               </CardContent>
@@ -347,8 +364,8 @@ export default function PropertyDetailPage() {
 
       <AlertDialog open={isDeleting} onOpenChange={setIsDeleting}>
         <AlertDialogContent>
-          <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will archive the property. You can restore it later.</AlertDialogDescription></AlertDialogHeader>
-          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleDeleteConfirm}>Delete</AlertDialogAction></AlertDialogFooter>
+          <AlertDialogHeader><AlertDialogTitle>Delete Property?</AlertDialogTitle><AlertDialogDescription>This will move the property to your archive. You can restore it later if needed.</AlertDialogDescription></AlertDialogHeader>
+          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleDeleteConfirm}>Archive Property</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

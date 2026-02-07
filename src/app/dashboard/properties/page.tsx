@@ -2,6 +2,7 @@
 'use client';
 
 import Link from 'next/link';
+import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   Card,
@@ -56,6 +57,7 @@ interface Property {
   status: string;
   bedrooms: number;
   bathrooms: number;
+  imageUrl?: string;
   ownerId: string;
 }
 
@@ -122,7 +124,7 @@ export default function PropertiesPage() {
       <div className="flex flex-col gap-6">
         <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between sm:items-center">
             <div>
-                <h1 className="text-3xl font-bold">My Properties</h1>
+                <h1 className="text-3xl font-bold font-headline">My Properties</h1>
                 <p className="text-muted-foreground">
                   View, manage, and add properties to your portfolio.
                 </p>
@@ -197,10 +199,14 @@ export default function PropertiesPage() {
                           className="group overflow-hidden flex flex-col hover:shadow-lg transition-shadow"
                       >
                           <div className="relative cursor-pointer" onClick={() => router.push(`/dashboard/properties/${property.id}`)}>
-                              <div className="aspect-[16/10] bg-muted overflow-hidden">
-                                  <div className="w-full h-full flex items-center justify-center">
-                                      <Home className="w-12 h-12 text-muted-foreground" />
-                                  </div>
+                              <div className="aspect-[16/10] bg-muted overflow-hidden relative">
+                                  {property.imageUrl ? (
+                                      <Image src={property.imageUrl} alt="Property" fill className="object-cover group-hover:scale-105 transition-transform duration-300" />
+                                  ) : (
+                                      <div className="w-full h-full flex items-center justify-center">
+                                          <Home className="w-12 h-12 text-muted-foreground" />
+                                      </div>
+                                  )}
                               </div>
                           </div>
                           <CardHeader className="flex flex-row items-start justify-between pb-2">
