@@ -27,6 +27,19 @@ function DashboardHeader() {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
+  // Keyboard shortcut listener for Cmd+K / Ctrl+K
+  useEffect(() => {
+    const down = (e: KeyboardEvent) => {
+      if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
+        e.preventDefault();
+        setIsSearchOpen((open) => !open);
+      }
+    };
+
+    document.addEventListener('keydown', down);
+    return () => document.removeEventListener('keydown', down);
+  }, []);
+
   return (
     <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
       <SidebarTrigger className="md:hidden" />

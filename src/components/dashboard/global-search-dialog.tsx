@@ -12,7 +12,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useUser, useFirestore } from '@/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import { Home, Users, HardHat, Wrench, CalendarCheck, Loader2, Search } from 'lucide-react';
+import { Home, Users, HardHat, Wrench, CalendarCheck, Loader2, Search, Command } from 'lucide-react';
 
 // Data types
 interface Searchable {
@@ -197,58 +197,80 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
         onOpenChange(open);
         if (!open) setSearchTerm('');
     }}>
-      <DialogContent className="p-0 gap-0 max-w-2xl overflow-hidden">
+      <DialogContent className="p-0 gap-0 max-w-3xl overflow-hidden">
         <DialogHeader className="sr-only">
           <DialogTitle>Global Search</DialogTitle>
           <DialogDescription>Search properties, tenants, contractors, and maintenance tasks across your portfolio.</DialogDescription>
         </DialogHeader>
-        <div className="p-4 border-b">
-           <div className="relative">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-              <Input
-                placeholder="Search properties, tenants, or tasks..."
-                className="pl-9 h-11 text-base bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
-                value={searchTerm}
-                onChange={(e) => setSearchTerm(e.target.value)}
-                autoFocus
-              />
-            </div>
+        <div className="flex items-center px-4 border-b">
+          <Search className="h-5 w-5 text-muted-foreground" />
+          <Input
+            placeholder="Search everything..."
+            className="flex-1 h-14 text-lg bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            autoFocus
+          />
+          <div className="flex items-center gap-1 rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium opacity-100">
+            <span className="text-xs">ESC</span>
+          </div>
         </div>
-        <div className="p-4 max-h-[60vh] overflow-y-auto">
+        <div className="p-2 max-h-[60vh] overflow-y-auto">
             {isLoading ? (
-                <div className="flex justify-center items-center h-24">
-                    <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
+                <div className="flex flex-col justify-center items-center h-48 gap-3">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="text-sm text-muted-foreground">Indexing portfolio...</p>
                 </div>
             ) : searchTerm && !searchResults.length ? (
-                <p className="text-center text-muted-foreground py-6">No results found for "{searchTerm}".</p>
+                <div className="flex flex-col items-center justify-center py-12 text-center">
+                    <Search className="h-12 w-12 text-muted-foreground/20 mb-4" />
+                    <p className="text-lg font-medium">No results found</p>
+                    <p className="text-sm text-muted-foreground">We couldn't find anything matching "{searchTerm}"</p>
+                </div>
             ) : !searchTerm ? (
-                <div className="text-center py-6">
-                    <p className="text-muted-foreground mb-2 text-sm">Start typing to search your entire portfolio.</p>
-                    <div className="flex justify-center gap-4 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/60">
-                        <span className="flex items-center gap-1"><Home className="h-3 w-3"/> Properties</span>
-                        <span className="flex items-center gap-1"><Users className="h-3 w-3"/> Tenants</span>
-                        <span className="flex items-center gap-1"><Wrench className="h-3 w-3"/> Maintenance</span>
+                <div className="p-6">
+                    <h2 className="text-sm font-semibold mb-4 flex items-center gap-2">
+                        <Command className="h-4 w-4" />
+                        Quick Search
+                    </h2>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="p-4 rounded-xl border bg-muted/30">
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2">Properties</p>
+                            <p className="text-sm">Find any property by street name, city, or postcode.</p>
+                        </div>
+                        <div className="p-4 rounded-xl border bg-muted/30">
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2">Tenants</p>
+                            <p className="text-sm">Search by name or email to view contact info and documents.</p>
+                        </div>
+                        <div className="p-4 rounded-xl border bg-muted/30">
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2">Maintenance</p>
+                            <p className="text-sm">Find specific repairs or maintenance logs by title.</p>
+                        </div>
+                        <div className="p-4 rounded-xl border bg-muted/30">
+                            <p className="text-xs font-bold text-muted-foreground uppercase tracking-widest mb-2">Contractors</p>
+                            <p className="text-sm">Quickly access your directory of saved tradespeople.</p>
+                        </div>
                     </div>
                 </div>
             ) : (
-                <div className="space-y-4">
+                <div className="space-y-4 p-2">
                     {searchResults.map((group) => (
                         <div key={group.title}>
-                            <h3 className="text-xs font-semibold text-muted-foreground px-2 mb-2">{group.title}</h3>
+                            <h3 className="text-[10px] font-bold text-muted-foreground px-3 mb-2 uppercase tracking-widest">{group.title}</h3>
                             <ul className="space-y-1">
                                 {group.items.map(item => (
                                     <li
                                         key={item.id}
-                                        className="p-2 rounded-md hover:bg-accent cursor-pointer group transition-colors"
+                                        className="p-3 rounded-xl hover:bg-accent cursor-pointer group transition-all"
                                         onClick={() => handleSelect(item.href)}
                                     >
-                                        <div className="flex items-center gap-3">
-                                            <div className="p-2 rounded bg-muted group-hover:bg-background transition-colors">
-                                                <group.icon className="h-4 w-4 text-muted-foreground" />
+                                        <div className="flex items-center gap-4">
+                                            <div className="p-2.5 rounded-lg bg-muted group-hover:bg-primary group-hover:text-primary-foreground transition-colors">
+                                                <group.icon className="h-5 w-5" />
                                             </div>
-                                            <div>
-                                                <p className="font-medium text-sm">{item.title}</p>
-                                                <p className="text-[10px] text-muted-foreground uppercase tracking-tight">{item.description}</p>
+                                            <div className="flex-1 min-w-0">
+                                                <p className="font-semibold text-sm truncate">{item.title}</p>
+                                                <p className="text-xs text-muted-foreground truncate">{item.description}</p>
                                             </div>
                                         </div>
                                     </li>
@@ -258,6 +280,13 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
                     ))}
                 </div>
             )}
+        </div>
+        <div className="p-3 border-t bg-muted/20 flex justify-between items-center text-[10px] text-muted-foreground uppercase tracking-tighter">
+            <div className="flex gap-4">
+                <span className="flex items-center gap-1"><span className="p-0.5 rounded border bg-background">ENTER</span> to select</span>
+                <span className="flex items-center gap-1"><span className="p-0.5 rounded border bg-background">ESC</span> to close</span>
+            </div>
+            <div className="font-bold text-primary/60">RentSafeUK Search</div>
         </div>
       </DialogContent>
     </Dialog>
