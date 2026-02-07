@@ -126,9 +126,10 @@ export default function InspectionsPage() {
   const { data: allProperties, isLoading: isLoadingProperties } =
     useCollection<Property>(propertiesQuery);
 
-  // Filter properties in-memory
+  // Filter properties in-memory to show only "Active" ones
   const properties = useMemo(() => {
-    return allProperties?.filter(p => p.status !== 'Deleted') ?? [];
+    const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
+    return allProperties?.filter(p => activeStatuses.includes(p.status || '')) ?? [];
   }, [allProperties]);
 
   // Fetch inspections for the selected property - strictly scoped to logged-in user
@@ -143,7 +144,7 @@ export default function InspectionsPage() {
   const { data: inspections, isLoading: isLoadingInspections } =
     useCollection<Inspection>(inspectionsQuery);
 
-  // Filter out cancelled inspections if necessary
+  // Filter out deleted inspections
   const activeInspections = useMemo(() => {
     return inspections?.filter((i) => i.status !== 'Deleted') ?? [];
   }, [inspections]);
@@ -191,7 +192,7 @@ export default function InspectionsPage() {
       <div className="flex flex-col gap-6">
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-primary">
-            <CalendarCheck className="h-6 v-6" />
+            <CalendarCheck className="h-6 w-6" />
             <h1 className="text-3xl font-bold font-headline tracking-tight">
               Property Inspections
             </h1>
@@ -242,7 +243,7 @@ export default function InspectionsPage() {
                   className="text-sm font-semibold flex items-center gap-2"
                 >
                   <Filter className="h-3.5 w-3.5" />
-                  Select Property to View History
+                  Select Active Property
                 </Label>
                 <Select
                   onValueChange={setSelectedPropertyId}
@@ -256,7 +257,7 @@ export default function InspectionsPage() {
                       placeholder={
                         isLoadingProperties
                           ? 'Loading properties...'
-                          : 'Choose a property from your portfolio'
+                          : 'Choose from your portfolio'
                       }
                     />
                   </SelectTrigger>
@@ -292,7 +293,7 @@ export default function InspectionsPage() {
                 No Property Selected
               </p>
               <p className="text-sm max-w-sm mx-auto">
-                Choose a property from the dropdown above to view its specific inspection history and manage existing reports.
+                Choose an active property from the dropdown above to view its specific inspection history and manage existing reports.
               </p>
             </div>
           ) : !activeInspections?.length ? (
