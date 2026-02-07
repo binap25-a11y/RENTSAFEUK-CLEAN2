@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Upload, CheckCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useState, useMemo } from 'react';
 import Image from 'next/image';
@@ -76,8 +76,8 @@ export default function Maintenance2Page() {
   const storage = useStorage();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isUploading, setIsUploading] = useState(false);
   
-  // State specifically for the file input, managed outside of react-hook-form
   const [photosToUpload, setPhotosToUpload] = useState<FileList | null>(null);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
@@ -114,7 +114,7 @@ export default function Maintenance2Page() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
-    setUploadedUrls([]);
+    setUploadedUrls([]); // Reset previous uploads if new files are selected
     setPhotosToUpload(files);
     if (files) {
       const fileArray = Array.from(files);
@@ -125,8 +125,39 @@ export default function Maintenance2Page() {
     }
   };
 
+  const handleUpload = async () => {
+    if (!photosToUpload || photosToUpload.length === 0) {
+      toast({ variant: 'destructive', title: 'No files selected', description: 'Please select one or more images to upload.' });
+      return;
+    }
+    if (!user || !storage) {
+        toast({ variant: 'destructive', title: 'Authentication Error', description: 'Cannot upload files. Please sign in again.' });
+        return;
+    }
+
+    setIsUploading(true);
+    toast({ title: 'Uploading photos...', description: `Uploading ${photosToUpload.length} image(s).` });
+    
+    try {
+        const uploadPromises = Array.from(photosToUpload).map(file => {
+          const uniqueFileName = `${Date.now()}-${file.name}`;
+          const fileStorageRef = storageRef(storage, `maintenance/${user.uid}/${uniqueFileName}`);
+          return uploadBytes(fileStorageRef, file).then(snapshot => getDownloadURL(snapshot.ref));
+        });
+
+        const finalUploadedUrls = await Promise.all(uploadPromises);
+        setUploadedUrls(finalUploadedUrls);
+        toast({ title: 'Photo Upload Complete', description: 'Your images have been saved. You can now log the maintenance issue.' });
+    } catch (error) {
+        console.error('Photo upload failed:', error);
+        toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload photos. Please try again.' });
+    } finally {
+        setIsUploading(false);
+    }
+  };
+
   async function onSubmit(data: MaintenanceFormValues) {
-    if (!user || !firestore || !storage) {
+    if (!user || !firestore) {
       toast({
         variant: 'destructive',
         title: 'Authentication Error',
@@ -136,50 +167,25 @@ export default function Maintenance2Page() {
     }
 
     setIsSubmitting(true);
-    setUploadedUrls([]);
-    let finalUploadedUrls: string[] = [];
-    
     toast({ title: 'Logging Maintenance...', description: 'Please wait while we save the details.' });
 
-    // --- Step 1: Upload photos if they exist ---
-    if (photosToUpload && photosToUpload.length > 0) {
-      toast({ title: 'Uploading photos...', description: `Uploading ${photosToUpload.length} image(s).` });
-      try {
-        const uploadPromises = Array.from(photosToUpload).map(file => {
-          const uniqueFileName = `${Date.now()}-${file.name}`;
-          const fileStorageRef = storageRef(storage, `maintenance/${user.uid}/${uniqueFileName}`);
-          return uploadBytes(fileStorageRef, file).then(snapshot => getDownloadURL(snapshot.ref));
-        });
-        finalUploadedUrls = await Promise.all(uploadPromises);
-        setUploadedUrls(finalUploadedUrls);
-        toast({ title: 'Photo Upload Complete', description: 'Your images have been saved.' });
-      } catch (error) {
-        console.error('Photo upload failed:', error);
-        toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload photos. Please try again.' });
-        setIsSubmitting(false);
-        return; // Stop if uploads fail
-      }
-    }
-
-    // --- Step 2: Save the maintenance log with photo URLs to Firestore ---
     try {
       const newLog = {
         ...data,
         ownerId: user.uid,
         status: 'Open',
-        photoUrls: finalUploadedUrls, // Add the array of uploaded URLs
+        photoUrls: uploadedUrls, // Use the already uploaded URLs from state
       };
 
       const logsCollection = collection(firestore, 'properties', data.propertyId, 'maintenanceLogs');
-      await addDoc(logsCollection, newLog);
+      const docRef = await addDoc(logsCollection, newLog);
 
       toast({
-        title: 'Maintenance Logged',
-        description: 'The new maintenance issue has been successfully logged.',
+        title: 'Maintenance Logged Successfully',
+        description: 'The new issue has been created.',
       });
       
-      setPhotosToUpload(null);
-      setPhotoPreviews([]);
+      router.push(`/dashboard/maintenance/${docRef.id}?propertyId=${data.propertyId}`);
 
     } catch (error) {
       console.error('Failed to log maintenance issue:', error);
@@ -195,11 +201,54 @@ export default function Maintenance2Page() {
 
   return (
     <div className="space-y-6">
+        <Card>
+            <CardHeader>
+                <CardTitle>Step 1: Upload Photos (Optional)</CardTitle>
+                <CardDescription>First, select and upload any relevant photos of the maintenance issue.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+                <div className="space-y-2">
+                    <Label htmlFor="file-upload">Select Photos</Label>
+                    <Input
+                        id="file-upload"
+                        type="file"
+                        multiple
+                        accept="image/*"
+                        onChange={handleFileChange}
+                        disabled={isUploading}
+                    />
+                </div>
+
+                {photoPreviews.length > 0 && (
+                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2">
+                        {photoPreviews.map((url, index) => (
+                            <div key={index} className="relative aspect-square">
+                                <Image src={url} alt={`Preview ${index + 1}`} fill className="rounded-md object-cover" />
+                            </div>
+                        ))}
+                    </div>
+                )}
+                
+                <Button onClick={handleUpload} disabled={isUploading || !photosToUpload || photosToUpload.length === 0}>
+                    {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                    Upload Photos
+                </Button>
+
+                {uploadedUrls.length > 0 && (
+                    <div className="flex items-center gap-2 text-green-600 font-medium pt-2">
+                        <CheckCircle className="h-5 w-5" />
+                        <p>Upload complete. You can now fill in the details below.</p>
+                    </div>
+                )}
+
+            </CardContent>
+        </Card>
+
       <Card>
         <CardHeader>
-          <CardTitle>Log Maintenance Issue (Test Page)</CardTitle>
+          <CardTitle>Step 2: Log Maintenance Issue</CardTitle>
           <CardDescription>
-            This is a simplified form to test file uploads and form submission.
+            Fill in the details for the maintenance issue.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -242,26 +291,20 @@ export default function Maintenance2Page() {
                   </FormItem>
                 )}
               />
-               <div className="space-y-2">
-                  <Label>Upload Photos of Issue</Label>
-                  <Input
-                    id="file-upload"
-                    type="file"
-                    multiple
-                    accept="image/*"
-                    onChange={handleFileChange}
-                    // This input is NOT part of the react-hook-form
-                  />
-                  {photoPreviews.length > 0 && (
-                      <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2">
-                          {photoPreviews.map((url, index) => (
-                              <div key={index} className="relative aspect-square">
-                                  <Image src={url} alt={`Preview ${index + 1}`} fill className="rounded-md object-cover" />
-                              </div>
-                          ))}
-                      </div>
-                  )}
-              </div>
+               <FormField
+                control={form.control}
+                name="description"
+                render={({ field }) => (
+                    <FormItem>
+                    <FormLabel>Description</FormLabel>
+                    <FormControl>
+                        <Textarea placeholder="Describe the issue in detail..." {...field} />
+                    </FormControl>
+                    <FormMessage />
+                    </FormItem>
+                )}
+                />
+
               <div className="flex justify-end gap-2">
                 <Button type="submit" disabled={isSubmitting}>
                   {isSubmitting ? (
@@ -276,25 +319,6 @@ export default function Maintenance2Page() {
               </div>
             </form>
           </Form>
-
-          {uploadedUrls.length > 0 && (
-            <div className="mt-8 pt-8 border-t">
-              <h3 className="text-lg font-semibold">Upload Successful</h3>
-              <p className="text-muted-foreground">You can preview your uploaded images here.</p>
-              <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
-                {uploadedUrls.map((url, index) => (
-                  <div key={index} className="space-y-2">
-                    <Image src={url} alt={`Uploaded Photo ${index + 1}`} width={200} height={200} className="rounded-md object-cover aspect-square" />
-                    <Button asChild variant="outline" size="sm" className="w-full">
-                      <Link href={url} target="_blank" rel="noopener noreferrer">
-                        Preview Image {index + 1}
-                      </Link>
-                    </Button>
-                  </div>
-                ))}
-              </div>
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>
