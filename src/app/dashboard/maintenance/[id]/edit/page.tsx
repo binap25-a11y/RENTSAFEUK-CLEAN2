@@ -31,7 +31,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Upload, Loader2 } from 'lucide-react';
+import { Upload, Loader2, CheckCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
   useUser,
@@ -44,6 +44,7 @@ import {
 import { collection, query, where, doc, updateDoc, Timestamp } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import Image from 'next/image';
+import { Label } from '@/components/ui/label';
 
 const maintenanceEditSchema = z.object({
   title: z.string().min(3, 'Title is too short'),
@@ -100,6 +101,9 @@ export default function EditMaintenancePage() {
     const [existingPhotos, setExistingPhotos] = useState<string[]>([]);
     const [newPhotosToUpload, setNewPhotosToUpload] = useState<FileList | null>(null);
     const [newPhotoPreviews, setNewPhotoPreviews] = useState<string[]>([]);
+    const [isUploading, setIsUploading] = useState(false);
+    const [newlyUploadedUrls, setNewlyUploadedUrls] = useState<string[]>([]);
+
 
     const form = useForm<MaintenanceFormValues>({
         resolver: zodResolver(maintenanceEditSchema),
@@ -136,6 +140,31 @@ export default function EditMaintenancePage() {
             }
         }
     }, [maintenanceLog, form]);
+    
+    const handleUpload = async () => {
+        if (!newPhotosToUpload || newPhotosToUpload.length === 0 || !user || !storage) return;
+
+        setIsUploading(true);
+        toast({ title: 'Uploading...', description: `Uploading ${newPhotosToUpload.length} new photo(s).` });
+
+        try {
+            const uploadPromises = Array.from(newPhotosToUpload).map(async (file) => {
+                const uniqueFileName = `${Date.now()}-${file.name}`;
+                const fileStorageRef = storageRef(storage, `maintenance/${user.uid}/${uniqueFileName}`);
+                await uploadBytes(fileStorageRef, file);
+                return getDownloadURL(fileStorageRef);
+            });
+            const urls = await Promise.all(uploadPromises);
+            setNewlyUploadedUrls(urls);
+            toast({ title: 'Upload Successful', description: 'New photos will replace existing ones upon saving.' });
+        } catch (error) {
+            console.error('Photo upload failed:', error);
+            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload photos. Please try again.' });
+        } finally {
+            setIsUploading(false);
+        }
+    };
+
 
     async function onSubmit(data: MaintenanceFormValues) {
         if (!user || !firestore || !storage || !maintenanceLogRef) {
@@ -144,22 +173,7 @@ export default function EditMaintenancePage() {
         }
         setIsSubmitting(true);
         try {
-            let finalPhotoUrls = existingPhotos;
-            if (newPhotosToUpload && newPhotosToUpload.length > 0) {
-                 toast({
-                    title: 'Uploading new photos...',
-                    description: `Uploading ${newPhotosToUpload.length} photo(s). This will replace any existing photos.`,
-                });
-                
-                const uploadPromises = Array.from(newPhotosToUpload).map(async (file) => {
-                    const uniqueFileName = `${Date.now()}-${file.name}`;
-                    const fileStorageRef = storageRef(storage, `maintenance/${user.uid}/${uniqueFileName}`);
-                    await uploadBytes(fileStorageRef, file);
-                    return getDownloadURL(fileStorageRef);
-                });
-                
-                finalPhotoUrls = await Promise.all(uploadPromises);
-            }
+            const finalPhotoUrls = newlyUploadedUrls.length > 0 ? newlyUploadedUrls : existingPhotos;
 
             await updateDoc(maintenanceLogRef, { ...data, photoUrls: finalPhotoUrls });
 
@@ -289,41 +303,64 @@ export default function EditMaintenancePage() {
                         
                          <Card>
                             <CardHeader><CardTitle className="text-lg">Photos</CardTitle></CardHeader>
-                            <CardContent>
-                                {(newPhotoPreviews.length > 0 || existingPhotos.length > 0) && (
-                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mb-4">
-                                        {(newPhotoPreviews.length > 0 ? newPhotoPreviews : existingPhotos).map((url, index) => (
+                            <CardContent className="space-y-4">
+                                {existingPhotos.length > 0 && newlyUploadedUrls.length === 0 && (
+                                    <div>
+                                        <Label>Existing Photos</Label>
+                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
+                                            {existingPhotos.map((url, index) => (
+                                                <div key={index} className="relative aspect-square">
+                                                    <Image src={url} alt={`Existing Photo ${index + 1}`} fill className="rounded-md object-cover" />
+                                                </div>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="space-y-2">
+                                    <Label>{existingPhotos.length > 0 ? 'Upload New Photos (replaces old ones)' : 'Upload Photos'}</Label>
+                                    <Input
+                                        type="file"
+                                        multiple
+                                        accept="image/*"
+                                        onChange={(e) => {
+                                            const files = e.target.files;
+                                            setNewPhotosToUpload(files);
+                                            setNewlyUploadedUrls([]); // Reset on new selection
+                                            if (files) {
+                                                const newPreviews = Array.from(files).map(file => URL.createObjectURL(file));
+                                                setNewPhotoPreviews(newPreviews);
+                                            }
+                                        }}
+                                    />
+                                </div>
+
+                                 {newPhotoPreviews.length > 0 && (
+                                    <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2">
+                                        {newPhotoPreviews.map((url, index) => (
                                             <div key={index} className="relative aspect-square">
-                                                <Image src={url} alt={`Photo ${index + 1}`} fill className="rounded-md object-cover" />
+                                                <Image src={url} alt={`Preview ${index + 1}`} fill className="rounded-md object-cover" />
                                             </div>
                                         ))}
                                     </div>
                                 )}
-                                <FormItem>
-                                    <FormLabel>{existingPhotos.length > 0 ? 'Upload New Photos (replaces old ones)' : 'Upload Photos'}</FormLabel>
-                                     <FormControl>
-                                        <Input
-                                            type="file"
-                                            multiple
-                                            accept="image/*"
-                                            className="w-full"
-                                            onChange={(e) => {
-                                                const files = e.target.files;
-                                                setNewPhotosToUpload(files);
-                                                if (files && files.length > 0) {
-                                                    const fileArray = Array.from(files);
-                                                    // Clean up old previews
-                                                    newPhotoPreviews.forEach(url => URL.revokeObjectURL(url));
-                                                    const previews = fileArray.map(file => URL.createObjectURL(file));
-                                                    setNewPhotoPreviews(previews);
-                                                } else {
-                                                    setNewPhotoPreviews([]);
-                                                }
-                                            }}
-                                        />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
+
+                                <div className="flex items-center gap-2 pt-2">
+                                    <Button
+                                        type="button"
+                                        variant="secondary"
+                                        onClick={handleUpload}
+                                        disabled={!newPhotosToUpload || newPhotosToUpload.length === 0 || isUploading || newlyUploadedUrls.length > 0}
+                                    >
+                                        {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                        Upload New Photos
+                                    </Button>
+                                    {newlyUploadedUrls.length > 0 && (
+                                        <div className="flex items-center gap-2 text-green-600">
+                                            <CheckCircle className="h-4 w-4" />
+                                            <span className="text-sm font-medium">Upload Complete</span>
+                                        </div>
+                                    )}
+                                </div>
                             </CardContent>
                         </Card>
 
@@ -337,7 +374,9 @@ export default function EditMaintenancePage() {
 
                         <div className="flex justify-end gap-2">
                             <Button type="button" variant="outline" asChild><Link href={`/dashboard/maintenance/${logId}?propertyId=${propertyId}`}>Cancel</Link></Button>
-                            <Button type="submit" disabled={isSubmitting}>{isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Save Changes'}</Button>
+                            <Button type="submit" disabled={isSubmitting || isUploading}>
+                                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Save Changes'}
+                            </Button>
                         </div>
                     </form>
                 </Form>

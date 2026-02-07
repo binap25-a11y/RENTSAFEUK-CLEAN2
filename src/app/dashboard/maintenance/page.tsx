@@ -30,7 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Upload, Loader2, Wand2, Search, MoreVertical, Edit, Eye, XCircle, Trash2 } from 'lucide-react';
+import { Upload, Loader2, Wand2, Search, MoreVertical, Edit, Eye, XCircle, Trash2, CheckCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import { useState, useMemo, useEffect } from 'react';
@@ -132,6 +132,8 @@ export default function MaintenancePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [photosToUpload, setPhotosToUpload] = useState<FileList | null>(null);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
+  const [isUploading, setIsUploading] = useState(false);
+  const [uploadedPhotoUrls, setUploadedPhotoUrls] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [logToCancel, setLogToCancel] = useState<MaintenanceLog | null>(null);
   const [logToDelete, setLogToDelete] = useState<MaintenanceLog | null>(null);
@@ -217,8 +219,32 @@ export default function MaintenancePage() {
     });
   };
 
+  const handleUpload = async () => {
+    if (!photosToUpload || photosToUpload.length === 0 || !user || !storage) return;
+
+    setIsUploading(true);
+    toast({ title: 'Uploading...', description: `Uploading ${photosToUpload.length} photo(s).` });
+
+    try {
+        const uploadPromises = Array.from(photosToUpload).map(async (file) => {
+            const uniqueFileName = `${Date.now()}-${file.name}`;
+            const fileStorageRef = storageRef(storage, `maintenance/${user.uid}/${uniqueFileName}`);
+            await uploadBytes(fileStorageRef, file);
+            return getDownloadURL(fileStorageRef);
+        });
+        const urls = await Promise.all(uploadPromises);
+        setUploadedPhotoUrls(urls);
+        toast({ title: 'Upload Successful', description: 'Photos are ready to be saved with the log.' });
+    } catch (error) {
+        console.error('Photo upload failed:', error);
+        toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload photos. Please try again.' });
+    } finally {
+        setIsUploading(false);
+    }
+  };
+
   async function onSubmit(data: MaintenanceFormValues) {
-    if (!user || !firestore || !storage) {
+    if (!user || !firestore) {
       toast({
         variant: 'destructive',
         title: 'Authentication Error',
@@ -230,26 +256,11 @@ export default function MaintenancePage() {
     setIsSubmitting(true);
 
     try {
-        let photoUrls: string[] = [];
-        if (photosToUpload && photosToUpload.length > 0) {
-            toast({
-                title: 'Uploading images...',
-                description: `Uploading ${photosToUpload.length} photo(s). Please wait.`,
-            });
-            const uploadPromises = Array.from(photosToUpload).map(async (file) => {
-                const uniqueFileName = `${Date.now()}-${file.name}`;
-                const fileStorageRef = storageRef(storage, `maintenance/${user.uid}/${uniqueFileName}`);
-                await uploadBytes(fileStorageRef, file);
-                return getDownloadURL(fileStorageRef);
-            });
-            photoUrls = await Promise.all(uploadPromises);
-        }
-        
         const newLog = {
           ...data,
           ownerId: user.uid,
-          status: 'Open', // Default status
-          photoUrls,
+          status: 'Open',
+          photoUrls: uploadedPhotoUrls,
         };
 
         const logsCollection = collection(firestore, 'properties', data.propertyId, 'maintenanceLogs');
@@ -624,11 +635,30 @@ export default function MaintenancePage() {
                 </Card>
 
                 {/* Photos & Notes Section */}
-                 <Card>
-                    <CardHeader><CardTitle className="text-xl">Upload Photos</CardTitle></CardHeader>
-                    <CardContent className="space-y-4">
-                        {photoPreviews.length > 0 && (
-                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2">
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-xl">Photos &amp; Notes</CardTitle>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    <div className="space-y-2">
+                        <Label>Upload Photos of Issue</Label>
+                        <Input
+                          type="file"
+                          multiple
+                          accept="image/*"
+                          onChange={(e) => {
+                            const files = e.target.files;
+                            setPhotosToUpload(files);
+                            setUploadedPhotoUrls([]); // Reset on new selection
+                            if (files) {
+                              const fileArray = Array.from(files);
+                              const newPreviews = fileArray.map(file => URL.createObjectURL(file));
+                              setPhotoPreviews(newPreviews);
+                            }
+                          }}
+                        />
+                         {photoPreviews.length > 0 && (
+                            <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2">
                                 {photoPreviews.map((url, index) => (
                                     <div key={index} className="relative aspect-square">
                                         <Image src={url} alt={`Preview ${index + 1}`} fill className="rounded-md object-cover" />
@@ -636,43 +666,30 @@ export default function MaintenancePage() {
                                 ))}
                             </div>
                         )}
-                        <FormItem>
-                            <FormLabel>Upload Photos of Issue</FormLabel>
-                            <FormControl>
-                                <Input
-                                    type="file"
-                                    multiple
-                                    accept="image/*"
-                                    className="w-full"
-                                    onChange={(e) => {
-                                        const files = e.target.files;
-                                        setPhotosToUpload(files);
-                                        if (files && files.length > 0) {
-                                            const fileArray = Array.from(files);
-                                            // Clean up old previews
-                                            photoPreviews.forEach(url => URL.revokeObjectURL(url));
-                                            const newPreviews = fileArray.map(file => URL.createObjectURL(file));
-                                            setPhotoPreviews(newPreviews);
-                                        } else {
-                                            setPhotoPreviews([]);
-                                        }
-                                    }}
-                                />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    </CardContent>
-                </Card>
-                <Card>
-                  <CardHeader>
-                    <CardTitle className='text-xl'>Additional Notes</CardTitle>
-                  </CardHeader>
-                  <CardContent>
-                    <FormField
+                        <div className="flex items-center gap-2 pt-2">
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                onClick={handleUpload}
+                                disabled={!photosToUpload || photosToUpload.length === 0 || isUploading || uploadedPhotoUrls.length > 0}
+                            >
+                                {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                                Upload Photo(s)
+                            </Button>
+                            {uploadedPhotoUrls.length > 0 && (
+                                <div className="flex items-center gap-2 text-green-600">
+                                    <CheckCircle className="h-4 w-4" />
+                                    <span className="text-sm font-medium">Upload Complete</span>
+                                </div>
+                            )}
+                        </div>
+                    </div>
+                     <FormField
                       control={form.control}
                       name="notes"
                       render={({ field }) => (
                         <FormItem>
+                          <FormLabel>Additional Notes</FormLabel>
                           <FormControl>
                             <Textarea
                               placeholder="Any additional notes..."
@@ -689,27 +706,10 @@ export default function MaintenancePage() {
                 </Card>
 
                 <div className="flex justify-end gap-2">
-                  <Button type="button" variant="outline" onClick={() => {
-                    form.reset({
-                      propertyId: '',
-                      title: '',
-                      description: '',
-                      category: '',
-                      priority: '',
-                      reportedBy: '',
-                      contractorName: '',
-                      contractorPhone: '',
-                      notes: '',
-                      reportedDate: new Date(),
-                      scheduledDate: undefined,
-                      estimatedCost: undefined,
-                    });
-                    setPhotoPreviews([]);
-                    setPhotosToUpload(null);
-                  }}>
+                  <Button type="button" variant="outline" onClick={() => form.reset()}>
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={isSubmitting}>
+                  <Button type="submit" disabled={isSubmitting || isUploading}>
                     {isSubmitting ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
