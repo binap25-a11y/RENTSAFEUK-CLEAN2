@@ -36,7 +36,7 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, doc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, doc, deleteDoc, limit } from 'firebase/firestore';
 import {
   Select,
   SelectContent,
@@ -120,7 +120,8 @@ export default function InspectionsPage() {
     if (!user) return null;
     return query(
       collection(firestore, 'properties'),
-      where('ownerId', '==', user.uid)
+      where('ownerId', '==', user.uid),
+      limit(500)
     );
   }, [firestore, user]);
   const { data: allProperties, isLoading: isLoadingProperties } =
@@ -137,7 +138,8 @@ export default function InspectionsPage() {
     if (!user || !selectedPropertyId) return null;
     return query(
       collection(firestore, 'properties', selectedPropertyId, 'inspections'),
-      where('ownerId', '==', user.uid)
+      where('ownerId', '==', user.uid),
+      limit(500)
     );
   }, [firestore, user, selectedPropertyId]);
 
@@ -257,7 +259,7 @@ export default function InspectionsPage() {
                       placeholder={
                         isLoadingProperties
                           ? 'Loading properties...'
-                          : 'Choose from your portfolio'
+                          : 'Choose from your active portfolio'
                       }
                     />
                   </SelectTrigger>

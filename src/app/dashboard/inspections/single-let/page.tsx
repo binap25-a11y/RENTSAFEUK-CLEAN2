@@ -43,7 +43,7 @@ import {
   errorEmitter,
   FirestorePermissionError,
 } from '@/firebase';
-import { collection, query, where, addDoc } from 'firebase/firestore';
+import { collection, query, where, addDoc, limit } from 'firebase/firestore';
 
 
 const inspectionSchema = z.object({
@@ -210,14 +210,16 @@ export default function SingleLetInspectionPage() {
     if (!user) return null;
     return query(
         collection(firestore, 'properties'),
-        where('ownerId', '==', user.uid)
+        where('ownerId', '==', user.uid),
+        limit(500)
     );
   }, [firestore, user]);
 
   const { data: allProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
 
   const properties = useMemo(() => {
-    return allProperties?.filter(p => p.status !== 'Deleted') ?? [];
+    const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
+    return allProperties?.filter(p => activeStatuses.includes(p.status || '')) ?? [];
   }, [allProperties]);
 
   useEffect(() => {
@@ -285,6 +287,10 @@ export default function SingleLetInspectionPage() {
     }
   }
 
+  const formatAddress = (address: Property['address']) => {
+    return [address.nameOrNumber, address.street, address.city].filter(Boolean).join(', ');
+  };
+
   return (
     <Card className="max-w-4xl mx-auto">
       <CardHeader>
@@ -311,13 +317,13 @@ export default function SingleLetInspectionPage() {
                       <Select onValueChange={field.onChange} defaultValue={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder={isLoadingProperties ? <div className='flex items-center gap-2'><Loader2 className='animate-spin' /> Loading...</div> : "Select a property"} />
+                            <SelectValue placeholder={isLoadingProperties ? <div className='flex items-center gap-2'><Loader2 className='animate-spin' /> Loading properties...</div> : "Select an active property"} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
                           {properties?.map((prop) => (
                             <SelectItem key={prop.id} value={prop.id}>
-                              {[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}
+                              {formatAddress(prop.address)}
                             </SelectItem>
                           ))}
                         </SelectContent>

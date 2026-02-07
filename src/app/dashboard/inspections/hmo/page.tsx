@@ -34,14 +34,14 @@ import { Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   useUser,
   useFirestore,
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, addDoc } from 'firebase/firestore';
+import { collection, query, where, addDoc, limit } from 'firebase/firestore';
 
 const hmoInspectionSchema = z.object({
   // General
@@ -162,6 +162,8 @@ interface Property {
     street: string;
     city: string;
   };
+  status?: string;
+  propertyType?: string;
 }
 
 const ChecklistItem = ({ form, name, label }: { form: any, name: any, label: string }) => (
@@ -213,10 +215,18 @@ export default function HmoInspectionPage() {
         return query(
             collection(firestore, 'properties'),
             where('ownerId', '==', user.uid),
-            where('propertyType', '==', 'HMO')
+            limit(500)
         );
     }, [firestore, user]);
-    const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
+    const { data: allProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
+
+    const properties = useMemo(() => {
+        const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
+        return allProperties?.filter(p => 
+            activeStatuses.includes(p.status || '') && 
+            p.propertyType === 'HMO'
+        ) ?? [];
+    }, [allProperties]);
 
      useEffect(() => {
         form.setValue('inspectionDate', new Date());
@@ -274,6 +284,10 @@ export default function HmoInspectionPage() {
         }
     }
 
+    const formatAddress = (address: Property['address']) => {
+        return [address.nameOrNumber, address.street, address.city].filter(Boolean).join(', ');
+    };
+
     return (
         <Card className="max-w-4xl mx-auto">
             <CardHeader>
@@ -328,10 +342,10 @@ export default function HmoInspectionPage() {
                                                 <Select onValueChange={field.onChange} defaultValue={field.value}>
                                                     <FormControl>
                                                         <SelectTrigger>
-                                                            <SelectValue placeholder={isLoadingProperties ? <div className='flex items-center gap-2'><Loader2 className='animate-spin' /> Loading...</div> : "Select an HMO property"} />
+                                                            <SelectValue placeholder={isLoadingProperties ? <div className='flex items-center gap-2'><Loader2 className='animate-spin' /> Loading properties...</div> : "Select an active HMO property"} />
                                                         </SelectTrigger>
                                                     </FormControl>
-                                                    <SelectContent>{properties?.map((prop) => (<SelectItem key={prop.id} value={prop.id}>{[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}</SelectItem>))}</SelectContent>
+                                                    <SelectContent>{properties?.map((prop) => (<SelectItem key={prop.id} value={prop.id}>{formatAddress(prop.address)}</SelectItem>))}</SelectContent>
                                                 </Select>
                                                 <FormMessage />
                                             </FormItem>
