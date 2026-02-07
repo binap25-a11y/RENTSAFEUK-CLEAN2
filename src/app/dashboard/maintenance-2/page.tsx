@@ -14,12 +14,12 @@ export default function DeprecatedMaintenancePage() {
         <Card className="w-full max-w-md text-center">
             <CardHeader>
                 <CardTitle>Page Removed</CardTitle>
-                <CardDescription>This test page has been removed. All functionality has been integrated into the main Maintenance page.</CardDescription>
+                <CardDescription>This test page has been replaced by the new "Upload Test" page.</CardDescription>
             </CardHeader>
             <CardContent>
-                <Button asChild>
-                    <Link href="/dashboard/maintenance">
-                        Go to Maintenance Page
+                 <Button asChild>
+                    <Link href="/dashboard/upload-test-2">
+                        Go to the new Upload Test Page
                     </Link>
                 </Button>
             </CardContent>

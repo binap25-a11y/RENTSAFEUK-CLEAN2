@@ -23,6 +23,7 @@ import {
   Bell,
   Users,
   HardHat,
+  Beaker,
 } from 'lucide-react';
 import * as React from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -157,6 +158,14 @@ export function MainNav() {
         </SidebarMenuItem>
       ))}
        <SidebarMenuItem className="mt-auto">
+          <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/upload-test-2')} tooltip="Upload Test">
+              <Link href="/dashboard/upload-test-2" onClick={handleLinkClick}>
+                <Beaker />
+                <span>Upload Test</span>
+              </Link>
+          </SidebarMenuButton>
+        </SidebarMenuItem>
+       <SidebarMenuItem>
           <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/settings')} tooltip="Settings">
               <Link href="/dashboard/settings" onClick={handleLinkClick}>
                 <Settings />
