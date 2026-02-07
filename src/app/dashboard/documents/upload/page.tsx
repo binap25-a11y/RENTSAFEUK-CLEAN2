@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Upload, Loader2 } from 'lucide-react';
+import { Upload, Loader2, FileText } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -53,8 +53,9 @@ const documentSchema = z.object({
   expiryDate: z.coerce.date({ required_error: 'Please select an expiry date.' }),
   documentFile: z
     .custom<FileList>()
-    .refine((files) => files?.length === 1, 'Document file is required.')
-    .refine((files) => files?.[0]?.size <= MAX_FILE_SIZE, `Max file size is 5MB.`),
+    .optional()
+    .refine((files) => !files || files.length <= 1, 'Please select a single file.')
+    .refine((files) => !files || files.length === 0 || files[0].size <= MAX_FILE_SIZE, `Max file size is 5MB.`),
   notes: z.string().optional(),
 });
 
@@ -121,37 +122,46 @@ export default function UploadDocumentPage() {
     setIsUploading(true);
 
     try {
-      const file = data.documentFile[0];
-      const uniqueFileName = `${Date.now()}-${file.name}`;
-      const fileStorageRef = storageRef(storage, `documents/${user.uid}/${uniqueFileName}`);
+      let fileUri = '';
+      let finalFileName = '';
 
-      // Upload file
-      const uploadResult = await uploadBytes(fileStorageRef, file);
-      const fileUri = await getDownloadURL(uploadResult.ref);
+      // Only upload if a file is provided
+      if (data.documentFile && data.documentFile.length > 0) {
+        const file = data.documentFile[0];
+        const uniqueFileName = `${Date.now()}-${file.name}`;
+        const fileStorageRef = storageRef(storage, `documents/${user.uid}/${uniqueFileName}`);
+
+        // Upload file
+        const uploadResult = await uploadBytes(fileStorageRef, file);
+        fileUri = await getDownloadURL(uploadResult.ref);
+        finalFileName = file.name;
+      }
 
       const { documentFile, ...formData } = data;
       
       const newDocument = {
         ...formData,
         ownerId: user.uid,
-        fileUri: fileUri,
-        fileName: file.name,
+        fileUri: fileUri || null,
+        fileName: finalFileName || null,
       };
 
       const documentsCollection = collection(firestore, 'properties', data.propertyId, 'documents');
       await addDoc(documentsCollection, newDocument);
       
       toast({
-        title: 'Document Uploaded',
-        description: 'The document has been successfully uploaded and saved.',
+        title: fileUri ? 'Document Uploaded' : 'Document Record Saved',
+        description: fileUri 
+          ? 'The document has been successfully uploaded and saved.' 
+          : 'The document details have been saved without a file attachment.',
       });
       router.push('/dashboard/documents');
     } catch (error) {
         console.error('Failed to upload document', error);
         toast({
             variant: 'destructive',
-            title: 'Upload Failed',
-            description: 'There was an error uploading the document. Please try again.',
+            title: 'Save Failed',
+            description: 'There was an error saving the document record. Please try again.',
         });
     } finally {
         setIsUploading(false);
@@ -165,9 +175,9 @@ export default function UploadDocumentPage() {
   return (
     <Card className="max-w-2xl mx-auto">
       <CardHeader>
-        <CardTitle>Upload Document</CardTitle>
+        <CardTitle>Log Document</CardTitle>
         <CardDescription>
-          Fill in the details and select a file to upload. Only active properties are shown.
+          Fill in the details. You can optionally attach a file now or log the details and upload later.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -275,26 +285,47 @@ export default function UploadDocumentPage() {
               name="documentFile"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Document File (Max 5MB)</FormLabel>
+                  <FormLabel>Document File (Optional - Max 5MB)</FormLabel>
                   <FormControl>
-                    <Button asChild className="w-full cursor-pointer" variant="outline">
-                      <label htmlFor="file-upload">
-                        <Upload className="mr-2 h-4 w-4" />
-                        {fileName ? 'Change File' : 'Choose File'}
-                        <Input
-                          id="file-upload"
-                          type="file"
-                          className="sr-only"
-                          onChange={(e) => {
-                            field.onChange(e.target.files);
-                            setFileName(e.target.files?.[0]?.name || '');
-                          }}
-                        />
-                      </label>
-                    </Button>
+                    <div className="space-y-4">
+                        <Button asChild className="w-full cursor-pointer" variant="outline">
+                        <label htmlFor="file-upload">
+                            <Upload className="mr-2 h-4 w-4" />
+                            {fileName ? 'Change File' : 'Choose File (Optional)'}
+                            <Input
+                            id="file-upload"
+                            type="file"
+                            className="sr-only"
+                            onChange={(e) => {
+                                field.onChange(e.target.files);
+                                setFileName(e.target.files?.[0]?.name || '');
+                            }}
+                            />
+                        </label>
+                        </Button>
+                        {fileName && (
+                            <div className="flex items-center gap-2 p-2 rounded-md bg-primary/5 border border-primary/20 animate-in fade-in slide-in-from-top-1">
+                                <FileText className="h-4 w-4 text-primary shrink-0" />
+                                <span className="text-xs font-medium text-primary truncate flex-1">
+                                    Selected: {fileName}
+                                </span>
+                                <Button 
+                                    type="button" 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive"
+                                    onClick={() => {
+                                        field.onChange(undefined);
+                                        setFileName('');
+                                    }}
+                                >
+                                    &times;
+                                </Button>
+                            </div>
+                        )}
+                    </div>
                   </FormControl>
                   <FormMessage />
-                   {fileName && <p className="text-sm text-primary font-medium pt-2 truncate">Selected: {fileName}</p>}
                 </FormItem>
               )}
             />
@@ -324,9 +355,9 @@ export default function UploadDocumentPage() {
                   {isUploading ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Uploading...
+                      Saving...
                     </>
-                  ) : 'Save Document'}
+                  ) : fileName ? 'Save & Upload' : 'Save Details'}
                 </Button>
             </div>
           </form>
