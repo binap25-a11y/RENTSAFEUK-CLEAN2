@@ -71,7 +71,7 @@ import {
 } from '@/components/ui/alert-dialog';
 
 
-// Schema for the form
+// Schema for the form, file input is handled separately
 const maintenanceSchema = z.object({
   propertyId: z.string({ required_error: 'Please select a property.' }).min(1, 'Please select a property.'),
   title: z.string().min(3, 'Title is too short'),
@@ -84,7 +84,6 @@ const maintenanceSchema = z.object({
   contractorPhone: z.string().optional(),
   scheduledDate: z.coerce.date().optional(),
   estimatedCost: z.coerce.number().optional(),
-  photos: z.custom<FileList>().optional(),
   notes: z.string().optional(),
 });
 
@@ -246,10 +245,8 @@ export default function MaintenancePage() {
             photoUrls = await Promise.all(uploadPromises);
         }
         
-        const { photos, ...formData } = data;
-
         const newLog = {
-          ...formData,
+          ...data,
           ownerId: user.uid,
           status: 'Open', // Default status
           photoUrls,
@@ -641,44 +638,33 @@ export default function MaintenancePage() {
                             ))}
                         </div>
                     )}
-                    <FormField
-                      control={form.control}
-                      name="photos"
-                      render={({ field: { onChange, ...fieldProps } }) => (
-                        <FormItem>
-                          <FormLabel>Upload Photos of Issue</FormLabel>
-                          <FormControl>
-                            <Button asChild variant="outline" className="w-full cursor-pointer">
-                              <label htmlFor="photos-upload">
-                                <Upload className="mr-2 h-4 w-4" />
-                                Choose Files
-                                <Input
-                                  id="photos-upload"
-                                  type="file"
-                                  multiple
-                                  accept="image/*"
-                                  className="sr-only"
-                                  {...fieldProps}
-                                  onChange={(e) => {
-                                      const files = e.target.files;
-                                      onChange(files); // For validation
-                                      setPhotosToUpload(files); // For upload
-                                      if (files && files.length > 0) {
-                                          const fileArray = Array.from(files);
-                                          const previews = fileArray.map(file => URL.createObjectURL(file));
-                                          setPhotoPreviews(previews);
-                                      } else {
-                                          setPhotoPreviews([]);
-                                      }
-                                  }}
-                                />
-                              </label>
-                            </Button>
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <FormItem>
+                        <FormLabel>Upload Photos of Issue</FormLabel>
+                          <Button asChild variant="outline" className="w-full cursor-pointer">
+                            <label htmlFor="photos-upload">
+                              <Upload className="mr-2 h-4 w-4" />
+                              Choose Files
+                              <Input
+                                id="photos-upload"
+                                type="file"
+                                multiple
+                                accept="image/*"
+                                className="sr-only"
+                                onChange={(e) => {
+                                    const files = e.target.files;
+                                    setPhotosToUpload(files);
+                                    if (files && files.length > 0) {
+                                        const fileArray = Array.from(files);
+                                        const previews = fileArray.map(file => URL.createObjectURL(file));
+                                        setPhotoPreviews(previews);
+                                    } else {
+                                        setPhotoPreviews([]);
+                                    }
+                                }}
+                              />
+                            </label>
+                          </Button>
+                      </FormItem>
                   </CardContent>
                 </Card>
                 <Card>

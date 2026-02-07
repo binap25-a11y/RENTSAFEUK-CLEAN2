@@ -57,7 +57,6 @@ const maintenanceEditSchema = z.object({
   contractorPhone: z.string().optional(),
   scheduledDate: z.coerce.date().optional(),
   estimatedCost: z.coerce.number().optional(),
-  photos: z.custom<FileList>().optional(),
   notes: z.string().optional(),
 });
 
@@ -162,8 +161,7 @@ export default function EditMaintenancePage() {
                 finalPhotoUrls = await Promise.all(uploadPromises);
             }
 
-            const { photos, ...formData } = data;
-            await updateDoc(maintenanceLogRef, { ...formData, photoUrls: finalPhotoUrls });
+            await updateDoc(maintenanceLogRef, { ...data, photoUrls: finalPhotoUrls });
 
             toast({ title: 'Maintenance Log Updated', description: 'The changes have been saved.' });
             router.push(`/dashboard/maintenance/${logId}?propertyId=${propertyId}`);
@@ -301,29 +299,33 @@ export default function EditMaintenancePage() {
                                         ))}
                                     </div>
                                 )}
-                                <FormField
-                                  control={form.control}
-                                  name="photos"
-                                  render={({ field: { onChange, ...fieldProps } }) => (
-                                    <FormItem>
-                                        <FormLabel>{existingPhotos.length > 0 ? 'Upload New Photos (replaces old ones)' : 'Upload Photos'}</FormLabel>
-                                        <FormControl>
-                                            <Button asChild variant="outline" className="w-full"><label htmlFor="photos-upload" className="cursor-pointer flex items-center justify-center gap-2"><Upload className="h-4 w-4" />Choose Files<Input id="photos-upload" type="file" multiple accept="image/*" className="sr-only" {...fieldProps} onChange={(e) => { 
-                                                const files = e.target.files;
-                                                onChange(files);
-                                                setNewPhotosToUpload(files);
-                                                if (files && files.length > 0) {
-                                                    const fileArray = Array.from(files);
-                                                    const previews = fileArray.map(file => URL.createObjectURL(file));
-                                                    setNewPhotoPreviews(previews);
-                                                } else {
-                                                    setNewPhotoPreviews([]);
-                                                }
-                                             }} /></label></Button>
-                                        </FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
+                                <FormItem>
+                                    <FormLabel>{existingPhotos.length > 0 ? 'Upload New Photos (replaces old ones)' : 'Upload Photos'}</FormLabel>
+                                    <Button asChild variant="outline" className="w-full">
+                                        <label htmlFor="photos-upload" className="cursor-pointer flex items-center justify-center gap-2">
+                                            <Upload className="h-4 w-4" />
+                                            Choose Files
+                                            <Input 
+                                                id="photos-upload" 
+                                                type="file" 
+                                                multiple 
+                                                accept="image/*" 
+                                                className="sr-only" 
+                                                onChange={(e) => { 
+                                                    const files = e.target.files;
+                                                    setNewPhotosToUpload(files);
+                                                    if (files && files.length > 0) {
+                                                        const fileArray = Array.from(files);
+                                                        const previews = fileArray.map(file => URL.createObjectURL(file));
+                                                        setNewPhotoPreviews(previews);
+                                                    } else {
+                                                        setNewPhotoPreviews([]);
+                                                    }
+                                                }}
+                                            />
+                                        </label>
+                                    </Button>
+                                </FormItem>
                             </CardContent>
                         </Card>
 
