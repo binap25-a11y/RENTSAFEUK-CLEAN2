@@ -70,6 +70,8 @@ import {
   useFirestore,
   useCollection,
   useMemoFirebase,
+  errorEmitter,
+  FirestorePermissionError,
 } from '@/firebase';
 import { collection, query, where, doc, setDoc, addDoc, limit, getDocs } from 'firebase/firestore';
 import { Label } from '@/components/ui/label';
@@ -210,6 +212,15 @@ export default function FinancialsPage() {
   
   const isLoading = isLoadingProperties || isLoadingExpenses || isLoadingPayments;
 
+  const formatCurrency = (val: number) => {
+    return val.toLocaleString(undefined, {
+        style: 'currency',
+        currency: 'GBP',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
+  };
+
   return (
     <div className="flex flex-col gap-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
@@ -219,7 +230,7 @@ export default function FinancialsPage() {
                 <PoundSterling className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                <div className="text-2xl font-bold">£{portfolioIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                <div className="text-2xl font-bold">{formatCurrency(portfolioIncome)}</div>
                 <p className="text-xs text-muted-foreground">{activeProperties.length} active properties</p>
                 </CardContent>
             </Card>
@@ -230,9 +241,11 @@ export default function FinancialsPage() {
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">
-                        {isLoading && selectedPropertyId ? <Loader2 className="h-6 w-6 animate-spin" /> : selectedPropertyId ? `£${totalPaidRent.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`: '£0.00'}
+                        {isLoading && selectedPropertyId ? <Loader2 className="h-6 w-6 animate-spin" /> : selectedPropertyId ? formatCurrency(totalPaidRent) : '£0.00'}
                     </div>
-                    <p className="text-xs text-muted-foreground">Rent received in {selectedYear}</p>
+                    <p className="text-xs text-muted-foreground truncate" title={selectedProperty ? [selectedProperty.address.nameOrNumber, selectedProperty.address.street].filter(Boolean).join(', ') : ''}>
+                        {selectedProperty ? [selectedProperty.address.nameOrNumber, selectedProperty.address.street].filter(Boolean).join(', ') : `In ${selectedYear}`}
+                    </p>
                 </CardContent>
             </Card>
             <Card>
@@ -242,7 +255,7 @@ export default function FinancialsPage() {
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">
-                        {isLoading && selectedPropertyId ? <Loader2 className="h-6 w-6 animate-spin" /> : selectedPropertyId ? `£${totalExpenses.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`: '£0.00'}
+                        {isLoading && selectedPropertyId ? <Loader2 className="h-6 w-6 animate-spin" /> : selectedPropertyId ? formatCurrency(totalExpenses) : '£0.00'}
                     </div>
                     <p className="text-xs text-muted-foreground">Expenses in {selectedYear}</p>
                 </CardContent>
@@ -254,7 +267,7 @@ export default function FinancialsPage() {
                 </CardHeader>
                 <CardContent>
                     <div className={"text-2xl font-bold " + (netIncome < 0 ? " text-destructive" : " text-primary")}>
-                        {isLoading && selectedPropertyId ? <Loader2 className="h-6 w-6 animate-spin" /> : selectedPropertyId ? `£${netIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`: '£0.00'}
+                        {isLoading && selectedPropertyId ? <Loader2 className="h-6 w-6 animate-spin" /> : selectedPropertyId ? formatCurrency(netIncome) : '£0.00'}
                     </div>
                      <p className="text-xs text-muted-foreground">Net for {selectedYear}</p>
                 </CardContent>
@@ -266,7 +279,7 @@ export default function FinancialsPage() {
           <CardDescription>Select an active property and year to view detailed financials.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
-           <div className="flex flex-col gap-6 max-w-md">
+           <div className="flex flex-col gap-4 max-w-md">
                 <div className="grid w-full gap-1.5">
                     <Label htmlFor="property-filter" className="flex items-center gap-2 font-semibold">
                         <Filter className="h-3 w-3" />
@@ -351,7 +364,7 @@ export default function FinancialsPage() {
 function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, selectedYear, expenses, isLoadingExpenses }: { properties: Property[], selectedPropertyId: string, isLoadingProperties: boolean, selectedYear: number, expenses: Expense[] | null, isLoadingExpenses: boolean }) {
   const { user } = useUser();
   const firestore = useFirestore();
-  const router = useRouter();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseSchema),
@@ -360,38 +373,53 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
       expenseType: '',
       paidBy: 'Landlord',
       notes: '',
+      date: new Date(),
     },
   });
-
-  useEffect(() => {
-    form.setValue('date', new Date());
-  }, [form]);
 
   useEffect(() => {
     form.setValue('propertyId', selectedPropertyId);
   }, [selectedPropertyId, form]);
 
-  async function onSubmit(data: ExpenseFormValues) {
+  function onSubmit(data: ExpenseFormValues) {
     if (!user || !firestore) return;
+    
+    setIsSubmitting(true);
     const newExpense = { ...data, ownerId: user.uid };
-    try {
-      const expensesCollection = collection(firestore, 'properties', data.propertyId, 'expenses');
-      await addDoc(expensesCollection, newExpense);
-      toast({
-        title: 'Expense Logged',
-        description: 'The new expense has been successfully logged.',
+    const expensesCollection = collection(firestore, 'properties', data.propertyId, 'expenses');
+    
+    // Non-blocking Firestore write. Optimistic UI is handled by useCollection hook.
+    addDoc(expensesCollection, newExpense)
+      .then(() => {
+        toast({
+          title: 'Expense Logged',
+          description: 'The new expense has been successfully logged.',
+        });
+        form.reset({ 
+            ...form.getValues(), 
+            expenseType: '', 
+            amount: 0, 
+            notes: '',
+            date: new Date()
+        });
+      })
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: expensesCollection.path,
+          operation: 'create',
+          requestResourceData: newExpense,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+        
+        toast({
+          variant: 'destructive',
+          title: 'Save Failed',
+          description: serverError.message || 'There was an error saving the expense.',
+        });
+      })
+      .finally(() => {
+        setIsSubmitting(false);
       });
-      // Refresh the page to update the list and clear the form visually
-      router.refresh();
-      form.reset({ ...form.getValues(), expenseType: '', amount: undefined, notes: '' });
-    } catch (error) {
-      console.error('Failed to log expense', error);
-      toast({
-        variant: 'destructive',
-        title: 'Save Failed',
-        description: 'There was an error saving the expense. Please try again.',
-      });
-    }
   }
 
   const totalExpenses = useMemo(() => {
@@ -496,7 +524,12 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
                   </FormItem>
                 )}
               />
-              <div className="flex justify-end"><Button type="submit">Log Expense</Button></div>
+              <div className="flex justify-end">
+                <Button type="submit" disabled={isSubmitting}>
+                    {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Log Expense
+                </Button>
+              </div>
             </form>
           </Form>
         </CardContent>
