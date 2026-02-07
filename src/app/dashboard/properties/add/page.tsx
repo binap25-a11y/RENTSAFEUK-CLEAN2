@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -22,7 +21,8 @@ import {
   FirestorePermissionError,
 } from '@/firebase';
 import { collection, addDoc } from 'firebase/firestore';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Wand2 } from 'lucide-react';
+import { generatePropertyDescription } from '@/ai/flows/property-description-flow';
 
 const propertySchema = z.object({
   address: z.object({
@@ -51,6 +51,7 @@ export default function AddPropertyPage() {
   const { user } = useUser();
   const firestore = useFirestore();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGenerating, setIsGenerating] = useState(false);
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
@@ -74,6 +75,45 @@ export default function AddPropertyPage() {
     },
   });
 
+  const handleMagicDescription = async () => {
+    const values = form.getValues();
+    if (!values.propertyType || !values.address.city) {
+      toast({
+        variant: 'destructive',
+        title: 'Missing Details',
+        description: 'Please select a property type and enter at least the city to generate a description.',
+      });
+      return;
+    }
+
+    setIsGenerating(true);
+    try {
+      const addressString = [values.address.street, values.address.city, values.address.postcode].filter(Boolean).join(', ');
+      const result = await generatePropertyDescription({
+        propertyType: values.propertyType,
+        bedrooms: Number(values.bedrooms),
+        bathrooms: Number(values.bathrooms),
+        address: addressString,
+        keyFeatures: values.notes,
+      });
+
+      form.setValue('notes', `${result.headline}\n\n${result.description}`);
+      toast({
+        title: 'Description Generated',
+        description: 'AI has generated a professional listing for you.',
+      });
+    } catch (error) {
+      console.error('Error generating description:', error);
+      toast({
+        variant: 'destructive',
+        title: 'AI Error',
+        description: 'Could not generate description. Please try again.',
+      });
+    } finally {
+      setIsGenerating(false);
+    }
+  };
+
   async function onSubmit(data: PropertyFormValues) {
     if (!user || !firestore) {
       toast({
@@ -91,7 +131,6 @@ export default function AddPropertyPage() {
       ...data,
     };
 
-    // Clean up optional empty fields
     if (!propertyData.notes) delete propertyData.notes;
     if (propertyData.tenancy) {
       if (propertyData.tenancy.monthlyRent === undefined) delete propertyData.tenancy.monthlyRent;
@@ -343,8 +382,18 @@ export default function AddPropertyPage() {
             </Card>
 
             <Card>
-              <CardHeader>
-                <CardTitle className="text-xl">Notes</CardTitle>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                <CardTitle className="text-xl">Notes & Description</CardTitle>
+                <Button 
+                  type="button" 
+                  variant="outline" 
+                  size="sm" 
+                  onClick={handleMagicDescription}
+                  disabled={isGenerating}
+                >
+                  {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+                  Magic Description
+                </Button>
               </CardHeader>
               <CardContent>
                 <FormField
@@ -353,7 +402,7 @@ export default function AddPropertyPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormControl>
-                        <Textarea placeholder="Any additional notes about the property..." className="resize-none" rows={5} {...field} value={field.value ?? ''} />
+                        <Textarea placeholder="Any additional notes or generated listing description..." className="resize-none" rows={10} {...field} value={field.value ?? ''} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>

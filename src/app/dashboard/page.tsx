@@ -20,6 +20,8 @@ import {
   Loader2,
   PoundSterling,
   UserPlus,
+  ArrowRight,
+  CheckCircle2,
 } from 'lucide-react';
 import {
   Table,
@@ -402,6 +404,71 @@ useEffect(() => {
       description: 'Add agreements or certificates.',
     },
   ];
+
+  if (!isLoading && activeProperties.length === 0) {
+    return (
+      <div className="flex flex-col gap-8 max-w-4xl mx-auto py-12">
+        <div className="text-center space-y-4">
+          <h1 className="text-4xl font-bold font-headline">Welcome to RentSafeUK!</h1>
+          <p className="text-muted-foreground text-lg">
+            Let's get your rental portfolio set up. It only takes a few minutes.
+          </p>
+        </div>
+
+        <div className="grid gap-6 md:grid-cols-3">
+          <Card className="relative overflow-hidden border-primary/20 shadow-lg">
+            <div className="absolute top-0 right-0 p-4 opacity-10">
+              <Home className="h-24 w-24" />
+            </div>
+            <CardHeader>
+              <Badge className="w-fit mb-2">Step 1</Badge>
+              <CardTitle>Add Your First Property</CardTitle>
+              <CardDescription>Enter address and basic details to start tracking.</CardDescription>
+            </CardHeader>
+            <CardFooter>
+              <Button asChild className="w-full">
+                <Link href="/dashboard/properties/add">Add Property <ArrowRight className="ml-2 h-4 w-4" /></Link>
+              </Button>
+            </CardFooter>
+          </Card>
+
+          <Card className="opacity-50 grayscale">
+            <CardHeader>
+              <Badge variant="outline" className="w-fit mb-2">Step 2</Badge>
+              <CardTitle>Assign a Tenant</CardTitle>
+              <CardDescription>Link a tenant to your property to manage rent.</CardDescription>
+            </CardHeader>
+            <CardFooter>
+              <Button disabled className="w-full">Assign Tenant</Button>
+            </CardFooter>
+          </Card>
+
+          <Card className="opacity-50 grayscale">
+            <CardHeader>
+              <Badge variant="outline" className="w-fit mb-2">Step 3</Badge>
+              <CardTitle>Upload Compliance</CardTitle>
+              <CardDescription>Store your EPC, Gas Safety, and EICR records.</CardDescription>
+            </CardHeader>
+            <CardFooter>
+              <Button disabled className="w-full">Upload Documents</Button>
+            </CardFooter>
+          </Card>
+        </div>
+
+        <Card className="bg-muted/50 border-dashed">
+          <CardContent className="p-8 text-center space-y-4">
+            <CheckCircle2 className="h-12 w-12 text-primary mx-auto" />
+            <div className="space-y-2">
+              <h3 className="text-xl font-semibold">Why use RentSafeUK?</h3>
+              <p className="text-sm text-muted-foreground max-w-lg mx-auto">
+                Our AI-powered platform helps you stay compliant, manage repairs faster, and track your finances without the stress.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col gap-6">
