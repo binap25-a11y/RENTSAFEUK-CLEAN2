@@ -6,7 +6,13 @@ service firebase.storage {
     // This ensures a user can only access their own files.
     match /{folder}/{userId}/{allPaths=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId &&
-                           (folder == 'documents' || folder == 'maintenance' || folder == 'images' || folder == 'test-uploads');
+                           (folder == 'documents' || folder == 'maintenance' || folder == 'images');
+    }
+    
+    // Diagnostic rule for test uploads. Allows any authenticated user to write to the test path.
+    match /test-uploads/{allPaths=**} {
+      allow write: if request.auth != null;
+      allow read;
     }
   }
 }

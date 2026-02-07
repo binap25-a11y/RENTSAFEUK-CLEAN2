@@ -57,7 +57,8 @@ export default function Maintenance2Page() {
 
           try {
             const uniqueFileName = `${Date.now()}-${fileToUpload.name}`;
-            const fileRef = storageRef(storage, `test-uploads/${user.uid}/${uniqueFileName}`);
+            // Simplified path for diagnostic rule
+            const fileRef = storageRef(storage, `test-uploads/${uniqueFileName}`);
             
             console.log('Uploading to path:', fileRef.toString());
             const uploadResult = await uploadBytes(fileRef, fileToUpload);
