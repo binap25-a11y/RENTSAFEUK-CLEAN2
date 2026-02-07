@@ -195,11 +195,11 @@ export default function FinancialsPage() {
 
   const totalPaidRent = useMemo(() => {
     if (!rentPayments) return 0;
-    return rentPayments.reduce((acc, p) => acc + (p.amountPaid || 0), 0);
+    return rentPayments.reduce((acc, p) => acc + Number(p.amountPaid || 0), 0);
   }, [rentPayments]);
   
   const totalExpenses = useMemo(() => {
-    return expenses?.reduce((acc, expense) => acc + expense.amount, 0) || 0;
+    return expenses?.reduce((acc, expense) => acc + Number(expense.amount || 0), 0) || 0;
   }, [expenses]);
   
   const netIncome = totalPaidRent - totalExpenses;
@@ -213,7 +213,7 @@ export default function FinancialsPage() {
   const isLoading = isLoadingProperties || isLoadingExpenses || isLoadingPayments;
 
   const formatCurrency = (val: number) => {
-    return val.toLocaleString(undefined, {
+    return val.toLocaleString('en-GB', {
         style: 'currency',
         currency: 'GBP',
         minimumFractionDigits: 2,
@@ -423,7 +423,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
   }
 
   const totalExpenses = useMemo(() => {
-    return expenses?.reduce((acc, expense) => acc + expense.amount, 0) || 0;
+    return expenses?.reduce((acc, expense) => acc + Number(expense.amount || 0), 0) || 0;
   }, [expenses]);
 
   return (
@@ -555,12 +555,16 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
                       <Table>
                       <TableHeader className="bg-muted/30"><TableRow><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Paid By</TableHead><TableHead className="text-right">Amount (£)</TableHead></TableRow></TableHeader>
                       <TableBody>
-                          {expenses?.map((expense) => (
+                          {expenses?.sort((a,b) => {
+                              const dA = a.date instanceof Date ? a.date : new Date(a.date.seconds * 1000);
+                              const dB = b.date instanceof Date ? b.date : new Date(b.date.seconds * 1000);
+                              return dB.getTime() - dA.getTime();
+                          }).map((expense) => (
                           <TableRow key={expense.id} className="hover:bg-muted/20 transition-colors">
-                              <TableCell>{new Date(expense.date.seconds * 1000).toLocaleDateString()}</TableCell>
+                              <TableCell>{expense.date instanceof Date ? format(expense.date, 'dd/MM/yyyy') : format(new Date(expense.date.seconds * 1000), 'dd/MM/yyyy')}</TableCell>
                               <TableCell className="font-medium">{expense.expenseType}</TableCell>
                               <TableCell>{expense.paidBy}</TableCell>
-                              <TableCell className="text-right font-bold whitespace-nowrap">£{expense.amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
+                              <TableCell className="text-right font-bold whitespace-nowrap">£{Number(expense.amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
                           </TableRow>
                           ))}
                       </TableBody>
@@ -571,12 +575,12 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
                           <Card key={expense.id} className="shadow-none">
                               <CardHeader className="pb-2">
                                   <CardTitle className="text-base font-bold">{expense.expenseType}</CardTitle>
-                                  <CardDescription>{new Date(expense.date.seconds * 1000).toLocaleDateString()}</CardDescription>
+                                  <CardDescription>{expense.date instanceof Date ? format(expense.date, 'dd/MM/yyyy') : format(new Date(expense.date.seconds * 1000), 'dd/MM/yyyy')}</CardDescription>
                               </CardHeader>
                               <CardContent className="space-y-2 text-sm pt-0">
                                   <div className="flex justify-between items-center border-t pt-2">
                                       <span className="text-muted-foreground">Amount</span>
-                                      <span className="font-bold">£{expense.amount.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                      <span className="font-bold">£{Number(expense.amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
                                   </div>
                                   <div className="flex justify-between items-center border-t pt-2">
                                       <span className="text-muted-foreground">Paid By</span>
@@ -637,7 +641,7 @@ function AnnualSummary({
   const expensesByCategory = useMemo(() => {
     const categoryMap: { [key: string]: number } = {};
     expenses?.forEach(exp => {
-      categoryMap[exp.expenseType] = (categoryMap[exp.expenseType] || 0) + exp.amount;
+      categoryMap[exp.expenseType] = (categoryMap[exp.expenseType] || 0) + Number(exp.amount || 0);
     });
     return Object.entries(categoryMap)
       .sort(([, a], [, b]) => b - a)
@@ -725,7 +729,7 @@ function AnnualSummary({
                 </CardHeader>
                 <CardContent>
                     {isLoadingExpenses ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <div className="text-2xl font-bold">£{totalExpenses.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>}
-                    <p className="text-[10px] text-muted-foreground font-medium mt-1">
+                    <p className="text-[10px] text-muted-foreground font-medium mt-1 truncate">
                         {selectedProperty ? [selectedProperty.address.nameOrNumber, selectedProperty.address.street].filter(Boolean).join(', ') : 'No property selected'}
                     </p>
                 </CardContent>
@@ -869,7 +873,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
   };
 
   const totalExpectedRent = (selectedProperty?.tenancy?.monthlyRent || 0) * 12;
-  const totalPaid = useMemo(() => rentPayments?.reduce((acc, row) => acc + (row.amountPaid || 0), 0) || 0, [rentPayments]);
+  const totalPaid = useMemo(() => rentPayments?.reduce((acc, row) => acc + Number(row.amountPaid || 0), 0) || 0, [rentPayments]);
   const getRentStatusProps = (status: PaymentStatus) => {
     switch (status) {
       case 'Paid': return { Icon: CheckCircle2, className: "text-green-600 border-green-200 bg-green-50" };
@@ -878,7 +882,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
       case 'Pending': default: return { Icon: Clock, className: "" };
     }
   };
-  if (!selectedProperty) return <Card className="mt-6"><CardContent className='pt-10 pb-10 text-center text-muted-foreground border-2 border-dashed rounded-lg bg-muted/20'><Filter className="h-10 w-10 mx-auto mb-4 opacity-20" /><p>Select a property to view statement.</p></CardContent></Card>;
+  if (!selectedProperty) return <Card className="mt-6"><CardContent className='pt-10 pb-10 text-center text-muted-foreground border-2 border-dashed rounded-lg bg-muted/30'><Filter className="h-10 w-10 mx-auto mb-4 opacity-20" /><p>Select a property to view statement.</p></CardContent></Card>;
   if (!selectedProperty.tenancy?.monthlyRent) return <Card className="mt-6 border-yellow-200 bg-yellow-50/30"><CardContent className="pt-10 pb-10 text-center border-2 border-dashed rounded-lg"><Banknote className="h-10 w-10 mx-auto mb-4 text-yellow-600/40" /><p className="font-semibold text-yellow-800">Tenancy details missing</p><Button asChild variant="outline" size="sm" className="mt-4 bg-background"><Link href={`/dashboard/properties/${selectedProperty.id}/edit`}>Setup Financials</Link></Button></CardContent></Card>;
 
   return (
@@ -903,7 +907,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                         return (
                             <TableRow key={row.month} className="hover:bg-muted/20">
                             <TableCell className="font-bold text-sm">{row.month}</TableCell>
-                            <TableCell className="text-sm">£{row.rent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                            <TableCell className="text-sm">£{Number(row.rent).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                             <TableCell>
                                 <Select value={row.status} onValueChange={(newStatus) => handleStatusChange(row.month, newStatus as PaymentStatus)}>
                                 <SelectTrigger className={"w-[160px] h-9 text-xs font-bold " + className}><div className="flex items-center gap-2"><Icon className="h-3.5 w-3.5" /><SelectValue /></div></SelectTrigger>
@@ -920,7 +924,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                         const { Icon, className } = getRentStatusProps(row.status);
                         return (
                             <Card key={row.month} className="shadow-none border-muted/60">
-                                <CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-base font-bold">{row.month}</CardTitle><span className="text-base font-semibold">£{row.rent.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></CardHeader>
+                                <CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-base font-bold">{row.month}</CardTitle><span className="text-base font-semibold">£{Number(row.rent).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></CardHeader>
                                 <CardContent>
                                     <Select value={row.status} onValueChange={(newStatus) => handleStatusChange(row.month, newStatus as PaymentStatus)}>
                                     <SelectTrigger className={"w-full font-medium " + className}><div className="flex items-center gap-2"><Icon className="h-4 w-4" /><SelectValue /></div></SelectTrigger>
@@ -963,10 +967,19 @@ function ArrearsManagement({ properties }: { properties: Property[] }) {
       });
       const snapshots = await Promise.all(promises);
       snapshots.forEach((snap, index) => {
-        const propertyId = properties.filter(p => p.status === 'Occupied')[index].id;
+        const occupiedProps = properties.filter(p => p.status === 'Occupied');
+        const propertyId = occupiedProps[index].id;
         const data = snap.docs[0]?.data() as RentPayment | undefined;
         if (!data || (data.status !== 'Paid')) {
-          results.push({ id: snap.docs[0]?.id || `${currentYear}-${currentMonth}`, propertyId, year: currentYear, month: currentMonth, status: data?.status || 'Unpaid', expectedAmount: data?.expectedAmount || properties.find(p => p.id === propertyId)?.tenancy?.monthlyRent || 0, amountPaid: data?.amountPaid || 0 });
+          results.push({ 
+            id: snap.docs[0]?.id || `${currentYear}-${currentMonth}`, 
+            propertyId, 
+            year: currentYear, 
+            month: currentMonth, 
+            status: data?.status || 'Unpaid', 
+            expectedAmount: data?.expectedAmount || properties.find(p => p.id === propertyId)?.tenancy?.monthlyRent || 0, 
+            amountPaid: data?.amountPaid || 0 
+          });
         }
       });
       setArrears(results);
@@ -979,7 +992,13 @@ function ArrearsManagement({ properties }: { properties: Property[] }) {
     if (!firestore || !user) return;
     const rentPaymentRef = doc(firestore, 'properties', payment.propertyId, 'rentPayments', `${payment.year}-${payment.month}`);
     const updateData = { ...payment, ownerId: user.uid, status: newStatus, amountPaid: amountPaid ?? (newStatus === 'Paid' ? payment.expectedAmount : 0) };
-    try { await setDoc(rentPaymentRef, updateData, { merge: true }); toast({ title: 'Payment Updated' }); fetchArrears(); } catch (error) { toast({ variant: 'destructive', title: 'Update Failed' }); }
+    try { 
+      await setDoc(rentPaymentRef, updateData, { merge: true }); 
+      toast({ title: 'Payment Updated' }); 
+      fetchArrears(); 
+    } catch (error) { 
+      toast({ variant: 'destructive', title: 'Update Failed' }); 
+    }
   };
 
   const handleSavePartial = async () => {
@@ -1011,8 +1030,8 @@ function ArrearsManagement({ properties }: { properties: Property[] }) {
                   {arrears.map((row) => (
                     <TableRow key={row.propertyId}>
                       <TableCell className="font-medium text-sm">{properties.find(p => p.id === row.propertyId)?.address.street}</TableCell>
-                      <TableCell className="text-sm">£{row.expectedAmount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                      <TableCell className="text-destructive font-bold text-sm">£{row.amountPaid?.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                      <TableCell className="text-sm">£{Number(row.expectedAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                      <TableCell className="text-destructive font-bold text-sm">£{Number(row.amountPaid || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
                       <TableCell><Badge variant={row.status === 'Partially Paid' ? 'secondary' : 'destructive'}>{row.status}</Badge></TableCell>
                       <TableCell className="text-right"><div className="flex justify-end gap-1.5"><Button size="sm" variant="outline" onClick={() => setPartialPaymentData({ payment: row, amount: '' })}>Partial</Button><Button size="sm" onClick={() => handleUpdateStatus(row, 'Paid')}>Mark Paid</Button></div></TableCell>
                     </TableRow>
