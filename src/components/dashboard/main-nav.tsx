@@ -31,6 +31,7 @@ import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/component
 
 const menuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
+  { href: '/dashboard/expenses', label: 'Financials', icon: CreditCard },
   { 
     href: '/dashboard/properties', 
     label: 'Properties', 
@@ -79,7 +80,6 @@ const menuItems = [
         { href: '/dashboard/documents/upload', label: 'Upload Document' },
     ],
   },
-  { href: '/dashboard/expenses', label: 'Financials', icon: CreditCard },
   { href: '/dashboard/reminders', label: 'Reminders', icon: Bell },
   { href: '/dashboard/help', label: 'Help & Launch', icon: HelpCircle },
 ];
