@@ -37,7 +37,7 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, Timestamp, getDocs, collectionGroup } from 'firebase/firestore';
+import { collection, query, where, Timestamp, getDocs } from 'firebase/firestore';
 import { useState, useEffect, useMemo } from 'react';
 import { format, isFuture, isBefore, addDays } from 'date-fns';
 import {
@@ -150,8 +150,16 @@ export default function DashboardPage() {
   }, [user, firestore]);
   const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
   
-  useEffect(() => {
-    if (!firestore || !user) {
+useEffect(() => {
+    if (isLoadingProperties || !user || !firestore) {
+      return;
+    }
+
+    if (!properties || properties.length === 0) {
+      setMaintenanceLogs([]);
+      setInspections([]);
+      setDocuments([]);
+      setRentPayments([]);
       setIsSubcollectionsLoading(false);
       return;
     }
@@ -159,50 +167,45 @@ export default function DashboardPage() {
     const fetchDashboardData = async () => {
       setIsSubcollectionsLoading(true);
       try {
-        const maintenanceQuery = query(
-          collectionGroup(firestore, 'maintenanceLogs'),
-          where('ownerId', '==', user.uid)
-        );
-        const inspectionQuery = query(
-          collectionGroup(firestore, 'inspections'),
-          where('ownerId', '==', user.uid)
-        );
-        const documentQuery = query(
-          collectionGroup(firestore, 'documents'),
-          where('ownerId', '==', user.uid)
-        );
-        const rentQuery = query(
-          collectionGroup(firestore, 'rentPayments'),
-          where('ownerId', '==', user.uid),
-          where('year', '==', new Date().getFullYear()),
-          where('month', '==', format(new Date(), 'MMMM'))
-        );
+        const promises = properties.map(async (prop) => {
+          const maintenanceQuery = query(collection(firestore, 'properties', prop.id, 'maintenanceLogs'));
+          const inspectionQuery = query(collection(firestore, 'properties', prop.id, 'inspections'));
+          const documentQuery = query(collection(firestore, 'properties', prop.id, 'documents'));
+          const rentQuery = query(collection(firestore, 'properties', prop.id, 'rentPayments'), where('year', '==', new Date().getFullYear()), where('month', '==', format(new Date(), 'MMMM')));
 
-        const [
-          maintenanceSnap,
-          inspectionSnap,
-          documentSnap,
-          rentSnap,
-        ] = await Promise.all([
-          getDocs(maintenanceQuery),
-          getDocs(inspectionQuery),
-          getDocs(documentQuery),
-          getDocs(rentQuery),
-        ]);
+          const [
+            maintenanceSnap,
+            inspectionSnap,
+            documentSnap,
+            rentSnap,
+          ] = await Promise.all([
+            getDocs(maintenanceQuery),
+            getDocs(inspectionQuery),
+            getDocs(documentQuery),
+            getDocs(rentQuery),
+          ]);
 
-        const getPropertyId = (ref: any) => ref.path.split('/')[1];
+          const maintenance = maintenanceSnap.docs.map(doc => ({ ...(doc.data() as MaintenanceLog), id: doc.id, propertyId: prop.id }));
+          const inspections = inspectionSnap.docs.map(doc => ({ ...(doc.data() as Inspection), id: doc.id, propertyId: prop.id }));
+          const documents = documentSnap.docs.map(doc => ({ ...(doc.data() as Document), id: doc.id, propertyId: prop.id }));
+          const rentPayments = rentSnap.docs.map(doc => ({ ...(doc.data() as RentPayment), id: doc.id, propertyId: prop.id }));
+          
+          return { maintenance, inspections, documents, rentPayments };
+        });
 
-        setMaintenanceLogs(maintenanceSnap.docs.map(doc => ({ ...(doc.data() as MaintenanceLog), id: doc.id, propertyId: getPropertyId(doc.ref) })));
-        setInspections(inspectionSnap.docs.map(doc => ({ ...(doc.data() as Inspection), id: doc.id, propertyId: getPropertyId(doc.ref) })));
-        setDocuments(documentSnap.docs.map(doc => ({ ...(doc.data() as Document), id: doc.id, propertyId: getPropertyId(doc.ref) })));
-        setRentPayments(rentSnap.docs.map(doc => ({ ...(doc.data() as RentPayment), id: doc.id, propertyId: getPropertyId(doc.ref) })));
+        const results = await Promise.all(promises);
+
+        setMaintenanceLogs(results.flatMap(r => r.maintenance));
+        setInspections(results.flatMap(r => r.inspections));
+        setDocuments(results.flatMap(r => r.documents));
+        setRentPayments(results.flatMap(r => r.rentPayments));
 
       } catch (error: any) {
         console.error("Error fetching dashboard data:", error);
         toast({
           variant: 'destructive',
           title: 'Error Loading Dashboard Data',
-          description: error.message + " You may need to create a Firestore index. Check the browser console for a link to create it.",
+          description: error.message,
         });
       } finally {
         setIsSubcollectionsLoading(false);
@@ -210,7 +213,7 @@ export default function DashboardPage() {
     };
 
     fetchDashboardData();
-  }, [firestore, user, toast]);
+  }, [properties, isLoadingProperties, firestore, user, toast]);
 
 
   const isLoading = isLoadingProperties || isSubcollectionsLoading;
