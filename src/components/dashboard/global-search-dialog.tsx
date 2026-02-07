@@ -12,7 +12,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { useUser, useFirestore } from '@/firebase';
 import { collection, query, where, getDocs } from 'firebase/firestore';
-import { Home, Users, HardHat, Wrench, CalendarCheck, Loader2, Search, Command } from 'lucide-react';
+import { Home, Users, HardHat, Wrench, CalendarCheck, Loader2, Search } from 'lucide-react';
 
 // Data types
 interface Searchable {
@@ -79,7 +79,7 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
           const [propertySnap, tenantSnap, contractorSnap] = await Promise.all([
             getDocs(propertyQuery),
             getDocs(tenantQuery),
-            getDocs(contractorQuery),
+            getDocs(contractorSnap),
           ]);
           
           const properties = propertySnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Property));
@@ -211,9 +211,6 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
             onChange={(e) => setSearchTerm(e.target.value)}
             autoFocus
           />
-          <div className="flex items-center gap-1 rounded border bg-muted px-1.5 py-0.5 font-mono text-[10px] font-medium opacity-100">
-            <span className="text-xs">ESC</span>
-          </div>
         </div>
         <div className="p-2 max-h-[60vh] overflow-y-auto">
             {isLoading ? (
@@ -229,8 +226,7 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
                 </div>
             ) : !searchTerm ? (
                 <div className="p-6">
-                    <h2 className="text-sm font-semibold mb-4 flex items-center gap-2">
-                        <Command className="h-4 w-4" />
+                    <h2 className="text-sm font-semibold mb-4">
                         Quick Search
                     </h2>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -281,11 +277,7 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
                 </div>
             )}
         </div>
-        <div className="p-3 border-t bg-muted/20 flex justify-between items-center text-[10px] text-muted-foreground uppercase tracking-tighter">
-            <div className="flex gap-4">
-                <span className="flex items-center gap-1"><span className="p-0.5 rounded border bg-background">ENTER</span> to select</span>
-                <span className="flex items-center gap-1"><span className="p-0.5 rounded border bg-background">ESC</span> to close</span>
-            </div>
+        <div className="p-3 border-t bg-muted/20 flex justify-end items-center text-[10px] text-muted-foreground uppercase tracking-tighter">
             <div className="font-bold text-primary/60">RentSafeUK Search</div>
         </div>
       </DialogContent>
