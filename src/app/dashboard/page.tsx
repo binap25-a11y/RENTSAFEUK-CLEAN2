@@ -131,7 +131,6 @@ export default function DashboardPage() {
   const [isAggregating, setIsAggregating] = useState(false);
 
   // Aggregation Effect: Fetch sub-collections for each property in parallel
-  // This avoids Collection Group index requirements while maintaining high speed.
   useEffect(() => {
     if (!user || !properties || properties.length === 0) {
         setMaintenanceLogs([]);
@@ -266,7 +265,6 @@ export default function DashboardPage() {
     if (isLoading || !properties) return [];
     const occupiedPropertiesCount = properties.filter(p => p.status === 'Occupied').length;
     
-    // Filter payments for current month only
     const monthlyPayments = allRentPayments.filter(p => p.year === currentYear && p.month === currentMonth);
     
     const statusCounts: Record<'Paid' | 'Partially Paid' | 'Unpaid', number> = { 'Paid': 0, 'Partially Paid': 0, 'Unpaid': 0 };
