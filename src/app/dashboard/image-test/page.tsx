@@ -2,12 +2,12 @@
 
 import { useState } from 'react';
 import Image from 'next/image';
-import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { useStorage } from '@/firebase'; // No need for useUser for this test
+import { useStorage } from '@/firebase';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Loader2, UploadCloud, AlertCircle } from 'lucide-react';
+import { Loader2, UploadCloud, AlertCircle, Terminal } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
@@ -21,11 +21,11 @@ export default function ImageTestPage() {
   const [previewUrl, setPreviewUrl] = useState<string | null>(null);
   const [error, setError] = useState<string | null>(null);
 
-
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    if (e.target.files && e.target.files.length > 0) {
-      setFileToUpload(e.target.files[0]);
-      setPreviewUrl(null); // Clear previous preview
+    const file = e.target.files?.[0];
+    if (file) {
+      setFileToUpload(file);
+      setPreviewUrl(URL.createObjectURL(file)); // Show local preview immediately
       setError(null);
     }
   };
@@ -49,10 +49,8 @@ export default function ImageTestPage() {
     }
 
     setIsUploading(true);
-    setPreviewUrl(null);
     setError(null);
 
-    // This path is configured in storage.rules to be publicly writable for testing.
     const testPath = `public-test-uploads/${Date.now()}-${fileToUpload.name}`;
     const fileRef = storageRef(storage, testPath);
 
@@ -64,16 +62,22 @@ export default function ImageTestPage() {
       setError(null);
       toast({
         title: 'Upload Successful',
-        description: 'Image has been uploaded and is now previewed below.',
+        description: 'Image has been uploaded and is now being served from Firebase Storage.',
       });
     } catch (e: any) {
       console.error('Image Upload Error:', e);
       const errorMessage = e.message || 'An unknown error occurred.';
-      setError(`Upload Failed. Code: ${e.code}. Message: ${errorMessage}`);
+      
+      if (e.code === 'storage/retry-limit-exceeded') {
+          setError(`Upload timed out. This is a network configuration issue. Please ensure you have run the CORS command provided above.`);
+      } else {
+          setError(`Upload Failed. Code: ${e.code}. Message: ${errorMessage}`);
+      }
+      
       toast({
         variant: 'destructive',
         title: 'Upload Failed',
-        description: errorMessage,
+        description: 'Please check the error message on the page.',
       });
     } finally {
       setIsUploading(false);
@@ -85,30 +89,43 @@ export default function ImageTestPage() {
        <div>
         <h1 className="text-3xl font-bold">Image Upload Test</h1>
         <p className="text-muted-foreground">
-          This page tests the fundamental connection to Firebase Storage by uploading to a public test directory.
+          This page is a clean slate to test the fundamental connection to Firebase Storage.
         </p>
       </div>
+
+       <Alert variant="default" className="border-primary">
+          <Terminal className="h-4 w-4" />
+          <AlertTitle className="font-bold">Important: One-Time Fix Required</AlertTitle>
+          <AlertDescription>
+            <p className="mb-2">The upload timeout error is caused by a security policy in your cloud project. To permanently fix it, please run the following command in your terminal. This allows your app to communicate with your storage bucket.</p>
+            <pre className="mt-2 mb-3 p-3 bg-muted rounded-md text-xs font-mono overflow-x-auto"><code>gcloud storage buckets update gs://studio-7375290328-5d091.appspot.com --cors-file=cors.json</code></pre>
+            <p className="text-xs text-muted-foreground">After running the command, try the upload test below.</p>
+          </AlertDescription>
+      </Alert>
+
       <Card>
         <CardHeader>
-          <CardTitle>Upload an Image</CardTitle>
+          <CardTitle>Test Uploader</CardTitle>
           <CardDescription>
             Select an image file from your device and click upload.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="grid w-full max-w-sm items-center gap-1.5">
-            <Label htmlFor="image-upload">Picture</Label>
+            <Label htmlFor="image-upload">Image File</Label>
             <Input id="image-upload" type="file" accept="image/*" onChange={handleFileChange} />
           </div>
-          <Button onClick={handleUpload} disabled={isUploading || !fileToUpload}>
-            {isUploading ? (
-              <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-            ) : (
-              <UploadCloud className="mr-2 h-4 w-4" />
-            )}
-            Upload Image
-          </Button>
         </CardContent>
+        <CardFooter>
+            <Button onClick={handleUpload} disabled={isUploading || !fileToUpload}>
+                {isUploading ? (
+                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                ) : (
+                <UploadCloud className="mr-2 h-4 w-4" />
+                )}
+                Run Upload Test
+            </Button>
+        </CardFooter>
       </Card>
       
       {error && (
@@ -119,19 +136,25 @@ export default function ImageTestPage() {
         </Alert>
       )}
 
-      {previewUrl && (
+      {previewUrl && !isUploading && (
         <Card>
           <CardHeader>
             <CardTitle>Image Preview</CardTitle>
-            <CardDescription>This image was successfully uploaded to Firebase Storage and is now being served from there.</CardDescription>
+            <CardDescription>
+                { previewUrl.startsWith('blob:') 
+                    ? "This is a local preview of your selected file. Click 'Run Upload Test' to upload." 
+                    : "This image was successfully uploaded to Firebase Storage and is now being served from there."
+                }
+            </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="relative aspect-video w-full max-w-2xl mx-auto overflow-hidden rounded-md border">
               <Image
                 src={previewUrl}
-                alt="Uploaded image preview"
+                alt="Image preview"
                 fill
                 className="object-contain"
+                unoptimized // Necessary for blob URLs
               />
             </div>
           </CardContent>
