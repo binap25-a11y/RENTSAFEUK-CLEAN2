@@ -19,7 +19,7 @@ service cloud.firestore {
     match /properties/{propertyId} {
       // Use explicit get and list rules for better query authorization
       allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn() && (request.query.limit <= 500 && resource.data.ownerId == request.auth.uid);
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update, delete: if isOwner(resource.data);
 
@@ -32,7 +32,7 @@ service cloud.firestore {
 
     match /tenants/{tenantId} {
       allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn() && (request.query.limit <= 500 && resource.data.ownerId == request.auth.uid);
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update, delete: if isOwner(resource.data);
       
@@ -44,7 +44,7 @@ service cloud.firestore {
 
     match /contractors/{contractorId} {
       allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow list: if isSignedIn() && (request.query.limit <= 500 && resource.data.ownerId == request.auth.uid);
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       allow update, delete: if isOwner(resource.data);
     }
