@@ -32,7 +32,7 @@ import { Upload, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -40,6 +40,8 @@ import {
   useFirestore,
   useCollection,
   useMemoFirebase,
+  errorEmitter,
+  FirestorePermissionError,
 } from '@/firebase';
 import { collection, query, where, addDoc } from 'firebase/firestore';
 
@@ -267,6 +269,12 @@ export default function SingleLetInspectionPage() {
       router.push('/dashboard/inspections');
     } catch (error) {
       console.error('Failed to save inspection:', error);
+      const permissionError = new FirestorePermissionError({
+        path: 'inspections',
+        operation: 'create',
+        requestResourceData: data,
+      });
+      errorEmitter.emit('permission-error', permissionError);
       toast({
         variant: 'destructive',
         title: 'Save Failed',
