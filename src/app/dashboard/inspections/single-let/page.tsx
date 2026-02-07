@@ -32,7 +32,7 @@ import { Upload, Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -197,6 +197,7 @@ export default function SingleLetInspectionPage() {
   const router = useRouter();
   const { user } = useUser();
   const firestore = useFirestore();
+  const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<InspectionFormValues>({
     resolver: zodResolver(inspectionSchema),
@@ -217,6 +218,19 @@ export default function SingleLetInspectionPage() {
     form.setValue('scheduledDate', new Date());
   }, [form]);
 
+  // Helper to remove undefined values and non-serializable fields
+  const prepareForFirestore = (obj: any): any => {
+    // 1. Convert undefined to null or remove them
+    // 2. Destructure out special objects like FileList
+    const cleaned = JSON.parse(JSON.stringify(obj, (key, value) => {
+        if (value === undefined) return null;
+        // Strip out FileList and other complex objects that JSON.stringify can't handle well
+        if (value && typeof value === 'object' && value.constructor.name === 'FileList') return null;
+        return value;
+    }));
+    return cleaned;
+  };
+
   async function onSubmit(data: InspectionFormValues) {
     if (!user || !firestore) {
       toast({
@@ -227,18 +241,26 @@ export default function SingleLetInspectionPage() {
       return;
     }
 
-    const { propertyId, ...inspectionData } = data;
-
-    const newInspection = {
-      ...inspectionData,
-      ownerId: user.uid,
-      propertyId: propertyId,
-      type: 'Single-Let',
-    };
+    setIsSubmitting(true);
 
     try {
+      const { propertyId, report, ...inspectionData } = data;
+
+      // Note: In a real app, 'report' (FileList) would be uploaded to Storage first.
+      // For this prototype fix, we ensure it's not passed to Firestore to avoid the crash.
+      
+      const newInspection = {
+        ...inspectionData,
+        ownerId: user.uid,
+        propertyId: propertyId,
+        type: 'Single-Let',
+      };
+
+      // Ensure no undefineds or FileLists are sent to Firestore
+      const cleanedSubmission = prepareForFirestore(newInspection);
+
       const inspectionsCollection = collection(firestore, 'properties', propertyId, 'inspections');
-      await addDoc(inspectionsCollection, newInspection);
+      await addDoc(inspectionsCollection, cleanedSubmission);
       
       toast({
         title: 'Inspection Saved',
@@ -250,8 +272,10 @@ export default function SingleLetInspectionPage() {
       toast({
         variant: 'destructive',
         title: 'Save Failed',
-        description: 'There was an error saving the inspection. Please try again.',
+        description: 'There was an error saving the inspection. Please check your data and try again.',
       });
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -601,7 +625,14 @@ export default function SingleLetInspectionPage() {
               <Button type="button" variant="outline" asChild>
                 <Link href="/dashboard/inspections">Cancel</Link>
               </Button>
-              <Button type="submit">Save Inspection</Button>
+              <Button type="submit" disabled={isSubmitting}>
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving...
+                  </>
+                ) : 'Save Inspection'}
+              </Button>
             </div>
           </form>
         </Form>

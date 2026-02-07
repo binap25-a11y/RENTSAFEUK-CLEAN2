@@ -34,7 +34,7 @@ import { Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useEffect } from 'react';
+import { useEffect, useState } from 'react';
 import {
   useUser,
   useFirestore,
@@ -202,6 +202,7 @@ export default function HmoInspectionPage() {
     const router = useRouter();
     const { user } = useUser();
     const firestore = useFirestore();
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const form = useForm<HmoInspectionFormValues>({
         resolver: zodResolver(hmoInspectionSchema),
@@ -221,6 +222,12 @@ export default function HmoInspectionPage() {
         form.setValue('inspectionDate', new Date());
      }, [form]);
 
+    const prepareForFirestore = (obj: any): any => {
+        return JSON.parse(JSON.stringify(obj, (key, value) => {
+            if (value === undefined) return null;
+            return value;
+        }));
+    };
 
     async function onSubmit(data: HmoInspectionFormValues) {
         if (!user || !firestore) {
@@ -231,6 +238,8 @@ export default function HmoInspectionPage() {
             });
             return;
         }
+
+        setIsSubmitting(true);
 
         const { propertyId, ...inspectionData } = data;
 
@@ -244,8 +253,9 @@ export default function HmoInspectionPage() {
         };
 
         try {
+            const cleanedSubmission = prepareForFirestore(newInspection);
             const inspectionsCollection = collection(firestore, 'properties', propertyId, 'inspections');
-            await addDoc(inspectionsCollection, newInspection);
+            await addDoc(inspectionsCollection, cleanedSubmission);
             
             toast({
                 title: 'HMO Inspection Saved',
@@ -257,8 +267,10 @@ export default function HmoInspectionPage() {
             toast({
                 variant: 'destructive',
                 title: 'Save Failed',
-                description: 'There was an error saving the inspection. Please try again.',
+                description: 'There was an error saving the inspection. Please check your data and try again.',
             });
+        } finally {
+            setIsSubmitting(false);
         }
     }
 
@@ -541,7 +553,9 @@ export default function HmoInspectionPage() {
                             <Button type="button" variant="outline" asChild>
                                 <Link href="/dashboard/inspections">Cancel</Link>
                             </Button>
-                            <Button type="submit">Save Inspection Record</Button>
+                            <Button type="submit" disabled={isSubmitting}>
+                                {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : 'Save Inspection Record'}
+                            </Button>
                         </div>
                     </form>
                 </Form>

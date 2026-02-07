@@ -20,8 +20,16 @@ service cloud.firestore {
       allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
 
       match /{allSubcollections=**} {
-        allow create: if isSignedIn() && (request.resource.data.ownerId == request.auth.uid || resource.data.ownerId == request.auth.uid);
-        allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+        // Allow creation if the new data belongs to the user OR if the parent property belongs to the user
+        allow create: if isSignedIn() && (
+          request.resource.data.ownerId == request.auth.uid || 
+          get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid
+        );
+        // Allow read/write if the document belongs to the user
+        allow read, update, delete: if isSignedIn() && (
+          resource.data.ownerId == request.auth.uid ||
+          get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid
+        );
       }
     }
 
@@ -30,8 +38,14 @@ service cloud.firestore {
       allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       
       match /{allSubcollections=**} {
-        allow create: if isSignedIn() && (request.resource.data.ownerId == request.auth.uid || resource.data.ownerId == request.auth.uid);
-        allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+        allow create: if isSignedIn() && (
+          request.resource.data.ownerId == request.auth.uid || 
+          get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid
+        );
+        allow read, update, delete: if isSignedIn() && (
+          resource.data.ownerId == request.auth.uid ||
+          get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid
+        );
       }
     }
 

@@ -19,7 +19,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Loader2, Eye } from 'lucide-react';
+import { PlusCircle, Loader2, Eye, CalendarCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import {
   useUser,
@@ -103,165 +103,135 @@ export default function InspectionsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6">
-      <div className="space-y-4">
-        <div>
-          <h1 className="text-3xl font-bold font-headline">Property Inspections</h1>
-          <p className="text-muted-foreground text-lg">
-            Manage your schedule and record findings from property walk-throughs across your portfolio.
+    <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-6">
+        <div className="space-y-2">
+          <div className="flex items-center gap-2 text-primary">
+            <CalendarCheck className="h-6 w-6" />
+            <h1 className="text-3xl font-bold font-headline tracking-tight">Property Inspections</h1>
+          </div>
+          <p className="text-muted-foreground text-lg max-w-3xl">
+            Streamline your portfolio management with digital walk-throughs. Choose a report type below to start recording findings.
           </p>
         </div>
-        <div className="flex flex-wrap gap-3">
-          <Button asChild className="shadow-sm">
+        
+        <div className="flex flex-wrap gap-4">
+          <Button asChild size="lg" className="shadow-md transition-all hover:scale-[1.02] active:scale-[0.98]">
             <Link href="/dashboard/inspections/single-let">
-              <PlusCircle className="mr-2 h-4 w-4" /> New Single-Let Inspection
+              <PlusCircle className="mr-2 h-5 w-5" /> Start Single-Let Inspection
             </Link>
           </Button>
-          <Button asChild variant="outline" className="shadow-sm">
+          <Button asChild variant="outline" size="lg" className="shadow-sm transition-all hover:scale-[1.02] active:scale-[0.98] bg-background">
             <Link href="/dashboard/inspections/hmo">
-              <PlusCircle className="mr-2 h-4 w-4" /> New HMO Inspection
+              <PlusCircle className="mr-2 h-5 w-5" /> Start HMO Inspection
             </Link>
           </Button>
         </div>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Previous Inspections</CardTitle>
-          <CardDescription>
-            A log of all completed and scheduled inspections.
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="flex items-center gap-2">
-            <Label htmlFor="property-filter" className="whitespace-nowrap">
-              Filter by Property
-            </Label>
-            <Select
-              onValueChange={setSelectedPropertyId}
-              value={selectedPropertyId}
-            >
-              <SelectTrigger
-                id="property-filter"
-                className="w-full md:w-[300px]"
+      <Card className="border-none shadow-lg">
+        <CardHeader className="border-b bg-muted/30 pb-6">
+          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-6">
+            <div>
+              <CardTitle>Inspection History</CardTitle>
+              <CardDescription>
+                Filter and view records from previous property checks.
+              </CardDescription>
+            </div>
+            <div className="flex flex-col sm:flex-row items-start sm:items-center gap-3">
+              <Label htmlFor="property-filter" className="text-sm font-semibold whitespace-nowrap">
+                Property
+              </Label>
+              <Select
+                onValueChange={setSelectedPropertyId}
+                value={selectedPropertyId}
               >
-                <SelectValue
-                  placeholder={
-                    isLoadingProperties
-                      ? 'Loading...'
-                      : 'Select a property to view inspections'
-                  }
-                />
-              </SelectTrigger>
-              <SelectContent>
-                {properties?.map((prop) => (
-                  <SelectItem key={prop.id} value={prop.id}>
-                    {[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}
-                  </SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
+                <SelectTrigger
+                  id="property-filter"
+                  className="w-full md:w-[320px] bg-background"
+                >
+                  <SelectValue
+                    placeholder={
+                      isLoadingProperties
+                        ? 'Loading properties...'
+                        : 'Select a property to view logs'
+                    }
+                  />
+                </SelectTrigger>
+                <SelectContent>
+                  {properties?.map((prop) => (
+                    <SelectItem key={prop.id} value={prop.id}>
+                      {[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
+            </div>
           </div>
-          
+        </CardHeader>
+        <CardContent className="p-0">
           {isLoadingInspections ? (
               <div className="flex justify-center items-center h-64">
-                <Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" />
+                <Loader2 className="mx-auto h-8 w-8 animate-spin text-primary" />
               </div>
           ) : !inspections?.length ? (
-              <div className="text-center py-10 text-muted-foreground">
-                {selectedPropertyId
-                  ? 'No inspections found for this property.'
-                  : 'Select a property to see inspections.'}
+              <div className="text-center py-20 px-6 text-muted-foreground">
+                <div className="bg-muted/50 rounded-full h-16 w-16 flex items-center justify-center mx-auto mb-4">
+                  <CalendarCheck className="h-8 w-8 opacity-20" />
+                </div>
+                <p className="text-lg font-medium text-foreground mb-1">
+                  {selectedPropertyId ? 'No inspection records found.' : 'Select a property above'}
+                </p>
+                <p className="text-sm">
+                  {selectedPropertyId 
+                    ? 'Start a new inspection using the buttons above to populate this list.' 
+                    : 'Choose a property from your portfolio to see its history.'}
+                </p>
               </div>
           ) : (
-            <>
-              {/* Desktop Table View */}
-              <div className="hidden rounded-md border md:block">
-                <Table>
-                  <TableHeader>
-                    <TableRow>
-                      <TableHead>Property</TableHead>
-                      <TableHead>Type</TableHead>
-                      <TableHead>Status</TableHead>
-                      <TableHead>Date</TableHead>
-                      <TableHead className="text-right">Actions</TableHead>
+            <div className="overflow-x-auto">
+              <Table>
+                <TableHeader className="bg-muted/50">
+                  <TableRow>
+                    <TableHead className="pl-6">Type</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead>Inspection Date</TableHead>
+                    <TableHead className="text-right pr-6">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {inspections?.map((inspection) => (
+                    <TableRow key={inspection.id} className="hover:bg-muted/30 transition-colors">
+                      <TableCell className="font-semibold pl-6">
+                        {inspection.type}
+                      </TableCell>
+                      <TableCell>
+                        <Badge variant={getStatusVariant(inspection.status)} className="capitalize">
+                          {inspection.status}
+                        </Badge>
+                      </TableCell>
+                      <TableCell className="text-muted-foreground">
+                        {format(
+                          inspection.scheduledDate instanceof Date
+                            ? inspection.scheduledDate
+                            : new Date(inspection.scheduledDate.seconds * 1000),
+                          'PPP'
+                        )}
+                      </TableCell>
+                      <TableCell className="text-right pr-6">
+                          <Button asChild variant="ghost" size="sm" className="hover:bg-primary/10 hover:text-primary">
+                              <Link href={`/dashboard/inspections/${inspection.id}?propertyId=${selectedPropertyId}`}>
+                                  <Eye className="mr-2 h-4 w-4" />
+                                  View Details
+                              </Link>
+                          </Button>
+                      </TableCell>
                     </TableRow>
-                  </TableHeader>
-                  <TableBody>
-                    {inspections?.map((inspection) => (
-                      <TableRow key={inspection.id}>
-                        <TableCell className="font-medium">
-                          {getPropertyAddress(selectedPropertyId)}
-                        </TableCell>
-                        <TableCell>{inspection.type}</TableCell>
-                        <TableCell>
-                          <Badge variant={getStatusVariant(inspection.status)}>
-                            {inspection.status}
-                          </Badge>
-                        </TableCell>
-                        <TableCell>
-                          {format(
-                            inspection.scheduledDate instanceof Date
-                              ? inspection.scheduledDate
-                              : new Date(inspection.scheduledDate.seconds * 1000),
-                            'dd/MM/yyyy'
-                          )}
-                        </TableCell>
-                        <TableCell className="text-right">
-                            <Button asChild variant="outline" size="icon">
-                                <Link href={`/dashboard/inspections/${inspection.id}?propertyId=${selectedPropertyId}`}>
-                                    <Eye className="h-4 w-4" />
-                                    <span className="sr-only">View Inspection</span>
-                                </Link>
-                            </Button>
-                        </TableCell>
-                      </TableRow>
-                    ))}
-                  </TableBody>
-                </Table>
-              </div>
-              
-              {/* Mobile Card View */}
-              <div className="grid gap-4 md:hidden">
-                {inspections.map((inspection) => (
-                    <Card key={inspection.id}>
-                        <CardHeader>
-                            <div className="flex justify-between items-start">
-                            <div>
-                                <CardTitle className='text-base'>{getPropertyAddress(selectedPropertyId)}</CardTitle>
-                                <CardDescription>{inspection.type}</CardDescription>
-                            </div>
-                            <Button asChild variant="outline" size="sm">
-                                <Link href={`/dashboard/inspections/${inspection.id}?propertyId=${selectedPropertyId}`}>
-                                    <Eye className="mr-2 h-4 w-4" />
-                                    View
-                                </Link>
-                            </Button>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="space-y-2 text-sm pt-0">
-                            <div className="flex justify-between items-center border-t pt-2">
-                                <span className="text-muted-foreground">Status</span>
-                                <Badge variant={getStatusVariant(inspection.status)}>
-                                    {inspection.status}
-                                </Badge>
-                            </div>
-                            <div className="flex justify-between items-center border-t pt-2">
-                                <span className="text-muted-foreground">Date</span>
-                                <span className='font-medium'>{format(
-                                    inspection.scheduledDate instanceof Date
-                                    ? inspection.scheduledDate
-                                    : new Date(inspection.scheduledDate.seconds * 1000),
-                                    'dd/MM/yyyy'
-                                )}</span>
-                            </div>
-                        </CardContent>
-                    </Card>
-                ))}
-              </div>
-            </>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
           )}
-
         </CardContent>
       </Card>
     </div>
