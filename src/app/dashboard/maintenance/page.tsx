@@ -30,7 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Upload, Loader2, Wand2, Search, MoreVertical, Edit, Eye, XCircle } from 'lucide-react';
+import { Upload, Loader2, Wand2, Search, MoreVertical, Edit, Eye, XCircle, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import { useState, useMemo, useEffect } from 'react';
@@ -43,7 +43,7 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, doc, updateDoc, addDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, addDoc, deleteDoc } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import {
   Table,
@@ -57,7 +57,7 @@ import { Badge } from '@/components/ui/badge';
 import { Label } from '@/components/ui/label';
 import { MaintenanceAssistantDialog } from '@/components/dashboard/maintenance-assistant-dialog';
 import type { MaintenanceAssistantOutput } from '@/ai/flows/maintenance-assistant-flow';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -132,6 +132,7 @@ export default function MaintenancePage() {
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [logToCancel, setLogToCancel] = useState<MaintenanceLog | null>(null);
+  const [logToDelete, setLogToDelete] = useState<MaintenanceLog | null>(null);
 
   const form = useForm<MaintenanceFormValues>({
     resolver: zodResolver(maintenanceSchema),
@@ -329,6 +330,27 @@ export default function MaintenancePage() {
       });
     } finally {
       setLogToCancel(null);
+    }
+  };
+  
+  const handleDeleteConfirm = async () => {
+    if (!firestore || !logToDelete) return;
+    try {
+      const logRef = doc(firestore, 'properties', logToDelete.propertyId, 'maintenanceLogs', logToDelete.id);
+      await deleteDoc(logRef);
+      toast({
+        title: 'Maintenance Log Deleted',
+        description: `The log "${logToDelete.title}" has been permanently deleted.`,
+      });
+    } catch (error) {
+      console.error('Failed to delete log:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Delete Failed',
+        description: 'There was an error deleting the log. Please try again.',
+      });
+    } finally {
+      setLogToDelete(null);
     }
   };
 
@@ -840,7 +862,10 @@ export default function MaintenancePage() {
                                         </Link>
                                       </Button>
                                       <Button variant="ghost" size="icon" onClick={() => setLogToCancel(log)}>
-                                          <XCircle className="h-4 w-4 text-destructive" />
+                                          <XCircle className="h-4 w-4" />
+                                      </Button>
+                                      <Button variant="ghost" size="icon" onClick={() => setLogToDelete(log)}>
+                                          <Trash2 className="h-4 w-4 text-destructive" />
                                       </Button>
                                   </TableCell>
                               </TableRow>
@@ -885,8 +910,12 @@ export default function MaintenancePage() {
                                           <DropdownMenuItem asChild>
                                               <Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${selectedPropertyFilter}`}><Edit className="mr-2 h-4 w-4" /> Edit</Link>
                                           </DropdownMenuItem>
-                                          <DropdownMenuItem onClick={() => setLogToCancel(log)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                          <DropdownMenuItem onClick={() => setLogToCancel(log)}>
                                               <XCircle className="mr-2 h-4 w-4" /> Cancel Log
+                                          </DropdownMenuItem>
+                                          <DropdownMenuSeparator />
+                                          <DropdownMenuItem onClick={() => setLogToDelete(log)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                              <Trash2 className="mr-2 h-4 w-4" /> Delete Permanently
                                           </DropdownMenuItem>
                                       </DropdownMenuContent>
                                   </DropdownMenu>
@@ -941,6 +970,26 @@ export default function MaintenancePage() {
               onClick={handleCancelConfirm}
             >
               Yes, Cancel Log
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+      
+       <AlertDialog open={!!logToDelete} onOpenChange={(open) => !open && setLogToDelete(null)}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+            <AlertDialogDescription>
+              This action cannot be undone. This will permanently delete the maintenance log: "{logToDelete?.title}".
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              onClick={handleDeleteConfirm}
+            >
+              Delete Permanently
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
