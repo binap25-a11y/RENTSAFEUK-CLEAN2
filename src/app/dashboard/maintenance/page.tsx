@@ -224,13 +224,6 @@ export default function MaintenancePage() {
               Manage repairs and maintenance tasks across your portfolio.
             </p>
           </div>
-          <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
-              <Button asChild variant="outline" className="w-full sm:w-auto">
-                  <Link href="/dashboard/maintenance/logged">
-                      <List className="mr-2 h-4 w-4" /> Maintenance Logged
-                  </Link>
-              </Button>
-          </div>
         </div>
 
         <MaintenanceAssistantDialog 
@@ -379,6 +372,14 @@ export default function MaintenancePage() {
             </Form>
           </CardContent>
         </Card>
+
+        <div className="flex justify-center pt-4">
+            <Button asChild variant="outline" className="w-full sm:w-auto">
+                <Link href="/dashboard/maintenance/logged">
+                    <List className="mr-2 h-4 w-4" /> View Maintenance Logged
+                </Link>
+            </Button>
+        </div>
       </div>
     </>
   );
