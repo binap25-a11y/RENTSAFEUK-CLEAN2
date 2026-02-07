@@ -50,7 +50,7 @@ export default function StorageTestPage() {
       
       let detailedMessage = `An unknown error occurred. Please check the browser console for more details.`;
       if(error.code === 'storage/retry-limit-exceeded') {
-          detailedMessage = `The request timed out. This is a network issue, caused by an incorrect CORS (Cross-Origin Resource Sharing) policy on your Google Cloud Storage bucket. Please follow the instructions above to apply the fix.`;
+          detailedMessage = `The request timed out. This may be a network issue or an incorrect CORS (Cross-Origin Resource Sharing) policy on your Google Cloud Storage bucket.`;
       } else if (error.code === 'storage/unauthorized') {
           detailedMessage = `Your security rules are denying access. This is unexpected on the test path, but indicates a problem with the storage rules.`;
       } else {
@@ -67,40 +67,26 @@ export default function StorageTestPage() {
     }
   };
   
-  const cors_command = `gcloud storage buckets update gs://${firebaseConfig.storageBucket} --cors-file=cors.json`;
-
   return (
     <div className="space-y-6">
       <Card className="max-w-4xl mx-auto">
           <CardHeader>
-              <CardTitle>Final Diagnosis: Storage Connection Test</CardTitle>
-              <CardDescription>Your uploads are failing due to a network timeout. This indicates a project configuration issue (CORS). Follow these steps exactly to fix it.</CardDescription>
+              <CardTitle>Storage Connection Test</CardTitle>
+              <CardDescription>This page helps diagnose issues with uploading files to Firebase Storage. Use the tool below to test your connection.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
-              <Alert variant="destructive">
-                  <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Action Required: Apply CORS Fix</AlertTitle>
-                  <AlertDescription>
-                      <p className="mb-2">To fix the upload timeout, you must run the following command in your terminal. This updates your project's security policy to allow uploads from the app.</p>
-                      <pre className="mt-2 p-2 bg-muted rounded-md text-xs font-mono overflow-x-auto">
-                          <code>{cors_command}</code>
-                      </pre>
-                       <p className="mt-2 text-xs">This command uses the `cors.json` file in your project root. Ensure you are authenticated with the correct Google Cloud account in your terminal before running it.</p>
-                  </AlertDescription>
-              </Alert>
-
               <div className="space-y-2 pt-4">
-                  <label htmlFor="file-upload" className="font-medium">After applying the fix, test here:</label>
+                  <label htmlFor="file-upload" className="font-medium">1. Select a file</label>
                   <Input id="file-upload" type="file" onChange={handleFileChange} />
               </div>
 
-              <Button onClick={handleUpload} disabled={isUploading} className="w-full">
+              <Button onClick={handleUpload} disabled={isUploading || !file} className="w-full">
               {isUploading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                   <Upload className="mr-2 h-4 w-4" />
               )}
-              Run Upload Test
+              2. Run Upload Test
               </Button>
           </CardContent>
           {feedback && (
