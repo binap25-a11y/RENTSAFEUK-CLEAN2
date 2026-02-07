@@ -232,6 +232,10 @@ export default function MaintenancePage() {
     try {
         let photoUrls: string[] = [];
         if (data.photos && data.photos.length > 0) {
+            toast({
+                title: 'Uploading images...',
+                description: `Uploading ${data.photos.length} photo(s). Please wait.`,
+            });
             const uploadPromises = Array.from(data.photos).map(file => {
                 const uniqueFileName = `${Date.now()}-${file.name}`;
                 const fileStorageRef = storageRef(storage, `maintenance/${user.uid}/${uniqueFileName}`);

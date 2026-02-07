@@ -146,6 +146,10 @@ export default function EditMaintenancePage() {
         try {
             let finalPhotoUrls = existingPhotos;
             if (data.photos && data.photos.length > 0) {
+                 toast({
+                    title: 'Uploading new photos...',
+                    description: `Uploading ${data.photos.length} photo(s). This will replace any existing photos.`,
+                });
                 const uploadPromises = Array.from(data.photos).map(file => {
                     const uniqueFileName = `${Date.now()}-${file.name}`;
                     const fileStorageRef = storageRef(storage, `maintenance/${user.uid}/${uniqueFileName}`);
