@@ -38,8 +38,22 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Clock, PoundSterling, TrendingDown, TrendingUp, Loader2, CheckCircle2, XCircle, AlertCircle, Download, Filter, Banknote } from 'lucide-react';
-import { getYear, startOfYear, endOfYear } from 'date-fns';
+import { 
+  Clock, 
+  PoundSterling, 
+  TrendingDown, 
+  TrendingUp, 
+  Loader2, 
+  CheckCircle2, 
+  XCircle, 
+  AlertCircle, 
+  Download, 
+  Filter, 
+  Banknote,
+  AlertTriangle,
+  ArrowRight
+} from 'lucide-react';
+import { getYear, startOfYear, endOfYear, format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import {
   Table,
@@ -55,7 +69,7 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, doc, setDoc, addDoc, limit } from 'firebase/firestore';
+import { collection, query, where, doc, setDoc, addDoc, limit, getDocs } from 'firebase/firestore';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -66,9 +80,11 @@ import {
   ChartTooltip,
   ChartTooltipContent,
 } from '@/components/ui/chart';
+import { Badge } from '@/components/ui/badge';
 import { Pie, PieChart, Cell } from 'recharts';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
+import Link from 'next/link';
 
 // Extend the autoTable interface in jsPDF
 declare module 'jspdf' {
@@ -109,6 +125,7 @@ interface Expense {
 type PaymentStatus = 'Paid' | 'Partially Paid' | 'Unpaid' | 'Pending';
 interface RentPayment {
   id: string;
+  propertyId: string;
   year: number;
   month: string;
   status: PaymentStatus;
@@ -293,10 +310,11 @@ export default function FinancialsPage() {
                 </div>
            </div>
            <Tabs defaultValue="expenses" className="pt-4">
-              <TabsList className="grid w-full grid-cols-1 sm:w-auto sm:grid-cols-3">
+              <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:grid-cols-4">
                 <TabsTrigger value="expenses">Expenses</TabsTrigger>
                 <TabsTrigger value="summary">Annual Summary</TabsTrigger>
                 <TabsTrigger value="statement">Rent Statement</TabsTrigger>
+                <TabsTrigger value="arrears">Arrears</TabsTrigger>
               </TabsList>
               <TabsContent value="expenses">
                 <ExpenseTracker 
@@ -330,6 +348,9 @@ export default function FinancialsPage() {
                     rentPayments={rentPayments}
                     isLoadingPayments={isLoadingPayments}
                 />
+              </TabsContent>
+              <TabsContent value="arrears">
+                <ArrearsManagement properties={activeProperties} />
               </TabsContent>
             </Tabs>
         </CardContent>
@@ -893,6 +914,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
     
     const paymentData = {
       ownerId: user.uid,
+      propertyId: selectedProperty.id,
       year: selectedYear,
       month,
       status: 'Partially Paid' as PaymentStatus,
@@ -936,6 +958,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
 
     const paymentData = {
       ownerId: user.uid,
+      propertyId: selectedProperty.id,
       year: selectedYear,
       month,
       status,
@@ -1128,5 +1151,165 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
         )}
       </Card>
     </>
+  );
+}
+
+// ARREARS MANAGEMENT COMPONENT
+function ArrearsManagement({ properties }: { properties: Property[] }) {
+  const { user } = useUser();
+  const firestore = useFirestore();
+  const [arrears, setArrears] = useState<RentPayment[]>([]);
+  const [isLoading, setIsLoading] = useState(false);
+  const [partialPaymentData, setPartialPaymentData] = useState<{ payment: RentPayment; amount: string } | null>(null);
+
+  const currentYear = getYear(new Date());
+  const currentMonth = format(new Date(), 'MMMM');
+
+  const fetchArrears = async () => {
+    if (!user || !firestore || properties.length === 0) return;
+    setIsLoading(true);
+    try {
+      const results: RentPayment[] = [];
+      const promises = properties.filter(p => p.status === 'Occupied').map(prop => {
+        const q = query(
+          collection(firestore, 'properties', prop.id, 'rentPayments'),
+          where('ownerId', '==', user.uid),
+          where('year', '==', currentYear),
+          where('month', '==', currentMonth)
+        );
+        return getDocs(q);
+      });
+
+      const snapshots = await Promise.all(promises);
+      snapshots.forEach((snap, index) => {
+        const propertyId = properties.filter(p => p.status === 'Occupied')[index].id;
+        const data = snap.docs[0]?.data() as RentPayment | undefined;
+        
+        // If no record exists for an occupied property, it's effectively "Pending" (treated as Unpaid for arrears view)
+        if (!data || (data.status !== 'Paid')) {
+          results.push({
+            id: snap.docs[0]?.id || `${currentYear}-${currentMonth}`,
+            propertyId,
+            year: currentYear,
+            month: currentMonth,
+            status: data?.status || 'Unpaid',
+            expectedAmount: data?.expectedAmount || properties.find(p => p.id === propertyId)?.tenancy?.monthlyRent || 0,
+            amountPaid: data?.amountPaid || 0,
+          });
+        }
+      });
+      setArrears(results);
+    } catch (error) {
+      console.error("Failed to fetch arrears:", error);
+    } finally {
+      setIsLoading(false);
+    }
+  };
+
+  useEffect(() => {
+    fetchArrears();
+  }, [user, properties, firestore]);
+
+  const handleUpdateStatus = async (payment: RentPayment, newStatus: PaymentStatus, amountPaid?: number) => {
+    if (!firestore || !user) return;
+
+    const rentPaymentRef = doc(firestore, 'properties', payment.propertyId, 'rentPayments', `${payment.year}-${payment.month}`);
+    const updateData = {
+      ...payment,
+      ownerId: user.uid,
+      status: newStatus,
+      amountPaid: amountPaid ?? (newStatus === 'Paid' ? payment.expectedAmount : 0),
+    };
+
+    try {
+      await setDoc(rentPaymentRef, updateData, { merge: true });
+      toast({ title: 'Payment Updated', description: `Rent status updated for ${payment.month}.` });
+      fetchArrears();
+    } catch (error) {
+      console.error("Error updating status:", error);
+      toast({ variant: 'destructive', title: 'Update Failed' });
+    }
+  };
+
+  const handleSavePartial = async () => {
+    if (!partialPaymentData) return;
+    const amount = Number(partialPaymentData.amount);
+    if (isNaN(amount) || amount <= 0 || amount >= partialPaymentData.payment.expectedAmount) {
+      toast({ variant: 'destructive', title: 'Invalid Amount' });
+      return;
+    }
+    await handleUpdateStatus(partialPaymentData.payment, 'Partially Paid', amount);
+    setPartialPaymentData(null);
+  };
+
+  const formatAddress = (propId: string) => {
+    const prop = properties.find(p => p.id === propId);
+    return prop ? [prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ') : 'Unknown';
+  };
+
+  return (
+    <div className="space-y-6 mt-6">
+      <Dialog open={!!partialPaymentData} onOpenChange={(open) => !open && setPartialPaymentData(null)}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Log Partial Payment</DialogTitle>
+            <DialogDescription>Enter the amount received for {partialPaymentData?.payment.month}. Expected: £{partialPaymentData?.payment.expectedAmount.toFixed(2)}</DialogDescription>
+          </DialogHeader>
+          <div className="py-4"><Input type="text" inputMode="decimal" placeholder="0.00" value={partialPaymentData?.amount || ''} onChange={(e) => setPartialPaymentData(prev => prev ? { ...prev, amount: e.target.value } : null)} /></div>
+          <DialogFooter><Button onClick={handleSavePartial}>Save Payment</Button></DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      <Card>
+        <CardHeader>
+          <CardTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-destructive" /> Arrears Management</CardTitle>
+          <CardDescription>Track unpaid and partially paid rent across your entire portfolio for {currentMonth} {currentYear}.</CardDescription>
+        </CardHeader>
+        <CardContent>
+          {isLoading ? (
+            <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin" /></div>
+          ) : arrears.length === 0 ? (
+            <div className="text-center py-12 border-2 border-dashed rounded-lg bg-muted/20">
+              <CheckCircle2 className="h-10 w-10 text-green-500 mx-auto mb-4 opacity-50" />
+              <p className="text-lg font-medium">All clear!</p>
+              <p className="text-sm text-muted-foreground">No arrears detected for the current month.</p>
+            </div>
+          ) : (
+            <div className="rounded-md border overflow-hidden">
+              <Table>
+                <TableHeader className="bg-muted/30">
+                  <TableRow>
+                    <TableHead>Property Address</TableHead>
+                    <TableHead>Expected</TableHead>
+                    <TableHead>Paid</TableHead>
+                    <TableHead>Status</TableHead>
+                    <TableHead className="text-right">Actions</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {arrears.map((row) => (
+                    <TableRow key={row.propertyId} className="hover:bg-muted/20">
+                      <TableCell className="font-medium max-w-[250px] truncate">{formatAddress(row.propertyId)}</TableCell>
+                      <TableCell>£{row.expectedAmount.toFixed(2)}</TableCell>
+                      <TableCell className="text-destructive font-semibold">£{row.amountPaid?.toFixed(2)}</TableCell>
+                      <TableCell>
+                        <Badge variant={row.status === 'Partially Paid' ? 'secondary' : 'destructive'} className="capitalize">{row.status}</Badge>
+                      </TableCell>
+                      <TableCell className="text-right">
+                        <div className="flex justify-end gap-2">
+                          <Button size="sm" variant="outline" onClick={() => setPartialPaymentData({ payment: row, amount: '' })}>Partial</Button>
+                          <Button size="sm" onClick={() => handleUpdateStatus(row, 'Paid')}>Mark Paid</Button>
+                          <Button size="sm" variant="ghost" asChild title="View Details"><Link href={`/dashboard/properties/${row.propertyId}`}><ArrowRight className="h-4 w-4" /></Link></Button>
+                        </div>
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+              </Table>
+            </div>
+          )}
+        </CardContent>
+      </Card>
+    </div>
   );
 }
