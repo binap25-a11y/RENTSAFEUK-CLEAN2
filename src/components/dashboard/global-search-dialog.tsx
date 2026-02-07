@@ -79,7 +79,7 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
           const [propertySnap, tenantSnap, contractorSnap] = await Promise.all([
             getDocs(propertyQuery),
             getDocs(tenantQuery),
-            getDocs(contractorSnap),
+            getDocs(contractorQuery),
           ]);
           
           const properties = propertySnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Property));
