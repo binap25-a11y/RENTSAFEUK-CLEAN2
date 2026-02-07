@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -13,7 +12,22 @@ import {
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Bed, Bath, Trash2, Archive, Loader2, Edit, MoreVertical, Search, LayoutGrid, List, Eye, Home } from 'lucide-react';
+import { 
+  PlusCircle, 
+  Bed, 
+  Bath, 
+  Trash2, 
+  Archive, 
+  Loader2, 
+  Edit, 
+  MoreVertical, 
+  Search, 
+  LayoutGrid, 
+  List, 
+  Eye, 
+  Home,
+  Download
+} from 'lucide-react';
 import {
   useUser,
   useFirestore,
@@ -43,7 +57,7 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
-// Define the Property type based on your Firestore structure
+// Define the Property type
 interface Property {
   id: string;
   address: {
@@ -85,18 +99,41 @@ export default function PropertiesPage() {
   } = useCollection<Property>(propertiesQuery);
 
   const filteredProperties = useMemo(() => {
-    if (!properties) {
-      return [];
-    }
-    if (!searchTerm) {
-      return properties;
-    }
+    if (!properties) return [];
+    if (!searchTerm) return properties;
     const lowercasedTerm = searchTerm.toLowerCase();
     return properties.filter((property) =>
       Object.values(property.address).some(val => val?.toLowerCase().includes(lowercasedTerm))
     );
   }, [properties, searchTerm]);
 
+  const exportToCSV = () => {
+    if (!filteredProperties.length) return;
+    
+    const headers = ["Address", "Type", "Status", "Bedrooms", "Bathrooms", "Postcode"];
+    const rows = filteredProperties.map(p => [
+      `"${[p.address.nameOrNumber, p.address.street, p.address.city].filter(Boolean).join(', ')}"`,
+      p.propertyType,
+      p.status,
+      p.bedrooms,
+      p.bathrooms,
+      p.address.postcode
+    ]);
+    
+    const csvContent = "data:text/csv;charset=utf-8," 
+      + headers.join(",") + "\n" 
+      + rows.map(e => e.join(",")).join("\n");
+    
+    const encodedUri = encodeURI(csvContent);
+    const link = document.createElement("a");
+    link.setAttribute("href", encodedUri);
+    link.setAttribute("download", "rentsafe_portfolio_export.csv");
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({ title: "Export Successful", description: "Your property list has been exported to CSV." });
+  };
 
   const handleDeleteConfirm = async () => {
     if (!firestore || !propertyToDelete) return;
@@ -130,6 +167,9 @@ export default function PropertiesPage() {
                 </p>
             </div>
             <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
+                <Button variant="outline" className="w-full sm:w-auto" onClick={exportToCSV} disabled={!filteredProperties.length}>
+                    <Download className="mr-2 h-4 w-4" /> Export CSV
+                </Button>
                 <Button asChild variant="outline" className="w-full sm:w-auto">
                 <Link href="/dashboard/properties/deleted">
                     <Archive className="mr-2 h-4 w-4" /> View Deleted

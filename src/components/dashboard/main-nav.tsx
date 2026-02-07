@@ -23,7 +23,7 @@ import {
   Bell,
   Users,
   HardHat,
-  AlertCircle,
+  HelpCircle,
 } from 'lucide-react';
 import * as React from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -81,6 +81,7 @@ const menuItems = [
   },
   { href: '/dashboard/expenses', label: 'Financials', icon: CreditCard },
   { href: '/dashboard/reminders', label: 'Reminders', icon: Bell },
+  { href: '/dashboard/help', label: 'Help & Launch', icon: HelpCircle },
 ];
 
 export function MainNav() {
