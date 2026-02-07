@@ -228,15 +228,16 @@ export default function MaintenancePage() {
     setIsUploading(true);
 
     try {
-        const photoUrls: string[] = [];
+        let photoUrls: string[] = [];
         if (data.photos && data.photos.length > 0) {
-            for (const file of Array.from(data.photos)) {
+            const uploadPromises = Array.from(data.photos).map(file => {
                 const uniqueFileName = `${Date.now()}-${file.name}`;
                 const fileStorageRef = storageRef(storage, `maintenance/${user.uid}/${uniqueFileName}`);
-                await uploadBytes(fileStorageRef, file);
-                const url = await getDownloadURL(fileStorageRef);
-                photoUrls.push(url);
-            }
+                return uploadBytes(fileStorageRef, file).then(uploadResult => {
+                    return getDownloadURL(uploadResult.ref);
+                });
+            });
+            photoUrls = await Promise.all(uploadPromises);
         }
         
         const { photos, ...formData } = data;
