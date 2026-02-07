@@ -115,7 +115,7 @@ export default function InspectionsPage() {
     null
   );
 
-  // Fetch properties - simplified query to bypass index requirements
+  // Fetch properties - strictly scoped to logged-in user
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
@@ -131,7 +131,7 @@ export default function InspectionsPage() {
     return allProperties?.filter(p => p.status !== 'Deleted') ?? [];
   }, [allProperties]);
 
-  // Fetch inspections for the selected property
+  // Fetch inspections for the selected property - strictly scoped to logged-in user
   const inspectionsQuery = useMemoFirebase(() => {
     if (!user || !selectedPropertyId) return null;
     return query(
@@ -143,7 +143,7 @@ export default function InspectionsPage() {
   const { data: inspections, isLoading: isLoadingInspections } =
     useCollection<Inspection>(inspectionsQuery);
 
-  // Filter out deleted/cancelled inspections if necessary
+  // Filter out cancelled inspections if necessary
   const activeInspections = useMemo(() => {
     return inspections?.filter((i) => i.status !== 'Deleted') ?? [];
   }, [inspections]);
@@ -191,7 +191,7 @@ export default function InspectionsPage() {
       <div className="flex flex-col gap-6">
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-primary">
-            <CalendarCheck className="h-6 w-6" />
+            <CalendarCheck className="h-6 v-6" />
             <h1 className="text-3xl font-bold font-headline tracking-tight">
               Property Inspections
             </h1>

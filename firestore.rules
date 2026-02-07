@@ -7,8 +7,9 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isOwner(ownerId) {
-      return isSignedIn() && request.auth.uid == ownerId;
+    // Explicitly check for data ownership to support filtered queries
+    function isOwner(data) {
+      return isSignedIn() && data.ownerId == request.auth.uid;
     }
 
     match /users/{userId} {
@@ -16,51 +17,33 @@ service cloud.firestore {
     }
 
     match /properties/{propertyId} {
-      allow get, list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      // Use read (get + list) and check resource data for strict portfolio scoping
+      allow read: if isOwner(resource.data);
+      allow create: if isOwner(request.resource.data);
+      allow update, delete: if isOwner(resource.data);
 
       match /{allSubcollections=**} {
-        allow get, list: if isSignedIn() && (
-          resource.data.ownerId == request.auth.uid || 
-          get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid
-        );
-        allow create: if isSignedIn() && (
-          request.resource.data.ownerId == request.auth.uid || 
-          get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid
-        );
-        allow update, delete: if isSignedIn() && (
-          resource.data.ownerId == request.auth.uid ||
-          get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid
-        );
+        allow read: if isSignedIn() && (resource == null || resource.data.ownerId == request.auth.uid);
+        allow write: if isSignedIn() && (request.resource.data.ownerId == request.auth.uid || resource.data.ownerId == request.auth.uid);
       }
     }
 
     match /tenants/{tenantId} {
-      allow get, list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow read: if isOwner(resource.data);
+      allow create: if isOwner(request.resource.data);
+      allow update, delete: if isOwner(resource.data);
       
       match /{allSubcollections=**} {
-        allow get, list: if isSignedIn() && (
-          resource.data.ownerId == request.auth.uid || 
-          get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid
-        );
-        allow create: if isSignedIn() && (
-          request.resource.data.ownerId == request.auth.uid || 
-          get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid
-        );
-        allow update, delete: if isSignedIn() && (
-          resource.data.ownerId == request.auth.uid ||
-          get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId == request.auth.uid
-        );
+        allow read: if isOwner(resource.data);
+        allow create: if isOwner(request.resource.data);
+        allow update, delete: if isOwner(resource.data);
       }
     }
 
     match /contractors/{contractorId} {
-      allow get, list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow read: if isOwner(resource.data);
+      allow create: if isOwner(request.resource.data);
+      allow update, delete: if isOwner(resource.data);
     }
   }
 }
