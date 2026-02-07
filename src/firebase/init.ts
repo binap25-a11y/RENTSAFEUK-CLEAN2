@@ -22,10 +22,10 @@ export function initializeFirebase() {
 export function getSdks(firebaseApp: FirebaseApp) {
   const auth = getAuth(firebaseApp);
   const firestore = getFirestore(firebaseApp);
-  // Reverting to the standard, implicit method for getting storage.
-  // This allows the Firebase SDK to handle the connection details, which is more
-  // robust and should resolve the network-related 'retry-limit-exceeded' error.
-  const storage = getStorage(firebaseApp);
+  // To resolve the persistent connection timeout, we are switching to an explicit
+  // bucket URL. This ensures the SDK connects directly to the specified bucket,
+  // eliminating any ambiguity that might cause network retries to fail.
+  const storage = getStorage(firebaseApp, `gs://${firebaseConfig.storageBucket}`);
 
   return {
     firebaseApp,
