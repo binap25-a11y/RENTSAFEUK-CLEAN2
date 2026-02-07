@@ -3,25 +3,23 @@ rules_version = '2';
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // Allow users to write to their own 'documents' folder.
+    // TEMPORARY DIAGNOSTIC RULE: For the enhanced investigation, this rule allows
+    // ANYONE to read and write to the public-test-uploads/ directory.
+    // This will be reverted once the connection is confirmed.
+    match /public-test-uploads/{allPaths=**} {
+      allow read, write: if true;
+    }
+
+    // --- Original Rules ---
+    // These rules remain in place but will not affect the test upload path.
     match /documents/{userId}/{allPaths=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-
-    // Allow users to write to their own 'maintenance' folder.
     match /maintenance/{userId}/{allPaths=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
     }
-
-    // Allow users to write to their own 'images' folder.
     match /images/{userId}/{allPaths=**} {
       allow read, write: if request.auth != null && request.auth.uid == userId;
-    }
-
-    // EXTREMELY PERMISSIVE DIAGNOSTIC RULE.
-    // This allows any request to this specific path.
-    match /test-uploads/{allPaths=**} {
-      allow read, write: if true;
     }
   }
 }

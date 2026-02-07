@@ -4,63 +4,56 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { useStorage, useUser } from '@/firebase';
+import { useStorage } from '@/firebase';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { toast } from '@/hooks/use-toast';
 import { Loader2, Upload, Link as LinkIcon } from 'lucide-react';
 import Link from 'next/link';
 
-export default function UploadTest2Page() {
-  const { user } = useUser();
+export default function EnhancedUploadTestPage() {
   const storage = useStorage();
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [downloadURL, setDownloadURL] = useState('');
+  const [feedback, setFeedback] = useState<{type: 'success' | 'error', message: string, url?: string} | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
       setFile(e.target.files[0]);
-      setDownloadURL('');
+      setFeedback(null);
     }
   };
 
   const handleUpload = async () => {
     if (!file || !storage) {
-      toast({
-        variant: 'destructive',
-        title: 'Upload failed',
-        description: 'Please select a file and ensure you are logged in.',
-      });
+      setFeedback({ type: 'error', message: 'Please select a file and ensure you are logged in.' });
       return;
     }
 
     setIsUploading(true);
-    setDownloadURL('');
+    setFeedback(null);
 
-    // Use a simplified path for the test upload.
-    const filePath = `test-uploads/${file.name}`;
+    // Use a dead-simple, public path for this diagnostic test.
+    const filePath = `public-test-uploads/${Date.now()}-${file.name}`;
     const fileRef = storageRef(storage, filePath);
 
     try {
-      toast({
-        title: 'Uploading...',
-        description: `Your file "${file.name}" is being uploaded.`,
-      });
-
+      console.log(`[DIAGNOSTIC] Attempting to upload to: ${filePath}`);
       const snapshot = await uploadBytes(fileRef, file);
+      console.log('[DIAGNOSTIC] uploadBytes successful:', snapshot);
+      
       const url = await getDownloadURL(snapshot.ref);
+      console.log('[DIAGNOSTIC] getDownloadURL successful:', url);
 
-      setDownloadURL(url);
-      toast({
-        title: 'Upload Successful!',
-        description: 'The file has been stored in Firebase Storage.',
+      setFeedback({
+        type: 'success',
+        message: 'Upload successful! This confirms the connection to Firebase Storage is working.',
+        url: url,
       });
+
     } catch (error: any) {
-      console.error('Upload Error:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Upload Failed',
-        description: `Code: ${error.code}\nMessage: ${error.message}`,
+      console.error('[DIAGNOSTIC] Upload Error:', error);
+      setFeedback({
+        type: 'error',
+        message: `Upload Failed. Code: ${error.code}. Message: ${error.message}. Check browser console for details.`,
       });
     } finally {
       setIsUploading(false);
@@ -70,15 +63,15 @@ export default function UploadTest2Page() {
   return (
     <Card className="max-w-xl mx-auto">
       <CardHeader>
-        <CardTitle>Firebase Storage Connection Test</CardTitle>
+        <CardTitle>Enhanced Storage Connection Test</CardTitle>
         <CardDescription>
-          This page provides a simple, direct way to test the file upload connection to Firebase Storage.
+          This is a definitive test to verify the connection to Firebase Storage, bypassing security rules. If this works, the problem is with the rules. If it fails, the issue is with the project setup or CORS configuration.
         </CardDescription>
       </CardHeader>
       <CardContent className="space-y-6">
         <div className="space-y-2">
-          <label htmlFor="file-upload" className="font-medium">1. Select a file</label>
-          <Input id="file-upload" type="file" onChange={handleFileChange} />
+          <label htmlFor="file-upload" className="font-medium">1. Select an image file</label>
+          <Input id="file-upload" type="file" onChange={handleFileChange} accept="image/*" />
         </div>
 
         <Button onClick={handleUpload} disabled={!file || isUploading} className="w-full">
@@ -87,19 +80,25 @@ export default function UploadTest2Page() {
           ) : (
             <Upload className="mr-2 h-4 w-4" />
           )}
-          2. Upload to Firebase Storage
+          2. Run Upload Test
         </Button>
 
-        {downloadURL && (
-          <div className="p-4 bg-green-50 border border-green-200 rounded-lg space-y-3">
-             <h3 className="font-semibold text-green-800">Success!</h3>
-             <p className="text-sm text-green-700">The file was uploaded successfully. You can view it using the link below.</p>
-            <div className="flex items-center gap-2">
-                 <LinkIcon className="h-4 w-4 text-muted-foreground" />
-                <Link href={downloadURL} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline break-all">
-                    {downloadURL}
-                </Link>
-            </div>
+        {feedback && (
+          <div className={`p-4 border rounded-lg ${feedback.type === 'success' ? 'bg-green-50 border-green-200' : 'bg-red-50 border-red-200'}`}>
+             <h3 className={`font-semibold ${feedback.type === 'success' ? 'text-green-800' : 'text-red-800'}`}>
+                {feedback.type === 'success' ? 'Test Successful' : 'Test Failed'}
+             </h3>
+             <p className={`text-sm mt-2 ${feedback.type === 'success' ? 'text-green-700' : 'text-red-700'}`}>
+                {feedback.message}
+             </p>
+            {feedback.url && (
+                <div className="flex items-center gap-2 mt-3">
+                    <LinkIcon className="h-4 w-4 text-muted-foreground" />
+                    <Link href={feedback.url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline break-all">
+                        View Uploaded File
+                    </Link>
+                </div>
+            )}
           </div>
         )}
       </CardContent>

@@ -158,10 +158,10 @@ export function MainNav() {
         </SidebarMenuItem>
       ))}
        <SidebarMenuItem className="mt-auto">
-          <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/upload-test-2')} tooltip="Upload Test">
+          <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/upload-test-2')} tooltip="Enhanced Upload Test">
               <Link href="/dashboard/upload-test-2" onClick={handleLinkClick}>
                 <Beaker />
-                <span>Upload Test</span>
+                <span>Enhanced Upload Test</span>
               </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
