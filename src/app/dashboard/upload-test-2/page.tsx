@@ -50,9 +50,9 @@ export default function StorageTestPage() {
       
       let detailedMessage = `An unknown error occurred. Please check the browser console for more details.`;
       if(error.code === 'storage/retry-limit-exceeded') {
-          detailedMessage = `The request timed out. This is a network issue, often caused by incorrect CORS (Cross-Origin Resource Sharing) settings on your Google Cloud Storage bucket. Please verify your CORS configuration.`;
+          detailedMessage = `The request timed out. This is a network issue, often caused by incorrect CORS (Cross-Origin Resource Sharing) settings on your Google Cloud Storage bucket. Please follow the instructions to apply the CORS fix.`;
       } else if (error.code === 'storage/unauthorized') {
-          detailedMessage = `Your security rules are denying access. Although the test path should be public, please double-check your storage.rules file.`;
+          detailedMessage = `Your security rules are denying access. This test should bypass rules, but please double-check your storage.rules file if this error persists.`;
       } else {
           detailedMessage = error.message;
       }
@@ -66,8 +66,9 @@ export default function StorageTestPage() {
       setIsUploading(false);
     }
   };
-
+  
   const gcp_bucket_url = `https://console.cloud.google.com/storage/browser/${firebaseConfig.storageBucket}`;
+  const cors_command = `gcloud storage buckets update gs://${firebaseConfig.storageBucket} --cors-file=cors.json`;
 
   return (
     <div className="space-y-6">
@@ -76,17 +77,25 @@ export default function StorageTestPage() {
               <CardTitle>Storage Connection Test</CardTitle>
               <CardDescription>This page provides a direct test of the connection to your Firebase Storage bucket to diagnose upload issues.</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-              <Alert>
+          <CardContent className="space-y-6">
+              <Alert variant="destructive">
                   <AlertTriangle className="h-4 w-4" />
-                  <AlertTitle>Current Configuration</AlertTitle>
+                  <AlertTitle>Action Required: Apply CORS Fix</AlertTitle>
                   <AlertDescription>
-                      The application is attempting to upload to the following storage bucket: <br/>
-                      <strong className="font-mono text-sm">{firebaseConfig.storageBucket}</strong>
+                      The "retry-limit-exceeded" error indicates a network timeout, which is almost always caused by a missing CORS configuration on your Google Cloud Storage bucket.
+                      <ol className="list-decimal list-inside space-y-2 mt-2">
+                          <li>Open a new terminal in your development environment.</li>
+                          <li>Ensure you are authenticated with the correct Google Cloud account.</li>
+                          <li>Copy and run the following command exactly as it appears:</li>
+                      </ol>
+                      <pre className="mt-2 p-2 bg-muted rounded-md text-xs font-mono overflow-x-auto">
+                          <code>{cors_command}</code>
+                      </pre>
                   </AlertDescription>
               </Alert>
-              <div className="space-y-2 pt-4">
-                  <label htmlFor="file-upload" className="font-medium">1. Select a test file</label>
+
+              <div className="space-y-2">
+                  <label htmlFor="file-upload" className="font-medium">2. Select a test file</label>
                   <Input id="file-upload" type="file" onChange={handleFileChange} />
               </div>
 
@@ -96,7 +105,7 @@ export default function StorageTestPage() {
               ) : (
                   <Upload className="mr-2 h-4 w-4" />
               )}
-              2. Run Upload Test
+              3. Run Upload Test
               </Button>
           </CardContent>
           {feedback && (
