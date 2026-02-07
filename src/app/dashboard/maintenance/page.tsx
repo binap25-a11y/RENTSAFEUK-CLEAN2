@@ -145,12 +145,11 @@ export default function MaintenancePage() {
       contractorName: '',
       contractorPhone: '',
       notes: '',
+      reportedDate: new Date(),
+      scheduledDate: undefined,
+      estimatedCost: undefined,
     },
   });
-
-  useEffect(() => {
-    form.setValue('reportedDate', new Date());
-  }, [form]);
 
   // Fetch properties for the dropdowns
   const propertiesQuery = useMemoFirebase(() => {
@@ -228,7 +227,7 @@ export default function MaintenancePage() {
     setIsUploading(true);
 
     try {
-        let photoUrls: string[] = [];
+        const photoUrls: string[] = [];
         if (data.photos && data.photos.length > 0) {
             for (const file of Array.from(data.photos)) {
                 const uniqueFileName = `${Date.now()}-${file.name}`;
@@ -719,7 +718,7 @@ export default function MaintenancePage() {
                       reportedBy: '',
                       contractorName: '',
                       contractorPhone: '',
-notes: '',
+                      notes: '',
                       reportedDate: new Date(),
                       scheduledDate: undefined,
                       estimatedCost: undefined,
