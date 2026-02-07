@@ -22,9 +22,10 @@ export function initializeFirebase() {
 export function getSdks(firebaseApp: FirebaseApp) {
   const auth = getAuth(firebaseApp);
   const firestore = getFirestore(firebaseApp);
-  // Use the standard and most reliable method to get the storage instance.
-  // This lets Firebase automatically use the 'storageBucket' from the firebaseConfig.
-  const storage = getStorage(firebaseApp);
+  // Reverted to explicit bucket URL to ensure a direct connection,
+  // matching the configuration of the previously working test environment.
+  const bucketUrl = `gs://${firebaseConfig.storageBucket}`;
+  const storage = getStorage(firebaseApp, bucketUrl);
 
   return {
     firebaseApp,
