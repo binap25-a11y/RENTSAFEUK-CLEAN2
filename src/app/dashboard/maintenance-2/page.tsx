@@ -43,6 +43,7 @@ import {
 import { collection, query, where, addDoc } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Label } from '@/components/ui/label';
+import Link from 'next/link';
 
 // Schema for the form, file input is handled separately
 const maintenanceSchema = z.object({
@@ -79,6 +80,8 @@ export default function Maintenance2Page() {
   // State specifically for the file input, managed outside of react-hook-form
   const [photosToUpload, setPhotosToUpload] = useState<FileList | null>(null);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
+  const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
+
 
   const form = useForm<MaintenanceFormValues>({
     resolver: zodResolver(maintenanceSchema),
@@ -111,6 +114,7 @@ export default function Maintenance2Page() {
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = e.target.files;
+    setUploadedUrls([]);
     setPhotosToUpload(files);
     if (files) {
       const fileArray = Array.from(files);
@@ -132,7 +136,8 @@ export default function Maintenance2Page() {
     }
 
     setIsSubmitting(true);
-    let uploadedUrls: string[] = [];
+    setUploadedUrls([]);
+    let finalUploadedUrls: string[] = [];
     
     toast({ title: 'Logging Maintenance...', description: 'Please wait while we save the details.' });
 
@@ -145,7 +150,8 @@ export default function Maintenance2Page() {
           const fileStorageRef = storageRef(storage, `maintenance/${user.uid}/${uniqueFileName}`);
           return uploadBytes(fileStorageRef, file).then(snapshot => getDownloadURL(snapshot.ref));
         });
-        uploadedUrls = await Promise.all(uploadPromises);
+        finalUploadedUrls = await Promise.all(uploadPromises);
+        setUploadedUrls(finalUploadedUrls);
         toast({ title: 'Photo Upload Complete', description: 'Your images have been saved.' });
       } catch (error) {
         console.error('Photo upload failed:', error);
@@ -161,18 +167,20 @@ export default function Maintenance2Page() {
         ...data,
         ownerId: user.uid,
         status: 'Open',
-        photoUrls: uploadedUrls, // Add the array of uploaded URLs
+        photoUrls: finalUploadedUrls, // Add the array of uploaded URLs
       };
 
       const logsCollection = collection(firestore, 'properties', data.propertyId, 'maintenanceLogs');
-      const newDocRef = await addDoc(logsCollection, newLog);
+      await addDoc(logsCollection, newLog);
 
       toast({
         title: 'Maintenance Logged',
         description: 'The new maintenance issue has been successfully logged.',
       });
-      // Redirect to the original maintenance page to see the new log
-      router.push(`/dashboard/maintenance`);
+      
+      setPhotosToUpload(null);
+      setPhotoPreviews([]);
+
     } catch (error) {
       console.error('Failed to log maintenance issue:', error);
       toast({
@@ -268,6 +276,25 @@ export default function Maintenance2Page() {
               </div>
             </form>
           </Form>
+
+          {uploadedUrls.length > 0 && (
+            <div className="mt-8 pt-8 border-t">
+              <h3 className="text-lg font-semibold">Upload Successful</h3>
+              <p className="text-muted-foreground">You can preview your uploaded images here.</p>
+              <div className="mt-4 grid grid-cols-2 md:grid-cols-4 gap-4">
+                {uploadedUrls.map((url, index) => (
+                  <div key={index} className="space-y-2">
+                    <Image src={url} alt={`Uploaded Photo ${index + 1}`} width={200} height={200} className="rounded-md object-cover aspect-square" />
+                    <Button asChild variant="outline" size="sm" className="w-full">
+                      <Link href={url} target="_blank" rel="noopener noreferrer">
+                        Preview Image {index + 1}
+                      </Link>
+                    </Button>
+                  </div>
+                ))}
+              </div>
+            </div>
+          )}
         </CardContent>
       </Card>
     </div>
