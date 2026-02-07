@@ -43,17 +43,20 @@ export default function Maintenance2Page() {
 
     setIsUploading(true);
     toast({ title: 'Uploading photos...', description: `Uploading ${filesToUpload.length} image(s).` });
-
-    const uploadPromises = Array.from(filesToUpload).map(file => {
-      const uniqueFileName = `${Date.now()}-${file.name}`;
-      const fileRef = storageRef(storage, `maintenance/${user.uid}/${uniqueFileName}`);
-      return uploadBytes(fileRef, file).then(snapshot => getDownloadURL(snapshot.ref));
-    });
-
+    
+    const finalUrls: string[] = [];
     try {
-      const finalUploadedUrls = await Promise.all(uploadPromises);
-      setUploadedUrls(finalUploadedUrls);
-      toast({ title: 'Upload Complete!', description: `${finalUploadedUrls.length} image(s) uploaded successfully.` });
+      // Switch to a sequential upload loop for maximum reliability
+      for (const file of Array.from(filesToUpload)) {
+        const uniqueFileName = `${Date.now()}-${file.name}`;
+        const fileRef = storageRef(storage, `maintenance/${user.uid}/${uniqueFileName}`);
+        const snapshot = await uploadBytes(fileRef, file);
+        const url = await getDownloadURL(snapshot.ref);
+        finalUrls.push(url);
+      }
+      
+      setUploadedUrls(finalUrls);
+      toast({ title: 'Upload Complete!', description: `${finalUrls.length} image(s) uploaded successfully.` });
     } catch (error) {
       console.error('Photo upload failed:', error);
       toast({
@@ -99,7 +102,7 @@ export default function Maintenance2Page() {
             </div>
           )}
           
-          <Button onClick={handleUpload} disabled={isUploading || !filesToUpload || filesToUpload.length === 0}>
+          <Button onClick={handleUpload} disabled={isUploading || !filesToUpload || filesToUpload.length === 0 || !user || !storage}>
             {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
             2. Upload Photos
           </Button>
