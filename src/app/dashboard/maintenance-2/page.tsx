@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Input } from '@/components/ui/input';
 import { useUser, useStorage } from '@/firebase';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { toast } from '@/hooks/use-toast';
@@ -18,16 +17,17 @@ export default function Maintenance2Page() {
   
   return (
     <div className="p-8 space-y-6 max-w-xl mx-auto border rounded-lg bg-card text-card-foreground">
-      <h1 className="text-xl font-bold">File Upload Test Page</h1>
+      <h1 className="text-xl font-bold">File Upload Diagnostic Page</h1>
       <p className="text-sm text-muted-foreground">
         This is a simplified test environment. Please select a single file to upload to diagnose the issue.
       </p>
       
       <div className="space-y-2">
         <label htmlFor="file-input" className="font-medium text-sm">Step 1: Select a single file</label>
-        <Input 
+        <input 
           id="file-input"
-          type="file" 
+          type="file"
+          className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
           onChange={(e) => {
             if (e.target.files && e.target.files.length > 0) {
                 setFileToUpload(e.target.files[0]);
@@ -53,23 +53,33 @@ export default function Maintenance2Page() {
           setIsUploading(true);
           setUploadedUrl(null);
           toast({ title: 'Upload started...', description: `Uploading ${fileToUpload.name}` });
+          console.log('Attempting to upload file:', fileToUpload.name);
 
           try {
             const uniqueFileName = `${Date.now()}-${fileToUpload.name}`;
             const fileRef = storageRef(storage, `test-uploads/${user.uid}/${uniqueFileName}`);
             
+            console.log('Uploading to path:', fileRef.toString());
             const uploadResult = await uploadBytes(fileRef, fileToUpload);
+            console.log('Upload successful, getting URL...');
             const url = await getDownloadURL(uploadResult.ref);
 
             setUploadedUrl(url);
             toast({ title: 'Upload successful!', description: `File has been uploaded.` });
+            console.log('Upload and URL retrieval complete.');
 
           } catch (error: any) {
-            console.error('Upload failed:', error);
+            console.error('--- UPLOAD FAILED ---');
+            console.error('Error Code:', error.code);
+            console.error('Error Name:', error.name);
+            console.error('Error Message:', error.message);
+            console.error('Full Error Object:', JSON.stringify(error, null, 2));
+
             toast({
               variant: 'destructive',
               title: 'Upload Failed',
-              description: error.message || 'An unknown error occurred.',
+              description: `Code: ${error.code || 'N/A'}. Message: ${error.message || 'An unknown error occurred.'}`,
+              duration: 9000,
             });
           } finally {
             setIsUploading(false);
