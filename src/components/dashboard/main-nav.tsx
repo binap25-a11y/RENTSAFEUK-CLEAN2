@@ -23,7 +23,6 @@ import {
   Bell,
   Users,
   HardHat,
-  Beaker,
 } from 'lucide-react';
 import * as React from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -81,7 +80,6 @@ const menuItems = [
   },
   { href: '/dashboard/expenses', label: 'Financials', icon: CreditCard },
   { href: '/dashboard/reminders', label: 'Reminders', icon: Bell },
-  { href: '/dashboard/upload-test-2', label: 'Storage Test', icon: Beaker },
 ];
 
 export function MainNav() {
