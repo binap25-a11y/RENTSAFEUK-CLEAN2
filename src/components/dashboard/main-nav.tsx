@@ -24,6 +24,7 @@ import {
   Users,
   HardHat,
   FlaskConical,
+  TestTube2,
 } from 'lucide-react';
 import * as React from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -82,6 +83,7 @@ const menuItems = [
   { href: '/dashboard/expenses', label: 'Financials', icon: CreditCard },
   { href: '/dashboard/reminders', label: 'Reminders', icon: Bell },
   { href: '/dashboard/upload-test', label: 'Upload Test', icon: FlaskConical },
+  { href: '/dashboard/upload-test-2', label: 'Upload Test 2', icon: TestTube2 },
 ];
 
 export function MainNav() {
