@@ -4,9 +4,9 @@ import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
-import { useStorage } from '@/firebase';
+import { useStorage, firebaseConfig } from '@/firebase';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Loader2, Upload, Link as LinkIcon } from 'lucide-react';
+import { Loader2, Upload, Link as LinkIcon, AlertTriangle, ExternalLink } from 'lucide-react';
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -14,7 +14,7 @@ export default function StorageTestPage() {
   const storage = useStorage();
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [feedback, setFeedback] = useState<{type: 'success' | 'error', message: string, url?: string} | null>(null);
+  const [feedback, setFeedback] = useState<{type: 'success' | 'error', message: string, code?: string, url?: string} | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -47,25 +47,46 @@ export default function StorageTestPage() {
 
     } catch (error: any) {
       console.error('[DIAGNOSTIC] Upload Error:', error);
+      
+      let detailedMessage = `An unknown error occurred. Please check the browser console for more details.`;
+      if(error.code === 'storage/retry-limit-exceeded') {
+          detailedMessage = `The request timed out. This is a network issue, often caused by incorrect CORS (Cross-Origin Resource Sharing) settings on your Google Cloud Storage bucket. Please verify your CORS configuration.`;
+      } else if (error.code === 'storage/unauthorized') {
+          detailedMessage = `Your security rules are denying access. Although the test path should be public, please double-check your storage.rules file.`;
+      } else {
+          detailedMessage = error.message;
+      }
+
       setFeedback({
         type: 'error',
-        message: `Upload Failed. Code: ${error.code}. Message: ${error.message}. This may indicate a network issue or incorrect project configuration.`,
+        message: detailedMessage,
+        code: error.code || 'N/A',
       });
     } finally {
       setIsUploading(false);
     }
   };
 
+  const gcp_bucket_url = `https://console.cloud.google.com/storage/browser/${firebaseConfig.storageBucket}`;
+
   return (
     <div className="space-y-6">
       <Card className="max-w-4xl mx-auto">
           <CardHeader>
               <CardTitle>Storage Connection Test</CardTitle>
-              <CardDescription>Use this page to test file uploads to Firebase Storage. This helps diagnose connection or permission issues.</CardDescription>
+              <CardDescription>This page provides a direct test of the connection to your Firebase Storage bucket to diagnose upload issues.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-              <div className="space-y-2">
-                  <label htmlFor="file-upload" className="font-medium">Select a test file</label>
+              <Alert>
+                  <AlertTriangle className="h-4 w-4" />
+                  <AlertTitle>Current Configuration</AlertTitle>
+                  <AlertDescription>
+                      The application is attempting to upload to the following storage bucket: <br/>
+                      <strong className="font-mono text-sm">{firebaseConfig.storageBucket}</strong>
+                  </AlertDescription>
+              </Alert>
+              <div className="space-y-2 pt-4">
+                  <label htmlFor="file-upload" className="font-medium">1. Select a test file</label>
                   <Input id="file-upload" type="file" onChange={handleFileChange} />
               </div>
 
@@ -75,23 +96,34 @@ export default function StorageTestPage() {
               ) : (
                   <Upload className="mr-2 h-4 w-4" />
               )}
-              Run Upload Test
+              2. Run Upload Test
               </Button>
           </CardContent>
           {feedback && (
               <CardFooter>
                   <Alert variant={feedback.type === 'success' ? 'default' : 'destructive'} className="w-full">
-                      <AlertTitle className="font-bold">
+                      <AlertTitle className="font-bold flex items-center gap-2">
                           {feedback.type === 'success' ? 'Test Successful' : 'Test Failed'}
                       </AlertTitle>
-                      <AlertDescription>
-                          {feedback.message}
+                      <AlertDescription className="space-y-2">
+                          <p>{feedback.message}</p>
+                          {feedback.code && <p><strong>Error Code:</strong> {feedback.code}</p>}
                           {feedback.url && (
                               <div className="flex items-center gap-2 mt-2">
                                   <LinkIcon className="h-4 w-4 text-muted-foreground" />
                                   <Link href={feedback.url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline break-all">
                                       View Uploaded File
                                   </Link>
+                              </div>
+                          )}
+                          {feedback.type === 'error' && (
+                              <div className="pt-2">
+                                <Button size="sm" variant="secondary" asChild>
+                                  <a href={gcp_bucket_url} target="_blank" rel="noopener noreferrer">
+                                      <ExternalLink className="mr-2 h-4 w-4"/>
+                                      Check Bucket CORS Settings
+                                  </a>
+                                </Button>
                               </div>
                           )}
                       </AlertDescription>
