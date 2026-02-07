@@ -37,7 +37,7 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, Timestamp, getDocs } from 'firebase/firestore';
+import { collection, query, where, Timestamp, getDocs, collectionGroup } from 'firebase/firestore';
 import { useState, useEffect, useMemo } from 'react';
 import { format, isFuture, isBefore, addDays } from 'date-fns';
 import {
@@ -49,6 +49,7 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart"
 import { Pie, PieChart, Cell } from 'recharts';
+import { useToast } from '@/hooks/use-toast';
 
 
 // Interfaces
@@ -133,6 +134,7 @@ const formatAddress = (address: Property['address']) => {
 export default function DashboardPage() {
   const { user } = useUser();
   const firestore = useFirestore();
+  const { toast } = useToast();
   const [maintenanceLogs, setMaintenanceLogs] = useState<MaintenanceLog[]>([]);
   const [inspections, setInspections] = useState<Inspection[]>([]);
   const [documents, setDocuments] = useState<Document[]>([]);
@@ -149,61 +151,66 @@ export default function DashboardPage() {
   const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
   
   useEffect(() => {
-    if (!firestore || !user || !properties) {
-      if (!isLoadingProperties) {
-        setIsSubcollectionsLoading(false);
-      }
+    if (!firestore || !user) {
+      setIsSubcollectionsLoading(false);
       return;
     }
 
-    const fetchAllData = async () => {
+    const fetchDashboardData = async () => {
       setIsSubcollectionsLoading(true);
-
-      const promises = properties.map(async (prop) => {
-        const maintenanceQuery = query(collection(firestore, 'properties', prop.id, 'maintenanceLogs'));
-        const inspectionQuery = query(collection(firestore, 'properties', prop.id, 'inspections'));
-        const documentQuery = query(collection(firestore, 'properties', prop.id, 'documents'));
+      try {
+        const maintenanceQuery = query(
+          collectionGroup(firestore, 'maintenanceLogs'),
+          where('ownerId', '==', user.uid)
+        );
+        const inspectionQuery = query(
+          collectionGroup(firestore, 'inspections'),
+          where('ownerId', '==', user.uid)
+        );
+        const documentQuery = query(
+          collectionGroup(firestore, 'documents'),
+          where('ownerId', '==', user.uid)
+        );
         const rentQuery = query(
-          collection(firestore, 'properties', prop.id, 'rentPayments'),
+          collectionGroup(firestore, 'rentPayments'),
+          where('ownerId', '==', user.uid),
           where('year', '==', new Date().getFullYear()),
           where('month', '==', format(new Date(), 'MMMM'))
         );
 
-        const [maintenanceSnap, inspectionSnap, documentSnap, rentSnap] = await Promise.all([
+        const [
+          maintenanceSnap,
+          inspectionSnap,
+          documentSnap,
+          rentSnap,
+        ] = await Promise.all([
           getDocs(maintenanceQuery),
           getDocs(inspectionQuery),
           getDocs(documentQuery),
           getDocs(rentQuery),
         ]);
 
-        const logs = maintenanceSnap.docs.map(doc => ({ ...doc.data(), id: doc.id, propertyId: prop.id } as MaintenanceLog));
-        const inspections = inspectionSnap.docs.map(doc => ({ ...doc.data(), id: doc.id, propertyId: prop.id } as Inspection));
-        const docs = documentSnap.docs.map(doc => ({ ...doc.data(), id: doc.id, propertyId: prop.id } as Document));
-        const rents = rentSnap.docs.map(doc => ({ ...doc.data(), id: doc.id, propertyId: prop.id } as RentPayment));
-        
-        return { logs, inspections, docs, rents };
-      });
+        const getPropertyId = (ref: any) => ref.path.split('/')[1];
 
-      const results = await Promise.all(promises);
+        setMaintenanceLogs(maintenanceSnap.docs.map(doc => ({ ...(doc.data() as MaintenanceLog), id: doc.id, propertyId: getPropertyId(doc.ref) })));
+        setInspections(inspectionSnap.docs.map(doc => ({ ...(doc.data() as Inspection), id: doc.id, propertyId: getPropertyId(doc.ref) })));
+        setDocuments(documentSnap.docs.map(doc => ({ ...(doc.data() as Document), id: doc.id, propertyId: getPropertyId(doc.ref) })));
+        setRentPayments(rentSnap.docs.map(doc => ({ ...(doc.data() as RentPayment), id: doc.id, propertyId: getPropertyId(doc.ref) })));
 
-      const allLogs = results.flatMap(r => r.logs);
-      const allInspections = results.flatMap(r => r.inspections);
-      const allDocs = results.flatMap(r => r.docs);
-      const allRents = results.flatMap(r => r.rents);
-
-      setMaintenanceLogs(allLogs);
-      setInspections(allInspections);
-      setDocuments(allDocs);
-      setRentPayments(allRents);
-      setIsSubcollectionsLoading(false);
+      } catch (error: any) {
+        console.error("Error fetching dashboard data:", error);
+        toast({
+          variant: 'destructive',
+          title: 'Error Loading Dashboard Data',
+          description: error.message + " You may need to create a Firestore index. Check the browser console for a link to create it.",
+        });
+      } finally {
+        setIsSubcollectionsLoading(false);
+      }
     };
 
-    if (properties.length > 0) {
-      fetchAllData();
-    } else {
-      setIsSubcollectionsLoading(false);
-    }
-  }, [firestore, user, properties, isLoadingProperties]);
+    fetchDashboardData();
+  }, [firestore, user, toast]);
 
 
   const isLoading = isLoadingProperties || isSubcollectionsLoading;
@@ -230,7 +237,7 @@ export default function DashboardPage() {
         .slice(0, 4)
         .map(log => ({
             id: log.id,
-            property: formatAddress(propertyMap[log.propertyId]),
+            property: propertyMap[log.propertyId] ? formatAddress(propertyMap[log.propertyId]) : 'Loading...',
             activity: log.title,
             date: format((log.reportedDate as Timestamp).toDate(), 'dd/MM/yyyy'),
             href: `/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`
@@ -247,7 +254,7 @@ export default function DashboardPage() {
         .map(insp => ({
             id: `insp-${insp.id}`,
             task: insp.type || 'Inspection',
-            property: formatAddress(propertyMap[insp.propertyId]),
+            property: propertyMap[insp.propertyId] ? formatAddress(propertyMap[insp.propertyId]) : 'Loading...',
             status: 'Scheduled',
             dueDate: format((insp.scheduledDate as Timestamp).toDate(), 'dd/MM/yyyy'),
             href: `/dashboard/inspections/${insp.id}?propertyId=${insp.propertyId}`
@@ -267,7 +274,7 @@ export default function DashboardPage() {
         .map(doc => ({
             id: `doc-${doc.id}`,
             task: doc.title,
-            property: formatAddress(propertyMap[doc.propertyId]),
+            property: propertyMap[doc.propertyId] ? formatAddress(propertyMap[doc.propertyId]) : 'Loading...',
             status: doc.status,
             dueDate: format(doc.expiryDate, 'dd/MM/yyyy'),
             href: '/dashboard/documents'
