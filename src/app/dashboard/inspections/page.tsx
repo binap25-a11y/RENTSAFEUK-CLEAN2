@@ -120,7 +120,7 @@ export default function InspectionsPage() {
     return query(
       collection(firestore, 'properties'),
       where('ownerId', '==', user.uid),
-      where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
+      where('status', '!=', 'Deleted')
     );
   }, [firestore, user]);
   const { data: properties, isLoading: isLoadingProperties } =
@@ -220,51 +220,53 @@ export default function InspectionsPage() {
       <Card className="border-none shadow-lg overflow-hidden">
         <CardHeader className="bg-muted/30 border-b pb-8">
           <div className="flex flex-col gap-6">
-            <div>
-              <CardTitle className="text-xl">Inspection History</CardTitle>
-              <CardDescription>
-                Filter and view records from previous property checks.
-              </CardDescription>
-            </div>
+            <div className="space-y-4">
+              <div>
+                <CardTitle className="text-xl">Inspection History</CardTitle>
+                <CardDescription>
+                  Filter and view records from previous property checks.
+                </CardDescription>
+              </div>
 
-            <div className="flex flex-col space-y-2 max-w-md">
-              <Label
-                htmlFor="property-filter"
-                className="text-sm font-semibold flex items-center gap-2"
-              >
-                <Filter className="h-3.5 w-3.5" />
-                Select Property to View Logs
-              </Label>
-              <Select
-                onValueChange={setSelectedPropertyId}
-                value={selectedPropertyId}
-              >
-                <SelectTrigger
-                  id="property-filter"
-                  className="w-full bg-background border-primary/20 shadow-sm focus:ring-primary"
+              <div className="flex flex-col space-y-2 max-w-md">
+                <Label
+                  htmlFor="property-filter"
+                  className="text-sm font-semibold flex items-center gap-2"
                 >
-                  <SelectValue
-                    placeholder={
-                      isLoadingProperties
-                        ? 'Loading properties...'
-                        : 'Choose a property...'
-                    }
-                  />
-                </SelectTrigger>
-                <SelectContent>
-                  {properties?.map((prop) => (
-                    <SelectItem key={prop.id} value={prop.id}>
-                      {[
-                        prop.address.nameOrNumber,
-                        prop.address.street,
-                        prop.address.city,
-                      ]
-                        .filter(Boolean)
-                        .join(', ')}
-                    </SelectItem>
-                  ))}
-                </SelectContent>
-              </Select>
+                  <Filter className="h-3.5 w-3.5" />
+                  Filter by Property
+                </Label>
+                <Select
+                  onValueChange={setSelectedPropertyId}
+                  value={selectedPropertyId}
+                >
+                  <SelectTrigger
+                    id="property-filter"
+                    className="w-full bg-background border-primary/20 shadow-sm focus:ring-primary"
+                  >
+                    <SelectValue
+                      placeholder={
+                        isLoadingProperties
+                          ? 'Loading properties...'
+                          : 'Choose a property...'
+                      }
+                    />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {properties?.map((prop) => (
+                      <SelectItem key={prop.id} value={prop.id}>
+                        {[
+                          prop.address.nameOrNumber,
+                          prop.address.street,
+                          prop.address.city,
+                        ]
+                          .filter(Boolean)
+                          .join(', ')}
+                      </SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
             </div>
           </div>
         </CardHeader>
@@ -349,11 +351,11 @@ export default function InspectionsPage() {
                               </Button>
                             </DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem asChild disabled>
-                                <div className="flex items-center">
+                              <DropdownMenuItem asChild>
+                                <Link href={`/dashboard/inspections/${inspection.id}/edit?propertyId=${selectedPropertyId}`}>
                                   <Edit className="mr-2 h-4 w-4" />
                                   Edit Report
-                                </div>
+                                </Link>
                               </DropdownMenuItem>
                               <DropdownMenuItem
                                 className="text-destructive focus:text-destructive focus:bg-destructive/10"

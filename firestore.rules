@@ -17,9 +17,7 @@ service cloud.firestore {
 
     match /properties/{propertyId} {
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn() && request.query.limit <= 100 && (resource == null || resource.data.ownerId == request.auth.uid);
-      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
 
       match /{allSubcollections=**} {
         allow create: if isSignedIn() && (
@@ -35,9 +33,7 @@ service cloud.firestore {
 
     match /tenants/{tenantId} {
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn() && request.query.limit <= 100 && (resource == null || resource.data.ownerId == request.auth.uid);
-      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
       
       match /{allSubcollections=**} {
         allow create: if isSignedIn() && (
@@ -53,9 +49,7 @@ service cloud.firestore {
 
     match /contractors/{contractorId} {
       allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
-      allow get: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-      allow list: if isSignedIn() && request.query.limit <= 100 && (resource == null || resource.data.ownerId == request.auth.uid);
-      allow update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
   }
 }
