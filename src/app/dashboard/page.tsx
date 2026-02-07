@@ -41,7 +41,7 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, Timestamp, collectionGroup, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, Timestamp, collectionGroup } from 'firebase/firestore';
 import { useMemo } from 'react';
 import { format, isFuture, isBefore, addDays } from 'date-fns';
 import {
@@ -129,7 +129,7 @@ export default function DashboardPage() {
   const { user } = useUser();
   const firestore = useFirestore();
 
-  // --- Optimized Global Queries using Collection Groups ---
+  // --- Resilient Global Queries (Sorted in memory to avoid index requirement) ---
   
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
@@ -141,34 +141,28 @@ export default function DashboardPage() {
     if (!user) return null;
     return query(
       collectionGroup(firestore, 'maintenanceLogs'), 
-      where('ownerId', '==', user.uid),
-      orderBy('reportedDate', 'desc'),
-      limit(20)
+      where('ownerId', '==', user.uid)
     );
   }, [user, firestore]);
-  const { data: maintenanceLogs, isLoading: isLoadingMaintenance, error: maintenanceError } = useCollection<MaintenanceLog>(maintenanceQuery);
+  const { data: maintenanceLogs, isLoading: isLoadingMaintenance } = useCollection<MaintenanceLog>(maintenanceQuery);
 
   const inspectionsQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
       collectionGroup(firestore, 'inspections'), 
-      where('ownerId', '==', user.uid),
-      orderBy('scheduledDate', 'asc'),
-      limit(20)
+      where('ownerId', '==', user.uid)
     );
   }, [user, firestore]);
-  const { data: inspections, isLoading: isLoadingInspections, error: inspectionError } = useCollection<Inspection>(inspectionsQuery);
+  const { data: inspections, isLoading: isLoadingInspections } = useCollection<Inspection>(inspectionsQuery);
 
   const documentsQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
       collectionGroup(firestore, 'documents'), 
-      where('ownerId', '==', user.uid),
-      orderBy('expiryDate', 'asc'),
-      limit(50)
+      where('ownerId', '==', user.uid)
     );
   }, [user, firestore]);
-  const { data: documents, isLoading: isLoadingDocuments, error: documentError } = useCollection<Document>(documentsQuery);
+  const { data: documents, isLoading: isLoadingDocuments } = useCollection<Document>(documentsQuery);
 
   const currentYear = new Date().getFullYear();
   const currentMonth = format(new Date(), 'MMMM');
@@ -176,15 +170,12 @@ export default function DashboardPage() {
     if (!user) return null;
     return query(
       collectionGroup(firestore, 'rentPayments'), 
-      where('ownerId', '==', user.uid),
-      where('year', '==', currentYear),
-      where('month', '==', currentMonth)
+      where('ownerId', '==', user.uid)
     );
-  }, [user, firestore, currentYear, currentMonth]);
-  const { data: rentPayments, isLoading: isLoadingRent, error: rentError } = useCollection<RentPayment>(rentQuery);
+  }, [user, firestore]);
+  const { data: allRentPayments, isLoading: isLoadingRent } = useCollection<RentPayment>(rentQuery);
 
   const isLoading = isLoadingProperties || isLoadingMaintenance || isLoadingInspections || isLoadingDocuments || isLoadingRent;
-  const globalError = maintenanceError || inspectionError || documentError || rentError;
 
   // --- Processed Data ---
 
@@ -206,12 +197,17 @@ export default function DashboardPage() {
 
   const recentActivities = useMemo(() => 
     maintenanceLogs
-        ?.slice(0, 4)
+        ?.sort((a, b) => {
+            const dateA = a.reportedDate instanceof Date ? a.reportedDate : (a.reportedDate as Timestamp).toDate();
+            const dateB = b.reportedDate instanceof Date ? b.reportedDate : (b.reportedDate as Timestamp).toDate();
+            return dateB.getTime() - dateA.getTime();
+        })
+        .slice(0, 4)
         .map(log => ({
             id: log.id,
             property: propertyMap[log.propertyId] ? formatAddress(propertyMap[log.propertyId]) : 'Portfolio Wide',
             activity: log.title,
-            date: format((log.reportedDate as Timestamp).toDate(), 'dd/MM/yyyy'),
+            date: format(log.reportedDate instanceof Date ? log.reportedDate : (log.reportedDate as Timestamp).toDate(), 'dd/MM/yyyy'),
             href: `/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`
         })) ?? []
   , [maintenanceLogs, propertyMap]);
@@ -223,14 +219,17 @@ export default function DashboardPage() {
             const scheduledDate = insp.scheduledDate instanceof Date ? insp.scheduledDate : (insp.scheduledDate as Timestamp).toDate();
             return insp.status === 'Scheduled' && isFuture(scheduledDate)
         })
-        .map(insp => ({
-            id: `insp-${insp.id}`,
-            task: insp.type || 'Inspection',
-            property: propertyMap[insp.propertyId] ? formatAddress(propertyMap[insp.propertyId]) : 'Portfolio Wide',
-            status: 'Scheduled',
-            dueDate: format((insp.scheduledDate as Timestamp).toDate(), 'dd/MM/yyyy'),
-            href: `/dashboard/inspections/${insp.id}?propertyId=${insp.propertyId}`
-        })) ?? [];
+        .map(insp => {
+            const date = insp.scheduledDate instanceof Date ? insp.scheduledDate : (insp.scheduledDate as Timestamp).toDate();
+            return {
+                id: `insp-${insp.id}`,
+                task: insp.type || 'Inspection',
+                property: propertyMap[insp.propertyId] ? formatAddress(propertyMap[insp.propertyId]) : 'Portfolio Wide',
+                status: 'Scheduled',
+                dueDate: date,
+                href: `/dashboard/inspections/${insp.id}?propertyId=${insp.propertyId}`
+            };
+        }) ?? [];
     
     const documentTasks = documents
         ?.map(doc => {
@@ -244,29 +243,39 @@ export default function DashboardPage() {
             task: doc.title,
             property: propertyMap[doc.propertyId] ? formatAddress(propertyMap[doc.propertyId]) : 'Portfolio Wide',
             status: doc.status,
-            dueDate: format(doc.expiryDate, 'dd/MM/yyyy'),
+            dueDate: doc.expiryDate,
             href: '/dashboard/documents'
         })) ?? [];
 
         return [...inspectionTasks, ...documentTasks]
-            .sort((a,b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
-            .slice(0, 4);
+            .sort((a,b) => a.dueDate.getTime() - b.dueDate.getTime())
+            .slice(0, 4)
+            .map(t => ({
+                ...t,
+                dueDate: format(t.dueDate, 'dd/MM/yyyy')
+            }));
   }, [inspections, documents, propertyMap]);
   
   const rentStatusData = useMemo(() => {
     if (isLoading || !properties) return [];
     const occupiedPropertiesCount = properties.filter(p => p.status === 'Occupied').length;
+    
+    // Filter payments for current month only
+    const monthlyPayments = allRentPayments?.filter(p => p.year === currentYear && p.month === currentMonth) ?? [];
+    
     const statusCounts: Record<'Paid' | 'Partially Paid' | 'Unpaid', number> = { 'Paid': 0, 'Partially Paid': 0, 'Unpaid': 0 };
-    rentPayments?.forEach(payment => { if (statusCounts[payment.status] !== undefined) statusCounts[payment.status]++; });
+    monthlyPayments.forEach(payment => { if (statusCounts[payment.status] !== undefined) statusCounts[payment.status]++; });
+    
     const nonPendingCount = statusCounts.Paid + statusCounts['Partially Paid'] + statusCounts.Unpaid;
     const pendingCount = Math.max(0, occupiedPropertiesCount - nonPendingCount);
+    
     return [
       { status: 'Paid', count: statusCounts.Paid, fill: 'hsl(var(--chart-2))' },
       { status: 'Partially Paid', count: statusCounts['Partially Paid'], fill: 'hsl(var(--chart-4))' },
       { status: 'Unpaid', count: statusCounts.Unpaid, fill: 'hsl(var(--chart-1))' },
       { status: 'Pending', count: pendingCount, fill: 'hsl(var(--muted))' },
     ].filter(item => item.count > 0);
-  }, [isLoading, properties, rentPayments]);
+  }, [isLoading, properties, allRentPayments, currentYear, currentMonth]);
 
   const rentChartConfig = {
       count: { label: "Properties" },
@@ -275,19 +284,6 @@ export default function DashboardPage() {
       Unpaid: { label: "Unpaid", color: "hsl(var(--chart-1))" },
       Pending: { label: "Pending", color: "hsl(var(--muted))" },
   } satisfies ChartConfig;
-
-  if (globalError) {
-    return (
-      <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
-        <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
-        <h2 className="text-xl font-bold mb-2">Portfolio Analytics Status</h2>
-        <p className="text-muted-foreground max-w-md mb-6">
-          To display your global maintenance and inspection reports, Firestore requires a composite performance index. Please check the Firebase Console logs for a link to click, or wait a few minutes if you've recently initialized the app.
-        </p>
-        <Button onClick={() => window.location.reload()}>Refresh Dashboard</Button>
-      </div>
-    );
-  }
 
   const infoCards = [
     { title: 'Total Properties', value: isLoading ? '-' : activeProperties.length, icon: Home, description: 'Active properties' },

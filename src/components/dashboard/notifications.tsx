@@ -14,7 +14,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Bell, FileWarning, CalendarClock, Loader2 } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, Timestamp, collectionGroup, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, Timestamp, collectionGroup } from 'firebase/firestore';
 import { format, isBefore, addDays, isFuture } from 'date-fns';
 
 // Interfaces
@@ -55,7 +55,7 @@ export function Notifications() {
   const { user } = useUser();
   const firestore = useFirestore();
 
-  // Optimized high-performance listeners
+  // Optimized high-performance listeners (Simplified filters to avoid index requirement)
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(collection(firestore, 'properties'), where('ownerId', '==', user.uid));
@@ -66,9 +66,7 @@ export function Notifications() {
     if (!user) return null;
     return query(
       collectionGroup(firestore, 'documents'), 
-      where('ownerId', '==', user.uid),
-      orderBy('expiryDate', 'asc'),
-      limit(20)
+      where('ownerId', '==', user.uid)
     );
   }, [firestore, user]);
   const { data: allDocuments, isLoading: isLoadingDocs } = useCollection<Document>(docsQuery);
@@ -77,10 +75,7 @@ export function Notifications() {
     if (!user) return null;
     return query(
       collectionGroup(firestore, 'inspections'), 
-      where('ownerId', '==', user.uid),
-      where('status', '==', 'Scheduled'),
-      orderBy('scheduledDate', 'asc'),
-      limit(20)
+      where('ownerId', '==', user.uid)
     );
   }, [firestore, user]);
   const { data: allInspections, isLoading: isLoadingInsps } = useCollection<Inspection>(inspsQuery);
@@ -112,7 +107,7 @@ export function Notifications() {
 
     const inspectionReminders = allInspections
         ?.filter((insp) => {
-          if (!insp.scheduledDate) return false;
+          if (!insp.scheduledDate || insp.status !== 'Scheduled') return false;
           const scheduled = insp.scheduledDate instanceof Date ? insp.scheduledDate : (insp.scheduledDate as Timestamp).toDate();
           return isFuture(scheduled);
         })

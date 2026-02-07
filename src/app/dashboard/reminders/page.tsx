@@ -19,7 +19,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Download, Loader2, FileWarning, CalendarClock, AlertTriangle } from 'lucide-react';
+import { Download, Loader2, FileWarning, CalendarClock } from 'lucide-react';
 import { format, isBefore, addDays, isFuture } from 'date-fns';
 import {
   useUser,
@@ -27,7 +27,7 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, Timestamp, collectionGroup, orderBy } from 'firebase/firestore';
+import { collection, query, where, Timestamp, collectionGroup } from 'firebase/firestore';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -84,7 +84,7 @@ export default function RemindersPage() {
   const { user } = useUser();
   const firestore = useFirestore();
 
-  // High-performance collection group queries
+  // Simplified filters to avoid index requirement
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(collection(firestore, 'properties'), where('ownerId', '==', user.uid));
@@ -93,15 +93,15 @@ export default function RemindersPage() {
 
   const docsQuery = useMemoFirebase(() => {
     if (!user) return null;
-    return query(collectionGroup(firestore, 'documents'), where('ownerId', '==', user.uid), orderBy('expiryDate', 'asc'));
+    return query(collectionGroup(firestore, 'documents'), where('ownerId', '==', user.uid));
   }, [firestore, user]);
-  const { data: allDocuments, isLoading: isLoadingDocs, error: docsError } = useCollection<Document>(docsQuery);
+  const { data: allDocuments, isLoading: isLoadingDocs } = useCollection<Document>(docsQuery);
 
   const inspsQuery = useMemoFirebase(() => {
     if (!user) return null;
-    return query(collectionGroup(firestore, 'inspections'), where('ownerId', '==', user.uid), orderBy('scheduledDate', 'asc'));
+    return query(collectionGroup(firestore, 'inspections'), where('ownerId', '==', user.uid));
   }, [firestore, user]);
-  const { data: allInspections, isLoading: isLoadingInsps, error: inspsError } = useCollection<Inspection>(inspsQuery);
+  const { data: allInspections, isLoading: isLoadingInsps } = useCollection<Inspection>(inspsQuery);
 
   const propertyMap = useMemo(() => {
     return properties?.reduce((map, prop) => {
@@ -161,16 +161,6 @@ export default function RemindersPage() {
     doc.autoTable({ head: [tableColumn], body: tableRows, startY: 30, theme: 'striped' });
     doc.save('portfolio-reminders.pdf');
   };
-
-  if (docsError || inspsError) {
-    return (
-      <div className="flex flex-col items-center justify-center h-96 text-center px-4">
-        <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
-        <h2 className="text-xl font-bold mb-2">Portfolio Indexing Required</h2>
-        <p className="text-muted-foreground max-w-md">To load your reminders efficiently across all properties, Firestore needs to create a one-time performance index. If you are a developer, please check your logs for an index creation link.</p>
-      </div>
-    );
-  }
 
   return (
     <div className="flex flex-col gap-6">
