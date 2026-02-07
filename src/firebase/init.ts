@@ -36,8 +36,8 @@ export function initializeFirebase() {
 export function getSdks(firebaseApp: FirebaseApp) {
   const auth = getAuth(firebaseApp);
   const firestore = getFirestore(firebaseApp);
-  // Reverted to explicit bucket URL for reliability.
-  const storage = getStorage(firebaseApp, `gs://${firebaseConfig.storageBucket}`);
+  // Use default bucket from config for reliability.
+  const storage = getStorage(firebaseApp);
 
   return {
     firebaseApp,
