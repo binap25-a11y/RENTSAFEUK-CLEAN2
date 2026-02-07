@@ -37,7 +37,8 @@ export default function UploadTest2Page() {
     setIsUploading(true);
     setDownloadURL('');
 
-    const filePath = `test-uploads/${user.uid}/${Date.now()}-${file.name}`;
+    // Use a simplified path to avoid security rule conflicts with other rules.
+    const filePath = `test-uploads/${Date.now()}-${file.name}`;
     const fileRef = storageRef(storage, filePath);
 
     try {
