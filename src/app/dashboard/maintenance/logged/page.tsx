@@ -54,7 +54,9 @@ import {
   Eye, 
   XCircle, 
   Trash2, 
-  ArrowLeft 
+  ArrowLeft,
+  Calendar,
+  AlertCircle
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -183,7 +185,7 @@ export default function MaintenanceLoggedPage() {
   };
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center gap-4">
         <Button variant="outline" size="icon" asChild>
           <Link href="/dashboard/maintenance">
@@ -191,74 +193,272 @@ export default function MaintenanceLoggedPage() {
           </Link>
         </Button>
         <div>
-          <h1 className="text-3xl font-bold">Maintenance Logged</h1>
+          <h1 className="text-3xl font-bold font-headline">Maintenance Logged</h1>
           <p className="text-muted-foreground">
-            View and manage your maintenance records.
+            History of maintenance tasks and repairs.
           </p>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Maintenance Records</CardTitle>
-          <CardDescription>Select a property to view its maintenance history.</CardDescription>
+          <CardTitle>Filter Records</CardTitle>
+          <CardDescription>Search and filter your maintenance history.</CardDescription>
         </CardHeader>
-        <CardContent className="space-y-4">
-            <div className="flex flex-col md:flex-row gap-4">
-                <div className="flex items-center gap-2">
-                    <Label htmlFor="property-filter" className="sr-only">Filter by Property</Label>
-                    <Select value={selectedPropertyFilter} onValueChange={setSelectedPropertyFilter}>
-                        <SelectTrigger id="property-filter" className="w-full md:w-[300px]"><SelectValue placeholder={isLoadingProperties ? 'Loading...' : 'Select a property'} /></SelectTrigger>
-                        <SelectContent>{properties?.map(prop => (<SelectItem key={prop.id} value={prop.id}>{formatAddress(prop.address)}</SelectItem>))}</SelectContent>
-                    </Select>
+        <CardContent className="space-y-6">
+            {/* Improved Search and Filter Layout */}
+            <div className="flex flex-col gap-6 max-w-md">
+                <div className="space-y-2">
+                    <Label htmlFor="search-issues" className="text-sm font-medium">Search Issues</Label>
+                    <div className="relative">
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                            id="search-issues"
+                            placeholder="e.g., 'Leaking pipe', 'Boiler'..." 
+                            className="pl-8" 
+                            value={searchTerm} 
+                            onChange={e => setSearchTerm(e.target.value)} 
+                        />
+                    </div>
                 </div>
-                <div className="relative w-full md:max-w-sm">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input placeholder="Search by issue title..." className="pl-8" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                <div className="space-y-2">
+                    <Label htmlFor="property-filter" className="text-sm font-medium">Filter by Property</Label>
+                    <Select value={selectedPropertyFilter} onValueChange={setSelectedPropertyFilter}>
+                        <SelectTrigger id="property-filter" className="w-full">
+                            <SelectValue placeholder={isLoadingProperties ? 'Loading properties...' : 'Choose a property to view logs'} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {properties?.map(prop => (
+                                <SelectItem key={prop.id} value={prop.id}>{formatAddress(prop.address)}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
             </div>
             
-            <div className="hidden rounded-md border md:block">
-                <Table>
-                    <TableHeader><TableRow><TableHead>Title</TableHead><TableHead>Status</TableHead><TableHead>Priority</TableHead><TableHead>Reported</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
-                    <TableBody>
-                        {isLoadingLogs && <TableRow><TableCell colSpan={5} className="h-24 text-center"><Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" /></TableCell></TableRow>}
-                        {!isLoadingLogs && filteredLogs?.length === 0 && <TableRow><TableCell colSpan={5} className="h-24 text-center">{selectedPropertyFilter ? 'No maintenance logs for this property.' : 'Select a property to view logs.'}</TableCell></TableRow>}
-                        {filteredLogs?.map(log => (<TableRow key={log.id}><TableCell className="font-medium"><Link href={`/dashboard/maintenance/${log.id}?propertyId=${selectedPropertyFilter}`} className="hover:underline">{log.title}</Link></TableCell><TableCell><Select value={log.status} onValueChange={(newStatus) => handleStatusChange(log.id, selectedPropertyFilter, newStatus)}><SelectTrigger className="w-[150px]"><SelectValue placeholder="Set status" /></SelectTrigger><SelectContent><SelectItem value="Open">Open</SelectItem><SelectItem value="In Progress">In Progress</SelectItem><SelectItem value="Completed">Completed</SelectItem><SelectItem value="Cancelled">Cancelled</SelectItem></SelectContent></Select></TableCell><TableCell><Badge variant={getPriorityVariant(log.priority)}>{log.priority}</Badge></TableCell><TableCell>{log.reportedDate instanceof Date ? format(log.reportedDate, 'dd/MM/yyyy') : format(new Date(log.reportedDate.seconds * 1000), 'dd/MM/yyyy')}</TableCell><TableCell className="text-right"><Button asChild variant="ghost" size="icon"><Link href={`/dashboard/maintenance/${log.id}?propertyId=${selectedPropertyFilter}`}><Eye className="h-4 w-4" /></Link></Button><Button asChild variant="ghost" size="icon"><Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${selectedPropertyFilter}`}><Edit className="mr-2 h-4 w-4" /></Link></Button><Button variant="ghost" size="icon" onClick={() => setLogToCancel(log)}><XCircle className="h-4 w-4" /></Button><Button variant="ghost" size="icon" onClick={() => setLogToDelete(log)}><Trash2 className="h-4 w-4 text-destructive" /></Button></TableCell></TableRow>))}
-                    </TableBody>
-                </Table>
-            </div>
+            <div className="pt-4 border-t">
+                {/* Desktop Table View */}
+                <div className="hidden rounded-md border md:block">
+                    <Table>
+                        <TableHeader>
+                            <TableRow>
+                                <TableHead className="w-[30%]">Issue Title</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead>Priority</TableHead>
+                                <TableHead>Reported</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {isLoadingLogs && <TableRow><TableCell colSpan={5} className="h-32 text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" /></TableCell></TableRow>}
+                            {!isLoadingLogs && filteredLogs?.length === 0 && (
+                                <TableRow>
+                                    <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
+                                        {selectedPropertyFilter ? 'No maintenance logs found for this property.' : 'Select a property above to see its maintenance history.'}
+                                    </TableCell>
+                                </TableRow>
+                            )}
+                            {filteredLogs?.map(log => (
+                                <TableRow key={log.id}>
+                                    <TableCell className="font-medium">
+                                        <Link href={`/dashboard/maintenance/${log.id}?propertyId=${selectedPropertyFilter}`} className="hover:underline text-primary">
+                                            {log.title}
+                                        </Link>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Select value={log.status} onValueChange={(newStatus) => handleStatusChange(log.id, selectedPropertyFilter, newStatus)}>
+                                            <SelectTrigger className="w-[140px] h-8 text-xs font-medium">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="Open">Open</SelectItem>
+                                                <SelectItem value="In Progress">In Progress</SelectItem>
+                                                <SelectItem value="Completed">Completed</SelectItem>
+                                                <SelectItem value="Cancelled">Cancelled</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </TableCell>
+                                    <TableCell>
+                                        <Badge variant={getPriorityVariant(log.priority)} className="capitalize">
+                                            {log.priority}
+                                        </Badge>
+                                    </TableCell>
+                                    <TableCell className="text-muted-foreground text-sm">
+                                        {log.reportedDate instanceof Date ? format(log.reportedDate, 'dd/MM/yyyy') : format(new Date(log.reportedDate.seconds * 1000), 'dd/MM/yyyy')}
+                                    </TableCell>
+                                    <TableCell className="text-right">
+                                        <div className="flex justify-end items-center gap-1">
+                                            <Button asChild variant="ghost" size="icon" className="h-8 w-8">
+                                                <Link href={`/dashboard/maintenance/${log.id}?propertyId=${selectedPropertyFilter}`}>
+                                                    <Eye className="h-4 w-4" />
+                                                </Link>
+                                            </Button>
+                                            <Button asChild variant="ghost" size="icon" className="h-8 w-8">
+                                                <Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${selectedPropertyFilter}`}>
+                                                    <Edit className="h-4 w-4" />
+                                                </Link>
+                                            </Button>
+                                            <DropdownMenu>
+                                                <DropdownMenuTrigger asChild>
+                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                        <MoreVertical className="h-4 w-4" />
+                                                    </Button>
+                                                </DropdownMenuTrigger>
+                                                <DropdownMenuContent align="end">
+                                                    <DropdownMenuItem onClick={() => setLogToCancel(log)}>
+                                                        <XCircle className="mr-2 h-4 w-4" /> Cancel Issue
+                                                    </DropdownMenuItem>
+                                                    <DropdownMenuSeparator />
+                                                    <DropdownMenuItem onClick={() => setLogToDelete(log)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                                        <Trash2 className="mr-2 h-4 w-4" /> Delete Permanently
+                                                    </DropdownMenuItem>
+                                                </DropdownMenuContent>
+                                            </DropdownMenu>
+                                        </div>
+                                    </TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
 
-            <div className="space-y-4 md:hidden">
-              {isLoadingLogs ? <div className="flex justify-center items-center h-24"><Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" /></div>
-              : filteredLogs?.length === 0 ? <div className="text-center py-10 text-muted-foreground">{selectedPropertyFilter ? 'No maintenance logs for this property.' : 'Select a property to view logs.'}</div>
-              : (filteredLogs.map(log => (
-                    <Card key={log.id}>
-                        <CardHeader>
-                            <div className="flex justify-between items-start">
-                                <div>
-                                    <CardTitle className="text-base pr-2"><Link href={`/dashboard/maintenance/${log.id}?propertyId=${selectedPropertyFilter}`} className="hover:underline">{log.title}</Link></CardTitle>
-                                    <CardDescription>{propertyMap[selectedPropertyFilter]}</CardDescription>
-                                </div>
-                                <DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="-mr-2 -mt-2"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem asChild><Link href={`/dashboard/maintenance/${log.id}?propertyId=${selectedPropertyFilter}`}><Eye className="mr-2 h-4 w-4" /> View</Link></DropdownMenuItem><DropdownMenuItem asChild><Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${selectedPropertyFilter}`}><Edit className="mr-2 h-4 w-4" /> Edit</Link></DropdownMenuItem><DropdownMenuItem onClick={() => setLogToCancel(log)}><XCircle className="mr-2 h-4 w-4" /> Cancel Log</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem onClick={() => setLogToDelete(log)} className="text-destructive focus:text-destructive focus:bg-destructive/10"><Trash2 className="mr-2 h-4 w-4" /> Delete Permanently</DropdownMenuItem></DropdownMenuContent></DropdownMenu>
-                            </div>
-                        </CardHeader>
-                        <CardContent className="space-y-4">
-                            <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Status</span><Select value={log.status} onValueChange={(newStatus) => handleStatusChange(log.id, selectedPropertyFilter, newStatus)}><SelectTrigger className="w-[150px] h-9"><SelectValue placeholder="Set status" /></SelectTrigger><SelectContent><SelectItem value="Open">Open</SelectItem><SelectItem value="In Progress">In Progress</SelectItem><SelectItem value="Completed">Completed</SelectItem><SelectItem value="Cancelled">Cancelled</SelectItem></SelectContent></Select></div>
-                            <div className="flex items-center justify-between text-sm"><span className="text-muted-foreground">Priority</span><Badge variant={getPriorityVariant(log.priority)}>{log.priority}</Badge></div>
-                        </CardContent>
-                        <CardFooter className="text-xs justify-end text-muted-foreground pt-4">Reported on {log.reportedDate instanceof Date ? format(log.reportedDate, 'dd/MM/yyyy') : format(new Date(log.reportedDate.seconds * 1000), 'dd/MM/yyyy')}</CardFooter>
-                    </Card>)))}
+                {/* Improved Mobile Card View */}
+                <div className="space-y-4 md:hidden">
+                    {isLoadingLogs ? (
+                        <div className="flex justify-center items-center h-24">
+                            <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+                        </div>
+                    ) : filteredLogs?.length === 0 ? (
+                        <div className="text-center py-10 text-muted-foreground border-2 border-dashed rounded-lg bg-muted/30">
+                            {selectedPropertyFilter ? 'No issues found.' : 'Select a property to view logs.'}
+                        </div>
+                    ) : (
+                        filteredLogs.map(log => (
+                            <Card key={log.id} className="overflow-hidden">
+                                <CardHeader className="pb-3">
+                                    <div className="flex justify-between items-start">
+                                        <div className="space-y-1">
+                                            <Badge variant={getPriorityVariant(log.priority)} className="mb-1">
+                                                {log.priority}
+                                            </Badge>
+                                            <CardTitle className="text-lg">
+                                                <Link href={`/dashboard/maintenance/${log.id}?propertyId=${selectedPropertyFilter}`} className="hover:underline decoration-primary">
+                                                    {log.title}
+                                                </Link>
+                                            </CardTitle>
+                                            <CardDescription className="flex items-center gap-1.5 mt-1">
+                                                <AlertCircle className="h-3 w-3" />
+                                                {propertyMap[selectedPropertyFilter]}
+                                            </CardDescription>
+                                        </div>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 -mt-2">
+                                                    <MoreVertical className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end">
+                                                <DropdownMenuItem asChild>
+                                                    <Link href={`/dashboard/maintenance/${log.id}?propertyId=${selectedPropertyFilter}`}>
+                                                        <Eye className="mr-2 h-4 w-4" /> View Details
+                                                    </Link>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem asChild>
+                                                    <Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${selectedPropertyFilter}`}>
+                                                        <Edit className="mr-2 h-4 w-4" /> Edit
+                                                    </Link>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem onClick={() => setLogToCancel(log)}>
+                                                    <XCircle className="mr-2 h-4 w-4" /> Cancel Log
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => setLogToDelete(log)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                                    <Trash2 className="mr-2 h-4 w-4" /> Delete Permanently
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
+                                </CardHeader>
+                                <CardContent className="pb-3 border-t pt-3">
+                                    <div className="flex items-center justify-between text-sm mb-3">
+                                        <span className="text-muted-foreground flex items-center gap-1.5 font-medium">
+                                            Status
+                                        </span>
+                                        <Select value={log.status} onValueChange={(newStatus) => handleStatusChange(log.id, selectedPropertyFilter, newStatus)}>
+                                            <SelectTrigger className="w-[140px] h-9">
+                                                <SelectValue />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                <SelectItem value="Open">Open</SelectItem>
+                                                <SelectItem value="In Progress">In Progress</SelectItem>
+                                                <SelectItem value="Completed">Completed</SelectItem>
+                                                <SelectItem value="Cancelled">Cancelled</SelectItem>
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <div className="flex items-center justify-between text-sm text-muted-foreground">
+                                        <span className="flex items-center gap-1.5">
+                                            <Calendar className="h-3.5 w-3.5" />
+                                            Reported
+                                        </span>
+                                        <span className="font-medium text-foreground">
+                                            {log.reportedDate instanceof Date ? format(log.reportedDate, 'dd/MM/yyyy') : format(new Date(log.reportedDate.seconds * 1000), 'dd/MM/yyyy')}
+                                        </span>
+                                    </div>
+                                </CardContent>
+                                <CardFooter className="bg-muted/30 py-2 px-4 flex justify-between border-t">
+                                    <Button variant="ghost" size="sm" asChild className="h-8 text-xs px-2">
+                                        <Link href={`/dashboard/maintenance/${log.id}?propertyId=${selectedPropertyFilter}`}>
+                                            <Eye className="h-3 w-3 mr-1" /> Full View
+                                        </Link>
+                                    </Button>
+                                    <Button variant="ghost" size="sm" asChild className="h-8 text-xs px-2">
+                                        <Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${selectedPropertyFilter}`}>
+                                            <Edit className="h-3 w-3 mr-1" /> Edit Log
+                                        </Link>
+                                    </Button>
+                                </CardFooter>
+                            </Card>
+                        ))
+                    )}
+                </div>
             </div>
         </CardContent>
       </Card>
 
+      {/* Dialogs */}
       <AlertDialog open={!!logToCancel} onOpenChange={(open) => !open && setLogToCancel(null)}>
-        <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will cancel the maintenance log: "{logToCancel?.title}". This action can be undone by editing the log.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Back</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleCancelConfirm}>Yes, Cancel Log</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Cancel Maintenance Issue?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This will mark "{logToCancel?.title}" as 'Cancelled'. It will remain in your records, but won't show as an active task.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Go Back</AlertDialogCancel>
+                <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleCancelConfirm}>
+                    Confirm Cancellation
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
       </AlertDialog>
       
        <AlertDialog open={!!logToDelete} onOpenChange={(open) => !open && setLogToDelete(null)}>
-        <AlertDialogContent><AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This action cannot be undone. This will permanently delete the maintenance log: "{logToDelete?.title}".</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleDeleteConfirm}>Delete Permanently</AlertDialogAction></AlertDialogFooter></AlertDialogContent>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Permanent Deletion</AlertDialogTitle>
+                <AlertDialogDescription>
+                    Are you absolutely sure? This action cannot be undone. This will permanently delete the record for "{logToDelete?.title}".
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleDeleteConfirm}>
+                    Delete Permanently
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
       </AlertDialog>
     </div>
   );
