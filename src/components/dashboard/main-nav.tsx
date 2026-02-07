@@ -158,10 +158,10 @@ export function MainNav() {
         </SidebarMenuItem>
       ))}
        <SidebarMenuItem>
-          <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/image-test')} tooltip="Image Test">
-              <Link href="/dashboard/image-test" onClick={handleLinkClick}>
+          <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/upload-test-2')} tooltip="Storage Test">
+              <Link href="/dashboard/upload-test-2" onClick={handleLinkClick}>
                 <FileImage />
-                <span>Image Test</span>
+                <span>Storage Test</span>
               </Link>
           </SidebarMenuButton>
         </SidebarMenuItem>
