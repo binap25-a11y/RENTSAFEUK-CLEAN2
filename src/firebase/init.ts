@@ -22,10 +22,10 @@ export function initializeFirebase() {
 export function getSdks(firebaseApp: FirebaseApp) {
   const auth = getAuth(firebaseApp);
   const firestore = getFirestore(firebaseApp);
-  // Reverted to the standard getStorage() call for maximum reliability.
-  // This allows the Firebase SDK to handle the connection details, which is more
-  // robust once the CORS policy on the bucket is correctly configured.
-  const storage = getStorage(firebaseApp);
+  // Explicitly connect to the storage bucket using its URL.
+  // This removes any ambiguity and ensures the SDK connects to the correct bucket,
+  // which can resolve persistent timeout issues.
+  const storage = getStorage(firebaseApp, firebaseConfig.storageBucket);
 
   return {
     firebaseApp,

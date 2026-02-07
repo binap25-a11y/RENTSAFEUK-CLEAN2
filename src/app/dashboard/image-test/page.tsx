@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { useStorage } from '@/firebase';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Loader2, UploadCloud, AlertCircle, Terminal } from 'lucide-react';
+import { Loader2, UploadCloud, AlertCircle } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { Label } from '@/components/ui/label';
 import { Alert, AlertTitle, AlertDescription } from "@/components/ui/alert"
@@ -68,11 +68,7 @@ export default function ImageTestPage() {
       console.error('Image Upload Error:', e);
       const errorMessage = e.message || 'An unknown error occurred.';
       
-      if (e.code === 'storage/retry-limit-exceeded') {
-          setError(`Upload timed out. This is a network configuration issue. Please ensure you have run the CORS command provided above.`);
-      } else {
-          setError(`Upload Failed. Code: ${e.code}. Message: ${errorMessage}`);
-      }
+      setError(`Upload Failed. Code: ${e.code}. Message: ${errorMessage}`);
       
       toast({
         variant: 'destructive',
@@ -92,16 +88,6 @@ export default function ImageTestPage() {
           This page is a clean slate to test the fundamental connection to Firebase Storage.
         </p>
       </div>
-
-       <Alert variant="default" className="border-primary">
-          <Terminal className="h-4 w-4" />
-          <AlertTitle className="font-bold">Important: One-Time Fix Required</AlertTitle>
-          <AlertDescription>
-            <p className="mb-2">The upload timeout error is caused by a security policy in your cloud project. To permanently fix it, please run the following command in your terminal. This allows your app to communicate with your storage bucket.</p>
-            <pre className="mt-2 mb-3 p-3 bg-muted rounded-md text-xs font-mono overflow-x-auto"><code>gcloud storage buckets update gs://studio-7375290328-5d091.appspot.com --cors-file=cors.json</code></pre>
-            <p className="text-xs text-muted-foreground">After running the command, try the upload test below.</p>
-          </AlertDescription>
-      </Alert>
 
       <Card>
         <CardHeader>
