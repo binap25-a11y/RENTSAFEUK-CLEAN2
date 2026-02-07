@@ -9,10 +9,9 @@ service firebase.storage {
                            (folder == 'documents' || folder == 'maintenance' || folder == 'images');
     }
     
-    // Diagnostic rule for test uploads. Allows any authenticated user to write to the test path.
+    // EXTREMELY PERMISSIVE DIAGNOSTIC RULE. This allows anyone to read/write.
     match /test-uploads/{allPaths=**} {
-      allow write: if request.auth != null;
-      allow read;
+      allow read, write;
     }
   }
 }

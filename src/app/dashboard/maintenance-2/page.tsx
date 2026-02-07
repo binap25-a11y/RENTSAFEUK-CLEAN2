@@ -1,105 +1,132 @@
 'use client';
 
-import { useState } from 'react';
+import { useRef, useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { useUser, useStorage } from '@/firebase';
+import { useStorage } from '@/firebase';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { toast } from '@/hooks/use-toast';
 import { Loader2 } from 'lucide-react';
 import Link from 'next/link';
 
 export default function Maintenance2Page() {
-  const { user } = useUser();
   const storage = useStorage();
-  const [fileToUpload, setFileToUpload] = useState<File | null>(null);
+  // Use a ref for the file input to avoid any React state issues
+  const inputRef = useRef<HTMLInputElement>(null);
   const [isUploading, setIsUploading] = useState(false);
-  const [uploadedUrl, setUploadedUrl] = useState<string | null>(null);
-  
+  const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
+
+  const handleUpload = async () => {
+    // 1. Check if storage service is available
+    if (!storage) {
+      toast({
+        variant: 'destructive',
+        title: 'Error: Storage Not Ready',
+        description: 'The Firebase Storage service is not available. Please try again.',
+      });
+      console.error('Firebase Storage instance is not available.');
+      return;
+    }
+
+    // 2. Check if files are selected
+    if (!inputRef.current?.files || inputRef.current.files.length === 0) {
+      toast({
+        variant: 'destructive',
+        title: 'No File Selected',
+        description: 'Please select a file to upload.',
+      });
+      return;
+    }
+
+    const filesToUpload = Array.from(inputRef.current.files);
+    setIsUploading(true);
+    setUploadedUrls([]); // Clear previous results
+
+    for (const file of filesToUpload) {
+      const uniqueFileName = `${Date.now()}-${file.name}`;
+      // Use the permissive test path
+      const fileRef = storageRef(storage, `test-uploads/${uniqueFileName}`);
+      
+      console.log(`--- Starting Upload for ${file.name} ---`);
+      console.log('File object:', file);
+      console.log('Target Storage Path:', fileRef.fullPath);
+      toast({ title: `Uploading ${file.name}...` });
+
+      try {
+        // 3. Perform the upload
+        const uploadResult = await uploadBytes(fileRef, file);
+        console.log(`Upload successful for ${file.name}. Result:`, uploadResult);
+        
+        // 4. Get the download URL
+        const url = await getDownloadURL(uploadResult.ref);
+        console.log(`Successfully got download URL:`, url);
+
+        setUploadedUrls(prev => [...prev, url]);
+        toast({
+          title: `Success: ${file.name} uploaded!`,
+        });
+
+      } catch (error: any) {
+        // 5. Log EVERYTHING on error
+        console.error(`--- UPLOAD FAILED for ${file.name} ---`);
+        console.error('Error Code:', error.code);
+        console.error('Error Name:', error.name);
+        console.error('Error Message:', error.message);
+        console.error('Full Error Object:', error);
+
+        toast({
+          variant: 'destructive',
+          title: `Upload Failed: ${file.name}`,
+          description: `Error: ${error.message}. Check the console for more details.`,
+          duration: 9000,
+        });
+        
+        // Stop on first error
+        setIsUploading(false);
+        return;
+      }
+    }
+
+    setIsUploading(false);
+  };
+
   return (
     <div className="p-8 space-y-6 max-w-xl mx-auto border rounded-lg bg-card text-card-foreground">
       <h1 className="text-xl font-bold">File Upload Diagnostic Page</h1>
       <p className="text-sm text-muted-foreground">
-        This is a simplified test environment. Please select a single file to upload to diagnose the issue.
+        This is a simplified test environment. It uses a highly permissive security rule for the upload path `/test-uploads/` for diagnostic purposes.
       </p>
       
       <div className="space-y-2">
-        <label htmlFor="file-input" className="font-medium text-sm">Step 1: Select a single file</label>
+        <label htmlFor="file-input" className="font-medium text-sm">Step 1: Select one or more files</label>
         <input 
           id="file-input"
           type="file"
+          ref={inputRef}
+          multiple
           className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
-          onChange={(e) => {
-            if (e.target.files && e.target.files.length > 0) {
-                setFileToUpload(e.target.files[0]);
-                setUploadedUrl(null);
-            } else {
-                setFileToUpload(null);
-            }
-          }} 
         />
       </div>
 
       <Button
-        onClick={async () => {
-          if (!fileToUpload) {
-            toast({ variant: 'destructive', title: 'No file selected' });
-            return;
-          }
-          if (!user || !storage) {
-            toast({ variant: 'destructive', title: 'Not authenticated or storage not ready.' });
-            return;
-          }
-
-          setIsUploading(true);
-          setUploadedUrl(null);
-          toast({ title: 'Upload started...', description: `Uploading ${fileToUpload.name}` });
-          console.log('Attempting to upload file:', fileToUpload.name);
-
-          try {
-            const uniqueFileName = `${Date.now()}-${fileToUpload.name}`;
-            // Simplified path for diagnostic rule
-            const fileRef = storageRef(storage, `test-uploads/${uniqueFileName}`);
-            
-            console.log('Uploading to path:', fileRef.toString());
-            const uploadResult = await uploadBytes(fileRef, fileToUpload);
-            console.log('Upload successful, getting URL...');
-            const url = await getDownloadURL(uploadResult.ref);
-
-            setUploadedUrl(url);
-            toast({ title: 'Upload successful!', description: `File has been uploaded.` });
-            console.log('Upload and URL retrieval complete.');
-
-          } catch (error: any) {
-            console.error('--- UPLOAD FAILED ---');
-            console.error('Error Code:', error.code);
-            console.error('Error Name:', error.name);
-            console.error('Error Message:', error.message);
-            console.error('Full Error Object:', JSON.stringify(error, null, 2));
-
-            toast({
-              variant: 'destructive',
-              title: 'Upload Failed',
-              description: `Code: ${error.code || 'N/A'}. Message: ${error.message || 'An unknown error occurred.'}`,
-              duration: 9000,
-            });
-          } finally {
-            setIsUploading(false);
-          }
-        }}
-        disabled={isUploading || !fileToUpload}
+        onClick={handleUpload}
+        disabled={isUploading}
       >
         {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
-        Step 2: Upload Photo
+        Step 2: Upload Photos
       </Button>
 
-      {uploadedUrl && (
+      {uploadedUrls.length > 0 && (
         <div className="space-y-4 pt-4 border-t">
-          <h2 className="font-semibold">Successfully Uploaded File:</h2>
-          <div className="text-sm">
-            <Link href={uploadedUrl} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
-              {uploadedUrl}
-            </Link>
-          </div>
+          <h2 className="font-semibold">Successfully Uploaded Files:</h2>
+          <ul className="space-y-2 list-disc list-inside">
+            {uploadedUrls.map((url, index) => (
+              <li key={index} className="text-sm">
+                <Link href={url} target="_blank" rel="noopener noreferrer" className="text-primary hover:underline break-all">
+                  {url}
+                </Link>
+              </li>
+            ))}
+          </ul>
         </div>
       )}
     </div>
