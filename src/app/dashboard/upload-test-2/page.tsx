@@ -6,7 +6,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter }
 import { Input } from '@/components/ui/input';
 import { useStorage, firebaseConfig } from '@/firebase';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Loader2, Upload, Link as LinkIcon, AlertTriangle, ExternalLink } from 'lucide-react';
+import { Loader2, Upload, Link as LinkIcon, AlertTriangle } from 'lucide-react';
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -50,9 +50,9 @@ export default function StorageTestPage() {
       
       let detailedMessage = `An unknown error occurred. Please check the browser console for more details.`;
       if(error.code === 'storage/retry-limit-exceeded') {
-          detailedMessage = `The request timed out. This is a network issue, often caused by incorrect CORS (Cross-Origin Resource Sharing) settings on your Google Cloud Storage bucket. Please follow the instructions to apply the CORS fix.`;
+          detailedMessage = `The request timed out. This is a network issue, caused by an incorrect CORS (Cross-Origin Resource Sharing) policy on your Google Cloud Storage bucket. Please follow the instructions above to apply the fix.`;
       } else if (error.code === 'storage/unauthorized') {
-          detailedMessage = `Your security rules are denying access. This test should bypass rules, but please double-check your storage.rules file if this error persists.`;
+          detailedMessage = `Your security rules are denying access. This is unexpected on the test path, but indicates a problem with the storage rules.`;
       } else {
           detailedMessage = error.message;
       }
@@ -67,52 +67,47 @@ export default function StorageTestPage() {
     }
   };
   
-  const gcp_bucket_url = `https://console.cloud.google.com/storage/browser/${firebaseConfig.storageBucket}`;
   const cors_command = `gcloud storage buckets update gs://${firebaseConfig.storageBucket} --cors-file=cors.json`;
 
   return (
     <div className="space-y-6">
       <Card className="max-w-4xl mx-auto">
           <CardHeader>
-              <CardTitle>Storage Connection Test</CardTitle>
-              <CardDescription>This page provides a direct test of the connection to your Firebase Storage bucket to diagnose upload issues.</CardDescription>
+              <CardTitle>Final Diagnosis: Storage Connection Test</CardTitle>
+              <CardDescription>Your uploads are failing due to a network timeout. This indicates a project configuration issue (CORS). Follow these steps exactly to fix it.</CardDescription>
           </CardHeader>
           <CardContent className="space-y-6">
               <Alert variant="destructive">
                   <AlertTriangle className="h-4 w-4" />
                   <AlertTitle>Action Required: Apply CORS Fix</AlertTitle>
                   <AlertDescription>
-                      The "retry-limit-exceeded" error indicates a network timeout, which is almost always caused by a missing CORS configuration on your Google Cloud Storage bucket.
-                      <ol className="list-decimal list-inside space-y-2 mt-2">
-                          <li>Open a new terminal in your development environment.</li>
-                          <li>Ensure you are authenticated with the correct Google Cloud account.</li>
-                          <li>Copy and run the following command exactly as it appears:</li>
-                      </ol>
+                      <p className="mb-2">To fix the upload timeout, you must run the following command in your terminal. This updates your project's security policy to allow uploads from the app.</p>
                       <pre className="mt-2 p-2 bg-muted rounded-md text-xs font-mono overflow-x-auto">
                           <code>{cors_command}</code>
                       </pre>
+                       <p className="mt-2 text-xs">This command uses the `cors.json` file in your project root. Ensure you are authenticated with the correct Google Cloud account in your terminal before running it.</p>
                   </AlertDescription>
               </Alert>
 
-              <div className="space-y-2">
-                  <label htmlFor="file-upload" className="font-medium">2. Select a test file</label>
+              <div className="space-y-2 pt-4">
+                  <label htmlFor="file-upload" className="font-medium">After applying the fix, test here:</label>
                   <Input id="file-upload" type="file" onChange={handleFileChange} />
               </div>
 
-              <Button onClick={handleUpload} disabled={!file || isUploading} className="w-full">
+              <Button onClick={handleUpload} disabled={isUploading} className="w-full">
               {isUploading ? (
                   <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               ) : (
                   <Upload className="mr-2 h-4 w-4" />
               )}
-              3. Run Upload Test
+              Run Upload Test
               </Button>
           </CardContent>
           {feedback && (
               <CardFooter>
                   <Alert variant={feedback.type === 'success' ? 'default' : 'destructive'} className="w-full">
                       <AlertTitle className="font-bold flex items-center gap-2">
-                          {feedback.type === 'success' ? 'Test Successful' : 'Test Failed'}
+                          {feedback.type === 'success' ? 'Test Successful!' : 'Test Failed'}
                       </AlertTitle>
                       <AlertDescription className="space-y-2">
                           <p>{feedback.message}</p>
@@ -123,16 +118,6 @@ export default function StorageTestPage() {
                                   <Link href={feedback.url} target="_blank" rel="noopener noreferrer" className="text-sm text-primary underline break-all">
                                       View Uploaded File
                                   </Link>
-                              </div>
-                          )}
-                          {feedback.type === 'error' && (
-                              <div className="pt-2">
-                                <Button size="sm" variant="secondary" asChild>
-                                  <a href={gcp_bucket_url} target="_blank" rel="noopener noreferrer">
-                                      <ExternalLink className="mr-2 h-4 w-4"/>
-                                      Check Bucket CORS Settings
-                                  </a>
-                                </Button>
                               </div>
                           )}
                       </AlertDescription>
