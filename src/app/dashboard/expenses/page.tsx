@@ -52,7 +52,8 @@ import {
   Banknote,
   AlertTriangle,
   ArrowRight,
-  PieChart as PieChartIcon
+  PieChart as PieChartIcon,
+  List
 } from 'lucide-react';
 import { getYear, startOfYear, endOfYear, format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -539,7 +540,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
                       <TableHeader className="bg-muted/30"><TableRow><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Paid By</TableHead><TableHead className="text-right">Amount (£)</TableHead></TableRow></TableHeader>
                       <TableBody>
                           {expenses?.map((expense) => (
-                          <TableRow key={expense.id} className="hover:bg-muted/20">
+                          <TableRow key={expense.id} className="hover:bg-muted/20 transition-colors">
                               <TableCell>{new Date(expense.date.seconds * 1000).toLocaleDateString()}</TableCell>
                               <TableCell className="font-medium">{expense.expenseType}</TableCell>
                               <TableCell>{expense.paidBy}</TableCell>
