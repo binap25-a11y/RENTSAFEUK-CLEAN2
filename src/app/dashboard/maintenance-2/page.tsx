@@ -1,6 +1,6 @@
 'use client';
 
-import { useRef, useState } from 'react';
+import { useState } from 'react';
 import { Button } from '@/components/ui/button';
 import { useStorage } from '@/firebase';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
@@ -10,10 +10,14 @@ import Link from 'next/link';
 
 export default function Maintenance2Page() {
   const storage = useStorage();
-  // Use a ref for the file input to avoid any React state issues
-  const inputRef = useRef<HTMLInputElement>(null);
+  const [filesToUpload, setFilesToUpload] = useState<FileList | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [uploadedUrls, setUploadedUrls] = useState<string[]>([]);
+
+  const handleFileChange = (event: React.ChangeEvent<HTMLInputElement>) => {
+    setFilesToUpload(event.target.files);
+    setUploadedUrls([]); // Reset on new file selection
+  };
 
   const handleUpload = async () => {
     // 1. Check if storage service is available
@@ -28,22 +32,22 @@ export default function Maintenance2Page() {
     }
 
     // 2. Check if files are selected
-    if (!inputRef.current?.files || inputRef.current.files.length === 0) {
+    if (!filesToUpload || filesToUpload.length === 0) {
       toast({
         variant: 'destructive',
-        title: 'No File Selected',
-        description: 'Please select a file to upload.',
+        title: 'No Files Selected',
+        description: 'Please select one or more files to upload.',
       });
       return;
     }
-
-    const filesToUpload = Array.from(inputRef.current.files);
+    
     setIsUploading(true);
-    setUploadedUrls([]); // Clear previous results
+    setUploadedUrls([]);
+    const urls: string[] = [];
 
-    for (const file of filesToUpload) {
+    // Use a standard for-loop to upload files sequentially for maximum reliability
+    for (const file of Array.from(filesToUpload)) {
       const uniqueFileName = `${Date.now()}-${file.name}`;
-      // Use the permissive test path
       const fileRef = storageRef(storage, `test-uploads/${uniqueFileName}`);
       
       console.log(`--- Starting Upload for ${file.name} ---`);
@@ -59,8 +63,8 @@ export default function Maintenance2Page() {
         // 4. Get the download URL
         const url = await getDownloadURL(uploadResult.ref);
         console.log(`Successfully got download URL:`, url);
+        urls.push(url);
 
-        setUploadedUrls(prev => [...prev, url]);
         toast({
           title: `Success: ${file.name} uploaded!`,
         });
@@ -85,7 +89,8 @@ export default function Maintenance2Page() {
         return;
       }
     }
-
+    
+    setUploadedUrls(urls);
     setIsUploading(false);
   };
 
@@ -101,8 +106,8 @@ export default function Maintenance2Page() {
         <input 
           id="file-input"
           type="file"
-          ref={inputRef}
           multiple
+          onChange={handleFileChange}
           className="flex h-10 w-full rounded-md border border-input bg-background px-3 py-2 text-sm ring-offset-background file:border-0 file:bg-transparent file:text-sm file:font-medium placeholder:text-muted-foreground focus-visible:outline-none focus-visible:ring-2 focus-visible:ring-ring focus-visible:ring-offset-2 disabled:cursor-not-allowed disabled:opacity-50"
         />
       </div>
