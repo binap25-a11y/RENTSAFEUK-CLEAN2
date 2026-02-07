@@ -157,14 +157,6 @@ export function MainNav() {
           )}
         </SidebarMenuItem>
       ))}
-       <SidebarMenuItem>
-          <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/upload-test-2')} tooltip="Fix Storage Upload">
-              <Link href="/dashboard/upload-test-2" onClick={handleLinkClick}>
-                <AlertCircle className="text-yellow-500" />
-                <span className="text-yellow-500">Fix Storage Upload</span>
-              </Link>
-          </SidebarMenuButton>
-        </SidebarMenuItem>
        <SidebarMenuItem className="mt-auto">
           <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/settings')} tooltip="Settings">
               <Link href="/dashboard/settings" onClick={handleLinkClick}>
