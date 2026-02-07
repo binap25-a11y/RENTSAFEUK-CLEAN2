@@ -206,21 +206,7 @@ export default function MaintenanceLoggedPage() {
           <CardDescription>Search and filter your maintenance history.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-            {/* Improved Search and Filter Layout */}
             <div className="flex flex-col gap-6 max-w-md">
-                <div className="space-y-2">
-                    <Label htmlFor="search-issues" className="text-sm font-medium">Search Issues</Label>
-                    <div className="relative">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                        <Input 
-                            id="search-issues"
-                            placeholder="e.g., 'Leaking pipe', 'Boiler'..." 
-                            className="pl-8" 
-                            value={searchTerm} 
-                            onChange={e => setSearchTerm(e.target.value)} 
-                        />
-                    </div>
-                </div>
                 <div className="space-y-2">
                     <Label htmlFor="property-filter" className="text-sm font-medium">Filter by Property</Label>
                     <Select value={selectedPropertyFilter} onValueChange={setSelectedPropertyFilter}>
@@ -233,6 +219,19 @@ export default function MaintenanceLoggedPage() {
                             ))}
                         </SelectContent>
                     </Select>
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="search-issues" className="text-sm font-medium">Search Issues</Label>
+                    <div className="relative">
+                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                        <Input 
+                            id="search-issues"
+                            placeholder="e.g., 'Leaking pipe', 'Boiler'..." 
+                            className="pl-8" 
+                            value={searchTerm} 
+                            onChange={e => setSearchTerm(e.target.value)} 
+                        />
+                    </div>
                 </div>
             </div>
             
