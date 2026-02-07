@@ -1,11 +1,12 @@
+
 rules_version = '2';
 
 service firebase.storage {
   match /b/{bucket}/o {
 
-    // TEMPORARY DIAGNOSTIC RULE: For the enhanced investigation, this rule allows
-    // ANYONE to read and write to the public-test-uploads/ directory.
-    // This will be reverted once the connection is confirmed.
+    // FINAL DIAGNOSTIC RULE: This rule grants open access to the test directory.
+    // This is required to isolate and fix the underlying connection issue.
+    // It does NOT affect the security of your main application folders.
     match /public-test-uploads/{allPaths=**} {
       allow read, write: if true;
     }
