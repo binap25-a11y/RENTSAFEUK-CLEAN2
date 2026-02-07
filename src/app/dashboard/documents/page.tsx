@@ -27,7 +27,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Search, Upload, FileWarning, Clock, ShieldCheck, Loader2, Eye } from 'lucide-react';
+import { Search, Upload, FileWarning, Clock, ShieldCheck, Loader2, Eye, Filter } from 'lucide-react';
 import { format, isBefore, addDays } from 'date-fns';
 import {
   useUser,
@@ -35,7 +35,7 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where } from 'firebase/firestore';
+import { collection, query, where, limit } from 'firebase/firestore';
 import { Label } from '@/components/ui/label';
 
 // Type for property documents from Firestore
@@ -47,6 +47,7 @@ interface Property {
     city: string;
   };
   ownerId: string;
+  status: string;
 }
 
 // Type for document logs from Firestore
@@ -92,22 +93,30 @@ export default function DocumentsPage() {
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
 
-    // Fetch properties for the filter dropdown
+    // Fetch properties - strictly scoped to user
     const propertiesQuery = useMemoFirebase(() => {
         if (!user) return null;
         return query(
             collection(firestore, 'properties'),
-            where('ownerId', '==', user.uid)
+            where('ownerId', '==', user.uid),
+            limit(500)
         );
     }, [firestore, user]);
-    const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
+    const { data: allProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
     
+    // Filter active properties in-memory to bypass index requirements
+    const activeProperties = useMemo(() => {
+        const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
+        return allProperties?.filter(p => activeStatuses.includes(p.status || '')) ?? [];
+    }, [allProperties]);
+
     // Fetch documents for the selected property
     const documentsQuery = useMemoFirebase(() => {
         if (!user || !selectedPropertyId) return null;
         return query(
           collection(firestore, 'properties', selectedPropertyId, 'documents'),
-          where('ownerId', '==', user.uid)
+          where('ownerId', '==', user.uid),
+          limit(500)
         );
     }, [firestore, user, selectedPropertyId]);
 
@@ -137,7 +146,7 @@ export default function DocumentsPage() {
     const validCount = documentsWithStatus.filter(d => d.status === 'Valid').length;
     
     const getPropertyAddress = (propertyId: string) => {
-        const property = properties?.find(p => p.id === propertyId);
+        const property = allProperties?.find(p => p.id === propertyId);
         if (!property) return 'Unknown Property';
         return [property.address.nameOrNumber, property.address.street, property.address.city].filter(Boolean).join(', ');
     };
@@ -193,27 +202,31 @@ export default function DocumentsPage() {
           </div>
 
           <div className="flex flex-col gap-4">
-            <div className='flex flex-col sm:flex-row gap-2 items-center'>
-                 <div className="w-full md:w-auto">
-                    <Label htmlFor="property-filter" className="sr-only">Filter by Property</Label>
-                    <Select onValueChange={setSelectedPropertyId} value={selectedPropertyId}>
-                        <SelectTrigger id="property-filter" className="w-full md:w-[300px]">
-                            <SelectValue placeholder={isLoadingProperties ? 'Loading...' : 'Select a property to view documents'} />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {properties?.map(prop => (
-                                <SelectItem key={prop.id} value={prop.id}>{[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                 </div>
+            <div className='flex flex-col space-y-2'>
+                <Label htmlFor="property-filter" className="text-sm font-semibold flex items-center gap-2">
+                    <Filter className="h-3.5 w-3.5" />
+                    Filter by Active Property
+                </Label>
+                <Select onValueChange={setSelectedPropertyId} value={selectedPropertyId}>
+                    <SelectTrigger id="property-filter" className="w-full md:w-[400px] h-12 bg-background">
+                        <SelectValue placeholder={isLoadingProperties ? 'Loading portfolio...' : 'Select a property to view documents'} />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {activeProperties.map(prop => (
+                            <SelectItem key={prop.id} value={prop.id}>
+                                {[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}
+                            </SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
             </div>
-            <div className="relative w-full md:max-w-sm">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search by title..." className="pl-8" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-            </div>
-            <div className="flex gap-2 flex-wrap">
-               <Select onValueChange={setStatusFilter} value={statusFilter}>
+            
+            <div className="flex flex-col sm:flex-row gap-4">
+                <div className="relative w-full md:max-w-sm">
+                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                  <Input placeholder="Search by title..." className="pl-8" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+                </div>
+                <Select onValueChange={setStatusFilter} value={statusFilter}>
                   <SelectTrigger className="w-full md:w-[180px]">
                      <SelectValue placeholder="Filter by status" />
                   </SelectTrigger>
@@ -229,21 +242,26 @@ export default function DocumentsPage() {
 
           {isLoadingDocuments ? (
             <div className="flex justify-center items-center h-64">
-                <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : !selectedPropertyId ? (
+            <div className="text-center py-20 text-muted-foreground border-2 border-dashed rounded-lg">
+                <Filter className="h-10 w-10 mx-auto mb-4 opacity-20" />
+                <p>Select an active property from the list to see its documents.</p>
             </div>
           ) : !filteredDocuments?.length ? (
-            <div className="text-center py-10 text-muted-foreground">
-                {selectedPropertyId ? 'No documents match your filters.' : 'Select a property to see documents.'}
+            <div className="text-center py-20 text-muted-foreground border-2 border-dashed rounded-lg">
+                <FileWarning className="h-10 w-10 mx-auto mb-4 opacity-20" />
+                <p>No documents match your search filters for this property.</p>
             </div>
           ) : (
           <>
             {/* Desktop Table View */}
             <div className="hidden rounded-md border md:block">
               <Table>
-                <TableHeader>
+                <TableHeader className="bg-muted/30">
                   <TableRow>
                     <TableHead>Title</TableHead>
-                    <TableHead>Property</TableHead>
                     <TableHead>Type</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Expiry Date</TableHead>
@@ -252,9 +270,8 @@ export default function DocumentsPage() {
                 </TableHeader>
                 <TableBody>
                   {filteredDocuments.map((doc) => (
-                    <TableRow key={doc.id}>
-                      <TableCell className="font-medium">{doc.title}</TableCell>
-                      <TableCell>{getPropertyAddress(doc.propertyId)}</TableCell>
+                    <TableRow key={doc.id} className="hover:bg-muted/20">
+                      <TableCell className="font-semibold">{doc.title}</TableCell>
                       <TableCell>{doc.documentType}</TableCell>
                       <TableCell>
                         <Badge variant={getStatusVariant(doc.status)}>{doc.status}</Badge>
@@ -262,7 +279,7 @@ export default function DocumentsPage() {
                       <TableCell>{format(doc.expiryDate, 'dd/MM/yyyy')}</TableCell>
                       <TableCell className="text-right">
                         {doc.fileUri && (
-                          <Button asChild variant="outline" size="icon">
+                          <Button asChild variant="ghost" size="icon">
                             <a href={doc.fileUri} target="_blank" rel="noopener noreferrer">
                               <Eye className="h-4 w-4" />
                               <span className="sr-only">View Document</span>
@@ -280,11 +297,11 @@ export default function DocumentsPage() {
             <div className="grid gap-4 md:hidden">
               {filteredDocuments.map((doc) => (
                 <Card key={doc.id}>
-                  <CardHeader>
+                  <CardHeader className="pb-2">
                     <div className="flex justify-between items-start">
                       <div>
-                        <CardTitle className='text-base'>{doc.title}</CardTitle>
-                        <CardDescription>{getPropertyAddress(doc.propertyId)}</CardDescription>
+                        <CardTitle className='text-base font-bold'>{doc.title}</CardTitle>
+                        <CardDescription>{doc.documentType}</CardDescription>
                       </div>
                       {doc.fileUri && (
                         <Button asChild variant="outline" size="sm">
@@ -297,10 +314,6 @@ export default function DocumentsPage() {
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm pt-0">
-                     <div className="flex justify-between items-center border-t pt-2">
-                      <span className="text-muted-foreground">Type</span>
-                      <span className='font-medium'>{doc.documentType}</span>
-                    </div>
                     <div className="flex justify-between items-center border-t pt-2">
                       <span className="text-muted-foreground">Status</span>
                       <Badge variant={getStatusVariant(doc.status)}>{doc.status}</Badge>

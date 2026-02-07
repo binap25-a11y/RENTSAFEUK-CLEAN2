@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -40,14 +40,14 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, addDoc } from 'firebase/firestore';
+import { collection, query, where, addDoc, limit } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 // Schema for the form
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const documentSchema = z.object({
   title: z.string().min(3, 'Title is too short'),
-  propertyId: z.string({ required_error: 'Please select a property.' }),
+  propertyId: z.string({ required_error: 'Please select a property.' }).min(1, 'Property required.'),
   documentType: z.string({ required_error: 'Please select a document type.' }),
   issueDate: z.coerce.date({ required_error: 'Please select an issue date.' }),
   expiryDate: z.coerce.date({ required_error: 'Please select an expiry date.' }),
@@ -62,12 +62,14 @@ type DocumentFormValues = z.infer<typeof documentSchema>;
 
 // Type for property documents from Firestore
 interface Property {
+  id: string;
   address: {
     nameOrNumber?: string;
     street: string;
     city: string;
   };
   ownerId: string;
+  status: string;
 }
 
 export default function UploadDocumentPage() {
@@ -80,19 +82,31 @@ export default function UploadDocumentPage() {
 
   const form = useForm<DocumentFormValues>({
     resolver: zodResolver(documentSchema),
+    defaultValues: {
+        title: '',
+        propertyId: '',
+        documentType: '',
+        notes: '',
+    }
   });
   
-  // Fetch properties for the dropdown
+  // Fetch properties - strictly scoped to user
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
       collection(firestore, 'properties'),
       where('ownerId', '==', user.uid),
-      where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
+      limit(500)
     );
   }, [firestore, user]);
 
-  const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
+  const { data: allProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
+
+  // Filter for active properties in-memory to bypass index requirement
+  const activeProperties = useMemo(() => {
+    const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
+    return allProperties?.filter(p => activeStatuses.includes(p.status)) ?? [];
+  }, [allProperties]);
 
   async function onSubmit(data: DocumentFormValues) {
     if (!user || !firestore || !storage) {
@@ -144,12 +158,16 @@ export default function UploadDocumentPage() {
     }
   }
 
+  const formatAddress = (address: Property['address']) => {
+    return [address.nameOrNumber, address.street, address.city].filter(Boolean).join(', ');
+  };
+
   return (
     <Card className="max-w-2xl mx-auto">
       <CardHeader>
         <CardTitle>Upload Document</CardTitle>
         <CardDescription>
-          Fill in the details and select a file to upload.
+          Fill in the details and select a file to upload. Only active properties are shown.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -174,17 +192,17 @@ export default function UploadDocumentPage() {
                 name="propertyId"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Property</FormLabel>
-                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                    <FormLabel>Active Property</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                         <SelectTrigger>
-                            <SelectValue placeholder={isLoadingProperties ? 'Loading...' : "Select a property"} />
+                            <SelectValue placeholder={isLoadingProperties ? 'Loading portfolio...' : "Select a property"} />
                         </SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                        {properties?.map((prop) => (
+                        {activeProperties.map((prop) => (
                             <SelectItem key={prop.id} value={prop.id}>
-                                {[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}
+                                {formatAddress(prop.address)}
                             </SelectItem>
                         ))}
                         </SelectContent>
@@ -199,7 +217,7 @@ export default function UploadDocumentPage() {
                     render={({ field }) => (
                     <FormItem>
                         <FormLabel>Document Type</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                             <SelectTrigger>
                             <SelectValue placeholder="Select a type" />
@@ -257,12 +275,12 @@ export default function UploadDocumentPage() {
               name="documentFile"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Document File</FormLabel>
+                  <FormLabel>Document File (Max 5MB)</FormLabel>
                   <FormControl>
-                    <Button asChild className="w-full cursor-pointer">
+                    <Button asChild className="w-full cursor-pointer" variant="outline">
                       <label htmlFor="file-upload">
                         <Upload className="mr-2 h-4 w-4" />
-                        Choose File
+                        {fileName ? 'Change File' : 'Choose File'}
                         <Input
                           id="file-upload"
                           type="file"
@@ -276,7 +294,7 @@ export default function UploadDocumentPage() {
                     </Button>
                   </FormControl>
                   <FormMessage />
-                   {fileName && <p className="text-sm text-muted-foreground pt-2">Selected file: {fileName}</p>}
+                   {fileName && <p className="text-sm text-primary font-medium pt-2 truncate">Selected: {fileName}</p>}
                 </FormItem>
               )}
             />
@@ -285,7 +303,7 @@ export default function UploadDocumentPage() {
               name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Notes</FormLabel>
+                  <FormLabel>Notes (Optional)</FormLabel>
                   <FormControl>
                     <Textarea
                       placeholder="Add any relevant notes here..."

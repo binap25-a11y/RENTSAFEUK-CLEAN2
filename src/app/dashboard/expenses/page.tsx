@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -39,7 +38,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
-import { Clock, PoundSterling, TrendingDown, TrendingUp, Loader2, CheckCircle2, XCircle, AlertCircle, Download } from 'lucide-react';
+import { Clock, PoundSterling, TrendingDown, TrendingUp, Loader2, CheckCircle2, XCircle, AlertCircle, Download, Filter } from 'lucide-react';
 import { getYear, startOfYear, endOfYear } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import {
@@ -56,7 +55,7 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, doc, setDoc, addDoc } from 'firebase/firestore';
+import { collection, query, where, doc, setDoc, addDoc, limit } from 'firebase/firestore';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -91,6 +90,8 @@ interface Property {
   tenancy?: {
     monthlyRent: number;
   };
+  status: string;
+  ownerId: string;
 }
 
 // Type for expense documents from Firestore
@@ -118,7 +119,7 @@ interface RentPayment {
 
 // Schema for the expense form
 const expenseSchema = z.object({
-  propertyId: z.string({ required_error: 'Please select a property.' }),
+  propertyId: z.string({ required_error: 'Please select a property.' }).min(1, 'Property required.'),
   date: z.coerce.date({ required_error: 'Please select a date.' }),
   expenseType: z.string({ required_error: 'Please select an expense type.' }),
   amount: z.coerce.number().min(0.01, 'Amount must be greater than 0.'),
@@ -135,21 +136,27 @@ export default function FinancialsPage() {
   const [selectedPropertyId, setSelectedPropertyId] = useState('');
   const [selectedYear, setSelectedYear] = useState(getYear(new Date()));
 
-  // Fetch all properties for the user
+  // Fetch all properties - strictly scoped to user
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
       collection(firestore, 'properties'),
       where('ownerId', '==', user.uid),
-       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
+      limit(500)
     );
   }, [firestore, user]);
 
-  const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
+  const { data: allProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
   
+  // Filter active properties in-memory to bypass index requirement
+  const activeProperties = useMemo(() => {
+    const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
+    return allProperties?.filter(p => activeStatuses.includes(p.status)) ?? [];
+  }, [allProperties]);
+
   const selectedProperty = useMemo(() => {
-    return properties?.find(p => p.id === selectedPropertyId);
-  }, [properties, selectedPropertyId]);
+    return allProperties?.find(p => p.id === selectedPropertyId);
+  }, [allProperties, selectedPropertyId]);
 
   // Fetch expenses for the selected property and year
   const expensesQuery = useMemoFirebase(() => {
@@ -188,10 +195,10 @@ export default function FinancialsPage() {
   const netIncome = totalPaidRent - totalExpenses;
 
   const portfolioIncome = useMemo(() => {
-    return (properties || []).reduce((total, prop) => {
+    return activeProperties.reduce((total, prop) => {
         return total + (prop.tenancy?.monthlyRent || 0) * 12;
     }, 0);
-  }, [properties]);
+  }, [activeProperties]);
   
   const isLoading = isLoadingProperties || isLoadingExpenses || isLoadingPayments;
 
@@ -206,7 +213,7 @@ export default function FinancialsPage() {
                 </CardHeader>
                 <CardContent>
                 <div className="text-2xl font-bold">£{portfolioIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-                <p className="text-xs text-muted-foreground">{properties?.length || 0} properties</p>
+                <p className="text-xs text-muted-foreground">{activeProperties.length} active properties</p>
                 </CardContent>
             </Card>
             <Card>
@@ -237,18 +244,21 @@ export default function FinancialsPage() {
        <Card>
         <CardHeader>
           <CardTitle>Financial Overview</CardTitle>
-          <CardDescription>Select a property and year to view its detailed financials.</CardDescription>
+          <CardDescription>Select an active property and year to view detailed financials.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
            <div className="flex flex-col sm:flex-row gap-4">
                 <div className="grid w-full sm:w-auto gap-1.5">
-                    <Label htmlFor="property-filter">Property</Label>
+                    <Label htmlFor="property-filter" className="flex items-center gap-2">
+                        <Filter className="h-3 w-3" />
+                        Active Property
+                    </Label>
                     <Select onValueChange={setSelectedPropertyId} value={selectedPropertyId}>
-                        <SelectTrigger id="property-filter" className="w-full sm:w-[300px]">
-                        <SelectValue placeholder={isLoadingProperties ? "Loading..." : "Select a property"} />
+                        <SelectTrigger id="property-filter" className="w-full sm:w-[400px] h-12 bg-background">
+                        <SelectValue placeholder={isLoadingProperties ? "Loading portfolio..." : "Select an active property"} />
                         </SelectTrigger>
                         <SelectContent>
-                        {properties?.map((prop) => (
+                        {activeProperties.map((prop) => (
                             <SelectItem key={prop.id} value={prop.id}>
                                 {[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}
                             </SelectItem>
@@ -259,7 +269,7 @@ export default function FinancialsPage() {
                 <div className="grid w-full sm:w-auto gap-1.5">
                     <Label htmlFor="year-filter">Year</Label>
                     <Select onValueChange={(value) => setSelectedYear(Number(value))} value={String(selectedYear)}>
-                        <SelectTrigger id="year-filter" className="w-full sm:w-[120px]">
+                        <SelectTrigger id="year-filter" className="w-full sm:w-[120px] h-12 bg-background">
                             <SelectValue placeholder="Year" />
                         </SelectTrigger>
                         <SelectContent>
@@ -278,7 +288,7 @@ export default function FinancialsPage() {
               </TabsList>
               <TabsContent value="expenses">
                 <ExpenseTracker 
-                  properties={properties || []} 
+                  properties={activeProperties} 
                   selectedPropertyId={selectedPropertyId} 
                   isLoadingProperties={isLoadingProperties}
                   selectedYear={selectedYear}
@@ -288,7 +298,7 @@ export default function FinancialsPage() {
               </TabsContent>
               <TabsContent value="summary">
                 <AnnualSummary 
-                    allProperties={properties || []} 
+                    allProperties={activeProperties} 
                     selectedProperty={selectedProperty} 
                     selectedYear={selectedYear}
                     expenses={expenses}
@@ -326,7 +336,10 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseSchema),
     defaultValues: {
-      propertyId: selectedPropertyId || undefined,
+      propertyId: selectedPropertyId || '',
+      expenseType: '',
+      paidBy: 'Landlord',
+      notes: '',
     },
   });
 
@@ -382,11 +395,11 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder={isLoadingProperties ? 'Loading...' : 'Select a property'} />
+                          <SelectValue placeholder={isLoadingProperties ? 'Loading portfolio...' : 'Select a property'} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
-                        {properties?.map((prop) => (
+                        {properties.map((prop) => (
                           <SelectItem key={prop.id} value={prop.id}>{[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}</SelectItem>
                         ))}
                       </SelectContent>
@@ -458,7 +471,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
                 control={form.control} name="notes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Notes</FormLabel>
+                    <FormLabel>Notes (Optional)</FormLabel>
                     <FormControl><Textarea placeholder="Add any relevant notes..." {...field} /></FormControl>
                     <FormMessage />
                   </FormItem>
@@ -478,25 +491,25 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
         <CardContent>
           {isLoadingExpenses ? (
             <div className="flex justify-center items-center h-24">
-              <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+              <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
             </div>
           ) : !expenses?.length ? (
-              <div className="text-center text-muted-foreground py-10">
-                  {selectedPropertyId ? 'No expenses logged for this property.' : 'Select a property to see expenses.'}
+              <div className="text-center text-muted-foreground py-10 border-2 border-dashed rounded-lg">
+                  {selectedPropertyId ? 'No expenses logged for this property in this period.' : 'Select a property above to see logged expenses.'}
               </div>
           ) : (
               <>
                   {/* Desktop Table View */}
                   <div className="hidden rounded-md border md:block">
                       <Table>
-                      <TableHeader><TableRow><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Paid By</TableHead><TableHead className="text-right">Amount (£)</TableHead></TableRow></TableHeader>
+                      <TableHeader className="bg-muted/30"><TableRow><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Paid By</TableHead><TableHead className="text-right">Amount (£)</TableHead></TableRow></TableHeader>
                       <TableBody>
                           {expenses?.map((expense) => (
-                          <TableRow key={expense.id}>
+                          <TableRow key={expense.id} className="hover:bg-muted/20">
                               <TableCell>{new Date(expense.date.seconds * 1000).toLocaleDateString()}</TableCell>
                               <TableCell>{expense.expenseType}</TableCell>
                               <TableCell>{expense.paidBy}</TableCell>
-                              <TableCell className="text-right font-medium">£{expense.amount.toFixed(2)}</TableCell>
+                              <TableCell className="text-right font-semibold">£{expense.amount.toFixed(2)}</TableCell>
                           </TableRow>
                           ))}
                       </TableBody>
@@ -506,14 +519,14 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
                   <div className="grid gap-4 md:hidden">
                       {expenses.map((expense) => (
                           <Card key={expense.id}>
-                              <CardHeader>
-                                  <CardTitle className="text-base">{expense.expenseType}</CardTitle>
+                              <CardHeader className="pb-2">
+                                  <CardTitle className="text-base font-bold">{expense.expenseType}</CardTitle>
                                   <CardDescription>{new Date(expense.date.seconds * 1000).toLocaleDateString()}</CardDescription>
                               </CardHeader>
                               <CardContent className="space-y-2 text-sm pt-0">
                                   <div className="flex justify-between items-center border-t pt-2">
                                       <span className="text-muted-foreground">Amount</span>
-                                      <span className="font-medium">£{expense.amount.toFixed(2)}</span>
+                                      <span className="font-bold">£{expense.amount.toFixed(2)}</span>
                                   </div>
                                   <div className="flex justify-between items-center border-t pt-2">
                                       <span className="text-muted-foreground">Paid By</span>
@@ -522,7 +535,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
                               </CardContent>
                               {expense.notes && (
                                   <CardFooter className="text-xs text-muted-foreground border-t pt-2 pb-2">
-                                      <p className="line-clamp-2">{expense.notes}</p>
+                                      <p className="line-clamp-2 italic">"{expense.notes}"</p>
                                   </CardFooter>
                               )}
                           </Card>
@@ -531,12 +544,14 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
               </>
           )}
         </CardContent>
-        <CardFooter className="flex justify-end font-bold">
-          <div className="flex items-center gap-4">
-            <span>Total for {selectedYear}:</span>
-            <span>£{totalExpenses.toFixed(2)}</span>
-          </div>
-        </CardFooter>
+        {expenses && expenses.length > 0 && (
+            <CardFooter className="flex justify-end font-bold text-lg pt-4 border-t">
+              <div className="flex items-center gap-4">
+                <span>Total for {selectedYear}:</span>
+                <span className="text-primary">£{totalExpenses.toFixed(2)}</span>
+              </div>
+            </CardFooter>
+        )}
       </Card>
     </div>
   );
@@ -697,7 +712,7 @@ function AnnualSummary({
                 </CardHeader>
                 <CardContent>
                 <div className="text-2xl font-bold">£{portfolioIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-                <p className="text-xs text-muted-foreground">{allProperties.length} properties total</p>
+                <p className="text-xs text-muted-foreground">{allProperties.length} active properties</p>
                 </CardContent>
             </Card>
             <Card>
@@ -706,7 +721,7 @@ function AnnualSummary({
                 <TrendingDown className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    {isLoadingExpenses ? <Loader2 className="h-6 w-6 animate-spin" /> : <div className="text-2xl font-bold">£{totalExpenses.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>}
+                    {isLoadingExpenses ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <div className="text-2xl font-bold">£{totalExpenses.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>}
                     <p className="text-xs text-muted-foreground truncate">{selectedProperty ? [selectedProperty.address.nameOrNumber, selectedProperty.address.street].filter(Boolean).join(', ') : 'No property selected'}</p>
                 </CardContent>
             </Card>
@@ -716,7 +731,7 @@ function AnnualSummary({
                 <TrendingUp className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                     {isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : <div className={"text-2xl font-bold" + (netIncome < 0 ? " text-destructive" : "")}>£{netIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>}
+                     {isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <div className={"text-2xl font-bold" + (netIncome < 0 ? " text-destructive" : "")}>£{netIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>}
                     <p className="text-xs text-muted-foreground">Income minus expenses</p>
                 </CardContent>
             </Card>
@@ -729,12 +744,12 @@ function AnnualSummary({
                     
                     {isLoadingExpenses && (
                         <div className="flex h-48 items-center justify-center">
-                            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
                     )}
                     {!isLoadingExpenses && expensesByCategory.length === 0 && (
-                        <div className="py-10 text-center text-muted-foreground">
-                            {selectedProperty ? "No expenses found." : "Please select a property."}
+                        <div className="py-10 text-center text-muted-foreground border-2 border-dashed rounded-lg">
+                            {selectedProperty ? "No expenses found for this period." : "Please select an active property."}
                         </div>
                     )}
                     
@@ -743,7 +758,7 @@ function AnnualSummary({
                             {/* Desktop Table View */}
                             <div className="hidden rounded-md border md:block">
                                 <Table>
-                                <TableHeader>
+                                <TableHeader className="bg-muted/30">
                                     <TableRow>
                                     <TableHead>Category</TableHead>
                                     <TableHead className="text-right">Total Amount</TableHead>
@@ -751,9 +766,9 @@ function AnnualSummary({
                                 </TableHeader>
                                 <TableBody>
                                     {expensesByCategory.map(cat => (
-                                    <TableRow key={cat.name}>
-                                        <TableCell className="font-medium">{cat.name}</TableCell>
-                                        <TableCell className="text-right">£{cat.amount.toFixed(2)}</TableCell>
+                                    <TableRow key={cat.name} className="hover:bg-muted/20">
+                                        <TableCell className="font-semibold">{cat.name}</TableCell>
+                                        <TableCell className="text-right font-medium">£{cat.amount.toFixed(2)}</TableCell>
                                     </TableRow>
                                     ))}
                                 </TableBody>
@@ -765,8 +780,8 @@ function AnnualSummary({
                                 {expensesByCategory.map(cat => (
                                     <Card key={cat.name}>
                                         <CardContent className="flex items-center justify-between p-4">
-                                            <p className="font-medium">{cat.name}</p>
-                                            <p className="font-semibold">£{cat.amount.toFixed(2)}</p>
+                                            <p className="font-semibold">{cat.name}</p>
+                                            <p className="font-bold">£{cat.amount.toFixed(2)}</p>
                                         </CardContent>
                                     </Card>
                                 ))}
@@ -782,7 +797,7 @@ function AnnualSummary({
                     <div className="flex justify-center">
                     {isLoadingExpenses ? (
                         <div className="flex h-[250px] w-full items-center justify-center">
-                            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
                     ) : expensesByCategory.length > 0 ? (
                         <ChartContainer config={chartConfig} className="mx-auto aspect-square h-[250px]">
@@ -810,8 +825,8 @@ function AnnualSummary({
                         </ChartContainer>
                     ) : (
                         <div className="flex h-[250px] w-full flex-col items-center justify-center text-center">
-                        <p className="text-muted-foreground">
-                            {selectedProperty ? "No expenses to visualize." : "Please select a property."}
+                        <p className="text-muted-foreground italic">
+                            {selectedProperty ? "No expenses to visualize for this period." : "Please select a property."}
                         </p>
                         </div>
                     )}
@@ -959,8 +974,9 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
   if (!selectedProperty) {
     return (
         <Card className="mt-6">
-            <CardContent className='pt-6'>
-                <p className="text-center text-muted-foreground">Please select a property to view its rent statement.</p>
+            <CardContent className='pt-10 pb-10 text-center text-muted-foreground italic border-2 border-dashed rounded-lg'>
+                <Filter className="h-10 w-10 mx-auto mb-4 opacity-20" />
+                <p>Please select an active property to view its rent statement.</p>
             </CardContent>
         </Card>
     )
@@ -969,8 +985,12 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
   if (!selectedProperty.tenancy?.monthlyRent) {
      return (
         <Card className="mt-6">
-            <CardContent className="pt-6">
-                <p className="text-center text-muted-foreground">No tenancy or rent information available for this property.</p>
+            <CardContent className="pt-10 pb-10 text-center text-muted-foreground border-2 border-dashed rounded-lg">
+                <Banknote className="h-10 w-10 mx-auto mb-4 opacity-20" />
+                <p>No tenancy or rent information found for this property.</p>
+                <Button asChild variant="link" className="mt-2">
+                    <Link href={`/dashboard/properties/${selectedProperty.id}/edit`}>Add Tenancy Details</Link>
+                </Button>
             </CardContent>
         </Card>
     )
@@ -1013,7 +1033,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
         <CardContent className='pt-6'>
            {isLoading ? (
                 <div className="flex justify-center items-center h-48">
-                    <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
+                    <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
                 </div>
             ) : (
             <>
@@ -1021,17 +1041,17 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                 {/* Desktop Table View */}
                 <div className="hidden rounded-md border md:block">
                     <Table>
-                    <TableHeader><TableRow><TableHead>Month</TableHead><TableHead>Expected Rent</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                    <TableHeader className="bg-muted/30"><TableRow><TableHead>Month</TableHead><TableHead>Expected Rent</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
                     <TableBody>
                         {statement.map((row) => {
                         const { Icon, className } = getRentStatusProps(row.status);
                         return (
-                            <TableRow key={row.month}>
-                            <TableCell className="font-medium">{row.month}</TableCell>
+                            <TableRow key={row.month} className="hover:bg-muted/20">
+                            <TableCell className="font-semibold">{row.month}</TableCell>
                             <TableCell>£{row.rent.toFixed(2)}</TableCell>
                             <TableCell>
                                 <Select value={row.status} onValueChange={(newStatus) => handleStatusChange(row.month, newStatus as PaymentStatus)}>
-                                <SelectTrigger className={"w-[150px] " + className}>
+                                <SelectTrigger className={"w-[160px] font-medium " + className}>
                                     <div className="flex items-center gap-2">
                                     <Icon className="h-4 w-4" />
                                     <SelectValue />
@@ -1058,12 +1078,12 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                         return (
                             <Card key={row.month}>
                                 <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                    <CardTitle className="text-base font-medium">{row.month}</CardTitle>
+                                    <CardTitle className="text-base font-bold">{row.month}</CardTitle>
                                     <span className="text-base font-semibold">£{row.rent.toFixed(2)}</span>
                                 </CardHeader>
                                 <CardContent>
                                     <Select value={row.status} onValueChange={(newStatus) => handleStatusChange(row.month, newStatus as PaymentStatus)}>
-                                    <SelectTrigger className={"w-full " + className}>
+                                    <SelectTrigger className={"w-full font-medium " + className}>
                                         <div className="flex items-center gap-2">
                                         <Icon className="h-4 w-4" />
                                         <SelectValue />
@@ -1084,14 +1104,16 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
             </>
           )}
         </CardContent>
-        <CardFooter className='flex-col items-end space-y-2 pt-6'>
-            <div className="font-bold text-lg">
-              Total Paid: £{totalPaid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-            </div>
-            <div className="text-muted-foreground">
-              Total Expected Annual Rent: £{totalExpectedRent.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
-            </div>
-        </CardFooter>
+        {selectedProperty && (
+            <CardFooter className='flex-col items-end space-y-2 pt-6 border-t mt-4'>
+                <div className="font-bold text-xl text-primary">
+                  Total Paid: £{totalPaid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                </div>
+                <div className="text-sm text-muted-foreground font-medium">
+                  Total Expected Annual Rent: £{totalExpectedRent.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                </div>
+            </CardFooter>
+        )}
       </Card>
     </>
   );
