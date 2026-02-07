@@ -164,7 +164,7 @@ const ChecklistItem = ({ form, name, label }: { form: any, name: any, label: str
                 <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                      <FormControl>
                         <Checkbox
-                        checked={field.value}
+                        checked={!!field.value}
                         onCheckedChange={field.onChange}
                         />
                     </FormControl>
@@ -186,7 +186,7 @@ const NotesField = ({ form, name, placeholder }: { form: any, name: any, placeho
                 <FormItem className="mt-4 col-span-1 md:col-span-2">
                     <FormLabel>Notes</FormLabel>
                     <FormControl>
-                        <Textarea placeholder={placeholder} {...field} />
+                        <Textarea placeholder={placeholder} {...field} value={field.value ?? ''} />
                     </FormControl>
                     <FormMessage />
                 </FormItem>
@@ -204,6 +204,12 @@ export default function SingleLetInspectionPage() {
 
   const form = useForm<InspectionFormValues>({
     resolver: zodResolver(inspectionSchema),
+    defaultValues: {
+        scheduledDate: new Date(),
+        status: 'Completed',
+        inspectionType: 'Routine Inspection',
+        propertyId: '',
+    }
   });
 
   const propertiesQuery = useMemoFirebase(() => {
@@ -222,11 +228,6 @@ export default function SingleLetInspectionPage() {
     return allProperties?.filter(p => activeStatuses.includes(p.status || '')) ?? [];
   }, [allProperties]);
 
-  useEffect(() => {
-    form.setValue('scheduledDate', new Date());
-  }, [form]);
-
-  // Helper to remove undefined values and non-serializable fields to prevent addDoc crashes
   const prepareForFirestore = (obj: any): any => {
     return JSON.parse(JSON.stringify(obj, (key, value) => {
         if (value === undefined) return null;
@@ -258,7 +259,6 @@ export default function SingleLetInspectionPage() {
         status: data.status || 'Completed',
       };
 
-      // Ensure no undefineds or FileLists are sent to Firestore
       const cleanedSubmission = prepareForFirestore(newInspection);
 
       const inspectionsCollection = collection(firestore, 'properties', propertyId, 'inspections');
@@ -314,10 +314,10 @@ export default function SingleLetInspectionPage() {
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Property</FormLabel>
-                      <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger>
-                            <SelectValue placeholder={isLoadingProperties ? <div className='flex items-center gap-2'><Loader2 className='animate-spin' /> Loading properties...</div> : "Select an active property"} />
+                            <SelectValue placeholder={isLoadingProperties ? "Loading properties..." : "Select an active property"} />
                           </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -339,7 +339,7 @@ export default function SingleLetInspectionPage() {
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>Inspection Type</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Select a type" />
@@ -363,7 +363,7 @@ export default function SingleLetInspectionPage() {
                     render={({ field }) => (
                         <FormItem>
                         <FormLabel>Status</FormLabel>
-                        <Select onValueChange={field.onChange} defaultValue={field.value}>
+                        <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
                             <SelectTrigger>
                                 <SelectValue placeholder="Select a status" />
@@ -424,7 +424,7 @@ export default function SingleLetInspectionPage() {
                             <FormItem>
                             <FormLabel>Inspector Name</FormLabel>
                             <FormControl>
-                                <Input placeholder="e.g., Jane Smith" {...field} />
+                                <Input placeholder="e.g., Jane Smith" {...field} value={field.value ?? ''} />
                             </FormControl>
                             <FormMessage />
                             </FormItem>
@@ -437,7 +437,7 @@ export default function SingleLetInspectionPage() {
                             <FormItem>
                             <FormLabel>Tenant Present Name</FormLabel>
                             <FormControl>
-                                <Input placeholder="e.g., John Doe" {...field} />
+                                <Input placeholder="e.g., John Doe" {...field} value={field.value ?? ''} />
                             </FormControl>
                             <FormMessage />
                             </FormItem>
@@ -569,7 +569,7 @@ export default function SingleLetInspectionPage() {
                                 <FormItem className="md:col-span-2">
                                     <FormLabel>Tenant's Concerns Recorded</FormLabel>
                                     <FormControl>
-                                        <Textarea placeholder="Record any concerns raised by the tenant" {...field} />
+                                        <Textarea placeholder="Record any concerns raised by the tenant" {...field} value={field.value ?? ''} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>
@@ -594,7 +594,7 @@ export default function SingleLetInspectionPage() {
                                 <FormItem className="md:col-span-2">
                                     <FormLabel>Notes for Landlord/Agent</FormLabel>
                                     <FormControl>
-                                        <Textarea placeholder="Detail any required follow-up actions..." {...field} />
+                                        <Textarea placeholder="Detail any required follow-up actions..." {...field} value={field.value ?? ''} />
                                     </FormControl>
                                     <FormMessage />
                                 </FormItem>

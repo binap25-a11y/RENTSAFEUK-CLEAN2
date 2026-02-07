@@ -173,7 +173,7 @@ const ChecklistItem = ({ form, name, label }: { form: any, name: any, label: str
         render={({ field }) => (
             <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
                 <FormControl>
-                    <Checkbox checked={field.value} onCheckedChange={field.onChange} />
+                    <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                 </FormControl>
                 <div className="space-y-1 leading-none">
                     <FormLabel className="font-normal">{label}</FormLabel>
@@ -191,7 +191,7 @@ const NotesField = ({ form, name, placeholder }: { form: any, name: any, placeho
             <FormItem className="mt-4 col-span-1 md:col-span-2">
                 <FormLabel>Notes</FormLabel>
                 <FormControl>
-                    <Textarea placeholder={placeholder} {...field} />
+                    <Textarea placeholder={placeholder} {...field} value={field.value ?? ''} />
                 </FormControl>
                 <FormMessage />
             </FormItem>
@@ -208,6 +208,12 @@ export default function HmoInspectionPage() {
 
     const form = useForm<HmoInspectionFormValues>({
         resolver: zodResolver(hmoInspectionSchema),
+        defaultValues: {
+            inspectionDate: new Date(),
+            inspectorName: '',
+            propertyId: '',
+            occupantCount: 1,
+        }
     });
 
     const propertiesQuery = useMemoFirebase(() => {
@@ -222,15 +228,8 @@ export default function HmoInspectionPage() {
 
     const properties = useMemo(() => {
         const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
-        return allProperties?.filter(p => 
-            activeStatuses.includes(p.status || '') && 
-            p.propertyType === 'HMO'
-        ) ?? [];
+        return allProperties?.filter(p => activeStatuses.includes(p.status || '')) ?? [];
     }, [allProperties]);
-
-     useEffect(() => {
-        form.setValue('inspectionDate', new Date());
-     }, [form]);
 
     const prepareForFirestore = (obj: any): any => {
         return JSON.parse(JSON.stringify(obj, (key, value) => {
@@ -257,7 +256,7 @@ export default function HmoInspectionPage() {
             ...inspectionData,
             ownerId: user.uid,
             propertyId: propertyId,
-            scheduledDate: data.inspectionDate, // Main date for list view
+            scheduledDate: data.inspectionDate,
             type: 'HMO',
             status: 'Completed',
         };
@@ -327,7 +326,7 @@ export default function HmoInspectionPage() {
                                             render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>Inspector Name</FormLabel>
-                                                    <FormControl><Input placeholder="e.g., Jane Smith" {...field} /></FormControl>
+                                                    <FormControl><Input placeholder="e.g., Jane Smith" {...field} value={field.value ?? ''} /></FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
@@ -339,10 +338,10 @@ export default function HmoInspectionPage() {
                                         render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Property</FormLabel>
-                                                <Select onValueChange={field.onChange} defaultValue={field.value}>
+                                                <Select onValueChange={field.onChange} value={field.value}>
                                                     <FormControl>
                                                         <SelectTrigger>
-                                                            <SelectValue placeholder={isLoadingProperties ? <div className='flex items-center gap-2'><Loader2 className='animate-spin' /> Loading properties...</div> : "Select an active HMO property"} />
+                                                            <SelectValue placeholder={isLoadingProperties ? "Loading properties..." : "Select an active property"} />
                                                         </SelectTrigger>
                                                     </FormControl>
                                                     <SelectContent>{properties?.map((prop) => (<SelectItem key={prop.id} value={prop.id}>{formatAddress(prop.address)}</SelectItem>))}</SelectContent>
@@ -358,7 +357,7 @@ export default function HmoInspectionPage() {
                                             render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>Number of Occupants</FormLabel>
-                                                    <FormControl><Input type="number" placeholder="e.g., 5" {...field} /></FormControl>
+                                                    <FormControl><Input type="number" placeholder="e.g., 5" {...field} value={field.value ?? 1} /></FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
@@ -510,7 +509,7 @@ export default function HmoInspectionPage() {
                                                 <FormItem className="md:col-span-2">
                                                     <FormLabel>Tenant's Concerns Recorded</FormLabel>
                                                     <FormControl>
-                                                        <Textarea placeholder="Record any concerns raised by the tenant" {...field} />
+                                                        <Textarea placeholder="Record any concerns raised by the tenant" {...field} value={field.value ?? ''} />
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
@@ -535,7 +534,7 @@ export default function HmoInspectionPage() {
                                                 <FormItem className="md:col-span-2">
                                                     <FormLabel>Notes for Landlord/Agent</FormLabel>
                                                     <FormControl>
-                                                        <Textarea placeholder="Detail any required follow-up actions..." {...field} />
+                                                        <Textarea placeholder="Detail any required follow-up actions..." {...field} value={field.value ?? ''} />
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>

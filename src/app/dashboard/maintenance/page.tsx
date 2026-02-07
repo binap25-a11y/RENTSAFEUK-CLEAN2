@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -32,7 +31,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Wand2, Upload, List } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -45,7 +44,7 @@ import {
   errorEmitter,
   FirestorePermissionError,
 } from '@/firebase';
-import { collection, query, where, addDoc } from 'firebase/firestore';
+import { collection, query, where, addDoc, limit } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Label } from '@/components/ui/label';
 import { MaintenanceAssistantDialog } from '@/components/dashboard/maintenance-assistant-dialog';
@@ -80,6 +79,7 @@ interface Property {
     postcode: string;
   };
   ownerId: string;
+  status: string;
 }
 
 // Type for contractor documents from Firestore
@@ -115,8 +115,6 @@ export default function MaintenancePage() {
       contractorPhone: '',
       notes: '',
       reportedDate: new Date(),
-      scheduledDate: undefined,
-      estimatedCost: undefined,
     },
   });
 
@@ -126,18 +124,24 @@ export default function MaintenancePage() {
     return query(
       collection(firestore, 'properties'),
       where('ownerId', '==', user.uid),
-      where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
+      limit(500)
     );
   }, [firestore, user]);
 
-  const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
+  const { data: allProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
   
+  const properties = useMemo(() => {
+    const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
+    return allProperties?.filter(p => activeStatuses.includes(p.status)) ?? [];
+  }, [allProperties]);
+
   // Fetch contractors for the dropdown
   const contractorsQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
       collection(firestore, 'contractors'),
-      where('ownerId', '==', user.uid)
+      where('ownerId', '==', user.uid),
+      limit(500)
     );
   }, [firestore, user]);
   const { data: contractors } = useCollection<Contractor>(contractorsQuery);
@@ -277,8 +281,8 @@ export default function MaintenancePage() {
                         </FormItem>
                       )}
                     />
-                    <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Issue Title</FormLabel><FormControl><Input placeholder="e.g., Leaking kitchen sink" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea placeholder="Provide a detailed description of the issue." {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel>Issue Title</FormLabel><FormControl><Input placeholder="e.g., Leaking kitchen sink" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel>Description</FormLabel><FormControl><Textarea placeholder="Provide a detailed description of the issue." {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField control={form.control} name="category" render={({ field }) => (<FormItem><FormLabel>Category</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a category" /></SelectTrigger></FormControl><SelectContent>{['Plumbing', 'Electrical', 'Heating', 'Structural', 'Appliances', 'Garden', 'Cleaning', 'Pest Control', 'Other'].map((cat) => (<SelectItem key={cat} value={cat}>{cat}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />
                       <FormField control={form.control} name="priority" render={({ field }) => (<FormItem><FormLabel>Priority</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a priority" /></SelectTrigger></FormControl><SelectContent>{['Emergency', 'Urgent', 'Routine', 'Low'].map((p) => (<SelectItem key={p} value={p}>{p}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />
@@ -290,7 +294,7 @@ export default function MaintenancePage() {
                   <CardHeader><CardTitle className="text-xl">Reporting Information</CardTitle></CardHeader>
                   <CardContent className="space-y-4">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <FormField control={form.control} name="reportedBy" render={({ field }) => (<FormItem><FormLabel>Reported By</FormLabel><FormControl><Input placeholder="e.g., Tenant name" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                      <FormField control={form.control} name="reportedBy" render={({ field }) => (<FormItem><FormLabel>Reported By</FormLabel><FormControl><Input placeholder="e.g., Tenant name" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                       <FormField control={form.control} name="reportedDate" render={({ field }) => (<FormItem><FormLabel>Reported Date</FormLabel><FormControl><Input type="date" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>)} />
                     </div>
                   </CardContent>
@@ -314,12 +318,12 @@ export default function MaintenancePage() {
                         <FormDescription>Or enter new contractor details below.</FormDescription>
                       </FormItem>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                      <FormField control={form.control} name="contractorName" render={({ field }) => (<FormItem><FormLabel>Contractor Name</FormLabel><FormControl><Input placeholder="e.g., ABC Plumbers" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                      <FormField control={form.control} name="contractorPhone" render={({ field }) => (<FormItem><FormLabel>Contractor Phone</FormLabel><FormControl><Input placeholder="07123456789" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                      <FormField control={form.control} name="contractorName" render={({ field }) => (<FormItem><FormLabel>Contractor Name</FormLabel><FormControl><Input placeholder="e.g., ABC Plumbers" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                      <FormField control={form.control} name="contractorPhone" render={({ field }) => (<FormItem><FormLabel>Contractor Phone</FormLabel><FormControl><Input placeholder="07123456789" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                     </div>
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                       <FormField control={form.control} name="scheduledDate" render={({ field }) => (<FormItem><FormLabel>Scheduled Date</FormLabel><FormControl><Input type="date" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>)} />
-                      <FormField control={form.control} name="estimatedCost" render={({ field }) => (<FormItem><FormLabel>Estimated Cost (£)</FormLabel><FormControl><Input type="text" inputMode="decimal" placeholder="150.00" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} /></FormControl><FormMessage /></FormItem>)} />
+                      <FormField control={form.control} name="estimatedCost" render={({ field }) => (<FormItem><FormLabel>Estimated Cost (£)</FormLabel><FormControl><Input type="text" inputMode="decimal" placeholder="150.00" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                     </div>
                   </CardContent>
                 </Card>
@@ -355,7 +359,7 @@ export default function MaintenancePage() {
                             </div>
                         )}
                     </div>
-                     <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel>Additional Notes</FormLabel><FormControl><Textarea placeholder="Any additional notes..." className="resize-none" rows={5} {...field} /></FormControl><FormMessage /></FormItem>)}/>
+                     <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel>Additional Notes</FormLabel><FormControl><Textarea placeholder="Any additional notes..." className="resize-none" rows={5} {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)}/>
                   </CardContent>
                 </Card>
 
