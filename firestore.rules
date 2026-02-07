@@ -8,10 +8,6 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isOwner(data) {
-      return isSignedIn() && data.ownerId == request.auth.uid;
-    }
-
     // --- Users Collection ---
     match /users/{userId} {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
@@ -19,27 +15,31 @@ service cloud.firestore {
 
     // --- Tenants Collection ---
     match /tenants/{tenantId} {
-      // Allow read/write if the user is the owner of the tenant record.
-      allow read, write: if isSignedIn() && (resource == null || isOwner(resource.data)) && (request.resource == null || isOwner(request.resource.data));
+      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
 
       match /screenings/{screeningId} {
-        allow read, write: if isSignedIn() && (resource == null || isOwner(resource.data)) && (request.resource == null || isOwner(request.resource.data));
+        allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+        allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       }
     }
 
     // --- Properties Collection ---
     match /properties/{propertyId} {
-      allow read, write: if isSignedIn() && (resource == null || isOwner(resource.data)) && (request.resource == null || isOwner(request.resource.data));
+      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
 
       // Sub-collections: maintenanceLogs, inspections, documents, expenses, rentPayments, checklists
       match /{subcollection}/{docId=**} {
-        allow read, write: if isSignedIn() && (resource == null || isOwner(resource.data)) && (request.resource == null || isOwner(request.resource.data));
+        allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+        allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
       }
     }
 
     // --- Contractors Collection ---
     match /contractors/{contractorId} {
-      allow read, write: if isSignedIn() && (resource == null || isOwner(resource.data)) && (request.resource == null || isOwner(request.resource.data));
+      allow read, update, delete: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+      allow create: if isSignedIn() && request.resource.data.ownerId == request.auth.uid;
     }
 
     // --- Collection Group Rules (Critical for Performance & Global Queries) ---
