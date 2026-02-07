@@ -280,9 +280,9 @@ export default function DashboardPage() {
     return (
       <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
         <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
-        <h2 className="text-xl font-bold mb-2">Performance Indexing Required</h2>
+        <h2 className="text-xl font-bold mb-2">Portfolio Analytics Status</h2>
         <p className="text-muted-foreground max-w-md mb-6">
-          To ensure your dashboard runs fast, Firestore needs to create a performance index. Please check your developer console for a link to click, or wait a few minutes if you just added data.
+          To display your global maintenance and inspection reports, Firestore requires a composite performance index. Please check the Firebase Console logs for a link to click, or wait a few minutes if you've recently initialized the app.
         </p>
         <Button onClick={() => window.location.reload()}>Refresh Dashboard</Button>
       </div>
@@ -311,10 +311,32 @@ export default function DashboardPage() {
               <CardTitle>Add Property</CardTitle>
               <CardDescription>Enter address and basic details.</CardDescription>
             </CardHeader>
-            <CardFooter><Button asChild className="w-full"><Link href="/dashboard/properties/add">Add Property <ArrowRight className="ml-2 h-4 w-4" /></Link></Button></CardFooter>
+            <CardFooter>
+              <Button asChild className="w-full">
+                <Link href="/dashboard/properties/add">Add Property <ArrowRight className="ml-2 h-4 w-4" /></Link>
+              </Button>
+            </CardFooter>
           </Card>
-          <Card className="opacity-50 grayscale"><CardHeader><Badge variant="outline" className="w-fit mb-2">Step 2</Badge><CardTitle>Assign Tenant</CardTitle><CardDescription>Link a tenant to manage rent.</CardDescription></CardHeader><CardFooter><Button disabled className="w-full">Assign Tenant</Button></CardFooter></Card>
-          <Card className="opacity-50 grayscale"><CardHeader><Badge variant="outline" className="w-fit mb-2">Step 3</Badge><CardTitle>Compliance</CardTitle><CardDescription>Upload Gas Safety and EICR records.</CardDescription></CardHeader><CardFooter><Button disabled className="w-full">Upload Documents</Button></CardFooter></Card>
+          <Card className="opacity-50 grayscale">
+            <CardHeader>
+              <Badge variant="outline" className="w-fit mb-2">Step 2</Badge>
+              <CardTitle>Assign Tenant</CardTitle>
+              <CardDescription>Link a tenant to manage rent.</CardDescription>
+            </CardHeader>
+            <CardFooter>
+              <Button disabled className="w-full">Assign Tenant</Button>
+            </CardFooter>
+          </Card>
+          <Card className="opacity-50 grayscale">
+            <CardHeader>
+              <Badge variant="outline" className="w-fit mb-2">Step 3</Badge>
+              <CardTitle>Compliance</CardTitle>
+              <CardDescription>Upload Gas Safety and EICR records.</CardDescription>
+            </CardHeader>
+            <CardFooter>
+              <Button disabled className="w-full">Upload Documents</Button>
+            </CardFooter>
+          </Card>
         </div>
       </div>
     );

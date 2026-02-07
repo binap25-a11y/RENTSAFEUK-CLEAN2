@@ -3,68 +3,63 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // --- Helper Functions ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(data) {
+      return isSignedIn() && data.ownerId == request.auth.uid;
+    }
+
     // --- Users Collection ---
     match /users/{userId} {
-      allow read, update, delete: if request.auth.uid == userId;
-      allow create: if request.auth.uid == userId;
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
 
     // --- Tenants Collection ---
-    match /tenants {
-      allow list: if request.auth != null && request.query.filters.ownerId == request.auth.uid;
-      allow create: if request.auth.uid == request.resource.data.ownerId;
-    }
-    
     match /tenants/{tenantId} {
-        allow get, update, delete: if request.auth.uid == get(path).data.ownerId;
+      // Allow read/write if the user is the owner of the tenant record.
+      allow read, write: if isSignedIn() && (resource == null || isOwner(resource.data)) && (request.resource == null || isOwner(request.resource.data));
 
-        match /screenings/{screeningId} {
-            allow read, write: if request.auth.uid == get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId;
-        }
+      match /screenings/{screeningId} {
+        allow read, write: if isSignedIn() && (resource == null || isOwner(resource.data)) && (request.resource == null || isOwner(request.resource.data));
+      }
     }
 
     // --- Properties Collection ---
-    match /properties {
-      allow list: if request.auth != null && request.query.filters.ownerId == request.auth.uid;
-      allow create: if request.auth.uid == request.resource.data.ownerId;
-    }
-    
     match /properties/{propertyId} {
-      allow get: if request.auth != null && (resource == null || resource.data.ownerId == request.auth.uid);
-      allow create: if request.auth.uid == request.resource.data.ownerId;
-      allow update, delete: if resource.data.ownerId == request.auth.uid;
+      allow read, write: if isSignedIn() && (resource == null || isOwner(resource.data)) && (request.resource == null || isOwner(request.resource.data));
 
+      // Sub-collections: maintenanceLogs, inspections, documents, expenses, rentPayments, checklists
       match /{subcollection}/{docId=**} {
-        allow read, write: if get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
+        allow read, write: if isSignedIn() && (resource == null || isOwner(resource.data)) && (request.resource == null || isOwner(request.resource.data));
       }
     }
 
     // --- Contractors Collection ---
-    match /contractors {
-      allow list: if request.auth != null && request.query.filters.ownerId == request.auth.uid;
-      allow create: if request.auth.uid == request.resource.data.ownerId;
-    }
-
     match /contractors/{contractorId} {
-      allow get, update, delete: if request.auth.uid == get(path).data.ownerId;
+      allow read, write: if isSignedIn() && (resource == null || isOwner(resource.data)) && (request.resource == null || isOwner(request.resource.data));
     }
 
-    // --- Collection Group Rules (Critical for Performance) ---
-    // These allow the app to query across all properties for a single owner in one request.
+    // --- Collection Group Rules (Critical for Performance & Global Queries) ---
     match /{path=**}/maintenanceLogs/{id} {
-      allow read: if request.auth != null && resource.data.ownerId == request.auth.uid;
+      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
     match /{path=**}/inspections/{id} {
-      allow read: if request.auth != null && resource.data.ownerId == request.auth.uid;
+      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
     match /{path=**}/documents/{id} {
-      allow read: if request.auth != null && resource.data.ownerId == request.auth.uid;
+      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
     match /{path=**}/rentPayments/{id} {
-      allow read: if request.auth != null && resource.data.ownerId == request.auth.uid;
+      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
     match /{path=**}/expenses/{id} {
-      allow read: if request.auth != null && resource.data.ownerId == request.auth.uid;
+      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+    }
+    match /{path=**}/checklists/{id} {
+      allow read: if isSignedIn() && resource.data.ownerId == request.auth.uid;
     }
   }
 }
