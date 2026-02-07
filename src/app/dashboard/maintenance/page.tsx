@@ -30,10 +30,10 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Upload, Loader2, Wand2, Search, MoreVertical, Edit, Eye, XCircle, Trash2, CheckCircle } from 'lucide-react';
+import { Loader2, Wand2, Search, MoreVertical, Edit, Eye, XCircle, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useRouter } from 'next/navigation';
@@ -132,8 +132,6 @@ export default function MaintenancePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [photosToUpload, setPhotosToUpload] = useState<FileList | null>(null);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadedPhotoUrls, setUploadedPhotoUrls] = useState<string[]>([]);
   const [searchTerm, setSearchTerm] = useState('');
   const [logToCancel, setLogToCancel] = useState<MaintenanceLog | null>(null);
   const [logToDelete, setLogToDelete] = useState<MaintenanceLog | null>(null);
@@ -219,68 +217,63 @@ export default function MaintenancePage() {
     });
   };
 
-  const handleUpload = async () => {
-    if (!photosToUpload || photosToUpload.length === 0 || !user || !storage) return;
-
-    setIsUploading(true);
-    toast({ title: 'Uploading...', description: `Uploading ${photosToUpload.length} photo(s).` });
-
-    try {
-        const uploadPromises = Array.from(photosToUpload).map(async (file) => {
-            const uniqueFileName = `${Date.now()}-${file.name}`;
-            const fileStorageRef = storageRef(storage, `maintenance/${user.uid}/${uniqueFileName}`);
-            await uploadBytes(fileStorageRef, file);
-            return getDownloadURL(fileStorageRef);
-        });
-        const urls = await Promise.all(uploadPromises);
-        setUploadedPhotoUrls(urls);
-        toast({ title: 'Upload Successful', description: 'Photos are ready to be saved with the log.' });
-    } catch (error) {
-        console.error('Photo upload failed:', error);
-        toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload photos. Please try again.' });
-    } finally {
-        setIsUploading(false);
-    }
-  };
-
   async function onSubmit(data: MaintenanceFormValues) {
-    if (!user || !firestore) {
+    if (!user || !firestore || !storage) {
       toast({
         variant: 'destructive',
         title: 'Authentication Error',
-        description: 'You must be logged in.',
+        description: 'You must be logged in to log an issue.',
       });
       return;
     }
 
     setIsSubmitting(true);
+    let uploadedUrls: string[] = [];
 
-    try {
-        const newLog = {
-          ...data,
-          ownerId: user.uid,
-          status: 'Open',
-          photoUrls: uploadedPhotoUrls,
-        };
-
-        const logsCollection = collection(firestore, 'properties', data.propertyId, 'maintenanceLogs');
-        const newDocRef = await addDoc(logsCollection, newLog);
-        
-        toast({
-          title: 'Maintenance Logged',
-          description: 'The new maintenance issue has been successfully logged.',
+    // --- Step 1: Upload photos if they exist ---
+    if (photosToUpload && photosToUpload.length > 0) {
+      toast({ title: 'Uploading photos...', description: `Uploading ${photosToUpload.length} image(s).` });
+      try {
+        const uploadPromises = Array.from(photosToUpload).map(file => {
+          const uniqueFileName = `${Date.now()}-${file.name}`;
+          const fileStorageRef = storageRef(storage, `maintenance/${user.uid}/${uniqueFileName}`);
+          return uploadBytes(fileStorageRef, file).then(snapshot => getDownloadURL(snapshot.ref));
         });
-        router.push(`/dashboard/maintenance/${newDocRef.id}?propertyId=${data.propertyId}`);
-
-    } catch (error) {
-        console.error('Failed to log maintenance issue', error);
-        toast({
-            variant: 'destructive',
-            title: 'Save Failed',
-            description: 'There was an error saving the maintenance log. Please try again.',
-        });
-    } finally {
+        uploadedUrls = await Promise.all(uploadPromises);
+      } catch (error) {
+        console.error('Photo upload failed:', error);
+        toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload photos. Please try again.' });
         setIsSubmitting(false);
+        return; // Stop if uploads fail
+      }
+    }
+
+    // --- Step 2: Save the maintenance log with photo URLs to Firestore ---
+    try {
+      const newLog = {
+        ...data,
+        ownerId: user.uid,
+        status: 'Open',
+        photoUrls: uploadedUrls, // Add the array of uploaded URLs
+      };
+
+      const logsCollection = collection(firestore, 'properties', data.propertyId, 'maintenanceLogs');
+      const newDocRef = await addDoc(logsCollection, newLog);
+
+      toast({
+        title: 'Maintenance Logged',
+        description: 'The new maintenance issue has been successfully logged.',
+      });
+      router.push(`/dashboard/maintenance/${newDocRef.id}?propertyId=${data.propertyId}`);
+    } catch (error) {
+      console.error('Failed to log maintenance issue:', error);
+      toast({
+        variant: 'destructive',
+        title: 'Save Failed',
+        description: 'There was an error saving the maintenance log. Please try again.',
+      });
+    } finally {
+      setIsSubmitting(false);
     }
   }
 
@@ -649,11 +642,12 @@ export default function MaintenancePage() {
                           onChange={(e) => {
                             const files = e.target.files;
                             setPhotosToUpload(files);
-                            setUploadedPhotoUrls([]); // Reset on new selection
                             if (files) {
                               const fileArray = Array.from(files);
                               const newPreviews = fileArray.map(file => URL.createObjectURL(file));
                               setPhotoPreviews(newPreviews);
+                            } else {
+                              setPhotoPreviews([]);
                             }
                           }}
                         />
@@ -666,23 +660,6 @@ export default function MaintenancePage() {
                                 ))}
                             </div>
                         )}
-                        <div className="flex items-center gap-2 pt-2">
-                            <Button
-                                type="button"
-                                variant="secondary"
-                                onClick={handleUpload}
-                                disabled={!photosToUpload || photosToUpload.length === 0 || isUploading || uploadedPhotoUrls.length > 0}
-                            >
-                                {isUploading && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                                Upload Photo(s)
-                            </Button>
-                            {uploadedPhotoUrls.length > 0 && (
-                                <div className="flex items-center gap-2 text-green-600">
-                                    <CheckCircle className="h-4 w-4" />
-                                    <span className="text-sm font-medium">Upload Complete</span>
-                                </div>
-                            )}
-                        </div>
                     </div>
                      <FormField
                       control={form.control}
@@ -709,7 +686,7 @@ export default function MaintenancePage() {
                   <Button type="button" variant="outline" onClick={() => form.reset()}>
                     Cancel
                   </Button>
-                  <Button type="submit" disabled={isSubmitting || isUploading}>
+                  <Button type="submit" disabled={isSubmitting}>
                     {isSubmitting ? (
                       <>
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
