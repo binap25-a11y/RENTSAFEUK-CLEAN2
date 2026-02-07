@@ -64,12 +64,11 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
   } | null>(null);
 
   useEffect(() => {
-    // This effect now fetches data respecting security rules.
     if (isOpen && !allData && user && firestore) {
       const fetchData = async () => {
         setIsLoading(true);
         try {
-          // 1. Fetch top-level collections
+          // Fetch top-level collections
           const propertyQuery = query(collection(firestore, 'properties'), where('ownerId', '==', user.uid));
           const tenantQuery = query(collection(firestore, 'tenants'), where('ownerId', '==', user.uid));
           const contractorQuery = query(collection(firestore, 'contractors'), where('ownerId', '==', user.uid));
@@ -84,7 +83,7 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
           const tenants = tenantSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Tenant));
           const contractors = contractorSnap.docs.map(doc => ({ id: doc.id, ...doc.data() } as Contractor));
           
-          // 2. Fetch sub-collections for each property
+          // Fetch sub-collections for each property
           const maintenanceLogs: MaintenanceLog[] = [];
           const inspections: Inspection[] = [];
 
@@ -105,7 +104,6 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
 
         } catch (error) {
           console.error("Failed to fetch search data:", error);
-          // In a real app, show a toast notification
         } finally {
           setIsLoading(false);
         }
@@ -155,7 +153,7 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
         id: c.id,
         title: c.name,
         description: c.status === 'Archived' ? 'Archived Contractor' : 'Contractor',
-        href: `/dashboard/contractors/${c.id}/edit`, // No detail page, link to edit
+        href: `/dashboard/contractors/${c.id}/edit`,
       }));
     if (contractorItems.length) results.push({ title: 'Contractors', icon: HardHat, items: contractorItems });
 
@@ -196,12 +194,12 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
         onOpenChange(open);
         if (!open) setSearchTerm('');
     }}>
-      <DialogContent className="p-0 gap-0 max-w-2xl">
+      <DialogContent className="p-0 gap-0 max-w-2xl overflow-hidden">
         <div className="p-4 border-b">
            <div className="relative">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input
-                placeholder="Search anything..."
+                placeholder="Search properties, tenants, or tasks..."
                 className="pl-9 h-11 text-base bg-transparent border-0 focus-visible:ring-0 focus-visible:ring-offset-0"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -217,7 +215,14 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
             ) : searchTerm && !searchResults.length ? (
                 <p className="text-center text-muted-foreground py-6">No results found for "{searchTerm}".</p>
             ) : !searchTerm ? (
-                <p className="text-center text-muted-foreground py-6">Start typing to search your portfolio.</p>
+                <div className="text-center py-6">
+                    <p className="text-muted-foreground mb-2 text-sm">Start typing to search your entire portfolio.</p>
+                    <div className="flex justify-center gap-4 text-[10px] uppercase tracking-wider font-semibold text-muted-foreground/60">
+                        <span className="flex items-center gap-1"><Home className="h-3 w-3"/> Properties</span>
+                        <span className="flex items-center gap-1"><Users className="h-3 w-3"/> Tenants</span>
+                        <span className="flex items-center gap-1"><Wrench className="h-3 w-3"/> Maintenance</span>
+                    </div>
+                </div>
             ) : (
                 <div className="space-y-4">
                     {searchResults.map((group) => (
@@ -227,14 +232,16 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
                                 {group.items.map(item => (
                                     <li
                                         key={item.id}
-                                        className="p-2 rounded-md hover:bg-accent cursor-pointer"
+                                        className="p-2 rounded-md hover:bg-accent cursor-pointer group transition-colors"
                                         onClick={() => handleSelect(item.href)}
                                     >
                                         <div className="flex items-center gap-3">
-                                            <group.icon className="h-4 w-4 text-muted-foreground" />
+                                            <div className="p-2 rounded bg-muted group-hover:bg-background transition-colors">
+                                                <group.icon className="h-4 w-4 text-muted-foreground" />
+                                            </div>
                                             <div>
-                                                <p className="font-medium">{item.title}</p>
-                                                <p className="text-sm text-muted-foreground">{item.description}</p>
+                                                <p className="font-medium text-sm">{item.title}</p>
+                                                <p className="text-[10px] text-muted-foreground uppercase tracking-tight">{item.description}</p>
                                             </div>
                                         </div>
                                     </li>

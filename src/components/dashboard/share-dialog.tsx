@@ -11,8 +11,9 @@ import {
 } from '@/components/ui/dialog';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
-import { Share2, Copy, Check } from 'lucide-react';
+import { Share2, Copy, Check, Info } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 
 export function ShareDialog({ isOpen, onOpenChange }: { isOpen: boolean; onOpenChange: (open: boolean) => void }) {
   const [url, setUrl] = useState('');
@@ -20,7 +21,6 @@ export function ShareDialog({ isOpen, onOpenChange }: { isOpen: boolean; onOpenC
 
   useEffect(() => {
     if (typeof window !== 'undefined') {
-      // Use the origin so it works in both dev (workstation) and production (firebase hosting)
       setUrl(window.location.origin);
     }
   }, []);
@@ -60,6 +60,12 @@ export function ShareDialog({ isOpen, onOpenChange }: { isOpen: boolean; onOpenC
           </DialogDescription>
         </DialogHeader>
         <div className="flex flex-col items-center gap-6 py-4">
+          <Alert variant="default" className="bg-blue-50 border-blue-200 dark:bg-blue-950 dark:border-blue-900">
+            <Info className="h-4 w-4 text-blue-600 dark:text-blue-400" />
+            <AlertDescription className="text-xs text-blue-700 dark:text-blue-300">
+              <strong>Workstation Users:</strong> Ensure you are logged into your Google account on your mobile browser to bypass the workstation proxy.
+            </AlertDescription>
+          </Alert>
           <div className="bg-white p-4 rounded-lg shadow-sm border">
             {/* eslint-disable-next-line @next/next/no-img-element */}
             <img src={qrUrl} alt="QR Code" className="w-48 h-48" />
