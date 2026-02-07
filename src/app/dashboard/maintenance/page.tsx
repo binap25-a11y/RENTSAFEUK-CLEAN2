@@ -36,6 +36,7 @@ import { toast } from '@/hooks/use-toast';
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
+import { useRouter } from 'next/navigation';
 import {
   useUser,
   useFirestore,
@@ -126,6 +127,7 @@ export default function MaintenancePage() {
   const { user } = useUser();
   const firestore = useFirestore();
   const storage = useStorage();
+  const router = useRouter();
   const [selectedPropertyFilter, setSelectedPropertyFilter] = useState<string>('');
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [isUploading, setIsUploading] = useState(false);
@@ -250,31 +252,14 @@ export default function MaintenancePage() {
         };
 
         const logsCollection = collection(firestore, 'properties', data.propertyId, 'maintenanceLogs');
-        await addDoc(logsCollection, newLog);
+        const newDocRef = await addDoc(logsCollection, newLog);
         
         toast({
           title: 'Maintenance Logged',
           description: 'The new maintenance issue has been successfully logged.',
         });
-        form.reset({
-          propertyId: '',
-          title: '',
-          description: '',
-          category: '',
-          priority: '',
-          reportedBy: '',
-          contractorName: '',
-          contractorPhone: '',
-          notes: '',
-          reportedDate: new Date(),
-          scheduledDate: undefined,
-          estimatedCost: undefined,
-        });
-        setPhotoPreviews([]);
-        // If no filter is set, set it to the property we just added a log for
-        if (!selectedPropertyFilter) {
-            setSelectedPropertyFilter(data.propertyId);
-        }
+        router.push(`/dashboard/maintenance/${newDocRef.id}?propertyId=${data.propertyId}`);
+
     } catch (error) {
         console.error('Failed to log maintenance issue', error);
         toast({
