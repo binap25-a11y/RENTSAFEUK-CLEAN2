@@ -51,7 +51,8 @@ import {
   Filter, 
   Banknote,
   AlertTriangle,
-  ArrowRight
+  ArrowRight,
+  PieChart as PieChartIcon
 } from 'lucide-react';
 import { getYear, startOfYear, endOfYear, format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -229,8 +230,8 @@ export default function FinancialsPage() {
                 <PoundSterling className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                <div className="text-2xl font-bold">£{portfolioIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-                <p className="text-xs text-muted-foreground">{activeProperties.length} active properties</p>
+                <div className="text-2xl font-bold truncate">£{portfolioIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                <p className="text-xs text-muted-foreground truncate">{activeProperties.length} active properties</p>
                 </CardContent>
             </Card>
             <Card>
@@ -239,10 +240,10 @@ export default function FinancialsPage() {
                 <TrendingUp className="h-4 w-4 text-green-500" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">
+                    <div className="text-2xl font-bold truncate">
                         {isLoading && selectedPropertyId ? <Loader2 className="h-6 w-6 animate-spin" /> : selectedPropertyId ? `£${totalPaidRent.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`: '-'}
                     </div>
-                    <p className="text-xs text-muted-foreground">Rent received in {selectedYear}</p>
+                    <p className="text-xs text-muted-foreground truncate">Rent received in {selectedYear}</p>
                 </CardContent>
             </Card>
             <Card>
@@ -251,10 +252,10 @@ export default function FinancialsPage() {
                 <TrendingDown className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold">
+                    <div className="text-2xl font-bold truncate">
                         {isLoading && selectedPropertyId ? <Loader2 className="h-6 w-6 animate-spin" /> : selectedPropertyId ? `£${totalExpenses.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`: '-'}
                     </div>
-                    <p className="text-xs text-muted-foreground">Expenses in {selectedYear}</p>
+                    <p className="text-xs text-muted-foreground truncate">Expenses in {selectedYear}</p>
                 </CardContent>
             </Card>
             <Card>
@@ -263,10 +264,10 @@ export default function FinancialsPage() {
                 <Banknote className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                    <div className={"text-2xl font-bold" + (netIncome < 0 ? " text-destructive" : " text-primary")}>
+                    <div className={"text-2xl font-bold truncate" + (netIncome < 0 ? " text-destructive" : " text-primary")}>
                         {isLoading && selectedPropertyId ? <Loader2 className="h-6 w-6 animate-spin" /> : selectedPropertyId ? `£${netIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}`: '-'}
                     </div>
-                     <p className="text-xs text-muted-foreground">Net for {selectedYear}</p>
+                     <p className="text-xs text-muted-foreground truncate">Net for {selectedYear}</p>
                 </CardContent>
             </Card>
         </div>
@@ -416,7 +417,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
   return (
     <div className="space-y-6 mt-6">
       <Card>
-        <CardHeader><CardTitle>Log New Expense</CardTitle></CardHeader>
+        <CardHeader><CardTitle className="text-lg">Log New Expense</CardTitle></CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
@@ -518,7 +519,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
 
       <Card>
         <CardHeader>
-          <CardTitle>Logged Expenses</CardTitle>
+          <CardTitle className="text-lg">Logged Expenses</CardTitle>
           <CardDescription>Expenses logged for the selected property in {selectedYear}.</CardDescription>
         </CardHeader>
         <CardContent>
@@ -527,22 +528,22 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
               <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" />
             </div>
           ) : !expenses?.length ? (
-              <div className="text-center text-muted-foreground py-10 border-2 border-dashed rounded-lg">
+              <div className="text-center text-muted-foreground py-10 border-2 border-dashed rounded-lg bg-muted/30">
                   {selectedPropertyId ? 'No expenses logged for this property in this period.' : 'Select a property above to see logged expenses.'}
               </div>
           ) : (
               <>
                   {/* Desktop Table View */}
-                  <div className="hidden rounded-md border md:block">
+                  <div className="hidden rounded-md border md:block overflow-hidden">
                       <Table>
                       <TableHeader className="bg-muted/30"><TableRow><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Paid By</TableHead><TableHead className="text-right">Amount (£)</TableHead></TableRow></TableHeader>
                       <TableBody>
                           {expenses?.map((expense) => (
                           <TableRow key={expense.id} className="hover:bg-muted/20">
                               <TableCell>{new Date(expense.date.seconds * 1000).toLocaleDateString()}</TableCell>
-                              <TableCell>{expense.expenseType}</TableCell>
+                              <TableCell className="font-medium">{expense.expenseType}</TableCell>
                               <TableCell>{expense.paidBy}</TableCell>
-                              <TableCell className="text-right font-semibold">£{expense.amount.toFixed(2)}</TableCell>
+                              <TableCell className="text-right font-bold whitespace-nowrap">£{expense.amount.toFixed(2)}</TableCell>
                           </TableRow>
                           ))}
                       </TableBody>
@@ -551,7 +552,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
                   {/* Mobile Card View */}
                   <div className="grid gap-4 md:hidden">
                       {expenses.map((expense) => (
-                          <Card key={expense.id}>
+                          <Card key={expense.id} className="shadow-none">
                               <CardHeader className="pb-2">
                                   <CardTitle className="text-base font-bold">{expense.expenseType}</CardTitle>
                                   <CardDescription>{new Date(expense.date.seconds * 1000).toLocaleDateString()}</CardDescription>
@@ -578,10 +579,10 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
           )}
         </CardContent>
         {expenses && expenses.length > 0 && (
-            <CardFooter className="flex justify-end font-bold text-lg pt-4 border-t">
+            <CardFooter className="flex justify-end font-bold text-lg pt-4 border-t bg-muted/10">
               <div className="flex items-center gap-4">
-                <span>Total for {selectedYear}:</span>
-                <span className="text-primary">£{totalExpenses.toFixed(2)}</span>
+                <span className="text-sm font-normal text-muted-foreground uppercase tracking-wider">Total for {selectedYear}:</span>
+                <span className="text-primary font-bold text-2xl">£{totalExpenses.toFixed(2)}</span>
               </div>
             </CardFooter>
         )}
@@ -732,135 +733,139 @@ function AnnualSummary({
   return (
     <div className="space-y-6 mt-6">
         <div className='flex justify-end'>
-            <Button onClick={generatePDF} disabled={!selectedProperty || isLoading}>
+            <Button onClick={generatePDF} disabled={!selectedProperty || isLoading} size="sm">
                 <Download className="mr-2 h-4 w-4" />
-                Download PDF Report
+                Export PDF Report
             </Button>
         </div>
+        
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Total Portfolio Rent</CardTitle>
-                <PoundSterling className="h-4 w-4 text-muted-foreground" />
+            <Card className="bg-muted/5 border-none shadow-sm">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                        <Banknote className="h-3 w-3" /> Portfolio Potential
+                    </CardTitle>
                 </CardHeader>
                 <CardContent>
-                <div className="text-2xl font-bold">£{portfolioIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-                <p className="text-xs text-muted-foreground">{allProperties.length} active properties</p>
+                    <div className="text-2xl font-bold text-primary truncate">£{portfolioIncome.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>
+                    <p className="text-[10px] text-muted-foreground font-medium mt-1">Annual projected gross</p>
                 </CardContent>
             </Card>
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Total Expenses ({selectedYear})</CardTitle>
-                <TrendingDown className="h-4 w-4 text-muted-foreground" />
+            <Card className="bg-muted/5 border-none shadow-sm">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                        <TrendingDown className="h-3 w-3" /> Property Costs
+                    </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    {isLoadingExpenses ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <div className="text-2xl font-bold">£{totalExpenses.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>}
-                    <p className="text-xs text-muted-foreground truncate">{selectedProperty ? [selectedProperty.address.nameOrNumber, selectedProperty.address.street].filter(Boolean).join(', ') : 'No property selected'}</p>
+                    {isLoadingExpenses ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <div className="text-2xl font-bold truncate">£{totalExpenses.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>}
+                    <p className="text-[10px] text-muted-foreground font-medium mt-1 truncate">
+                        {selectedProperty ? [selectedProperty.address.nameOrNumber, selectedProperty.address.street].filter(Boolean).join(', ') : 'No property selected'}
+                    </p>
                 </CardContent>
             </Card>
-            <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                <CardTitle className="text-sm font-medium">Net Income ({selectedYear})</CardTitle>
-                <TrendingUp className="h-4 w-4 text-muted-foreground" />
+            <Card className="bg-muted/5 border-none shadow-sm">
+                <CardHeader className="pb-2">
+                    <CardTitle className="text-xs font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                        <TrendingUp className="h-3 w-3" /> Net Profit
+                    </CardTitle>
                 </CardHeader>
                 <CardContent>
-                     {isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <div className={"text-2xl font-bold" + (netIncome < 0 ? " text-destructive" : "")}>£{netIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>}
-                    <p className="text-xs text-muted-foreground">Income minus expenses</p>
+                     {isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <div className={"text-2xl font-bold truncate " + (netIncome < 0 ? "text-destructive" : "text-green-600")}>£{netIncome.toLocaleString(undefined, {minimumFractionDigits: 2})}</div>}
+                    <p className="text-[10px] text-muted-foreground font-medium mt-1">Actual receipts minus costs</p>
                 </CardContent>
             </Card>
         </div>
-        <div className="grid gap-6 lg:grid-cols-2">
-            <Card>
+
+        <div className="grid gap-6 lg:grid-cols-5">
+            <Card className="lg:col-span-3">
+                <CardHeader className="border-b pb-4">
+                    <div className="flex items-center gap-2">
+                        <List className="h-4 w-4 text-primary" />
+                        <CardTitle className="text-base font-bold">Category Breakdown</CardTitle>
+                    </div>
+                    <CardDescription className="text-xs truncate">Detailed list of expenditures for {selectedYear}.</CardDescription>
+                </CardHeader>
                 <CardContent className="pt-6">
-                    <p className="text-lg font-semibold">Expense Breakdown</p>
-                    <p className="text-sm text-muted-foreground mb-4">For {selectedProperty ? [selectedProperty.address.nameOrNumber, selectedProperty.address.street].filter(Boolean).join(', ') : 'the selected property'} for {selectedYear}.</p>
-                    
                     {isLoadingExpenses && (
                         <div className="flex h-48 items-center justify-center">
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
                     )}
                     {!isLoadingExpenses && expensesByCategory.length === 0 && (
-                        <div className="py-10 text-center text-muted-foreground border-2 border-dashed rounded-lg">
-                            {selectedProperty ? "No expenses found for this period." : "Please select an active property."}
+                        <div className="py-16 text-center text-muted-foreground border-2 border-dashed rounded-lg bg-muted/20">
+                            <Banknote className="h-10 w-10 mx-auto mb-4 opacity-20" />
+                            <p className="text-sm italic">{selectedProperty ? "No expenses found for this period." : "Please select an active property."}</p>
                         </div>
                     )}
                     
                     {!isLoadingExpenses && expensesByCategory.length > 0 && (
-                        <>
-                            {/* Desktop Table View */}
-                            <div className="hidden rounded-md border md:block">
-                                <Table>
-                                <TableHeader className="bg-muted/30">
+                        <div className="rounded-md border overflow-hidden">
+                            <Table>
+                                <TableHeader className="bg-muted/50">
                                     <TableRow>
-                                    <TableHead>Category</TableHead>
-                                    <TableHead className="text-right">Total Amount</TableHead>
+                                        <TableHead className="text-xs font-bold uppercase">Category</TableHead>
+                                        <TableHead className="text-right text-xs font-bold uppercase">Total (£)</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {expensesByCategory.map(cat => (
-                                    <TableRow key={cat.name} className="hover:bg-muted/20">
-                                        <TableCell className="font-semibold">{cat.name}</TableCell>
-                                        <TableCell className="text-right font-medium">£{cat.amount.toFixed(2)}</TableCell>
-                                    </TableRow>
+                                        <TableRow key={cat.name} className="hover:bg-muted/20 transition-colors">
+                                            <TableCell className="font-semibold text-sm">{cat.name}</TableCell>
+                                            <TableCell className="text-right font-bold whitespace-nowrap text-sm">£{cat.amount.toFixed(2)}</TableCell>
+                                        </TableRow>
                                     ))}
                                 </TableBody>
-                                </Table>
-                            </div>
-
-                            {/* Mobile Card View */}
-                            <div className="space-y-4 md:hidden">
-                                {expensesByCategory.map(cat => (
-                                    <Card key={cat.name}>
-                                        <CardContent className="flex items-center justify-between p-4">
-                                            <p className="font-semibold">{cat.name}</p>
-                                            <p className="font-bold">£{cat.amount.toFixed(2)}</p>
-                                        </CardContent>
-                                    </Card>
-                                ))}
-                            </div>
-                        </>
+                            </Table>
+                        </div>
                     )}
                 </CardContent>
             </Card>
-             <Card>
+
+             <Card className="lg:col-span-2">
+                <CardHeader className="border-b pb-4">
+                    <div className="flex items-center gap-2">
+                        <PieChartIcon className="h-4 w-4 text-primary" />
+                        <CardTitle className="text-base font-bold">Cost Distribution</CardTitle>
+                    </div>
+                    <CardDescription className="text-xs">Visualizing major spending areas.</CardDescription>
+                </CardHeader>
                 <CardContent className="pt-6">
-                    <p className="text-lg font-semibold">Expense Distribution</p>
-                    <p className="text-sm text-muted-foreground mb-4">Visual breakdown of expenses for {selectedYear}.</p>
-                    <div className="flex justify-center">
+                    <div className="flex flex-col items-center justify-center min-h-[300px]">
                     {isLoadingExpenses ? (
                         <div className="flex h-[250px] w-full items-center justify-center">
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
                     ) : expensesByCategory.length > 0 ? (
-                        <ChartContainer config={chartConfig} className="mx-auto aspect-square h-[250px]">
-                        <PieChart>
-                            <ChartTooltip
-                            cursor={false}
-                            content={<ChartTooltipContent hideLabel nameKey="amount" formatter={(value) => `£${Number(value).toFixed(2)}`} />}
-                            />
-                            <Pie
-                                data={expensesByCategory}
-                                dataKey="amount"
-                                nameKey="name"
-                                innerRadius={60}
-                                strokeWidth={5}
-                            >
-                                {expensesByCategory.map((entry) => (
-                                    <Cell key={`cell-${entry.name}`} fill={entry.fill} className="stroke-background"/>
-                                ))}
-                            </Pie>
-                            <ChartLegend
-                            content={<ChartLegendContent nameKey="name" />}
-                            className="-mt-4"
-                            />
-                        </PieChart>
+                        <ChartContainer config={chartConfig} className="mx-auto aspect-square w-full max-w-[280px]">
+                            <PieChart>
+                                <ChartTooltip
+                                    cursor={false}
+                                    content={<ChartTooltipContent hideLabel nameKey="amount" formatter={(value) => `£${Number(value).toFixed(2)}`} />}
+                                />
+                                <Pie
+                                    data={expensesByCategory}
+                                    dataKey="amount"
+                                    nameKey="name"
+                                    innerRadius={65}
+                                    strokeWidth={8}
+                                >
+                                    {expensesByCategory.map((entry) => (
+                                        <Cell key={`cell-${entry.name}`} fill={entry.fill} className="stroke-background outline-none focus:outline-none"/>
+                                    ))}
+                                </Pie>
+                                <ChartLegend
+                                    content={<ChartLegendContent nameKey="name" />}
+                                    className="mt-4 flex-wrap text-[10px]"
+                                />
+                            </PieChart>
                         </ChartContainer>
                     ) : (
-                        <div className="flex h-[250px] w-full flex-col items-center justify-center text-center">
-                        <p className="text-muted-foreground italic">
-                            {selectedProperty ? "No expenses to visualize for this period." : "Please select a property."}
-                        </p>
+                        <div className="flex flex-col items-center justify-center text-center p-8">
+                            <PieChartIcon className="h-12 w-12 text-muted-foreground opacity-10 mb-4" />
+                            <p className="text-xs text-muted-foreground italic">
+                                {selectedProperty ? "Add expenses to see visualization." : "Property selection required."}
+                            </p>
                         </div>
                     )}
                     </div>
@@ -1009,7 +1014,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
   if (!selectedProperty) {
     return (
         <Card className="mt-6">
-            <CardContent className='pt-10 pb-10 text-center text-muted-foreground italic border-2 border-dashed rounded-lg'>
+            <CardContent className='pt-10 pb-10 text-center text-muted-foreground italic border-2 border-dashed rounded-lg bg-muted/20'>
                 <Filter className="h-10 w-10 mx-auto mb-4 opacity-20" />
                 <p>Please select an active property to view its rent statement.</p>
             </CardContent>
@@ -1019,12 +1024,13 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
 
   if (!selectedProperty.tenancy?.monthlyRent) {
      return (
-        <Card className="mt-6">
-            <CardContent className="pt-10 pb-10 text-center text-muted-foreground border-2 border-dashed rounded-lg">
-                <Banknote className="h-10 w-10 mx-auto mb-4 opacity-20" />
-                <p>No tenancy or rent information found for this property.</p>
-                <Button asChild variant="link" className="mt-2">
-                    <Link href={`/dashboard/properties/${selectedProperty.id}/edit`}>Add Tenancy Details</Link>
+        <Card className="mt-6 border-yellow-200 bg-yellow-50/30">
+            <CardContent className="pt-10 pb-10 text-center border-2 border-dashed rounded-lg">
+                <Banknote className="h-10 w-10 mx-auto mb-4 text-yellow-600/40" />
+                <p className="font-semibold text-yellow-800">Tenancy details missing</p>
+                <p className="text-sm text-yellow-700/70 mt-1">Rent status tracking requires monthly rent information.</p>
+                <Button asChild variant="outline" size="sm" className="mt-4 bg-background">
+                    <Link href={`/dashboard/properties/${selectedProperty.id}/edit`}>Setup Financials</Link>
                 </Button>
             </CardContent>
         </Card>
@@ -1065,6 +1071,10 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
         </DialogContent>
       </Dialog>
       <Card className="mt-6">
+        <CardHeader className="border-b pb-4">
+            <CardTitle className="text-lg">Monthly Rent Ledger</CardTitle>
+            <CardDescription className="text-xs">Update the payment status for each month for {[selectedProperty.address.nameOrNumber, selectedProperty.address.street].filter(Boolean).join(', ')}.</CardDescription>
+        </CardHeader>
         <CardContent className='pt-6'>
            {isLoading ? (
                 <div className="flex justify-center items-center h-48">
@@ -1072,31 +1082,30 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                 </div>
             ) : (
             <>
-                <p className="text-sm text-muted-foreground mb-4">Update the payment status for each month for {[selectedProperty.address.nameOrNumber, selectedProperty.address.street].filter(Boolean).join(', ')}.</p>
                 {/* Desktop Table View */}
-                <div className="hidden rounded-md border md:block">
+                <div className="hidden rounded-md border md:block overflow-hidden">
                     <Table>
                     <TableHeader className="bg-muted/30"><TableRow><TableHead>Month</TableHead><TableHead>Expected Rent</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
                     <TableBody>
                         {statement.map((row) => {
                         const { Icon, className } = getRentStatusProps(row.status);
                         return (
-                            <TableRow key={row.month} className="hover:bg-muted/20">
-                            <TableCell className="font-semibold">{row.month}</TableCell>
-                            <TableCell>£{row.rent.toFixed(2)}</TableCell>
+                            <TableRow key={row.month} className="hover:bg-muted/20 transition-colors">
+                            <TableCell className="font-bold text-sm">{row.month}</TableCell>
+                            <TableCell className="text-sm">£{row.rent.toFixed(2)}</TableCell>
                             <TableCell>
                                 <Select value={row.status} onValueChange={(newStatus) => handleStatusChange(row.month, newStatus as PaymentStatus)}>
-                                <SelectTrigger className={"w-[160px] font-medium " + className}>
+                                <SelectTrigger className={"w-[160px] h-9 text-xs font-bold " + className}>
                                     <div className="flex items-center gap-2">
-                                    <Icon className="h-4 w-4" />
+                                    <Icon className="h-3.5 w-3.5" />
                                     <SelectValue />
                                     </div>
                                 </SelectTrigger>
                                 <SelectContent>
-                                    <SelectItem value="Paid">Paid</SelectItem>
-                                    <SelectItem value="Partially Paid">Partially Paid</SelectItem>
-                                    <SelectItem value="Unpaid">Unpaid</SelectItem>
-                                    <SelectItem value="Pending">Pending</SelectItem>
+                                    <SelectItem value="Paid" className="text-xs">Paid</SelectItem>
+                                    <SelectItem value="Partially Paid" className="text-xs">Partially Paid</SelectItem>
+                                    <SelectItem value="Unpaid" className="text-xs">Unpaid</SelectItem>
+                                    <SelectItem value="Pending" className="text-xs">Pending</SelectItem>
                                 </SelectContent>
                                 </Select>
                             </TableCell>
@@ -1111,7 +1120,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                     {statement.map((row) => {
                         const { Icon, className } = getRentStatusProps(row.status);
                         return (
-                            <Card key={row.month}>
+                            <Card key={row.month} className="shadow-none border-muted/60">
                                 <CardHeader className="flex flex-row items-center justify-between pb-2">
                                     <CardTitle className="text-base font-bold">{row.month}</CardTitle>
                                     <span className="text-base font-semibold">£{row.rent.toFixed(2)}</span>
@@ -1140,12 +1149,12 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
           )}
         </CardContent>
         {selectedProperty && (
-            <CardFooter className='flex-col items-end space-y-2 pt-6 border-t mt-4'>
-                <div className="font-bold text-xl text-primary">
-                  Total Paid: £{totalPaid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+            <CardFooter className='flex-col items-end space-y-1 pt-6 border-t mt-4 bg-muted/10'>
+                <div className="font-bold text-2xl text-primary whitespace-nowrap">
+                  Total Collected: £{totalPaid.toLocaleString(undefined, {minimumFractionDigits: 2})}
                 </div>
-                <div className="text-sm text-muted-foreground font-medium">
-                  Total Expected Annual Rent: £{totalExpectedRent.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}
+                <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest whitespace-nowrap">
+                  Projected Annual: £{totalExpectedRent.toLocaleString(undefined, {minimumFractionDigits: 2})}
                 </div>
             </CardFooter>
         )}
@@ -1260,46 +1269,46 @@ function ArrearsManagement({ properties }: { properties: Property[] }) {
         </DialogContent>
       </Dialog>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><AlertTriangle className="h-5 w-5 text-destructive" /> Arrears Management</CardTitle>
-          <CardDescription>Track unpaid and partially paid rent across your entire portfolio for {currentMonth} {currentYear}.</CardDescription>
+      <Card className="border-destructive/20 bg-destructive/5 shadow-none">
+        <CardHeader className="border-b pb-4">
+          <CardTitle className="flex items-center gap-2 text-destructive"><AlertTriangle className="h-5 w-5" /> Arrears Dashboard</CardTitle>
+          <CardDescription className="text-xs font-medium">Tracking missing or partial payments across the portfolio for {currentMonth} {currentYear}.</CardDescription>
         </CardHeader>
-        <CardContent>
+        <CardContent className="pt-6">
           {isLoading ? (
-            <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin" /></div>
+            <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin text-destructive" /></div>
           ) : arrears.length === 0 ? (
-            <div className="text-center py-12 border-2 border-dashed rounded-lg bg-muted/20">
-              <CheckCircle2 className="h-10 w-10 text-green-500 mx-auto mb-4 opacity-50" />
-              <p className="text-lg font-medium">All clear!</p>
-              <p className="text-sm text-muted-foreground">No arrears detected for the current month.</p>
+            <div className="text-center py-16 border-2 border-dashed rounded-lg bg-background">
+              <CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-4 opacity-50" />
+              <p className="text-lg font-bold text-green-700">All Collections Up-To-Date</p>
+              <p className="text-sm text-muted-foreground mt-1">No arrears detected for the current month.</p>
             </div>
           ) : (
-            <div className="rounded-md border overflow-hidden">
+            <div className="rounded-md border bg-background overflow-hidden">
               <Table>
-                <TableHeader className="bg-muted/30">
+                <TableHeader className="bg-muted/50">
                   <TableRow>
-                    <TableHead>Property Address</TableHead>
-                    <TableHead>Expected</TableHead>
-                    <TableHead>Paid</TableHead>
-                    <TableHead>Status</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
+                    <TableHead className="text-xs uppercase font-bold">Property Address</TableHead>
+                    <TableHead className="text-xs uppercase font-bold">Expected</TableHead>
+                    <TableHead className="text-xs uppercase font-bold">Collected</TableHead>
+                    <TableHead className="text-xs uppercase font-bold">Status</TableHead>
+                    <TableHead className="text-right text-xs uppercase font-bold">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {arrears.map((row) => (
-                    <TableRow key={row.propertyId} className="hover:bg-muted/20">
-                      <TableCell className="font-medium max-w-[250px] truncate">{formatAddress(row.propertyId)}</TableCell>
-                      <TableCell>£{row.expectedAmount.toFixed(2)}</TableCell>
-                      <TableCell className="text-destructive font-semibold">£{row.amountPaid?.toFixed(2)}</TableCell>
+                    <TableRow key={row.propertyId} className="hover:bg-muted/10 transition-colors">
+                      <TableCell className="font-medium text-sm max-w-[200px] truncate">{formatAddress(row.propertyId)}</TableCell>
+                      <TableCell className="text-sm">£{row.expectedAmount.toFixed(2)}</TableCell>
+                      <TableCell className="text-destructive font-bold text-sm whitespace-nowrap">£{row.amountPaid?.toFixed(2)}</TableCell>
                       <TableCell>
-                        <Badge variant={row.status === 'Partially Paid' ? 'secondary' : 'destructive'} className="capitalize">{row.status}</Badge>
+                        <Badge variant={row.status === 'Partially Paid' ? 'secondary' : 'destructive'} className="capitalize text-[10px] h-5">{row.status}</Badge>
                       </TableCell>
                       <TableCell className="text-right">
-                        <div className="flex justify-end gap-2">
-                          <Button size="sm" variant="outline" onClick={() => setPartialPaymentData({ payment: row, amount: '' })}>Partial</Button>
-                          <Button size="sm" onClick={() => handleUpdateStatus(row, 'Paid')}>Mark Paid</Button>
-                          <Button size="sm" variant="ghost" asChild title="View Details"><Link href={`/dashboard/properties/${row.propertyId}`}><ArrowRight className="h-4 w-4" /></Link></Button>
+                        <div className="flex justify-end gap-1.5">
+                          <Button size="sm" variant="outline" className="h-8 text-xs font-bold" onClick={() => setPartialPaymentData({ payment: row, amount: '' })}>Partial</Button>
+                          <Button size="sm" className="h-8 text-xs font-bold" onClick={() => handleUpdateStatus(row, 'Paid')}>Mark Paid</Button>
+                          <Button size="sm" variant="ghost" asChild title="View Details" className="h-8 w-8 p-0"><Link href={`/dashboard/properties/${row.propertyId}`}><ArrowRight className="h-4 w-4" /></Link></Button>
                         </div>
                       </TableCell>
                     </TableRow>
