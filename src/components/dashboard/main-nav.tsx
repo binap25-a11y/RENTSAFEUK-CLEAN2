@@ -60,6 +60,7 @@ const menuItems = [
     ],
   },
   { href: '/dashboard/maintenance', label: 'Maintenance', icon: Wrench },
+  { href: '/dashboard/maintenance-2', label: 'Maintenance 2', icon: FlaskConical },
   { 
     href: '/dashboard/inspections', 
     label: 'Inspections', 
@@ -81,7 +82,6 @@ const menuItems = [
   },
   { href: '/dashboard/expenses', label: 'Financials', icon: CreditCard },
   { href: '/dashboard/reminders', label: 'Reminders', icon: Bell },
-  { href: '/dashboard/test', label: 'Test Page', icon: FlaskConical },
 ];
 
 export function MainNav() {
