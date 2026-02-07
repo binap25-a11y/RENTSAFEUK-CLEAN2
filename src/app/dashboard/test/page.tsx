@@ -7,8 +7,8 @@ import { Button } from '@/components/ui/button';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
-import { Loader2, Upload, Eye } from 'lucide-react';
-import Link from 'next/link';
+import { Loader2, Upload } from 'lucide-react';
+import Image from 'next/image';
 
 export default function TestPage() {
   const { user } = useUser();
@@ -16,11 +16,20 @@ export default function TestPage() {
   const [file, setFile] = useState<File | null>(null);
   const [isUploading, setIsUploading] = useState(false);
   const [downloadURL, setDownloadURL] = useState<string | null>(null);
+  const [previewURL, setPreviewURL] = useState<string | null>(null);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
-      setFile(e.target.files[0]);
+      const selectedFile = e.target.files[0];
+      setFile(selectedFile);
       setDownloadURL(null); // Reset URL when new file is selected
+      
+      // Create a URL for local preview
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewURL(reader.result as string);
+      };
+      reader.readAsDataURL(selectedFile);
     }
   };
 
@@ -46,7 +55,7 @@ export default function TestPage() {
       setDownloadURL(url);
       toast({
         title: 'Upload successful',
-        description: 'Your image has been uploaded.',
+        description: 'Your image has been uploaded and is now being served from Firebase Storage.',
       });
     } catch (error: any) {
       console.error('Upload error:', error);
@@ -75,6 +84,22 @@ export default function TestPage() {
             <Input id="file-upload" type="file" accept="image/*" onChange={handleFileChange} />
           </div>
 
+          {previewURL && (
+            <div className="p-4 bg-muted rounded-md space-y-4">
+                <p className="text-sm text-center text-muted-foreground">
+                    {downloadURL ? 'Uploaded Image:' : 'Image Preview:'}
+                </p>
+                <div className="relative aspect-video w-full overflow-hidden rounded-lg">
+                    <Image
+                        src={downloadURL || previewURL}
+                        alt="Image preview"
+                        fill
+                        className="object-contain"
+                    />
+                </div>
+            </div>
+          )}
+
           <Button onClick={handleUpload} disabled={!file || isUploading} className="w-full">
             {isUploading ? (
               <>
@@ -88,18 +113,6 @@ export default function TestPage() {
               </>
             )}
           </Button>
-
-          {downloadURL && (
-            <div className="p-4 bg-muted rounded-md space-y-4">
-                <p className="text-sm text-center text-muted-foreground">Upload complete!</p>
-                 <Button asChild className="w-full">
-                    <Link href={downloadURL} target="_blank" rel="noopener noreferrer">
-                        <Eye className="mr-2 h-4 w-4" />
-                        View Uploaded Image
-                    </Link>
-                </Button>
-            </div>
-          )}
         </CardContent>
       </Card>
     </div>
