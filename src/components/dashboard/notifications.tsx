@@ -1,6 +1,6 @@
 'use client';
 
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo } from 'react';
 import Link from 'next/link';
 import {
   DropdownMenu,
@@ -12,12 +12,12 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Bell, FileWarning, CalendarClock } from 'lucide-react';
+import { Bell, FileWarning, CalendarClock, Loader2 } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, Timestamp, getDocs } from 'firebase/firestore';
+import { collection, query, where, Timestamp, collectionGroup, orderBy, limit } from 'firebase/firestore';
 import { format, isBefore, addDays, isFuture } from 'date-fns';
 
-// Interfaces from other parts of the app
+// Interfaces
 interface Property {
   id: string;
   address: {
@@ -46,137 +46,99 @@ interface Inspection {
 const getDocumentStatus = (expiryDate: Date) => {
   const today = new Date();
   const ninetyDaysFromNow = addDays(today, 90);
-
-  if (isBefore(expiryDate, today)) {
-    return 'Expired';
-  }
-  if (isBefore(expiryDate, ninetyDaysFromNow)) {
-    return 'Expiring Soon';
-  }
+  if (isBefore(expiryDate, today)) return 'Expired';
+  if (isBefore(expiryDate, ninetyDaysFromNow)) return 'Expiring Soon';
   return 'Valid';
 };
-
 
 export function Notifications() {
   const { user } = useUser();
   const firestore = useFirestore();
-  const [allDocuments, setAllDocuments] = useState<Document[]>([]);
-  const [allInspections, setAllInspections] = useState<Inspection[]>([]);
 
+  // Optimized high-performance listeners
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(collection(firestore, 'properties'), where('ownerId', '==', user.uid));
   }, [firestore, user]);
-
   const { data: properties } = useCollection<Property>(propertiesQuery);
-  
-  useEffect(() => {
-    if (!firestore || !user || !properties) return;
 
-    const fetchSubcollections = async () => {
-      let docs: Document[] = [];
-      let insps: Inspection[] = [];
+  const docsQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+      collectionGroup(firestore, 'documents'), 
+      where('ownerId', '==', user.uid),
+      orderBy('expiryDate', 'asc'),
+      limit(20)
+    );
+  }, [firestore, user]);
+  const { data: allDocuments, isLoading: isLoadingDocs } = useCollection<Document>(docsQuery);
 
-      for (const prop of properties) {
-          const docsQuery = query(collection(firestore, 'properties', prop.id, 'documents'));
-          const inspsQuery = query(collection(firestore, 'properties', prop.id, 'inspections'));
-          
-          const [docsSnapshot, inspsSnapshot] = await Promise.all([
-              getDocs(docsQuery),
-              getDocs(inspsQuery)
-          ]);
-          
-          docs.push(...docsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, propertyId: prop.id } as Document)));
-          insps.push(...inspsSnapshot.docs.map(doc => ({ ...doc.data(), id: doc.id, propertyId: prop.id } as Inspection)));
-      }
-
-      setAllDocuments(docs);
-      setAllInspections(insps);
-    };
-
-    if (properties.length > 0) {
-      fetchSubcollections();
-    }
-  }, [firestore, user, properties]);
+  const inspsQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+      collectionGroup(firestore, 'inspections'), 
+      where('ownerId', '==', user.uid),
+      where('status', '==', 'Scheduled'),
+      orderBy('scheduledDate', 'asc'),
+      limit(20)
+    );
+  }, [firestore, user]);
+  const { data: allInspections, isLoading: isLoadingInsps } = useCollection<Inspection>(inspsQuery);
 
   const propertyMap = useMemo(() => {
-    return (
-      properties?.reduce((map, prop) => {
-        if (prop.address) {
-          map[prop.id] = [prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ');
-        } else {
-            map[prop.id] = 'Unknown';
-        }
-        return map;
-      }, {} as Record<string, string>) ?? {}
-    );
+    return properties?.reduce((map, prop) => {
+      map[prop.id] = prop.address ? [prop.address.nameOrNumber, prop.address.street].filter(Boolean).join(', ') : 'Unknown';
+      return map;
+    }, {} as Record<string, string>) ?? {};
   }, [properties]);
   
   const allReminders = useMemo(() => {
-    const documentReminders =
-      allDocuments
+    const documentReminders = allDocuments
         ?.map((doc) => {
           if (!doc.expiryDate) return null;
-          const expiry =
-            doc.expiryDate instanceof Date
-              ? doc.expiryDate
-              : (doc.expiryDate as Timestamp).toDate();
-          return {
-            ...doc,
-            expiryDate: expiry,
-            status: getDocumentStatus(expiry),
-          };
+          const expiry = doc.expiryDate instanceof Date ? doc.expiryDate : (doc.expiryDate as Timestamp).toDate();
+          return { ...doc, expiryDate: expiry, status: getDocumentStatus(expiry) };
         })
         .filter((doc): doc is NonNullable<typeof doc> => doc !== null && (doc.status === 'Expired' || doc.status === 'Expiring Soon'))
         .map((doc) => ({
           id: `doc-${doc.id}`,
-          type: 'Document',
           description: doc.title,
-          property: propertyMap[doc.propertyId] || 'Unknown',
+          property: propertyMap[doc.propertyId] || 'Portfolio',
           dueDate: doc.expiryDate,
           status: doc.status,
           icon: FileWarning,
           href: '/dashboard/documents'
         })) ?? [];
 
-    const inspectionReminders =
-      allInspections
+    const inspectionReminders = allInspections
         ?.filter((insp) => {
           if (!insp.scheduledDate) return false;
-          const scheduled =
-            insp.scheduledDate instanceof Date
-              ? insp.scheduledDate
-              : (insp.scheduledDate as Timestamp).toDate();
-          return insp.status === 'Scheduled' && isFuture(scheduled);
+          const scheduled = insp.scheduledDate instanceof Date ? insp.scheduledDate : (insp.scheduledDate as Timestamp).toDate();
+          return isFuture(scheduled);
         })
         .map((insp) => ({
           id: `insp-${insp.id}`,
-          type: 'Inspection',
           description: insp.inspectionType || insp.type || 'Inspection',
-          property: propertyMap[insp.propertyId] || 'Unknown',
-          dueDate:
-            insp.scheduledDate instanceof Date
-              ? insp.scheduledDate
-              : (insp.scheduledDate as Timestamp).toDate(),
+          property: propertyMap[insp.propertyId] || 'Portfolio',
+          dueDate: insp.scheduledDate instanceof Date ? insp.scheduledDate : (insp.scheduledDate as Timestamp).toDate(),
           status: 'Scheduled',
           icon: CalendarClock,
           href: `/dashboard/inspections/${insp.id}?propertyId=${insp.propertyId}`
         })) ?? [];
 
-    return [...documentReminders, ...inspectionReminders].sort(
-      (a, b) => a.dueDate.getTime() - b.dueDate.getTime()
-    );
+    return [...documentReminders, ...inspectionReminders].sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
   }, [allDocuments, allInspections, propertyMap]);
 
+  const isLoading = isLoadingDocs || isLoadingInsps;
   const notificationCount = allReminders.length;
 
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          <Bell className="h-5 w-5" />
+          {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : <Bell className="h-5 w-5" />}
           {notificationCount > 0 && (
-            <Badge className="absolute top-0 right-0 flex h-4 w-4 items-center justify-center rounded-full p-0 text-xs" variant="destructive">
+            <Badge className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full p-0 text-[10px]" variant="destructive">
               {notificationCount}
             </Badge>
           )}
@@ -185,32 +147,37 @@ export function Notifications() {
       <DropdownMenuContent className="w-80 md:w-96" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-medium leading-none">Notifications</p>
-            <Link href="/dashboard/reminders" className="text-sm text-primary hover:underline">
+            <p className="text-sm font-bold leading-none">Notifications</p>
+            <Link href="/dashboard/reminders" className="text-xs text-primary hover:underline">
               View all
             </Link>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
-        {notificationCount === 0 ? (
-          <p className="p-4 text-center text-sm text-muted-foreground">No new notifications</p>
-        ) : (
-          allReminders.slice(0, 5).map((reminder) => (
-            <DropdownMenuItem key={reminder.id} asChild>
-                <Link href={reminder.href} className="flex flex-col items-start gap-1 p-2 w-full">
-                    <div className="flex items-center gap-2 w-full">
-                        <reminder.icon className="h-4 w-4 text-muted-foreground"/>
-                        <p className="font-semibold text-sm truncate">{reminder.description}</p>
-                        <Badge variant={reminder.status === 'Expired' || reminder.status === 'Due' ? 'destructive' : 'secondary'} className="ml-auto flex-shrink-0">{reminder.status}</Badge>
-                    </div>
-                    <div className="pl-6 text-xs text-muted-foreground">
-                        <p>{reminder.property}</p>
-                        <p>Due: {format(reminder.dueDate, 'PPP')}</p>
-                    </div>
-                </Link>
-            </DropdownMenuItem>
-          ))
-        )}
+        <div className="max-h-[400px] overflow-y-auto">
+            {notificationCount === 0 ? (
+              <div className="p-8 text-center">
+                  <Bell className="h-8 w-8 mx-auto text-muted-foreground opacity-20 mb-2" />
+                  <p className="text-sm text-muted-foreground italic">No new notifications</p>
+              </div>
+            ) : (
+              allReminders.slice(0, 10).map((reminder) => (
+                <DropdownMenuItem key={reminder.id} asChild className="cursor-pointer focus:bg-accent p-0">
+                    <Link href={reminder.href} className="flex flex-col items-start gap-1 p-3 w-full border-b last:border-0">
+                        <div className="flex items-center gap-2 w-full">
+                            <reminder.icon className={`h-4 w-4 ${reminder.status === 'Expired' ? 'text-destructive' : 'text-yellow-500'}`}/>
+                            <p className="font-semibold text-sm truncate flex-1">{reminder.description}</p>
+                            <Badge variant={reminder.status === 'Expired' ? 'destructive' : 'secondary'} className="text-[10px] h-5">{reminder.status}</Badge>
+                        </div>
+                        <div className="pl-6 space-y-0.5">
+                            <p className="text-[11px] text-muted-foreground font-medium">{reminder.property}</p>
+                            <p className="text-[10px] text-muted-foreground/70">Due: {format(reminder.dueDate, 'PPP')}</p>
+                        </div>
+                    </Link>
+                </DropdownMenuItem>
+              ))
+            )}
+        </div>
       </DropdownMenuContent>
     </DropdownMenu>
   );

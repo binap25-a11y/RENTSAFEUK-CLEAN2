@@ -4,67 +4,67 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     // --- Users Collection ---
-    // A user can read and update their own user document.
     match /users/{userId} {
       allow read, update, delete: if request.auth.uid == userId;
       allow create: if request.auth.uid == userId;
     }
 
     // --- Tenants Collection ---
-    // Users can only query/list tenants they own.
-    // The 'list' rule requires that queries on this collection MUST include a 'where('ownerId', '==', request.auth.uid)' clause.
     match /tenants {
       allow list: if request.auth != null && request.query.filters.ownerId == request.auth.uid;
       allow create: if request.auth.uid == request.resource.data.ownerId;
     }
     
-    // A user can read or write a specific tenant document if they are the owner.
     match /tenants/{tenantId} {
         allow get, update, delete: if request.auth.uid == get(path).data.ownerId;
 
-        // Rules for the 'screenings' subcollection within a tenant document
         match /screenings/{screeningId} {
             allow read, write: if request.auth.uid == get(/databases/$(database)/documents/tenants/$(tenantId)).data.ownerId;
         }
     }
 
-
     // --- Properties Collection ---
-    // Any authenticated user can list the properties. This can be tightened later if needed.
     match /properties {
-      allow list: if request.auth != null;
+      allow list: if request.auth != null && request.query.filters.ownerId == request.auth.uid;
+      allow create: if request.auth.uid == request.resource.data.ownerId;
     }
     
-    // Permissions for a single property document and its subcollections.
     match /properties/{propertyId} {
-      // Any authenticated user can get a single property.
-      allow get: if request.auth != null;
-      
-      // Only the owner can create, update, or delete a property.
+      allow get: if request.auth != null && (resource == null || resource.data.ownerId == request.auth.uid);
       allow create: if request.auth.uid == request.resource.data.ownerId;
-      allow update, delete: if get(path).data.ownerId == request.auth.uid;
-
-      // --- Property Subcollections (maintenance, inspections, documents, etc.) ---
-      // The owner of the parent property can read and write all documents in all subcollections.
-      function isPropertyOwner() {
-        return get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
-      }
+      allow update, delete: if resource.data.ownerId == request.auth.uid;
 
       match /{subcollection}/{docId=**} {
-        allow read, write: if isPropertyOwner();
+        allow read, write: if get(/databases/$(database)/documents/properties/$(propertyId)).data.ownerId == request.auth.uid;
       }
     }
 
     // --- Contractors Collection ---
-    // Users can list contractors they own.
     match /contractors {
       allow list: if request.auth != null && request.query.filters.ownerId == request.auth.uid;
       allow create: if request.auth.uid == request.resource.data.ownerId;
     }
 
-    // A user can read or write a specific contractor document if they are the owner.
     match /contractors/{contractorId} {
       allow get, update, delete: if request.auth.uid == get(path).data.ownerId;
+    }
+
+    // --- Collection Group Rules (Critical for Performance) ---
+    // These allow the app to query across all properties for a single owner in one request.
+    match /{path=**}/maintenanceLogs/{id} {
+      allow read: if request.auth != null && resource.data.ownerId == request.auth.uid;
+    }
+    match /{path=**}/inspections/{id} {
+      allow read: if request.auth != null && resource.data.ownerId == request.auth.uid;
+    }
+    match /{path=**}/documents/{id} {
+      allow read: if request.auth != null && resource.data.ownerId == request.auth.uid;
+    }
+    match /{path=**}/rentPayments/{id} {
+      allow read: if request.auth != null && resource.data.ownerId == request.auth.uid;
+    }
+    match /{path=**}/expenses/{id} {
+      allow read: if request.auth != null && resource.data.ownerId == request.auth.uid;
     }
   }
 }

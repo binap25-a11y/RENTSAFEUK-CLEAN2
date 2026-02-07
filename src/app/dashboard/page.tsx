@@ -7,6 +7,7 @@ import {
   CardHeader,
   CardTitle,
   CardDescription,
+  CardFooter,
 } from '@/components/ui/card';
 import {
   Home,
@@ -22,6 +23,7 @@ import {
   UserPlus,
   ArrowRight,
   CheckCircle2,
+  AlertTriangle,
 } from 'lucide-react';
 import {
   Table,
@@ -39,8 +41,8 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, Timestamp, getDocs } from 'firebase/firestore';
-import { useState, useEffect, useMemo } from 'react';
+import { collection, query, where, Timestamp, collectionGroup, orderBy, limit } from 'firebase/firestore';
+import { useMemo } from 'react';
 import { format, isFuture, isBefore, addDays } from 'date-fns';
 import {
   ChartContainer,
@@ -51,8 +53,6 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart"
 import { Pie, PieChart, Cell } from 'recharts';
-import { useToast } from '@/hooks/use-toast';
-
 
 // Interfaces
 interface Property {
@@ -97,18 +97,11 @@ interface RentPayment {
   month: string;
 }
 
-
-// Helper for document status
 const getDocumentStatus = (expiryDate: Date) => {
     const today = new Date();
     const ninetyDaysFromNow = addDays(today, 90);
-
-    if (isBefore(expiryDate, today)) {
-        return 'Expired';
-    }
-    if (isBefore(expiryDate, ninetyDaysFromNow)) {
-        return 'Expiring Soon';
-    }
+    if (isBefore(expiryDate, today)) return 'Expired';
+    if (isBefore(expiryDate, ninetyDaysFromNow)) return 'Expiring Soon';
     return 'Valid';
 };
 
@@ -132,94 +125,69 @@ const formatAddress = (address: Property['address']) => {
     return `${address.street}, ${address.city}`;
 }
 
-
 export default function DashboardPage() {
   const { user } = useUser();
   const firestore = useFirestore();
-  const { toast } = useToast();
-  const [maintenanceLogs, setMaintenanceLogs] = useState<MaintenanceLog[]>([]);
-  const [inspections, setInspections] = useState<Inspection[]>([]);
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [rentPayments, setRentPayments] = useState<RentPayment[]>([]);
-  const [isSubcollectionsLoading, setIsSubcollectionsLoading] = useState(true);
 
+  // --- Optimized Global Queries using Collection Groups ---
+  
   const propertiesQuery = useMemoFirebase(() => {
-    if (!user || !firestore) return null;
-    return query(
-      collection(firestore, 'properties'),
-      where('ownerId', '==', user.uid)
-    );
+    if (!user) return null;
+    return query(collection(firestore, 'properties'), where('ownerId', '==', user.uid));
   }, [user, firestore]);
   const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
-  
-useEffect(() => {
-    if (isLoadingProperties || !user || !firestore) {
-      return;
-    }
 
-    if (!properties || properties.length === 0) {
-      setMaintenanceLogs([]);
-      setInspections([]);
-      setDocuments([]);
-      setRentPayments([]);
-      setIsSubcollectionsLoading(false);
-      return;
-    }
+  const maintenanceQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+      collectionGroup(firestore, 'maintenanceLogs'), 
+      where('ownerId', '==', user.uid),
+      orderBy('reportedDate', 'desc'),
+      limit(20)
+    );
+  }, [user, firestore]);
+  const { data: maintenanceLogs, isLoading: isLoadingMaintenance, error: maintenanceError } = useCollection<MaintenanceLog>(maintenanceQuery);
 
-    const fetchDashboardData = async () => {
-      setIsSubcollectionsLoading(true);
-      try {
-        const promises = properties.map(async (prop) => {
-          const maintenanceQuery = query(collection(firestore, 'properties', prop.id, 'maintenanceLogs'));
-          const inspectionQuery = query(collection(firestore, 'properties', prop.id, 'inspections'));
-          const documentQuery = query(collection(firestore, 'properties', prop.id, 'documents'));
-          const rentQuery = query(collection(firestore, 'properties', prop.id, 'rentPayments'), where('year', '==', new Date().getFullYear()), where('month', '==', format(new Date(), 'MMMM')));
+  const inspectionsQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+      collectionGroup(firestore, 'inspections'), 
+      where('ownerId', '==', user.uid),
+      orderBy('scheduledDate', 'asc'),
+      limit(20)
+    );
+  }, [user, firestore]);
+  const { data: inspections, isLoading: isLoadingInspections, error: inspectionError } = useCollection<Inspection>(inspectionsQuery);
 
-          const [
-            maintenanceSnap,
-            inspectionSnap,
-            documentSnap,
-            rentSnap,
-          ] = await Promise.all([
-            getDocs(maintenanceQuery),
-            getDocs(inspectionQuery),
-            getDocs(documentQuery),
-            getDocs(rentQuery),
-          ]);
+  const documentsQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+      collectionGroup(firestore, 'documents'), 
+      where('ownerId', '==', user.uid),
+      orderBy('expiryDate', 'asc'),
+      limit(50)
+    );
+  }, [user, firestore]);
+  const { data: documents, isLoading: isLoadingDocuments, error: documentError } = useCollection<Document>(documentsQuery);
 
-          const maintenance = maintenanceSnap.docs.map(doc => ({ ...(doc.data() as MaintenanceLog), id: doc.id, propertyId: prop.id }));
-          const inspections = inspectionSnap.docs.map(doc => ({ ...(doc.data() as Inspection), id: doc.id, propertyId: prop.id }));
-          const documents = documentSnap.docs.map(doc => ({ ...(doc.data() as Document), id: doc.id, propertyId: prop.id }));
-          const rentPayments = rentSnap.docs.map(doc => ({ ...(doc.data() as RentPayment), id: doc.id, propertyId: prop.id }));
-          
-          return { maintenance, inspections, documents, rentPayments };
-        });
+  const currentYear = new Date().getFullYear();
+  const currentMonth = format(new Date(), 'MMMM');
+  const rentQuery = useMemoFirebase(() => {
+    if (!user) return null;
+    return query(
+      collectionGroup(firestore, 'rentPayments'), 
+      where('ownerId', '==', user.uid),
+      where('year', '==', currentYear),
+      where('month', '==', currentMonth)
+    );
+  }, [user, firestore, currentYear, currentMonth]);
+  const { data: rentPayments, isLoading: isLoadingRent, error: rentError } = useCollection<RentPayment>(rentQuery);
 
-        const results = await Promise.all(promises);
+  const isLoading = isLoadingProperties || isLoadingMaintenance || isLoadingInspections || isLoadingDocuments || isLoadingRent;
+  const globalError = maintenanceError || inspectionError || documentError || rentError;
 
-        setMaintenanceLogs(results.flatMap(r => r.maintenance));
-        setInspections(results.flatMap(r => r.inspections));
-        setDocuments(results.flatMap(r => r.documents));
-        setRentPayments(results.flatMap(r => r.rentPayments));
+  // --- Processed Data ---
 
-      } catch (error: any) {
-        console.error("Error fetching dashboard data:", error);
-        toast({
-          variant: 'destructive',
-          title: 'Error Loading Dashboard Data',
-          description: error.message,
-        });
-      } finally {
-        setIsSubcollectionsLoading(false);
-      }
-    };
-
-    fetchDashboardData();
-  }, [properties, isLoadingProperties, firestore, user, toast]);
-
-
-  const isLoading = isLoadingProperties || isSubcollectionsLoading;
-  
   const propertyMap = useMemo(() => 
     properties?.reduce((map, prop) => {
       map[prop.id] = prop.address;
@@ -229,20 +197,19 @@ useEffect(() => {
 
   const activeProperties = useMemo(() => properties?.filter(p => ['Vacant', 'Occupied', 'Under Maintenance'].includes(p.status)) ?? [], [properties]);
   const openMaintenanceCount = useMemo(() => maintenanceLogs?.filter(log => log.status === 'Open').length ?? 0, [maintenanceLogs]);
+  
   const upcomingInspectionsCount = useMemo(() => inspections?.filter(insp => {
       if (!insp.scheduledDate) return false;
       const scheduledDate = insp.scheduledDate instanceof Date ? insp.scheduledDate : (insp.scheduledDate as Timestamp).toDate();
       return insp.status === 'Scheduled' && isFuture(scheduledDate);
   }).length ?? 0, [inspections]);
-  const totalDocumentsCount = useMemo(() => documents?.length ?? 0, [documents]);
 
   const recentActivities = useMemo(() => 
     maintenanceLogs
-        ?.sort((a,b) => ((b.reportedDate as Timestamp)?.toMillis?.() ?? 0) - ((a.reportedDate as Timestamp)?.toMillis?.() ?? 0))
-        .slice(0, 4)
+        ?.slice(0, 4)
         .map(log => ({
             id: log.id,
-            property: propertyMap[log.propertyId] ? formatAddress(propertyMap[log.propertyId]) : 'Loading...',
+            property: propertyMap[log.propertyId] ? formatAddress(propertyMap[log.propertyId]) : 'Portfolio Wide',
             activity: log.title,
             date: format((log.reportedDate as Timestamp).toDate(), 'dd/MM/yyyy'),
             href: `/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`
@@ -259,7 +226,7 @@ useEffect(() => {
         .map(insp => ({
             id: `insp-${insp.id}`,
             task: insp.type || 'Inspection',
-            property: propertyMap[insp.propertyId] ? formatAddress(propertyMap[insp.propertyId]) : 'Loading...',
+            property: propertyMap[insp.propertyId] ? formatAddress(propertyMap[insp.propertyId]) : 'Portfolio Wide',
             status: 'Scheduled',
             dueDate: format((insp.scheduledDate as Timestamp).toDate(), 'dd/MM/yyyy'),
             href: `/dashboard/inspections/${insp.id}?propertyId=${insp.propertyId}`
@@ -269,17 +236,13 @@ useEffect(() => {
         ?.map(doc => {
             if (!doc.expiryDate) return null;
             const expiry = doc.expiryDate instanceof Date ? doc.expiryDate : (doc.expiryDate as Timestamp).toDate();
-            return {
-                ...doc,
-                status: getDocumentStatus(expiry),
-                expiryDate: expiry
-            };
+            return { ...doc, status: getDocumentStatus(expiry), expiryDate: expiry };
         })
         .filter((doc): doc is NonNullable<typeof doc> => doc !== null && (doc.status === 'Expired' || doc.status === 'Expiring Soon'))
         .map(doc => ({
             id: `doc-${doc.id}`,
             task: doc.title,
-            property: propertyMap[doc.propertyId] ? formatAddress(propertyMap[doc.propertyId]) : 'Loading...',
+            property: propertyMap[doc.propertyId] ? formatAddress(propertyMap[doc.propertyId]) : 'Portfolio Wide',
             status: doc.status,
             dueDate: format(doc.expiryDate, 'dd/MM/yyyy'),
             href: '/dashboard/documents'
@@ -288,184 +251,71 @@ useEffect(() => {
         return [...inspectionTasks, ...documentTasks]
             .sort((a,b) => new Date(a.dueDate).getTime() - new Date(b.dueDate).getTime())
             .slice(0, 4);
-
   }, [inspections, documents, propertyMap]);
   
   const rentStatusData = useMemo(() => {
     if (isLoading || !properties) return [];
-
     const occupiedPropertiesCount = properties.filter(p => p.status === 'Occupied').length;
-    
-    const statusCounts: Record<'Paid' | 'Partially Paid' | 'Unpaid', number> = {
-      'Paid': 0,
-      'Partially Paid': 0,
-      'Unpaid': 0,
-    };
-
-    rentPayments.forEach(payment => {
-      if (statusCounts[payment.status] !== undefined) {
-        statusCounts[payment.status]++;
-      }
-    });
-
+    const statusCounts: Record<'Paid' | 'Partially Paid' | 'Unpaid', number> = { 'Paid': 0, 'Partially Paid': 0, 'Unpaid': 0 };
+    rentPayments?.forEach(payment => { if (statusCounts[payment.status] !== undefined) statusCounts[payment.status]++; });
     const nonPendingCount = statusCounts.Paid + statusCounts['Partially Paid'] + statusCounts.Unpaid;
-    const pendingCount = occupiedPropertiesCount - nonPendingCount;
-
-    const data = [
+    const pendingCount = Math.max(0, occupiedPropertiesCount - nonPendingCount);
+    return [
       { status: 'Paid', count: statusCounts.Paid, fill: 'hsl(var(--chart-2))' },
       { status: 'Partially Paid', count: statusCounts['Partially Paid'], fill: 'hsl(var(--chart-4))' },
       { status: 'Unpaid', count: statusCounts.Unpaid, fill: 'hsl(var(--chart-1))' },
-      { status: 'Pending', count: pendingCount > 0 ? pendingCount : 0, fill: 'hsl(var(--muted))' },
+      { status: 'Pending', count: pendingCount, fill: 'hsl(var(--muted))' },
     ].filter(item => item.count > 0);
-
-    return data;
-
   }, [isLoading, properties, rentPayments]);
 
   const rentChartConfig = {
-      count: {
-        label: "Properties",
-      },
-      Paid: {
-        label: "Paid",
-        color: "hsl(var(--chart-2))",
-      },
-      "Partially Paid": {
-        label: "Partially Paid",
-        color: "hsl(var(--chart-4))",
-      },
-      Unpaid: {
-        label: "Unpaid",
-        color: "hsl(var(--chart-1))",
-      },
-      Pending: {
-        label: "Pending",
-        color: "hsl(var(--muted))",
-      },
+      count: { label: "Properties" },
+      Paid: { label: "Paid", color: "hsl(var(--chart-2))" },
+      "Partially Paid": { label: "Partially Paid", color: "hsl(var(--chart-4))" },
+      Unpaid: { label: "Unpaid", color: "hsl(var(--chart-1))" },
+      Pending: { label: "Pending", color: "hsl(var(--muted))" },
   } satisfies ChartConfig;
 
+  if (globalError) {
+    return (
+      <div className="flex flex-col items-center justify-center py-12 px-4 text-center">
+        <AlertTriangle className="h-12 w-12 text-destructive mb-4" />
+        <h2 className="text-xl font-bold mb-2">Performance Indexing Required</h2>
+        <p className="text-muted-foreground max-w-md mb-6">
+          To ensure your dashboard runs fast, Firestore needs to create a performance index. Please check your developer console for a link to click, or wait a few minutes if you just added data.
+        </p>
+        <Button onClick={() => window.location.reload()}>Refresh Dashboard</Button>
+      </div>
+    );
+  }
 
   const infoCards = [
-    {
-      title: 'Total Properties',
-      value: isLoading ? '-' : activeProperties.length,
-      icon: Home,
-      description: 'Active properties in your portfolio',
-    },
-    {
-      title: 'Open Maintenance',
-      value: isLoading ? '-' : openMaintenanceCount,
-      icon: Wrench,
-      description: 'Issues needing attention',
-    },
-    {
-      title: 'Upcoming Inspections',
-      value: isLoading ? '-' : upcomingInspectionsCount,
-      icon: CalendarCheck,
-      description: 'Scheduled inspections',
-    },
-    {
-      title: 'Total Documents',
-      value: isLoading ? '-' : totalDocumentsCount,
-      icon: Files,
-      description: 'Certificates, agreements, etc.',
-    },
-  ];
-
-  const actionCards = [
-    {
-      title: 'Add Property',
-      href: '/dashboard/properties/add',
-      icon: PlusCircle,
-      description: 'Onboard a new rental property.',
-    },
-    {
-      title: 'Add Tenant',
-      href: '/dashboard/tenants/add',
-      icon: UserPlus,
-      description: 'Onboard a new tenant for a property.',
-    },
-    {
-      title: 'Log Maintenance',
-      href: '/dashboard/maintenance',
-      icon: Wrench,
-      description: 'Report a new maintenance issue.',
-    },
-    {
-      title: 'Schedule Inspection',
-      href: '/dashboard/inspections',
-      icon: CalendarCheck,
-      description: 'Book a new property inspection.',
-    },
-    {
-      title: 'Upload Document',
-      href: '/dashboard/documents/upload',
-      icon: FileText,
-      description: 'Add agreements or certificates.',
-    },
+    { title: 'Total Properties', value: isLoading ? '-' : activeProperties.length, icon: Home, description: 'Active properties' },
+    { title: 'Open Maintenance', value: isLoading ? '-' : openMaintenanceCount, icon: Wrench, description: 'Issues needing attention' },
+    { title: 'Upcoming Inspections', value: isLoading ? '-' : upcomingInspectionsCount, icon: CalendarCheck, description: 'Scheduled tasks' },
+    { title: 'Total Documents', value: isLoading ? '-' : documents?.length ?? 0, icon: Files, description: 'Compliance records' },
   ];
 
   if (!isLoading && activeProperties.length === 0) {
     return (
       <div className="flex flex-col gap-8 max-w-4xl mx-auto py-12">
         <div className="text-center space-y-4">
-          <h1 className="text-4xl font-bold font-headline">Welcome to RentSafeUK!</h1>
-          <p className="text-muted-foreground text-lg">
-            Let's get your rental portfolio set up. It only takes a few minutes.
-          </p>
+          <h1 className="text-4xl font-bold font-headline text-primary">Welcome to RentSafeUK!</h1>
+          <p className="text-muted-foreground text-lg">Let's get your rental portfolio set up for high performance.</p>
         </div>
-
         <div className="grid gap-6 md:grid-cols-3">
           <Card className="relative overflow-hidden border-primary/20 shadow-lg">
-            <div className="absolute top-0 right-0 p-4 opacity-10">
-              <Home className="h-24 w-24" />
-            </div>
+            <div className="absolute top-0 right-0 p-4 opacity-10"><Home className="h-24 w-24" /></div>
             <CardHeader>
               <Badge className="w-fit mb-2">Step 1</Badge>
-              <CardTitle>Add Your First Property</CardTitle>
-              <CardDescription>Enter address and basic details to start tracking.</CardDescription>
+              <CardTitle>Add Property</CardTitle>
+              <CardDescription>Enter address and basic details.</CardDescription>
             </CardHeader>
-            <CardFooter>
-              <Button asChild className="w-full">
-                <Link href="/dashboard/properties/add">Add Property <ArrowRight className="ml-2 h-4 w-4" /></Link>
-              </Button>
-            </CardFooter>
+            <CardFooter><Button asChild className="w-full"><Link href="/dashboard/properties/add">Add Property <ArrowRight className="ml-2 h-4 w-4" /></Link></Button></CardFooter>
           </Card>
-
-          <Card className="opacity-50 grayscale">
-            <CardHeader>
-              <Badge variant="outline" className="w-fit mb-2">Step 2</Badge>
-              <CardTitle>Assign a Tenant</CardTitle>
-              <CardDescription>Link a tenant to your property to manage rent.</CardDescription>
-            </CardHeader>
-            <CardFooter>
-              <Button disabled className="w-full">Assign Tenant</Button>
-            </CardFooter>
-          </Card>
-
-          <Card className="opacity-50 grayscale">
-            <CardHeader>
-              <Badge variant="outline" className="w-fit mb-2">Step 3</Badge>
-              <CardTitle>Upload Compliance</CardTitle>
-              <CardDescription>Store your EPC, Gas Safety, and EICR records.</CardDescription>
-            </CardHeader>
-            <CardFooter>
-              <Button disabled className="w-full">Upload Documents</Button>
-            </CardFooter>
-          </Card>
+          <Card className="opacity-50 grayscale"><CardHeader><Badge variant="outline" className="w-fit mb-2">Step 2</Badge><CardTitle>Assign Tenant</CardTitle><CardDescription>Link a tenant to manage rent.</CardDescription></CardHeader><CardFooter><Button disabled className="w-full">Assign Tenant</Button></CardFooter></Card>
+          <Card className="opacity-50 grayscale"><CardHeader><Badge variant="outline" className="w-fit mb-2">Step 3</Badge><CardTitle>Compliance</CardTitle><CardDescription>Upload Gas Safety and EICR records.</CardDescription></CardHeader><CardFooter><Button disabled className="w-full">Upload Documents</Button></CardFooter></Card>
         </div>
-
-        <Card className="bg-muted/50 border-dashed">
-          <CardContent className="p-8 text-center space-y-4">
-            <CheckCircle2 className="h-12 w-12 text-primary mx-auto" />
-            <div className="space-y-2">
-              <h3 className="text-xl font-semibold">Why use RentSafeUK?</h3>
-              <p className="text-sm text-muted-foreground max-w-lg mx-auto">
-                Our AI-powered platform helps you stay compliant, manage repairs faster, and track your finances without the stress.
-              </p>
-            </div>
-          </CardContent>
-        </Card>
       </div>
     );
   }
@@ -480,226 +330,102 @@ useEffect(() => {
               <card.icon className="h-4 w-4 text-muted-foreground" />
             </CardHeader>
             <CardContent>
-              <div className="text-2xl font-bold">{card.value}</div>
+              <div className="text-2xl font-bold">{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : card.value}</div>
               <p className="text-xs text-muted-foreground">{card.description}</p>
             </CardContent>
           </Card>
         ))}
       </div>
 
-      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-5">
-        {actionCards.map((action) => (
-          <Card
-            key={action.title}
-            className="group hover:bg-accent/50 transition-colors"
-          >
-            <Link href={action.href} className="block h-full">
-              <CardHeader>
-                <action.icon className="h-8 w-8 text-primary mb-2" />
-                <CardTitle>{action.title}</CardTitle>
-              </CardHeader>
-              <CardContent>
-                <CardDescription>{action.description}</CardDescription>
-              </CardContent>
-            </Link>
-          </Card>
-        ))}
+      <div className="grid gap-6 lg:grid-cols-3">
+        <Card className="lg:col-span-1">
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2"><PoundSterling className="h-5 w-5" /> Rent Status</CardTitle>
+                <CardDescription>{currentMonth} {currentYear}</CardDescription>
+            </CardHeader>
+            <CardContent>
+                {isLoading ? (
+                    <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+                ) : rentStatusData.length > 0 ? (
+                    <ChartContainer config={rentChartConfig} className="mx-auto aspect-square max-h-[250px]">
+                        <PieChart>
+                            <ChartTooltip cursor={false} content={<ChartTooltipContent nameKey="count" hideLabel />} />
+                            <Pie data={rentStatusData} dataKey="count" nameKey="status" innerRadius={60} strokeWidth={5}>
+                                {rentStatusData.map((entry) => <Cell key={`cell-${entry.status}`} fill={entry.fill} className="stroke-background"/>)}
+                            </Pie>
+                            <ChartLegend content={<ChartLegendContent nameKey="status" />} className="-mt-4" />
+                        </PieChart>
+                    </ChartContainer>
+                ) : (
+                    <div className="text-center text-muted-foreground py-10 text-sm italic">No occupied properties tracked this month.</div>
+                )}
+            </CardContent>
+        </Card>
+
+        <Card className="lg:col-span-2">
+          <CardHeader className="flex flex-row items-center justify-between">
+            <div>
+                <CardTitle className="flex items-center gap-2"><Activity className="h-5 w-5" /> Recent Activity</CardTitle>
+                <CardDescription>Latest maintenance reports across your portfolio.</CardDescription>
+            </div>
+            <Button variant="ghost" size="sm" asChild><Link href="/dashboard/maintenance/logged">View All</Link></Button>
+          </CardHeader>
+          <CardContent>
+            {isLoading ? (
+                <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+            ) : recentActivities.length > 0 ? (
+                <div className="space-y-4">
+                    {recentActivities.map((activity) => (
+                        <Link href={activity.href} key={activity.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent transition-colors">
+                            <div className="min-w-0 flex-1">
+                                <p className="font-medium text-sm truncate">{activity.activity}</p>
+                                <p className="text-xs text-muted-foreground truncate">{activity.property}</p>
+                            </div>
+                            <div className="text-right ml-4">
+                                <p className="text-xs font-medium">{activity.date}</p>
+                            </div>
+                        </Link>
+                    ))}
+                </div>
+            ) : (
+                <div className="text-center text-muted-foreground py-10 italic text-sm">No maintenance activity logged yet.</div>
+            )}
+          </CardContent>
+        </Card>
       </div>
 
       <Card>
         <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-                <PoundSterling className="h-5 w-5" /> Monthly Rent Overview
-            </CardTitle>
-            <CardDescription>
-                Rent payment status for {format(new Date(), 'MMMM yyyy')}.
-            </CardDescription>
+          <CardTitle className="flex items-center gap-2"><ListTodo className="h-5 w-5" /> Critical Tasks & Compliance</CardTitle>
+          <CardDescription>Upcoming inspections and expiring legal documents.</CardDescription>
         </CardHeader>
         <CardContent>
-            {isLoading ? (
-                <div className="flex justify-center items-center h-64">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-            ) : rentStatusData.length > 0 ? (
-                <ChartContainer config={rentChartConfig} className="mx-auto aspect-square max-h-[300px]">
-                    <PieChart>
-                        <ChartTooltip
-                            cursor={false}
-                            content={<ChartTooltipContent nameKey="count" hideLabel />}
-                        />
-                        <Pie
-                            data={rentStatusData}
-                            dataKey="count"
-                            nameKey="status"
-                            innerRadius={60}
-                            strokeWidth={5}
-                            labelLine={false}
-                            label={({
-                              payload,
-                              ...props
-                            }) => {
-                              return (
-                                <text
-                                  cx={props.cx}
-                                  cy={props.cy}
-                                  x={props.x}
-                                  y={props.y}
-                                  textAnchor={props.textAnchor}
-                                  dominantBaseline={props.dominantBaseline}
-                                  fill="hsla(var(--foreground))"
-                                  className='text-sm'
-                                >
-                                  {`${payload.status} (${payload.value})`}
-                                </text>
-                              )
-                            }}
-                        >
-                            {rentStatusData.map((entry) => (
-                                <Cell key={`cell-${entry.status}`} fill={entry.fill} className="stroke-background"/>
-                            ))}
-                        </Pie>
-                        <ChartLegend
-                            content={<ChartLegendContent nameKey="status" />}
-                            className="-mt-4"
-                        />
-                    </PieChart>
-                </ChartContainer>
-            ) : (
-                <div className="text-center text-muted-foreground py-10">No occupied properties to track rent for.</div>
-            )}
+           {isLoading ? (
+              <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+           ) : upcomingTasks.length > 0 ? (
+              <div className="grid gap-4 md:grid-cols-2">
+                  {upcomingTasks.map((task) => (
+                      <Link href={task.href} key={task.id} className="block group">
+                          <Card className="hover:border-primary transition-colors">
+                              <CardContent className="p-4 flex items-center justify-between">
+                                  <div className="min-w-0 flex-1">
+                                      <p className="font-semibold text-sm group-hover:text-primary transition-colors truncate">{task.task}</p>
+                                      <p className="text-xs text-muted-foreground truncate">{task.property}</p>
+                                  </div>
+                                  <div className="text-right ml-4 shrink-0">
+                                      <Badge variant={getStatusVariant(task.status)} className="mb-1">{task.status}</Badge>
+                                      <p className="text-[10px] font-bold text-muted-foreground">DUE: {task.dueDate}</p>
+                                  </div>
+                              </CardContent>
+                          </Card>
+                      </Link>
+                  ))}
+              </div>
+           ) : (
+              <div className="text-center text-muted-foreground py-10 italic text-sm">You're all caught up! No upcoming tasks.</div>
+           )}
         </CardContent>
       </Card>
-
-
-      <div className="grid gap-6 lg:grid-cols-2">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Activity className="h-5 w-5" /> Recent Activity
-            </CardTitle>
-            <CardDescription>
-              A log of the latest maintenance issues reported.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            {isLoading ? (
-                <div className="flex justify-center items-center h-48">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-            ) : recentActivities.length > 0 ? (
-                <>
-                    <div className="hidden md:block">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                <TableHead>Property</TableHead>
-                                <TableHead>Activity</TableHead>
-                                <TableHead className="text-right">Date</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {recentActivities.map((activity) => (
-                                <TableRow key={activity.id}>
-                                    <TableCell className="font-medium">
-                                    {activity.property}
-                                    </TableCell>
-                                    <TableCell>
-                                      <Link href={activity.href} className="hover:underline">
-                                        {activity.activity}
-                                      </Link>
-                                    </TableCell>
-                                    <TableCell className="text-right">{activity.date}</TableCell>
-                                </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                     <div className="space-y-4 md:hidden">
-                        {recentActivities.map((activity) => (
-                            <Link href={activity.href} key={activity.id} className="block rounded-lg border bg-card text-card-foreground p-4 hover:bg-accent">
-                                <p className="font-medium">{activity.activity}</p>
-                                <div className="flex justify-between text-sm text-muted-foreground mt-1">
-                                    <span>{activity.property}</span>
-                                    <span>{activity.date}</span>
-                                </div>
-                            </Link>
-                        ))}
-                    </div>
-                </>
-            ) : (
-                <div className="text-center text-muted-foreground py-10">No recent activity.</div>
-            )}
-          </CardContent>
-        </Card>
-
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <ListTodo className="h-5 w-5" /> Upcoming Tasks & Reminders
-            </CardTitle>
-            <CardDescription>
-              Inspections and compliance documents that are due soon.
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-             {isLoading ? (
-                <div className="flex justify-center items-center h-48">
-                    <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-                </div>
-             ) : upcomingTasks.length > 0 ? (
-                <>
-                    <div className="hidden md:block">
-                        <Table>
-                            <TableHeader>
-                                <TableRow>
-                                <TableHead>Task</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead className="text-right">Due Date</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {upcomingTasks.map((task) => (
-                                <TableRow key={task.id}>
-                                    <TableCell>
-                                      <Link href={task.href} className="hover:underline">
-                                        <div className="font-medium">{task.task}</div>
-                                        <div className="text-sm text-muted-foreground">
-                                            {task.property}
-                                        </div>
-                                      </Link>
-                                    </TableCell>
-                                    <TableCell>
-                                    <Badge variant={getStatusVariant(task.status)}>
-                                        {task.status}
-                                    </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-right">{task.dueDate}</TableCell>
-                                </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
-                    <div className="space-y-4 md:hidden">
-                        {upcomingTasks.map((task) => (
-                            <Link href={task.href} key={task.id} className="block rounded-lg border bg-card text-card-foreground p-4 hover:bg-accent">
-                                <div className="flex justify-between items-start gap-2">
-                                    <div>
-                                        <p className="font-medium">{task.task}</p>
-                                        <p className="text-sm text-muted-foreground">{task.property}</p>
-                                    </div>
-                                    <Badge variant={getStatusVariant(task.status)}>{task.status}</Badge>
-                                </div>
-                                <p className="text-sm text-muted-foreground mt-2">Due: {task.dueDate}</p>
-                            </Link>
-                        ))}
-                    </div>
-                </>
-             ) : (
-                <div className="text-center text-muted-foreground py-10">No upcoming tasks.</div>
-             )}
-          </CardContent>
-        </Card>
-      </div>
     </div>
   );
 }
