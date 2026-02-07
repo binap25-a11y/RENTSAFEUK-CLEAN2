@@ -617,7 +617,7 @@ export default function MaintenancePage() {
                           <FormItem>
                             <FormLabel>Estimated Cost (£)</FormLabel>
                             <FormControl>
-                              <Input type="text" inputMode="decimal" placeholder="150.00" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} value={field.value ?? ''} />
+                              <Input type="text" inputMode="decimal" placeholder="150.00" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} />
                             </FormControl>
                             <FormMessage />
                           </FormItem>
