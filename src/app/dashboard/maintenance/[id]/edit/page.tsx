@@ -150,15 +150,15 @@ export default function EditMaintenancePage() {
                     title: 'Uploading new photos...',
                     description: `Uploading ${data.photos.length} photo(s). This will replace any existing photos.`,
                 });
-                const uploadPromises = Array.from(data.photos).map(file => {
+                const newUrls: string[] = [];
+                for (const file of Array.from(data.photos)) {
                     const uniqueFileName = `${Date.now()}-${file.name}`;
                     const fileStorageRef = storageRef(storage, `maintenance/${user.uid}/${uniqueFileName}`);
-                    return uploadBytes(fileStorageRef, file).then(uploadResult => {
-                        return getDownloadURL(uploadResult.ref);
-                    });
-                });
-                const newUrls = await Promise.all(uploadPromises);
-                finalPhotoUrls = newUrls; // This replaces existing photos as per UI label
+                    const uploadResult = await uploadBytes(fileStorageRef, file);
+                    const url = await getDownloadURL(uploadResult.ref);
+                    newUrls.push(url);
+                }
+                finalPhotoUrls = newUrls;
             }
 
             const { photos, ...formData } = data;
