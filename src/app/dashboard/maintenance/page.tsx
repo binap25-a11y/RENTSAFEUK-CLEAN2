@@ -236,13 +236,13 @@ export default function MaintenancePage() {
                 title: 'Uploading images...',
                 description: `Uploading ${data.photos.length} photo(s). Please wait.`,
             });
-            for (const file of Array.from(data.photos)) {
+            const uploadPromises = Array.from(data.photos).map(async (file) => {
                 const uniqueFileName = `${Date.now()}-${file.name}`;
                 const fileStorageRef = storageRef(storage, `maintenance/${user.uid}/${uniqueFileName}`);
-                const uploadResult = await uploadBytes(fileStorageRef, file);
-                const url = await getDownloadURL(uploadResult.ref);
-                photoUrls.push(url);
-            }
+                await uploadBytes(fileStorageRef, file);
+                return getDownloadURL(fileStorageRef);
+            });
+            photoUrls = await Promise.all(uploadPromises);
         }
         
         const { photos, ...formData } = data;
