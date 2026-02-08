@@ -271,7 +271,7 @@ export default function FinancialsPage() {
                     <div className="text-2xl font-bold">
                         {isLoading && selectedPropertyId ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : selectedPropertyId ? formatCurrency(totalPaidRent) : '£0.00'}
                     </div>
-                    <div className="text-[10px] font-medium text-muted-foreground h-4 uppercase tracking-tight truncate">
+                    <div className="text-[10px] font-medium text-muted-foreground h-4 uppercase tracking-tight">
                         {selectedProperty ? [selectedProperty.address.street].filter(Boolean).join(', ') : `Reporting Year ${selectedYear}`}
                     </div>
                 </CardContent>
@@ -925,7 +925,7 @@ function AnnualSummary({
                 </CardHeader>
                 <CardContent>
                     {isLoadingExpenses ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <div className="text-2xl font-bold">{formatCurrency(totalExpenses)}</div>}
-                    <div className="text-[10px] text-muted-foreground font-medium mt-1 truncate">
+                    <div className="text-[10px] text-muted-foreground font-medium mt-1">
                         {selectedProperty ? [selectedProperty.address.street].filter(Boolean).join(', ') : 'No property selected'}
                     </div>
                 </CardContent>

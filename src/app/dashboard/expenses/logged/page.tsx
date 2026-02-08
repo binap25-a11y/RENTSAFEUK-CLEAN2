@@ -87,6 +87,7 @@ interface Property {
     street: string;
     city: string;
   };
+  status: string;
 }
 
 interface Expense {
@@ -149,7 +150,12 @@ export default function LoggedExpensesPage() {
       limit(500)
     );
   }, [firestore, user]);
-  const { data: properties, isLoading: isLoadingProps } = useCollection<Property>(propertiesQuery);
+  const { data: allProperties, isLoading: isLoadingProps } = useCollection<Property>(propertiesQuery);
+
+  const activeProperties = useMemo(() => {
+    const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
+    return allProperties?.filter(p => activeStatuses.includes(p.status || '')) ?? [];
+  }, [allProperties]);
 
   // Fetch expenses for the selected property
   const expensesQuery = useMemoFirebase(() => {
@@ -246,7 +252,7 @@ export default function LoggedExpensesPage() {
       <Card>
         <CardHeader>
           <CardTitle>Filters</CardTitle>
-          <CardDescription>Select a property and year to view recorded expenses.</CardDescription>
+          <CardDescription>Select an active property and year to view recorded expenses.</CardDescription>
         </CardHeader>
         <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div className="space-y-2">
@@ -256,7 +262,7 @@ export default function LoggedExpensesPage() {
                         <SelectValue placeholder={isLoadingProps ? "Loading..." : "Select a property"} />
                     </SelectTrigger>
                     <SelectContent>
-                        {properties?.map(p => (
+                        {activeProperties.map(p => (
                             <SelectItem key={p.id} value={p.id}>
                                 {[p.address.nameOrNumber, p.address.street, p.address.city].filter(Boolean).join(', ')}
                             </SelectItem>
