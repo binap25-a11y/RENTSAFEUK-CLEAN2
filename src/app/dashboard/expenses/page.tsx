@@ -158,7 +158,7 @@ const formatCurrency = (val: number) => {
 export default function FinancialsPage() {
   const { user } = useUser();
   const firestore = useFirestore();
-  const [selectedPropertyId, setSelectedPropertyId] = useState('');
+  const [selectedPropertyId, setSelectedPropertyId] = useState('all');
   const [selectedYear, setSelectedYear] = useState(getYear(new Date()));
 
   // Portfolio-wide aggregation state
@@ -184,12 +184,13 @@ export default function FinancialsPage() {
   }, [allProperties]);
 
   const selectedProperty = useMemo(() => {
+    if (selectedPropertyId === 'all') return undefined;
     return allProperties?.find(p => p.id === selectedPropertyId);
   }, [allProperties, selectedPropertyId]);
 
   // 2. Fetch expenses for the SELECTED property (Real-time updates)
   const expensesQuery = useMemoFirebase(() => {
-    if (!user || !firestore || !selectedPropertyId) return null;
+    if (!user || !firestore || selectedPropertyId === 'all') return null;
     return query(
       collection(firestore, 'properties', selectedPropertyId, 'expenses'),
       where('ownerId', '==', user.uid)
@@ -200,7 +201,7 @@ export default function FinancialsPage() {
 
   // 3. Fetch rent payments for the SELECTED property
   const rentPaymentsQuery = useMemoFirebase(() => {
-    if (!user || !firestore || !selectedPropertyId) return null;
+    if (!user || !firestore || selectedPropertyId === 'all') return null;
     return query(
       collection(firestore, 'properties', selectedPropertyId, 'rentPayments'),
       where('ownerId', '==', user.uid),
@@ -211,7 +212,7 @@ export default function FinancialsPage() {
 
   // Aggregation Effect: Fetch data for all properties when no specific one is selected
   useEffect(() => {
-    if (!user || activeProperties.length === 0 || selectedPropertyId) {
+    if (!user || activeProperties.length === 0 || selectedPropertyId !== 'all') {
         setPortfolioExpenses([]);
         setPortfolioRentPayments([]);
         return;
@@ -246,7 +247,7 @@ export default function FinancialsPage() {
 
   // 4. Final Data Resolution
   const expenses = useMemo(() => {
-    const list = selectedPropertyId ? (rawExpenses || []) : portfolioExpenses;
+    const list = selectedPropertyId !== 'all' ? (rawExpenses || []) : portfolioExpenses;
     return list.filter(exp => {
         const d = safeToDate(exp.date);
         return d && isSameYear(d, new Date(selectedYear, 0, 1));
@@ -254,7 +255,7 @@ export default function FinancialsPage() {
   }, [rawExpenses, portfolioExpenses, selectedPropertyId, selectedYear]);
 
   const rentPayments = useMemo(() => {
-    return selectedPropertyId ? (rawRentPayments || []) : portfolioRentPayments;
+    return selectedPropertyId !== 'all' ? (rawRentPayments || []) : portfolioRentPayments;
   }, [rawRentPayments, portfolioRentPayments, selectedPropertyId]);
 
   // 5. Calculations
@@ -275,7 +276,7 @@ export default function FinancialsPage() {
   
   const netIncome = totalPaidRent - totalExpenses;
   
-  const isLoading = isLoadingProperties || (selectedPropertyId ? (isLoadingExpenses || isLoadingPayments) : isAggregating);
+  const isLoading = isLoadingProperties || (selectedPropertyId !== 'all' ? (isLoadingExpenses || isLoadingPayments) : isAggregating);
 
   return (
     <div className="flex flex-col gap-6">
@@ -291,7 +292,7 @@ export default function FinancialsPage() {
                     <SelectValue placeholder={isLoadingProperties ? "Loading portfolio..." : "All Properties (Portfolio View)"} />
                     </SelectTrigger>
                     <SelectContent>
-                    <SelectItem value="">All Properties (Portfolio View)</SelectItem>
+                    <SelectItem value="all">All Properties (Portfolio View)</SelectItem>
                     {activeProperties.map((prop) => (
                         <SelectItem key={prop.id} value={prop.id}>
                             {[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}
@@ -431,7 +432,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }:
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseSchema),
     defaultValues: {
-      propertyId: selectedPropertyId || '',
+      propertyId: selectedPropertyId !== 'all' ? selectedPropertyId : '',
       expenseType: '',
       paidBy: 'Landlord',
       notes: '',
@@ -440,7 +441,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }:
   });
 
   useEffect(() => {
-    if (selectedPropertyId) {
+    if (selectedPropertyId && selectedPropertyId !== 'all') {
         form.setValue('propertyId', selectedPropertyId);
     }
   }, [selectedPropertyId, form]);
