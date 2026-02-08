@@ -530,7 +530,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }:
                 )}
               />
               <div className="flex justify-end gap-2 pt-2">
-                <Button asChild variant="outline" type="button">
+                <Button asChild type="button">
                     <Link href="/dashboard/expenses/logged">
                         <History className="mr-2 h-4 w-4" />
                         View Full Expense History
