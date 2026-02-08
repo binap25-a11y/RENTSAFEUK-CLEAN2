@@ -378,7 +378,9 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
   });
 
   useEffect(() => {
-    form.setValue('propertyId', selectedPropertyId);
+    if (selectedPropertyId) {
+        form.setValue('propertyId', selectedPropertyId);
+    }
   }, [selectedPropertyId, form]);
 
   function onSubmit(data: ExpenseFormValues) {
@@ -388,7 +390,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
     const newExpense = { ...data, ownerId: user.uid };
     const expensesCollection = collection(firestore, 'properties', data.propertyId, 'expenses');
     
-    // Non-blocking Firestore write. Optimistic UI is handled by useCollection hook.
+    // Non-blocking Firestore write. Optimistic UI is handled by useCollection hook in parent.
     addDoc(expensesCollection, newExpense)
       .then(() => {
         toast({
@@ -396,11 +398,12 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
           description: 'The new expense has been successfully logged.',
         });
         form.reset({ 
-            ...form.getValues(), 
+            propertyId: data.propertyId, 
             expenseType: '', 
             amount: 0, 
             notes: '',
-            date: new Date()
+            date: new Date(),
+            paidBy: 'Landlord'
         });
       })
       .catch(async (serverError) => {
