@@ -67,7 +67,8 @@ import {
   Eye,
   Edit,
   Trash2,
-  Calendar
+  Calendar,
+  History
 } from 'lucide-react';
 import { getYear, format, isSameYear } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -103,14 +104,7 @@ import { Pie, PieChart, Cell } from 'recharts';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import Link from 'next/link';
-import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
-
-// Extend the autoTable interface in jsPDF
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-  }
-}
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 // TYPE DEFINITIONS
 
@@ -698,11 +692,18 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
           )}
         </CardContent>
         {expenses.length > 0 && (
-            <CardFooter className="flex justify-end pt-4 border-t bg-muted/10">
-              <div className="flex flex-col items-end">
-                <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Total for selected year:</span>
-                <span className="text-primary font-bold text-2xl">{formatCurrency(expenses.reduce((acc, e) => acc + Number(e.amount || 0), 0))}</span>
+            <CardFooter className="flex flex-col items-center gap-4 pt-4 border-t bg-muted/10">
+              <div className="flex justify-end w-full">
+                <div className="flex flex-col items-end">
+                  <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest mb-1">Total for selected year:</span>
+                  <span className="text-primary font-bold text-2xl">{formatCurrency(expenses.reduce((acc, e) => acc + Number(e.amount || 0), 0))}</span>
+                </div>
               </div>
+              <Button asChild variant="default" className="w-full sm:w-auto">
+                <Link href="/dashboard/expenses/logged">
+                  <History className="mr-2 h-4 w-4" /> View Full Expense History
+                </Link>
+              </Button>
             </CardFooter>
         )}
       </Card>
