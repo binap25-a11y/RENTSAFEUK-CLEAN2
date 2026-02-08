@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -18,16 +17,12 @@ import { toast } from '@/hooks/use-toast';
 import {
   useUser,
   useFirestore,
-  useStorage,
   errorEmitter,
   FirestorePermissionError,
 } from '@/firebase';
 import { collection, addDoc } from 'firebase/firestore';
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Loader2, Wand2, Upload } from 'lucide-react';
+import { Loader2, Wand2 } from 'lucide-react';
 import { generatePropertyDescription } from '@/ai/flows/property-description-flow';
-import Image from 'next/image';
-import { Label } from '@/components/ui/label';
 
 const propertySchema = z.object({
   address: z.object({
@@ -55,12 +50,9 @@ export default function AddPropertyPage() {
   const router = useRouter();
   const { user } = useUser();
   const firestore = useFirestore();
-  const storage = useStorage();
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isGenerating, setIsGenerating] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [uploadedImageUrl, setUploadedImageUrl] = useState<string | null>(null);
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
@@ -123,26 +115,6 @@ export default function AddPropertyPage() {
     }
   };
 
-  const handleImageUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user || !storage) return;
-
-    setIsUploading(true);
-    try {
-      const fileName = `${Date.now()}-${file.name}`;
-      const fileRef = storageRef(storage, `properties/${user.uid}/${fileName}`);
-      const snapshot = await uploadBytes(fileRef, file);
-      const url = await getDownloadURL(snapshot.ref);
-      setUploadedImageUrl(url);
-      toast({ title: 'Image Uploaded', description: 'Property image has been saved successfully.' });
-    } catch (error) {
-      console.error('Image upload failed:', error);
-      toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload property image.' });
-    } finally {
-      setIsUploading(false);
-    }
-  };
-
   async function onSubmit(data: PropertyFormValues) {
     if (!user || !firestore) {
       toast({
@@ -158,7 +130,6 @@ export default function AddPropertyPage() {
     const propertyData: { [key: string]: any } = {
       ownerId: user.uid,
       ...data,
-      imageUrl: uploadedImageUrl,
     };
 
     if (!propertyData.notes) delete propertyData.notes;
@@ -210,28 +181,7 @@ export default function AddPropertyPage() {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-            <Card>
-              <CardHeader><CardTitle className="text-xl font-headline">Property Image</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                <div className="flex flex-col items-center justify-center p-6 border-2 border-dashed rounded-lg bg-muted/30">
-                  {uploadedImageUrl ? (
-                    <div className="relative w-full aspect-video rounded-md overflow-hidden mb-4 shadow-sm">
-                      <Image src={uploadedImageUrl} alt="Property Preview" fill className="object-cover" />
-                    </div>
-                  ) : (
-                    <div className="text-center space-y-2 mb-4">
-                      <Upload className="mx-auto h-10 w-10 text-muted-foreground opacity-50" />
-                      <p className="text-sm text-muted-foreground font-medium">Upload a primary property photo</p>
-                    </div>
-                  )}
-                  <div className="w-full max-w-xs">
-                    <Label htmlFor="image-upload" className="sr-only">Choose image</Label>
-                    <Input id="image-upload" type="file" accept="image/*" onChange={handleImageUpload} disabled={isUploading} className="cursor-pointer" />
-                    {isUploading && <p className="text-xs text-center mt-2 animate-pulse font-medium">Uploading image...</p>}
-                  </div>
-                </div>
-              </CardContent>
-            </Card>
+            {/* Property Image Card is hidden for later use */}
 
             <Card>
               <CardHeader>
@@ -468,7 +418,7 @@ export default function AddPropertyPage() {
               <Button type="button" variant="outline" asChild>
                 <Link href="/dashboard/properties">Cancel</Link>
               </Button>
-              <Button type="submit" disabled={isSubmitting || isUploading}>
+              <Button type="submit" disabled={isSubmitting}>
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                 Save Property
               </Button>
