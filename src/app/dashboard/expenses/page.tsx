@@ -225,7 +225,7 @@ export default function FinancialsPage() {
     <div className="flex flex-col gap-6">
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Annual Portfolio Rent</CardTitle>
                 <PoundSterling className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
@@ -235,7 +235,7 @@ export default function FinancialsPage() {
                 </CardContent>
             </Card>
             <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Annual Income Received</CardTitle>
                 <TrendingUp className="h-4 w-4 text-green-500" />
                 </CardHeader>
@@ -243,13 +243,13 @@ export default function FinancialsPage() {
                     <div className="text-2xl font-bold">
                         {isLoading && selectedPropertyId ? <Loader2 className="h-6 w-6 animate-spin" /> : selectedPropertyId ? formatCurrency(totalPaidRent) : '£0.00'}
                     </div>
-                    <p className="text-xs text-muted-foreground truncate" title={selectedProperty ? [selectedProperty.address.nameOrNumber, selectedProperty.address.street].filter(Boolean).join(', ') : ''}>
+                    <p className="text-xs text-muted-foreground line-clamp-1">
                         {selectedProperty ? [selectedProperty.address.nameOrNumber, selectedProperty.address.street].filter(Boolean).join(', ') : `In ${selectedYear}`}
                     </p>
                 </CardContent>
             </Card>
             <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Annual Expenses</CardTitle>
                 <TrendingDown className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
@@ -261,7 +261,7 @@ export default function FinancialsPage() {
                 </CardContent>
             </Card>
             <Card>
-                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Annual Net Position</CardTitle>
                 <Banknote className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
@@ -390,7 +390,6 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
     const newExpense = { ...data, ownerId: user.uid };
     const expensesCollection = collection(firestore, 'properties', data.propertyId, 'expenses');
     
-    // Non-blocking Firestore write. Optimistic UI is handled by useCollection hook in parent.
     addDoc(expensesCollection, newExpense)
       .then(() => {
         toast({
@@ -400,7 +399,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
         form.reset({ 
             propertyId: data.propertyId, 
             expenseType: '', 
-            amount: 0, 
+            amount: undefined as any, 
             notes: '',
             date: new Date(),
             paidBy: 'Landlord'
@@ -501,7 +500,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Amount (£)</FormLabel>
-                      <FormControl><Input type="text" inputMode="decimal" placeholder="100.00" {...field} /></FormControl>
+                      <FormControl><Input type="text" inputMode="decimal" placeholder="100.00" {...field} value={field.value ?? ''} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -511,7 +510,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Paid By</FormLabel>
-                      <FormControl><Input placeholder="e.g., Landlord, Tenant" {...field} /></FormControl>
+                      <FormControl><Input placeholder="e.g., Landlord, Tenant" {...field} value={field.value ?? ''} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -522,7 +521,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Notes (Optional)</FormLabel>
-                    <FormControl><Textarea placeholder="Add any relevant notes..." {...field} /></FormControl>
+                    <FormControl><Textarea placeholder="Add any relevant notes..." {...field} value={field.value ?? ''} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -721,7 +720,7 @@ function AnnualSummary({
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold text-primary">£{portfolioIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-                    <p className="text-[10px] text-muted-foreground font-medium mt-1">Annual projected gross</p>
+                    <p className="text-[10px] text-muted-foreground font-medium mt-1 uppercase tracking-tighter">Annual projected gross</p>
                 </CardContent>
             </Card>
             <Card className="bg-muted/5 border-none shadow-sm">
@@ -732,7 +731,7 @@ function AnnualSummary({
                 </CardHeader>
                 <CardContent>
                     {isLoadingExpenses ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <div className="text-2xl font-bold">£{totalExpenses.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>}
-                    <p className="text-[10px] text-muted-foreground font-medium mt-1 truncate">
+                    <p className="text-[10px] text-muted-foreground font-medium mt-1 line-clamp-1">
                         {selectedProperty ? [selectedProperty.address.nameOrNumber, selectedProperty.address.street].filter(Boolean).join(', ') : 'No property selected'}
                     </p>
                 </CardContent>
@@ -745,7 +744,7 @@ function AnnualSummary({
                 </CardHeader>
                 <CardContent>
                      {isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <div className={"text-2xl font-bold " + (netIncome < 0 ? "text-destructive" : "text-green-600")}>£{netIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>}
-                    <p className="text-[10px] text-muted-foreground font-medium mt-1">Actual receipts minus costs</p>
+                    <p className="text-[10px] text-muted-foreground font-medium mt-1 uppercase tracking-tighter">Actual receipts minus costs</p>
                 </CardContent>
             </Card>
         </div>
