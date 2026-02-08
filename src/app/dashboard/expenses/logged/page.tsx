@@ -254,43 +254,46 @@ export default function LoggedExpensesPage() {
           <CardTitle>Filters</CardTitle>
           <CardDescription>Select an active property and year to view recorded expenses.</CardDescription>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <div className="space-y-2">
-                <Label htmlFor="property-filter">Property</Label>
-                <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
-                    <SelectTrigger id="property-filter">
-                        <SelectValue placeholder={isLoadingProps ? "Loading..." : "Select a property"} />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {activeProperties.map(p => (
-                            <SelectItem key={p.id} value={p.id}>
-                                {[p.address.nameOrNumber, p.address.street, p.address.city].filter(Boolean).join(', ')}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+        <CardContent className="space-y-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-2">
+                    <Label htmlFor="property-filter">Property</Label>
+                    <Select value={selectedPropertyId} onValueChange={setSelectedPropertyId}>
+                        <SelectTrigger id="property-filter">
+                            <SelectValue placeholder={isLoadingProps ? "Loading..." : "Select a property"} />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {activeProperties.map(p => (
+                                <SelectItem key={p.id} value={p.id}>
+                                    {[p.address.nameOrNumber, p.address.street, p.address.city].filter(Boolean).join(', ')}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
+                <div className="space-y-2">
+                    <Label htmlFor="year-filter">Reporting Year</Label>
+                    <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
+                        <SelectTrigger id="year-filter">
+                            <SelectValue />
+                        </SelectTrigger>
+                        <SelectContent>
+                            {Array.from({ length: 5 }, (_, i) => getYear(new Date()) - i).map(year => (
+                                <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
-            <div className="space-y-2">
-                <Label htmlFor="year-filter">Reporting Year</Label>
-                <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
-                    <SelectTrigger id="year-filter">
-                        <SelectValue />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {Array.from({ length: 5 }, (_, i) => getYear(new Date()) - i).map(year => (
-                            <SelectItem key={year} value={String(year)}>{year}</SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
-            </div>
-            <div className="space-y-2">
-                <Label htmlFor="search">Search</Label>
-                <div className="relative">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+            
+            <div className="space-y-2 pt-2">
+                <Label htmlFor="search">Search Records</Label>
+                <div className="relative max-w-2xl">
+                    <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
                     <Input 
                         id="search"
-                        placeholder="Search type, payer, notes..." 
-                        className="pl-8"
+                        placeholder="Search by category, payer, or notes..." 
+                        className="pl-10 h-11"
                         value={searchTerm}
                         onChange={(e) => setSearchTerm(e.target.value)}
                     />
