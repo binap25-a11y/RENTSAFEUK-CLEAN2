@@ -197,9 +197,27 @@ export default function PropertyDetailPage() {
     );
   }
 
-  const safeFormatDate = (date: { seconds: number; nanoseconds: number } | Date, formatStr: string) => {
-    const jsDate = date instanceof Date ? date : new Date(date.seconds * 1000);
-    return format(jsDate, formatStr);
+  const safeFormatDate = (date: any, formatStr: string) => {
+    if (!date) return 'N/A';
+    
+    let jsDate: Date;
+    if (date instanceof Date) {
+      jsDate = date;
+    } else if (typeof date === 'object' && date.seconds !== undefined) {
+      jsDate = new Date(date.seconds * 1000);
+    } else {
+      jsDate = new Date(date);
+    }
+
+    if (isNaN(jsDate.getTime())) {
+      return 'Invalid Date';
+    }
+    
+    try {
+      return format(jsDate, formatStr);
+    } catch (e) {
+      return 'Invalid Date';
+    }
   };
 
   return (
