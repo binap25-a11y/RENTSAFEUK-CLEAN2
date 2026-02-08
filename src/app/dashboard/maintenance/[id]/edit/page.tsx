@@ -31,12 +31,11 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Upload } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
   useUser,
   useFirestore,
-  useStorage,
   useCollection,
   useDoc,
   useMemoFirebase,
@@ -44,9 +43,6 @@ import {
   FirestorePermissionError,
 } from '@/firebase';
 import { collection, query, where, doc, updateDoc, Timestamp } from 'firebase/firestore';
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import Image from 'next/image';
-import { Label } from '@/components/ui/label';
 
 const maintenanceEditSchema = z.object({
   title: z.string().min(3, 'Title is too short'),
@@ -60,7 +56,6 @@ const maintenanceEditSchema = z.object({
   contractorPhone: z.string().optional(),
   scheduledDate: z.coerce.date().optional(),
   estimatedCost: z.coerce.number().optional(),
-  notes: z.string().optional(),
 });
 
 type MaintenanceFormValues = z.infer<typeof maintenanceEditSchema>;
@@ -77,8 +72,6 @@ interface MaintenanceLog {
   contractorPhone?: string;
   scheduledDate?: Timestamp | Date;
   estimatedCost?: number;
-  photoUrls?: string[];
-  notes?: string;
 }
 
 interface Contractor {
@@ -94,16 +87,11 @@ export default function EditMaintenancePage() {
     const searchParams = useSearchParams();
     const { user } = useUser();
     const firestore = useFirestore();
-    const storage = useStorage();
 
     const logId = params.id as string;
     const propertyId = searchParams.get('propertyId');
 
     const [isSaving, setIsSaving] = useState(false);
-    const [isUploading, setIsUploading] = useState(false);
-    const [existingPhotos, setExistingPhotos] = useState<string[]>([]);
-    const [newPhotosToUpload, setNewPhotosToUpload] = useState<FileList | null>(null);
-    const [newlyUploadedUrls, setNewlyUploadedUrls] = useState<string[]>([]);
 
     const form = useForm<MaintenanceFormValues>({
         resolver: zodResolver(maintenanceEditSchema),
@@ -129,53 +117,18 @@ export default function EditMaintenancePage() {
                 reportedDate: maintenanceLog.reportedDate instanceof Date ? maintenanceLog.reportedDate : new Date(maintenanceLog.reportedDate.seconds * 1000),
                 scheduledDate: maintenanceLog.scheduledDate ? (maintenanceLog.scheduledDate instanceof Date ? maintenanceLog.scheduledDate : new Date(maintenanceLog.scheduledDate.seconds * 1000)) : undefined,
             });
-            if (maintenanceLog.photoUrls) {
-                setExistingPhotos(maintenanceLog.photoUrls);
-            }
         }
     }, [maintenanceLog, form]);
 
-    async function handlePhotoUpload() {
-        if (!newPhotosToUpload || newPhotosToUpload.length === 0) {
-            toast({ variant: 'destructive', title: 'No new files selected', description: 'Please choose photo files to upload.' });
-            return;
-        }
-        if (!user || !storage) {
-            toast({ variant: 'destructive', title: 'Error', description: 'Cannot upload files. User not logged in.' });
-            return;
-        }
-
-        setIsUploading(true);
-        const newUrls: string[] = [];
-        try {
-            for (const file of Array.from(newPhotosToUpload)) {
-                const uniqueFileName = `${Date.now()}-${file.name}`;
-                const fileStorageRef = storageRef(storage, `maintenance/${user.uid}/${uniqueFileName}`);
-                const snapshot = await uploadBytes(fileStorageRef, file);
-                const url = await getDownloadURL(snapshot.ref);
-                newUrls.push(url);
-            }
-            setNewlyUploadedUrls(prev => [...prev, ...newUrls]);
-            toast({ title: 'Upload Successful', description: `${newUrls.length} new photo(s) added.` });
-            setNewPhotosToUpload(null);
-        } catch (error) {
-            console.error('Failed to upload new photos:', error);
-            toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload new photos. Please check your connection and try again.' });
-        } finally {
-            setIsUploading(false);
-        }
-    }
-    
     async function handleFormSubmit(data: MaintenanceFormValues) {
         if (!user || !firestore || !maintenanceLogRef) {
             toast({ variant: 'destructive', title: 'Error', description: 'Could not save. Please try again.' });
             return;
         }
         setIsSaving(true);
-        const finalPhotoUrls = [...existingPhotos, ...newlyUploadedUrls];
 
         try {
-            await updateDoc(maintenanceLogRef, { ...data, photoUrls: finalPhotoUrls });
+            await updateDoc(maintenanceLogRef, { ...data });
 
             toast({ title: 'Maintenance Log Updated', description: 'The changes have been saved.' });
             router.push(`/dashboard/maintenance/${logId}?propertyId=${propertyId}`);
@@ -298,66 +251,11 @@ export default function EditMaintenancePage() {
                                 </div>
                             </CardContent>
                         </Card>
-                        
-                         <Card>
-                            <CardHeader><CardTitle className="text-lg">Photos</CardTitle></CardHeader>
-                            <CardContent className="space-y-4">
-                                {existingPhotos.length > 0 && (
-                                    <div>
-                                        <Label>Existing Photos</Label>
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
-                                            {existingPhotos.map((url, index) => (
-                                                <div key={index} className="relative aspect-square">
-                                                    <Image src={url} alt={`Existing Photo ${index + 1}`} fill className="rounded-md object-cover" />
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                                <div className="space-y-2">
-                                    <Label htmlFor="new-photo-upload">Add More Photos</Label>
-                                    <div className="flex gap-2">
-                                        <Input
-                                            id="new-photo-upload"
-                                            type="file"
-                                            multiple
-                                            accept="image/*"
-                                            onChange={(e) => setNewPhotosToUpload(e.target.files)}
-                                        />
-                                        <Button type="button" onClick={handlePhotoUpload} disabled={isUploading || !newPhotosToUpload}>
-                                            {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                                            Upload
-                                        </Button>
-                                    </div>
-                                </div>
-
-                                 {newlyUploadedUrls.length > 0 && (
-                                    <div>
-                                        <Label>Newly Uploaded Photos</Label>
-                                        <div className="grid grid-cols-2 md:grid-cols-4 gap-2 mt-2">
-                                            {newlyUploadedUrls.map((url, index) => (
-                                                <div key={index} className="relative aspect-square">
-                                                    <Image src={url} alt={`Preview ${index + 1}`} fill className="rounded-md object-cover" />
-                                                </div>
-                                            ))}
-                                        </div>
-                                    </div>
-                                )}
-                            </CardContent>
-                        </Card>
-
-                        <FormField control={form.control} name="notes" render={({ field }) => (
-                            <FormItem>
-                                <FormLabel>Notes</FormLabel>
-                                <FormControl><Textarea rows={4} {...field} /></FormControl>
-                                <FormMessage />
-                            </FormItem>
-                        )} />
 
                         <div className="flex justify-end gap-2">
                             <Button type="button" variant="outline" asChild><Link href={`/dashboard/maintenance/${logId}?propertyId=${propertyId}`}>Cancel</Link></Button>
                             <Button type="submit" disabled={isSaving}>
-                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Save Changes'}
+                                {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Save'}
                             </Button>
                         </div>
                     </form>

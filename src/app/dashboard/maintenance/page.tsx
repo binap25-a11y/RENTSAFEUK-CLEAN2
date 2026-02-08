@@ -29,29 +29,25 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Wand2, Upload, List } from 'lucide-react';
+import { Loader2, Wand2, List } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import Image from 'next/image';
 import { useRouter } from 'next/navigation';
 import {
   useUser,
   useFirestore,
-  useStorage,
   useCollection,
   useMemoFirebase,
   errorEmitter,
   FirestorePermissionError,
 } from '@/firebase';
 import { collection, query, where, addDoc, limit } from 'firebase/firestore';
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Label } from '@/components/ui/label';
 import { MaintenanceAssistantDialog } from '@/components/dashboard/maintenance-assistant-dialog';
 import type { MaintenanceAssistantOutput } from '@/ai/flows/maintenance-assistant-flow';
 
 
-// Schema for the form, file input is handled separately
+// Schema for the form
 const maintenanceSchema = z.object({
   propertyId: z.string({ required_error: 'Please select a property.' }).min(1, 'Please select a property.'),
   title: z.string().min(3, 'Title is too short'),
@@ -64,7 +60,6 @@ const maintenanceSchema = z.object({
   contractorPhone: z.string().optional(),
   scheduledDate: z.coerce.date().optional(),
   estimatedCost: z.coerce.number().optional(),
-  notes: z.string().optional(),
 });
 
 type MaintenanceFormValues = z.infer<typeof maintenanceSchema>;
@@ -94,13 +89,9 @@ interface Contractor {
 export default function MaintenancePage() {
   const { user } = useUser();
   const firestore = useFirestore();
-  const storage = useStorage();
   const router = useRouter();
   const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isUploading, setIsUploading] = useState(false);
-  const [photosToUpload, setPhotosToUpload] = useState<FileList | null>(null);
-  const [uploadedPhotoUrls, setUploadedPhotoUrls] = useState<string[]>([]);
 
   const form = useForm<MaintenanceFormValues>({
     resolver: zodResolver(maintenanceSchema),
@@ -113,7 +104,6 @@ export default function MaintenancePage() {
       reportedBy: '',
       contractorName: '',
       contractorPhone: '',
-      notes: '',
       reportedDate: new Date(),
     },
   });
@@ -159,37 +149,6 @@ export default function MaintenancePage() {
     });
   };
 
-  async function handlePhotoUpload() {
-    if (!photosToUpload || photosToUpload.length === 0) {
-        toast({ variant: 'destructive', title: 'No files selected', description: 'Please choose photo files to upload.' });
-        return;
-    }
-    if (!user || !storage) {
-        toast({ variant: 'destructive', title: 'Error', description: 'Cannot upload files. User not logged in.' });
-        return;
-    }
-
-    setIsUploading(true);
-    const newUrls: string[] = [];
-    try {
-        for (const file of Array.from(photosToUpload)) {
-            const uniqueFileName = `${Date.now()}-${file.name}`;
-            const fileStorageRef = storageRef(storage, `maintenance/${user.uid}/${uniqueFileName}`);
-            const snapshot = await uploadBytes(fileStorageRef, file);
-            const url = await getDownloadURL(snapshot.ref);
-            newUrls.push(url);
-        }
-        setUploadedPhotoUrls(prev => [...prev, ...newUrls]);
-        toast({ title: 'Upload Successful', description: `${newUrls.length} photo(s) have been uploaded.` });
-        setPhotosToUpload(null); 
-    } catch (error) {
-        console.error('Failed to upload photos:', error);
-        toast({ variant: 'destructive', title: 'Upload Failed', description: 'Could not upload photos. Please check your connection and try again.' });
-    } finally {
-        setIsUploading(false);
-    }
-  }
-
   async function handleFormSubmit(data: MaintenanceFormValues) {
     if (!user || !firestore) {
       toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
@@ -198,7 +157,7 @@ export default function MaintenancePage() {
     setIsSubmitting(true);
 
     try {
-      const newLog = { ...data, ownerId: user.uid, status: 'Open', photoUrls: uploadedPhotoUrls };
+      const newLog = { ...data, ownerId: user.uid, status: 'Open' };
       const logsCollection = collection(firestore, 'properties', data.propertyId, 'maintenanceLogs');
       const newDocRef = await addDoc(logsCollection, newLog);
 
@@ -328,45 +287,10 @@ export default function MaintenancePage() {
                   </CardContent>
                 </Card>
 
-                <Card>
-                  <CardHeader><CardTitle className="text-xl">Photos &amp; Notes</CardTitle></CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="space-y-2">
-                        <Label htmlFor="photo-upload">Upload Photos of Issue</Label>
-                        <div className="flex gap-2">
-                           <Input
-                              id="photo-upload"
-                              type="file"
-                              multiple
-                              accept="image/*"
-                              onChange={(e) => setPhotosToUpload(e.target.files)}
-                           />
-                           <Button type="button" onClick={handlePhotoUpload} disabled={isUploading || !photosToUpload}>
-                              {isUploading ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
-                              Upload
-                           </Button>
-                        </div>
-                         {uploadedPhotoUrls.length > 0 && (
-                            <div className="pt-4">
-                              <p className="text-sm font-medium">Uploaded Photos:</p>
-                              <div className="grid grid-cols-2 md:grid-cols-4 gap-2 pt-2">
-                                  {uploadedPhotoUrls.map((url, index) => (
-                                      <div key={index} className="relative aspect-square">
-                                          <Image src={url} alt={`Uploaded photo ${index + 1}`} fill className="rounded-md object-cover" />
-                                      </div>
-                                  ))}
-                              </div>
-                            </div>
-                        )}
-                    </div>
-                     <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel>Additional Notes</FormLabel><FormControl><Textarea placeholder="Any additional notes..." className="resize-none" rows={5} {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)}/>
-                  </CardContent>
-                </Card>
-
                 <div className="flex justify-end gap-2">
                   <Button type="button" variant="outline" onClick={() => form.reset()}>Cancel</Button>
                   <Button type="submit" disabled={isSubmitting} className="w-full sm:w-auto">
-                    {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Logging...</> : 'Log Maintenance'}
+                    {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : 'Save'}
                   </Button>
                 </div>
               </form>
