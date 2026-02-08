@@ -166,7 +166,7 @@ export default function FinancialsPage() {
   const [portfolioRentPayments, setPortfolioRentPayments] = useState<RentPayment[]>([]);
   const [isAggregating, setIsAggregating] = useState(false);
 
-  // 1. Fetch properties
+  // 1. Fetch properties - strictly scoped to user
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
@@ -178,9 +178,10 @@ export default function FinancialsPage() {
 
   const { data: allProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
   
-  // Be inclusive: count everything that isn't explicitly deleted
+  // Filtering for truly active properties related to the logged-in user
   const activeProperties = useMemo(() => {
-    return allProperties?.filter(p => p.status !== 'Deleted') ?? [];
+    const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
+    return allProperties?.filter(p => activeStatuses.includes(p.status || '')) ?? [];
   }, [allProperties]);
 
   const selectedProperty = useMemo(() => {
@@ -281,7 +282,7 @@ export default function FinancialsPage() {
   return (
     <div className="flex flex-col gap-6">
         {/* Filters positioned at the very top */}
-        <div className="flex flex-col gap-4 max-w-md bg-card p-6 rounded-lg border">
+        <div className="flex flex-col gap-4 max-w-md bg-card p-6 rounded-lg border shadow-sm">
             <div className="grid w-full gap-1.5">
                 <Label htmlFor="property-filter" className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-muted-foreground">
                     <Filter className="h-3" />
@@ -432,7 +433,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }:
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseSchema),
     defaultValues: {
-      propertyId: selectedPropertyId !== 'all' ? selectedPropertyId : '',
+      propertyId: (selectedPropertyId && selectedPropertyId !== 'all') ? selectedPropertyId : '',
       expenseType: '',
       paidBy: 'Landlord',
       notes: '',
@@ -443,6 +444,8 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }:
   useEffect(() => {
     if (selectedPropertyId && selectedPropertyId !== 'all') {
         form.setValue('propertyId', selectedPropertyId);
+    } else {
+        form.setValue('propertyId', '');
     }
   }, [selectedPropertyId, form]);
 
