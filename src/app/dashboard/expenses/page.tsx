@@ -144,6 +144,14 @@ const expenseSchema = z.object({
 });
 type ExpenseFormValues = z.infer<typeof expenseSchema>;
 
+function safeToDate(val: any): Date | null {
+  if (!val) return null;
+  if (val instanceof Date) return val;
+  if (typeof val === 'object' && 'seconds' in val) return new Date(val.seconds * 1000);
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? null : d;
+}
+
 export default function FinancialsPage() {
   const { user } = useUser();
   const firestore = useFirestore();
@@ -243,7 +251,7 @@ export default function FinancialsPage() {
                     <div className="text-2xl font-bold">
                         {isLoading && selectedPropertyId ? <Loader2 className="h-6 w-6 animate-spin" /> : selectedPropertyId ? formatCurrency(totalPaidRent) : '£0.00'}
                     </div>
-                    <p className="text-xs text-muted-foreground line-clamp-1 h-4">
+                    <p className="text-xs text-muted-foreground h-4">
                         {selectedProperty ? [selectedProperty.address.nameOrNumber, selectedProperty.address.street].filter(Boolean).join(', ') : `In ${selectedYear}`}
                     </p>
                 </CardContent>
@@ -428,6 +436,15 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
     return expenses?.reduce((acc, expense) => acc + Number(expense.amount || 0), 0) || 0;
   }, [expenses]);
 
+  const formatCurrency = (val: number) => {
+    return val.toLocaleString('en-GB', {
+        style: 'currency',
+        currency: 'GBP',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
+  };
+
   return (
     <div className="space-y-6 mt-6">
       <Card>
@@ -558,15 +575,15 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
                       <TableHeader className="bg-muted/30"><TableRow><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Paid By</TableHead><TableHead className="text-right">Amount (£)</TableHead></TableRow></TableHeader>
                       <TableBody>
                           {expenses?.sort((a,b) => {
-                              const dA = a.date instanceof Date ? a.date : new Date(a.date.seconds * 1000);
-                              const dB = b.date instanceof Date ? b.date : new Date(b.date.seconds * 1000);
+                              const dA = safeToDate(a.date) || new Date(0);
+                              const dB = safeToDate(b.date) || new Date(0);
                               return dB.getTime() - dA.getTime();
                           }).map((expense) => (
                           <TableRow key={expense.id} className="hover:bg-muted/20 transition-colors">
-                              <TableCell>{expense.date instanceof Date ? format(expense.date, 'dd/MM/yyyy') : format(new Date(expense.date.seconds * 1000), 'dd/MM/yyyy')}</TableCell>
+                              <TableCell>{safeToDate(expense.date) ? format(safeToDate(expense.date)!, 'dd/MM/yyyy') : 'N/A'}</TableCell>
                               <TableCell className="font-medium">{expense.expenseType}</TableCell>
                               <TableCell>{expense.paidBy}</TableCell>
-                              <TableCell className="text-right font-bold whitespace-nowrap">£{Number(expense.amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</TableCell>
+                              <TableCell className="text-right font-bold whitespace-nowrap">{formatCurrency(expense.amount)}</TableCell>
                           </TableRow>
                           ))}
                       </TableBody>
@@ -577,12 +594,12 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
                           <Card key={expense.id} className="shadow-none">
                               <CardHeader className="pb-2">
                                   <CardTitle className="text-base font-bold">{expense.expenseType}</CardTitle>
-                                  <CardDescription>{expense.date instanceof Date ? format(expense.date, 'dd/MM/yyyy') : format(new Date(expense.date.seconds * 1000), 'dd/MM/yyyy')}</CardDescription>
+                                  <CardDescription>{safeToDate(expense.date) ? format(safeToDate(expense.date)!, 'dd/MM/yyyy') : 'N/A'}</CardDescription>
                               </CardHeader>
                               <CardContent className="space-y-2 text-sm pt-0">
                                   <div className="flex justify-between items-center border-t pt-2">
                                       <span className="text-muted-foreground">Amount</span>
-                                      <span className="font-bold">£{Number(expense.amount).toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                                      <span className="font-bold">{formatCurrency(expense.amount)}</span>
                                   </div>
                                   <div className="flex justify-between items-center border-t pt-2">
                                       <span className="text-muted-foreground">Paid By</span>
@@ -591,7 +608,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
                               </CardContent>
                               {expense.notes && (
                                   <CardFooter className="text-xs text-muted-foreground border-t pt-2 pb-2">
-                                      <p className="line-clamp-2 italic">"{expense.notes}"</p>
+                                      <p className="italic">"{expense.notes}"</p>
                                   </CardFooter>
                               )}
                           </Card>
@@ -604,7 +621,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
             <CardFooter className="flex justify-end font-bold text-lg pt-4 border-t bg-muted/10">
               <div className="flex items-center gap-4">
                 <span className="text-sm font-normal text-muted-foreground uppercase tracking-wider">Total for {selectedYear}:</span>
-                <span className="text-primary font-bold text-2xl">£{totalExpenses.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</span>
+                <span className="text-primary font-bold text-2xl">{formatCurrency(totalExpenses)}</span>
               </div>
             </CardFooter>
         )}
@@ -639,6 +656,15 @@ function AnnualSummary({
 
   const isLoading = isLoadingExpenses || isLoadingPayments;
   const chartColors = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
+
+  const formatCurrency = (val: number) => {
+    return val.toLocaleString('en-GB', {
+        style: 'currency',
+        currency: 'GBP',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
+  };
 
   const expensesByCategory = useMemo(() => {
     const categoryMap: { [key: string]: number } = {};
@@ -678,23 +704,23 @@ function AnnualSummary({
     doc.setLineWidth(0.5);
     doc.line(14, 32, 196, 32);
     const summaryData = [
-      ['Total Income Received', `£${totalPaidRent.toFixed(2)}`],
-      ['Total Expenses', `£${totalExpenses.toFixed(2)}`],
-      ['Net Income', `£${netIncome.toFixed(2)}`],
+      ['Total Income Received', formatCurrency(totalPaidRent)],
+      ['Total Expenses', formatCurrency(totalExpenses)],
+      ['Net Income', formatCurrency(netIncome)],
     ];
     doc.autoTable({ startY: 40, head: [['Summary', 'Amount']], body: summaryData, theme: 'striped', headStyles: { fillColor: [38, 102, 114] } });
     let finalY = (doc as any).lastAutoTable.finalY;
     if (expensesByCategory.length > 0) {
       doc.setFontSize(16);
       doc.text('Expense Breakdown', 14, finalY + 15);
-      const expenseBody = expensesByCategory.map(cat => [cat.name, `£${cat.amount.toFixed(2)}`]);
+      const expenseBody = expensesByCategory.map(cat => [cat.name, formatCurrency(cat.amount)]);
       doc.autoTable({ startY: finalY + 22, head: [['Category', 'Total Amount']], body: expenseBody, theme: 'grid' });
       finalY = (doc as any).lastAutoTable.finalY;
     }
     if (rentPayments && rentPayments.length > 0) {
       doc.setFontSize(16);
       doc.text('Rent Payments Received', 14, finalY + 15);
-      const rentBody = rentPayments.filter(p => p.status === 'Paid' || p.status === 'Partially Paid').map(p => [p.month, `£${(p.amountPaid || 0).toFixed(2)}`, `£${p.expectedAmount.toFixed(2)}`, p.status]);
+      const rentBody = rentPayments.filter(p => p.status === 'Paid' || p.status === 'Partially Paid').map(p => [p.month, formatCurrency(p.amountPaid || 0), formatCurrency(p.expectedAmount), p.status]);
       if (rentBody.length > 0) {
         doc.autoTable({ startY: finalY + 22, head: [['Month', 'Amount Paid', 'Expected', 'Status']], body: rentBody, theme: 'grid' });
       }
@@ -719,7 +745,7 @@ function AnnualSummary({
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <div className="text-2xl font-bold text-primary">£{portfolioIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                    <div className="text-2xl font-bold text-primary">{formatCurrency(portfolioIncome)}</div>
                     <p className="text-[10px] text-muted-foreground font-medium mt-1 uppercase tracking-tighter">Annual projected gross</p>
                 </CardContent>
             </Card>
@@ -730,8 +756,8 @@ function AnnualSummary({
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    {isLoadingExpenses ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <div className="text-2xl font-bold">£{totalExpenses.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>}
-                    <p className="text-[10px] text-muted-foreground font-medium mt-1 line-clamp-1 h-4">
+                    {isLoadingExpenses ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <div className="text-2xl font-bold">{formatCurrency(totalExpenses)}</div>}
+                    <p className="text-[10px] text-muted-foreground font-medium mt-1 h-4">
                         {selectedProperty ? [selectedProperty.address.nameOrNumber, selectedProperty.address.street].filter(Boolean).join(', ') : 'No property selected'}
                     </p>
                 </CardContent>
@@ -743,7 +769,7 @@ function AnnualSummary({
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                     {isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <div className={"text-2xl font-bold " + (netIncome < 0 ? "text-destructive" : "text-green-600")}>£{netIncome.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>}
+                     {isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <div className={"text-2xl font-bold " + (netIncome < 0 ? "text-destructive" : "text-green-600")}>{formatCurrency(netIncome)}</div>}
                     <p className="text-[10px] text-muted-foreground font-medium mt-1 uppercase tracking-tighter">Actual receipts minus costs</p>
                 </CardContent>
             </Card>
@@ -780,7 +806,7 @@ function AnnualSummary({
                                     {expensesByCategory.map(cat => (
                                         <TableRow key={cat.name} className="hover:bg-muted/20 transition-colors">
                                             <TableCell className="font-semibold text-sm">{cat.name}</TableCell>
-                                            <TableCell className="text-right font-bold whitespace-nowrap text-sm">£{cat.amount.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                                            <TableCell className="text-right font-bold whitespace-nowrap text-sm">{formatCurrency(cat.amount)}</TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
@@ -806,7 +832,7 @@ function AnnualSummary({
                     ) : expensesByCategory.length > 0 ? (
                         <ChartContainer config={chartConfig} className="mx-auto aspect-square w-full max-w-[280px]">
                             <PieChart>
-                                <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel nameKey="amount" formatter={(value) => `£${Number(value).toFixed(2)}`} />} />
+                                <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel nameKey="amount" formatter={(value) => formatCurrency(Number(value))} />} />
                                 <Pie data={expensesByCategory} dataKey="amount" nameKey="name" innerRadius={65} strokeWidth={8}>
                                     {expensesByCategory.map((entry) => <Cell key={`cell-${entry.name}`} fill={entry.fill} className="stroke-background outline-none focus:outline-none"/>)}
                                 </Pie>
@@ -840,11 +866,20 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
     return months.map(month => ({ month, rent, status: paymentsMap?.[month]?.status || 'Pending' }));
   }, [selectedProperty, months, rentPayments]);
   
+  const formatCurrency = (val: number) => {
+    return val.toLocaleString('en-GB', {
+        style: 'currency',
+        currency: 'GBP',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
+  };
+
   const handleSavePartialPayment = async () => {
     if (!firestore || !user || !selectedProperty || !editingPayment) return;
     const amount = Number(partialAmount);
     if (isNaN(amount) || amount <= 0 || amount >= editingPayment.expectedAmount) {
-        toast({ variant: 'destructive', title: 'Invalid Amount', description: `Enter an amount between 0 and £${editingPayment.expectedAmount.toFixed(2)}.` });
+        toast({ variant: 'destructive', title: 'Invalid Amount', description: `Enter an amount between 0 and ${formatCurrency(editingPayment.expectedAmount)}.` });
         return;
     }
     const { month } = editingPayment;
@@ -909,7 +944,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                         return (
                             <TableRow key={row.month} className="hover:bg-muted/20">
                             <TableCell className="font-bold text-sm">{row.month}</TableCell>
-                            <TableCell className="text-sm">£{Number(row.rent).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                            <TableCell className="text-sm">{formatCurrency(row.rent)}</TableCell>
                             <TableCell>
                                 <Select value={row.status} onValueChange={(newStatus) => handleStatusChange(row.month, newStatus as PaymentStatus)}>
                                 <SelectTrigger className={"w-[160px] h-9 text-xs font-bold " + className}><div className="flex items-center gap-2"><Icon className="h-3.5 w-3.5" /><SelectValue /></div></SelectTrigger>
@@ -926,7 +961,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                         const { Icon, className } = getRentStatusProps(row.status);
                         return (
                             <Card key={row.month} className="shadow-none border-muted/60">
-                                <CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-base font-bold">{row.month}</CardTitle><span className="text-base font-semibold">£{Number(row.rent).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</span></CardHeader>
+                                <CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-base font-bold">{row.month}</CardTitle><span className="text-base font-semibold">{formatCurrency(row.rent)}</span></CardHeader>
                                 <CardContent>
                                     <Select value={row.status} onValueChange={(newStatus) => handleStatusChange(row.month, newStatus as PaymentStatus)}>
                                     <SelectTrigger className={"w-full font-medium " + className}><div className="flex items-center gap-2"><Icon className="h-4 w-4" /><SelectValue /></div></SelectTrigger>
@@ -941,8 +976,8 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
         </CardContent>
         {selectedProperty && (
             <CardFooter className='flex-col items-end space-y-1 pt-6 border-t mt-4 bg-muted/10'>
-                <div className="font-bold text-2xl text-primary">Total Collected: £{totalPaid.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
-                <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Projected Annual: £{totalExpectedRent.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>
+                <div className="font-bold text-2xl text-primary">Total Collected: {formatCurrency(totalPaid)}</div>
+                <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Projected Annual: {formatCurrency(totalExpectedRent)}</div>
             </CardFooter>
         )}
       </Card>
@@ -958,6 +993,15 @@ function ArrearsManagement({ properties }: { properties: Property[] }) {
   const [partialPaymentData, setPartialPaymentData] = useState<{ payment: RentPayment; amount: string } | null>(null);
   const currentYear = getYear(new Date());
   const currentMonth = format(new Date(), 'MMMM');
+
+  const formatCurrency = (val: number) => {
+    return val.toLocaleString('en-GB', {
+        style: 'currency',
+        currency: 'GBP',
+        minimumFractionDigits: 2,
+        maximumFractionDigits: 2,
+    });
+  };
 
   const fetchArrears = async () => {
     if (!user || !firestore || properties.length === 0) return;
@@ -1032,8 +1076,8 @@ function ArrearsManagement({ properties }: { properties: Property[] }) {
                   {arrears.map((row) => (
                     <TableRow key={row.propertyId}>
                       <TableCell className="font-medium text-sm">{properties.find(p => p.id === row.propertyId)?.address.street}</TableCell>
-                      <TableCell className="text-sm">£{Number(row.expectedAmount).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
-                      <TableCell className="text-destructive font-bold text-sm">£{Number(row.amountPaid || 0).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}</TableCell>
+                      <TableCell className="text-sm">{formatCurrency(row.expectedAmount)}</TableCell>
+                      <TableCell className="text-destructive font-bold text-sm">{formatCurrency(row.amountPaid || 0)}</TableCell>
                       <TableCell><Badge variant={row.status === 'Partially Paid' ? 'secondary' : 'destructive'}>{row.status}</Badge></TableCell>
                       <TableCell className="text-right"><div className="flex justify-end gap-1.5"><Button size="sm" variant="outline" onClick={() => setPartialPaymentData({ payment: row, amount: '' })}>Partial</Button><Button size="sm" onClick={() => handleUpdateStatus(row, 'Paid')}>Mark Paid</Button></div></TableCell>
                     </TableRow>
