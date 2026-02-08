@@ -237,6 +237,42 @@ export default function FinancialsPage() {
 
   return (
     <div className="flex flex-col gap-6">
+        {/* Filters positioned at the very top */}
+        <div className="flex flex-col gap-4 max-w-md bg-card p-6 rounded-lg border shadow-sm">
+            <div className="grid w-full gap-1.5">
+                <Label htmlFor="property-filter" className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-muted-foreground">
+                    <Filter className="h-3" />
+                    Selected Property
+                </Label>
+                <Select onValueChange={setSelectedPropertyId} value={selectedPropertyId}>
+                    <SelectTrigger id="property-filter" className="w-full h-12 bg-background">
+                    <SelectValue placeholder={isLoadingProperties ? "Loading portfolio..." : "Select an active property"} />
+                    </SelectTrigger>
+                    <SelectContent>
+                    {activeProperties.map((prop) => (
+                        <SelectItem key={prop.id} value={prop.id}>
+                            {[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}
+                        </SelectItem>
+                    ))}
+                    </SelectContent>
+                </Select>
+            </div>
+            <div className="grid w-full gap-1.5">
+                <Label htmlFor="year-filter" className="font-bold text-xs uppercase tracking-wider text-muted-foreground">Reporting Year</Label>
+                <Select onValueChange={(value) => setSelectedYear(Number(value))} value={String(selectedYear)}>
+                    <SelectTrigger id="year-filter" className="w-full h-12 bg-background">
+                        <SelectValue placeholder="Year" />
+                    </SelectTrigger>
+                    <SelectContent>
+                        {Array.from({ length: 5 }, (_, i) => getYear(new Date()) - i).map(year => (
+                            <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                        ))}
+                    </SelectContent>
+                </Select>
+            </div>
+        </div>
+
+        {/* Metric Summary Cards */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
@@ -290,40 +326,6 @@ export default function FinancialsPage() {
 
        <Card className='border-none shadow-none bg-transparent'>
         <CardContent className="p-0 space-y-4">
-           <div className="flex flex-col gap-4 max-w-md bg-card p-6 rounded-lg border shadow-sm">
-                <div className="grid w-full gap-1.5">
-                    <Label htmlFor="property-filter" className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-muted-foreground">
-                        <Filter className="h-3 w-3" />
-                        Selected Property
-                    </Label>
-                    <Select onValueChange={setSelectedPropertyId} value={selectedPropertyId}>
-                        <SelectTrigger id="property-filter" className="w-full h-12 bg-background">
-                        <SelectValue placeholder={isLoadingProperties ? "Loading portfolio..." : "Select an active property"} />
-                        </SelectTrigger>
-                        <SelectContent>
-                        {activeProperties.map((prop) => (
-                            <SelectItem key={prop.id} value={prop.id}>
-                                {[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}
-                            </SelectItem>
-                        ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-                <div className="grid w-full gap-1.5">
-                    <Label htmlFor="year-filter" className="font-bold text-xs uppercase tracking-wider text-muted-foreground">Reporting Year</Label>
-                    <Select onValueChange={(value) => setSelectedYear(Number(value))} value={String(selectedYear)}>
-                        <SelectTrigger id="year-filter" className="w-full h-12 bg-background">
-                            <SelectValue placeholder="Year" />
-                        </SelectTrigger>
-                        <SelectContent>
-                            {Array.from({ length: 5 }, (_, i) => getYear(new Date()) - i).map(year => (
-                                <SelectItem key={year} value={String(year)}>{year}</SelectItem>
-                            ))}
-                        </SelectContent>
-                    </Select>
-                </div>
-           </div>
-
            {expensesError && (
                <Alert variant="destructive" className="mt-4">
                    <AlertTriangle className="h-4 w-4" />
@@ -953,6 +955,9 @@ function ArrearsManagement({ properties }: { properties: Property[] }) {
 
   return (
     <div className="space-y-6 mt-6">
+      <div className="flex items-center gap-4">
+        {/* Placeholder if needed */}
+      </div>
       <Dialog open={!!partialPaymentData} onOpenChange={(open) => !open && setPartialPaymentData(null)}>
         <DialogContent><DialogHeader><DialogTitle>Record Partial Collection</DialogTitle></DialogHeader>
           <div className="py-4 space-y-2">
