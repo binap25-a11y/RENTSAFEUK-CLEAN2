@@ -114,7 +114,7 @@ interface Property {
 }
 
 interface Expense {
-  id:string;
+  id: string;
   propertyId: string;
   date: { seconds: number; nanoseconds: number } | Date;
   expenseType: string;
@@ -243,7 +243,7 @@ export default function FinancialsPage() {
                     <div className="text-2xl font-bold">
                         {isLoading && selectedPropertyId ? <Loader2 className="h-6 w-6 animate-spin" /> : selectedPropertyId ? formatCurrency(totalPaidRent) : '£0.00'}
                     </div>
-                    <p className="text-xs text-muted-foreground line-clamp-1">
+                    <p className="text-xs text-muted-foreground line-clamp-1 h-4">
                         {selectedProperty ? [selectedProperty.address.nameOrNumber, selectedProperty.address.street].filter(Boolean).join(', ') : `In ${selectedYear}`}
                     </p>
                 </CardContent>
@@ -257,7 +257,7 @@ export default function FinancialsPage() {
                     <div className="text-2xl font-bold">
                         {isLoading && selectedPropertyId ? <Loader2 className="h-6 w-6 animate-spin" /> : selectedPropertyId ? formatCurrency(totalExpenses) : '£0.00'}
                     </div>
-                    <p className="text-xs text-muted-foreground">Expenses in {selectedYear}</p>
+                    <p className="text-xs text-muted-foreground h-4">Expenses in {selectedYear}</p>
                 </CardContent>
             </Card>
             <Card>
@@ -269,7 +269,7 @@ export default function FinancialsPage() {
                     <div className={"text-2xl font-bold " + (netIncome < 0 ? " text-destructive" : " text-primary")}>
                         {isLoading && selectedPropertyId ? <Loader2 className="h-6 w-6 animate-spin" /> : selectedPropertyId ? formatCurrency(netIncome) : '£0.00'}
                     </div>
-                     <p className="text-xs text-muted-foreground">Net for {selectedYear}</p>
+                     <p className="text-xs text-muted-foreground h-4">Net for {selectedYear}</p>
                 </CardContent>
             </Card>
         </div>
@@ -731,7 +731,7 @@ function AnnualSummary({
                 </CardHeader>
                 <CardContent>
                     {isLoadingExpenses ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <div className="text-2xl font-bold">£{totalExpenses.toLocaleString(undefined, {minimumFractionDigits: 2, maximumFractionDigits: 2})}</div>}
-                    <p className="text-[10px] text-muted-foreground font-medium mt-1 line-clamp-1">
+                    <p className="text-[10px] text-muted-foreground font-medium mt-1 line-clamp-1 h-4">
                         {selectedProperty ? [selectedProperty.address.nameOrNumber, selectedProperty.address.street].filter(Boolean).join(', ') : 'No property selected'}
                     </p>
                 </CardContent>
