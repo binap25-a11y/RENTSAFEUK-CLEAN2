@@ -435,7 +435,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }:
 
   return (
     <div className="space-y-6 mt-6">
-      <Card shadow-sm>
+      <Card>
         <CardHeader><CardTitle className="text-lg">Add New Expense</CardTitle></CardHeader>
         <CardContent>
           <Form {...form}>
