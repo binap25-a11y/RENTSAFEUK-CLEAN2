@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, notFound, useRouter } from 'next/navigation';
@@ -115,7 +114,7 @@ export default function PropertyDetailPage() {
         where('ownerId', '==', user.uid)
     );
   }, [firestore, propertyId, user]);
-  const { data: allMaintenanceLogs, isLoading: isLoadingMaintenance, error: maintenanceError } = useCollection<MaintenanceLog>(maintenanceQuery);
+  const { data: allMaintenanceLogs, isLoading: isLoadingMaintenance } = useCollection<MaintenanceLog>(maintenanceQuery);
 
   const inspectionQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
@@ -124,7 +123,7 @@ export default function PropertyDetailPage() {
         where('ownerId', '==', user.uid)
     );
   }, [firestore, propertyId, user]);
-  const { data: allInspections, isLoading: isLoadingInspections, error: inspectionError } = useCollection<Inspection>(inspectionQuery);
+  const { data: allInspections, isLoading: isLoadingInspections } = useCollection<Inspection>(inspectionQuery);
 
   // Client-side filtering
   const maintenanceLogs = useMemo(() => {
@@ -134,8 +133,6 @@ export default function PropertyDetailPage() {
   const inspections = useMemo(() => {
     return allInspections?.filter(insp => insp.status !== 'Cancelled') ?? null;
   }, [allInspections]);
-
-  const isLoading = isLoadingProperty || isLoadingMaintenance || isLoadingInspections;
 
   const hasPermission = useMemo(() => {
     if (!property || !user) return false;
@@ -165,38 +162,6 @@ export default function PropertyDetailPage() {
     }
   };
   
-  if (isLoadingProperty) {
-    return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
-  }
-
-  if (propertyError) {
-    return (
-      <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <AlertTriangle className="h-12 w-12 text-destructive" />
-        <Card className="w-full max-w-lg text-center">
-            <CardHeader><CardTitle>Error Loading Property</CardTitle></CardHeader>
-            <CardContent><p className="text-sm text-muted-foreground">{(propertyError as Error).message}</p></CardContent>
-            <CardFooter className="flex justify-center"><Button asChild><Link href="/dashboard/properties">Return to Properties</Link></Button></CardFooter>
-        </Card>
-      </div>
-    );
-  }
-  
-  if (!property) return notFound();
-  
-  if (!hasPermission) {
-      return (
-      <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <AlertTriangle className="h-12 w-12 text-destructive" />
-        <div className="text-center">
-            <h3 className="text-xl font-semibold">Access Denied</h3>
-            <p className="text-sm text-muted-foreground">You do not have permission to view this property.</p>
-        </div>
-        <Button asChild><Link href="/dashboard/properties">Return to Properties</Link></Button>
-      </div>
-    );
-  }
-
   const safeFormatDate = (date: any, formatStr: string) => {
     if (!date) return 'N/A';
     
@@ -219,6 +184,25 @@ export default function PropertyDetailPage() {
       return 'Invalid Date';
     }
   };
+
+  if (isLoadingProperty) {
+    return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
+  }
+
+  if (propertyError || (property && user && property.ownerId !== user.uid)) {
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4">
+        <AlertTriangle className="h-12 w-12 text-destructive" />
+        <Card className="w-full max-w-lg text-center">
+            <CardHeader><CardTitle>Access Denied</CardTitle></CardHeader>
+            <CardContent><p className="text-sm text-muted-foreground">You do not have permission to view this property.</p></CardContent>
+            <CardFooter className="flex justify-center"><Button asChild><Link href="/dashboard/properties">Return to Properties</Link></Button></CardFooter>
+        </Card>
+      </div>
+    );
+  }
+  
+  if (!property) return notFound();
 
   return (
     <>

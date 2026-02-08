@@ -189,7 +189,7 @@ export default function FinancialsPage() {
     return allProperties?.find(p => p.id === selectedPropertyId);
   }, [allProperties, selectedPropertyId]);
 
-  // 2. Fetch expenses for the SELECTED property (Real-time updates)
+  // 2. Fetch expenses for the SELECTED property
   const expensesQuery = useMemoFirebase(() => {
     if (!user || !firestore || selectedPropertyId === 'all') return null;
     return query(
