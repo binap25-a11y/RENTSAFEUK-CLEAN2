@@ -152,6 +152,15 @@ function safeToDate(val: any): Date | null {
   return isNaN(d.getTime()) ? null : d;
 }
 
+const formatCurrency = (val: number) => {
+  return new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency: 'GBP',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(val);
+};
+
 export default function FinancialsPage() {
   const { user } = useUser();
   const firestore = useFirestore();
@@ -219,15 +228,6 @@ export default function FinancialsPage() {
   }, [activeProperties]);
   
   const isLoading = isLoadingProperties || isLoadingExpenses || isLoadingPayments;
-
-  const formatCurrency = (val: number) => {
-    return val.toLocaleString('en-GB', {
-        style: 'currency',
-        currency: 'GBP',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -398,6 +398,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
     const newExpense = { ...data, ownerId: user.uid };
     const expensesCollection = collection(firestore, 'properties', data.propertyId, 'expenses');
     
+    // Non-blocking Firestore write
     addDoc(expensesCollection, newExpense)
       .then(() => {
         toast({
@@ -431,19 +432,6 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
         setIsSubmitting(false);
       });
   }
-
-  const totalExpenses = useMemo(() => {
-    return expenses?.reduce((acc, expense) => acc + Number(expense.amount || 0), 0) || 0;
-  }, [expenses]);
-
-  const formatCurrency = (val: number) => {
-    return val.toLocaleString('en-GB', {
-        style: 'currency',
-        currency: 'GBP',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-  };
 
   return (
     <div className="space-y-6 mt-6">
@@ -572,7 +560,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
               <>
                   <div className="hidden rounded-md border md:block overflow-hidden">
                       <Table>
-                      <TableHeader className="bg-muted/30"><TableRow><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Paid By</TableHead><TableHead className="text-right">Amount (£)</TableHead></TableRow></TableHeader>
+                      <TableHeader className="bg-muted/30"><TableRow><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Paid By</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
                       <TableBody>
                           {expenses?.sort((a,b) => {
                               const dA = safeToDate(a.date) || new Date(0);
@@ -621,7 +609,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
             <CardFooter className="flex justify-end font-bold text-lg pt-4 border-t bg-muted/10">
               <div className="flex items-center gap-4">
                 <span className="text-sm font-normal text-muted-foreground uppercase tracking-wider">Total for {selectedYear}:</span>
-                <span className="text-primary font-bold text-2xl">{formatCurrency(totalExpenses)}</span>
+                <span className="text-primary font-bold text-2xl">{formatCurrency(expenses.reduce((acc, e) => acc + Number(e.amount || 0), 0))}</span>
               </div>
             </CardFooter>
         )}
@@ -656,15 +644,6 @@ function AnnualSummary({
 
   const isLoading = isLoadingExpenses || isLoadingPayments;
   const chartColors = ['hsl(var(--chart-1))', 'hsl(var(--chart-2))', 'hsl(var(--chart-3))', 'hsl(var(--chart-4))', 'hsl(var(--chart-5))'];
-
-  const formatCurrency = (val: number) => {
-    return val.toLocaleString('en-GB', {
-        style: 'currency',
-        currency: 'GBP',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-  };
 
   const expensesByCategory = useMemo(() => {
     const categoryMap: { [key: string]: number } = {};
@@ -757,7 +736,7 @@ function AnnualSummary({
                 </CardHeader>
                 <CardContent>
                     {isLoadingExpenses ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <div className="text-2xl font-bold">{formatCurrency(totalExpenses)}</div>}
-                    <p className="text-[10px] text-muted-foreground font-medium mt-1 h-4">
+                    <p className="text-[10px] text-muted-foreground font-medium mt-1">
                         {selectedProperty ? [selectedProperty.address.nameOrNumber, selectedProperty.address.street].filter(Boolean).join(', ') : 'No property selected'}
                     </p>
                 </CardContent>
@@ -799,7 +778,7 @@ function AnnualSummary({
                                 <TableHeader className="bg-muted/50">
                                     <TableRow>
                                         <TableHead className="text-xs font-bold uppercase">Category</TableHead>
-                                        <TableHead className="text-right text-xs font-bold uppercase">Total (£)</TableHead>
+                                        <TableHead className="text-right text-xs font-bold uppercase">Total</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -859,21 +838,14 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
   const [isDialogOpen, setDialogOpen] = useState(false);
   const [editingPayment, setEditingPayment] = useState<{ month: string; expectedAmount: number } | null>(null);
   const [partialAmount, setPartialAmount] = useState('');
+  
   const months = useMemo(() => Array.from({ length: 12 }, (_, i) => new Date(selectedYear, i, 1).toLocaleString('default', { month: 'long' })), [selectedYear]);
+  
   const statement = useMemo(() => {
     const rent = selectedProperty?.tenancy?.monthlyRent || 0;
     const paymentsMap = rentPayments?.reduce((acc, p) => { acc[p.month] = p; return acc; }, {} as Record<string, RentPayment>);
     return months.map(month => ({ month, rent, status: paymentsMap?.[month]?.status || 'Pending' }));
   }, [selectedProperty, months, rentPayments]);
-  
-  const formatCurrency = (val: number) => {
-    return val.toLocaleString('en-GB', {
-        style: 'currency',
-        currency: 'GBP',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-  };
 
   const handleSavePartialPayment = async () => {
     if (!firestore || !user || !selectedProperty || !editingPayment) return;
@@ -911,6 +883,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
 
   const totalExpectedRent = (selectedProperty?.tenancy?.monthlyRent || 0) * 12;
   const totalPaid = useMemo(() => rentPayments?.reduce((acc, row) => acc + Number(row.amountPaid || 0), 0) || 0, [rentPayments]);
+  
   const getRentStatusProps = (status: PaymentStatus) => {
     switch (status) {
       case 'Paid': return { Icon: CheckCircle2, className: "text-green-600 border-green-200 bg-green-50" };
@@ -919,6 +892,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
       case 'Pending': default: return { Icon: Clock, className: "" };
     }
   };
+
   if (!selectedProperty) return <Card className="mt-6"><CardContent className='pt-10 pb-10 text-center text-muted-foreground border-2 border-dashed rounded-lg bg-muted/30'><Filter className="h-10 w-10 mx-auto mb-4 opacity-20" /><p>Select a property to view statement.</p></CardContent></Card>;
   if (!selectedProperty.tenancy?.monthlyRent) return <Card className="mt-6 border-yellow-200 bg-yellow-50/30"><CardContent className="pt-10 pb-10 text-center border-2 border-dashed rounded-lg"><Banknote className="h-10 w-10 mx-auto mb-4 text-yellow-600/40" /><p className="font-semibold text-yellow-800">Tenancy details missing</p><Button asChild variant="outline" size="sm" className="mt-4 bg-background"><Link href={`/dashboard/properties/${selectedProperty.id}/edit`}>Setup Financials</Link></Button></CardContent></Card>;
 
@@ -993,15 +967,6 @@ function ArrearsManagement({ properties }: { properties: Property[] }) {
   const [partialPaymentData, setPartialPaymentData] = useState<{ payment: RentPayment; amount: string } | null>(null);
   const currentYear = getYear(new Date());
   const currentMonth = format(new Date(), 'MMMM');
-
-  const formatCurrency = (val: number) => {
-    return val.toLocaleString('en-GB', {
-        style: 'currency',
-        currency: 'GBP',
-        minimumFractionDigits: 2,
-        maximumFractionDigits: 2,
-    });
-  };
 
   const fetchArrears = async () => {
     if (!user || !firestore || properties.length === 0) return;
