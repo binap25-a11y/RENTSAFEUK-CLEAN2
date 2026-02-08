@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Upload, Loader2, FileText } from 'lucide-react';
+import { Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -78,8 +78,7 @@ export default function UploadDocumentPage() {
   const { user } = useUser();
   const firestore = useFirestore();
   const storage = useStorage();
-  const [isUploading, setIsUploading] = useState(false);
-  const [fileName, setFileName] = useState('');
+  const [isSaving, setIsSaving] = useState(false);
 
   const form = useForm<DocumentFormValues>({
     resolver: zodResolver(documentSchema),
@@ -110,7 +109,7 @@ export default function UploadDocumentPage() {
   }, [allProperties]);
 
   async function onSubmit(data: DocumentFormValues) {
-    if (!user || !firestore || !storage) {
+    if (!user || !firestore) {
       toast({
         variant: 'destructive',
         title: 'Authentication Error',
@@ -119,14 +118,14 @@ export default function UploadDocumentPage() {
       return;
     }
     
-    setIsUploading(true);
+    setIsSaving(true);
 
     try {
       let fileUri = '';
       let finalFileName = '';
 
-      // Only upload if a file is provided
-      if (data.documentFile && data.documentFile.length > 0) {
+      // Only upload if a file is provided (currently hidden in UI)
+      if (storage && data.documentFile && data.documentFile.length > 0) {
         const file = data.documentFile[0];
         const uniqueFileName = `${Date.now()}-${file.name}`;
         const fileStorageRef = storageRef(storage, `documents/${user.uid}/${uniqueFileName}`);
@@ -150,21 +149,19 @@ export default function UploadDocumentPage() {
       await addDoc(documentsCollection, newDocument);
       
       toast({
-        title: fileUri ? 'Document Uploaded' : 'Document Record Saved',
-        description: fileUri 
-          ? 'The document has been successfully uploaded and saved.' 
-          : 'The document details have been saved without a file attachment.',
+        title: 'Document Logged',
+        description: 'The document details have been successfully saved to the property records.',
       });
       router.push('/dashboard/documents');
     } catch (error) {
-        console.error('Failed to upload document', error);
+        console.error('Failed to save document', error);
         toast({
             variant: 'destructive',
             title: 'Save Failed',
             description: 'There was an error saving the document record. Please try again.',
         });
     } finally {
-        setIsUploading(false);
+        setIsSaving(false);
     }
   }
 
@@ -175,9 +172,9 @@ export default function UploadDocumentPage() {
   return (
     <Card className="max-w-2xl mx-auto">
       <CardHeader>
-        <CardTitle>Log Document</CardTitle>
+        <CardTitle>Log Property Document</CardTitle>
         <CardDescription>
-          Fill in the details. You can optionally attach a file now or log the details and upload later.
+          Fill in the details to record a new legal or compliance document for your property portfolio.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -280,55 +277,9 @@ export default function UploadDocumentPage() {
                     )}
                 />
             </div>
-            <FormField
-              control={form.control}
-              name="documentFile"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Document File (Optional - Max 5MB)</FormLabel>
-                  <FormControl>
-                    <div className="space-y-4">
-                        <Button asChild className="w-full cursor-pointer" variant="outline">
-                        <label htmlFor="file-upload">
-                            <Upload className="mr-2 h-4 w-4" />
-                            {fileName ? 'Change File' : 'Choose File (Optional)'}
-                            <Input
-                            id="file-upload"
-                            type="file"
-                            className="sr-only"
-                            onChange={(e) => {
-                                field.onChange(e.target.files);
-                                setFileName(e.target.files?.[0]?.name || '');
-                            }}
-                            />
-                        </label>
-                        </Button>
-                        {fileName && (
-                            <div className="flex items-center gap-2 p-2 rounded-md bg-primary/5 border border-primary/20 animate-in fade-in slide-in-from-top-1">
-                                <FileText className="h-4 w-4 text-primary shrink-0" />
-                                <span className="text-xs font-medium text-primary truncate flex-1">
-                                    Selected: {fileName}
-                                </span>
-                                <Button 
-                                    type="button" 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="h-6 w-6 p-0 hover:bg-destructive/10 hover:text-destructive"
-                                    onClick={() => {
-                                        field.onChange(undefined);
-                                        setFileName('');
-                                    }}
-                                >
-                                    &times;
-                                </Button>
-                            </div>
-                        )}
-                    </div>
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            
+            {/* Document File section hidden for later use */}
+            
              <FormField
               control={form.control}
               name="notes"
@@ -351,13 +302,13 @@ export default function UploadDocumentPage() {
                 <Button type="button" variant="outline" asChild>
                     <Link href="/dashboard/documents">Cancel</Link>
                 </Button>
-                <Button type="submit" disabled={isUploading}>
-                  {isUploading ? (
+                <Button type="submit" disabled={isSaving}>
+                  {isSaving ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Saving...
                     </>
-                  ) : fileName ? 'Save & Upload' : 'Save Details'}
+                  ) : 'Save Record'}
                 </Button>
             </div>
           </form>

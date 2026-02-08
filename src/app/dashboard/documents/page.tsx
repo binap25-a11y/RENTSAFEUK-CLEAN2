@@ -27,7 +27,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Search, Upload, FileWarning, Clock, ShieldCheck, Loader2, Eye, Filter } from 'lucide-react';
+import { Search, PlusCircle, FileWarning, Clock, ShieldCheck, Loader2, Eye, Filter } from 'lucide-react';
 import { format, isBefore, addDays } from 'date-fns';
 import {
   useUser,
@@ -84,6 +84,15 @@ const getStatusVariant = (status: string): "destructive" | "secondary" | "outlin
     default:
       return 'outline';
   }
+};
+
+const formatCurrency = (val: number) => {
+  return new Intl.NumberFormat('en-GB', {
+    style: 'currency',
+    currency: 'GBP',
+    minimumFractionDigits: 2,
+    maximumFractionDigits: 2,
+  }).format(val);
 };
 
 export default function DocumentsPage() {
@@ -187,16 +196,16 @@ export default function DocumentsPage() {
       </div>
       <Card>
         <CardHeader>
-          <CardTitle>Document Details</CardTitle>
+          <CardTitle>Portfolio Documents</CardTitle>
           <CardDescription>
-            Manage all your property-related documents in one place.
+            Manage and track legal compliance documents across your portfolio.
           </CardDescription>
         </CardHeader>
         <CardContent className="space-y-4">
           <div className="flex justify-start">
             <Button asChild className='w-full md:w-auto'>
               <Link href="/dashboard/documents/upload">
-                <Upload className="mr-2 h-4 w-4" /> Upload Document
+                <PlusCircle className="mr-2 h-4 w-4" /> Log Document
               </Link>
             </Button>
           </div>
