@@ -77,7 +77,7 @@ const menuItems = [
     icon: Files,
     subItems: [
         { href: '/dashboard/documents', label: 'All Documents' },
-        { href: '/dashboard/documents/upload', label: 'Upload Document' },
+        { href: '/dashboard/documents/upload', label: 'Log Document' },
     ],
   },
   { href: '/dashboard/reminders', label: 'Reminders', icon: Bell },
