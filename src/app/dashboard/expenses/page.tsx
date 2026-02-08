@@ -36,7 +36,18 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
+  DialogDescription,
 } from '@/components/ui/dialog';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 import { 
   PoundSterling, 
   TrendingDown, 
@@ -52,7 +63,11 @@ import {
   PieChart as PieChartIcon,
   List,
   Clock,
-  LayoutList
+  LayoutList,
+  Eye,
+  Edit,
+  Trash2,
+  Calendar
 } from 'lucide-react';
 import { getYear, format, isSameYear } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -72,7 +87,7 @@ import {
   errorEmitter,
   FirestorePermissionError,
 } from '@/firebase';
-import { collection, query, where, doc, setDoc, addDoc, limit, getDocs } from 'firebase/firestore';
+import { collection, query, where, doc, setDoc, addDoc, limit, getDocs, deleteDoc, updateDoc } from 'firebase/firestore';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -88,6 +103,7 @@ import { Pie, PieChart, Cell } from 'recharts';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import Link from 'next/link';
+import { Alert, AlertTitle, AlertDescription } from '@/components/ui/alert';
 
 // Extend the autoTable interface in jsPDF
 declare module 'jspdf' {
@@ -120,6 +136,7 @@ interface Expense {
   amount: number;
   paidBy: string;
   notes?: string;
+  ownerId: string;
 }
 
 type PaymentStatus = 'Paid' | 'Partially Paid' | 'Unpaid' | 'Pending';
@@ -188,7 +205,6 @@ export default function FinancialsPage() {
   }, [allProperties, selectedPropertyId]);
 
   // 2. Fetch expenses for the selected property
-  // Note: Fetching all for property and filtering in JS to avoid composite index requirements for prototyping
   const expensesQuery = useMemoFirebase(() => {
     if (!user || !firestore || !selectedPropertyId) return null;
     return query(
@@ -199,7 +215,6 @@ export default function FinancialsPage() {
   
   const { data: rawExpenses, isLoading: isLoadingExpenses, error: expensesError } = useCollection<Expense>(expensesQuery);
 
-  // Filter expenses by year in-memory
   const expenses = useMemo(() => {
     if (!rawExpenses) return [];
     return rawExpenses.filter(exp => {
@@ -329,9 +344,9 @@ export default function FinancialsPage() {
            </div>
 
            {expensesError && (
-               <Alert variant="destructive">
+               <Alert variant="destructive" className="mt-4">
                    <AlertTriangle className="h-4 w-4" />
-                   <AlertTitle>Query Error</AlertTitle>
+                   <AlertTitle>Database Error</AlertTitle>
                    <AlertDescription>{expensesError.message}</AlertDescription>
                </Alert>
            )}
@@ -389,6 +404,11 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
   const { user } = useUser();
   const firestore = useFirestore();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  
+  // States for View/Edit/Delete
+  const [viewingExpense, setViewingExpense] = useState<Expense | null>(null);
+  const [editingExpense, setEditingExpense] = useState<Expense | null>(null);
+  const [deletingExpense, setDeletingExpense] = useState<Expense | null>(null);
 
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseSchema),
@@ -401,11 +421,28 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
     },
   });
 
+  const editForm = useForm<ExpenseFormValues>({
+    resolver: zodResolver(expenseSchema),
+  });
+
   useEffect(() => {
     if (selectedPropertyId) {
         form.setValue('propertyId', selectedPropertyId);
     }
   }, [selectedPropertyId, form]);
+
+  useEffect(() => {
+    if (editingExpense) {
+        editForm.reset({
+            propertyId: editingExpense.propertyId,
+            expenseType: editingExpense.expenseType,
+            amount: editingExpense.amount,
+            paidBy: editingExpense.paidBy,
+            notes: editingExpense.notes || '',
+            date: safeToDate(editingExpense.date) || new Date(),
+        });
+    }
+  }, [editingExpense, editForm]);
 
   function onSubmit(data: ExpenseFormValues) {
     if (!user || !firestore) return;
@@ -414,13 +451,9 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
     const newExpense = { ...data, ownerId: user.uid };
     const expensesCollection = collection(firestore, 'properties', data.propertyId, 'expenses');
     
-    // Non-blocking Firestore write
     addDoc(expensesCollection, newExpense)
       .then(() => {
-        toast({
-          title: 'Expense Logged',
-          description: 'The new expense has been successfully logged.',
-        });
+        toast({ title: 'Expense Logged', description: 'The new expense has been successfully logged.' });
         form.reset({ 
             propertyId: data.propertyId, 
             expenseType: '', 
@@ -437,17 +470,44 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
           requestResourceData: newExpense,
         });
         errorEmitter.emit('permission-error', permissionError);
-        
-        toast({
-          variant: 'destructive',
-          title: 'Save Failed',
-          description: serverError.message || 'There was an error saving the expense.',
-        });
+        toast({ variant: 'destructive', title: 'Save Failed', description: serverError.message || 'Error saving expense.' });
       })
-      .finally(() => {
-        setIsSubmitting(false);
-      });
+      .finally(() => setIsSubmitting(false));
   }
+
+  const handleUpdate = async (data: ExpenseFormValues) => {
+    if (!firestore || !editingExpense) return;
+    setIsSubmitting(true);
+    const docRef = doc(firestore, 'properties', editingExpense.propertyId, 'expenses', editingExpense.id);
+    
+    updateDoc(docRef, { ...data })
+      .then(() => {
+        toast({ title: 'Expense Updated', description: 'The record has been saved successfully.' });
+        setEditingExpense(null);
+      })
+      .catch(async (err) => {
+        console.error(err);
+        toast({ variant: 'destructive', title: 'Update Failed' });
+      })
+      .finally(() => setIsSubmitting(false));
+  };
+
+  const handleDelete = async () => {
+    if (!firestore || !deletingExpense) return;
+    setIsSubmitting(true);
+    const docRef = doc(firestore, 'properties', deletingExpense.propertyId, 'expenses', deletingExpense.id);
+    
+    deleteDoc(docRef)
+      .then(() => {
+        toast({ title: 'Expense Deleted', description: 'The record has been permanently removed.' });
+        setDeletingExpense(null);
+      })
+      .catch(async (err) => {
+        console.error(err);
+        toast({ variant: 'destructive', title: 'Delete Failed' });
+      })
+      .finally(() => setIsSubmitting(false));
+  };
 
   return (
     <div className="space-y-6 mt-6">
@@ -483,7 +543,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
                   name="date"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Expense Date</FormLabel>
+                      <FormLabel>Date</FormLabel>
                       <FormControl>
                         <Input
                             type="date"
@@ -499,7 +559,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
                   control={form.control} name="expenseType"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Expense Category</FormLabel>
+                      <FormLabel>Category</FormLabel>
                       <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                           <SelectTrigger><SelectValue placeholder="Select a type" /></SelectTrigger>
@@ -520,7 +580,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
                   control={form.control} name="amount"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Total Amount (£)</FormLabel>
+                      <FormLabel>Amount (£)</FormLabel>
                       <FormControl><Input type="text" inputMode="decimal" placeholder="0.00" {...field} value={field.value ?? ''} /></FormControl>
                       <FormMessage />
                     </FormItem>
@@ -530,7 +590,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
                   control={form.control} name="paidBy"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Payer</FormLabel>
+                      <FormLabel>Paid By</FormLabel>
                       <FormControl><Input placeholder="e.g., Landlord, Tenant" {...field} value={field.value ?? ''} /></FormControl>
                       <FormMessage />
                     </FormItem>
@@ -541,8 +601,8 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
                 control={form.control} name="notes"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Additional Notes (Optional)</FormLabel>
-                    <FormControl><Textarea placeholder="Add any relevant details about this purchase..." {...field} value={field.value ?? ''} /></FormControl>
+                    <FormLabel>Notes (Optional)</FormLabel>
+                    <FormControl><Textarea placeholder="Add details..." {...field} value={field.value ?? ''} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
@@ -564,7 +624,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
             <LayoutList className='h-5 w-5 text-primary' />
             <CardTitle className="text-lg">Logged Expenses</CardTitle>
           </div>
-          <CardDescription>All recorded expenditures for the selected property in {selectedYear}.</CardDescription>
+          <CardDescription>Records for {selectedYear}.</CardDescription>
         </CardHeader>
         <CardContent>
           {isLoadingExpenses ? (
@@ -574,13 +634,13 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
           ) : expenses.length === 0 ? (
               <div className="text-center text-muted-foreground py-16 border-2 border-dashed rounded-lg bg-muted/10">
                   <Banknote className="h-10 w-10 mx-auto mb-4 opacity-20" />
-                  <p className="text-sm font-medium">{selectedPropertyId ? 'No expenses logged for this property in this period.' : 'Select a property above to see logs.'}</p>
+                  <p className="text-sm font-medium">{selectedPropertyId ? 'No records for this period.' : 'Select a property to view history.'}</p>
               </div>
           ) : (
               <>
                   <div className="hidden rounded-md border md:block overflow-hidden">
                       <Table>
-                      <TableHeader className="bg-muted/30"><TableRow><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Paid By</TableHead><TableHead className="text-right">Amount</TableHead></TableRow></TableHeader>
+                      <TableHeader className="bg-muted/30"><TableRow><TableHead>Date</TableHead><TableHead>Type</TableHead><TableHead>Paid By</TableHead><TableHead className="text-right">Amount</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                       <TableBody>
                           {expenses.sort((a,b) => {
                               const dA = safeToDate(a.date) || new Date(0);
@@ -592,6 +652,13 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
                               <TableCell className="font-semibold text-sm">{expense.expenseType}</TableCell>
                               <TableCell className='text-sm'>{expense.paidBy}</TableCell>
                               <TableCell className="text-right font-bold whitespace-nowrap text-sm">{formatCurrency(expense.amount)}</TableCell>
+                              <TableCell className="text-right">
+                                  <div className="flex justify-end gap-1">
+                                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setViewingExpense(expense)}><Eye className="h-4 w-4" /></Button>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingExpense(expense)}><Edit className="h-4 w-4" /></Button>
+                                      <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive hover:text-destructive hover:bg-destructive/10" onClick={() => setDeletingExpense(expense)}><Trash2 className="h-4 w-4" /></Button>
+                                  </div>
+                              </TableCell>
                           </TableRow>
                           ))}
                       </TableBody>
@@ -601,8 +668,16 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
                       {expenses.map((expense) => (
                           <Card key={expense.id} className="shadow-none border-muted/60">
                               <CardHeader className="pb-2">
-                                  <CardTitle className="text-base font-bold">{expense.expenseType}</CardTitle>
-                                  <CardDescription>{safeToDate(expense.date) ? format(safeToDate(expense.date)!, 'dd/MM/yyyy') : 'N/A'}</CardDescription>
+                                  <div className="flex justify-between items-start">
+                                      <div>
+                                          <CardTitle className="text-base font-bold">{expense.expenseType}</CardTitle>
+                                          <CardDescription>{safeToDate(expense.date) ? format(safeToDate(expense.date)!, 'dd/MM/yyyy') : 'N/A'}</CardDescription>
+                                      </div>
+                                      <div className="flex gap-1">
+                                          <Button variant="ghost" size="icon" className="h-8 w-8" onClick={() => setEditingExpense(expense)}><Edit className="h-4 w-4" /></Button>
+                                          <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setDeletingExpense(expense)}><Trash2 className="h-4 w-4" /></Button>
+                                      </div>
+                                  </div>
                               </CardHeader>
                               <CardContent className="space-y-2 text-sm pt-0">
                                   <div className="flex justify-between items-center border-t pt-2">
@@ -614,11 +689,6 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
                                       <span className="font-medium">{expense.paidBy}</span>
                                   </div>
                               </CardContent>
-                              {expense.notes && (
-                                  <CardFooter className="text-xs text-muted-foreground border-t pt-2 pb-2">
-                                      <p className="italic">"{expense.notes}"</p>
-                                  </CardFooter>
-                              )}
                           </Card>
                       ))}
                   </div>
@@ -634,6 +704,102 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties, s
             </CardFooter>
         )}
       </Card>
+
+      {/* View Dialog */}
+      <Dialog open={!!viewingExpense} onOpenChange={(open) => !open && setViewingExpense(null)}>
+        <DialogContent className="max-w-md">
+            <DialogHeader>
+                <DialogTitle>Expense Details</DialogTitle>
+                <DialogDescription>Full record information.</DialogDescription>
+            </DialogHeader>
+            {viewingExpense && (
+                <div className="space-y-4 py-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div>
+                            <Label className="text-[10px] uppercase font-bold text-muted-foreground">Amount</Label>
+                            <p className="text-xl font-bold text-primary">{formatCurrency(viewingExpense.amount)}</p>
+                        </div>
+                        <div>
+                            <Label className="text-[10px] uppercase font-bold text-muted-foreground">Date</Label>
+                            <p className="font-medium">{safeToDate(viewingExpense.date) ? format(safeToDate(viewingExpense.date)!, 'PPP') : 'N/A'}</p>
+                        </div>
+                    </div>
+                    <div>
+                        <Label className="text-[10px] uppercase font-bold text-muted-foreground">Category</Label>
+                        <p className="font-medium">{viewingExpense.expenseType}</p>
+                    </div>
+                    <div>
+                        <Label className="text-[10px] uppercase font-bold text-muted-foreground">Paid By</Label>
+                        <p className="font-medium">{viewingExpense.paidBy}</p>
+                    </div>
+                    {viewingExpense.notes && (
+                        <div>
+                            <Label className="text-[10px] uppercase font-bold text-muted-foreground">Notes</Label>
+                            <p className="text-sm text-muted-foreground bg-muted/50 p-3 rounded-md italic">"{viewingExpense.notes}"</p>
+                        </div>
+                    )}
+                </div>
+            )}
+            <DialogFooter>
+                <Button onClick={() => setViewingExpense(null)}>Close</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Edit Dialog */}
+      <Dialog open={!!editingExpense} onOpenChange={(open) => !open && setEditingExpense(null)}>
+        <DialogContent className="max-w-lg">
+            <DialogHeader>
+                <DialogTitle>Edit Expense</DialogTitle>
+                <DialogDescription>Update the details for this record.</DialogDescription>
+            </DialogHeader>
+            <Form {...editForm}>
+                <form onSubmit={editForm.handleSubmit(handleUpdate)} className="space-y-4">
+                    <div className="grid grid-cols-2 gap-4">
+                        <FormField control={editForm.control} name="date" render={({ field }) => (
+                            <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                        <FormField control={editForm.control} name="expenseType" render={({ field }) => (
+                            <FormItem><FormLabel>Category</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl><SelectContent>{['Repairs and Maintenance','Utilities','Insurance','Mortgage Interest','Cleaning','Gardening','Letting Agent Fees'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>
+                        )} />
+                    </div>
+                    <div className="grid grid-cols-2 gap-4">
+                        <FormField control={editForm.control} name="amount" render={({ field }) => (
+                            <FormItem><FormLabel>Amount (£)</FormLabel><FormControl><Input type="text" inputMode="decimal" {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                        <FormField control={editForm.control} name="paidBy" render={({ field }) => (
+                            <FormItem><FormLabel>Paid By</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
+                    </div>
+                    <FormField control={editForm.control} name="notes" render={({ field }) => (
+                        <FormItem><FormLabel>Notes</FormLabel><FormControl><Textarea {...field} /></FormControl><FormMessage /></FormItem>
+                    )} />
+                    <DialogFooter className="pt-4">
+                        <Button type="button" variant="outline" onClick={() => setEditingExpense(null)}>Cancel</Button>
+                        <Button type="submit" disabled={isSubmitting}>{isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}Save Changes</Button>
+                    </DialogFooter>
+                </form>
+            </Form>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Alert */}
+      <AlertDialog open={!!deletingExpense} onOpenChange={(open) => !open && setDeletingExpense(null)}>
+        <AlertDialogContent>
+            <AlertDialogHeader>
+                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
+                <AlertDialogDescription>
+                    This will permanently delete the {deletingExpense?.expenseType} expense of {deletingExpense ? formatCurrency(deletingExpense.amount) : ''}. This action cannot be undone.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter>
+                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDelete} className="bg-destructive text-destructive-foreground hover:bg-destructive/90" disabled={isSubmitting}>
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Delete Permanently
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
