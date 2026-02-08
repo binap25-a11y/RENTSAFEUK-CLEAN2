@@ -36,7 +36,6 @@ import {
   DialogHeader,
   DialogTitle,
   DialogFooter,
-  DialogDescription,
 } from '@/components/ui/dialog';
 import { 
   PoundSterling, 
@@ -44,7 +43,6 @@ import {
   TrendingUp, 
   Loader2, 
   CheckCircle2, 
-  XCircle, 
   AlertCircle, 
   Download, 
   Filter, 
@@ -163,6 +161,11 @@ export default function FinancialsPage() {
   const [selectedPropertyId, setSelectedPropertyId] = useState('');
   const [selectedYear, setSelectedYear] = useState(getYear(new Date()));
 
+  // Portfolio-wide aggregation state
+  const [portfolioExpenses, setPortfolioExpenses] = useState<Expense[]>([]);
+  const [portfolioRentPayments, setPortfolioRentPayments] = useState<RentPayment[]>([]);
+  const [isAggregating, setIsAggregating] = useState(false);
+
   // 1. Fetch properties
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
@@ -175,16 +178,16 @@ export default function FinancialsPage() {
 
   const { data: allProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
   
+  // Be inclusive: count everything that isn't explicitly deleted
   const activeProperties = useMemo(() => {
-    const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
-    return allProperties?.filter(p => activeStatuses.includes(p.status)) ?? [];
+    return allProperties?.filter(p => p.status !== 'Deleted') ?? [];
   }, [allProperties]);
 
   const selectedProperty = useMemo(() => {
     return allProperties?.find(p => p.id === selectedPropertyId);
   }, [allProperties, selectedPropertyId]);
 
-  // 2. Fetch all expenses for the property (Real-time updates)
+  // 2. Fetch expenses for the SELECTED property (Real-time updates)
   const expensesQuery = useMemoFirebase(() => {
     if (!user || !firestore || !selectedPropertyId) return null;
     return query(
@@ -195,16 +198,7 @@ export default function FinancialsPage() {
   
   const { data: rawExpenses, isLoading: isLoadingExpenses, error: expensesError } = useCollection<Expense>(expensesQuery);
 
-  // In-memory filter for selected year
-  const expenses = useMemo(() => {
-    if (!rawExpenses) return [];
-    return rawExpenses.filter(exp => {
-        const d = safeToDate(exp.date);
-        return d && isSameYear(d, new Date(selectedYear, 0, 1));
-    });
-  }, [rawExpenses, selectedYear]);
-
-  // 3. Fetch rent payments
+  // 3. Fetch rent payments for the SELECTED property
   const rentPaymentsQuery = useMemoFirebase(() => {
     if (!user || !firestore || !selectedPropertyId) return null;
     return query(
@@ -213,11 +207,65 @@ export default function FinancialsPage() {
       where('year', '==', selectedYear)
     );
   }, [firestore, user, selectedPropertyId, selectedYear]);
-  const { data: rentPayments, isLoading: isLoadingPayments } = useCollection<RentPayment>(rentPaymentsQuery);
+  const { data: rawRentPayments, isLoading: isLoadingPayments } = useCollection<RentPayment>(rentPaymentsQuery);
 
-  // 4. Calculations
+  // Aggregation Effect: Fetch data for all properties when no specific one is selected
+  useEffect(() => {
+    if (!user || activeProperties.length === 0 || selectedPropertyId) {
+        setPortfolioExpenses([]);
+        setPortfolioRentPayments([]);
+        return;
+    }
+
+    const aggregateData = async () => {
+        setIsAggregating(true);
+        try {
+            const expPromises = activeProperties.map(p => 
+                getDocs(query(collection(firestore, 'properties', p.id, 'expenses'), where('ownerId', '==', user.uid)))
+            );
+            const rentPromises = activeProperties.map(p => 
+                getDocs(query(collection(firestore, 'properties', p.id, 'rentPayments'), where('ownerId', '==', user.uid), where('year', '==', selectedYear)))
+            );
+
+            const [expSnaps, rentSnaps] = await Promise.all([
+                Promise.all(expPromises),
+                Promise.all(rentPromises)
+            ]);
+
+            setPortfolioExpenses(expSnaps.flatMap(snap => snap.docs.map(d => ({ id: d.id, ...d.data() } as Expense))));
+            setPortfolioRentPayments(rentSnaps.flatMap(snap => snap.docs.map(d => ({ id: d.id, ...d.data() } as RentPayment))));
+        } catch (err) {
+            console.error("Aggregation failed:", err);
+        } finally {
+            setIsAggregating(false);
+        }
+    };
+
+    aggregateData();
+  }, [user, activeProperties, firestore, selectedPropertyId, selectedYear]);
+
+  // 4. Final Data Resolution
+  const expenses = useMemo(() => {
+    const list = selectedPropertyId ? (rawExpenses || []) : portfolioExpenses;
+    return list.filter(exp => {
+        const d = safeToDate(exp.date);
+        return d && isSameYear(d, new Date(selectedYear, 0, 1));
+    });
+  }, [rawExpenses, portfolioExpenses, selectedPropertyId, selectedYear]);
+
+  const rentPayments = useMemo(() => {
+    return selectedPropertyId ? (rawRentPayments || []) : portfolioRentPayments;
+  }, [rawRentPayments, portfolioRentPayments, selectedPropertyId]);
+
+  // 5. Calculations
+  const portfolioIncome = useMemo(() => {
+    return activeProperties.reduce((total, prop) => {
+        const rent = Number(prop.tenancy?.monthlyRent || 0);
+        return total + (rent * 12);
+    }, 0);
+  }, [activeProperties]);
+
   const totalPaidRent = useMemo(() => {
-    if (!rentPayments) return 0;
     return rentPayments.reduce((acc, p) => acc + Number(p.amountPaid || 0), 0);
   }, [rentPayments]);
   
@@ -226,19 +274,13 @@ export default function FinancialsPage() {
   }, [expenses]);
   
   const netIncome = totalPaidRent - totalExpenses;
-
-  const portfolioIncome = useMemo(() => {
-    return activeProperties.reduce((total, prop) => {
-        return total + (prop.tenancy?.monthlyRent || 0) * 12;
-    }, 0);
-  }, [activeProperties]);
   
-  const isLoading = isLoadingProperties || isLoadingExpenses || isLoadingPayments;
+  const isLoading = isLoadingProperties || (selectedPropertyId ? (isLoadingExpenses || isLoadingPayments) : isAggregating);
 
   return (
     <div className="flex flex-col gap-6">
         {/* Filters positioned at the very top */}
-        <div className="flex flex-col gap-4 max-w-md bg-card p-6 rounded-lg border shadow-sm">
+        <div className="flex flex-col gap-4 max-w-md bg-card p-6 rounded-lg border">
             <div className="grid w-full gap-1.5">
                 <Label htmlFor="property-filter" className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-muted-foreground">
                     <Filter className="h-3" />
@@ -246,9 +288,10 @@ export default function FinancialsPage() {
                 </Label>
                 <Select onValueChange={setSelectedPropertyId} value={selectedPropertyId}>
                     <SelectTrigger id="property-filter" className="w-full h-12 bg-background">
-                    <SelectValue placeholder={isLoadingProperties ? "Loading portfolio..." : "Select an active property"} />
+                    <SelectValue placeholder={isLoadingProperties ? "Loading portfolio..." : "All Properties (Portfolio View)"} />
                     </SelectTrigger>
                     <SelectContent>
+                    <SelectItem value="">All Properties (Portfolio View)</SelectItem>
                     {activeProperties.map((prop) => (
                         <SelectItem key={prop.id} value={prop.id}>
                             {[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}
@@ -281,7 +324,7 @@ export default function FinancialsPage() {
                 </CardHeader>
                 <CardContent>
                 <div className="text-2xl font-bold">{formatCurrency(portfolioIncome)}</div>
-                <p className="text-xs text-muted-foreground">{activeProperties.length} active properties</p>
+                <p className="text-xs text-muted-foreground">{activeProperties.length} active properties tracked</p>
                 </CardContent>
             </Card>
             <Card>
@@ -291,10 +334,10 @@ export default function FinancialsPage() {
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">
-                        {isLoading && selectedPropertyId ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : selectedPropertyId ? formatCurrency(totalPaidRent) : '£0.00'}
+                        {isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(totalPaidRent)}
                     </div>
                     <div className="text-[10px] font-medium text-muted-foreground h-4 uppercase tracking-tight">
-                        {selectedProperty ? [selectedProperty.address.street].filter(Boolean).join(', ') : `Reporting Year ${selectedYear}`}
+                        {selectedProperty ? [selectedProperty.address.street].filter(Boolean).join(', ') : `Portfolio Total - ${selectedYear}`}
                     </div>
                 </CardContent>
             </Card>
@@ -305,7 +348,7 @@ export default function FinancialsPage() {
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold">
-                        {isLoading && selectedPropertyId ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : selectedPropertyId ? formatCurrency(totalExpenses) : '£0.00'}
+                        {isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(totalExpenses)}
                     </div>
                     <p className="text-[10px] font-medium text-muted-foreground h-4 uppercase tracking-tight">Period: {selectedYear}</p>
                 </CardContent>
@@ -317,7 +360,7 @@ export default function FinancialsPage() {
                 </CardHeader>
                 <CardContent>
                     <div className={"text-2xl font-bold " + (netIncome < 0 ? " text-destructive" : " text-primary")}>
-                        {isLoading && selectedPropertyId ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : selectedPropertyId ? formatCurrency(netIncome) : '£0.00'}
+                        {isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(netIncome)}
                     </div>
                      <p className="text-[10px] font-medium text-muted-foreground h-4 uppercase tracking-tight">Net result for year</p>
                 </CardContent>
@@ -353,9 +396,9 @@ export default function FinancialsPage() {
                     selectedProperty={selectedProperty} 
                     selectedYear={selectedYear}
                     expenses={expenses}
-                    isLoadingExpenses={isLoadingExpenses}
+                    isLoadingExpenses={isLoading}
                     rentPayments={rentPayments}
-                    isLoadingPayments={isLoadingPayments}
+                    isLoadingPayments={isLoading}
                     portfolioIncome={portfolioIncome}
                     totalPaidRent={totalPaidRent}
                     totalExpenses={totalExpenses}
@@ -366,7 +409,7 @@ export default function FinancialsPage() {
                 <RentStatement 
                     selectedProperty={selectedProperty} 
                     selectedYear={selectedYear}
-                    rentPayments={rentPayments}
+                    rentPayments={rawRentPayments}
                     isLoadingPayments={isLoadingPayments}
                 />
               </TabsContent>
@@ -644,7 +687,7 @@ function AnnualSummary({
   return (
     <div className="space-y-6 mt-6">
         <div className='flex justify-end'>
-            <Button onClick={generatePDF} disabled={!selectedProperty || isLoading} size="sm" className='shadow-sm'>
+            <Button onClick={generatePDF} disabled={!selectedProperty || isLoading} size="sm">
                 <Download className="mr-2 h-4 w-4" />
                 Export Statement (PDF)
             </Button>
@@ -668,9 +711,9 @@ function AnnualSummary({
                     </CardTitle>
                 </CardHeader>
                 <CardContent>
-                    {isLoadingExpenses ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <div className="text-2xl font-bold">{formatCurrency(totalExpenses)}</div>}
+                    {isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <div className="text-2xl font-bold">{formatCurrency(totalExpenses)}</div>}
                     <div className="text-[10px] text-muted-foreground font-medium mt-1">
-                        {selectedProperty ? [selectedProperty.address.street].filter(Boolean).join(', ') : 'No property selected'}
+                        {selectedProperty ? [selectedProperty.address.street].filter(Boolean).join(', ') : 'Portfolio-wide History'}
                     </div>
                 </CardContent>
             </Card>
@@ -696,14 +739,14 @@ function AnnualSummary({
                     <CardDescription className="text-xs">Detailed totals per category for {selectedYear}.</CardDescription>
                 </CardHeader>
                 <CardContent className="pt-6">
-                    {isLoadingExpenses ? (
+                    {isLoading ? (
                         <div className="flex h-48 items-center justify-center">
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
                     ) : expensesByCategory.length === 0 ? (
                         <div className="py-16 text-center text-muted-foreground border-2 border-dashed rounded-lg bg-muted/10">
                             <Banknote className="h-10 w-10 mx-auto mb-4 opacity-20" />
-                            <p className="text-xs italic">{selectedProperty ? "No financial records found for this period." : "Choose a property from the filters above."}</p>
+                            <p className="text-xs italic">No financial records found for this selection.</p>
                         </div>
                     ) : (
                         <div className="rounded-md border overflow-hidden">
@@ -737,7 +780,7 @@ function AnnualSummary({
                 </CardHeader>
                 <CardContent className="pt-6">
                     <div className="flex flex-col items-center justify-center min-h-[300px]">
-                    {isLoadingExpenses ? (
+                    {isLoading ? (
                         <div className="flex h-[250px] w-full items-center justify-center">
                             <Loader2 className="h-8 w-8 animate-spin text-primary" />
                         </div>
@@ -821,7 +864,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
     switch (status) {
       case 'Paid': return { Icon: CheckCircle2, className: "text-green-600 border-green-200 bg-green-50" };
       case 'Partially Paid': return { Icon: AlertCircle, className: "text-yellow-600 border-yellow-200 bg-yellow-50" };
-      case 'Unpaid': return { Icon: XCircle, className: "text-red-600 border-red-200 bg-red-50" };
+      case 'Unpaid': return { Icon: AlertCircle, className: "text-red-600 border-red-200 bg-red-50" };
       case 'Pending': default: return { Icon: Clock, className: "" };
     }
   };
@@ -906,12 +949,13 @@ function ArrearsManagement({ properties }: { properties: Property[] }) {
     setIsLoading(true);
     try {
       const results: RentPayment[] = [];
-      const promises = properties.filter(p => p.status === 'Occupied').map(prop => {
+      const occupiedProps = properties.filter(p => p.status === 'Occupied');
+      
+      const promises = occupiedProps.map(prop => {
         return getDocs(query(collection(firestore, 'properties', prop.id, 'rentPayments'), where('ownerId', '==', user.uid), where('year', '==', currentYear), where('month', '==', currentMonth)));
       });
       const snapshots = await Promise.all(promises);
       snapshots.forEach((snap, index) => {
-        const occupiedProps = properties.filter(p => p.status === 'Occupied');
         const propertyId = occupiedProps[index].id;
         const data = snap.docs[0]?.data() as RentPayment | undefined;
         if (!data || (data.status !== 'Paid')) {
@@ -921,7 +965,7 @@ function ArrearsManagement({ properties }: { properties: Property[] }) {
             year: currentYear, 
             month: currentMonth, 
             status: data?.status || 'Unpaid', 
-            expectedAmount: data?.expectedAmount || properties.find(p => p.id === propertyId)?.tenancy?.monthlyRent || 0, 
+            expectedAmount: data?.expectedAmount || occupiedProps[index].tenancy?.monthlyRent || 0, 
             amountPaid: data?.amountPaid || 0 
           });
         }
@@ -955,9 +999,6 @@ function ArrearsManagement({ properties }: { properties: Property[] }) {
 
   return (
     <div className="space-y-6 mt-6">
-      <div className="flex items-center gap-4">
-        {/* Placeholder if needed */}
-      </div>
       <Dialog open={!!partialPaymentData} onOpenChange={(open) => !open && setPartialPaymentData(null)}>
         <DialogContent><DialogHeader><DialogTitle>Record Partial Collection</DialogTitle></DialogHeader>
           <div className="py-4 space-y-2">
@@ -968,7 +1009,7 @@ function ArrearsManagement({ properties }: { properties: Property[] }) {
         </DialogContent>
       </Dialog>
       <Card className="border-destructive/20 bg-destructive/5 shadow-none">
-        <CardHeader className="border-b pb-4"><CardTitle className="flex items-center gap-2 text-destructive"><AlertTriangle className="h-5 w-5" /> Arrears Monitoring</CardTitle></CardHeader>
+        <CardHeader className="border-b pb-4"><CardTitle className="flex items-center gap-2 text-destructive"><AlertCircle className="h-5 w-5" /> Arrears Monitoring</CardTitle></CardHeader>
         <CardContent className="pt-6">
           {isLoading ? <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin text-destructive" /></div> : arrears.length === 0 ? (
             <div className="text-center py-20 border-2 border-dashed rounded-lg bg-background"><CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-4 opacity-50" /><p className="text-lg font-bold text-green-700">Portfolio is fully up-to-date</p><p className='text-sm text-muted-foreground mt-1'>All occupied properties have cleared their rent for {currentMonth}.</p></div>
