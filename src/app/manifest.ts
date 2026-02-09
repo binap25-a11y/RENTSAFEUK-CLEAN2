@@ -7,6 +7,7 @@ export default function manifest(): MetadataRoute.Manifest {
     description: 'UK Property Management & Compliance Portfolio Manager',
     start_url: '/dashboard',
     display: 'standalone',
+    orientation: 'portrait',
     background_color: '#FFFFFF',
     theme_color: '#2172F9',
     icons: [

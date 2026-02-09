@@ -134,11 +134,6 @@ export default function PropertyDetailPage() {
     return allInspections?.filter(insp => insp.status !== 'Cancelled') ?? null;
   }, [allInspections]);
 
-  const hasPermission = useMemo(() => {
-    if (!property || !user) return false;
-    return property.ownerId === user.uid;
-  }, [property, user]);
-
   const handleDeleteConfirm = async () => {
     if (!firestore || !property) return;
     
@@ -334,6 +329,7 @@ export default function PropertyDetailPage() {
                           width="100%"
                           height="100%"
                           style={{ border: 0 }}
+                          title="Property Map"
                           loading="lazy"
                           allowFullScreen
                           referrerPolicy="no-referrer-when-downgrade"
@@ -367,7 +363,7 @@ export default function PropertyDetailPage() {
       <AlertDialog open={isDeleting} onOpenChange={setIsDeleting}>
         <AlertDialogContent>
           <AlertDialogHeader><AlertDialogTitle>Delete Property?</AlertDialogTitle><AlertDialogDescription>This will move the property to your archive. You can restore it later if needed.</AlertDialogDescription></AlertDialogHeader>
-          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleDeleteConfirm}>Archive Property</AlertDialogAction></AlertDialogFooter>
+          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleDeleteConfirm}>Archive Property</AlertAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
