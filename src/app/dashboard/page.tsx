@@ -137,6 +137,13 @@ export default function DashboardPage() {
   const [documents, setDocuments] = useState<Document[]>([]);
   const [allRentPayments, setAllRentPayments] = useState<RentPayment[]>([]);
   const [isAggregating, setIsAggregating] = useState(false);
+  const [currentYear, setCurrentYear] = useState<number | null>(null);
+  const [currentMonth, setCurrentMonth] = useState<string | null>(null);
+
+  useEffect(() => {
+    setCurrentYear(new Date().getFullYear());
+    setCurrentMonth(format(new Date(), 'MMMM'));
+  }, []);
 
   // Filter in-memory to avoid index requirements for combined filters
   const properties = useMemo(() => {
@@ -190,7 +197,7 @@ export default function DashboardPage() {
     aggregateData();
   }, [user, properties, firestore]);
 
-  const isLoading = isLoadingProperties || isAggregating;
+  const isLoading = isLoadingProperties || isAggregating || !currentYear;
 
   // --- Processed Data ---
 
@@ -272,11 +279,8 @@ export default function DashboardPage() {
             }));
   }, [inspections, documents, propertyMap]);
   
-  const currentYear = new Date().getFullYear();
-  const currentMonth = format(new Date(), 'MMMM');
-
   const rentStatusData = useMemo(() => {
-    if (isLoading || !properties) return [];
+    if (isLoading || !properties || !currentYear || !currentMonth) return [];
     const occupiedPropertiesCount = properties.filter(p => p.status === 'Occupied').length;
     
     const monthlyPayments = allRentPayments.filter(p => p.year === currentYear && p.month === currentMonth);

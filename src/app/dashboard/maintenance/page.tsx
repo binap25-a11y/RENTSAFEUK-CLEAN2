@@ -31,7 +31,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Wand2, List } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import {
@@ -104,9 +104,13 @@ export default function MaintenancePage() {
       reportedBy: '',
       contractorName: '',
       contractorPhone: '',
-      reportedDate: new Date(),
     },
   });
+
+  // Handle setting current date on client only to avoid hydration mismatch
+  useEffect(() => {
+    form.setValue('reportedDate', new Date());
+  }, [form]);
 
   // Fetch properties for the dropdowns
   const propertiesQuery = useMemoFirebase(() => {
