@@ -2,8 +2,7 @@ import { MetadataRoute } from 'next'
 
 /**
  * Defines the PWA manifest for the application.
- * This function returns a dynamic manifest object. 
- * Ensure that no static manifest.json or manifest.webmanifest exists in the same directory to avoid conflicts.
+ * This function returns a dynamic manifest object.
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {

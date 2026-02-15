@@ -104,6 +104,7 @@ export default function MaintenancePage() {
       reportedBy: '',
       contractorName: '',
       contractorPhone: '',
+      // Dates set in useEffect to avoid hydration mismatch
     },
   });
 

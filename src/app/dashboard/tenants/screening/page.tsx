@@ -44,6 +44,7 @@ import {
   useDoc,
 } from '@/firebase';
 import { collection, query, where, addDoc, doc } from 'firebase/firestore';
+import { useEffect } from 'react';
 
 
 const screeningSchema = z.object({
@@ -150,8 +151,6 @@ export default function TenantScreeningPageWrapper() {
   const searchParams = useSearchParams();
   const tenantIdFromUrl = searchParams.get('tenantId');
 
-  // The key prop ensures that if we navigate from a URL without the param to one with it,
-  // the form component is completely re-rendered and re-initialized with the correct defaults.
   return <TenantScreeningPage key={tenantIdFromUrl} tenantIdFromUrl={tenantIdFromUrl} />;
 }
 
@@ -163,10 +162,13 @@ function TenantScreeningPage({ tenantIdFromUrl }: { tenantIdFromUrl: string | nu
     const form = useForm<ScreeningFormValues>({
         resolver: zodResolver(screeningSchema),
         defaultValues: {
-            screeningDate: new Date(),
             tenantId: tenantIdFromUrl || '',
         }
     });
+
+    useEffect(() => {
+        form.setValue('screeningDate', new Date());
+    }, [form]);
 
     const tenantRef = useMemoFirebase(() => {
         if (!firestore || !tenantIdFromUrl) return null;
@@ -175,7 +177,7 @@ function TenantScreeningPage({ tenantIdFromUrl }: { tenantIdFromUrl: string | nu
     const { data: selectedTenant, isLoading: isLoadingSelectedTenant } = useDoc<Tenant>(tenantRef);
 
     const tenantsQuery = useMemoFirebase(() => {
-        if (!user || tenantIdFromUrl) return null; // Only query if no specific tenant is selected from URL
+        if (!user || tenantIdFromUrl) return null;
         return query(
             collection(firestore, 'tenants'),
             where('ownerId', '==', user.uid),
