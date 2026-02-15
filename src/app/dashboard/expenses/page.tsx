@@ -52,7 +52,8 @@ import {
   List,
   Clock,
   LayoutList,
-  History
+  History,
+  Edit2
 } from 'lucide-react';
 import { getYear, format, isSameYear } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -815,16 +816,23 @@ function AnnualSummary({
 function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoadingPayments }: { selectedProperty: Property | undefined, selectedYear: number, rentPayments: RentPayment[] | null, isLoadingPayments: boolean }) {
   const { user } = useUser();
   const firestore = useFirestore();
-  const [isDialogOpen, setDialogOpen] = useState(false);
+  const [isPartialDialogOpen, setPartialDialogOpen] = useState(false);
+  const [isRentDialogOpen, setRentDialogOpen] = useState(false);
   const [editingPayment, setEditingPayment] = useState<{ month: string; expectedAmount: number } | null>(null);
   const [partialAmount, setPartialAmount] = useState('');
+  const [newRentAmount, setNewRentAmount] = useState('');
   
   const months = useMemo(() => Array.from({ length: 12 }, (_, i) => new Date(selectedYear, i, 1).toLocaleString('default', { month: 'long' })), [selectedYear]);
   
   const statement = useMemo(() => {
-    const rent = selectedProperty?.tenancy?.monthlyRent || 0;
+    const defaultRent = selectedProperty?.tenancy?.monthlyRent || 0;
     const paymentsMap = rentPayments?.reduce((acc, p) => { acc[p.month] = p; return acc; }, {} as Record<string, RentPayment>);
-    return months.map(month => ({ month, rent, status: paymentsMap?.[month]?.status || 'Pending' }));
+    return months.map(month => ({ 
+        month, 
+        rent: paymentsMap?.[month]?.expectedAmount ?? defaultRent, 
+        status: paymentsMap?.[month]?.status || 'Pending',
+        rawPayment: paymentsMap?.[month]
+    }));
   }, [selectedProperty, months, rentPayments]);
 
   const handleSavePartialPayment = async () => {
@@ -842,14 +850,48 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
     }).catch(() => {
       toast({ variant: 'destructive', title: 'Database Error' });
     });
-    setDialogOpen(false); setEditingPayment(null); setPartialAmount('');
+    setPartialDialogOpen(false); setEditingPayment(null); setPartialAmount('');
+  };
+
+  const handleSaveExpectedRent = async () => {
+    if (!firestore || !user || !selectedProperty || !editingPayment) return;
+    const amount = Number(newRentAmount);
+    if (isNaN(amount) || amount < 0) {
+        toast({ variant: 'destructive', title: 'Invalid Amount', description: "Please enter a valid rent amount." });
+        return;
+    }
+    const { month } = editingPayment;
+    const rentPaymentRef = doc(firestore, 'properties', selectedProperty.id, 'rentPayments', `${selectedYear}-${month}`);
+    
+    // Fetch existing data if any to preserve it
+    const existing = statement.find(s => s.month === month)?.rawPayment;
+    
+    const paymentData = { 
+        ownerId: user.uid, 
+        propertyId: selectedProperty.id, 
+        year: selectedYear, 
+        month, 
+        status: existing?.status || 'Pending' as PaymentStatus, 
+        expectedAmount: amount, 
+        amountPaid: existing?.amountPaid ?? 0
+    };
+
+    setDoc(rentPaymentRef, paymentData, { merge: true }).then(() => {
+      toast({ title: 'Rent Adjusted', description: `Expected rent for ${month} updated to ${formatCurrency(amount)}.` });
+    }).catch(() => {
+      toast({ variant: 'destructive', title: 'Database Error' });
+    });
+    setRentDialogOpen(false); setEditingPayment(null); setNewRentAmount('');
   };
 
   const handleStatusChange = (month: string, status: PaymentStatus) => {
     if (!firestore || !user || !selectedProperty) return;
-    const expectedAmount = selectedProperty.tenancy?.monthlyRent || 0;
+    
+    const existingEntry = statement.find(s => s.month === month);
+    const expectedAmount = existingEntry?.rent ?? selectedProperty.tenancy?.monthlyRent ?? 0;
+
     if (status === 'Partially Paid') {
-        setEditingPayment({ month, expectedAmount }); setPartialAmount(''); setDialogOpen(true);
+        setEditingPayment({ month, expectedAmount }); setPartialAmount(''); setPartialDialogOpen(true);
         return;
     }
     const rentPaymentRef = doc(firestore, 'properties', selectedProperty.id, 'rentPayments', `${selectedYear}-${month}`);
@@ -861,7 +903,13 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
     });
   };
 
-  const totalExpectedRent = (selectedProperty?.tenancy?.monthlyRent || 0) * 12;
+  const handleEditRentClick = (month: string, currentRent: number) => {
+      setEditingPayment({ month, expectedAmount: currentRent });
+      setNewRentAmount(String(currentRent));
+      setRentDialogOpen(true);
+  };
+
+  const totalExpectedRent = useMemo(() => statement.reduce((acc, row) => acc + row.rent, 0), [statement]);
   const totalPaid = useMemo(() => rentPayments?.reduce((acc, row) => acc + Number(row.amountPaid || 0), 0) || 0, [rentPayments]);
   
   const getRentStatusProps = (status: PaymentStatus) => {
@@ -878,12 +926,34 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
 
   return (
     <>
-      <Dialog open={isDialogOpen} onOpenChange={setDialogOpen}>
+      {/* Partial Payment Dialog */}
+      <Dialog open={isPartialDialogOpen} onOpenChange={setPartialDialogOpen}>
         <DialogContent><DialogHeader><DialogTitle>Partial Payment Details</DialogTitle></DialogHeader>
           <div className="grid gap-4 py-4"><div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="amount" className="text-right font-medium">Amount (£)</Label><Input id="amount" type="text" inputMode="decimal" value={partialAmount} onChange={(e) => setPartialAmount(e.target.value)} className="col-span-3" placeholder="0.00" /></div></div>
-          <DialogFooter><Button variant="outline" onClick={() => setDialogOpen(false)}>Cancel</Button><Button onClick={handleSavePartialPayment}>Save</Button></DialogFooter>
+          <DialogFooter><Button variant="outline" onClick={() => setPartialDialogOpen(false)}>Cancel</Button><Button onClick={handleSavePartialPayment}>Save</Button></DialogFooter>
         </DialogContent>
       </Dialog>
+
+      {/* Edit Expected Rent Dialog */}
+      <Dialog open={isRentDialogOpen} onOpenChange={setRentDialogOpen}>
+        <DialogContent>
+            <DialogHeader>
+                <DialogTitle>Adjust Monthly Rent</DialogTitle>
+                <DialogDescription>Change the expected rent amount for {editingPayment?.month} {selectedYear}.</DialogDescription>
+            </DialogHeader>
+            <div className="grid gap-4 py-4">
+                <div className="grid grid-cols-4 items-center gap-4">
+                    <Label htmlFor="rent-amount" className="text-right font-medium">Expected (£)</Label>
+                    <Input id="rent-amount" type="text" inputMode="decimal" value={newRentAmount} onChange={(e) => setNewRentAmount(e.target.value)} className="col-span-3" placeholder="0.00" />
+                </div>
+            </div>
+            <DialogFooter>
+                <Button variant="outline" onClick={() => setRentDialogOpen(false)}>Cancel</Button>
+                <Button onClick={handleSaveExpectedRent}>Update Rent</Button>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
       <Card className="mt-6 overflow-hidden">
         <CardHeader className="border-b pb-4 bg-muted/20"><CardTitle className="text-lg flex items-center gap-2"><LayoutList className='h-5 w-5 text-primary' /> Portfolio Ledger</CardTitle></CardHeader>
         <CardContent className='pt-6'>
@@ -898,7 +968,17 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                         return (
                             <TableRow key={row.month} className="hover:bg-muted/20 transition-colors">
                             <TableCell className="font-bold text-sm">{row.month}</TableCell>
-                            <TableCell className="text-sm font-medium">{formatCurrency(row.rent)}</TableCell>
+                            <TableCell className="text-sm font-medium">
+                                <Button 
+                                    variant="ghost" 
+                                    size="sm" 
+                                    className="h-auto p-1 font-medium hover:bg-primary/10 transition-colors group"
+                                    onClick={() => handleEditRentClick(row.month, row.rent)}
+                                >
+                                    {formatCurrency(row.rent)}
+                                    <Edit2 className="h-3 w-3 ml-2 opacity-0 group-hover:opacity-50" />
+                                </Button>
+                            </TableCell>
                             <TableCell>
                                 <Select value={row.status} onValueChange={(newStatus) => handleStatusChange(row.month, newStatus as PaymentStatus)}>
                                 <SelectTrigger className={"w-[160px] h-9 text-xs font-bold " + className}><div className="flex items-center gap-2"><Icon className="h-3.5 w-3.5" /><SelectValue /></div></SelectTrigger>
@@ -915,7 +995,18 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                         const { Icon, className } = getRentStatusProps(row.status);
                         return (
                             <Card key={row.month} className="shadow-none border-muted/60">
-                                <CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-base font-bold">{row.month}</CardTitle><span className="text-base font-semibold">{formatCurrency(row.rent)}</span></CardHeader>
+                                <CardHeader className="flex flex-row items-center justify-between pb-2">
+                                    <CardTitle className="text-base font-bold">{row.month}</CardTitle>
+                                    <Button 
+                                        variant="ghost" 
+                                        size="sm" 
+                                        className="h-auto p-1 font-semibold flex items-center gap-1"
+                                        onClick={() => handleEditRentClick(row.month, row.rent)}
+                                    >
+                                        {formatCurrency(row.rent)}
+                                        <Edit2 className="h-3 w-3 text-muted-foreground" />
+                                    </Button>
+                                </CardHeader>
                                 <CardContent>
                                     <Select value={row.status} onValueChange={(newStatus) => handleStatusChange(row.month, newStatus as PaymentStatus)}>
                                     <SelectTrigger className={"w-full font-bold text-xs " + className}><div className="flex items-center gap-2"><Icon className="h-4 w-4" /><SelectValue /></div></SelectTrigger>
