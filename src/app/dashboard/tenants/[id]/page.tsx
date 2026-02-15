@@ -1,10 +1,11 @@
+
 'use client';
 
 import { useParams, notFound, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, User, Mail, Phone, Calendar as CalendarIcon, Edit, Trash2, Home, Loader2, MoreVertical, UserPlus, Eye, ListTodo } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, Calendar as CalendarIcon, Edit, Trash2, Home, Loader2, MoreVertical, UserPlus, Eye, ListTodo, Banknote } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
 import { doc, collection, query, updateDoc, where, limit } from 'firebase/firestore';
@@ -42,6 +43,7 @@ interface Tenant {
     email: string;
     telephone: string;
     propertyId: string;
+    monthlyRent?: number;
     tenancyStartDate: { seconds: number, nanoseconds: number } | Date | string;
     tenancyEndDate?: { seconds: number, nanoseconds: number } | Date | string;
     notes?: string;
@@ -254,7 +256,7 @@ export default function TenantDetailPage() {
                 <CardTitle>Tenancy Details</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
                     <div className="flex items-start gap-4">
                         <CalendarIcon className="h-5 w-5 text-muted-foreground mt-1" />
                         <div>
@@ -267,6 +269,13 @@ export default function TenantDetailPage() {
                         <div>
                             <p className="text-sm text-muted-foreground">Tenancy End</p>
                             <p>{endDate ? format(endDate, 'PPP') : 'N/A'}</p>
+                        </div>
+                    </div>
+                    <div className="flex items-start gap-4">
+                        <Banknote className="h-5 w-5 text-muted-foreground mt-1" />
+                        <div>
+                            <p className="text-sm text-muted-foreground">Monthly Rent</p>
+                            <p className='font-semibold'>£{tenant.monthlyRent ? tenant.monthlyRent.toLocaleString() : 'Not set'}</p>
                         </div>
                     </div>
                 </div>

@@ -156,6 +156,10 @@
           "type": "string",
           "description": "Telephone number of the tenant."
         },
+        "monthlyRent": {
+          "type": "number",
+          "description": "The agreed monthly rent amount for this tenant."
+        },
         "tenancyStartDate": {
           "type": "string",
           "description": "Start date of the tenancy.",

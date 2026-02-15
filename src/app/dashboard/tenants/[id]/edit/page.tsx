@@ -43,12 +43,13 @@ import {
 } from '@/firebase';
 import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
 
-// Zod schema for tenant form validation (can be reused)
+// Zod schema for tenant form validation
 const tenantSchema = z.object({
   name: z.string().min(2, 'Name is too short'),
   email: z.string().email('Invalid email address'),
   telephone: z.string().min(10, 'Invalid phone number'),
   propertyId: z.string({ required_error: 'Please select a property.' }),
+  monthlyRent: z.coerce.number().min(0, 'Rent cannot be negative').optional(),
   tenancyStartDate: z.coerce.date({ required_error: 'Please select a start date.' }),
   tenancyEndDate: z.coerce.date().optional(),
   notes: z.string().optional(),
@@ -74,6 +75,7 @@ interface Tenant {
     email: string;
     telephone: string;
     propertyId: string;
+    monthlyRent?: number;
     tenancyStartDate: { seconds: number, nanoseconds: number } | Date;
     tenancyEndDate?: { seconds: number, nanoseconds: number } | Date;
     notes?: string;
@@ -117,6 +119,7 @@ export default function EditTenantPage() {
         const tenantData = {
             ...tenant,
             notes: tenant.notes ?? '',
+            monthlyRent: tenant.monthlyRent,
             tenancyStartDate: tenant.tenancyStartDate instanceof Date ? tenant.tenancyStartDate : new Date(tenant.tenancyStartDate.seconds * 1000),
             tenancyEndDate: tenant.tenancyEndDate ? (tenant.tenancyEndDate instanceof Date ? tenant.tenancyEndDate : new Date(tenant.tenancyEndDate.seconds * 1000)) : undefined,
         };
@@ -262,6 +265,22 @@ export default function EditTenantPage() {
                   </FormItem>
                 )}
               />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                    control={form.control}
+                    name="monthlyRent"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Monthly Rent (£)</FormLabel>
+                        <FormControl>
+                            <Input type="number" placeholder="0.00" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">

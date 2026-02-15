@@ -51,6 +51,7 @@ const tenantSchema = z.object({
   email: z.string().email('Invalid email address'),
   telephone: z.string().min(10, 'Invalid phone number'),
   propertyId: z.string({ required_error: 'Please select a property.' }).min(1, 'Please select a property.'),
+  monthlyRent: z.coerce.number().min(0, 'Rent cannot be negative').optional(),
   tenancyStartDate: z.coerce.date({ required_error: 'Please select a start date.' }),
   tenancyEndDate: z.coerce.date().optional(),
   notes: z.string().optional(),
@@ -82,13 +83,18 @@ export default function AddTenantPage() {
     resolver: zodResolver(tenantSchema),
     defaultValues: {
       propertyId: propertyIdFromUrl || '',
-      tenancyStartDate: new Date(),
       name: '',
       email: '',
       telephone: '',
       notes: '',
+      monthlyRent: undefined,
     },
   });
+
+  // Set default date after mount to avoid hydration mismatch
+  useEffect(() => {
+    form.setValue('tenancyStartDate', new Date());
+  }, [form]);
 
   // Fetch properties for the dropdown if no specific property is pre-selected
   const propertiesQuery = useMemoFirebase(() => {
@@ -262,6 +268,22 @@ export default function AddTenantPage() {
                   </FormItem>
                 )}
               />
+            </div>
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                <FormField
+                    control={form.control}
+                    name="monthlyRent"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel>Monthly Rent (£)</FormLabel>
+                        <FormControl>
+                            <Input type="number" placeholder="0.00" {...field} />
+                        </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
