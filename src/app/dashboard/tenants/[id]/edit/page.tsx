@@ -81,6 +81,18 @@ interface Tenant {
     notes?: string;
 }
 
+// Helper to safely format dates for input[type="date"]
+const formatDateForInput = (value: any) => {
+  if (!value) return '';
+  const date = value instanceof Date ? value : new Date(value);
+  if (isNaN(date.getTime())) return '';
+  try {
+    return date.toISOString().split('T')[0];
+  } catch (e) {
+    return '';
+  }
+};
+
 
 export default function EditTenantPage() {
   const router = useRouter();
@@ -120,8 +132,8 @@ export default function EditTenantPage() {
             ...tenant,
             notes: tenant.notes ?? '',
             monthlyRent: tenant.monthlyRent,
-            tenancyStartDate: tenant.tenancyStartDate instanceof Date ? tenant.tenancyStartDate : new Date(tenant.tenancyStartDate.seconds * 1000),
-            tenancyEndDate: tenant.tenancyEndDate ? (tenant.tenancyEndDate instanceof Date ? tenant.tenancyEndDate : new Date(tenant.tenancyEndDate.seconds * 1000)) : undefined,
+            tenancyStartDate: tenant.tenancyStartDate instanceof Date ? tenant.tenancyStartDate : new Date((tenant.tenancyStartDate as any).seconds * 1000),
+            tenancyEndDate: tenant.tenancyEndDate ? (tenant.tenancyEndDate instanceof Date ? tenant.tenancyEndDate : new Date((tenant.tenancyEndDate as any).seconds * 1000)) : undefined,
         };
         form.reset(tenantData);
     }
@@ -275,7 +287,7 @@ export default function EditTenantPage() {
                     <FormItem>
                         <FormLabel>Monthly Rent (£)</FormLabel>
                         <FormControl>
-                            <Input type="number" placeholder="0.00" {...field} />
+                            <Input type="number" placeholder="0.00" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -293,7 +305,7 @@ export default function EditTenantPage() {
                          <FormControl>
                             <Input
                                 type="date"
-                                value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                                value={formatDateForInput(field.value)}
                                 onChange={(e) => field.onChange(e.target.value)}
                             />
                         </FormControl>
@@ -310,7 +322,7 @@ export default function EditTenantPage() {
                         <FormControl>
                             <Input
                                 type="date"
-                                value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                                value={formatDateForInput(field.value)}
                                 onChange={(e) => field.onChange(e.target.value)}
                             />
                         </FormControl>

@@ -71,6 +71,18 @@ interface Property {
   };
 }
 
+// Helper to safely format dates for input[type="date"]
+const formatDateForInput = (value: any) => {
+  if (!value) return '';
+  const date = value instanceof Date ? value : new Date(value);
+  if (isNaN(date.getTime())) return '';
+  try {
+    return date.toISOString().split('T')[0];
+  } catch (e) {
+    return '';
+  }
+};
+
 export default function AddTenantPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
@@ -278,7 +290,7 @@ export default function AddTenantPage() {
                     <FormItem>
                         <FormLabel>Monthly Rent (£)</FormLabel>
                         <FormControl>
-                            <Input type="number" placeholder="0.00" {...field} />
+                            <Input type="number" placeholder="0.00" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -296,7 +308,7 @@ export default function AddTenantPage() {
                     <FormControl>
                         <Input
                             type="date"
-                            value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                            value={formatDateForInput(field.value)}
                             onChange={(e) => field.onChange(e.target.value)}
                         />
                     </FormControl>
@@ -313,7 +325,7 @@ export default function AddTenantPage() {
                     <FormControl>
                         <Input
                             type="date"
-                            value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                            value={formatDateForInput(field.value)}
                             onChange={(e) => field.onChange(e.target.value)}
                         />
                     </FormControl>
