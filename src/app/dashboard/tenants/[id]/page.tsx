@@ -9,7 +9,7 @@ import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
 import { doc, collection, query, updateDoc, where, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -102,11 +102,12 @@ export default function TenantDetailPage() {
   const { data: property, isLoading: isLoadingProperty } = useDoc<Property>(propertyRef);
   
   const screeningsQuery = useMemoFirebase(() => {
-    if (!firestore || !id) return null;
+    if (!firestore || !id || !user) return null;
     return query(
-        collection(firestore, 'tenants', id, 'screenings')
+        collection(firestore, 'tenants', id, 'screenings'),
+        where('ownerId', '==', user.uid)
     );
-  }, [firestore, id]);
+  }, [firestore, id, user]);
   const { data: screenings, isLoading: isLoadingScreenings } = useCollection<TenantScreening>(screeningsQuery);
   
   const checklistsQuery = useMemoFirebase(() => {
