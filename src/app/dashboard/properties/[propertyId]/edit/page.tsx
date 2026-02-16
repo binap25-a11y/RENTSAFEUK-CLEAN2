@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -41,7 +40,6 @@ const propertySchema = z.object({
 
 type PropertyFormValues = z.infer<typeof propertySchema>;
 
-// This is the main page component that controls data fetching and state.
 export default function EditPropertyPage() {
   const router = useRouter();
   const params = useParams();
@@ -58,11 +56,28 @@ export default function EditPropertyPage() {
     return doc(firestore, 'properties', propertyId);
   }, [firestore, user, propertyId]);
   
-  // Use the useDoc hook to fetch the data
   const { data: property, isLoading, error } = useDoc(propertyRef);
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
+    defaultValues: {
+      address: {
+        nameOrNumber: '',
+        street: '',
+        city: '',
+        county: '',
+        postcode: '',
+      },
+      bedrooms: 0,
+      bathrooms: 0,
+      status: 'Vacant',
+      notes: '',
+      tenancy: {
+        monthlyRent: undefined,
+        depositAmount: undefined,
+        depositScheme: '',
+      },
+    },
   });
 
   useEffect(() => {
@@ -85,19 +100,31 @@ export default function EditPropertyPage() {
         toast({ variant: "destructive", title: "Error", description: "Database connection not found or user not authenticated." });
         return;
     };
+    
     if (property?.ownerId !== user.uid) {
-        toast({ variant: "destructive", title: "Permission Denied", description: "You do not own this property." });
+        toast({ variant: "destructive", title: "Permission Denied", description: "You do not have permission to modify this property." });
         return;
     }
 
     setIsSubmitting(true);
     const docRef = doc(firestore, 'properties', propertyId);
 
+    // Sanitize data: remove undefined values and clean up optional tenancy sub-object
+    const cleanedData = JSON.parse(JSON.stringify(data));
+    
+    if (cleanedData.tenancy) {
+      if (cleanedData.tenancy.monthlyRent === null || cleanedData.tenancy.monthlyRent === undefined) delete cleanedData.tenancy.monthlyRent;
+      if (cleanedData.tenancy.depositAmount === null || cleanedData.tenancy.depositAmount === undefined) delete cleanedData.tenancy.depositAmount;
+      if (!cleanedData.tenancy.depositScheme) delete cleanedData.tenancy.depositScheme;
+      if (Object.keys(cleanedData.tenancy).length === 0) delete cleanedData.tenancy;
+    }
+
     try {
-      await setDoc(docRef, { ...data, ownerId: user.uid }, { merge: true });
+      // Use setDoc with merge: true to perform a non-destructive update
+      await setDoc(docRef, { ...cleanedData, ownerId: user.uid }, { merge: true });
 
       toast({ title: "Property Updated", description: "Your property details have been saved successfully." });
-      router.push(`/dashboard/properties`);
+      router.push(`/dashboard/properties/${propertyId}`);
     } catch (e) {
       console.error("Error updating property:", e);
       toast({ variant: "destructive", title: "Update Failed", description: "Could not save your changes. Please try again." });
@@ -106,7 +133,6 @@ export default function EditPropertyPage() {
     }
   }
 
-  // Render states
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
@@ -119,9 +145,9 @@ export default function EditPropertyPage() {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <AlertTriangle className="h-12 w-12 text-destructive" />
-        <div className="text-center">
-            <h3 className="text-xl font-semibold">Error Loading Property</h3>
-            <p className="text-sm text-muted-foreground">{error?.message || "You don't have permission to edit this property."}</p>
+        <div className="text-center px-4">
+            <h3 className="text-xl font-semibold">Access Denied or Error</h3>
+            <p className="text-sm text-muted-foreground mt-1 max-w-xs mx-auto">{error?.message || "You don't have permission to edit this property record."}</p>
         </div>
         <Button asChild><Link href="/dashboard/properties">Return to Properties</Link></Button>
       </div>
@@ -130,27 +156,29 @@ export default function EditPropertyPage() {
 
   if (!property) {
     return (
-        <div className="text-center py-10">
+        <div className="text-center py-20">
+          <Home className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4" />
           <h3 className="text-xl font-semibold">Property Not Found</h3>
-          <Button asChild variant="link"><Link href="/dashboard/properties">Return to Properties</Link></Button>
+          <p className="text-sm text-muted-foreground mb-6">The property you are trying to edit does not exist or has been removed.</p>
+          <Button asChild variant="outline"><Link href="/dashboard/properties">Return to Properties</Link></Button>
         </div>
     );
   }
 
   return (
-      <Card className="max-w-4xl mx-auto">
+      <Card className="max-w-4xl mx-auto shadow-md">
       <CardHeader>
-        <CardTitle>Edit Property</CardTitle>
+        <CardTitle className="text-2xl font-headline">Edit Property</CardTitle>
         <CardDescription>
-          Update the details for your property. Click save when you're done.
+          Update the location and details for your portfolio property.
         </CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             
-            <Card>
-              <CardHeader><CardTitle className="text-xl">Property Address</CardTitle></CardHeader>
+            <Card className="border-none shadow-none bg-muted/30">
+              <CardHeader><CardTitle className="text-lg font-headline">Property Address</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                   <FormField control={form.control} name="address.nameOrNumber" render={({ field }) => (<FormItem><FormLabel>Property Name / Number</FormLabel><FormControl><Input placeholder="e.g., The Coppice, Flat 3b" {...field} /></FormControl><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="address.street" render={({ field }) => (<FormItem><FormLabel>Street Address</FormLabel><FormControl><Input placeholder="e.g., 123 Main Street" {...field} /></FormControl><FormMessage /></FormItem>)} />
@@ -162,8 +190,8 @@ export default function EditPropertyPage() {
               </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader><CardTitle className="text-xl">Property Details</CardTitle></CardHeader>
+            <Card className="border-none shadow-none bg-muted/30">
+              <CardHeader><CardTitle className="text-lg font-headline">Basic Details</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField control={form.control} name="propertyType" render={({ field }) => (<FormItem><FormLabel>Property Type</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select a type" /></SelectTrigger></FormControl><SelectContent>{[ 'House', 'Flat', 'Bungalow', 'Maisonette', 'Studio', 'HMO', ].map((type) => (<SelectItem key={type} value={type}> {type} </SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />
@@ -176,27 +204,69 @@ export default function EditPropertyPage() {
               </CardContent>
             </Card>
 
-            <Card>
-                <CardHeader><CardTitle className="text-xl">Tenancy &amp; Financials (Optional)</CardTitle></CardHeader>
+            <Card className="border-none shadow-none bg-muted/30">
+                <CardHeader><CardTitle className="text-lg font-headline">Tenancy &amp; Financials (Optional)</CardTitle></CardHeader>
                 <CardContent className="space-y-4">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField control={form.control} name="tenancy.monthlyRent" render={({ field }) => (<FormItem><FormLabel>Monthly Rent (£)</FormLabel><FormControl><Input type="text" inputMode="decimal" placeholder="0.00" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="tenancy.depositAmount" render={({ field }) => (<FormItem><FormLabel>Deposit Amount (£)</FormLabel><FormControl><Input type="text" inputMode="decimal" placeholder="0.00" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} value={field.value ?? ''}/></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="tenancy.monthlyRent" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Monthly Rent (£)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="text" 
+                            inputMode="decimal" 
+                            placeholder="0.00" 
+                            {...field} 
+                            onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} 
+                            value={field.value ?? ''} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
+                    <FormField control={form.control} name="tenancy.depositAmount" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Deposit Amount (£)</FormLabel>
+                        <FormControl>
+                          <Input 
+                            type="text" 
+                            inputMode="decimal" 
+                            placeholder="0.00" 
+                            {...field} 
+                            onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} 
+                            value={field.value ?? ''}
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
                 </div>
-                <FormField control={form.control} name="tenancy.depositScheme" render={({ field }) => (<FormItem><FormLabel>Deposit Protection Scheme</FormLabel><FormControl><Input placeholder="e.g., DPS, MyDeposits" {...field} value={field.value ?? ''}/></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="tenancy.depositScheme" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Deposit Protection Scheme</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g., DPS, MyDeposits" {...field} value={field.value ?? ''}/>
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
                 </CardContent>
             </Card>
 
-            <Card>
-              <CardHeader><CardTitle className="text-xl">Notes</CardTitle></CardHeader>
+            <Card className="border-none shadow-none bg-muted/30">
+              <CardHeader><CardTitle className="text-lg font-headline">Additional Notes</CardTitle></CardHeader>
               <CardContent><FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormControl><Textarea placeholder="Any additional notes about the property..." className="resize-none" rows={5} {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)}/></CardContent>
             </Card>
 
-            <div className="flex justify-end gap-2">
-              <Button type="button" variant="outline" asChild><Link href={`/dashboard/properties/${property.id}`}>Cancel</Link></Button>
+            <div className="flex justify-end gap-3 pt-4">
+              <Button type="button" variant="outline" asChild><Link href={`/dashboard/properties/${propertyId}`}>Cancel</Link></Button>
               <Button type="submit" disabled={isSubmitting}>
-                {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                Save Changes
+                {isSubmitting ? (
+                  <>
+                    <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                    Saving Changes...
+                  </>
+                ) : 'Save Changes'}
               </Button>
             </div>
           </form>
