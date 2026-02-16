@@ -145,12 +145,12 @@ export default function DashboardPage() {
     setCurrentMonth(format(new Date(), 'MMMM'));
   }, []);
 
-  // Filter in-memory to avoid index requirements for combined filters
+  // Define properties that are NOT deleted
   const properties = useMemo(() => {
     return allProperties?.filter(p => p.status !== 'Deleted') ?? [];
   }, [allProperties]);
 
-  // Real-time Aggregation Effect: Subscribe to sub-collections for each property
+  // Real-time Aggregation Effect: Subscribe to sub-collections for each non-deleted property
   useEffect(() => {
     if (!user || !properties || properties.length === 0) {
         setMaintenanceMap({});
@@ -194,10 +194,17 @@ export default function DashboardPage() {
         }));
     });
 
-    return () => unsubs.forEach(u => u());
+    return () => {
+        unsubs.forEach(u => u());
+        // Clean sweep to prevent ghost data from lingered property states
+        setMaintenanceMap({});
+        setInspectionsMap({});
+        setDocumentsMap({});
+        setRentPaymentsMap({});
+    };
   }, [user, properties, firestore]);
 
-  // CRITICAL: Filter aggregated maps by the current list of active property IDs to prevent "stuck" data
+  // Filter aggregated maps by the current list of non-deleted property IDs
   const maintenanceLogs = useMemo(() => {
     const activeIds = new Set(properties.map(p => p.id));
     return Object.entries(maintenanceMap)
@@ -237,8 +244,10 @@ export default function DashboardPage() {
     }, {} as Record<string, Property['address']>) ?? {}
   , [properties]);
 
+  // "Active" for property count means truly active statuses
   const activeProperties = useMemo(() => properties?.filter(p => ['Vacant', 'Occupied', 'Under Maintenance'].includes(p.status)) ?? [], [properties]);
   
+  // Count only issues that are Open or In Progress
   const openMaintenanceCount = useMemo(() => 
     maintenanceLogs.filter(log => log.status === 'Open' || log.status === 'In Progress').length, 
   [maintenanceLogs]);

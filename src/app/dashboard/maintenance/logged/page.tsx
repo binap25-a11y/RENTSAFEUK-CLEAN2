@@ -88,6 +88,7 @@ interface MaintenanceLog {
     title: string;
     priority: string;
     status: string;
+    reportedBy: string;
     reportedDate: { seconds: number; nanoseconds: number; } | Date;
 }
 
@@ -102,7 +103,7 @@ export default function MaintenanceLoggedPage() {
   // Aggregated data map
   const [portfolioLogsMap, setPortfolioLogsMap] = useState<Record<string, MaintenanceLog[]>>({});
 
-  // Fetch active properties
+  // Fetch properties that are NOT deleted
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
@@ -114,32 +115,32 @@ export default function MaintenanceLoggedPage() {
 
   const { data: allProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
   
-  const activeProperties = useMemo(() => {
-    const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
-    return allProperties?.filter(p => activeStatuses.includes(p.status || '')) ?? [];
+  const properties = useMemo(() => {
+    return allProperties?.filter(p => p.status !== 'Deleted') ?? [];
   }, [allProperties]);
 
   const propertyMap = useMemo(() => {
-    if (!activeProperties) return {};
-    return activeProperties.reduce((acc, prop) => {
+    if (!properties) return {};
+    return properties.reduce((acc, prop) => {
         acc[prop.id] = [prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ');
         return acc;
     }, {} as Record<string, string>);
-  }, [activeProperties]);
+  }, [properties]);
 
-  // Real-time Aggregation Logic for all properties
+  // Real-time Aggregation Logic for all non-deleted properties
   useEffect(() => {
-    if (!user || activeProperties.length === 0) {
+    if (!user || properties.length === 0) {
         setPortfolioLogsMap({});
         return;
     }
 
     const unsubs: (() => void)[] = [];
 
-    activeProperties.forEach(p => {
+    properties.forEach(p => {
+        const ownerFilter = where('ownerId', '==', user.uid);
         const q = query(
             collection(firestore, 'properties', p.id, 'maintenanceLogs'), 
-            where('ownerId', '==', user.uid)
+            ownerFilter
         );
         const unsub = onSnapshot(q, (snap) => {
             const logs = snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog));
@@ -150,12 +151,14 @@ export default function MaintenanceLoggedPage() {
         unsubs.push(unsub);
     });
 
-    return () => unsubs.forEach(u => u());
-  }, [user, activeProperties, firestore]);
+    return () => {
+        unsubs.forEach(u => u());
+        setPortfolioLogsMap({}); // Clean sweep when portfolio list changes
+    };
+  }, [user, properties, firestore]);
 
   const allCurrentLogs = useMemo(() => {
-    // CRITICAL: Filter logs map by the current list of active property IDs to prevent data leakage
-    const activeIds = new Set(activeProperties.map(p => p.id));
+    const activeIds = new Set(properties.map(p => p.id));
     
     if (selectedPropertyFilter === 'all') {
         return Object.entries(portfolioLogsMap)
@@ -163,7 +166,7 @@ export default function MaintenanceLoggedPage() {
             .flatMap(([, logs]) => logs);
     }
     return portfolioLogsMap[selectedPropertyFilter] || [];
-  }, [selectedPropertyFilter, portfolioLogsMap, activeProperties]);
+  }, [selectedPropertyFilter, portfolioLogsMap, properties]);
 
   const filteredLogs = useMemo(() => {
     if (!allCurrentLogs) return [];
@@ -260,7 +263,7 @@ export default function MaintenanceLoggedPage() {
                         </SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All Properties (Portfolio View)</SelectItem>
-                            {activeProperties?.map(prop => (
+                            {properties?.map(prop => (
                                 <SelectItem key={prop.id} value={prop.id}>{formatAddress(prop.address)}</SelectItem>
                             ))}
                         </SelectContent>
