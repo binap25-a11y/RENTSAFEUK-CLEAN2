@@ -103,7 +103,7 @@ export default function MaintenanceLoggedPage() {
   // Aggregated data map
   const [portfolioLogsMap, setPortfolioLogsMap] = useState<Record<string, MaintenanceLog[]>>({});
 
-  // Fetch properties that are NOT deleted
+  // Fetch properties - strictly scoped to user
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
@@ -115,8 +115,10 @@ export default function MaintenanceLoggedPage() {
 
   const { data: allProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
   
+  // Define truly "Active" properties
   const properties = useMemo(() => {
-    return allProperties?.filter(p => p.status !== 'Deleted') ?? [];
+    const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
+    return allProperties?.filter(p => activeStatuses.includes(p.status || '')) ?? [];
   }, [allProperties]);
 
   const propertyMap = useMemo(() => {
@@ -127,12 +129,15 @@ export default function MaintenanceLoggedPage() {
     }, {} as Record<string, string>);
   }, [properties]);
 
-  // Real-time Aggregation Logic for all non-deleted properties
+  // Real-time Aggregation Logic for all active properties
   useEffect(() => {
     if (!user || properties.length === 0) {
         setPortfolioLogsMap({});
         return;
     }
+
+    // Clean sweep when properties change to prevent ghost data
+    setPortfolioLogsMap({});
 
     const unsubs: (() => void)[] = [];
 
@@ -153,7 +158,6 @@ export default function MaintenanceLoggedPage() {
 
     return () => {
         unsubs.forEach(u => u());
-        setPortfolioLogsMap({}); // Clean sweep when portfolio list changes
     };
   }, [user, properties, firestore]);
 
@@ -248,7 +252,7 @@ export default function MaintenanceLoggedPage() {
       <Card>
         <CardHeader>
           <CardTitle>Filter & Search</CardTitle>
-          <CardDescription>Select a property or view your entire portfolio history.</CardDescription>
+          <CardDescription>Select a property or view your entire active portfolio.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -306,7 +310,7 @@ export default function MaintenanceLoggedPage() {
                     <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-20" />
                     <p className="text-lg font-medium text-foreground">No records found</p>
                     <p className="text-sm max-w-xs mx-auto mt-1">
-                        Try adjusting your search term or filtering for a different property.
+                        Try adjusting your search term or filtering for a different active property.
                     </p>
                 </div>
             ) : (

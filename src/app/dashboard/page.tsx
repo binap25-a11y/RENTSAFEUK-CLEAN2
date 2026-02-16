@@ -131,7 +131,7 @@ export default function DashboardPage() {
   }, [user, firestore]);
   const { data: allProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
 
-  // States for aggregated data (using Maps for real-time merge)
+  // States for aggregated data
   const [maintenanceMap, setMaintenanceMap] = useState<Record<string, MaintenanceLog[]>>({});
   const [inspectionsMap, setInspectionsMap] = useState<Record<string, Inspection[]>>({});
   const [documentsMap, setDocumentsMap] = useState<Record<string, Document[]>>({});
@@ -145,12 +145,13 @@ export default function DashboardPage() {
     setCurrentMonth(format(new Date(), 'MMMM'));
   }, []);
 
-  // Define properties that are NOT deleted
+  // Define properties that are truly "Active" (excluding Deleted and Archived)
   const properties = useMemo(() => {
-    return allProperties?.filter(p => p.status !== 'Deleted') ?? [];
+    const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
+    return allProperties?.filter(p => activeStatuses.includes(p.status || '')) ?? [];
   }, [allProperties]);
 
-  // Real-time Aggregation Effect: Subscribe to sub-collections for each non-deleted property
+  // Real-time Aggregation Effect: Subscribe to sub-collections for each active property
   useEffect(() => {
     if (!user || !properties || properties.length === 0) {
         setMaintenanceMap({});
@@ -159,6 +160,12 @@ export default function DashboardPage() {
         setRentPaymentsMap({});
         return;
     }
+
+    // Clean sweep to ensure we don't have stale data from properties that changed status
+    setMaintenanceMap({});
+    setInspectionsMap({});
+    setDocumentsMap({});
+    setRentPaymentsMap({});
 
     const unsubs: (() => void)[] = [];
 
@@ -196,15 +203,10 @@ export default function DashboardPage() {
 
     return () => {
         unsubs.forEach(u => u());
-        // Clean sweep to prevent ghost data from lingered property states
-        setMaintenanceMap({});
-        setInspectionsMap({});
-        setDocumentsMap({});
-        setRentPaymentsMap({});
     };
   }, [user, properties, firestore]);
 
-  // Filter aggregated maps by the current list of non-deleted property IDs
+  // Filter aggregated maps by the current list of active property IDs
   const maintenanceLogs = useMemo(() => {
     const activeIds = new Set(properties.map(p => p.id));
     return Object.entries(maintenanceMap)
@@ -244,8 +246,7 @@ export default function DashboardPage() {
     }, {} as Record<string, Property['address']>) ?? {}
   , [properties]);
 
-  // "Active" for property count means truly active statuses
-  const activeProperties = useMemo(() => properties?.filter(p => ['Vacant', 'Occupied', 'Under Maintenance'].includes(p.status)) ?? [], [properties]);
+  const activePropertiesCount = properties.length;
   
   // Count only issues that are Open or In Progress
   const openMaintenanceCount = useMemo(() => 
@@ -349,13 +350,13 @@ export default function DashboardPage() {
   } satisfies ChartConfig;
 
   const infoCards = [
-    { title: 'Total Properties', value: isLoading ? '-' : activeProperties.length, icon: Home, description: 'Active portfolio', href: '/dashboard/properties' },
+    { title: 'Total Properties', value: isLoading ? '-' : activePropertiesCount, icon: Home, description: 'Active portfolio', href: '/dashboard/properties' },
     { title: 'Open Maintenance', value: isLoading ? '-' : openMaintenanceCount, icon: Wrench, description: 'Needing attention', href: '/dashboard/maintenance/logged' },
     { title: 'Upcoming Inspections', value: isLoading ? '-' : upcomingInspectionsCount, icon: CalendarCheck, description: 'Next 30 days', href: '/dashboard/inspections' },
     { title: 'Total Documents', value: isLoading ? '-' : documents.length, icon: Files, description: 'Compliance items', href: '/dashboard/documents' },
   ];
 
-  if (!isLoading && properties?.length === 0) {
+  if (!isLoading && allProperties?.length === 0) {
     return (
       <div className="flex flex-col gap-8 max-w-4xl mx-auto py-12">
         <div className="text-center space-y-4">
