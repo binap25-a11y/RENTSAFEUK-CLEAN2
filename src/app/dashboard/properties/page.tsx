@@ -41,7 +41,8 @@ import {
   where,
   doc,
   updateDoc,
-  getDocs,
+  onSnapshot,
+  limit,
 } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { useMemo, useState, useEffect } from 'react';
@@ -77,11 +78,6 @@ interface Property {
   ownerId: string;
 }
 
-interface MaintenanceCount {
-    propertyId: string;
-    count: number;
-}
-
 export default function PropertiesPage() {
   const router = useRouter();
   const { user } = useUser();
@@ -90,9 +86,8 @@ export default function PropertiesPage() {
   const [propertyToDelete, setPropertyToDelete] = useState<Property | null>(null);
   const [view, setView] = useState<'grid' | 'list'>('grid');
   
-  // Maintenance aggregation state
+  // Real-time maintenance aggregation state
   const [openMaintenanceMap, setOpenMaintenanceMap] = useState<Record<string, number>>({});
-  const [isCountingMaintenance, setIsCountingMaintenance] = useState(false);
 
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
@@ -109,33 +104,28 @@ export default function PropertiesPage() {
     error,
   } = useCollection<Property>(propertiesQuery);
 
-  // Aggregation: Count open maintenance for each property
+  // Aggregation: Real-time count of open maintenance for each property
   useEffect(() => {
-    if (!user || !properties || properties.length === 0) return;
+    if (!user || !properties || properties.length === 0) {
+        setOpenMaintenanceMap({});
+        return;
+    }
 
-    const countMaintenance = async () => {
-        setIsCountingMaintenance(true);
-        try {
-            const counts: Record<string, number> = {};
-            const promises = properties.map(async (p) => {
-                const q = query(
-                    collection(firestore, 'properties', p.id, 'maintenanceLogs'),
-                    where('ownerId', '==', user.uid),
-                    where('status', 'in', ['Open', 'In Progress'])
-                );
-                const snap = await getDocs(q);
-                counts[p.id] = snap.size;
-            });
-            await Promise.all(promises);
-            setOpenMaintenanceMap(counts);
-        } catch (err) {
-            console.error("Failed to count maintenance:", err);
-        } finally {
-            setIsCountingMaintenance(false);
-        }
-    };
+    const unsubs: (() => void)[] = [];
 
-    countMaintenance();
+    properties.forEach((p) => {
+        const q = query(
+            collection(firestore, 'properties', p.id, 'maintenanceLogs'),
+            where('ownerId', '==', user.uid),
+            where('status', 'in', ['Open', 'In Progress'])
+        );
+        const unsub = onSnapshot(q, (snap) => {
+            setOpenMaintenanceMap(prev => ({ ...prev, [p.id]: snap.size }));
+        });
+        unsubs.push(unsub);
+    });
+
+    return () => unsubs.forEach(u => u());
   }, [user, properties, firestore]);
 
   const filteredProperties = useMemo(() => {

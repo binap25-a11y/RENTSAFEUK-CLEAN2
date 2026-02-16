@@ -28,7 +28,7 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, getDocs, Timestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, Timestamp } from 'firebase/firestore';
 import { useMemo, useState, useEffect } from 'react';
 import { format, isFuture, isBefore, addDays } from 'date-fns';
 import {
@@ -131,12 +131,12 @@ export default function DashboardPage() {
   }, [user, firestore]);
   const { data: allProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
 
-  // States for aggregated data
-  const [maintenanceLogs, setMaintenanceLogs] = useState<MaintenanceLog[]>([]);
-  const [inspections, setInspections] = useState<Inspection[]>([]);
-  const [documents, setDocuments] = useState<Document[]>([]);
-  const [allRentPayments, setAllRentPayments] = useState<RentPayment[]>([]);
-  const [isAggregating, setIsAggregating] = useState(false);
+  // States for aggregated data (using Maps for real-time merge)
+  const [maintenanceMap, setMaintenanceMap] = useState<Record<string, MaintenanceLog[]>>({});
+  const [inspectionsMap, setInspectionsMap] = useState<Record<string, Inspection[]>>({});
+  const [documentsMap, setDocumentsMap] = useState<Record<string, Document[]>>({});
+  const [rentPaymentsMap, setRentPaymentsMap] = useState<Record<string, RentPayment[]>>({});
+  
   const [currentYear, setCurrentYear] = useState<number | null>(null);
   const [currentMonth, setCurrentMonth] = useState<string | null>(null);
 
@@ -150,54 +150,59 @@ export default function DashboardPage() {
     return allProperties?.filter(p => p.status !== 'Deleted') ?? [];
   }, [allProperties]);
 
-  // Aggregation Effect: Fetch sub-collections for each property in parallel
+  // Real-time Aggregation Effect: Subscribe to sub-collections for each property
   useEffect(() => {
     if (!user || !properties || properties.length === 0) {
-        setMaintenanceLogs([]);
-        setInspections([]);
-        setDocuments([]);
-        setAllRentPayments([]);
+        setMaintenanceMap({});
+        setInspectionsMap({});
+        setDocumentsMap({});
+        setRentPaymentsMap({});
         return;
     }
 
-    const aggregateData = async () => {
-        setIsAggregating(true);
-        try {
-            const maintPromises: Promise<any>[] = [];
-            const inspPromises: Promise<any>[] = [];
-            const docPromises: Promise<any>[] = [];
-            const rentPromises: Promise<any>[] = [];
+    const unsubs: (() => void)[] = [];
 
-            properties.forEach(prop => {
-                const ownerFilter = where('ownerId', '==', user.uid);
-                maintPromises.push(getDocs(query(collection(firestore, 'properties', prop.id, 'maintenanceLogs'), ownerFilter)));
-                inspPromises.push(getDocs(query(collection(firestore, 'properties', prop.id, 'inspections'), ownerFilter)));
-                docPromises.push(getDocs(query(collection(firestore, 'properties', prop.id, 'documents'), ownerFilter)));
-                rentPromises.push(getDocs(query(collection(firestore, 'properties', prop.id, 'rentPayments'), ownerFilter)));
-            });
+    properties.forEach(prop => {
+        const ownerFilter = where('ownerId', '==', user.uid);
+        
+        // Maintenance Logs
+        const maintQ = query(collection(firestore, 'properties', prop.id, 'maintenanceLogs'), ownerFilter);
+        unsubs.push(onSnapshot(maintQ, (snap) => {
+            const logs = snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog));
+            setMaintenanceMap(prev => ({ ...prev, [prop.id]: logs }));
+        }));
 
-            const [maintSnaps, inspSnaps, docSnaps, rentSnaps] = await Promise.all([
-                Promise.all(maintPromises),
-                Promise.all(inspPromises),
-                Promise.all(docPromises),
-                Promise.all(rentPromises)
-            ]);
+        // Inspections
+        const inspQ = query(collection(firestore, 'properties', prop.id, 'inspections'), ownerFilter);
+        unsubs.push(onSnapshot(inspQ, (snap) => {
+            const insps = snap.docs.map(d => ({ id: d.id, ...d.data() } as Inspection));
+            setInspectionsMap(prev => ({ ...prev, [prop.id]: insps }));
+        }));
 
-            setMaintenanceLogs(maintSnaps.flatMap(snap => snap.docs.map((d: any) => ({ id: d.id, ...d.data() } as MaintenanceLog))));
-            setInspections(inspSnaps.flatMap(snap => snap.docs.map((d: any) => ({ id: d.id, ...d.data() } as Inspection))));
-            setDocuments(docSnaps.flatMap(snap => snap.docs.map((d: any) => ({ id: d.id, ...d.data() } as Document))));
-            setAllRentPayments(rentSnaps.flatMap(snap => snap.docs.map((d: any) => ({ id: d.id, ...d.data() } as RentPayment))));
-        } catch (err) {
-            console.error("Aggregation failed:", err);
-        } finally {
-            setIsAggregating(false);
-        }
-    };
+        // Documents
+        const docQ = query(collection(firestore, 'properties', prop.id, 'documents'), ownerFilter);
+        unsubs.push(onSnapshot(docQ, (snap) => {
+            const docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as Document));
+            setDocumentsMap(prev => ({ ...prev, [prop.id]: docs }));
+        }));
 
-    aggregateData();
+        // Rent Payments
+        const rentQ = query(collection(firestore, 'properties', prop.id, 'rentPayments'), ownerFilter);
+        unsubs.push(onSnapshot(rentQ, (snap) => {
+            const payments = snap.docs.map(d => ({ id: d.id, ...d.data() } as RentPayment));
+            setRentPaymentsMap(prev => ({ ...prev, [prop.id]: payments }));
+        }));
+    });
+
+    return () => unsubs.forEach(u => u());
   }, [user, properties, firestore]);
 
-  const isLoading = isLoadingProperties || isAggregating || !currentYear;
+  const maintenanceLogs = useMemo(() => Object.values(maintenanceMap).flat(), [maintenanceMap]);
+  const inspections = useMemo(() => Object.values(inspectionsMap).flat(), [inspectionsMap]);
+  const documents = useMemo(() => Object.values(documentsMap).flat(), [documentsMap]);
+  const allRentPayments = useMemo(() => Object.values(rentPaymentsMap).flat(), [rentPaymentsMap]);
+
+  const isLoading = isLoadingProperties || !currentYear;
 
   // --- Processed Data ---
 
@@ -210,7 +215,6 @@ export default function DashboardPage() {
 
   const activeProperties = useMemo(() => properties?.filter(p => ['Vacant', 'Occupied', 'Under Maintenance'].includes(p.status)) ?? [], [properties]);
   
-  // "Needing attention" includes both Open and In Progress
   const openMaintenanceCount = useMemo(() => 
     maintenanceLogs.filter(log => log.status === 'Open' || log.status === 'In Progress').length, 
   [maintenanceLogs]);

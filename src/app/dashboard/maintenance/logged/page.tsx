@@ -68,7 +68,7 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, doc, updateDoc, deleteDoc, getDocs, limit } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, deleteDoc, onSnapshot, limit } from 'firebase/firestore';
 
 // Types
 interface Property {
@@ -99,9 +99,8 @@ export default function MaintenanceLoggedPage() {
   const [logToCancel, setLogToCancel] = useState<MaintenanceLog | null>(null);
   const [logToDelete, setLogToDelete] = useState<MaintenanceLog | null>(null);
 
-  // States for aggregated data (for Portfolio View)
-  const [portfolioLogs, setPortfolioLogs] = useState<MaintenanceLog[]>([]);
-  const [isAggregating, setIsAggregating] = useState(false);
+  // Aggregated data map
+  const [portfolioLogsMap, setPortfolioLogsMap] = useState<Record<string, MaintenanceLog[]>>({});
 
   // Fetch active properties
   const propertiesQuery = useMemoFirebase(() => {
@@ -128,46 +127,38 @@ export default function MaintenanceLoggedPage() {
     }, {} as Record<string, string>);
   }, [activeProperties]);
 
-  // Portfolio-wide aggregation logic
+  // Real-time Aggregation Logic for all properties
   useEffect(() => {
-    if (!user || activeProperties.length === 0 || selectedPropertyFilter !== 'all') {
-        setPortfolioLogs([]);
+    if (!user || activeProperties.length === 0) {
+        setPortfolioLogsMap({});
         return;
     }
 
-    const aggregateLogs = async () => {
-        setIsAggregating(true);
-        try {
-            const promises = activeProperties.map(p => 
-                getDocs(query(collection(firestore, 'properties', p.id, 'maintenanceLogs'), where('ownerId', '==', user.uid)))
-            );
-            const snapshots = await Promise.all(promises);
-            const logs = snapshots.flatMap(snap => snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog)));
-            setPortfolioLogs(logs);
-        } catch (err) {
-            console.error("Failed to aggregate maintenance logs:", err);
-        } finally {
-            setIsAggregating(false);
-        }
-    };
+    const unsubs: (() => void)[] = [];
 
-    aggregateLogs();
-  }, [user, activeProperties, firestore, selectedPropertyFilter]);
+    activeProperties.forEach(p => {
+        const q = query(
+            collection(firestore, 'properties', p.id, 'maintenanceLogs'), 
+            where('ownerId', '==', user.uid)
+        );
+        const unsub = onSnapshot(q, (snap) => {
+            const logs = snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog));
+            setPortfolioLogsMap(prev => ({ ...prev, [p.id]: logs }));
+        }, (err) => {
+            console.error(`Listener failed for property ${p.id}:`, err);
+        });
+        unsubs.push(unsub);
+    });
 
-  // Fetch maintenance logs for a SINGLE selected property
-  const singlePropertyQuery = useMemoFirebase(() => {
-    if (!user || !selectedPropertyFilter || selectedPropertyFilter === 'all') return null;
-    return query(
-        collection(firestore, 'properties', selectedPropertyFilter, 'maintenanceLogs'),
-        where('ownerId', '==', user.uid)
-    );
-  }, [firestore, user, selectedPropertyFilter]);
+    return () => unsubs.forEach(u => u());
+  }, [user, activeProperties, firestore]);
 
-  const { data: singlePropertyLogs, isLoading: isLoadingSingleLogs } = useCollection<MaintenanceLog>(singlePropertyQuery);
-  
   const allCurrentLogs = useMemo(() => {
-    return selectedPropertyFilter === 'all' ? portfolioLogs : (singlePropertyLogs || []);
-  }, [selectedPropertyFilter, portfolioLogs, singlePropertyLogs]);
+    if (selectedPropertyFilter === 'all') {
+        return Object.values(portfolioLogsMap).flat();
+    }
+    return portfolioLogsMap[selectedPropertyFilter] || [];
+  }, [selectedPropertyFilter, portfolioLogsMap]);
 
   const filteredLogs = useMemo(() => {
     if (!allCurrentLogs) return [];
@@ -186,9 +177,6 @@ export default function MaintenanceLoggedPage() {
     try {
       await updateDoc(doc(firestore, 'properties', propertyId, 'maintenanceLogs', logId), { status: newStatus });
       toast({ title: 'Status Updated' });
-      if (selectedPropertyFilter === 'all') {
-          setPortfolioLogs(prev => prev.map(l => l.id === logId ? { ...l, status: newStatus } : l));
-      }
     } catch (error) {
       console.error('Failed to update status:', error);
       toast({ variant: 'destructive', title: 'Update Failed' });
@@ -200,9 +188,6 @@ export default function MaintenanceLoggedPage() {
     try {
       await updateDoc(doc(firestore, 'properties', logToCancel.propertyId, 'maintenanceLogs', logToCancel.id), { status: 'Cancelled' });
       toast({ title: 'Log Cancelled' });
-      if (selectedPropertyFilter === 'all') {
-          setPortfolioLogs(prev => prev.map(l => l.id === logToCancel.id ? { ...l, status: 'Cancelled' } : l));
-      }
     } catch (error) {
       console.error('Failed to cancel log:', error);
       toast({ variant: 'destructive', title: 'Update Failed' });
@@ -216,9 +201,6 @@ export default function MaintenanceLoggedPage() {
     try {
       await deleteDoc(doc(firestore, 'properties', logToDelete.propertyId, 'maintenanceLogs', logToDelete.id));
       toast({ title: 'Log Deleted' });
-      if (selectedPropertyFilter === 'all') {
-          setPortfolioLogs(prev => prev.filter(l => l.id !== logToDelete.id));
-      }
     } catch (error) {
       console.error('Failed to delete log:', error);
       toast({ variant: 'destructive', title: 'Delete Failed' });
@@ -238,8 +220,6 @@ export default function MaintenanceLoggedPage() {
   const formatAddress = (address: Property['address']) => {
     return [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
   };
-
-  const isLoading = isLoadingProperties || (selectedPropertyFilter === 'all' ? isAggregating : isLoadingSingleLogs);
 
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
@@ -308,7 +288,7 @@ export default function MaintenanceLoggedPage() {
             </CardTitle>
         </CardHeader>
         <CardContent className="p-0">
-            {isLoading ? (
+            {isLoadingProperties ? (
                 <div className="flex flex-col justify-center items-center h-64 gap-2">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     <p className="text-sm text-muted-foreground animate-pulse">Fetching records...</p>
