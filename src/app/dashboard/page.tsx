@@ -197,10 +197,34 @@ export default function DashboardPage() {
     return () => unsubs.forEach(u => u());
   }, [user, properties, firestore]);
 
-  const maintenanceLogs = useMemo(() => Object.values(maintenanceMap).flat(), [maintenanceMap]);
-  const inspections = useMemo(() => Object.values(inspectionsMap).flat(), [inspectionsMap]);
-  const documents = useMemo(() => Object.values(documentsMap).flat(), [documentsMap]);
-  const allRentPayments = useMemo(() => Object.values(rentPaymentsMap).flat(), [rentPaymentsMap]);
+  // CRITICAL: Filter aggregated maps by the current list of active property IDs to prevent "stuck" data
+  const maintenanceLogs = useMemo(() => {
+    const activeIds = new Set(properties.map(p => p.id));
+    return Object.entries(maintenanceMap)
+      .filter(([id]) => activeIds.has(id))
+      .flatMap(([, logs]) => logs);
+  }, [maintenanceMap, properties]);
+
+  const inspections = useMemo(() => {
+    const activeIds = new Set(properties.map(p => p.id));
+    return Object.entries(inspectionsMap)
+      .filter(([id]) => activeIds.has(id))
+      .flatMap(([, items]) => items);
+  }, [inspectionsMap, properties]);
+
+  const documents = useMemo(() => {
+    const activeIds = new Set(properties.map(p => p.id));
+    return Object.entries(documentsMap)
+      .filter(([id]) => activeIds.has(id))
+      .flatMap(([, items]) => items);
+  }, [documentsMap, properties]);
+
+  const allRentPayments = useMemo(() => {
+    const activeIds = new Set(properties.map(p => p.id));
+    return Object.entries(rentPaymentsMap)
+      .filter(([id]) => activeIds.has(id))
+      .flatMap(([, items]) => items);
+  }, [rentPaymentsMap, properties]);
 
   const isLoading = isLoadingProperties || !currentYear;
 

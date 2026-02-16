@@ -154,17 +154,22 @@ export default function MaintenanceLoggedPage() {
   }, [user, activeProperties, firestore]);
 
   const allCurrentLogs = useMemo(() => {
+    // CRITICAL: Filter logs map by the current list of active property IDs to prevent data leakage
+    const activeIds = new Set(activeProperties.map(p => p.id));
+    
     if (selectedPropertyFilter === 'all') {
-        return Object.values(portfolioLogsMap).flat();
+        return Object.entries(portfolioLogsMap)
+            .filter(([id]) => activeIds.has(id))
+            .flatMap(([, logs]) => logs);
     }
     return portfolioLogsMap[selectedPropertyFilter] || [];
-  }, [selectedPropertyFilter, portfolioLogsMap]);
+  }, [selectedPropertyFilter, portfolioLogsMap, activeProperties]);
 
   const filteredLogs = useMemo(() => {
     if (!allCurrentLogs) return [];
     const term = searchTerm.toLowerCase();
     return allCurrentLogs
-        .filter(log => log.status !== 'Deleted' && log.title.toLowerCase().includes(term))
+        .filter(log => log.status !== 'Deleted' && log.status !== 'Cancelled' && log.title.toLowerCase().includes(term))
         .sort((a, b) => {
             const dateA = a.reportedDate instanceof Date ? a.reportedDate : new Date((a.reportedDate as any).seconds * 1000);
             const dateB = b.reportedDate instanceof Date ? b.reportedDate : new Date((b.reportedDate as any).seconds * 1000);

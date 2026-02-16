@@ -128,6 +128,15 @@ export default function PropertiesPage() {
     return () => unsubs.forEach(u => u());
   }, [user, properties, firestore]);
 
+  // CRITICAL: Filter maintenance badge map by the current list of active property IDs
+  const activeOpenMaintenance = useMemo(() => {
+    if (!properties) return {};
+    const activeIds = new Set(properties.map(p => p.id));
+    return Object.fromEntries(
+        Object.entries(openMaintenanceMap).filter(([id]) => activeIds.has(id))
+    );
+  }, [openMaintenanceMap, properties]);
+
   const filteredProperties = useMemo(() => {
     if (!properties) return [];
     if (!searchTerm) return properties;
@@ -148,7 +157,7 @@ export default function PropertiesPage() {
       p.bedrooms,
       p.bathrooms,
       p.address.postcode,
-      openMaintenanceMap[p.id] || 0
+      activeOpenMaintenance[p.id] || 0
     ]);
     
     const csvContent = "data:text/csv;charset=utf-8," 
@@ -269,11 +278,11 @@ export default function PropertiesPage() {
                           key={property.id}
                           className="group overflow-hidden flex flex-col hover:shadow-lg transition-shadow relative"
                       >
-                          {openMaintenanceMap[property.id] > 0 && (
+                          {activeOpenMaintenance[property.id] > 0 && (
                               <div className="absolute top-2 left-2 z-10">
                                   <Badge variant="destructive" className="flex items-center gap-1 shadow-sm">
                                       <AlertCircle className="h-3 w-3" />
-                                      {openMaintenanceMap[property.id]} Open Issue{openMaintenanceMap[property.id] > 1 ? 's' : ''}
+                                      {activeOpenMaintenance[property.id]} Open Issue{activeOpenMaintenance[property.id] > 1 ? 's' : ''}
                                   </Badge>
                               </div>
                           )}
@@ -366,10 +375,10 @@ export default function PropertiesPage() {
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
-                                        {openMaintenanceMap[property.id] > 0 ? (
+                                        {activeOpenMaintenance[property.id] > 0 ? (
                                             <Badge variant="destructive" className="gap-1">
                                                 <AlertCircle className="h-3 w-3" />
-                                                {openMaintenanceMap[property.id]} Open
+                                                {activeOpenMaintenance[property.id]} Open
                                             </Badge>
                                         ) : (
                                             <span className="text-xs text-muted-foreground">Clear</span>
