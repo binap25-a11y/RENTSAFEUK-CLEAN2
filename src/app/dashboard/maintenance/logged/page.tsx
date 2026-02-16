@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Card,
@@ -56,7 +56,9 @@ import {
   Trash2, 
   ArrowLeft,
   Calendar,
-  AlertCircle
+  AlertCircle,
+  Filter,
+  LayoutList
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -66,7 +68,7 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, deleteDoc, getDocs, limit } from 'firebase/firestore';
 
 // Types
 interface Property {
@@ -77,6 +79,7 @@ interface Property {
     city: string;
     postcode: string;
   };
+  status: string;
 }
 
 interface MaintenanceLog {
@@ -91,55 +94,102 @@ interface MaintenanceLog {
 export default function MaintenanceLoggedPage() {
   const { user } = useUser();
   const firestore = useFirestore();
-  const [selectedPropertyFilter, setSelectedPropertyFilter] = useState<string>('');
+  const [selectedPropertyFilter, setSelectedPropertyFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [logToCancel, setLogToCancel] = useState<MaintenanceLog | null>(null);
   const [logToDelete, setLogToDelete] = useState<MaintenanceLog | null>(null);
 
-  // Fetch properties for the dropdown
+  // States for aggregated data (for Portfolio View)
+  const [portfolioLogs, setPortfolioLogs] = useState<MaintenanceLog[]>([]);
+  const [isAggregating, setIsAggregating] = useState(false);
+
+  // Fetch active properties
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
       collection(firestore, 'properties'),
       where('ownerId', '==', user.uid),
-      where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
+      limit(500)
     );
   }, [firestore, user]);
 
-  const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
+  const { data: allProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
   
+  const activeProperties = useMemo(() => {
+    const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
+    return allProperties?.filter(p => activeStatuses.includes(p.status || '')) ?? [];
+  }, [allProperties]);
+
   const propertyMap = useMemo(() => {
-    if (!properties) return {};
-    return properties.reduce((acc, prop) => {
+    if (!activeProperties) return {};
+    return activeProperties.reduce((acc, prop) => {
         acc[prop.id] = [prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ');
         return acc;
     }, {} as Record<string, string>);
-  }, [properties]);
+  }, [activeProperties]);
 
-  // Fetch maintenance logs for the selected property
-  const maintenanceQuery = useMemoFirebase(() => {
-    if (!user || !selectedPropertyFilter) return null;
+  // Portfolio-wide aggregation logic
+  useEffect(() => {
+    if (!user || activeProperties.length === 0 || selectedPropertyFilter !== 'all') {
+        setPortfolioLogs([]);
+        return;
+    }
+
+    const aggregateLogs = async () => {
+        setIsAggregating(true);
+        try {
+            const promises = activeProperties.map(p => 
+                getDocs(query(collection(firestore, 'properties', p.id, 'maintenanceLogs'), where('ownerId', '==', user.uid)))
+            );
+            const snapshots = await Promise.all(promises);
+            const logs = snapshots.flatMap(snap => snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog)));
+            setPortfolioLogs(logs);
+        } catch (err) {
+            console.error("Failed to aggregate maintenance logs:", err);
+        } finally {
+            setIsAggregating(false);
+        }
+    };
+
+    aggregateLogs();
+  }, [user, activeProperties, firestore, selectedPropertyFilter]);
+
+  // Fetch maintenance logs for a SINGLE selected property
+  const singlePropertyQuery = useMemoFirebase(() => {
+    if (!user || !selectedPropertyFilter || selectedPropertyFilter === 'all') return null;
     return query(
         collection(firestore, 'properties', selectedPropertyFilter, 'maintenanceLogs'),
         where('ownerId', '==', user.uid)
     );
   }, [firestore, user, selectedPropertyFilter]);
 
-  const { data: maintenanceLogs, isLoading: isLoadingLogs } = useCollection<MaintenanceLog>(maintenanceQuery);
+  const { data: singlePropertyLogs, isLoading: isLoadingSingleLogs } = useCollection<MaintenanceLog>(singlePropertyQuery);
   
+  const allCurrentLogs = useMemo(() => {
+    return selectedPropertyFilter === 'all' ? portfolioLogs : (singlePropertyLogs || []);
+  }, [selectedPropertyFilter, portfolioLogs, singlePropertyLogs]);
+
   const filteredLogs = useMemo(() => {
-    if (!maintenanceLogs) return [];
-    if (!searchTerm) return maintenanceLogs;
-    return maintenanceLogs.filter(log =>
-        log.title.toLowerCase().includes(searchTerm.toLowerCase())
-    );
-  }, [maintenanceLogs, searchTerm]);
+    if (!allCurrentLogs) return [];
+    const term = searchTerm.toLowerCase();
+    return allCurrentLogs
+        .filter(log => log.status !== 'Deleted' && log.title.toLowerCase().includes(term))
+        .sort((a, b) => {
+            const dateA = a.reportedDate instanceof Date ? a.reportedDate : new Date((a.reportedDate as any).seconds * 1000);
+            const dateB = b.reportedDate instanceof Date ? b.reportedDate : new Date((b.reportedDate as any).seconds * 1000);
+            return dateB.getTime() - dateA.getTime();
+        });
+  }, [allCurrentLogs, searchTerm]);
 
   const handleStatusChange = async (logId: string, propertyId: string, newStatus: string) => {
     if (!firestore) return;
     try {
       await updateDoc(doc(firestore, 'properties', propertyId, 'maintenanceLogs', logId), { status: newStatus });
       toast({ title: 'Status Updated' });
+      // If we are in portfolio view, we need to update the local state manually or re-fetch
+      if (selectedPropertyFilter === 'all') {
+          setPortfolioLogs(prev => prev.map(l => l.id === logId ? { ...l, status: newStatus } : l));
+      }
     } catch (error) {
       console.error('Failed to update status:', error);
       toast({ variant: 'destructive', title: 'Update Failed' });
@@ -151,6 +201,9 @@ export default function MaintenanceLoggedPage() {
     try {
       await updateDoc(doc(firestore, 'properties', logToCancel.propertyId, 'maintenanceLogs', logToCancel.id), { status: 'Cancelled' });
       toast({ title: 'Log Cancelled' });
+      if (selectedPropertyFilter === 'all') {
+          setPortfolioLogs(prev => prev.map(l => l.id === logToCancel.id ? { ...l, status: 'Cancelled' } : l));
+      }
     } catch (error) {
       console.error('Failed to cancel log:', error);
       toast({ variant: 'destructive', title: 'Update Failed' });
@@ -164,6 +217,9 @@ export default function MaintenanceLoggedPage() {
     try {
       await deleteDoc(doc(firestore, 'properties', logToDelete.propertyId, 'maintenanceLogs', logToDelete.id));
       toast({ title: 'Log Deleted' });
+      if (selectedPropertyFilter === 'all') {
+          setPortfolioLogs(prev => prev.filter(l => l.id !== logToDelete.id));
+      }
     } catch (error) {
       console.error('Failed to delete log:', error);
       toast({ variant: 'destructive', title: 'Delete Failed' });
@@ -184,6 +240,8 @@ export default function MaintenanceLoggedPage() {
     return [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
   };
 
+  const isLoading = isLoadingProperties || (selectedPropertyFilter === 'all' ? isAggregating : isLoadingSingleLogs);
+
   return (
     <div className="space-y-6 max-w-6xl mx-auto">
       <div className="flex items-center gap-4">
@@ -195,159 +253,172 @@ export default function MaintenanceLoggedPage() {
         <div>
           <h1 className="text-3xl font-bold font-headline">Maintenance Logged</h1>
           <p className="text-muted-foreground">
-            History of maintenance tasks and repairs.
+            View all active repairs across your entire portfolio.
           </p>
         </div>
       </div>
 
       <Card>
         <CardHeader>
-          <CardTitle>Filter Records</CardTitle>
-          <CardDescription>Search and filter your maintenance history.</CardDescription>
+          <CardTitle>Filter & Search</CardTitle>
+          <CardDescription>Select a property or view your entire portfolio history.</CardDescription>
         </CardHeader>
         <CardContent className="space-y-6">
-            <div className="flex flex-col gap-6 max-w-md">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                    <Label htmlFor="property-filter" className="text-sm font-medium">Filter by Property</Label>
+                    <Label htmlFor="property-filter" className="text-sm font-semibold flex items-center gap-2">
+                        <Filter className="h-3.5 w-3.5" />
+                        Selected Property
+                    </Label>
                     <Select value={selectedPropertyFilter} onValueChange={setSelectedPropertyFilter}>
                         <SelectTrigger id="property-filter" className="w-full">
-                            <SelectValue placeholder={isLoadingProperties ? 'Loading properties...' : 'Choose a property to view logs'} />
+                            <SelectValue placeholder={isLoadingProperties ? 'Loading portfolio...' : 'Choose filter'} />
                         </SelectTrigger>
                         <SelectContent>
-                            {properties?.map(prop => (
+                            <SelectItem value="all">All Properties (Portfolio View)</SelectItem>
+                            {activeProperties?.map(prop => (
                                 <SelectItem key={prop.id} value={prop.id}>{formatAddress(prop.address)}</SelectItem>
                             ))}
                         </SelectContent>
                     </Select>
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="search-issues" className="text-sm font-medium">Search Issues</Label>
+                    <Label htmlFor="search-issues" className="text-sm font-semibold flex items-center gap-2">
+                        <Search className="h-3.5 w-3.5" />
+                        Search Issue Title
+                    </Label>
                     <div className="relative">
-                        <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                         <Input 
                             id="search-issues"
-                            placeholder="e.g., 'Leaking pipe', 'Boiler'..." 
-                            className="pl-8" 
+                            placeholder="e.g., 'Leaking', 'Boiler'..." 
+                            className="h-10" 
                             value={searchTerm} 
                             onChange={e => setSearchTerm(e.target.value)} 
                         />
                     </div>
                 </div>
             </div>
-            
-            <div className="pt-4 border-t">
-                {/* Desktop Table View */}
-                <div className="hidden rounded-md border md:block">
-                    <Table>
-                        <TableHeader>
-                            <TableRow>
-                                <TableHead className="w-[30%]">Issue Title</TableHead>
-                                <TableHead>Status</TableHead>
-                                <TableHead>Priority</TableHead>
-                                <TableHead>Reported</TableHead>
-                                <TableHead className="text-right">Actions</TableHead>
-                            </TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {isLoadingLogs && <TableRow><TableCell colSpan={5} className="h-32 text-center"><Loader2 className="mx-auto h-8 w-8 animate-spin text-muted-foreground" /></TableCell></TableRow>}
-                            {!isLoadingLogs && filteredLogs?.length === 0 && (
-                                <TableRow>
-                                    <TableCell colSpan={5} className="h-32 text-center text-muted-foreground">
-                                        {selectedPropertyFilter ? 'No maintenance logs found for this property.' : 'Select a property above to see its maintenance history.'}
-                                    </TableCell>
-                                </TableRow>
-                            )}
-                            {filteredLogs?.map(log => (
-                                <TableRow key={log.id}>
-                                    <TableCell className="font-medium">
-                                        <Link href={`/dashboard/maintenance/${log.id}?propertyId=${selectedPropertyFilter}`} className="hover:underline text-primary">
-                                            {log.title}
-                                        </Link>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Select value={log.status} onValueChange={(newStatus) => handleStatusChange(log.id, selectedPropertyFilter, newStatus)}>
-                                            <SelectTrigger className="w-[140px] h-8 text-xs font-medium">
-                                                <SelectValue />
-                                            </SelectTrigger>
-                                            <SelectContent>
-                                                <SelectItem value="Open">Open</SelectItem>
-                                                <SelectItem value="In Progress">In Progress</SelectItem>
-                                                <SelectItem value="Completed">Completed</SelectItem>
-                                                <SelectItem value="Cancelled">Cancelled</SelectItem>
-                                            </SelectContent>
-                                        </Select>
-                                    </TableCell>
-                                    <TableCell>
-                                        <Badge variant={getPriorityVariant(log.priority)} className="capitalize">
-                                            {log.priority}
-                                        </Badge>
-                                    </TableCell>
-                                    <TableCell className="text-muted-foreground text-sm">
-                                        {log.reportedDate instanceof Date ? format(log.reportedDate, 'dd/MM/yyyy') : format(new Date(log.reportedDate.seconds * 1000), 'dd/MM/yyyy')}
-                                    </TableCell>
-                                    <TableCell className="text-right">
-                                        <div className="flex justify-end items-center gap-1">
-                                            <Button asChild variant="ghost" size="icon" className="h-8 w-8">
-                                                <Link href={`/dashboard/maintenance/${log.id}?propertyId=${selectedPropertyFilter}`}>
-                                                    <Eye className="h-4 w-4" />
-                                                </Link>
-                                            </Button>
-                                            <Button asChild variant="ghost" size="icon" className="h-8 w-8">
-                                                <Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${selectedPropertyFilter}`}>
-                                                    <Edit className="h-4 w-4" />
-                                                </Link>
-                                            </Button>
-                                            <DropdownMenu>
-                                                <DropdownMenuTrigger asChild>
-                                                    <Button variant="ghost" size="icon" className="h-8 w-8">
-                                                        <MoreVertical className="h-4 w-4" />
-                                                    </Button>
-                                                </DropdownMenuTrigger>
-                                                <DropdownMenuContent align="end">
-                                                    <DropdownMenuItem onClick={() => setLogToCancel(log)}>
-                                                        <XCircle className="mr-2 h-4 w-4" /> Cancel Issue
-                                                    </DropdownMenuItem>
-                                                    <DropdownMenuSeparator />
-                                                    <DropdownMenuItem onClick={() => setLogToDelete(log)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                                                        <Trash2 className="mr-2 h-4 w-4" /> Delete Permanently
-                                                    </DropdownMenuItem>
-                                                </DropdownMenuContent>
-                                            </DropdownMenu>
-                                        </div>
-                                    </TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
+        </CardContent>
+      </Card>
 
-                {/* Improved Mobile Card View */}
-                <div className="space-y-4 md:hidden">
-                    {isLoadingLogs ? (
-                        <div className="flex justify-center items-center h-24">
-                            <Loader2 className="mx-auto h-6 w-6 animate-spin text-muted-foreground" />
-                        </div>
-                    ) : filteredLogs?.length === 0 ? (
-                        <div className="text-center py-10 text-muted-foreground border-2 border-dashed rounded-lg bg-muted/30">
-                            {selectedPropertyFilter ? 'No issues found.' : 'Select a property to view logs.'}
-                        </div>
-                    ) : (
-                        filteredLogs.map(log => (
-                            <Card key={log.id} className="overflow-hidden">
+      <Card className="overflow-hidden border-none shadow-lg">
+        <CardHeader className="bg-muted/30 border-b pb-4">
+            <CardTitle className="text-lg flex items-center gap-2">
+                <LayoutList className="h-5 w-5 text-primary" />
+                Maintenance Records
+            </CardTitle>
+        </CardHeader>
+        <CardContent className="p-0">
+            {isLoading ? (
+                <div className="flex flex-col justify-center items-center h-64 gap-2">
+                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                    <p className="text-sm text-muted-foreground animate-pulse">Fetching records...</p>
+                </div>
+            ) : filteredLogs.length === 0 ? (
+                <div className="text-center py-24 px-6 text-muted-foreground border-2 border-dashed m-6 rounded-lg bg-muted/5">
+                    <AlertCircle className="h-12 w-12 mx-auto mb-4 opacity-20" />
+                    <p className="text-lg font-medium text-foreground">No records found</p>
+                    <p className="text-sm max-w-xs mx-auto mt-1">
+                        Try adjusting your search term or filtering for a different property.
+                    </p>
+                </div>
+            ) : (
+                <>
+                    {/* Desktop Table View */}
+                    <div className="hidden md:block">
+                        <Table>
+                            <TableHeader className="bg-muted/20">
+                                <TableRow>
+                                    <TableHead className="pl-6 font-bold uppercase tracking-wider text-[10px]">Issue Title</TableHead>
+                                    <TableHead className="font-bold uppercase tracking-wider text-[10px]">Property</TableHead>
+                                    <TableHead className="font-bold uppercase tracking-wider text-[10px]">Status</TableHead>
+                                    <TableHead className="font-bold uppercase tracking-wider text-[10px]">Priority</TableHead>
+                                    <TableHead className="text-right pr-6 font-bold uppercase tracking-wider text-[10px]">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {filteredLogs.map(log => (
+                                    <TableRow key={log.id} className="hover:bg-muted/10 transition-colors group">
+                                        <TableCell className="font-semibold pl-6 py-4">
+                                            <Link href={`/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`} className="hover:underline decoration-primary">
+                                                {log.title}
+                                            </Link>
+                                        </TableCell>
+                                        <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
+                                            {propertyMap[log.propertyId] || 'Unknown Property'}
+                                        </TableCell>
+                                        <TableCell>
+                                            <Select value={log.status} onValueChange={(newStatus) => handleStatusChange(log.id, log.propertyId, newStatus)}>
+                                                <SelectTrigger className="w-[140px] h-8 text-xs font-bold">
+                                                    <SelectValue />
+                                                </SelectTrigger>
+                                                <SelectContent>
+                                                    <SelectItem value="Open">Open</SelectItem>
+                                                    <SelectItem value="In Progress">In Progress</SelectItem>
+                                                    <SelectItem value="Completed">Completed</SelectItem>
+                                                    <SelectItem value="Cancelled">Cancelled</SelectItem>
+                                                </SelectContent>
+                                            </Select>
+                                        </TableCell>
+                                        <TableCell>
+                                            <Badge variant={getPriorityVariant(log.priority)} className="capitalize text-[10px]">
+                                                {log.priority}
+                                            </Badge>
+                                        </TableCell>
+                                        <TableCell className="text-right pr-6">
+                                            <div className="flex justify-end items-center gap-1">
+                                                <Button asChild variant="ghost" size="icon" className="h-8 w-8">
+                                                    <Link href={`/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`}>
+                                                        <Eye className="h-4 w-4" />
+                                                    </Link>
+                                                </Button>
+                                                <Button asChild variant="ghost" size="icon" className="h-8 w-8">
+                                                    <Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${log.propertyId}`}>
+                                                        <Edit className="h-4 w-4" />
+                                                    </Link>
+                                                </Button>
+                                                <DropdownMenu>
+                                                    <DropdownMenuTrigger asChild>
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                            <MoreVertical className="h-4 w-4" />
+                                                        </Button>
+                                                    </DropdownMenuTrigger>
+                                                    <DropdownMenuContent align="end">
+                                                        <DropdownMenuItem onClick={() => setLogToCancel(log)}>
+                                                            <XCircle className="mr-2 h-4 w-4" /> Cancel Issue
+                                                        </DropdownMenuItem>
+                                                        <DropdownMenuSeparator />
+                                                        <DropdownMenuItem onClick={() => setLogToDelete(log)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                                            <Trash2 className="mr-2 h-4 w-4" /> Delete Permanently
+                                                        </DropdownMenuItem>
+                                                    </DropdownMenuContent>
+                                                </DropdownMenu>
+                                            </div>
+                                        </TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+
+                    {/* Mobile Card View */}
+                    <div className="space-y-4 md:hidden p-4">
+                        {filteredLogs.map(log => (
+                            <Card key={log.id} className="overflow-hidden shadow-sm">
                                 <CardHeader className="pb-3">
                                     <div className="flex justify-between items-start">
                                         <div className="space-y-1">
-                                            <Badge variant={getPriorityVariant(log.priority)} className="mb-1">
+                                            <Badge variant={getPriorityVariant(log.priority)} className="mb-1 text-[10px]">
                                                 {log.priority}
                                             </Badge>
                                             <CardTitle className="text-lg">
-                                                <Link href={`/dashboard/maintenance/${log.id}?propertyId=${selectedPropertyFilter}`} className="hover:underline decoration-primary">
+                                                <Link href={`/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`} className="hover:underline decoration-primary">
                                                     {log.title}
                                                 </Link>
                                             </CardTitle>
-                                            <CardDescription className="flex items-center gap-1.5 mt-1">
+                                            <CardDescription className="flex items-center gap-1.5 mt-1 text-xs">
                                                 <AlertCircle className="h-3 w-3" />
-                                                {propertyMap[selectedPropertyFilter]}
+                                                {propertyMap[log.propertyId]}
                                             </CardDescription>
                                         </div>
                                         <DropdownMenu>
@@ -358,13 +429,13 @@ export default function MaintenanceLoggedPage() {
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
                                                 <DropdownMenuItem asChild>
-                                                    <Link href={`/dashboard/maintenance/${log.id}?propertyId=${selectedPropertyFilter}`}>
+                                                    <Link href={`/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`}>
                                                         <Eye className="mr-2 h-4 w-4" /> View Details
                                                     </Link>
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem asChild>
-                                                    <Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${selectedPropertyFilter}`}>
-                                                        <Edit className="mr-2 h-4 w-4" /> Edit
+                                                    <Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${log.propertyId}`}>
+                                                        <Edit className="mr-2 h-4 w-4" /> Edit Log
                                                     </Link>
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
@@ -380,10 +451,8 @@ export default function MaintenanceLoggedPage() {
                                 </CardHeader>
                                 <CardContent className="pb-3 border-t pt-3">
                                     <div className="flex items-center justify-between text-sm mb-3">
-                                        <span className="text-muted-foreground flex items-center gap-1.5 font-medium">
-                                            Status
-                                        </span>
-                                        <Select value={log.status} onValueChange={(newStatus) => handleStatusChange(log.id, selectedPropertyFilter, newStatus)}>
+                                        <span className="text-muted-foreground font-medium">Status</span>
+                                        <Select value={log.status} onValueChange={(newStatus) => handleStatusChange(log.id, log.propertyId, newStatus)}>
                                             <SelectTrigger className="w-[140px] h-9">
                                                 <SelectValue />
                                             </SelectTrigger>
@@ -401,27 +470,15 @@ export default function MaintenanceLoggedPage() {
                                             Reported
                                         </span>
                                         <span className="font-medium text-foreground">
-                                            {log.reportedDate instanceof Date ? format(log.reportedDate, 'dd/MM/yyyy') : format(new Date(log.reportedDate.seconds * 1000), 'dd/MM/yyyy')}
+                                            {log.reportedDate instanceof Date ? format(log.reportedDate, 'dd/MM/yyyy') : format(new Date((log.reportedDate as any).seconds * 1000), 'dd/MM/yyyy')}
                                         </span>
                                     </div>
                                 </CardContent>
-                                <CardFooter className="bg-muted/30 py-2 px-4 flex justify-between border-t">
-                                    <Button variant="ghost" size="sm" asChild className="h-8 text-xs px-2">
-                                        <Link href={`/dashboard/maintenance/${log.id}?propertyId=${selectedPropertyFilter}`}>
-                                            <Eye className="h-3 w-3 mr-1" /> Full View
-                                        </Link>
-                                    </Button>
-                                    <Button variant="ghost" size="sm" asChild className="h-8 text-xs px-2">
-                                        <Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${selectedPropertyFilter}`}>
-                                            <Edit className="h-3 w-3 mr-1" /> Edit Log
-                                        </Link>
-                                    </Button>
-                                </CardFooter>
                             </Card>
-                        ))
-                    )}
-                </div>
-            </div>
+                        ))}
+                    </div>
+                </>
+            )}
         </CardContent>
       </Card>
 
