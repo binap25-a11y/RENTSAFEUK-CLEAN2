@@ -205,12 +205,16 @@ export default function SingleLetInspectionPage() {
   const form = useForm<InspectionFormValues>({
     resolver: zodResolver(inspectionSchema),
     defaultValues: {
-        scheduledDate: new Date(),
         status: 'Completed',
         inspectionType: 'Routine Inspection',
         propertyId: '',
     }
   });
+
+  // Set default date after mount to avoid hydration mismatch
+  useEffect(() => {
+    form.setValue('scheduledDate', new Date());
+  }, [form]);
 
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
@@ -347,7 +351,7 @@ export default function SingleLetInspectionPage() {
                             </FormControl>
                             <SelectContent>
                             {[
-                                'Move-in Inspection', 'Move-Out Inspection', 'Routine Inspection', 'Gas Safety Check', 'Electrical Safety', 'Legionella Risk', 'Fire Safety'
+                                'Routine Inspection', 'Move-in Inspection', 'Move-Out Inspection', 'Gas Safety Check', 'Electrical Safety', 'Legionella Risk', 'Fire Safety'
                             ].map((type) => (
                                 <SelectItem key={type} value={type}>{type}</SelectItem>
                             ))}

@@ -161,12 +161,17 @@ export default function FinancialsPage() {
   const { user } = useUser();
   const firestore = useFirestore();
   const [selectedPropertyId, setSelectedPropertyId] = useState('all');
-  const [selectedYear, setSelectedYear] = useState(getYear(new Date()));
+  const [selectedYear, setSelectedYear] = useState(0);
 
   // Portfolio-wide aggregation state
   const [portfolioExpenses, setPortfolioExpenses] = useState<Expense[]>([]);
   const [portfolioRentPayments, setPortfolioRentPayments] = useState<RentPayment[]>([]);
   const [isAggregating, setIsAggregating] = useState(false);
+
+  // UseEffect to set initial year on client side only to prevent hydration mismatch
+  useEffect(() => {
+    setSelectedYear(getYear(new Date()));
+  }, []);
 
   // 1. Fetch properties - strictly scoped to user
   const propertiesQuery = useMemoFirebase(() => {
@@ -204,7 +209,7 @@ export default function FinancialsPage() {
 
   // 3. Fetch rent payments for the SELECTED property
   const rentPaymentsQuery = useMemoFirebase(() => {
-    if (!user || !firestore || selectedPropertyId === 'all') return null;
+    if (!user || !firestore || selectedPropertyId === 'all' || !selectedYear) return null;
     return query(
       collection(firestore, 'properties', selectedPropertyId, 'rentPayments'),
       where('ownerId', '==', user.uid),
@@ -215,7 +220,7 @@ export default function FinancialsPage() {
 
   // Aggregation Effect: Fetch data for all properties when no specific one is selected
   useEffect(() => {
-    if (!user || activeProperties.length === 0 || selectedPropertyId !== 'all') {
+    if (!user || activeProperties.length === 0 || selectedPropertyId !== 'all' || !selectedYear) {
         setPortfolioExpenses([]);
         setPortfolioRentPayments([]);
         return;
@@ -279,7 +284,7 @@ export default function FinancialsPage() {
   
   const netIncome = totalPaidRent - totalExpenses;
   
-  const isLoading = isLoadingProperties || (selectedPropertyId !== 'all' ? (isLoadingExpenses || isLoadingPayments) : isAggregating);
+  const isLoading = isLoadingProperties || !selectedYear || (selectedPropertyId !== 'all' ? (isLoadingExpenses || isLoadingPayments) : isAggregating);
 
   return (
     <div className="flex flex-col gap-6">
@@ -306,12 +311,12 @@ export default function FinancialsPage() {
             </div>
             <div className="grid w-full gap-1.5">
                 <Label htmlFor="year-filter" className="font-bold text-xs uppercase tracking-wider text-muted-foreground">Reporting Year</Label>
-                <Select onValueChange={(value) => setSelectedYear(Number(value))} value={String(selectedYear)}>
+                <Select onValueChange={(value) => setSelectedYear(Number(value))} value={selectedYear ? String(selectedYear) : ''}>
                     <SelectTrigger id="year-filter" className="w-full h-12 bg-background">
                         <SelectValue placeholder="Year" />
                     </SelectTrigger>
                     <SelectContent>
-                        {Array.from({ length: 5 }, (_, i) => getYear(new Date()) - i).map(year => (
+                        {Array.from({ length: 5 }, (_, i) => (new Date().getFullYear()) - i).map(year => (
                             <SelectItem key={year} value={String(year)}>{year}</SelectItem>
                         ))}
                     </SelectContent>
@@ -439,9 +444,12 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }:
       expenseType: '',
       paidBy: 'Landlord',
       notes: '',
-      date: new Date(),
     },
   });
+
+  useEffect(() => {
+    form.setValue('date', new Date());
+  }, [form]);
 
   useEffect(() => {
     if (selectedPropertyId && selectedPropertyId !== 'all') {
@@ -823,7 +831,10 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
   const [partialAmount, setPartialAmount] = useState('');
   const [newRentAmount, setNewRentAmount] = useState('');
   
-  const months = useMemo(() => Array.from({ length: 12 }, (_, i) => new Date(selectedYear, i, 1).toLocaleString('default', { month: 'long' })), [selectedYear]);
+  const months = useMemo(() => {
+    const year = selectedYear || new Date().getFullYear();
+    return Array.from({ length: 12 }, (_, i) => new Date(year, i, 1).toLocaleString('default', { month: 'long' }));
+  }, [selectedYear]);
   
   const statement = useMemo(() => {
     const defaultRent = selectedProperty?.tenancy?.monthlyRent || 0;
@@ -1037,18 +1048,24 @@ function ArrearsManagement({ properties }: { properties: Property[] }) {
   const [arrears, setArrears] = useState<RentPayment[]>([]);
   const [isLoading, setIsLoading] = useState(false);
   const [partialPaymentData, setPartialPaymentData] = useState<{ payment: RentPayment; amount: string } | null>(null);
-  const currentYear = getYear(new Date());
-  const currentMonth = format(new Date(), 'MMMM');
+  const [period, setPeriod] = useState<{ year: number; month: string } | null>(null);
+
+  useEffect(() => {
+    setPeriod({
+        year: new Date().getFullYear(),
+        month: format(new Date(), 'MMMM')
+    });
+  }, []);
 
   const fetchArrears = async () => {
-    if (!user || !firestore || properties.length === 0) return;
+    if (!user || !firestore || properties.length === 0 || !period) return;
     setIsLoading(true);
     try {
       const results: RentPayment[] = [];
       const occupiedProps = properties.filter(p => p.status === 'Occupied');
       
       const promises = occupiedProps.map(prop => {
-        return getDocs(query(collection(firestore, 'properties', prop.id, 'rentPayments'), where('ownerId', '==', user.uid), where('year', '==', currentYear), where('month', '==', currentMonth)));
+        return getDocs(query(collection(firestore, 'properties', prop.id, 'rentPayments'), where('ownerId', '==', user.uid), where('year', '==', period.year), where('month', '==', period.month)));
       });
       const snapshots = await Promise.all(promises);
       snapshots.forEach((snap, index) => {
@@ -1056,10 +1073,10 @@ function ArrearsManagement({ properties }: { properties: Property[] }) {
         const data = snap.docs[0]?.data() as RentPayment | undefined;
         if (!data || (data.status !== 'Paid')) {
           results.push({ 
-            id: snap.docs[0]?.id || `${currentYear}-${currentMonth}`, 
+            id: snap.docs[0]?.id || `${period.year}-${period.month}`, 
             propertyId, 
-            year: currentYear, 
-            month: currentMonth, 
+            year: period.year, 
+            month: period.month, 
             status: data?.status || 'Unpaid', 
             expectedAmount: data?.expectedAmount || occupiedProps[index].tenancy?.monthlyRent || 0, 
             amountPaid: data?.amountPaid || 0 
@@ -1070,7 +1087,7 @@ function ArrearsManagement({ properties }: { properties: Property[] }) {
     } catch (error) { console.error(error); } finally { setIsLoading(false); }
   };
 
-  useEffect(() => { fetchArrears(); }, [user, properties, firestore]);
+  useEffect(() => { fetchArrears(); }, [user, properties, firestore, period]);
 
   const handleUpdateStatus = async (payment: RentPayment, newStatus: PaymentStatus, amountPaid?: number) => {
     if (!firestore || !user) return;
@@ -1108,7 +1125,7 @@ function ArrearsManagement({ properties }: { properties: Property[] }) {
         <CardHeader className="border-b pb-4"><CardTitle className="flex items-center gap-2 text-destructive"><AlertCircle className="h-5 w-5" /> Arrears Monitoring</CardTitle></CardHeader>
         <CardContent className="pt-6">
           {isLoading ? <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin text-destructive" /></div> : arrears.length === 0 ? (
-            <div className="text-center py-20 border-2 border-dashed rounded-lg bg-background"><CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-4 opacity-50" /><p className="text-lg font-bold text-green-700">Portfolio is fully up-to-date</p><p className='text-sm text-muted-foreground mt-1'>All occupied properties have cleared their rent for {currentMonth}.</p></div>
+            <div className="text-center py-20 border-2 border-dashed rounded-lg bg-background"><CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-4 opacity-50" /><p className="text-lg font-bold text-green-700">Portfolio is fully up-to-date</p><p className='text-sm text-muted-foreground mt-1'>All occupied properties have cleared their rent for {period?.month}.</p></div>
           ) : (
             <div className="rounded-md border bg-background overflow-hidden">
               <Table>

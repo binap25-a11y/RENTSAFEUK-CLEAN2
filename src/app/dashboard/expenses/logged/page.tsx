@@ -132,8 +132,13 @@ export default function LoggedExpensesPage() {
   const { user } = useUser();
   const firestore = useFirestore();
   const [selectedPropertyId, setSelectedPropertyId] = useState('');
-  const [selectedYear, setSelectedYear] = useState(getYear(new Date()));
+  const [selectedYear, setSelectedYear] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
+
+  // UseEffect to set initial year on client side only to prevent hydration mismatch
+  useEffect(() => {
+    setSelectedYear(getYear(new Date()));
+  }, []);
 
   // Dialog States
   const [viewingExpense, setViewingExpense] = useState<Expense | null>(null);
@@ -169,7 +174,7 @@ export default function LoggedExpensesPage() {
 
   // In-memory filter for selected year and search term
   const filteredExpenses = useMemo(() => {
-    if (!rawExpenses) return [];
+    if (!rawExpenses || !selectedYear) return [];
     return rawExpenses.filter(exp => {
         const d = safeToDate(exp.date);
         const matchesYear = d && isSameYear(d, new Date(selectedYear, 0, 1));
@@ -273,12 +278,12 @@ export default function LoggedExpensesPage() {
                 </div>
                 <div className="space-y-2">
                     <Label htmlFor="year-filter">Reporting Year</Label>
-                    <Select value={String(selectedYear)} onValueChange={(v) => setSelectedYear(Number(v))}>
+                    <Select value={selectedYear ? String(selectedYear) : ''} onValueChange={(v) => setSelectedYear(Number(v))}>
                         <SelectTrigger id="year-filter">
-                            <SelectValue />
+                            <SelectValue placeholder="Year" />
                         </SelectTrigger>
                         <SelectContent>
-                            {Array.from({ length: 5 }, (_, i) => getYear(new Date()) - i).map(year => (
+                            {Array.from({ length: 5 }, (_, i) => (new Date().getFullYear()) - i).map(year => (
                                 <SelectItem key={year} value={String(year)}>{year}</SelectItem>
                             ))}
                         </SelectContent>
@@ -315,7 +320,7 @@ export default function LoggedExpensesPage() {
                     <Filter className="h-10 w-10 mx-auto mb-4 opacity-20" />
                     <p>Select a property to view its logged expenses.</p>
                 </div>
-            ) : isLoadingExpenses ? (
+            ) : isLoadingExpenses || !selectedYear ? (
                 <div className="flex justify-center items-center h-48">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                 </div>

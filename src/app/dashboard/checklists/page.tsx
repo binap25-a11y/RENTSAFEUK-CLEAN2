@@ -26,7 +26,7 @@ import { Loader2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   useUser,
   useFirestore,
@@ -117,7 +117,7 @@ const NotesField = ({ form, name, placeholder }: { form: any, name: any, placeho
       <FormItem className="mt-4">
         <FormLabel>Notes</FormLabel>
         <FormControl>
-          <Textarea placeholder={placeholder} {...field} />
+          <Textarea placeholder={placeholder} {...field} value={field.value ?? ''} />
         </FormControl>
         <FormMessage />
       </FormItem>
@@ -141,13 +141,17 @@ export default function ChecklistPage() {
     defaultValues: {
       propertyId: propertyIdFromUrl || '',
       tenantId: tenantIdFromUrl || '',
-      completedDate: new Date(),
       beforeTenancy: {},
       deposit: {},
       atMoveIn: {},
       optional: {},
     },
   });
+
+  // Set default date after mount to avoid hydration mismatch
+  useEffect(() => {
+    form.setValue('completedDate', new Date());
+  }, [form]);
 
   const propertyRef = useMemoFirebase(() => {
     if (!firestore || !propertyIdFromUrl) return null;

@@ -209,12 +209,16 @@ export default function HmoInspectionPage() {
     const form = useForm<HmoInspectionFormValues>({
         resolver: zodResolver(hmoInspectionSchema),
         defaultValues: {
-            inspectionDate: new Date(),
             inspectorName: '',
             propertyId: '',
             occupantCount: 1,
         }
     });
+
+    // Set initial dates after mount to prevent hydration mismatch
+    useEffect(() => {
+        form.setValue('inspectionDate', new Date());
+    }, [form]);
 
     const propertiesQuery = useMemoFirebase(() => {
         if (!user) return null;
