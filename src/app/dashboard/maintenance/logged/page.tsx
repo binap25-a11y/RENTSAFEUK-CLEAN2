@@ -344,7 +344,9 @@ export default function MaintenanceLoggedPage() {
                                             </Link>
                                         </TableCell>
                                         <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
-                                            {propertyMap[log.propertyId] || 'Unknown Property'}
+                                            <Link href={`/dashboard/properties/${log.propertyId}`} className="hover:underline">
+                                                {propertyMap[log.propertyId] || 'Unknown Property'}
+                                            </Link>
                                         </TableCell>
                                         <TableCell>
                                             <Select value={log.status} onValueChange={(newStatus) => handleStatusChange(log.id, log.propertyId, newStatus)}>
@@ -417,7 +419,9 @@ export default function MaintenanceLoggedPage() {
                                             </CardTitle>
                                             <CardDescription className="flex items-center gap-1.5 mt-1 text-xs">
                                                 <AlertCircle className="h-3 w-3" />
-                                                {propertyMap[log.propertyId]}
+                                                <Link href={`/dashboard/properties/${log.propertyId}`} className="hover:underline">
+                                                    {propertyMap[log.propertyId]}
+                                                </Link>
                                             </CardDescription>
                                         </div>
                                         <DropdownMenu>

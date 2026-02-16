@@ -6,7 +6,7 @@ import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Bed, Bath, Edit, Trash2, MoreVertical, Loader2, AlertTriangle, User, Home, Wrench, CalendarCheck, FileText, Banknote, Shield, Phone, Mail, MapPin } from 'lucide-react';
+import { ArrowLeft, Bed, Bath, Edit, Trash2, MoreVertical, Loader2, AlertTriangle, User, Home, Wrench, CalendarCheck, FileText, Banknote, Shield, Phone, Mail, MapPin, AlertCircle } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, collection, query, where, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -130,6 +130,10 @@ export default function PropertyDetailPage() {
     return allMaintenanceLogs?.filter(log => log.status !== 'Cancelled') ?? null;
   }, [allMaintenanceLogs]);
 
+  const openMaintenanceCount = useMemo(() => {
+    return maintenanceLogs?.filter(log => log.status === 'Open' || log.status === 'In Progress').length || 0;
+  }, [maintenanceLogs]);
+
   const inspections = useMemo(() => {
     return allInspections?.filter(insp => insp.status !== 'Cancelled') ?? null;
   }, [allInspections]);
@@ -207,7 +211,15 @@ export default function PropertyDetailPage() {
                 <Button variant="outline" size="icon" asChild><Link href="/dashboard/properties"><ArrowLeft className="h-4 w-4" /></Link></Button>
                 <div>
                     <h1 className="text-2xl font-bold font-headline">{[property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ')}</h1>
-                    <p className="text-muted-foreground">{`${property.address.city}, ${property.address.county ? property.address.county + ', ' : ''}${property.address.postcode}`}</p>
+                    <div className="flex items-center gap-2 mt-1">
+                        <p className="text-muted-foreground text-sm">{`${property.address.city}, ${property.address.postcode}`}</p>
+                        {openMaintenanceCount > 0 && (
+                            <Badge variant="destructive" className="h-5 px-1.5 gap-1 animate-pulse">
+                                <AlertCircle className="h-3 w-3" />
+                                {openMaintenanceCount} Open Issue{openMaintenanceCount > 1 ? 's' : ''}
+                            </Badge>
+                        )}
+                    </div>
                 </div>
             </div>
             <DropdownMenu>
@@ -345,13 +357,18 @@ export default function PropertyDetailPage() {
             </Card>
 
             <Card>
-              <CardHeader><CardTitle className="font-headline">Recent Activity</CardTitle></CardHeader>
+              <CardHeader className="flex flex-row items-center justify-between space-y-0">
+                  <CardTitle className="font-headline">Open Issues</CardTitle>
+                  <Button variant="ghost" size="sm" asChild>
+                      <Link href={`/dashboard/maintenance/logged?propertyId=${propertyId}`}>View All</Link>
+                  </Button>
+              </CardHeader>
               <CardContent>
                 {isLoadingMaintenance || isLoadingInspections ? <div className="flex justify-center items-center h-24"><Loader2 className="h-6 w-6 animate-spin" /></div>
-                : !maintenanceLogs?.length && !inspections?.length ? <p className="text-sm text-muted-foreground text-center py-4">No recent activity logged.</p> : (
+                : !maintenanceLogs?.filter(l => l.status === 'Open' || l.status === 'In Progress').length && !inspections?.filter(i => i.status === 'Scheduled').length ? <p className="text-sm text-muted-foreground text-center py-4">All clear. No open maintenance issues.</p> : (
                   <div className="space-y-4">
-                    {maintenanceLogs?.slice(0, 3).map(log => <div key={log.id} className="text-sm border-l-2 border-primary pl-3 py-1"><Link href={`/dashboard/maintenance/${log.id}?propertyId=${propertyId}`} className="font-medium hover:underline block">{log.title}</Link><p className="text-xs text-muted-foreground">{log.status} • {safeFormatDate(log.reportedDate, 'dd MMM')}</p></div>)}
-                    {inspections?.slice(0, 3).map(insp => <div key={insp.id} className="text-sm border-l-2 border-accent pl-3 py-1"><Link href={`/dashboard/inspections/${insp.id}?propertyId=${propertyId}`} className="font-medium hover:underline block">{insp.type}</Link><p className="text-xs text-muted-foreground">{insp.status} • Scheduled for {safeFormatDate(insp.scheduledDate, 'dd MMM')}</p></div>)}
+                    {maintenanceLogs?.filter(l => l.status === 'Open' || l.status === 'In Progress').slice(0, 3).map(log => <div key={log.id} className="text-sm border-l-2 border-destructive pl-3 py-1"><Link href={`/dashboard/maintenance/${log.id}?propertyId=${propertyId}`} className="font-medium hover:underline block">{log.title}</Link><p className="text-xs text-muted-foreground">{log.status} • {safeFormatDate(log.reportedDate, 'dd MMM')}</p></div>)}
+                    {inspections?.filter(i => i.status === 'Scheduled').slice(0, 3).map(insp => <div key={insp.id} className="text-sm border-l-2 border-accent pl-3 py-1"><Link href={`/dashboard/inspections/${insp.id}?propertyId=${propertyId}`} className="font-medium hover:underline block">{insp.type}</Link><p className="text-xs text-muted-foreground">{insp.status} • Scheduled for {safeFormatDate(insp.scheduledDate, 'dd MMM')}</p></div>)}
                   </div>
                 )}
               </CardContent>

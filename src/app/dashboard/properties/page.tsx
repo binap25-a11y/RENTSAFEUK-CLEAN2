@@ -26,7 +26,8 @@ import {
   List, 
   Eye, 
   Home,
-  Download
+  Download,
+  AlertCircle
 } from 'lucide-react';
 import {
   useUser,
@@ -40,9 +41,10 @@ import {
   where,
   doc,
   updateDoc,
+  getDocs,
 } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
-import { useMemo, useState } from 'react';
+import { useMemo, useState, useEffect } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -75,6 +77,11 @@ interface Property {
   ownerId: string;
 }
 
+interface MaintenanceCount {
+    propertyId: string;
+    count: number;
+}
+
 export default function PropertiesPage() {
   const router = useRouter();
   const { user } = useUser();
@@ -82,6 +89,10 @@ export default function PropertiesPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [propertyToDelete, setPropertyToDelete] = useState<Property | null>(null);
   const [view, setView] = useState<'grid' | 'list'>('grid');
+  
+  // Maintenance aggregation state
+  const [openMaintenanceMap, setOpenMaintenanceMap] = useState<Record<string, number>>({});
+  const [isCountingMaintenance, setIsCountingMaintenance] = useState(false);
 
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
@@ -98,6 +109,35 @@ export default function PropertiesPage() {
     error,
   } = useCollection<Property>(propertiesQuery);
 
+  // Aggregation: Count open maintenance for each property
+  useEffect(() => {
+    if (!user || !properties || properties.length === 0) return;
+
+    const countMaintenance = async () => {
+        setIsCountingMaintenance(true);
+        try {
+            const counts: Record<string, number> = {};
+            const promises = properties.map(async (p) => {
+                const q = query(
+                    collection(firestore, 'properties', p.id, 'maintenanceLogs'),
+                    where('ownerId', '==', user.uid),
+                    where('status', 'in', ['Open', 'In Progress'])
+                );
+                const snap = await getDocs(q);
+                counts[p.id] = snap.size;
+            });
+            await Promise.all(promises);
+            setOpenMaintenanceMap(counts);
+        } catch (err) {
+            console.error("Failed to count maintenance:", err);
+        } finally {
+            setIsCountingMaintenance(false);
+        }
+    };
+
+    countMaintenance();
+  }, [user, properties, firestore]);
+
   const filteredProperties = useMemo(() => {
     if (!properties) return [];
     if (!searchTerm) return properties;
@@ -110,14 +150,15 @@ export default function PropertiesPage() {
   const exportToCSV = () => {
     if (!filteredProperties.length) return;
     
-    const headers = ["Address", "Type", "Status", "Bedrooms", "Bathrooms", "Postcode"];
+    const headers = ["Address", "Type", "Status", "Bedrooms", "Bathrooms", "Postcode", "Open Maintenance"];
     const rows = filteredProperties.map(p => [
       `"${[p.address.nameOrNumber, p.address.street, p.address.city].filter(Boolean).join(', ')}"`,
       p.propertyType,
       p.status,
       p.bedrooms,
       p.bathrooms,
-      p.address.postcode
+      p.address.postcode,
+      openMaintenanceMap[p.id] || 0
     ]);
     
     const csvContent = "data:text/csv;charset=utf-8," 
@@ -236,8 +277,16 @@ export default function PropertiesPage() {
                     {filteredProperties.map((property) => (
                       <Card
                           key={property.id}
-                          className="group overflow-hidden flex flex-col hover:shadow-lg transition-shadow"
+                          className="group overflow-hidden flex flex-col hover:shadow-lg transition-shadow relative"
                       >
+                          {openMaintenanceMap[property.id] > 0 && (
+                              <div className="absolute top-2 left-2 z-10">
+                                  <Badge variant="destructive" className="flex items-center gap-1 shadow-sm">
+                                      <AlertCircle className="h-3 w-3" />
+                                      {openMaintenanceMap[property.id]} Open Issue{openMaintenanceMap[property.id] > 1 ? 's' : ''}
+                                  </Badge>
+                              </div>
+                          )}
                           <div className="relative cursor-pointer" onClick={() => router.push(`/dashboard/properties/${property.id}`)}>
                               <div className="aspect-[16/10] bg-muted overflow-hidden relative">
                                   {property.imageUrl ? (
@@ -305,6 +354,7 @@ export default function PropertiesPage() {
                                 <TableHead>Address</TableHead>
                                 <TableHead>Type</TableHead>
                                 <TableHead>Status</TableHead>
+                                <TableHead>Maintenance</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
                         </TableHeader>
@@ -324,6 +374,16 @@ export default function PropertiesPage() {
                                         <Badge variant={property.status === 'Occupied' ? 'default' : 'secondary'}>
                                             {property.status}
                                         </Badge>
+                                    </TableCell>
+                                    <TableCell>
+                                        {openMaintenanceMap[property.id] > 0 ? (
+                                            <Badge variant="destructive" className="gap-1">
+                                                <AlertCircle className="h-3 w-3" />
+                                                {openMaintenanceMap[property.id]} Open
+                                            </Badge>
+                                        ) : (
+                                            <span className="text-xs text-muted-foreground">Clear</span>
+                                        )}
                                     </TableCell>
                                     <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
                                       <DropdownMenu>
