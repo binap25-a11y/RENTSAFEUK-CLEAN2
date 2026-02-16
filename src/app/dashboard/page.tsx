@@ -209,7 +209,11 @@ export default function DashboardPage() {
   , [properties]);
 
   const activeProperties = useMemo(() => properties?.filter(p => ['Vacant', 'Occupied', 'Under Maintenance'].includes(p.status)) ?? [], [properties]);
-  const openMaintenanceCount = useMemo(() => maintenanceLogs.filter(log => log.status === 'Open').length, [maintenanceLogs]);
+  
+  // "Needing attention" includes both Open and In Progress
+  const openMaintenanceCount = useMemo(() => 
+    maintenanceLogs.filter(log => log.status === 'Open' || log.status === 'In Progress').length, 
+  [maintenanceLogs]);
   
   const upcomingInspectionsCount = useMemo(() => inspections.filter(insp => {
       const scheduledDate = toDate(insp.scheduledDate);
@@ -308,10 +312,10 @@ export default function DashboardPage() {
   } satisfies ChartConfig;
 
   const infoCards = [
-    { title: 'Total Properties', value: isLoading ? '-' : activeProperties.length, icon: Home, description: 'Active properties' },
-    { title: 'Open Maintenance', value: isLoading ? '-' : openMaintenanceCount, icon: Wrench, description: 'Issues needing attention' },
-    { title: 'Upcoming Inspections', value: isLoading ? '-' : upcomingInspectionsCount, icon: CalendarCheck, description: 'Scheduled tasks' },
-    { title: 'Total Documents', value: isLoading ? '-' : documents.length, icon: Files, description: 'Compliance records' },
+    { title: 'Total Properties', value: isLoading ? '-' : activeProperties.length, icon: Home, description: 'Active portfolio', href: '/dashboard/properties' },
+    { title: 'Open Maintenance', value: isLoading ? '-' : openMaintenanceCount, icon: Wrench, description: 'Needing attention', href: '/dashboard/maintenance/logged' },
+    { title: 'Upcoming Inspections', value: isLoading ? '-' : upcomingInspectionsCount, icon: CalendarCheck, description: 'Next 30 days', href: '/dashboard/inspections' },
+    { title: 'Total Documents', value: isLoading ? '-' : documents.length, icon: Files, description: 'Compliance items', href: '/dashboard/documents' },
   ];
 
   if (!isLoading && properties?.length === 0) {
@@ -364,16 +368,18 @@ export default function DashboardPage() {
     <div className="flex flex-col gap-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {infoCards.map((card) => (
-          <Card key={card.title}>
-            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-              <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
-              <card.icon className="h-4 w-4 text-muted-foreground" />
-            </CardHeader>
-            <CardContent>
-              <div className="text-2xl font-bold">{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : card.value}</div>
-              <p className="text-xs text-muted-foreground">{card.description}</p>
-            </CardContent>
-          </Card>
+          <Link key={card.title} href={card.href} className="transition-transform hover:scale-[1.02] active:scale-[0.98]">
+            <Card className="h-full">
+                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+                <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
+                <card.icon className="h-4 w-4 text-muted-foreground" />
+                </CardHeader>
+                <CardContent>
+                <div className="text-2xl font-bold">{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : card.value}</div>
+                <p className="text-xs text-muted-foreground">{card.description}</p>
+                </CardContent>
+            </Card>
+          </Link>
         ))}
       </div>
 
