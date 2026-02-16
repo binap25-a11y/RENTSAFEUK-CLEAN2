@@ -6,10 +6,10 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2, CalendarIcon, User, HardHat, Phone, Tag, AlertTriangle, Home, Building, Banknote, FileText, MoreVertical, Edit, XCircle } from 'lucide-react';
+import { ArrowLeft, Loader2, CalendarIcon, User, HardHat, Phone, Tag, AlertTriangle, Home, Building, Banknote, FileText, MoreVertical, Edit, XCircle, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import {
@@ -22,7 +22,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 
 // Main interface for a Maintenance Log document from Firestore
@@ -59,6 +59,7 @@ export default function MaintenanceDetailPage() {
   const router = useRouter();
   const { toast } = useToast();
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
+  const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const id = params.id as string;
   const propertyId = searchParams.get('propertyId');
@@ -82,12 +83,26 @@ export default function MaintenanceDetailPage() {
     try {
       await updateDoc(maintenanceLogRef, { status: 'Cancelled' });
       toast({ title: 'Log Cancelled', description: 'The maintenance log has been marked as cancelled.' });
-      router.push('/dashboard/maintenance');
+      router.push('/dashboard/maintenance/logged');
     } catch (e) {
       console.error('Error cancelling log:', e);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not cancel the log. Please try again.' });
     } finally {
       setIsCancelDialogOpen(false);
+    }
+  };
+
+  const handleDeleteConfirm = async () => {
+    if (!maintenanceLogRef) return;
+    try {
+      await deleteDoc(maintenanceLogRef);
+      toast({ title: 'Log Deleted', description: 'The maintenance log has been permanently removed.' });
+      router.push('/dashboard/maintenance/logged');
+    } catch (e) {
+      console.error('Error deleting log:', e);
+      toast({ variant: 'destructive', title: 'Error', description: 'Could not delete the log. Please try again.' });
+    } finally {
+      setIsDeleteDialogOpen(false);
     }
   };
 
@@ -126,7 +141,7 @@ export default function MaintenanceDetailPage() {
         <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-4">
             <Button variant="outline" size="icon" asChild>
-                <Link href="/dashboard/maintenance">
+                <Link href="/dashboard/maintenance/logged">
                 <ArrowLeft className="h-4 w-4" />
                 </Link>
             </Button>
@@ -144,10 +159,14 @@ export default function MaintenanceDetailPage() {
                         <Link href={`/dashboard/maintenance/${id}/edit?propertyId=${propertyId}`}><Edit className="mr-2 h-4 w-4" /> Edit</Link>
                     </DropdownMenuItem>
                     {maintenanceLog.status !== 'Cancelled' && (
-                        <DropdownMenuItem onClick={() => setIsCancelDialogOpen(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                        <DropdownMenuItem onClick={() => setIsCancelDialogOpen(true)}>
                             <XCircle className="mr-2 h-4 w-4" /> Cancel Log
                         </DropdownMenuItem>
                     )}
+                    <DropdownMenuSeparator />
+                    <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                        <Trash2 className="mr-2 h-4 w-4" /> Delete Permanently
+                    </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
         </div>
@@ -273,6 +292,7 @@ export default function MaintenanceDetailPage() {
             </div>
         </div>
       </div>
+
       <AlertDialog open={isCancelDialogOpen} onOpenChange={setIsCancelDialogOpen}>
         <AlertDialogContent>
           <AlertDialogHeader>
@@ -285,6 +305,23 @@ export default function MaintenanceDetailPage() {
             <AlertDialogCancel>Go Back</AlertDialogCancel>
             <AlertDialogAction onClick={handleCancelConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
               Yes, Cancel Log
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
+
+      <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Permanent Deletion</AlertDialogTitle>
+            <AlertDialogDescription>
+              Are you absolutely sure? This action cannot be undone. This will permanently delete the maintenance record for "{maintenanceLog.title}".
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+              Delete Permanently
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

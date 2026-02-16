@@ -186,7 +186,6 @@ export default function MaintenanceLoggedPage() {
     try {
       await updateDoc(doc(firestore, 'properties', propertyId, 'maintenanceLogs', logId), { status: newStatus });
       toast({ title: 'Status Updated' });
-      // If we are in portfolio view, we need to update the local state manually or re-fetch
       if (selectedPropertyFilter === 'all') {
           setPortfolioLogs(prev => prev.map(l => l.id === logId ? { ...l, status: newStatus } : l));
       }
