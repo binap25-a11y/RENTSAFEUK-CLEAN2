@@ -145,7 +145,7 @@ export default function DashboardPage() {
     setCurrentMonth(format(new Date(), 'MMMM'));
   }, []);
 
-  // Define properties that are truly "Active" (excluding Deleted and Archived)
+  // Define properties that are truly "Active"
   const properties = useMemo(() => {
     const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
     return allProperties?.filter(p => activeStatuses.includes(p.status || '')) ?? [];
@@ -153,7 +153,7 @@ export default function DashboardPage() {
 
   // Real-time Aggregation Effect: Subscribe to sub-collections for each active property
   useEffect(() => {
-    if (!user || !properties || properties.length === 0) {
+    if (!user || !properties) {
         setMaintenanceMap({});
         setInspectionsMap({});
         setDocumentsMap({});
@@ -161,11 +161,37 @@ export default function DashboardPage() {
         return;
     }
 
-    // Clean sweep to ensure we don't have stale data from properties that changed status
-    setMaintenanceMap({});
-    setInspectionsMap({});
-    setDocumentsMap({});
-    setRentPaymentsMap({});
+    if (properties.length === 0 && !isLoadingProperties) {
+        setMaintenanceMap({});
+        setInspectionsMap({});
+        setDocumentsMap({});
+        setRentPaymentsMap({});
+        return;
+    }
+
+    const activeIds = new Set(properties.map(p => p.id));
+
+    // Prune data for properties that are no longer active to prevent "ghost" counts
+    setMaintenanceMap(prev => {
+        const next = { ...prev };
+        Object.keys(next).forEach(id => { if (!activeIds.has(id)) delete next[id]; });
+        return Object.keys(next).length === Object.keys(prev).length ? prev : next;
+    });
+    setInspectionsMap(prev => {
+        const next = { ...prev };
+        Object.keys(next).forEach(id => { if (!activeIds.has(id)) delete next[id]; });
+        return Object.keys(next).length === Object.keys(prev).length ? prev : next;
+    });
+    setDocumentsMap(prev => {
+        const next = { ...prev };
+        Object.keys(next).forEach(id => { if (!activeIds.has(id)) delete next[id]; });
+        return Object.keys(next).length === Object.keys(prev).length ? prev : next;
+    });
+    setRentPaymentsMap(prev => {
+        const next = { ...prev };
+        Object.keys(next).forEach(id => { if (!activeIds.has(id)) delete next[id]; });
+        return Object.keys(next).length === Object.keys(prev).length ? prev : next;
+    });
 
     const unsubs: (() => void)[] = [];
 
@@ -204,9 +230,9 @@ export default function DashboardPage() {
     return () => {
         unsubs.forEach(u => u());
     };
-  }, [user, properties, firestore]);
+  }, [user, properties, firestore, isLoadingProperties]);
 
-  // Filter aggregated maps by the current list of active property IDs
+  // Combined data for calculations
   const maintenanceLogs = useMemo(() => {
     const activeIds = new Set(properties.map(p => p.id));
     return Object.entries(maintenanceMap)
@@ -237,8 +263,6 @@ export default function DashboardPage() {
 
   const isLoading = isLoadingProperties || !currentYear;
 
-  // --- Processed Data ---
-
   const propertyMap = useMemo(() => 
     properties?.reduce((map, prop) => {
       map[prop.id] = prop.address;
@@ -248,7 +272,6 @@ export default function DashboardPage() {
 
   const activePropertiesCount = properties.length;
   
-  // Count only issues that are Open or In Progress
   const openMaintenanceCount = useMemo(() => 
     maintenanceLogs.filter(log => log.status === 'Open' || log.status === 'In Progress').length, 
   [maintenanceLogs]);
@@ -297,18 +320,18 @@ export default function DashboardPage() {
     
     const documentTasks = documents
         .map(doc => {
-            const expiry = toDate(doc.expiryDate);
-            if (!expiry) return null;
-            const status = getDocumentStatus(expiry);
-            if (status === 'Valid') return null;
-            return {
-                id: `doc-${doc.id}`,
-                task: doc.title,
-                property: propertyMap[doc.propertyId] ? formatAddress(propertyMap[doc.propertyId]) : 'Portfolio Wide',
-                status: status,
-                dueDate: expiry,
-                href: '/dashboard/documents'
-            };
+          const expiry = toDate(doc.expiryDate);
+          if (!expiry) return null;
+          const status = getDocumentStatus(expiry);
+          if (status === 'Valid') return null;
+          return {
+              id: `doc-${doc.id}`,
+              task: doc.title,
+              property: propertyMap[doc.propertyId] ? formatAddress(propertyMap[doc.propertyId]) : 'Portfolio Wide',
+              status: status,
+              dueDate: expiry,
+              href: '/dashboard/documents'
+          };
         })
         .filter((t): t is NonNullable<typeof t> => t !== null);
 
@@ -364,7 +387,8 @@ export default function DashboardPage() {
           <p className="text-muted-foreground text-lg">Let's get your rental portfolio set up for high performance.</p>
         </div>
         <div className="grid gap-6 md:grid-cols-3">
-          <Card className="relative overflow-hidden border-primary/20 shadow-lg">
+          <Card className="relative overflow-hidden border-primary/20 shadow-lg cursor-pointer group">
+            <Link href="/dashboard/properties/add" className="absolute inset-0 z-10" />
             <div className="absolute top-0 right-0 p-4 opacity-10"><Home className="h-24 w-24" /></div>
             <CardHeader>
               <Badge className="w-fit mb-2">Step 1</Badge>
@@ -372,8 +396,8 @@ export default function DashboardPage() {
               <CardDescription>Enter address and basic details.</CardDescription>
             </CardHeader>
             <CardFooter>
-              <Button asChild className="w-full">
-                <Link href="/dashboard/properties/add">Add Property <ArrowRight className="ml-2 h-4 w-4" /></Link>
+              <Button asChild className="w-full relative z-20">
+                <span>Add Property <ArrowRight className="ml-2 h-4 w-4" /></span>
               </Button>
             </CardFooter>
           </Card>
@@ -406,14 +430,14 @@ export default function DashboardPage() {
     <div className="flex flex-col gap-6">
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         {infoCards.map((card) => (
-          <Link key={card.title} href={card.href} className="transition-transform hover:scale-[1.02] active:scale-[0.98]">
-            <Card className="h-full">
+          <Link key={card.title} href={card.href} className="block transition-transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer">
+            <Card className="h-full relative overflow-hidden">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
                 <card.icon className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
-                <div className="text-2xl font-bold">{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : card.value}</div>
+                <div className="text-2xl font-bold">{isLoading ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : card.value}</div>
                 <p className="text-xs text-muted-foreground">{card.description}</p>
                 </CardContent>
             </Card>
@@ -429,7 +453,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent>
                 {isLoading ? (
-                    <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+                    <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
                 ) : rentStatusData.length > 0 ? (
                     <ChartContainer config={rentChartConfig} className="mx-auto aspect-square max-h-[250px]">
                         <PieChart>
@@ -456,11 +480,11 @@ export default function DashboardPage() {
           </CardHeader>
           <CardContent>
             {isLoading ? (
-                <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+                <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
             ) : recentActivities.length > 0 ? (
                 <div className="space-y-4">
                     {recentActivities.map((activity) => (
-                        <Link href={activity.href} key={activity.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent transition-colors">
+                        <Link href={activity.href} key={activity.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent transition-colors cursor-pointer">
                             <div className="min-w-0 flex-1">
                                 <p className="font-medium text-sm truncate">{activity.activity}</p>
                                 <p className="text-xs text-muted-foreground truncate">{activity.property}</p>
@@ -485,11 +509,11 @@ export default function DashboardPage() {
         </CardHeader>
         <CardContent>
            {isLoading ? (
-              <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+              <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
            ) : upcomingTasks.length > 0 ? (
               <div className="grid gap-4 md:grid-cols-2">
                   {upcomingTasks.map((task) => (
-                      <Link href={task.href} key={task.id} className="block group">
+                      <Link href={task.href} key={task.id} className="block group cursor-pointer">
                           <Card className="hover:border-primary transition-colors">
                               <CardContent className="p-4 flex items-center justify-between">
                                   <div className="min-w-0 flex-1">

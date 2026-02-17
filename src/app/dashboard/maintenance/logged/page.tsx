@@ -131,13 +131,30 @@ export default function MaintenanceLoggedPage() {
 
   // Real-time Aggregation Logic for all active properties
   useEffect(() => {
-    if (!user || properties.length === 0) {
+    if (!user || !properties) {
         setPortfolioLogsMap({});
         return;
     }
 
-    // Clean sweep when properties change to prevent ghost data
-    setPortfolioLogsMap({});
+    if (properties.length === 0 && !isLoadingProperties) {
+        setPortfolioLogsMap({});
+        return;
+    }
+
+    const activeIds = new Set(properties.map(p => p.id));
+
+    // Prune data for properties that are no longer active to prevent "ghost" counts
+    setPortfolioLogsMap(prev => {
+        const next = { ...prev };
+        let changed = false;
+        Object.keys(next).forEach(id => { 
+            if (!activeIds.has(id)) {
+                delete next[id];
+                changed = true;
+            }
+        });
+        return changed ? next : prev;
+    });
 
     const unsubs: (() => void)[] = [];
 
@@ -159,7 +176,7 @@ export default function MaintenanceLoggedPage() {
     return () => {
         unsubs.forEach(u => u());
     };
-  }, [user, properties, firestore]);
+  }, [user, properties, firestore, isLoadingProperties]);
 
   const allCurrentLogs = useMemo(() => {
     const activeIds = new Set(properties.map(p => p.id));
@@ -331,12 +348,12 @@ export default function MaintenanceLoggedPage() {
                                 {filteredLogs.map(log => (
                                     <TableRow key={log.id} className="hover:bg-muted/10 transition-colors group">
                                         <TableCell className="font-semibold pl-6 py-4">
-                                            <Link href={`/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`} className="hover:underline decoration-primary">
+                                            <Link href={`/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`} className="hover:underline decoration-primary cursor-pointer">
                                                 {log.title}
                                             </Link>
                                         </TableCell>
                                         <TableCell className="text-xs text-muted-foreground max-w-[200px] truncate">
-                                            <Link href={`/dashboard/properties/${log.propertyId}`} className="hover:underline">
+                                            <Link href={`/dashboard/properties/${log.propertyId}`} className="hover:underline cursor-pointer">
                                                 {propertyMap[log.propertyId] || 'Unknown Property'}
                                             </Link>
                                         </TableCell>
@@ -360,28 +377,28 @@ export default function MaintenanceLoggedPage() {
                                         </TableCell>
                                         <TableCell className="text-right pr-6">
                                             <div className="flex justify-end items-center gap-1">
-                                                <Button asChild variant="ghost" size="icon" className="h-8 w-8">
+                                                <Button asChild variant="ghost" size="icon" className="h-8 w-8 cursor-pointer">
                                                     <Link href={`/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`}>
                                                         <Eye className="h-4 w-4" />
                                                     </Link>
                                                 </Button>
-                                                <Button asChild variant="ghost" size="icon" className="h-8 w-8">
+                                                <Button asChild variant="ghost" size="icon" className="h-8 w-8 cursor-pointer">
                                                     <Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${log.propertyId}`}>
                                                         <Edit className="h-4 w-4" />
                                                     </Link>
                                                 </Button>
                                                 <DropdownMenu>
                                                     <DropdownMenuTrigger asChild>
-                                                        <Button variant="ghost" size="icon" className="h-8 w-8">
+                                                        <Button variant="ghost" size="icon" className="h-8 w-8 cursor-pointer">
                                                             <MoreVertical className="h-4 w-4" />
                                                         </Button>
                                                     </DropdownMenuTrigger>
                                                     <DropdownMenuContent align="end">
-                                                        <DropdownMenuItem onClick={() => setLogToCancel(log)}>
+                                                        <DropdownMenuItem onClick={() => setLogToCancel(log)} className="cursor-pointer">
                                                             <XCircle className="mr-2 h-4 w-4" /> Cancel Issue
                                                         </DropdownMenuItem>
                                                         <DropdownMenuSeparator />
-                                                        <DropdownMenuItem onClick={() => setLogToDelete(log)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                                        <DropdownMenuItem onClick={() => setLogToDelete(log)} className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer">
                                                             <Trash2 className="mr-2 h-4 w-4" /> Delete Permanently
                                                         </DropdownMenuItem>
                                                     </DropdownMenuContent>
@@ -405,39 +422,39 @@ export default function MaintenanceLoggedPage() {
                                                 {log.priority}
                                             </Badge>
                                             <CardTitle className="text-lg">
-                                                <Link href={`/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`} className="hover:underline decoration-primary">
+                                                <Link href={`/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`} className="hover:underline decoration-primary cursor-pointer">
                                                     {log.title}
                                                 </Link>
                                             </CardTitle>
                                             <CardDescription className="flex items-center gap-1.5 mt-1 text-xs">
                                                 <AlertCircle className="h-3 w-3" />
-                                                <Link href={`/dashboard/properties/${log.propertyId}`} className="hover:underline">
+                                                <Link href={`/dashboard/properties/${log.propertyId}`} className="hover:underline cursor-pointer">
                                                     {propertyMap[log.propertyId]}
                                                 </Link>
                                             </CardDescription>
                                         </div>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 -mt-2">
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 -mt-2 cursor-pointer">
                                                     <MoreVertical className="h-4 w-4" />
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end">
-                                                <DropdownMenuItem asChild>
+                                                <DropdownMenuItem asChild className="cursor-pointer">
                                                     <Link href={`/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`}>
                                                         <Eye className="mr-2 h-4 w-4" /> View Details
                                                     </Link>
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem asChild>
+                                                <DropdownMenuItem asChild className="cursor-pointer">
                                                     <Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${log.propertyId}`}>
                                                         <Edit className="mr-2 h-4 w-4" /> Edit Log
                                                     </Link>
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
-                                                <DropdownMenuItem onClick={() => setLogToCancel(log)}>
+                                                <DropdownMenuItem onClick={() => setLogToCancel(log)} className="cursor-pointer">
                                                     <XCircle className="mr-2 h-4 w-4" /> Cancel Log
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => setLogToDelete(log)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                                                <DropdownMenuItem onClick={() => setLogToDelete(log)} className="text-destructive focus:text-destructive focus:bg-destructive/10 cursor-pointer">
                                                     <Trash2 className="mr-2 h-4 w-4" /> Delete Permanently
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
@@ -487,8 +504,8 @@ export default function MaintenanceLoggedPage() {
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-                <AlertDialogCancel>Go Back</AlertDialogCancel>
-                <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleCancelConfirm}>
+                <AlertDialogCancel className="cursor-pointer">Go Back</AlertDialogCancel>
+                <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer" onClick={handleCancelConfirm}>
                     Confirm Cancellation
                 </AlertDialogAction>
             </AlertDialogFooter>
@@ -504,8 +521,8 @@ export default function MaintenanceLoggedPage() {
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleDeleteConfirm}>
+                <AlertDialogCancel className="cursor-pointer">Cancel</AlertDialogCancel>
+                <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90 cursor-pointer" onClick={handleDeleteConfirm}>
                     Delete Permanently
                 </AlertDialogAction>
             </AlertDialogFooter>
