@@ -299,25 +299,25 @@ export default function PropertyDetailPage() {
                     </div>
                 ) : tenant ? (
                   <>
-                    <div className="flex items-start gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
                       <User className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
-                      <div>
-                        <p className="text-sm font-medium">{tenant.name}</p>
+                      <div className="min-w-0 flex-1">
+                        <p className="text-sm font-medium truncate">{tenant.name}</p>
                         <Link href={`/dashboard/tenants/${tenant.id}`} className="text-sm text-primary hover:underline">View Profile</Link>
                       </div>
                     </div>
-                    <div className="flex items-start gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
                       <Mail className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium">Email</p>
-                        <a href={`mailto:${tenant.email}`} className="text-sm text-muted-foreground hover:underline">{tenant.email}</a>
+                        <a href={`mailto:${tenant.email}`} className="text-sm text-muted-foreground hover:underline truncate block">{tenant.email}</a>
                       </div>
                     </div>
-                    <div className="flex items-start gap-3">
+                    <div className="flex items-start gap-3 min-w-0">
                       <Phone className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
-                      <div>
+                      <div className="min-w-0 flex-1">
                         <p className="text-sm font-medium">Phone</p>
-                        <p className="text-sm text-muted-foreground">{tenant.telephone}</p>
+                        <p className="text-sm text-muted-foreground truncate">{tenant.telephone}</p>
                       </div>
                     </div>
                   </>
@@ -380,7 +380,7 @@ export default function PropertyDetailPage() {
       <AlertDialog open={isDeleting} onOpenChange={setIsDeleting}>
         <AlertDialogContent>
           <AlertDialogHeader><AlertDialogTitle>Delete Property?</AlertDialogTitle><AlertDialogDescription>This will move the property to your archive. You can restore it later if needed.</AlertDialogDescription></AlertDialogHeader>
-          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleDeleteConfirm}>Archive Property</AlertAction></AlertDialogFooter>
+          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleDeleteConfirm}>Archive Property</AlertDialogAction></AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

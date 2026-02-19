@@ -147,31 +147,31 @@ export default function TenantDetailPage() {
                     <CardDescription>Primary communication details for this tenant.</CardDescription>
                 </CardHeader>
                 <CardContent className="space-y-4 pt-4 border-t">
-                    <div className="flex items-center gap-4">
-                        <div className="p-2 rounded-lg bg-primary/10">
+                    <div className="flex items-center gap-4 min-w-0">
+                        <div className="p-2 rounded-lg bg-primary/10 shrink-0">
                             <User className="h-5 w-5 text-primary" />
                         </div>
-                        <div>
+                        <div className="min-w-0 flex-1">
                             <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Full Name</p>
-                            <p className="font-semibold">{tenant.name}</p>
+                            <p className="font-semibold truncate">{tenant.name}</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                        <div className="p-2 rounded-lg bg-primary/10">
+                    <div className="flex items-center gap-4 min-w-0">
+                        <div className="p-2 rounded-lg bg-primary/10 shrink-0">
                             <Mail className="h-5 w-5 text-primary" />
                         </div>
-                        <div>
+                        <div className="min-w-0 flex-1">
                             <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Email</p>
-                            <a href={`mailto:${tenant.email}`} className="font-semibold text-primary hover:underline">{tenant.email}</a>
+                            <a href={`mailto:${tenant.email}`} className="font-semibold text-primary hover:underline truncate block">{tenant.email}</a>
                         </div>
                     </div>
-                    <div className="flex items-center gap-4">
-                        <div className="p-2 rounded-lg bg-primary/10">
+                    <div className="flex items-center gap-4 min-w-0">
+                        <div className="p-2 rounded-lg bg-primary/10 shrink-0">
                             <Phone className="h-5 w-5 text-primary" />
                         </div>
-                        <div>
+                        <div className="min-w-0 flex-1">
                             <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Telephone</p>
-                            <p className="font-semibold">{tenant.telephone}</p>
+                            <p className="font-semibold truncate">{tenant.telephone}</p>
                         </div>
                     </div>
                 </CardContent>

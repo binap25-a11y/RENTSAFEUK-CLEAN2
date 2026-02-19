@@ -145,11 +145,11 @@ export default function ContractorDetailPage() {
                     </div>
                 </div>
                 {contractor.email && (
-                    <div className="flex items-start gap-4">
-                        <Mail className="h-5 w-5 text-muted-foreground mt-1" />
-                        <div>
+                    <div className="flex items-start gap-4 min-w-0">
+                        <Mail className="h-5 w-5 text-muted-foreground shrink-0 mt-1" />
+                        <div className="min-w-0 flex-1">
                             <p className="text-sm text-muted-foreground">Email</p>
-                            <a href={`mailto:${contractor.email}`} className="text-primary hover:underline">
+                            <a href={`mailto:${contractor.email}`} className="text-primary hover:underline truncate block">
                                 {contractor.email}
                             </a>
                         </div>
