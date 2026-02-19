@@ -22,7 +22,6 @@ import { BackToTopButton } from '@/components/ui/back-to-top-button';
 import { Button } from '@/components/ui/button';
 
 // Dynamically import heavy dashboard components to split the JS chunks and resolve loading timeouts.
-// This ensures the main layout bundle remains lightweight and interactive.
 const Notifications = dynamic(() => import('@/components/dashboard/notifications').then(mod => mod.Notifications), {
   ssr: false,
   loading: () => <div className="h-8 w-8" />
@@ -54,7 +53,7 @@ function DashboardHeader() {
   }, []);
 
   return (
-    <header className="flex h-14 items-center gap-4 border-b bg-card px-4 lg:h-[60px] lg:px-6">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 lg:h-[60px] lg:px-6">
       <SidebarTrigger className="md:hidden" />
       <div className="w-full flex-1">
         <Button 
@@ -96,7 +95,7 @@ export default function DashboardLayout({
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
 
-  // Ensure component is fully mounted on the client to avoid hydration issues and chunk timing errors
+  // Ensure component is fully mounted on the client to avoid hydration issues
   useEffect(() => {
     setIsMounted(true);
   }, []);
@@ -108,7 +107,7 @@ export default function DashboardLayout({
     }
   }, [user, isUserLoading, router, isMounted]);
 
-  // Loading state during initial mount or user check to provide a smooth transition
+  // Loading state during initial mount or user check
   if (!isMounted || isUserLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
@@ -138,10 +137,10 @@ export default function DashboardLayout({
           </div>
         </SidebarFooter>
       </Sidebar>
-      <SidebarInset>
+      <SidebarInset className="flex flex-col h-screen overflow-hidden">
         <DashboardHeader />
-        <main className="flex-1 p-4 sm:p-6 lg:p-8">
-          <div className="mx-auto max-w-7xl w-full">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+          <div className="mx-auto max-w-7xl w-full pb-20">
             {children}
           </div>
         </main>

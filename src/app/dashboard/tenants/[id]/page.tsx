@@ -2,14 +2,12 @@
 
 import { useParams, notFound, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, User, Mail, Phone, Edit, Trash2, Home, Loader2, MoreVertical, UserPlus, Eye, Sparkles } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, Edit, Trash2, Home, Loader2, MoreVertical, UserPlus, Eye, FileCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
-import { doc, collection, query, updateDoc, where, limit } from 'firebase/firestore';
+import { doc, collection, query, updateDoc, where } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
 import {
@@ -17,17 +15,12 @@ import {
   AlertDialogAction,
   AlertDialogCancel,
   AlertDialogContent,
+  AlertDialogDescription,
   AlertDialogFooter,
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-
-// Dynamically import heavy AI components to prevent ChunkLoadErrors and improve initial load time
-const TenantCommunicationAssistant = dynamic(() => import('@/components/dashboard/tenant-communication-assistant').then(mod => mod.TenantCommunicationAssistant), {
-  ssr: false,
-  loading: () => <div className="h-10 w-32 animate-pulse bg-muted rounded-md" />
-});
 
 // Types
 interface Property {
@@ -69,7 +62,6 @@ export default function TenantDetailPage() {
   const { toast } = useToast();
   const { user } = useUser();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isCommAssistantOpen, setIsCommAssistantOpen] = useState(false);
 
   const tenantRef = useMemoFirebase(() => {
     if (!firestore || !id) return null;
@@ -82,7 +74,7 @@ export default function TenantDetailPage() {
     if (!firestore || !tenant?.propertyId) return null;
     return doc(firestore, 'properties', tenant.propertyId);
   }, [firestore, tenant?.propertyId]);
-  const { data: property, isLoading: isLoadingProperty } = useDoc<Property>(propertyRef);
+  const { data: property } = useDoc<Property>(propertyRef);
   
   const screeningsQuery = useMemoFirebase(() => {
     if (!firestore || !id || !user) return null;
@@ -110,88 +102,156 @@ export default function TenantDetailPage() {
   const propertyAddress = formatAddress(property?.address);
 
   return (
-    <>
-        <div className="flex flex-col gap-6">
-            <div className="flex items-center justify-between gap-4">
-                <div className='flex items-center gap-4'>
-                    <Button variant="outline" size="icon" asChild><Link href="/dashboard/tenants"><ArrowLeft className="h-4 w-4" /></Link></Button>
-                    <h1 className="text-2xl font-bold">{tenant.name}</h1>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Button onClick={() => setIsCommAssistantOpen(true)} variant="outline" className="hidden sm:flex">
-                        <Sparkles className="mr-2 h-4 w-4 text-primary" /> AI Communication
-                    </Button>
-                    <DropdownMenu>
-                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            <DropdownMenuItem onClick={() => setIsCommAssistantOpen(true)} className="sm:hidden">
-                                <Sparkles className="mr-2 h-4 w-4" /> AI Communication
-                            </DropdownMenuItem>
-                            <DropdownMenuItem asChild><Link href={`/dashboard/tenants/${id}/edit`}><Edit className="mr-2 h-4 w-4" /> Edit</Link></DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
-                        </DropdownMenuContent>
-                    </DropdownMenu>
+    <div className="flex flex-col gap-6">
+        <div className="flex items-center justify-between gap-4">
+            <div className='flex items-center gap-4'>
+                <Button variant="outline" size="icon" asChild>
+                    <Link href="/dashboard/tenants"><ArrowLeft className="h-4 w-4" /></Link>
+                </Button>
+                <div>
+                    <h1 className="text-2xl font-bold font-headline">{tenant.name}</h1>
+                    <p className="text-sm text-muted-foreground">Tenant Profile</p>
                 </div>
             </div>
-
-            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-                <Card className="lg:col-span-2">
-                    <CardHeader><CardTitle>Contact Information</CardTitle></CardHeader>
-                    <CardContent className="space-y-4">
-                        <div className="flex items-center gap-4"><User className="h-5 w-5 text-muted-foreground" /><span>{tenant.name}</span></div>
-                        <div className="flex items-center gap-4"><Mail className="h-5 w-5 text-muted-foreground" /><a href={`mailto:${tenant.email}`} className="text-primary hover:underline">{tenant.email}</a></div>
-                        <div className="flex items-center gap-4"><Phone className="h-5 w-5 text-muted-foreground" /><span>{tenant.telephone}</span></div>
-                    </CardContent>
-                </Card>
-                <Card>
-                    <CardHeader><CardTitle>Assigned Property</CardTitle></CardHeader>
-                    <CardContent><div className="flex items-center gap-4"><Home className="h-5 w-5 text-muted-foreground" /><Link href={`/dashboard/properties/${tenant.propertyId}`} className="text-primary hover:underline">{propertyAddress}</Link></div></CardContent>
-                </Card>
+            <div className="flex items-center gap-2">
+                <Button variant="outline" asChild className="hidden sm:flex">
+                    <Link href={`/dashboard/tenants/${id}/edit`}>
+                        <Edit className="mr-2 h-4 w-4" /> Edit Profile
+                    </Link>
+                </Button>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon">
+                            <MoreVertical className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem asChild className="sm:hidden">
+                            <Link href={`/dashboard/tenants/${id}/edit`}>
+                                <Edit className="mr-2 h-4 w-4" /> Edit
+                            </Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive">
+                            <Trash2 className="mr-2 h-4 w-4" /> Archive Tenant
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
             </div>
+        </div>
 
-            <Card>
-                <CardHeader><CardTitle>Onboarding & Compliance</CardTitle></CardHeader>
-                <CardContent className="space-y-6">
-                    <div>
-                        <h3 className="text-lg font-semibold">Tenant Screening</h3>
-                        {firstScreening ? (
-                            <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50 mt-2">
-                                <div><p className="font-medium">Screening Completed</p><p className="text-sm text-muted-foreground">{format(safeCreateDate(firstScreening.screeningDate)!, 'PPP')}</p></div>
-                                <Button asChild variant="outline"><Link href={`/dashboard/tenants/${id}/screenings/${firstScreening.id}`}><Eye className="mr-2 h-4 w-4" /> View</Link></Button>
-                            </div>
-                        ) : (
-                            <div className="text-center border-2 border-dashed rounded-lg p-6 mt-2">
-                                <Button asChild size="sm"><Link href={`/dashboard/tenants/screening?tenantId=${id}`}><UserPlus className="mr-2 h-4 w-4" /> Create Screening</Link></Button>
-                            </div>
-                        )}
-                    </div>
-
-                    <div className="flex items-center justify-between pt-6 border-t">
-                        <div>
-                            <h3 className="text-lg font-semibold">AI Communication Assistant</h3>
-                            <p className="text-sm text-muted-foreground">Draft professional landlord notices tailored to this tenant.</p>
+        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+            <Card className="lg:col-span-2">
+                <CardHeader>
+                    <CardTitle className="text-lg">Contact Information</CardTitle>
+                    <CardDescription>Primary communication details for this tenant.</CardDescription>
+                </CardHeader>
+                <CardContent className="space-y-4 pt-4 border-t">
+                    <div className="flex items-center gap-4">
+                        <div className="p-2 rounded-lg bg-primary/10">
+                            <User className="h-5 w-5 text-primary" />
                         </div>
-                        <Button onClick={() => setIsCommAssistantOpen(true)} variant="secondary">
-                            <Sparkles className="mr-2 h-4 w-4" /> Launch Assistant
+                        <div>
+                            <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Full Name</p>
+                            <p className="font-semibold">{tenant.name}</p>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <div className="p-2 rounded-lg bg-primary/10">
+                            <Mail className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                            <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Email</p>
+                            <a href={`mailto:${tenant.email}`} className="font-semibold text-primary hover:underline">{tenant.email}</a>
+                        </div>
+                    </div>
+                    <div className="flex items-center gap-4">
+                        <div className="p-2 rounded-lg bg-primary/10">
+                            <Phone className="h-5 w-5 text-primary" />
+                        </div>
+                        <div>
+                            <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Telephone</p>
+                            <p className="font-semibold">{tenant.telephone}</p>
+                        </div>
+                    </div>
+                </CardContent>
+            </Card>
+            
+            <Card>
+                <CardHeader>
+                    <CardTitle className="text-lg">Assigned Property</CardTitle>
+                </CardHeader>
+                <CardContent className="pt-4 border-t">
+                    <div className="flex flex-col gap-4">
+                        <div className="flex items-start gap-4">
+                            <Home className="h-5 w-5 text-muted-foreground mt-1" />
+                            <div className="min-w-0">
+                                <Link href={`/dashboard/properties/${tenant.propertyId}`} className="font-bold text-primary hover:underline block truncate">
+                                    {propertyAddress}
+                                </Link>
+                                <p className="text-xs text-muted-foreground mt-1">Status: {tenant.status || 'Active'}</p>
+                            </div>
+                        </div>
+                        <Button variant="secondary" size="sm" asChild className="w-full">
+                            <Link href={`/dashboard/properties/${tenant.propertyId}`}>View Property Details</Link>
                         </Button>
                     </div>
                 </CardContent>
             </Card>
         </div>
 
-        <TenantCommunicationAssistant 
-            isOpen={isCommAssistantOpen}
-            onOpenChange={setIsCommAssistantOpen}
-            tenant={{ name: tenant.name, email: tenant.email }}
-            propertyAddress={propertyAddress}
-        />
+        <Card>
+            <CardHeader>
+                <CardTitle className="text-lg">Onboarding & Compliance</CardTitle>
+                <CardDescription>Track screening reports and legal checks for this tenancy.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6 pt-4 border-t">
+                <div>
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground mb-3 flex items-center gap-2">
+                        <FileCheck className="h-4 w-4" />
+                        Tenant Screening
+                    </h3>
+                    {firstScreening ? (
+                        <div className="flex items-center justify-between p-4 border rounded-xl bg-muted/30">
+                            <div>
+                                <p className="font-bold">Comprehensive Screening Completed</p>
+                                <p className="text-xs text-muted-foreground mt-0.5">Finalized on: {format(safeCreateDate(firstScreening.screeningDate)!, 'PPP')}</p>
+                            </div>
+                            <Button asChild variant="outline">
+                                <Link href={`/dashboard/tenants/${id}/screenings/${firstScreening.id}`}>
+                                    <Eye className="mr-2 h-4 w-4" /> View Report
+                                </Link>
+                            </Button>
+                        </div>
+                    ) : (
+                        <div className="text-center border-2 border-dashed rounded-xl p-8 bg-muted/5">
+                            <p className="text-sm text-muted-foreground mb-4">No screening report found for this tenant.</p>
+                            <Button asChild>
+                                <Link href={`/dashboard/tenants/screening?tenantId=${id}`}>
+                                    <UserPlus className="mr-2 h-4 w-4" /> Create Screening Report
+                                </Link>
+                            </Button>
+                        </div>
+                    )}
+                </div>
+            </CardContent>
+        </Card>
 
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
             <AlertDialogContent>
-                <AlertDialogHeader><AlertDialogTitle>Archive Tenant?</AlertDialogTitle></AlertDialogHeader>
-                <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive">Archive</AlertDialogAction></AlertDialogFooter>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Archive this tenant?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This will move {tenant.name} to your archived tenants list. You can restore them later from the archives page.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                    <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90">
+                        Archive Tenant
+                    </AlertDialogAction>
+                </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
-    </>
+    </div>
   );
 }
