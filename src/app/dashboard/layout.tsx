@@ -20,6 +20,7 @@ import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { BackToTopButton } from '@/components/ui/back-to-top-button';
 import { Button } from '@/components/ui/button';
+import { IdleTimeout } from '@/components/dashboard/idle-timeout';
 
 // Dynamically import heavy dashboard components to split the JS chunks and resolve loading timeouts.
 const Notifications = dynamic(() => import('@/components/dashboard/notifications').then(mod => mod.Notifications), {
@@ -53,7 +54,7 @@ function DashboardHeader() {
   }, []);
 
   return (
-    <header className="flex h-14 items-center gap-4 border-b bg-muted/40 px-4 lg:h-[60px] lg:px-6">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 lg:h-[60px] lg:px-6">
       <SidebarTrigger className="md:hidden" />
       <div className="w-full flex-1">
         <Button 
@@ -113,7 +114,7 @@ export default function DashboardLayout({
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground animate-pulse font-medium">Initializing Dashboard...</p>
+          <p className="text-sm text-muted-foreground animate-pulse font-medium">Verifying Session Security...</p>
         </div>
       </div>
     );
@@ -121,6 +122,7 @@ export default function DashboardLayout({
 
   return (
     <SidebarProvider>
+      <IdleTimeout />
       <Sidebar>
         <SidebarHeader>
           <Link href="/dashboard" className="flex items-center gap-2 px-2 py-4">
@@ -137,9 +139,9 @@ export default function DashboardLayout({
           </div>
         </SidebarFooter>
       </Sidebar>
-      <SidebarInset className="flex flex-col">
+      <SidebarInset className="flex flex-col h-screen overflow-hidden">
         <DashboardHeader />
-        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8">
+        <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-muted/20">
           <div className="mx-auto max-w-7xl w-full pb-20">
             {children}
           </div>

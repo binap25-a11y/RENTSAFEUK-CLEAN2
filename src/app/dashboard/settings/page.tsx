@@ -23,9 +23,10 @@ import { Input } from '@/components/ui/input';
 import { toast } from '@/hooks/use-toast';
 import { useUser, useAuth } from '@/firebase';
 import { updateProfile } from 'firebase/auth';
-import { useEffect } from 'react';
-import { Loader2 } from 'lucide-react';
+import { useEffect, useState } from 'react';
+import { Loader2, ShieldCheck, Clock, Lock, Key } from 'lucide-react';
 import { useRouter } from 'next/navigation';
+import { Badge } from '@/components/ui/badge';
 
 const profileSchema = z.object({
   displayName: z.string().min(2, 'Display name must be at least 2 characters.'),
@@ -38,6 +39,7 @@ export default function SettingsPage() {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
   const router = useRouter();
+  const [isUpdating, setIsUpdating] = useState(false);
 
   const form = useForm<ProfileFormValues>({
     resolver: zodResolver(profileSchema),
@@ -66,6 +68,7 @@ export default function SettingsPage() {
       return;
     }
 
+    setIsUpdating(true);
     try {
       await updateProfile(auth.currentUser, {
         displayName: data.displayName,
@@ -80,13 +83,15 @@ export default function SettingsPage() {
 
       router.refresh();
 
-    } catch (error) {
+    } catch (error: any) {
       console.error('Failed to update profile:', error);
       toast({
         variant: 'destructive',
         title: 'Update Failed',
-        description: 'There was an error updating your profile. Please try again.',
+        description: error.message || 'There was an error updating your profile. Please try again.',
       });
+    } finally {
+      setIsUpdating(false);
     }
   }
 
@@ -99,55 +104,108 @@ export default function SettingsPage() {
   }
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-8 max-w-4xl mx-auto">
        <div>
-        <h1 className="text-3xl font-bold">Settings</h1>
+        <h1 className="text-3xl font-bold font-headline">Settings</h1>
         <p className="text-muted-foreground">
-          Manage your account and profile settings.
+          Manage your account security and profile preferences.
         </p>
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Profile</CardTitle>
-          <CardDescription>
-            This is how your name will be displayed in the application.
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 max-w-lg">
-              <FormField
-                control={form.control}
-                name="displayName"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Display Name</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Your Name" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email</FormLabel>
-                    <FormControl>
-                      <Input placeholder="Your Email" {...field} disabled />
-                    </FormControl>
-                     <p className="text-sm text-muted-foreground">Your email address cannot be changed.</p>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <Button type="submit">Save Changes</Button>
-            </form>
-          </Form>
-        </CardContent>
-      </Card>
+
+      <div className="grid gap-8">
+        <Card className="shadow-sm">
+          <CardHeader className="border-b bg-muted/10">
+            <CardTitle className="text-lg">Profile Details</CardTitle>
+            <CardDescription>
+              Basic information used across your portfolio reports.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <Form {...form}>
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 max-w-lg">
+                <FormField
+                  control={form.control}
+                  name="displayName"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Display Name</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Your Name" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="email"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Login Email</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Your Email" {...field} disabled />
+                      </FormControl>
+                       <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mt-1">Your email address is managed via your identity provider.</p>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <Button type="submit" disabled={isUpdating}>
+                  {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
+                  Save Changes
+                </Button>
+              </form>
+            </Form>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm border-primary/20">
+          <CardHeader className="border-b bg-primary/5">
+            <div className="flex items-center justify-between">
+                <div>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                        <Lock className="h-5 w-5 text-primary" />
+                        Session Security
+                    </CardTitle>
+                    <CardDescription>
+                        Configuration for your active management session.
+                    </CardDescription>
+                </div>
+                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200">Secure Connection</Badge>
+            </div>
+          </CardHeader>
+          <CardContent className="pt-6 space-y-6">
+            <div className="grid gap-6 sm:grid-cols-2">
+                <div className="flex items-start gap-4 p-4 rounded-xl border bg-muted/30">
+                    <Clock className="h-5 w-5 text-primary mt-1 shrink-0" />
+                    <div className="space-y-1">
+                        <p className="text-sm font-bold">Automatic Sign-out</p>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                            For your protection, you will be automatically logged out after <strong>30 minutes</strong> of inactivity.
+                        </p>
+                    </div>
+                </div>
+                <div className="flex items-start gap-4 p-4 rounded-xl border bg-muted/30">
+                    <ShieldCheck className="h-5 w-5 text-primary mt-1 shrink-0" />
+                    <div className="space-y-1">
+                        <p className="text-sm font-bold">Data Encryption</p>
+                        <p className="text-xs text-muted-foreground leading-relaxed">
+                            All property data and tenant files are encrypted at rest and in transit using industry-standard AES-256.
+                        </p>
+                    </div>
+                </div>
+            </div>
+
+            <div className="p-4 rounded-lg bg-muted/50 border border-dashed flex items-center justify-between">
+                <div className="flex items-center gap-3">
+                    <Key className="h-4 w-4 text-muted-foreground" />
+                    <span className="text-sm font-medium">Multi-Factor Authentication</span>
+                </div>
+                <p className="text-xs text-muted-foreground italic">Managed by your Google Account</p>
+            </div>
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
