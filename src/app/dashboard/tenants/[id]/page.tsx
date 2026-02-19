@@ -4,7 +4,7 @@ import { useParams, notFound, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, User, Mail, Phone, Edit, Trash2, Home, Loader2, MoreVertical, UserPlus, Eye, FileCheck } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, Edit, Trash2, Home, Loader2, MoreVertical, UserPlus, Eye, FileCheck, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
 import { doc, collection, query, updateDoc, where } from 'firebase/firestore';
@@ -24,7 +24,9 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 
 // Types
 interface Property {
+    id: string;
     address: {
+      nameOrNumber?: string;
       street: string;
       city: string;
       postcode: string;
@@ -97,7 +99,7 @@ export default function TenantDetailPage() {
 
   const formatAddress = (address: Property['address'] | undefined) => {
     if (!address) return 'N/A';
-    return [address.street, address.city, address.postcode].filter(Boolean).join(', ');
+    return [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
   };
 
   const propertyAddress = formatAddress(property?.address);
@@ -140,19 +142,19 @@ export default function TenantDetailPage() {
             </div>
         </div>
 
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="lg:col-span-2">
+        <div className="flex flex-col gap-6">
+            <Card>
                 <CardHeader>
                     <CardTitle className="text-lg">Contact Information</CardTitle>
                     <CardDescription>Primary communication details for this tenant.</CardDescription>
                 </CardHeader>
-                <CardContent className="space-y-4 pt-4 border-t">
+                <CardContent className="grid gap-6 md:grid-cols-3 pt-4 border-t">
                     <div className="flex items-center gap-4 min-w-0">
                         <div className="p-2 rounded-lg bg-primary/10 shrink-0">
                             <User className="h-5 w-5 text-primary" />
                         </div>
                         <div className="min-w-0 flex-1">
-                            <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Full Name</p>
+                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Full Name</p>
                             <p className="font-semibold truncate">{tenant.name}</p>
                         </div>
                     </div>
@@ -161,7 +163,7 @@ export default function TenantDetailPage() {
                             <Mail className="h-5 w-5 text-primary" />
                         </div>
                         <div className="min-w-0 flex-1">
-                            <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Email</p>
+                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Email</p>
                             <a href={`mailto:${tenant.email}`} className="font-semibold text-primary hover:underline truncate block">{tenant.email}</a>
                         </div>
                     </div>
@@ -170,7 +172,7 @@ export default function TenantDetailPage() {
                             <Phone className="h-5 w-5 text-primary" />
                         </div>
                         <div className="min-w-0 flex-1">
-                            <p className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Telephone</p>
+                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Telephone</p>
                             <p className="font-semibold truncate">{tenant.telephone}</p>
                         </div>
                     </div>
@@ -180,20 +182,35 @@ export default function TenantDetailPage() {
             <Card>
                 <CardHeader>
                     <CardTitle className="text-lg">Assigned Property</CardTitle>
+                    <CardDescription>The specific property currently rented by this tenant.</CardDescription>
                 </CardHeader>
                 <CardContent className="pt-4 border-t">
-                    <div className="flex flex-col gap-4">
-                        <div className="flex items-start gap-4">
-                            <Home className="h-5 w-5 text-muted-foreground mt-1" />
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                        <div className="flex items-start gap-4 flex-1">
+                            <div className="p-2 rounded-lg bg-muted shrink-0 mt-1">
+                                <MapPin className="h-5 w-5 text-muted-foreground" />
+                            </div>
                             <div className="min-w-0">
-                                <Link href={`/dashboard/properties/${tenant.propertyId}`} className="font-bold text-primary hover:underline block truncate">
+                                <Link href={`/dashboard/properties/${tenant.propertyId}`} className="text-lg font-bold text-primary hover:underline leading-tight">
                                     {propertyAddress}
                                 </Link>
-                                <p className="text-xs text-muted-foreground mt-1">Status: {tenant.status || 'Active'}</p>
+                                <div className="flex items-center gap-2 mt-2">
+                                    <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider">
+                                        Status: {tenant.status || 'Active'}
+                                    </Badge>
+                                    {tenant.monthlyRent && (
+                                        <Badge variant="secondary" className="text-[10px] uppercase font-bold tracking-wider">
+                                            Rent: £{tenant.monthlyRent.toLocaleString()}/mo
+                                        </Badge>
+                                    )}
+                                </div>
                             </div>
                         </div>
-                        <Button variant="secondary" size="sm" asChild className="w-full">
-                            <Link href={`/dashboard/properties/${tenant.propertyId}`}>View Property Details</Link>
+                        <Button variant="outline" asChild className="shrink-0">
+                            <Link href={`/dashboard/properties/${tenant.propertyId}`}>
+                                <Home className="mr-2 h-4 w-4" />
+                                Full Property Profile
+                            </Link>
                         </Button>
                     </div>
                 </CardContent>
