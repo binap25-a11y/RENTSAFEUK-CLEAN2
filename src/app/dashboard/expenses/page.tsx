@@ -92,6 +92,12 @@ import 'jspdf-autotable';
 import Link from 'next/link';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
+// Constants
+const MONTHS = [
+  'January', 'February', 'March', 'April', 'May', 'June',
+  'July', 'August', 'September', 'October', 'November', 'December'
+];
+
 // TYPE DEFINITIONS
 
 interface Property {
@@ -161,7 +167,7 @@ export default function FinancialsPage() {
   const { user } = useUser();
   const firestore = useFirestore();
   const [selectedPropertyId, setSelectedPropertyId] = useState('all');
-  const [selectedYear, setSelectedYear] = useState(0);
+  const [selectedYear, setSelectedYear] = useState<number | null>(null);
 
   // Portfolio-wide aggregation state
   const [portfolioExpenses, setPortfolioExpenses] = useState<Expense[]>([]);
@@ -255,6 +261,7 @@ export default function FinancialsPage() {
 
   // 4. Final Data Resolution
   const expenses = useMemo(() => {
+    if (!selectedYear) return [];
     const list = selectedPropertyId !== 'all' ? (rawExpenses || []) : portfolioExpenses;
     return list.filter(exp => {
         const d = safeToDate(exp.date);
@@ -326,7 +333,7 @@ export default function FinancialsPage() {
 
         {/* Metric Summary Cards */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card>
+            <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Annual Portfolio Rent</CardTitle>
                 <PoundSterling className="h-4 w-4 text-muted-foreground" />
@@ -336,7 +343,7 @@ export default function FinancialsPage() {
                 <p className="text-xs text-muted-foreground">{activeProperties.length} active properties tracked</p>
                 </CardContent>
             </Card>
-            <Card>
+            <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Annual Income Received</CardTitle>
                 <TrendingUp className="h-4 w-4 text-green-500" />
@@ -350,7 +357,7 @@ export default function FinancialsPage() {
                     </div>
                 </CardContent>
             </Card>
-            <Card>
+            <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Annual Expenses</CardTitle>
                 <TrendingDown className="h-4 w-4 text-muted-foreground" />
@@ -362,7 +369,7 @@ export default function FinancialsPage() {
                     <p className="text-[10px] font-medium text-muted-foreground h-4 uppercase tracking-tight">Period: {selectedYear}</p>
                 </CardContent>
             </Card>
-            <Card>
+            <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Annual Net Position</CardTitle>
                 <Banknote className="h-4 w-4 text-muted-foreground" />
@@ -403,7 +410,7 @@ export default function FinancialsPage() {
               <TabsContent value="summary" className="animate-in fade-in-50 duration-300">
                 <AnnualSummary 
                     selectedProperty={selectedProperty} 
-                    selectedYear={selectedYear}
+                    selectedYear={selectedYear || 0}
                     expenses={expenses}
                     isLoadingExpenses={isLoading}
                     rentPayments={rentPayments}
@@ -417,7 +424,7 @@ export default function FinancialsPage() {
               <TabsContent value="statement" className="animate-in fade-in-50 duration-300">
                 <RentStatement 
                     selectedProperty={selectedProperty} 
-                    selectedYear={selectedYear}
+                    selectedYear={selectedYear || 0}
                     rentPayments={rawRentPayments}
                     isLoadingPayments={isLoadingPayments}
                 />
@@ -831,21 +838,16 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
   const [partialAmount, setPartialAmount] = useState('');
   const [newRentAmount, setNewRentAmount] = useState('');
   
-  const months = useMemo(() => {
-    const year = selectedYear || new Date().getFullYear();
-    return Array.from({ length: 12 }, (_, i) => new Date(year, i, 1).toLocaleString('default', { month: 'long' }));
-  }, [selectedYear]);
-  
   const statement = useMemo(() => {
     const defaultRent = selectedProperty?.tenancy?.monthlyRent || 0;
     const paymentsMap = rentPayments?.reduce((acc, p) => { acc[p.month] = p; return acc; }, {} as Record<string, RentPayment>);
-    return months.map(month => ({ 
+    return MONTHS.map(month => ({ 
         month, 
         rent: paymentsMap?.[month]?.expectedAmount ?? defaultRent, 
         status: paymentsMap?.[month]?.status || 'Pending',
         rawPayment: paymentsMap?.[month]
     }));
-  }, [selectedProperty, months, rentPayments]);
+  }, [selectedProperty, rentPayments]);
 
   const handleSavePartialPayment = async () => {
     if (!firestore || !user || !selectedProperty || !editingPayment) return;

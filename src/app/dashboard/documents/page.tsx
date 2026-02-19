@@ -1,7 +1,7 @@
 'use client';
 
 import Link from 'next/link';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Card,
   CardHeader,
@@ -62,8 +62,7 @@ interface Document {
     propertyAddress?: string; // For display
 }
 
-const getDocumentStatus = (expiryDate: Date) => {
-    const today = new Date();
+const getDocumentStatus = (expiryDate: Date, today: Date) => {
     const ninetyDaysFromNow = addDays(today, 90);
     
     if (isBefore(expiryDate, today)) {
@@ -86,21 +85,17 @@ const getStatusVariant = (status: string): "destructive" | "secondary" | "outlin
   }
 };
 
-const formatCurrency = (val: number) => {
-  return new Intl.NumberFormat('en-GB', {
-    style: 'currency',
-    currency: 'GBP',
-    minimumFractionDigits: 2,
-    maximumFractionDigits: 2,
-  }).format(val);
-};
-
 export default function DocumentsPage() {
     const { user } = useUser();
     const firestore = useFirestore();
     const [selectedPropertyId, setSelectedPropertyId] = useState<string>('');
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
+    const [today, setToday] = useState<Date | null>(null);
+
+    useEffect(() => {
+        setToday(new Date());
+    }, []);
 
     // Fetch properties - strictly scoped to user
     const propertiesQuery = useMemoFirebase(() => {
@@ -132,15 +127,16 @@ export default function DocumentsPage() {
     const { data: documents, isLoading: isLoadingDocuments } = useCollection<Document>(documentsQuery);
 
     const documentsWithStatus = useMemo(() => {
+        if (!today) return [];
         return documents?.map(doc => {
             const expiry = doc.expiryDate instanceof Date ? doc.expiryDate : new Date(doc.expiryDate.seconds * 1000);
             return {
                 ...doc,
-                status: getDocumentStatus(expiry),
+                status: getDocumentStatus(expiry, today),
                 expiryDate: expiry
             };
         }) ?? [];
-    }, [documents]);
+    }, [documents, today]);
     
     const filteredDocuments = useMemo(() => {
         return documentsWithStatus.filter(doc => {
@@ -153,12 +149,6 @@ export default function DocumentsPage() {
     const expiredCount = documentsWithStatus.filter(d => d.status === 'Expired').length;
     const expiringSoonCount = documentsWithStatus.filter(d => d.status === 'Expiring Soon').length;
     const validCount = documentsWithStatus.filter(d => d.status === 'Valid').length;
-    
-    const getPropertyAddress = (propertyId: string) => {
-        const property = allProperties?.find(p => p.id === propertyId);
-        if (!property) return 'Unknown Property';
-        return [property.address.nameOrNumber, property.address.street, property.address.city].filter(Boolean).join(', ');
-    };
 
   return (
     <div className="flex flex-col gap-6">
@@ -169,7 +159,7 @@ export default function DocumentsPage() {
                <FileWarning className="h-4 w-4 text-destructive" />
             </CardHeader>
             <CardContent>
-               <div className="text-2xl font-bold text-destructive">{selectedPropertyId ? expiredCount : '-'}</div>
+               <div className="text-2xl font-bold text-destructive">{(selectedPropertyId && today) ? expiredCount : '-'}</div>
                <p className="text-xs text-muted-foreground">Needs immediate attention</p>
             </CardContent>
          </Card>
@@ -179,7 +169,7 @@ export default function DocumentsPage() {
                <Clock className="h-4 w-4 text-yellow-500" />
             </CardHeader>
             <CardContent>
-               <div className="text-2xl font-bold">{selectedPropertyId ? expiringSoonCount : '-'}</div>
+               <div className="text-2xl font-bold">{(selectedPropertyId && today) ? expiringSoonCount : '-'}</div>
                <p className="text-xs text-muted-foreground">Action required within 90 days</p>
             </CardContent>
          </Card>
@@ -189,7 +179,7 @@ export default function DocumentsPage() {
                <ShieldCheck className="h-4 w-4 text-green-500" />
             </CardHeader>
             <CardContent>
-               <div className="text-2xl font-bold">{selectedPropertyId ? validCount : '-'}</div>
+               <div className="text-2xl font-bold">{(selectedPropertyId && today) ? validCount : '-'}</div>
                <p className="text-xs text-muted-foreground">All documents up to date</p>
             </CardContent>
          </Card>

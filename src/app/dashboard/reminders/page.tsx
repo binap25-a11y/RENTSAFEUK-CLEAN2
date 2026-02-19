@@ -71,8 +71,7 @@ const toDate = (val: any): Date | null => {
   return isNaN(d.getTime()) ? null : d;
 };
 
-const getDocumentStatus = (expiryDate: Date) => {
-  const today = new Date();
+const getDocumentStatus = (expiryDate: Date, today: Date) => {
   const ninetyDaysFromNow = addDays(today, 90);
   if (isBefore(expiryDate, today)) return 'Expired';
   if (isBefore(expiryDate, ninetyDaysFromNow)) return 'Expiring Soon';
@@ -91,6 +90,11 @@ const getStatusVariant = (status: string): "destructive" | "secondary" | "outlin
 export default function RemindersPage() {
   const { user } = useUser();
   const firestore = useFirestore();
+  const [today, setToday] = useState<Date | null>(null);
+
+  useEffect(() => {
+    setToday(new Date());
+  }, []);
 
   // Primary Properties Listener
   const propertiesQuery = useMemoFirebase(() => {
@@ -148,11 +152,13 @@ export default function RemindersPage() {
   }, [properties]);
 
   const allReminders = useMemo(() => {
+    if (!today) return [];
+    
     const documentReminders = allDocuments
         .map((doc) => {
           const expiry = toDate(doc.expiryDate);
           if (!expiry) return null;
-          return { ...doc, expiryDate: expiry, status: getDocumentStatus(expiry) };
+          return { ...doc, expiryDate: expiry, status: getDocumentStatus(expiry, today) };
         })
         .filter((doc): doc is NonNullable<typeof doc> => doc !== null && doc.status !== 'Valid')
         .map((doc) => ({
@@ -183,12 +189,12 @@ export default function RemindersPage() {
         }));
 
     return [...documentReminders, ...inspectionReminders].sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
-  }, [allDocuments, allInspections, propertyMap]);
+  }, [allDocuments, allInspections, propertyMap, today]);
   
   const urgentCount = useMemo(() => allReminders.filter(r => r.status === 'Expired').length, [allReminders]);
   const upcomingCount = useMemo(() => allReminders.filter(r => r.status !== 'Expired').length, [allReminders]);
 
-  const isLoading = isLoadingProps || isAggregating;
+  const isLoading = isLoadingProps || isAggregating || !today;
 
   const exportToPDF = () => {
     const doc = new jsPDF();
