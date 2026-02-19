@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -30,7 +31,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CheckCircle2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -42,13 +43,14 @@ import {
   useMemoFirebase,
 } from '@/firebase';
 import { collection, query, where, addDoc, limit } from 'firebase/firestore';
+import { Badge } from '@/components/ui/badge';
 
 const hmoInspectionSchema = z.object({
   // General
   inspectionDate: z.coerce.date(),
   inspectorName: z.string().min(1, "Inspector name is required"),
   propertyId: z.string({ required_error: 'Please select a property.' }),
-  occupantCount: z.coerce.number().min(1, "Number of occupants is required"),
+  occupantCount: z.coerce.number().min(1, "Occupant count must be at least 1"),
   licenceExpiryDate: z.coerce.date().optional(),
 
   // Fire Safety
@@ -163,7 +165,6 @@ interface Property {
     city: string;
   };
   status?: string;
-  propertyType?: string;
 }
 
 const ChecklistItem = ({ form, name, label }: { form: any, name: any, label: string }) => (
@@ -171,12 +172,12 @@ const ChecklistItem = ({ form, name, label }: { form: any, name: any, label: str
         control={form.control}
         name={name}
         render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4 hover:bg-muted/50 transition-colors">
                 <FormControl>
                     <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
                 </FormControl>
                 <div className="space-y-1 leading-none">
-                    <FormLabel className="font-normal">{label}</FormLabel>
+                    <FormLabel className="font-normal cursor-pointer">{label}</FormLabel>
                 </div>
             </FormItem>
         )}
@@ -189,7 +190,7 @@ const NotesField = ({ form, name, placeholder }: { form: any, name: any, placeho
         name={name}
         render={({ field }) => (
             <FormItem className="mt-4 col-span-1 md:col-span-2">
-                <FormLabel>Notes</FormLabel>
+                <FormLabel>Section Notes</FormLabel>
                 <FormControl>
                     <Textarea placeholder={placeholder} {...field} value={field.value ?? ''} />
                 </FormControl>
@@ -215,7 +216,31 @@ export default function HmoInspectionPage() {
         }
     });
 
-    // Set initial dates after mount to prevent hydration mismatch
+    const watchAllFields = form.watch();
+
+    const getSectionStatus = (sectionKey: keyof HmoInspectionFormValues) => {
+        const section = watchAllFields[sectionKey];
+        if (!section || typeof section !== 'object') return null;
+        
+        const booleanFields = Object.values(section).filter(v => typeof v === 'boolean');
+        if (booleanFields.length === 0) return null;
+        
+        const completedCount = booleanFields.filter(Boolean).length;
+        if (completedCount === 0) return null;
+        if (completedCount === booleanFields.length) return 'Completed';
+        return 'In Progress';
+    };
+
+    const StatusBadge = ({ status }: { status: string | null }) => {
+        if (!status) return null;
+        return (
+            <Badge variant={status === 'Completed' ? 'default' : 'secondary'} className="ml-2 gap-1">
+                {status === 'Completed' && <CheckCircle2 className="h-3 w-3" />}
+                {status}
+            </Badge>
+        );
+    };
+
     useEffect(() => {
         form.setValue('inspectionDate', new Date());
     }, [form]);
@@ -230,7 +255,7 @@ export default function HmoInspectionPage() {
     }, [firestore, user]);
     const { data: allProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
 
-    const properties = useMemo(() => {
+    const activeProperties = useMemo(() => {
         const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
         return allProperties?.filter(p => activeStatuses.includes(p.status || '')) ?? [];
     }, [allProperties]);
@@ -243,19 +268,10 @@ export default function HmoInspectionPage() {
     };
 
     async function onSubmit(data: HmoInspectionFormValues) {
-        if (!user || !firestore) {
-            toast({
-                variant: 'destructive',
-                title: 'Authentication Error',
-                description: 'You must be logged in to save an inspection.',
-            });
-            return;
-        }
-
+        if (!user || !firestore) return;
         setIsSubmitting(true);
 
         const { propertyId, ...inspectionData } = data;
-
         const newInspection = {
             ...inspectionData,
             ownerId: user.uid,
@@ -267,21 +283,12 @@ export default function HmoInspectionPage() {
 
         try {
             const cleanedSubmission = prepareForFirestore(newInspection);
-            const inspectionsCollection = collection(firestore, 'properties', propertyId, 'inspections');
-            await addDoc(inspectionsCollection, cleanedSubmission);
-            
-            toast({
-                title: 'HMO Inspection Saved',
-                description: 'The inspection record has been successfully saved.',
-            });
+            await addDoc(collection(firestore, 'properties', propertyId, 'inspections'), cleanedSubmission);
+            toast({ title: 'HMO Inspection Saved' });
             router.push('/dashboard/inspections');
         } catch (error) {
-            console.error('Failed to save HMO inspection:', error);
-            toast({
-                variant: 'destructive',
-                title: 'Save Failed',
-                description: 'There was an error saving the inspection. Please check your data and try again.',
-            });
+            console.error(error);
+            toast({ variant: 'destructive', title: 'Save Failed', description: 'Check your internet connection and try again.' });
         } finally {
             setIsSubmitting(false);
         }
@@ -304,7 +311,7 @@ export default function HmoInspectionPage() {
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                         <Accordion type="multiple" className="w-full space-y-4" defaultValue={['general']}>
                             <AccordionItem value="general" className='border rounded-lg px-4'>
-                                <AccordionTrigger className='text-lg font-semibold'>General Property Information</AccordionTrigger>
+                                <AccordionTrigger className='text-lg font-semibold'>General Information</AccordionTrigger>
                                 <AccordionContent className='pt-4 space-y-4'>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <FormField
@@ -312,14 +319,8 @@ export default function HmoInspectionPage() {
                                             name="inspectionDate"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Date of Inspection</FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            type="date"
-                                                            value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
-                                                            onChange={(e) => field.onChange(e.target.value)}
-                                                        />
-                                                    </FormControl>
+                                                    <FormLabel>Inspection Date</FormLabel>
+                                                    <FormControl><Input type="date" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} /></FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
@@ -330,7 +331,7 @@ export default function HmoInspectionPage() {
                                             render={({ field }) => (
                                                 <FormItem>
                                                     <FormLabel>Inspector Name</FormLabel>
-                                                    <FormControl><Input placeholder="e.g., Jane Smith" {...field} value={field.value ?? ''} /></FormControl>
+                                                    <FormControl><Input placeholder="Jane Doe" {...field} /></FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
@@ -343,12 +344,8 @@ export default function HmoInspectionPage() {
                                             <FormItem>
                                                 <FormLabel>Property</FormLabel>
                                                 <Select onValueChange={field.onChange} value={field.value}>
-                                                    <FormControl>
-                                                        <SelectTrigger>
-                                                            <SelectValue placeholder={isLoadingProperties ? "Loading properties..." : "Select an active property"} />
-                                                        </SelectTrigger>
-                                                    </FormControl>
-                                                    <SelectContent>{properties?.map((prop) => (<SelectItem key={prop.id} value={prop.id}>{formatAddress(prop.address)}</SelectItem>))}</SelectContent>
+                                                    <FormControl><SelectTrigger><SelectValue placeholder={isLoadingProperties ? "Loading..." : "Select property"} /></SelectTrigger></FormControl>
+                                                    <SelectContent>{activeProperties?.map((prop) => (<SelectItem key={prop.id} value={prop.id}>{formatAddress(prop.address)}</SelectItem>))}</SelectContent>
                                                 </Select>
                                                 <FormMessage />
                                             </FormItem>
@@ -360,25 +357,8 @@ export default function HmoInspectionPage() {
                                             name="occupantCount"
                                             render={({ field }) => (
                                                 <FormItem>
-                                                    <FormLabel>Number of Occupants</FormLabel>
-                                                    <FormControl><Input type="number" placeholder="e.g., 5" {...field} value={field.value ?? 1} /></FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name="licenceExpiryDate"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Licence Expiry Date</FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            type="date"
-                                                            value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
-                                                            onChange={(e) => field.onChange(e.target.value)}
-                                                        />
-                                                    </FormControl>
+                                                    <FormLabel>No. of Occupants</FormLabel>
+                                                    <FormControl><Input type="number" {...field} /></FormControl>
                                                     <FormMessage />
                                                 </FormItem>
                                             )}
@@ -388,190 +368,44 @@ export default function HmoInspectionPage() {
                             </AccordionItem>
 
                             <AccordionItem value="fire-safety" className='border rounded-lg px-4'>
-                                <AccordionTrigger className='text-lg font-semibold'>Fire Safety (HMO Specific)</AccordionTrigger>
-                                <AccordionContent className='pt-4'>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <ChecklistItem form={form} name="fireSafety.interlinkedAlarms" label="Interlinked smoke alarms working on each floor" />
-                                        <ChecklistItem form={form} name="fireSafety.heatDetector" label="Heat detector in kitchen functioning" />
-                                        <ChecklistItem form={form} name="fireSafety.fireDoors" label="Fire doors self-closing and undamaged" />
-                                        <ChecklistItem form={form} name="fireSafety.doorSeals" label="Fire door intumescent strips & seals intact" />
-                                        <ChecklistItem form={form} name="fireSafety.extinguishers" label="Fire extinguishers serviced & in correct locations" />
-                                        <ChecklistItem form={form} name="fireSafety.fireBlanket" label="Fire blanket present in kitchen" />
-                                        <ChecklistItem form={form} name="fireSafety.emergencyLighting" label="Emergency lighting tested and operational" />
-                                        <ChecklistItem form={form} name="fireSafety.clearRoutes" label="Fire escape routes clear and unobstructed" />
-                                        <ChecklistItem form={form} name="fireSafety.signage" label="Fire safety signage displayed where required" />
-                                        <NotesField form={form} name="fireSafety.notes" placeholder="Notes on fire safety..." />
-                                    </div>
+                                <AccordionTrigger className='text-lg font-semibold'>Fire Safety <StatusBadge status={getSectionStatus('fireSafety')} /></AccordionTrigger>
+                                <AccordionContent className='pt-4 grid grid-cols-1 md:grid-cols-2 gap-4'>
+                                    <ChecklistItem form={form} name="fireSafety.interlinkedAlarms" label="Interlinked alarms working" />
+                                    <ChecklistItem form={form} name="fireSafety.heatDetector" label="Heat detector in kitchen" />
+                                    <ChecklistItem form={form} name="fireSafety.fireDoors" label="Fire doors self-closing" />
+                                    <ChecklistItem form={form} name="fireSafety.doorSeals" label="Intumescent seals intact" />
+                                    <ChecklistItem form={form} name="fireSafety.emergencyLighting" label="Emergency lighting operational" />
+                                    <ChecklistItem form={form} name="fireSafety.clearRoutes" label="Fire escape routes clear" />
+                                    <NotesField form={form} name="fireSafety.notes" placeholder="Fire safety notes..." />
                                 </AccordionContent>
                             </AccordionItem>
 
                              <AccordionItem value="communal" className='border rounded-lg px-4'>
-                                <AccordionTrigger className='text-lg font-semibold'>Communal Areas</AccordionTrigger>
-                                <AccordionContent className='pt-4'>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <ChecklistItem form={form} name="communal.clean" label="Clean and free from hazards" />
-                                        <ChecklistItem form={form} name="communal.lighting" label="Adequate lighting" />
-                                        <ChecklistItem form={form} name="communal.flooring" label="Flooring in good condition" />
-                                        <ChecklistItem form={form} name="communal.noDamp" label="No damp, mould, or condensation" />
-                                        <ChecklistItem form={form} name="communal.windows" label="Windows and locks functioning" />
-                                        <ChecklistItem form={form} name="communal.wasteDisposal" label="Waste disposal area tidy and accessible" />
-                                        <NotesField form={form} name="communal.notes" placeholder="Notes on communal areas..." />
-                                    </div>
+                                <AccordionTrigger className='text-lg font-semibold'>Communal Areas <StatusBadge status={getSectionStatus('communal')} /></AccordionTrigger>
+                                <AccordionContent className='pt-4 grid grid-cols-1 md:grid-cols-2 gap-4'>
+                                    <ChecklistItem form={form} name="communal.clean" label="Clean and hazard-free" />
+                                    <ChecklistItem form={form} name="communal.lighting" label="Adequate lighting" />
+                                    <ChecklistItem form={form} name="communal.flooring" label="Safe flooring" />
+                                    <ChecklistItem form={form} name="communal.wasteDisposal" label="Waste area tidy" />
+                                    <NotesField form={form} name="communal.notes" placeholder="Communal notes..." />
                                 </AccordionContent>
                             </AccordionItem>
 
-                            <AccordionItem value="bedrooms" className='border rounded-lg px-4'>
-                                <AccordionTrigger className='text-lg font-semibold'>Bedrooms (Per Room)</AccordionTrigger>
-                                <AccordionContent className='pt-4'>
-                                    <p className="text-sm text-muted-foreground mb-4">Check each bedroom and note any room-specific issues in the notes section.</p>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <ChecklistItem form={form} name="bedrooms.doorLock" label="Door lock functioning (thumb-turn recommended)" />
-                                        <ChecklistItem form={form} name="bedrooms.ventilation" label="Adequate ventilation" />
-                                        <ChecklistItem form={form} name="bedrooms.heating" label="Heating working" />
-                                        <ChecklistItem form={form} name="bedrooms.noDamp" label="No signs of damp or mould" />
-                                        <ChecklistItem form={form} name="bedrooms.furniture" label="Furniture in good condition" />
-                                        <ChecklistItem form={form} name="bedrooms.sockets" label="Electrical sockets safe and undamaged" />
-                                        <ChecklistItem form={form} name="bedrooms.occupancy" label="Tenant occupancy confirmed" />
-                                        <NotesField form={form} name="bedrooms.notes" placeholder="Notes on bedrooms (specify room numbers)..." />
-                                    </div>
+                            <AccordionItem value="tenant-resp" className='border rounded-lg px-4'>
+                                <AccordionTrigger className='text-lg font-semibold'>Tenant Responsibilities <StatusBadge status={getSectionStatus('tenantResponsibilities')} /></AccordionTrigger>
+                                <AccordionContent className='pt-4 grid grid-cols-1 md:grid-cols-2 gap-4'>
+                                    <ChecklistItem form={form} name="tenantResponsibilities.clean" label="Room kept clean" />
+                                    <ChecklistItem form={form} name="tenantResponsibilities.noSmoking" label="No evidence of smoking" />
+                                    <ChecklistItem form={form} name="tenantResponsibilities.noTampering" label="No tampering with fire equipment" />
+                                    <NotesField form={form} name="tenantResponsibilities.notes" placeholder="Tenant behavior notes..." />
                                 </AccordionContent>
                             </AccordionItem>
-                            
-                            <AccordionItem value="kitchen" className='border rounded-lg px-4'>
-                                <AccordionTrigger className='text-lg font-semibold'>Kitchen</AccordionTrigger>
-                                <AccordionContent className='pt-4'>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <ChecklistItem form={form} name="kitchen.appliances" label="Cooking appliances working" />
-                                        <ChecklistItem form={form} name="kitchen.extractor" label="Extractor fan operational" />
-                                        <ChecklistItem form={form} name="kitchen.sink" label="Sinks and taps leak-free" />
-                                        <ChecklistItem form={form} name="kitchen.cupboards" label="Worktops & cupboards in good condition" />
-                                        <ChecklistItem form={form} name="kitchen.fridge" label="Fridge/freezer clean and functioning" />
-                                        <ChecklistItem form={form} name="kitchen.storage" label="Adequate food storage for number of tenants" />
-                                        <ChecklistItem form={form} name="kitchen.fireBlanket" label="Fire blanket present" />
-                                        <ChecklistItem form={form} name="kitchen.pat" label="PAT-tested appliances (if applicable)" />
-                                        <NotesField form={form} name="kitchen.notes" placeholder="Notes on kitchen..." />
-                                    </div>
-                                </AccordionContent>
-                            </AccordionItem>
-
-                            <AccordionItem value="bathrooms" className='border rounded-lg px-4'>
-                                <AccordionTrigger className='text-lg font-semibold'>Bathrooms</AccordionTrigger>
-                                <AccordionContent className='pt-4'>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <ChecklistItem form={form} name="bathrooms.toilet" label="Toilet flushing correctly" />
-                                        <ChecklistItem form={form} name="bathrooms.shower" label="Shower/bath working" />
-                                        <ChecklistItem form={form} name="bathrooms.extractor" label="Extractor fan functioning" />
-                                        <ChecklistItem form={form} name="bathrooms.noLeaks" label="No leaks or damp patches" />
-                                        <ChecklistItem form={form} name="bathrooms.sealant" label="Sealant and grout intact" />
-                                        <ChecklistItem form={form} name="bathrooms.hotWater" label="Adequate hot water supply" />
-                                        <NotesField form={form} name="bathrooms.notes" placeholder="Notes on bathrooms..." />
-                                    </div>
-                                </AccordionContent>
-                            </AccordionItem>
-
-                            <AccordionItem value="utilities" className='border rounded-lg px-4'>
-                                <AccordionTrigger className='text-lg font-semibold'>Heating, Hot Water & Utilities</AccordionTrigger>
-                                <AccordionContent className='pt-4'>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <ChecklistItem form={form} name="utilities.boiler" label="Boiler functioning and serviced" />
-                                        <ChecklistItem form={form} name="utilities.radiators" label="Radiators heating properly" />
-                                        <ChecklistItem form={form} name="utilities.thermostats" label="Thermostats working" />
-                                        <ChecklistItem form={form} name="utilities.consumerUnit" label="Electrical consumer unit safe and labelled" />
-                                        <ChecklistItem form={form} name="utilities.gasCert" label="Gas safety certificate up to date" />
-                                        <ChecklistItem form={form} name="utilities.eicr" label="EICR valid" />
-                                        <NotesField form={form} name="utilities.notes" placeholder="Notes on utilities..." />
-                                    </div>
-                                </AccordionContent>
-                            </AccordionItem>
-
-                             <AccordionItem value="exterior" className='border rounded-lg px-4'>
-                                <AccordionTrigger className='text-lg font-semibold'>Exterior</AccordionTrigger>
-                                <AccordionContent className='pt-4'>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <ChecklistItem form={form} name="exterior.roof" label="Roof, gutters, and downpipes in good condition" />
-                                        <ChecklistItem form={form} name="exterior.pathways" label="Pathways safe and clear" />
-                                        <ChecklistItem form={form} name="exterior.garden" label="Garden/yard maintained" />
-                                        <ChecklistItem form={form} name="exterior.bins" label="Bins accessible and not overflowing" />
-                                        <ChecklistItem form={form} name="exterior.securityLighting" label="Security lighting working" />
-                                        <NotesField form={form} name="exterior.notes" placeholder="Notes on exterior..." />
-                                    </div>
-                                </AccordionContent>
-                            </AccordionItem>
-
-                             <AccordionItem value="tenant-resp" className='border rounded-lg px-4'>
-                                <AccordionTrigger className='text-lg font-semibold'>Tenant Responsibilities</AccordionTrigger>
-                                <AccordionContent className='pt-4'>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <ChecklistItem form={form} name="tenantResponsibilities.clean" label="Room kept reasonably clean" />
-                                        <ChecklistItem form={form} name="tenantResponsibilities.noSmoking" label="No evidence of smoking indoors" />
-                                        <ChecklistItem form={form} name="tenantResponsibilities.noPets" label="No unauthorised pets" />
-                                        <ChecklistItem form={form} name="tenantResponsibilities.noTampering" label="No tampering with fire safety equipment" />
-                                        <FormField
-                                            control={form.control}
-                                            name="tenantResponsibilities.concerns"
-                                            render={({ field }) => (
-                                                <FormItem className="md:col-span-2">
-                                                    <FormLabel>Tenant's Concerns Recorded</FormLabel>
-                                                    <FormControl>
-                                                        <Textarea placeholder="Record any concerns raised by the tenant" {...field} value={field.value ?? ''} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <NotesField form={form} name="tenantResponsibilities.notes" placeholder="General notes on tenant responsibilities..." />
-                                    </div>
-                                </AccordionContent>
-                            </AccordionItem>
-
-                            <AccordionItem value="follow-up" className='border rounded-lg px-4'>
-                                <AccordionTrigger className='text-lg font-semibold'>Follow-Up Actions</AccordionTrigger>
-                                <AccordionContent className='pt-4'>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                                        <ChecklistItem form={form} name="followUp.repairsRequired" label="Repairs Required" />
-                                        <ChecklistItem form={form} name="followUp.urgentSafetyIssues" label="Urgent Safety Issues" />
-                                        <ChecklistItem form={form} name="followUp.maintenanceScheduled" label="Maintenance Scheduled" />
-                                        <FormField
-                                            control={form.control}
-                                            name="followUp.notes"
-                                            render={({ field }) => (
-                                                <FormItem className="md:col-span-2">
-                                                    <FormLabel>Notes for Landlord/Agent</FormLabel>
-                                                    <FormControl>
-                                                        <Textarea placeholder="Detail any required follow-up actions..." {...field} value={field.value ?? ''} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                        <FormField
-                                            control={form.control}
-                                            name="followUp.nextInspectionDate"
-                                            render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel>Next Inspection Date</FormLabel>
-                                                    <FormControl>
-                                                        <Input
-                                                            type="date"
-                                                            value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
-                                                            onChange={(e) => field.onChange(e.target.value)}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
-                                </AccordionContent>
-                            </AccordionItem>
-
                         </Accordion>
+
                         <div className="flex justify-end gap-2 pt-4">
-                            <Button type="button" variant="outline" asChild>
-                                <Link href="/dashboard/inspections">Cancel</Link>
-                            </Button>
+                            <Button type="button" variant="outline" asChild><Link href="/dashboard/inspections">Cancel</Link></Button>
                             <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : 'Save Inspection Record'}
+                                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Save Report'}
                             </Button>
                         </div>
                     </form>

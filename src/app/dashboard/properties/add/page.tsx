@@ -25,24 +25,26 @@ import { collection, addDoc } from 'firebase/firestore';
 import { Loader2, Wand2 } from 'lucide-react';
 import { generatePropertyDescription } from '@/ai/flows/property-description-flow';
 
+const ukPostcodeRegex = /^[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}$/i;
+
 const propertySchema = z.object({
   address: z.object({
     nameOrNumber: z.string().optional(),
     street: z.string().min(3, 'Please enter a street address.'),
     city: z.string().min(2, 'Please enter a city or town.'),
     county: z.string().optional(),
-    postcode: z.string().min(5, 'Please enter a valid postcode.'),
+    postcode: z.string().regex(ukPostcodeRegex, 'Please enter a valid UK postcode (e.g. SW1A 1AA).'),
   }),
   propertyType: z.string({ required_error: 'Please select a property type.' }),
   status: z.string({ required_error: 'Please select a status.' }),
-  bedrooms: z.coerce.number().min(0, 'Cannot be negative'),
-  bathrooms: z.coerce.number().min(0, 'Cannot be negative'),
+  bedrooms: z.coerce.number().min(0, 'Bedrooms cannot be negative'),
+  bathrooms: z.coerce.number().min(0, 'Bathrooms cannot be negative'),
   notes: z.string().optional(),
-  purchasePrice: z.coerce.number().optional(),
-  currentValuation: z.coerce.number().optional(),
+  purchasePrice: z.coerce.number().min(0, 'Price cannot be negative').optional(),
+  currentValuation: z.coerce.number().min(0, 'Valuation cannot be negative').optional(),
   tenancy: z.object({
-    monthlyRent: z.coerce.number().optional(),
-    depositAmount: z.coerce.number().optional(),
+    monthlyRent: z.coerce.number().min(0, 'Rent cannot be negative').optional(),
+    depositAmount: z.coerce.number().min(0, 'Deposit cannot be negative').optional(),
     depositScheme: z.string().optional(),
   }).optional(),
 });
@@ -82,7 +84,7 @@ export default function AddPropertyPage() {
   const handleMagicDescription = async () => {
     const values = form.getValues();
     if (!values.propertyType || !values.address.city) {
-      toast({ variant: 'destructive', title: 'Missing Details' });
+      toast({ variant: 'destructive', title: 'Details Missing', description: 'Enter property type and city first.' });
       return;
     }
 
@@ -100,7 +102,7 @@ export default function AddPropertyPage() {
       form.setValue('notes', `${result.headline}\n\n${result.description}`);
       toast({ title: 'Description Generated' });
     } catch (error) {
-      toast({ variant: 'destructive', title: 'AI Error' });
+      toast({ variant: 'destructive', title: 'AI Error', description: 'Failed to generate description.' });
     } finally {
       setIsGenerating(false);
     }
@@ -119,11 +121,11 @@ export default function AddPropertyPage() {
 
     addDoc(propertiesCollection, propertyData)
       .then(() => {
-        toast({ title: 'Property Added' });
+        toast({ title: 'Property Added', description: 'The property has been added to your portfolio.' });
         router.push('/dashboard/properties');
       })
       .catch((serverError: any) => {
-        toast({ variant: 'destructive', title: 'Save Failed' });
+        toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save property. Please try again.' });
       })
       .finally(() => {
         setIsSubmitting(false);
@@ -142,10 +144,10 @@ export default function AddPropertyPage() {
             <Card>
               <CardHeader><CardTitle className="text-xl font-headline">Address</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                 <FormField control={form.control} name="address.street" render={({ field }) => (<FormItem><FormLabel>Street Address</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                 <FormField control={form.control} name="address.street" render={({ field }) => (<FormItem><FormLabel>Street Address</FormLabel><FormControl><Input placeholder="e.g. 12 High Street" {...field} /></FormControl><FormMessage /></FormItem>)} />
                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField control={form.control} name="address.city" render={({ field }) => (<FormItem><FormLabel>City / Town</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="address.postcode" render={({ field }) => (<FormItem><FormLabel>Postcode</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="address.city" render={({ field }) => (<FormItem><FormLabel>City / Town</FormLabel><FormControl><Input placeholder="e.g. London" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="address.postcode" render={({ field }) => (<FormItem><FormLabel>Postcode</FormLabel><FormControl><Input placeholder="e.g. W1A 1AA" {...field} /></FormControl><FormMessage /></FormItem>)} />
                  </div>
               </CardContent>
             </Card>
@@ -166,6 +168,10 @@ export default function AddPropertyPage() {
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField control={form.control} name="propertyType" render={({ field }) => (<FormItem><FormLabel>Type</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger></FormControl><SelectContent>{[ 'House', 'Flat', 'Bungalow', 'Maisonette', 'Studio', 'HMO', ].map((type) => (<SelectItem key={type} value={type}> {type} </SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="status" render={({ field }) => (<FormItem><FormLabel>Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select status" /></SelectTrigger></FormControl><SelectContent>{['Vacant', 'Occupied', 'Under Maintenance'].map( (status) => (<SelectItem key={status} value={status}> {status} </SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField control={form.control} name="bedrooms" render={({ field }) => (<FormItem><FormLabel>Bedrooms</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="bathrooms" render={({ field }) => (<FormItem><FormLabel>Bathrooms</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
                 </div>
               </CardContent>
             </Card>

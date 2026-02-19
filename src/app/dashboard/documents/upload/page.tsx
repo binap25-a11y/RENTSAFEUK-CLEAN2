@@ -31,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Wand2, Upload } from 'lucide-react';
+import { Loader2, Wand2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -42,11 +42,8 @@ import {
   useMemoFirebase,
 } from '@/firebase';
 import { collection, query, where, addDoc, limit } from 'firebase/firestore';
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { analyzeDocument } from '@/ai/flows/document-analysis-flow';
 
-// Schema for the form
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 const documentSchema = z.object({
   title: z.string().min(3, 'Title is too short'),
   propertyId: z.string({ required_error: 'Please select a property.' }).min(1, 'Property required.'),
@@ -54,11 +51,13 @@ const documentSchema = z.object({
   issueDate: z.coerce.date({ required_error: 'Please select an issue date.' }),
   expiryDate: z.coerce.date({ required_error: 'Please select an expiry date.' }),
   notes: z.string().optional(),
+}).refine(data => data.expiryDate > data.issueDate, {
+  message: "Expiry date must be after the issue date.",
+  path: ["expiryDate"]
 });
 
 type DocumentFormValues = z.infer<typeof documentSchema>;
 
-// Type for property documents from Firestore
 interface Property {
   id: string;
   address: {
@@ -69,6 +68,8 @@ interface Property {
   ownerId: string;
   status: string;
 }
+
+const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
 
 export default function UploadDocumentPage() {
   const router = useRouter();
@@ -89,7 +90,6 @@ export default function UploadDocumentPage() {
     }
   });
   
-  // Fetch properties
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
@@ -159,7 +159,7 @@ export default function UploadDocumentPage() {
       router.push('/dashboard/documents');
     } catch (error) {
         console.error('Failed to save document', error);
-        toast({ variant: 'destructive', title: 'Save Failed' });
+        toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save document record.' });
     } finally {
         setIsSaving(false);
     }
@@ -210,7 +210,7 @@ export default function UploadDocumentPage() {
                     <FormItem>
                     <FormLabel>Document Title</FormLabel>
                     <FormControl>
-                        <Input placeholder="e.g., Gas Safety Certificate 2024" {...field} />
+                        <Input placeholder="e.g. Gas Safety Cert 2024" {...field} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
@@ -226,7 +226,7 @@ export default function UploadDocumentPage() {
                     <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                         <SelectTrigger>
-                            <SelectValue placeholder={isLoadingProperties ? 'Loading portfolio...' : "Select a property"} />
+                            <SelectValue placeholder={isLoadingProperties ? 'Loading...' : "Select a property"} />
                         </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -309,7 +309,7 @@ export default function UploadDocumentPage() {
                   <FormLabel>Notes (Optional)</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Add any relevant notes here..."
+                      placeholder="Add relevant document notes..."
                       className="resize-none"
                       rows={4}
                       {...field}

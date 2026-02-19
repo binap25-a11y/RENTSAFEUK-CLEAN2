@@ -55,6 +55,14 @@ const tenantSchema = z.object({
   tenancyStartDate: z.coerce.date({ required_error: 'Please select a start date.' }),
   tenancyEndDate: z.coerce.date().optional(),
   notes: z.string().optional(),
+}).refine(data => {
+  if (data.tenancyEndDate && data.tenancyStartDate) {
+    return data.tenancyEndDate >= data.tenancyStartDate;
+  }
+  return true;
+}, {
+  message: "Tenancy end date must be after the start date.",
+  path: ["tenancyEndDate"]
 });
 
 type TenantFormValues = z.infer<typeof tenantSchema>;
@@ -178,7 +186,7 @@ export default function AddTenantPage() {
         toast({
           variant: 'destructive',
           title: 'Save Failed',
-          description: serverError.message || 'An unexpected error occurred while saving the tenant.',
+          description: 'Could not save tenant. Please try again.',
         });
       })
       .finally(() => {
@@ -222,7 +230,7 @@ export default function AddTenantPage() {
                     <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                         <SelectTrigger>
-                            <SelectValue placeholder={isLoadingProperties ? <div className='flex items-center gap-2'><Loader2 className='animate-spin' /> Loading...</div> : "Select a property"} />
+                            <SelectValue placeholder={isLoadingProperties ? "Loading..." : "Select a property"} />
                         </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -246,7 +254,7 @@ export default function AddTenantPage() {
                 <FormItem>
                   <FormLabel>Full Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g., John Doe" {...field} />
+                    <Input placeholder="e.g. John Smith" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -261,7 +269,7 @@ export default function AddTenantPage() {
                   <FormItem>
                     <FormLabel>Email Address</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="john.doe@example.com" {...field} />
+                      <Input type="email" placeholder="email@example.com" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -274,7 +282,7 @@ export default function AddTenantPage() {
                   <FormItem>
                     <FormLabel>Telephone</FormLabel>
                     <FormControl>
-                      <Input type="tel" placeholder="07123456789" {...field} />
+                      <Input type="tel" placeholder="07123 456789" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -343,7 +351,7 @@ export default function AddTenantPage() {
                   <FormLabel>Notes (Optional)</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Any additional notes about the tenant or tenancy..."
+                      placeholder="Add tenancy notes..."
                       className="resize-none"
                       rows={4}
                       {...field}
