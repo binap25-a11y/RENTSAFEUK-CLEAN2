@@ -4,7 +4,7 @@ import { useParams, notFound, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, User, Mail, Phone, Calendar as CalendarIcon, Edit, Trash2, Home, Loader2, MoreVertical, UserPlus, Eye, ListTodo, Banknote, Wand2, Send, Sparkles } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, Calendar as CalendarIcon, Edit, Trash2, Home, Loader2, MoreVertical, UserPlus, Eye, ListTodo, Banknote, Wand2, Send, Sparkles, Copy, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
 import { doc, collection, query, updateDoc, where, limit } from 'firebase/firestore';
@@ -25,6 +25,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { generateTenantCommunication, TenantCommunicationOutput } from '@/ai/flows/tenant-communication-flow';
 
 // Types
@@ -123,6 +124,12 @@ export default function TenantDetailPage() {
     }
   };
 
+  const handleSendEmail = () => {
+    if (!generatedComm || !tenant) return;
+    const mailtoLink = `mailto:${tenant.email}?subject=${encodeURIComponent(generatedComm.subject)}&body=${encodeURIComponent(generatedComm.message)}`;
+    window.location.href = mailtoLink;
+  };
+
   const handleDeleteConfirm = async () => {
     if (!tenantRef) return;
     await updateDoc(tenantRef, { status: 'Archived' });
@@ -197,40 +204,62 @@ export default function TenantDetailPage() {
 
         {/* Communication Assistant Dialog */}
         <Dialog open={isAssistantOpen} onOpenChange={setIsAssistantOpen}>
-            <DialogContent className="sm:max-w-[600px]">
+            <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
                 <DialogHeader>
                     <DialogTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" /> Tenant Communication Assistant</DialogTitle>
                     <DialogDescription>Draft professional landlord notices tailored to this tenant.</DialogDescription>
                 </DialogHeader>
-                <div className="space-y-4 py-4">
-                    <div className="space-y-2">
-                        <Label>Reason for contact</Label>
-                        <Select value={commType} onValueChange={(v: any) => setCommType(v)}>
-                            <SelectTrigger><SelectValue /></SelectTrigger>
-                            <SelectContent>
-                                {['Rent Arrears', 'Inspection Notice', 'Maintenance Update', 'Tenancy Renewal', 'General Notice'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                            </SelectContent>
-                        </Select>
-                    </div>
-                    <div className="space-y-2">
-                        <Label>Specific Details</Label>
-                        <Textarea placeholder="e.g. rent is 3 days late, inspection scheduled for Tuesday at 10am..." value={commDetails} onChange={e => setCommDetails(e.target.value)} />
-                    </div>
-                    <Button onClick={handleGenerateComm} disabled={isGenerating || !commDetails} className="w-full">
-                        {isGenerating ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Wand2 className="mr-2 h-4 w-4" />} Generate Message
-                    </Button>
-
-                    {generatedComm && (
-                        <div className="mt-4 p-4 rounded-lg bg-muted border">
-                            <p className="font-bold text-sm mb-2">Subject: {generatedComm.subject}</p>
-                            <p className="text-sm whitespace-pre-wrap">{generatedComm.message}</p>
-                            <Button className="w-full mt-4" variant="outline" onClick={() => {
-                                navigator.clipboard.writeText(`Subject: ${generatedComm.subject}\n\n${generatedComm.message}`);
-                                toast({ title: 'Copied to clipboard' });
-                            }}>Copy to Clipboard</Button>
+                <ScrollArea className="flex-1 pr-4">
+                    <div className="space-y-4 py-4">
+                        <div className="space-y-2">
+                            <Label>Reason for contact</Label>
+                            <Select value={commType} onValueChange={(v: any) => setCommType(v)}>
+                                <SelectTrigger><SelectValue /></SelectTrigger>
+                                <SelectContent>
+                                    {['Rent Arrears', 'Inspection Notice', 'Maintenance Update', 'Tenancy Renewal', 'General Notice'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
                         </div>
-                    )}
-                </div>
+                        <div className="space-y-2">
+                            <Label>Specific Details</Label>
+                            <Textarea placeholder="e.g. rent is 3 days late, inspection scheduled for Tuesday at 10am..." value={commDetails} onChange={e => setCommDetails(e.target.value)} />
+                        </div>
+                        <Button onClick={handleGenerateComm} disabled={isGenerating || !commDetails} className="w-full">
+                            {isGenerating ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Wand2 className="mr-2 h-4 w-4" />} Generate Message
+                        </Button>
+
+                        {generatedComm && (
+                            <div className="mt-4 p-4 rounded-lg bg-muted border animate-in fade-in slide-in-from-top-2">
+                                <div className="flex items-center justify-between mb-2">
+                                    <p className="font-bold text-sm">Drafted Communication</p>
+                                    <Badge variant="outline" className="bg-background">AI Generated</Badge>
+                                </div>
+                                <div className="bg-background p-3 rounded border mb-4">
+                                    <p className="font-bold text-xs text-muted-foreground uppercase tracking-wider mb-1">Subject</p>
+                                    <p className="text-sm font-medium">{generatedComm.subject}</p>
+                                </div>
+                                <div className="bg-background p-3 rounded border">
+                                    <p className="font-bold text-xs text-muted-foreground uppercase tracking-wider mb-1">Message Body</p>
+                                    <p className="text-sm whitespace-pre-wrap leading-relaxed">{generatedComm.message}</p>
+                                </div>
+                                <div className="grid grid-cols-2 gap-2 mt-4">
+                                    <Button variant="outline" className="w-full" onClick={() => {
+                                        navigator.clipboard.writeText(`Subject: ${generatedComm.subject}\n\n${generatedComm.message}`);
+                                        toast({ title: 'Copied to clipboard' });
+                                    }}>
+                                        <Copy className="mr-2 h-4 w-4" /> Copy Text
+                                    </Button>
+                                    <Button className="w-full" onClick={handleSendEmail}>
+                                        <Mail className="mr-2 h-4 w-4" /> Send via Email
+                                    </Button>
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </ScrollArea>
+                <DialogFooter className="border-t pt-4">
+                    <Button variant="ghost" onClick={() => setIsAssistantOpen(false)}>Close Assistant</Button>
+                </DialogFooter>
             </DialogContent>
         </Dialog>
 
