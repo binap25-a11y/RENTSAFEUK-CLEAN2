@@ -29,7 +29,6 @@ export async function generateTenantCommunication(
 
 const communicationPrompt = ai.definePrompt({
   name: 'tenantCommunicationPrompt',
-  model: 'googleai/gemini-1.5-flash',
   input: { schema: TenantCommunicationInputSchema },
   output: { schema: TenantCommunicationOutputSchema },
   prompt: `You are an expert UK property manager. Draft a professional notice to a tenant.
@@ -55,6 +54,7 @@ const tenantCommunicationFlow = ai.defineFlow(
     outputSchema: TenantCommunicationOutputSchema,
   },
   async (input) => {
+    // Uses the default model configured in the ai instance
     const { output } = await communicationPrompt(input);
     if (!output) {
       throw new Error('AI failed to generate communication output.');

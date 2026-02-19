@@ -30,7 +30,6 @@ export async function analyzeDocument(input: DocumentAnalysisInput): Promise<Doc
 
 const documentAnalysisPrompt = ai.definePrompt({
   name: 'documentAnalysisPrompt',
-  model: 'googleai/gemini-1.5-flash',
   input: { schema: DocumentAnalysisInputSchema },
   output: { schema: DocumentAnalysisOutputSchema },
   prompt: `You are an expert UK property compliance assistant. Analyze the provided image of a property document and extract metadata.

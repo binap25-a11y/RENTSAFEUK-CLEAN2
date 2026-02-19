@@ -29,7 +29,6 @@ export async function generatePropertyDescription(
 
 const propertyDescriptionPrompt = ai.definePrompt({
   name: 'propertyDescriptionPrompt',
-  model: 'googleai/gemini-1.5-flash',
   input: { schema: PropertyDescriptionInputSchema },
   output: { schema: PropertyDescriptionOutputSchema },
   prompt: `You are an expert real estate copywriter. Write a professional, high-converting UK property listing.
