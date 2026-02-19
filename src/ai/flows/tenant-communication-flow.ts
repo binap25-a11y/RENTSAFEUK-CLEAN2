@@ -9,6 +9,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
+import { gemini15Flash } from '@genkit-ai/google-genai';
 
 const TenantCommunicationInputSchema = z.object({
   tenantName: z.string(),
@@ -31,7 +32,7 @@ export async function generateTenantCommunication(input: TenantCommunicationInpu
 
 const communicationPrompt = ai.definePrompt({
   name: 'tenantCommunicationPrompt',
-  model: 'googleai/gemini-1.5-flash',
+  model: gemini15Flash,
   input: { schema: TenantCommunicationInputSchema },
   output: { schema: TenantCommunicationOutputSchema },
   prompt: `You are an expert UK property manager and legal assistant. 
