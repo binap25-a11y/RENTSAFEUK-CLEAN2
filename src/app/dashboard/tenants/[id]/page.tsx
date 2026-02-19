@@ -4,6 +4,7 @@ import { useParams, notFound, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, User, Mail, Phone, Edit, Trash2, Home, Loader2, MoreVertical, UserPlus, Eye, FileCheck, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
@@ -89,9 +90,11 @@ export default function TenantDetailPage() {
 
   const handleDeleteConfirm = async () => {
     if (!tenantRef) return;
-    await updateDoc(tenantRef, { status: 'Archived' });
-    toast({ title: 'Tenant Archived' });
-    router.push('/dashboard/tenants');
+    updateDoc(tenantRef, { status: 'Archived' })
+      .then(() => {
+        toast({ title: 'Tenant Archived' });
+        router.push('/dashboard/tenants');
+      });
   };
 
   if (isLoadingTenant) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
