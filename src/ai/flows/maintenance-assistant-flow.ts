@@ -5,7 +5,6 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { gemini15Flash } from '@genkit-ai/google-genai';
 
 const MaintenanceAssistantInputSchema = z.object({
   problemDescription: z.string().describe('A description of the maintenance problem provided by the user.'),
@@ -29,7 +28,7 @@ export async function runMaintenanceAssistant(
 
 const maintenanceAssistantPrompt = ai.definePrompt({
     name: 'maintenanceAssistantPrompt',
-    model: gemini15Flash,
+    model: 'googleai/gemini-1.5-flash',
     input: { schema: MaintenanceAssistantInputSchema },
     output: { schema: MaintenanceAssistantOutputSchema },
     prompt: `You are an expert AI assistant for UK property landlords and maintenance contractors. 

@@ -4,7 +4,7 @@ import { useParams, notFound, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, User, Mail, Phone, Edit, Trash2, Home, Loader2, MoreVertical, UserPlus, Eye, FileCheck, Sparkles } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, Edit, Trash2, Home, Loader2, MoreVertical, UserPlus, Eye, FileCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
 import { doc, collection, query, updateDoc, where } from 'firebase/firestore';
@@ -21,7 +21,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { TenantCommunicationAssistant } from '@/components/dashboard/tenant-communication-assistant';
 
 // Types
 interface Property {
@@ -63,7 +62,6 @@ export default function TenantDetailPage() {
   const { toast } = useToast();
   const { user } = useUser();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
 
   const tenantRef = useMemoFirebase(() => {
     if (!firestore || !id) return null;
@@ -116,10 +114,6 @@ export default function TenantDetailPage() {
                 </div>
             </div>
             <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={() => setIsAssistantOpen(true)} className="gap-2">
-                    <Sparkles className="h-4 w-4 text-primary" />
-                    AI Assistant
-                </Button>
                 <Button variant="outline" asChild>
                     <Link href={`/dashboard/tenants/${id}/edit`}>
                         <Edit className="mr-2 h-4 w-4" /> Edit Profile
@@ -236,13 +230,6 @@ export default function TenantDetailPage() {
                 </div>
             </CardContent>
         </Card>
-
-        <TenantCommunicationAssistant
-            isOpen={isAssistantOpen}
-            onOpenChange={setIsAssistantOpen}
-            tenant={{ name: tenant.name, email: tenant.email }}
-            propertyAddress={propertyAddress}
-        />
 
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
             <AlertDialogContent>
