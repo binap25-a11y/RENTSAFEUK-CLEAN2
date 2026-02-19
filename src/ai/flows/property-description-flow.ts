@@ -5,6 +5,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
+import { gemini15Flash } from '@genkit-ai/google-genai';
 
 const PropertyDescriptionInputSchema = z.object({
   propertyType: z.string(),
@@ -29,23 +30,21 @@ export async function generatePropertyDescription(
 
 const propertyDescriptionPrompt = ai.definePrompt({
   name: 'propertyDescriptionPrompt',
-  model: 'gemini-1.5-flash',
+  model: gemini15Flash,
   input: { schema: PropertyDescriptionInputSchema },
   output: { schema: PropertyDescriptionOutputSchema },
-  prompt: `You are an expert real estate copywriter. Your goal is to write a professional, engaging, and high-converting property listing description for a rental property in the UK.
+  prompt: `You are an expert real estate copywriter. Write a professional, high-converting UK property listing.
 
   Property Details:
   - Type: {{{propertyType}}}
   - Bedrooms: {{{bedrooms}}}
   - Bathrooms: {{{bathrooms}}}
   - Location: {{{address}}}
-  - Key Features/Notes: {{{keyFeatures}}}
+  - Key Features: {{{keyFeatures}}}
 
-  Instructions:
   1. Create a catchy headline.
-  2. Write a description that highlights the property's potential and appeals to quality tenants.
-  3. Keep the tone professional but welcoming.
-  4. Use British English spelling.
+  2. Write an engaging description.
+  3. Use British English.
   `,
 });
 

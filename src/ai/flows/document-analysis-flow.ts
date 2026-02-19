@@ -5,10 +5,11 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
+import { gemini15Flash } from '@genkit-ai/google-genai';
 
 const DocumentAnalysisInputSchema = z.object({
   photoDataUri: z.string().describe("A photo of the document as a data URI."),
-  documentHint: z.string().optional().describe("Hint about what the document might be (e.g., 'Gas safety')."),
+  documentHint: z.string().optional().describe("Hint about what the document might be."),
 });
 export type DocumentAnalysisInput = z.infer<typeof DocumentAnalysisInputSchema>;
 
@@ -30,21 +31,18 @@ export async function analyzeDocument(input: DocumentAnalysisInput): Promise<Doc
 
 const documentAnalysisPrompt = ai.definePrompt({
   name: 'documentAnalysisPrompt',
-  model: 'gemini-1.5-flash',
+  model: gemini15Flash,
   input: { schema: DocumentAnalysisInputSchema },
   output: { schema: DocumentAnalysisOutputSchema },
-  prompt: `You are an expert UK property compliance assistant. 
-  Your task is to analyze the provided image of a document and extract the relevant metadata for a landlord's records.
+  prompt: `You are an expert UK property compliance assistant. Analyze the image and extract metadata.
 
   Photo: {{media url=photoDataUri}}
   User Hint: {{{documentHint}}}
 
-  Instructions:
-  1. Identify the document type from the predefined list.
-  2. Extract the "Issue Date" and "Expiry Date" if present. Many UK safety certificates (Gas, EICR) have clear expiry dates.
-  3. For invoices, extract the total amount including VAT.
-  4. Create a professional title (e.g., "Gas Safety Certificate - 2024").
-  5. Provide a summary in the notes field.
+  1. Identify document type.
+  2. Extract Issue and Expiry Dates (YYYY-MM-DD).
+  3. Extract total amounts for invoices.
+  4. Create a professional title.
   `,
 });
 

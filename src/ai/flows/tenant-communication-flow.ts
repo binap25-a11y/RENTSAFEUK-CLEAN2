@@ -5,6 +5,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
+import { gemini15Flash } from '@genkit-ai/google-genai';
 
 const TenantCommunicationInputSchema = z.object({
   tenantName: z.string(),
@@ -27,7 +28,7 @@ export async function generateTenantCommunication(input: TenantCommunicationInpu
 
 const communicationPrompt = ai.definePrompt({
   name: 'tenantCommunicationPrompt',
-  model: 'gemini-1.5-flash',
+  model: gemini15Flash,
   input: { schema: TenantCommunicationInputSchema },
   output: { schema: TenantCommunicationOutputSchema },
   prompt: `You are an expert UK property manager. Write a professional communication to a tenant.
@@ -38,12 +39,10 @@ const communicationPrompt = ai.definePrompt({
   Specific Details: {{{details}}}
   Tone: {{{tone}}}
 
-  Instructions:
-  1. Ensure the message is legally compliant with UK landlord-tenant expectations.
-  2. Use a professional and clear structure.
-  3. For "Inspection Notice", ensure at least 24 hours notice is mentioned as per the Landlord and Tenant Act 1985.
-  4. For "Rent Arrears", remain firm but fair and request contact to resolve.
-  5. Use British English spelling.
+  1. Legally compliant structure.
+  2. Professional tone.
+  3. Mention 24 hours notice for inspections.
+  4. Use British English.
   `,
 });
 
