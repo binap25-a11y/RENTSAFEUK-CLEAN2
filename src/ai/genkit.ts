@@ -1,7 +1,14 @@
 import {genkit} from 'genkit';
-import {googleAI} from '@genkit-ai/google-genai';
+import {googleAI, gemini15Flash} from '@genkit-ai/google-genai';
 
+/**
+ * @fileOverview Genkit configuration for RentSafeUK.
+ * 
+ * This file initializes the Genkit instance with the Google AI plugin.
+ * It uses the gemini15Flash constant to ensure the correct model identifier
+ * is used across all AI flows in the application.
+ */
 export const ai = genkit({
   plugins: [googleAI()],
-  model: 'googleai/gemini-1.5-flash',
+  model: gemini15Flash,
 });
