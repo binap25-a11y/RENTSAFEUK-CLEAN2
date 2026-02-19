@@ -5,7 +5,6 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { gemini15Flash } from '@genkit-ai/google-genai';
 
 const MaintenanceAssistantInputSchema = z.object({
   problemDescription: z.string().describe('A description of the maintenance problem provided by the user.'),
@@ -29,19 +28,20 @@ export async function runMaintenanceAssistant(
 
 const maintenanceAssistantPrompt = ai.definePrompt({
     name: 'maintenanceAssistantPrompt',
-    model: gemini15Flash,
+    model: 'googleai/gemini-1.5-flash',
     input: { schema: MaintenanceAssistantInputSchema },
     output: { schema: MaintenanceAssistantOutputSchema },
-    prompt: `You are an expert AI assistant for UK property landlords. Your role is to diagnose common household maintenance issues.
+    prompt: `You are an expert AI assistant for UK property landlords and maintenance contractors. 
+    Your role is to diagnose common household maintenance issues.
 
     Analyze the following problem description:
     "{{{problemDescription}}}"
 
     Based on the description, provide:
     1. Likely Cause
-    2. Troubleshooting Steps
+    2. Troubleshooting Steps (simple things to check before calling a contractor)
     3. Urgency (Low, Routine, Urgent, Emergency)
-    4. Suggested Title
+    4. Suggested Title for a maintenance log
     5. Suggested Category
     `,
 });
@@ -54,6 +54,9 @@ const maintenanceAssistantFlow = ai.defineFlow(
   },
   async (input) => {
     const { output } = await maintenanceAssistantPrompt(input);
-    return output!;
+    if (!output) {
+      throw new Error('AI failed to generate maintenance diagnosis.');
+    }
+    return output;
   }
 );

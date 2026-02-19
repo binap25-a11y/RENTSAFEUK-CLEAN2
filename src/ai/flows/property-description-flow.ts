@@ -5,7 +5,6 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { gemini15Flash } from '@genkit-ai/google-genai';
 
 const PropertyDescriptionInputSchema = z.object({
   propertyType: z.string(),
@@ -30,7 +29,7 @@ export async function generatePropertyDescription(
 
 const propertyDescriptionPrompt = ai.definePrompt({
   name: 'propertyDescriptionPrompt',
-  model: gemini15Flash,
+  model: 'googleai/gemini-1.5-flash',
   input: { schema: PropertyDescriptionInputSchema },
   output: { schema: PropertyDescriptionOutputSchema },
   prompt: `You are an expert real estate copywriter. Write a professional, high-converting UK property listing.
@@ -42,9 +41,11 @@ const propertyDescriptionPrompt = ai.definePrompt({
   - Location: {{{address}}}
   - Key Features: {{{keyFeatures}}}
 
-  1. Create a catchy headline.
-  2. Write an engaging description.
-  3. Use British English.
+  Requirements:
+  1. Create a catchy, professional headline.
+  2. Write an engaging description highlighting the benefits of the location and features.
+  3. Use British English (e.g., 'centre', 'neighbourhood').
+  4. Ensure the tone is inviting yet professional.
   `,
 });
 
@@ -56,6 +57,9 @@ const propertyDescriptionFlow = ai.defineFlow(
   },
   async (input) => {
     const { output } = await propertyDescriptionPrompt(input);
-    return output!;
+    if (!output) {
+      throw new Error('AI failed to generate property description.');
+    }
+    return output;
   }
 );

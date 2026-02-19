@@ -1,11 +1,14 @@
 'use server';
 /**
  * @fileOverview An AI flow to generate professional landlord-tenant communication.
+ * 
+ * - generateTenantCommunication - Main function to draft a professional notice.
+ * - TenantCommunicationInput - Schema for the tenant and notice details.
+ * - TenantCommunicationOutput - Schema for the generated subject and message.
  */
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { gemini15Flash } from '@genkit-ai/google-genai';
 
 const TenantCommunicationInputSchema = z.object({
   tenantName: z.string(),
@@ -28,10 +31,11 @@ export async function generateTenantCommunication(input: TenantCommunicationInpu
 
 const communicationPrompt = ai.definePrompt({
   name: 'tenantCommunicationPrompt',
-  model: gemini15Flash,
+  model: 'googleai/gemini-1.5-flash',
   input: { schema: TenantCommunicationInputSchema },
   output: { schema: TenantCommunicationOutputSchema },
-  prompt: `You are an expert UK property manager. Write a professional communication to a tenant.
+  prompt: `You are an expert UK property manager and legal assistant. 
+  Write a professional communication to a tenant.
 
   Tenant: {{{tenantName}}}
   Property: {{{propertyAddress}}}
@@ -39,10 +43,11 @@ const communicationPrompt = ai.definePrompt({
   Specific Details: {{{details}}}
   Tone: {{{tone}}}
 
-  1. Legally compliant structure.
-  2. Professional tone.
-  3. Mention 24 hours notice for inspections.
-  4. Use British English.
+  Requirements:
+  1. Use a legally compliant and professional structure.
+  2. If it's an inspection, mention that 24 hours notice is required and has been provided.
+  3. Use British English (e.g., 'favour', 'authorised').
+  4. Ensure the subject line is concise and clear.
   `,
 });
 
@@ -54,6 +59,9 @@ const tenantCommunicationFlow = ai.defineFlow(
   },
   async (input) => {
     const { output } = await communicationPrompt(input);
-    return output!;
+    if (!output) {
+      throw new Error('AI failed to generate communication output.');
+    }
+    return output;
   }
 );

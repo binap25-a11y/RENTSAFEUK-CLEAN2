@@ -5,7 +5,6 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
-import { gemini15Flash } from '@genkit-ai/google-genai';
 
 const DocumentAnalysisInputSchema = z.object({
   photoDataUri: z.string().describe("A photo of the document as a data URI."),
@@ -31,18 +30,20 @@ export async function analyzeDocument(input: DocumentAnalysisInput): Promise<Doc
 
 const documentAnalysisPrompt = ai.definePrompt({
   name: 'documentAnalysisPrompt',
-  model: gemini15Flash,
+  model: 'googleai/gemini-1.5-flash',
   input: { schema: DocumentAnalysisInputSchema },
   output: { schema: DocumentAnalysisOutputSchema },
-  prompt: `You are an expert UK property compliance assistant. Analyze the image and extract metadata.
+  prompt: `You are an expert UK property compliance assistant. Analyze the provided image of a property document and extract metadata.
 
   Photo: {{media url=photoDataUri}}
   User Hint: {{{documentHint}}}
 
-  1. Identify document type.
-  2. Extract Issue and Expiry Dates (YYYY-MM-DD).
-  3. Extract total amounts for invoices.
-  4. Create a professional title.
+  Tasks:
+  1. Identify the document type (e.g., Gas Safety, EPC, etc.).
+  2. Extract Issue and Expiry Dates if present (format as YYYY-MM-DD).
+  3. For invoices, extract the total amount.
+  4. Create a concise, professional title for the record.
+  5. Provide a brief summary of notes or key data found.
   `,
 });
 
@@ -54,6 +55,9 @@ const documentAnalysisFlow = ai.defineFlow(
   },
   async (input) => {
     const { output } = await documentAnalysisPrompt(input);
-    return output!;
+    if (!output) {
+      throw new Error('AI failed to analyze the document.');
+    }
+    return output;
   }
 );
