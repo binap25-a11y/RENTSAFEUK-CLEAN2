@@ -18,11 +18,9 @@ import { toast } from '@/hooks/use-toast';
 import {
   useUser,
   useFirestore,
-  errorEmitter,
-  FirestorePermissionError,
 } from '@/firebase';
-import { collection, addDoc } from 'firebase/firestore';
-import { Loader2, Wand2 } from 'lucide-react';
+import { collection, addDoc, query, where, getDocs, limit } from 'firebase/firestore';
+import { Loader2, Wand2, ShieldAlert } from 'lucide-react';
 import { generatePropertyDescription } from '@/ai/flows/property-description-flow';
 
 const ukPostcodeRegex = /^[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}$/i;
@@ -47,6 +45,14 @@ const propertySchema = z.object({
     depositAmount: z.coerce.number().min(0, 'Deposit cannot be negative').optional(),
     depositScheme: z.string().optional(),
   }).optional(),
+}).refine(data => {
+  if (data.tenancy?.depositAmount && data.tenancy.depositAmount > 0) {
+    return !!data.tenancy.depositScheme?.trim();
+  }
+  return true;
+}, {
+  message: "Deposit scheme is required if a deposit amount is entered.",
+  path: ["tenancy", "depositScheme"]
 });
 
 type PropertyFormValues = z.infer<typeof propertySchema>;
@@ -112,24 +118,43 @@ export default function AddPropertyPage() {
     if (!user || !firestore) return;
     setIsSubmitting(true);
 
-    const propertyData = {
-      ownerId: user.uid,
-      ...JSON.parse(JSON.stringify(data)),
-    };
+    try {
+        // UNIQUENESS CHECK: Street and Postcode
+        const duplicateQuery = query(
+            collection(firestore, 'properties'),
+            where('ownerId', '==', user.uid),
+            where('address.street', '==', data.address.street),
+            where('address.postcode', '==', data.address.postcode),
+            where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance']),
+            limit(1)
+        );
+        const duplicateSnap = await getDocs(duplicateQuery);
 
-    const propertiesCollection = collection(firestore, 'properties');
+        if (!duplicateSnap.empty) {
+            toast({
+                variant: 'destructive',
+                title: 'Duplicate Property',
+                description: 'A property with this street and postcode already exists in your active portfolio.',
+            });
+            setIsSubmitting(false);
+            return;
+        }
 
-    addDoc(propertiesCollection, propertyData)
-      .then(() => {
+        const propertyData = {
+            ownerId: user.uid,
+            ...JSON.parse(JSON.stringify(data)),
+        };
+
+        const propertiesCollection = collection(firestore, 'properties');
+        await addDoc(propertiesCollection, propertyData);
+        
         toast({ title: 'Property Added', description: 'The property has been added to your portfolio.' });
         router.push('/dashboard/properties');
-      })
-      .catch((serverError: any) => {
+    } catch (serverError: any) {
         toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save property. Please try again.' });
-      })
-      .finally(() => {
+    } finally {
         setIsSubmitting(false);
-      });
+    }
   }
 
   return (
@@ -153,11 +178,21 @@ export default function AddPropertyPage() {
             </Card>
 
             <Card>
-              <CardHeader><CardTitle className="text-xl font-headline">Investment & Valuation</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
+              <CardHeader><CardTitle className="text-xl font-headline">Investment & Tenancy</CardTitle></CardHeader>
+              <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField control={form.control} name="purchasePrice" render={({ field }) => (<FormItem><FormLabel>Purchase Price (£)</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="currentValuation" render={({ field }) => (<FormItem><FormLabel>Current Valuation (£)</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                </div>
+                <div className="pt-4 border-t space-y-4">
+                    <h4 className="text-sm font-semibold flex items-center gap-2">
+                        <ShieldAlert className="h-4 w-4 text-primary" />
+                        Deposit & Compliance
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <FormField control={form.control} name="tenancy.depositAmount" render={({ field }) => (<FormItem><FormLabel>Security Deposit Amount (£)</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="tenancy.depositScheme" render={({ field }) => (<FormItem><FormLabel>Protection Scheme Name</FormLabel><FormControl><Input placeholder="e.g. DPS, TDS, MyDeposits" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    </div>
                 </div>
               </CardContent>
             </Card>

@@ -16,8 +16,10 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, setDoc } from 'firebase/firestore';
-import { Loader2, AlertTriangle, TrendingUp } from 'lucide-react';
+import { doc, setDoc, query, collection, where, getDocs, limit } from 'firebase/firestore';
+import { Loader2, ShieldAlert } from 'lucide-react';
+
+const ukPostcodeRegex = /^[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}$/i;
 
 const propertySchema = z.object({
   address: z.object({
@@ -25,7 +27,7 @@ const propertySchema = z.object({
     street: z.string().min(3, 'Please enter a street address.'),
     city: z.string().min(2, 'Please enter a city or town.'),
     county: z.string().optional(),
-    postcode: z.string().min(5, 'Please enter a valid postcode.'),
+    postcode: z.string().regex(ukPostcodeRegex, 'Please enter a valid UK postcode (e.g. SW1A 1AA).'),
   }),
   propertyType: z.string({ required_error: 'Please select a property type.' }),
   status: z.string({ required_error: 'Please select a status.' }),
@@ -39,6 +41,14 @@ const propertySchema = z.object({
     depositAmount: z.coerce.number().optional(),
     depositScheme: z.string().optional(),
   }).optional(),
+}).refine(data => {
+  if (data.tenancy?.depositAmount && data.tenancy.depositAmount > 0) {
+    return !!data.tenancy.depositScheme?.trim();
+  }
+  return true;
+}, {
+  message: "Deposit scheme is required if a deposit amount is entered.",
+  path: ["tenancy", "depositScheme"]
 });
 
 type PropertyFormValues = z.infer<typeof propertySchema>;
@@ -103,11 +113,34 @@ export default function EditPropertyPage() {
     if (!firestore || !propertyId || !user) return;
     
     setIsSubmitting(true);
-    const docRef = doc(firestore, 'properties', propertyId);
-    const cleanedData = JSON.parse(JSON.stringify(data));
-    
+
     try {
+      // UNIQUENESS CHECK (if address changed)
+      if (data.address.street !== property?.address.street || data.address.postcode !== property?.address.postcode) {
+          const duplicateQuery = query(
+              collection(firestore, 'properties'),
+              where('ownerId', '==', user.uid),
+              where('address.street', '==', data.address.street),
+              where('address.postcode', '==', data.address.postcode),
+              where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance']),
+              limit(1)
+          );
+          const duplicateSnap = await getDocs(duplicateQuery);
+          if (!duplicateSnap.empty && duplicateSnap.docs[0].id !== propertyId) {
+              toast({
+                  variant: 'destructive',
+                  title: 'Duplicate Property',
+                  description: 'Another active property with this street and postcode already exists.',
+              });
+              setIsSubmitting(false);
+              return;
+          }
+      }
+
+      const docRef = doc(firestore, 'properties', propertyId);
+      const cleanedData = JSON.parse(JSON.stringify(data));
       await setDoc(docRef, { ...cleanedData, ownerId: user.uid }, { merge: true });
+      
       toast({ title: "Property Updated" });
       router.push(`/dashboard/properties/${propertyId}`);
     } catch (e) {
@@ -143,11 +176,21 @@ export default function EditPropertyPage() {
             </Card>
 
             <Card className="border-none shadow-none bg-muted/30">
-              <CardHeader><CardTitle className="text-lg font-headline">Investment & Value</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
+              <CardHeader><CardTitle className="text-lg font-headline">Investment & Tenancy</CardTitle></CardHeader>
+              <CardContent className="space-y-6">
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                   <FormField control={form.control} name="purchasePrice" render={({ field }) => (<FormItem><FormLabel>Purchase Price (£)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="currentValuation" render={({ field }) => (<FormItem><FormLabel>Current Valuation (£)</FormLabel><FormControl><Input type="number" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                </div>
+                <div className="pt-4 border-t space-y-4">
+                    <h4 className="text-sm font-semibold flex items-center gap-2">
+                        <ShieldAlert className="h-4 w-4 text-primary" />
+                        Deposit & Compliance
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <FormField control={form.control} name="tenancy.depositAmount" render={({ field }) => (<FormItem><FormLabel>Security Deposit Amount (£)</FormLabel><FormControl><Input type="number" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="tenancy.depositScheme" render={({ field }) => (<FormItem><FormLabel>Protection Scheme Name</FormLabel><FormControl><Input placeholder="e.g. DPS, TDS, MyDeposits" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    </div>
                 </div>
               </CardContent>
             </Card>

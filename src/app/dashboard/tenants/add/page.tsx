@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -38,17 +39,18 @@ import {
   useCollection,
   useMemoFirebase,
   useDoc,
-  errorEmitter,
-  FirestorePermissionError,
 } from '@/firebase';
 import { collection, query, where, doc, updateDoc, addDoc, getDocs, limit } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
+
+// Standard UK phone regex (Mobile & Landline)
+const ukPhoneRegex = /^(((\+44\s?\d{4}|\(?0\d{4}\)?)\s?\d{3}\s?\d{3})|((\+44\s?\d{3}|\(?0\d{3}\)?)\s?\d{3}\s?\d{4})|((\+44\s?\d{2}|\(?0\d{2}\)?)\s?\d{4}\s?\d{4}))(\s?\#(\d{4}|\d{3}))?$/;
 
 // Zod schema for tenant form validation
 const tenantSchema = z.object({
   name: z.string().min(2, 'Name is too short'),
   email: z.string().email('Invalid email address'),
-  telephone: z.string().min(10, 'Invalid phone number'),
+  telephone: z.string().regex(ukPhoneRegex, 'Please enter a valid UK phone number.'),
   propertyId: z.string({ required_error: 'Please select a property.' }).min(1, 'Please select a property.'),
   monthlyRent: z.coerce.number().min(0, 'Rent cannot be negative').optional(),
   tenancyStartDate: z.coerce.date({ required_error: 'Please select a start date.' }),
@@ -97,7 +99,6 @@ export default function AddTenantPage() {
   const firestore = useFirestore();
   const propertyIdFromUrl = searchParams.get('propertyId');
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
 
   const form = useForm<TenantFormValues>({
     resolver: zodResolver(tenantSchema),
@@ -152,14 +153,13 @@ export default function AddTenantPage() {
     }
 
     setIsSubmitting(true);
-    setIsCheckingEmail(true);
 
     try {
         // DUPLICATE CHECK: Verify email uniqueness for this landlord
         const emailCheckQuery = query(
             collection(firestore, 'tenants'),
             where('ownerId', '==', user.uid),
-            where('email', '==', data.email),
+            where('email', '==', data.email.toLowerCase()),
             where('status', '==', 'Active'),
             limit(1)
         );
@@ -172,13 +172,13 @@ export default function AddTenantPage() {
                 description: `A tenant with email ${data.email} already exists in your active records.`,
             });
             setIsSubmitting(false);
-            setIsCheckingEmail(false);
             return;
         }
 
         const tenantsCollection = collection(firestore, 'tenants');
         const newTenant = {
             ...data,
+            email: data.email.toLowerCase(),
             ownerId: user.uid,
             status: 'Active',
         };
@@ -204,7 +204,6 @@ export default function AddTenantPage() {
         });
     } finally {
         setIsSubmitting(false);
-        setIsCheckingEmail(false);
     }
   }
 
@@ -294,7 +293,7 @@ export default function AddTenantPage() {
                 name="telephone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Telephone</FormLabel>
+                    <FormLabel>Telephone (UK format)</FormLabel>
                     <FormControl>
                       <Input type="tel" placeholder="07123 456789" {...field} />
                     </FormControl>
@@ -384,7 +383,7 @@ export default function AddTenantPage() {
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      {isCheckingEmail ? 'Checking Email...' : 'Saving...'}
+                      Saving...
                     </>
                   ) : (
                     'Save Tenant'

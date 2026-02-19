@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -30,7 +31,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Calculator, AlertTriangle, CheckCircle2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -44,12 +45,14 @@ import {
   useDoc,
 } from '@/firebase';
 import { collection, query, where, addDoc, doc } from 'firebase/firestore';
-import { useEffect } from 'react';
+import { useEffect, useState, useMemo } from 'react';
+import { Badge } from '@/components/ui/badge';
 
 
 const screeningSchema = z.object({
   tenantId: z.string({ required_error: 'Please select a tenant.' }).min(1, "Please select a tenant."),
   screeningDate: z.coerce.date(),
+  monthlyIncome: z.coerce.number().min(0, "Income cannot be negative").optional(),
   rightToRent: z.object({
     checkDate: z.coerce.date().optional(),
     ukPassport: z.boolean().default(false),
@@ -112,6 +115,7 @@ type ScreeningFormValues = z.infer<typeof screeningSchema>;
 interface Tenant {
   id: string;
   name: string;
+  monthlyRent?: number;
 }
 
 const ChecklistItem = ({ form, name, label }: { form: any, name: any, label: string }) => (
@@ -163,8 +167,11 @@ function TenantScreeningPage({ tenantIdFromUrl }: { tenantIdFromUrl: string | nu
         resolver: zodResolver(screeningSchema),
         defaultValues: {
             tenantId: tenantIdFromUrl || '',
+            monthlyIncome: undefined,
         }
     });
+
+    const watchIncome = form.watch('monthlyIncome');
 
     useEffect(() => {
         form.setValue('screeningDate', new Date());
@@ -185,6 +192,20 @@ function TenantScreeningPage({ tenantIdFromUrl }: { tenantIdFromUrl: string | nu
         );
     }, [firestore, user, tenantIdFromUrl]);
     const { data: tenants, isLoading: isLoadingTenants } = useCollection<Tenant>(tenantsQuery);
+
+    const affordabilityMetrics = useMemo(() => {
+        const rent = selectedTenant?.monthlyRent || 0;
+        const income = watchIncome || 0;
+        if (!rent || !income) return null;
+        
+        const ratio = (rent / income) * 100;
+        const isRisky = ratio > 40;
+        
+        return {
+            ratio: ratio.toFixed(1),
+            isRisky
+        };
+    }, [selectedTenant, watchIncome]);
 
     async function onSubmit(data: ScreeningFormValues) {
         if (!user || !firestore) {
@@ -240,7 +261,7 @@ function TenantScreeningPage({ tenantIdFromUrl }: { tenantIdFromUrl: string | nu
             <CardContent>
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                              {tenantIdFromUrl ? (
                                 <div className="space-y-2">
                                     <FormLabel>Tenant to Screen</FormLabel>
@@ -248,7 +269,10 @@ function TenantScreeningPage({ tenantIdFromUrl }: { tenantIdFromUrl: string | nu
                                         {isLoadingSelectedTenant ? (
                                             <Loader2 className="h-4 w-4 animate-spin" />
                                         ) : (
-                                            <p className="font-medium text-sm">{selectedTenant ? selectedTenant.name : 'Tenant not found'}</p>
+                                            <div className="flex flex-col">
+                                                <p className="font-medium text-sm">{selectedTenant ? selectedTenant.name : 'Tenant not found'}</p>
+                                                {selectedTenant?.monthlyRent && <p className="text-[10px] text-muted-foreground uppercase font-bold">Rent: £{selectedTenant.monthlyRent}/mo</p>}
+                                            </div>
                                         )}
                                     </div>
                                 </div>
@@ -290,6 +314,48 @@ function TenantScreeningPage({ tenantIdFromUrl }: { tenantIdFromUrl: string | nu
                                 )}
                             />
                         </div>
+
+                        <Card className="bg-muted/30 border-dashed">
+                            <CardHeader className="pb-3">
+                                <CardTitle className="text-sm flex items-center gap-2">
+                                    <Calculator className="h-4 w-4 text-primary" />
+                                    Income & Affordability Check
+                                </CardTitle>
+                            </CardHeader>
+                            <CardContent className="space-y-4">
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                    <FormField
+                                        control={form.control}
+                                        name="monthlyIncome"
+                                        render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Tenant Monthly Net Income (£)</FormLabel>
+                                                <FormControl>
+                                                    <Input type="number" placeholder="0.00" {...field} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )}
+                                    />
+                                    {affordabilityMetrics && (
+                                        <div className="p-4 rounded-lg bg-background border flex flex-col justify-center">
+                                            <div className="flex items-center justify-between mb-1">
+                                                <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Rent-to-Income Ratio</span>
+                                                {affordabilityMetrics.isRisky ? (
+                                                    <Badge variant="destructive" className="gap-1"><AlertTriangle className="h-3 w-3" /> Risk</Badge>
+                                                ) : (
+                                                    <Badge variant="default" className="bg-green-100 text-green-800 border-green-200 gap-1"><CheckCircle2 className="h-3 w-3" /> Clear</Badge>
+                                                )}
+                                            </div>
+                                            <p className="text-2xl font-bold">{affordabilityMetrics.ratio}%</p>
+                                            <p className="text-[10px] text-muted-foreground mt-1">
+                                                {affordabilityMetrics.isRisky ? "Rent is over 40% of income. Guarantor recommended." : "Rent is within affordable bounds (under 40%)."}
+                                            </p>
+                                        </div>
+                                    )}
+                                </div>
+                            </CardContent>
+                        </Card>
 
                         <Accordion type="multiple" className="w-full space-y-4" defaultValue={['right-to-rent']}>
                             <AccordionItem value="right-to-rent" className='border rounded-lg px-4'>
