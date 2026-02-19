@@ -1,9 +1,9 @@
 import { genkit } from 'genkit';
-import { googleAI } from '@genkit-ai/google-genai';
+import { googleAI, gemini15Flash } from '@genkit-ai/google-genai';
 
 /**
  * @fileOverview Genkit configuration for RentSafeUK.
- * Standardizes the AI engine to use explicit model identifiers and API key lookup.
+ * Standardizes the AI engine to use official model constants for reliable routing.
  */
 export const ai = genkit({
   plugins: [
@@ -11,6 +11,6 @@ export const ai = genkit({
       apiKey: process.env.GOOGLE_GENAI_API_KEY || process.env.GEMINI_API_KEY,
     }),
   ],
-  // Using the string identifier ensures the model is correctly resolved in all contexts.
-  model: 'googleai/gemini-1.5-flash',
+  // Defaulting to the Flash constant ensures all calls inherit the correct model identity.
+  model: gemini15Flash,
 });
