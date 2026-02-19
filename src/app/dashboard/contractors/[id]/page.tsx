@@ -98,7 +98,7 @@ export default function ContractorDetailPage() {
                   </Link>
                 </Button>
                 <div>
-                  <h1 className="text-2xl font-bold">{contractor.name}</h1>
+                  <h1 className="text-2xl font-bold font-headline break-words">{contractor.name}</h1>
                   <p className="text-muted-foreground">{contractor.trade}</p>
                 </div>
             </div>
@@ -123,33 +123,39 @@ export default function ContractorDetailPage() {
             </DropdownMenu>
         </div>
         
-        <Card>
-            <CardHeader>
-                <CardTitle>Contact Information</CardTitle>
+        <Card className="shadow-sm">
+            <CardHeader className="pb-4">
+                <CardTitle className="text-lg">Contact Information</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-6 pt-6 border-t bg-muted/5">
                 <div className="flex items-start gap-4">
-                    <HardHat className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                    <div>
-                        <p className="text-sm text-muted-foreground">Trade</p>
-                        <p>{contractor.trade}</p>
+                    <div className="p-2.5 rounded-lg bg-primary/10 shrink-0 mt-1">
+                        <HardHat className="h-5 w-5 text-primary" />
+                    </div>
+                    <div className="min-w-0">
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Trade</p>
+                        <p className="font-semibold text-foreground break-words">{contractor.trade}</p>
                     </div>
                 </div>
                 <div className="flex items-start gap-4">
-                    <Phone className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
-                     <div>
-                        <p className="text-sm text-muted-foreground">Phone</p>
-                        <a href={`tel:${contractor.phone}`} className="text-primary hover:underline block">
+                    <div className="p-2.5 rounded-lg bg-primary/10 shrink-0 mt-1">
+                        <Phone className="h-5 w-5 text-primary" />
+                    </div>
+                     <div className="min-w-0">
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Phone</p>
+                        <a href={`tel:${contractor.phone}`} className="font-semibold text-primary hover:underline block break-words">
                             {contractor.phone}
                         </a>
                     </div>
                 </div>
                 {contractor.email && (
                     <div className="flex items-start gap-4">
-                        <Mail className="h-5 w-5 text-muted-foreground shrink-0 mt-1" />
-                        <div className="min-w-0">
-                            <p className="text-sm text-muted-foreground">Email</p>
-                            <a href={`mailto:${contractor.email}`} className="text-primary hover:underline break-all block">
+                        <div className="p-2.5 rounded-lg bg-primary/10 shrink-0 mt-1">
+                            <Mail className="h-5 w-5 text-primary" />
+                        </div>
+                        <div className="min-w-0 overflow-hidden">
+                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Email</p>
+                            <a href={`mailto:${contractor.email}`} className="font-semibold text-primary hover:underline break-all block">
                                 {contractor.email}
                             </a>
                         </div>
@@ -159,12 +165,12 @@ export default function ContractorDetailPage() {
         </Card>
 
         {contractor.notes && (
-            <Card>
-                <CardHeader>
-                    <CardTitle>Notes</CardTitle>
+            <Card className="shadow-sm">
+                <CardHeader className="pb-4">
+                    <CardTitle className="text-lg">Specialist Notes</CardTitle>
                 </CardHeader>
-                <CardContent>
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{contractor.notes}</p>
+                <CardContent className="pt-6 border-t bg-muted/5">
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed italic">"{contractor.notes}"</p>
                 </CardContent>
             </Card>
         )}
