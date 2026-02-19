@@ -18,10 +18,21 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowLeft, RefreshCw, Loader2 } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Loader2, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { useState } from 'react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface Property {
   id: string;
@@ -39,6 +50,8 @@ export default function DeletedPropertiesPage() {
     const { toast } = useToast();
     const { user } = useUser();
     const firestore = useFirestore();
+    const [propertyToDelete, setPropertyToDelete] = useState<Property | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const deletedPropertiesQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -70,6 +83,29 @@ export default function DeletedPropertiesPage() {
         }
     };
 
+    const handleDeletePermanently = async () => {
+        if (!firestore || !propertyToDelete) return;
+        setIsDeleting(true);
+        try {
+            const docRef = doc(firestore, 'properties', propertyToDelete.id);
+            await deleteDoc(docRef);
+            toast({
+                title: 'Property Deleted Permanently',
+                description: 'The property record has been removed from your database.',
+            });
+        } catch (e) {
+            console.error('Error deleting property:', e);
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Could not permanently delete the property. Please try again.',
+            });
+        } finally {
+            setIsDeleting(false);
+            setPropertyToDelete(null);
+        }
+    };
+
     const formatAddress = (address: Property['address']) => {
         return [[address.nameOrNumber, address.street].filter(Boolean).join(', '), address.city, address.postcode].filter(Boolean).join(', ');
     };
@@ -92,7 +128,7 @@ export default function DeletedPropertiesPage() {
         <Card>
             <CardHeader>
                 <CardTitle>Deleted Properties</CardTitle>
-                <CardDescription>You can restore these properties to your active portfolio.</CardDescription>
+                <CardDescription>You can restore these properties to your active portfolio or delete them permanently.</CardDescription>
             </CardHeader>
             <CardContent>
                 {isLoading ? (
@@ -122,10 +158,13 @@ export default function DeletedPropertiesPage() {
                                 <TableRow key={property.id}>
                                     <TableCell className="font-medium">{formatAddress(property.address)}</TableCell>
                                     <TableCell>{property.propertyType}</TableCell>
-                                    <TableCell className="text-right">
-                                    <Button size="sm" onClick={() => handleRestore(property.id, property.address)}>
-                                        <RefreshCw className="mr-2 h-4 w-4" /> Restore
-                                    </Button>
+                                    <TableCell className="text-right space-x-2">
+                                        <Button size="sm" variant="outline" onClick={() => handleRestore(property.id, property.address)}>
+                                            <RefreshCw className="mr-2 h-4 w-4" /> Restore
+                                        </Button>
+                                        <Button size="sm" variant="destructive" onClick={() => setPropertyToDelete(property)}>
+                                            <Trash2 className="mr-2 h-4 w-4" /> Delete Permanently
+                                        </Button>
                                     </TableCell>
                                 </TableRow>
                                 ))}
@@ -141,9 +180,12 @@ export default function DeletedPropertiesPage() {
                                     <CardTitle className="text-base">{[property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ')}</CardTitle>
                                     <CardDescription>{`${property.address.city}, ${property.address.postcode}`}</CardDescription>
                                 </CardHeader>
-                                <CardFooter>
-                                    <Button size="sm" className="w-full" onClick={() => handleRestore(property.id, property.address)}>
+                                <CardFooter className="flex flex-col gap-2">
+                                    <Button size="sm" variant="outline" className="w-full" onClick={() => handleRestore(property.id, property.address)}>
                                         <RefreshCw className="mr-2 h-4 w-4" /> Restore
+                                    </Button>
+                                    <Button size="sm" variant="destructive" className="w-full" onClick={() => setPropertyToDelete(property)}>
+                                        <Trash2 className="mr-2 h-4 w-4" /> Delete Permanently
                                     </Button>
                                 </CardFooter>
                             </Card>
@@ -153,6 +195,28 @@ export default function DeletedPropertiesPage() {
                 )}
             </CardContent>
         </Card>
+
+        <AlertDialog open={!!propertyToDelete} onOpenChange={(open) => !open && setPropertyToDelete(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This action is permanent and cannot be undone. This will permanently delete the property record at {[propertyToDelete?.address.nameOrNumber, propertyToDelete?.address.street].filter(Boolean).join(', ')} from your database.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        onClick={handleDeletePermanently}
+                        disabled={isDeleting}
+                    >
+                        {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                        Delete Permanently
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     </div>
   );
 }
