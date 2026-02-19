@@ -2,7 +2,6 @@
 
 import { useState } from 'react';
 import { Button } from '@/components/ui/button';
-import { Badge } from '@/components/ui/badge';
 import { 
   Dialog, 
   DialogContent, 
@@ -88,7 +87,7 @@ export function TenantCommunicationAssistant({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[650px] max-h-[90vh] flex flex-col p-0 overflow-hidden">
+        <DialogContent className="sm:max-w-[650px] h-[90vh] flex flex-col p-0 overflow-hidden">
             <DialogHeader className="p-6 pb-4 border-b shrink-0">
                 <div className="flex items-center gap-3">
                     <div className="p-2 rounded-full bg-primary/10">
@@ -101,7 +100,7 @@ export function TenantCommunicationAssistant({
                 </div>
             </DialogHeader>
             
-            <ScrollArea className="flex-1 overflow-y-auto">
+            <ScrollArea className="flex-1">
                 <div className="p-6 space-y-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
@@ -145,7 +144,7 @@ export function TenantCommunicationAssistant({
                     </div>
 
                     {generatedComm && (
-                        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300 pt-4 border-t">
+                        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300 pt-4 border-t pb-10">
                             <div className="bg-muted/30 p-4 rounded-lg border">
                                 <p className="text-[9px] font-bold text-muted-foreground uppercase mb-1">Subject</p>
                                 <p className="text-sm font-bold">{generatedComm.subject}</p>
