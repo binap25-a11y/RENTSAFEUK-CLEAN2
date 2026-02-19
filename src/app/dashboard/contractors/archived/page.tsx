@@ -18,10 +18,21 @@ import {
   TableHeader,
   TableRow,
 } from '@/components/ui/table';
-import { ArrowLeft, RefreshCw, Loader2, Phone, Mail } from 'lucide-react';
+import { ArrowLeft, RefreshCw, Loader2, Phone, Mail, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { useState } from 'react';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 interface Contractor {
     id: string;
@@ -35,6 +46,8 @@ export default function ArchivedContractorsPage() {
     const { toast } = useToast();
     const { user } = useUser();
     const firestore = useFirestore();
+    const [contractorToDelete, setContractorToDelete] = useState<Contractor | null>(null);
+    const [isDeleting, setIsDeleting] = useState(false);
 
     const archivedContractorsQuery = useMemoFirebase(() => {
         if (!user) return null;
@@ -66,6 +79,29 @@ export default function ArchivedContractorsPage() {
         }
     };
 
+    const handleDeletePermanently = async () => {
+        if (!firestore || !contractorToDelete) return;
+        setIsDeleting(true);
+        try {
+            const docRef = doc(firestore, 'contractors', contractorToDelete.id);
+            await deleteDoc(docRef);
+            toast({
+                title: 'Contractor Deleted Permanently',
+                description: `${contractorToDelete.name} has been removed from your records.`,
+            });
+        } catch (e) {
+            console.error('Error deleting contractor:', e);
+            toast({
+                variant: 'destructive',
+                title: 'Error',
+                description: 'Could not permanently delete the contractor. Please try again.',
+            });
+        } finally {
+            setIsDeleting(false);
+            setContractorToDelete(null);
+        }
+    };
+
   return (
     <div className="flex flex-col gap-6">
         <div className="flex items-center gap-4">
@@ -75,16 +111,16 @@ export default function ArchivedContractorsPage() {
                 </Link>
             </Button>
             <div>
-                <h1 className="text-3xl font-bold">Archived Contractors</h1>
+                <h1 className="text-3xl font-bold font-headline">Archived Contractors</h1>
                 <p className="text-muted-foreground">
-                    A list of contractors that have been archived.
+                    Manage contractors that have been removed from your active directory.
                 </p>
             </div>
         </div>
         <Card>
             <CardHeader>
-                <CardTitle>Archived Contractors</CardTitle>
-                <CardDescription>You can restore these contractors to your active directory.</CardDescription>
+                <CardTitle>Archived List</CardTitle>
+                <CardDescription>Restore records to your directory or remove them permanently from the system.</CardDescription>
             </CardHeader>
             <CardContent>
                 {isLoading ? (
@@ -94,30 +130,33 @@ export default function ArchivedContractorsPage() {
                 ) : error ? (
                     <div className="text-center py-10 text-destructive">Error: {error.message}</div>
                 ) : !archivedContractors?.length ? (
-                     <div className="text-center py-10 text-muted-foreground">
-                        No archived contractors.
+                     <div className="text-center py-10 text-muted-foreground italic">
+                        No archived contractors found.
                     </div>
                 ) : (
                 <>
                     {/* Desktop Table View */}
-                    <div className="hidden rounded-md border md:block">
+                    <div className="hidden rounded-md border md:block overflow-hidden">
                         <Table>
-                            <TableHeader>
+                            <TableHeader className="bg-muted/50">
                                 <TableRow>
-                                    <TableHead>Name</TableHead>
-                                    <TableHead>Trade</TableHead>
-                                    <TableHead className="text-right">Actions</TableHead>
+                                    <TableHead className="font-bold uppercase tracking-wider text-[10px]">Name</TableHead>
+                                    <TableHead className="font-bold uppercase tracking-wider text-[10px]">Trade</TableHead>
+                                    <TableHead className="text-right pr-6 font-bold uppercase tracking-wider text-[10px]">Actions</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {archivedContractors.map((contractor) => (
-                                <TableRow key={contractor.id}>
-                                    <TableCell className="font-medium">{contractor.name}</TableCell>
-                                    <TableCell>{contractor.trade}</TableCell>
-                                    <TableCell className="text-right">
-                                    <Button size="sm" onClick={() => handleRestore(contractor.id, contractor.name)}>
-                                        <RefreshCw className="mr-2 h-4 w-4" /> Restore
-                                    </Button>
+                                <TableRow key={contractor.id} className="hover:bg-muted/20 transition-colors">
+                                    <TableCell className="font-semibold text-sm">{contractor.name}</TableCell>
+                                    <TableCell className="text-sm">{contractor.trade}</TableCell>
+                                    <TableCell className="text-right pr-6 space-x-2">
+                                        <Button size="sm" variant="outline" className="h-8 text-xs" onClick={() => handleRestore(contractor.id, contractor.name)}>
+                                            <RefreshCw className="mr-2 h-3.5 w-3.5" /> Restore
+                                        </Button>
+                                        <Button size="sm" variant="destructive" className="h-8 text-xs" onClick={() => setContractorToDelete(contractor)}>
+                                            <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
+                                        </Button>
                                     </TableCell>
                                 </TableRow>
                                 ))}
@@ -128,30 +167,33 @@ export default function ArchivedContractorsPage() {
                     {/* Mobile Card View */}
                     <div className="grid gap-4 md:hidden">
                         {archivedContractors.map((contractor) => (
-                            <Card key={contractor.id}>
-                                <CardHeader>
-                                    <CardTitle className="text-base">{contractor.name}</CardTitle>
-                                    <CardDescription>{contractor.trade}</CardDescription>
+                            <Card key={contractor.id} className="shadow-none border-muted/60">
+                                <CardHeader className="pb-3">
+                                    <CardTitle className="text-base font-bold">{contractor.name}</CardTitle>
+                                    <CardDescription className="text-xs">{contractor.trade}</CardDescription>
                                 </CardHeader>
                                 {(contractor.phone || contractor.email) && (
-                                    <CardContent className="space-y-2 text-sm pt-0">
+                                    <CardContent className="space-y-2 text-xs pt-0 pb-3 border-b border-dashed mb-3">
                                         {contractor.phone && (
                                         <div className="flex items-center gap-2">
-                                            <Phone className="h-4 w-4 text-muted-foreground" />
+                                            <Phone className="h-3 w-3 text-muted-foreground" />
                                             <span>{contractor.phone}</span>
                                         </div>
                                         )}
                                         {contractor.email && (
                                         <div className="flex items-center gap-2">
-                                            <Mail className="h-4 w-4 text-muted-foreground" />
-                                            <a href={`mailto:${contractor.email}`} className='truncate hover:underline'>{contractor.email}</a>
+                                            <Mail className="h-3 w-3 text-muted-foreground" />
+                                            <span className='truncate'>{contractor.email}</span>
                                         </div>
                                         )}
                                     </CardContent>
                                 )}
-                                <CardFooter>
-                                    <Button size="sm" className='w-full' onClick={() => handleRestore(contractor.id, contractor.name)}>
-                                        <RefreshCw className="mr-2 h-4 w-4" /> Restore
+                                <CardFooter className="grid grid-cols-2 gap-2 pt-0">
+                                    <Button size="sm" variant="outline" className='w-full text-xs h-9' onClick={() => handleRestore(contractor.id, contractor.name)}>
+                                        <RefreshCw className="mr-2 h-3.5 w-3.5" /> Restore
+                                    </Button>
+                                    <Button size="sm" variant="destructive" className='w-full text-xs h-9' onClick={() => setContractorToDelete(contractor)}>
+                                        <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
                                     </Button>
                                 </CardFooter>
                             </Card>
@@ -161,6 +203,28 @@ export default function ArchivedContractorsPage() {
                 )}
             </CardContent>
         </Card>
+
+        <AlertDialog open={!!contractorToDelete} onOpenChange={(open) => !open && setContractorToDelete(null)}>
+            <AlertDialogContent>
+                <AlertDialogHeader>
+                    <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription>
+                        This action is permanent and cannot be undone. This will permanently delete the record for {contractorToDelete?.name} from your contractor directory.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                    <AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction
+                        className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                        onClick={handleDeletePermanently}
+                        disabled={isDeleting}
+                    >
+                        {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />}
+                        Delete Permanently
+                    </AlertDialogAction>
+                </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
     </div>
   );
 }
