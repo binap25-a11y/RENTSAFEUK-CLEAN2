@@ -2,10 +2,9 @@
 
 import { useParams, notFound, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, User, Mail, Phone, Edit, Trash2, Home, Loader2, MoreVertical, UserPlus, Eye, FileCheck, MessageSquare } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, Edit, Trash2, Home, Loader2, MoreVertical, UserPlus, Eye, FileCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
 import { doc, collection, query, updateDoc, where } from 'firebase/firestore';
@@ -22,12 +21,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-
-// Lazy load the AI assistant to optimize page load
-const TenantCommunicationAssistant = dynamic(() => import('@/components/dashboard/tenant-communication-assistant').then(m => m.TenantCommunicationAssistant), {
-    ssr: false,
-    loading: () => <div className="h-10 w-32 bg-muted animate-pulse rounded-md" />
-});
 
 // Types
 interface Property {
@@ -69,7 +62,6 @@ export default function TenantDetailPage() {
   const { toast } = useToast();
   const { user } = useUser();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
-  const [isAiAssistantOpen, setIsAiAiAssistantOpen] = useState(false);
 
   const tenantRef = useMemoFirebase(() => {
     if (!firestore || !id) return null;
@@ -122,10 +114,7 @@ export default function TenantDetailPage() {
                 </div>
             </div>
             <div className="flex items-center gap-2">
-                <Button variant="default" onClick={() => setIsAiAiAssistantOpen(true)} className="flex-1 sm:flex-none gap-2">
-                    <MessageSquare className="h-4 w-4" /> AI Assistant
-                </Button>
-                <Button variant="outline" asChild className="hidden sm:flex">
+                <Button variant="outline" asChild>
                     <Link href={`/dashboard/tenants/${id}/edit`}>
                         <Edit className="mr-2 h-4 w-4" /> Edit Profile
                     </Link>
@@ -137,11 +126,6 @@ export default function TenantDetailPage() {
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild className="sm:hidden">
-                            <Link href={`/dashboard/tenants/${id}/edit`}>
-                                <Edit className="mr-2 h-4 w-4" /> Edit
-                            </Link>
-                        </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive">
                             <Trash2 className="mr-2 h-4 w-4" /> Archive Tenant
                         </DropdownMenuItem>
@@ -263,13 +247,6 @@ export default function TenantDetailPage() {
                 </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
-
-        <TenantCommunicationAssistant 
-            isOpen={isAiAssistantOpen} 
-            onOpenChange={setIsAiAiAssistantOpen}
-            tenant={{ name: tenant.name, email: tenant.email }}
-            propertyAddress={propertyAddress}
-        />
     </div>
   );
 }

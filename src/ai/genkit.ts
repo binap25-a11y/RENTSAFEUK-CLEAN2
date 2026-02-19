@@ -1,11 +1,11 @@
 import { genkit } from 'genkit';
-import { googleAI, gemini15Flash } from '@genkit-ai/google-genai';
+import { googleAI } from '@genkit-ai/google-genai';
 
 /**
  * @fileOverview Genkit configuration for RentSafeUK.
  */
 export const ai = genkit({
   plugins: [googleAI()],
-  // Using the explicit model constant ensures the correct API version and model identifier are used.
-  model: gemini15Flash,
+  // Using explicit string identifier for maximum stability across Genkit environments
+  model: 'googleai/gemini-1.5-flash',
 });
