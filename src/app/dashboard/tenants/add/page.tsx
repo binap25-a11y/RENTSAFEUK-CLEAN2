@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -42,7 +41,7 @@ import {
   errorEmitter,
   FirestorePermissionError,
 } from '@/firebase';
-import { collection, query, where, doc, updateDoc, addDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, addDoc, getDocs, limit } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 
 // Zod schema for tenant form validation
@@ -98,6 +97,7 @@ export default function AddTenantPage() {
   const firestore = useFirestore();
   const propertyIdFromUrl = searchParams.get('propertyId');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isCheckingEmail, setIsCheckingEmail] = useState(false);
 
   const form = useForm<TenantFormValues>({
     resolver: zodResolver(tenantSchema),
@@ -152,19 +152,41 @@ export default function AddTenantPage() {
     }
 
     setIsSubmitting(true);
-    
-    const tenantsCollection = collection(firestore, 'tenants');
-    const newTenant = {
-        ...data,
-        ownerId: user.uid,
-        status: 'Active',
-    };
+    setIsCheckingEmail(true);
 
-    // Firestore doesn't support 'undefined'. This removes any fields that are undefined.
-    const cleanedTenantData = JSON.parse(JSON.stringify(newTenant));
+    try {
+        // DUPLICATE CHECK: Verify email uniqueness for this landlord
+        const emailCheckQuery = query(
+            collection(firestore, 'tenants'),
+            where('ownerId', '==', user.uid),
+            where('email', '==', data.email),
+            where('status', '==', 'Active'),
+            limit(1)
+        );
+        const emailCheckSnap = await getDocs(emailCheckQuery);
+        
+        if (!emailCheckSnap.empty) {
+            toast({
+                variant: 'destructive',
+                title: 'Duplicate Tenant',
+                description: `A tenant with email ${data.email} already exists in your active records.`,
+            });
+            setIsSubmitting(false);
+            setIsCheckingEmail(false);
+            return;
+        }
 
-    addDoc(tenantsCollection, cleanedTenantData)
-      .then(async () => {
+        const tenantsCollection = collection(firestore, 'tenants');
+        const newTenant = {
+            ...data,
+            ownerId: user.uid,
+            status: 'Active',
+        };
+
+        const cleanedTenantData = JSON.parse(JSON.stringify(newTenant));
+
+        await addDoc(tenantsCollection, cleanedTenantData);
+        
         // After successfully adding tenant, update property status
         const propertyDocRef = doc(firestore, 'properties', data.propertyId);
         await updateDoc(propertyDocRef, { status: 'Occupied' });
@@ -174,24 +196,16 @@ export default function AddTenantPage() {
           description: `${data.name} has been assigned to the property.`,
         });
         router.push(`/dashboard/properties/${data.propertyId}`);
-      })
-      .catch((serverError: any) => {
-        const permissionError = new FirestorePermissionError({
-            path: tenantsCollection.path,
-            operation: 'create',
-            requestResourceData: cleanedTenantData,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        
+    } catch (serverError: any) {
         toast({
           variant: 'destructive',
           title: 'Save Failed',
           description: 'Could not save tenant. Please try again.',
         });
-      })
-      .finally(() => {
-          setIsSubmitting(false);
-      });
+    } finally {
+        setIsSubmitting(false);
+        setIsCheckingEmail(false);
+    }
   }
 
   const formatAddress = (address: Property['address']) => {
@@ -370,7 +384,7 @@ export default function AddTenantPage() {
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
+                      {isCheckingEmail ? 'Checking Email...' : 'Saving...'}
                     </>
                   ) : (
                     'Save Tenant'

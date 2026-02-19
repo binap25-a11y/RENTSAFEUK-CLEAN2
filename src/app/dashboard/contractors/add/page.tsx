@@ -26,10 +26,11 @@ import {
   useUser,
   useFirestore,
 } from '@/firebase';
-import { collection, addDoc } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, limit } from 'firebase/firestore';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { PlusCircle } from 'lucide-react';
+import { PlusCircle, Loader2 } from 'lucide-react';
+import { useState } from 'react';
 
 
 // Schema for the form
@@ -47,6 +48,7 @@ export default function AddContractorPage() {
     const router = useRouter();
     const { user } = useUser();
     const firestore = useFirestore();
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const form = useForm<ContractorFormValues>({
         resolver: zodResolver(contractorSchema),
@@ -69,7 +71,29 @@ export default function AddContractorPage() {
         return;
         }
 
+        setIsSubmitting(true);
+
         try {
+            // DUPLICATE CHECK: Verify phone uniqueness for this user
+            const phoneCheckQuery = query(
+                collection(firestore, 'contractors'),
+                where('ownerId', '==', user.uid),
+                where('phone', '==', data.phone),
+                where('status', '==', 'Active'),
+                limit(1)
+            );
+            const phoneCheckSnap = await getDocs(phoneCheckQuery);
+
+            if (!phoneCheckSnap.empty) {
+                toast({
+                    variant: 'destructive',
+                    title: 'Duplicate Contractor',
+                    description: `A contractor with phone ${data.phone} already exists in your records.`,
+                });
+                setIsSubmitting(false);
+                return;
+            }
+
             const newContractor = {
                 ...data,
                 ownerId: user.uid,
@@ -90,6 +114,8 @@ export default function AddContractorPage() {
                 title: 'Save Failed',
                 description: 'There was an error saving the contractor. Please try again.',
             });
+        } finally {
+            setIsSubmitting(false);
         }
     }
 
@@ -175,8 +201,9 @@ export default function AddContractorPage() {
                     <Button variant="outline" type="button" asChild>
                         <Link href="/dashboard/contractors">Cancel</Link>
                     </Button>
-                    <Button type="submit">
-                    <PlusCircle className="mr-2 h-4 w-4" /> Add Contractor
+                    <Button type="submit" disabled={isSubmitting}>
+                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                        Add Contractor
                     </Button>
                 </div>
                 </form>

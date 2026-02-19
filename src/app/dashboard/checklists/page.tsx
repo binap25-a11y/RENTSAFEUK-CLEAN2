@@ -36,6 +36,16 @@ import {
   FirestorePermissionError,
 } from '@/firebase';
 import { collection, addDoc, doc } from 'firebase/firestore';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
 
 const checklistSchema = z.object({
   propertyId: z.string().min(1, { message: 'A property must be selected.' }),
@@ -135,6 +145,8 @@ export default function ChecklistPage() {
   const tenantIdFromUrl = searchParams.get('tenantId');
 
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
+  const [formDataToSave, setFormDataToSave] = useState<ChecklistFormValues | null>(null);
 
   const form = useForm<ChecklistFormValues>({
     resolver: zodResolver(checklistSchema),
@@ -165,7 +177,7 @@ export default function ChecklistPage() {
   }, [firestore, tenantIdFromUrl]);
   const { data: tenant, isLoading: isLoadingTenant } = useDoc<Tenant>(tenantRef);
 
-  async function onSubmit(data: ChecklistFormValues) {
+  async function proceedToSave(data: ChecklistFormValues) {
     if (!user || !firestore) {
       toast({
         variant: 'destructive',
@@ -193,8 +205,6 @@ export default function ChecklistPage() {
         router.push(`/dashboard/tenants/${data.tenantId}`);
       })
       .catch(async (serverError) => {
-        console.error("Error saving checklist:", serverError);
-        // Create and emit a detailed error for debugging
         const permissionError = new FirestorePermissionError({
           path: checklistsCollection.path,
           operation: 'create',
@@ -202,19 +212,52 @@ export default function ChecklistPage() {
         });
         errorEmitter.emit('permission-error', permissionError);
 
-        // Also show a user-friendly toast
         toast({
           variant: 'destructive',
           title: 'Save Failed',
-          description: serverError.message.includes("invalid data") 
-            ? "The checklist data could not be saved. Please try again."
-            : serverError.message || 'An unexpected error occurred.',
+          description: serverError.message || 'An unexpected error occurred.',
         });
       })
       .finally(() => {
         setIsSubmitting(false);
       });
   }
+
+  async function onSubmit(data: ChecklistFormValues) {
+    // CHECKLIST COMPLETION CHECK (Mandatory Sections Only)
+    const requiredSections = ['beforeTenancy', 'deposit', 'atMoveIn'] as const;
+    let allRequiredTicked = true;
+
+    for (const sectionName of requiredSections) {
+        const sectionData = data[sectionName];
+        if (sectionData) {
+            for (const key in sectionData) {
+                if (typeof sectionData[key as keyof typeof sectionData] === 'boolean') {
+                    if (!sectionData[key as keyof typeof sectionData]) {
+                        allRequiredTicked = false;
+                        break;
+                    }
+                }
+            }
+        }
+        if (!allRequiredTicked) break;
+    }
+
+    if (allRequiredTicked) {
+      await proceedToSave(data);
+    } else {
+      setFormDataToSave(data);
+      setIsConfirmDialogOpen(true);
+    }
+  }
+
+  const handleConfirmSave = async () => {
+    setIsConfirmDialogOpen(false);
+    if (formDataToSave) {
+        await proceedToSave(formDataToSave);
+    }
+    setFormDataToSave(null);
+  };
 
   if (!propertyIdFromUrl || !tenantIdFromUrl) {
     return (
@@ -321,6 +364,28 @@ export default function ChecklistPage() {
           </Form>
         </CardContent>
       </Card>
+
+      <AlertDialog open={isConfirmDialogOpen} onOpenChange={(open) => {
+        setIsConfirmDialogOpen(open);
+        if (!open) {
+            setFormDataToSave(null);
+        }
+      }}>
+        <AlertDialogContent>
+          <AlertDialogHeader>
+            <AlertDialogTitle>Incomplete Checklist</AlertDialogTitle>
+            <AlertDialogDescription>
+              Some essential checklist items are not ticked. Are you sure you want to save anyway?
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter>
+            <AlertDialogCancel onClick={() => setFormDataToSave(null)}>Cancel</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmSave} disabled={isSubmitting}>
+              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Save Anyway'}
+            </AlertDialogAction>
+          </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </>
   );
 }

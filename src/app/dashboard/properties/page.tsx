@@ -43,6 +43,7 @@ import {
   updateDoc,
   onSnapshot,
   limit,
+  getDocs,
 } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { useMemo, useState, useEffect } from 'react';
@@ -84,6 +85,8 @@ export default function PropertiesPage() {
   const firestore = useFirestore();
   const [searchTerm, setSearchTerm] = useState('');
   const [propertyToDelete, setPropertyToDelete] = useState<Property | null>(null);
+  const [isCheckingSafeguards, setIsCheckingSafeguards] = useState(false);
+  const [safeguardWarning, setSafeguardWarning] = useState<string | null>(null);
   const [view, setView] = useState<'grid' | 'list'>('grid');
   
   // Real-time maintenance aggregation state
@@ -127,6 +130,46 @@ export default function PropertiesPage() {
 
     return () => unsubs.forEach(u => u());
   }, [user, properties, firestore]);
+
+  // Safeguard check before deletion
+  useEffect(() => {
+    if (!propertyToDelete || !user || !firestore) {
+        setSafeguardWarning(null);
+        return;
+    }
+
+    const checkSafeguards = async () => {
+        setIsCheckingSafeguards(true);
+        try {
+            // Check for active tenants
+            const tenantSnap = await getDocs(query(
+                collection(firestore, 'tenants'),
+                where('propertyId', '==', propertyToDelete.id),
+                where('status', '==', 'Active'),
+                limit(1)
+            ));
+
+            // Check for open maintenance logs
+            const maintenanceSnap = await getDocs(query(
+                collection(firestore, 'properties', propertyToDelete.id, 'maintenanceLogs'),
+                where('status', 'in', ['Open', 'In Progress']),
+                limit(1)
+            ));
+
+            let warning = "";
+            if (!tenantSnap.empty) warning += "This property has an active tenant. ";
+            if (!maintenanceSnap.empty) warning += "This property has open maintenance logs. ";
+            
+            setSafeguardWarning(warning || null);
+        } catch (e) {
+            console.error("Safeguard check failed", e);
+        } finally {
+            setIsCheckingSafeguards(false);
+        }
+    };
+
+    checkSafeguards();
+  }, [propertyToDelete, user, firestore]);
 
   // CRITICAL: Filter maintenance badge map by the current list of active property IDs
   const activeOpenMaintenance = useMemo(() => {
@@ -428,7 +471,16 @@ export default function PropertiesPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will delete the property at {[propertyToDelete?.address.nameOrNumber, propertyToDelete?.address.street].filter(Boolean).join(', ')}. You can restore it later from the 'View Deleted' page.
+              {isCheckingSafeguards ? (
+                <div className="flex items-center gap-2"><Loader2 className="h-4 w-4 animate-spin" /> Performing safeguard check...</div>
+              ) : safeguardWarning ? (
+                <div className="p-4 rounded-lg bg-destructive/10 border border-destructive text-destructive font-semibold">
+                    <p className="flex items-center gap-2"><AlertCircle className="h-4 w-4" /> Safeguard Warning:</p>
+                    <p className="text-sm mt-1">{safeguardWarning} Are you sure you want to delete this property record anyway?</p>
+                </div>
+              ) : (
+                `This will delete the property at ${[propertyToDelete?.address.nameOrNumber, propertyToDelete?.address.street].filter(Boolean).join(', ')}. You can restore it later from the 'View Deleted' page.`
+              )}
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
@@ -436,8 +488,9 @@ export default function PropertiesPage() {
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
               onClick={handleDeleteConfirm}
+              disabled={isCheckingSafeguards}
             >
-              Delete
+              Delete Anyway
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

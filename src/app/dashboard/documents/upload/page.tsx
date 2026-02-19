@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,18 +30,19 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Wand2 } from 'lucide-react';
+import { Loader2, Wand2, Info } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import {
   useUser,
   useFirestore,
-  useStorage,
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
 import { collection, query, where, addDoc, limit } from 'firebase/firestore';
 import { analyzeDocument } from '@/ai/flows/document-analysis-flow';
+import { differenceInMonths } from 'date-fns';
+import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const documentSchema = z.object({
   title: z.string().min(3, 'Title is too short'),
@@ -75,7 +75,6 @@ export default function UploadDocumentPage() {
   const router = useRouter();
   const { user } = useUser();
   const firestore = useFirestore();
-  const storage = useStorage();
   const [isSaving, setIsSaving] = useState(false);
   const [isAnalyzing, setIsAnalyzing] = useState(false);
   const fileInputRef = useRef<HTMLInputElement>(null);
@@ -89,6 +88,20 @@ export default function UploadDocumentPage() {
         notes: '',
     }
   });
+
+  const watchIssueDate = form.watch('issueDate');
+  const watchExpiryDate = form.watch('expiryDate');
+  const watchType = form.watch('documentType');
+
+  const complianceWarning = useMemo(() => {
+    if (watchType === 'Gas Safety Certificate' && watchIssueDate && watchExpiryDate) {
+        const months = differenceInMonths(watchExpiryDate, watchIssueDate);
+        if (months > 12) {
+            return "Gas Safety Certificates typically require annual renewal (12 months). Please verify the validity period.";
+        }
+    }
+    return null;
+  }, [watchType, watchIssueDate, watchExpiryDate]);
   
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
@@ -203,6 +216,14 @@ export default function UploadDocumentPage() {
       <CardContent>
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+             {complianceWarning && (
+                <Alert className="bg-amber-50 border-amber-200">
+                    <Info className="h-4 w-4 text-amber-600" />
+                    <AlertTitle className="text-amber-800 text-sm font-bold">Compliance Guidance</AlertTitle>
+                    <AlertDescription className="text-amber-700 text-xs">{complianceWarning}</AlertDescription>
+                </Alert>
+             )}
+
              <FormField
                 control={form.control}
                 name="title"
