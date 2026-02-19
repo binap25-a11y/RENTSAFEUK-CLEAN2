@@ -1,6 +1,7 @@
 'use client';
 
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import {
   SidebarProvider,
   Sidebar,
@@ -13,15 +14,27 @@ import {
 import { MainNav } from '@/components/dashboard/main-nav';
 import { UserNav } from '@/components/dashboard/user-nav';
 import { Logo } from '@/components/icons';
-import { Loader2, Share2, Search } from 'lucide-react';
+import { Loader2, Search, Share2 } from 'lucide-react';
 import { useUser } from '@/firebase';
 import { useRouter } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { Notifications } from '@/components/dashboard/notifications';
 import { BackToTopButton } from '@/components/ui/back-to-top-button';
 import { Button } from '@/components/ui/button';
-import { ShareDialog } from '@/components/dashboard/share-dialog';
-import { GlobalSearchDialog } from '@/components/dashboard/global-search-dialog';
+
+// Dynamically import heavy dashboard components to split the JS chunks and resolve loading timeouts.
+// This ensures the main layout bundle remains lightweight and interactive.
+const Notifications = dynamic(() => import('@/components/dashboard/notifications').then(mod => mod.Notifications), {
+  ssr: false,
+  loading: () => <div className="h-8 w-8" />
+});
+
+const ShareDialog = dynamic(() => import('@/components/dashboard/share-dialog').then(mod => mod.ShareDialog), {
+  ssr: false
+});
+
+const GlobalSearchDialog = dynamic(() => import('@/components/dashboard/global-search-dialog').then(mod => mod.GlobalSearchDialog), {
+  ssr: false
+});
 
 function DashboardHeader() {
   const [isShareOpen, setIsShareOpen] = useState(false);
@@ -81,17 +94,28 @@ export default function DashboardLayout({
 }) {
   const { user, isUserLoading } = useUser();
   const router = useRouter();
+  const [isMounted, setIsMounted] = useState(false);
 
+  // Ensure component is fully mounted on the client to avoid hydration issues and chunk timing errors
   useEffect(() => {
-    if (!isUserLoading && !user) {
+    setIsMounted(true);
+  }, []);
+
+  // Centralized authentication guard
+  useEffect(() => {
+    if (isMounted && !isUserLoading && !user) {
       router.push('/');
     }
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading, router, isMounted]);
 
-  if (isUserLoading || !user) {
+  // Loading state during initial mount or user check to provide a smooth transition
+  if (!isMounted || isUserLoading || !user) {
     return (
-      <div className="flex h-screen items-center justify-center bg-background">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+      <div className="flex h-screen w-full items-center justify-center bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground animate-pulse font-medium">Initializing Dashboard...</p>
+        </div>
       </div>
     );
   }
@@ -100,21 +124,27 @@ export default function DashboardLayout({
     <SidebarProvider>
       <Sidebar>
         <SidebarHeader>
-          <Link href="/dashboard" className="flex items-center gap-2">
+          <Link href="/dashboard" className="flex items-center gap-2 px-2 py-4">
             <Logo className="w-8 h-8 text-primary" />
-            <span className="font-bold text-lg font-headline">RentSafeUK</span>
+            <span className="font-bold text-lg font-headline tracking-tight">RentSafeUK</span>
           </Link>
         </SidebarHeader>
         <SidebarContent>
           <MainNav />
         </SidebarContent>
         <SidebarFooter>
-          {/* Footer content if any */}
+          <div className="p-4 text-[10px] text-muted-foreground uppercase tracking-widest text-center opacity-50">
+            RentSafeUK Portfolio v1.0
+          </div>
         </SidebarFooter>
       </Sidebar>
       <SidebarInset>
         <DashboardHeader />
-        <main className="flex-1 p-4 sm:p-6">{children}</main>
+        <main className="flex-1 p-4 sm:p-6 lg:p-8">
+          <div className="mx-auto max-w-7xl w-full">
+            {children}
+          </div>
+        </main>
         <BackToTopButton />
       </SidebarInset>
     </SidebarProvider>
