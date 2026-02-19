@@ -152,31 +152,31 @@ export default function TenantDetailPage() {
                     <CardDescription>Primary communication details for this tenant.</CardDescription>
                 </CardHeader>
                 <CardContent className="grid gap-6 md:grid-cols-3 pt-4 border-t">
-                    <div className="flex items-center gap-4 min-w-0">
+                    <div className="flex items-center gap-4">
                         <div className="p-2 rounded-lg bg-primary/10 shrink-0">
                             <User className="h-5 w-5 text-primary" />
                         </div>
-                        <div className="min-w-0 flex-1">
+                        <div>
                             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Full Name</p>
-                            <p className="font-semibold truncate">{tenant.name}</p>
+                            <p className="font-semibold">{tenant.name}</p>
                         </div>
                     </div>
-                    <div className="flex items-center gap-4 min-w-0">
+                    <div className="flex items-center gap-4">
                         <div className="p-2 rounded-lg bg-primary/10 shrink-0">
                             <Mail className="h-5 w-5 text-primary" />
                         </div>
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0">
                             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Email</p>
-                            <a href={`mailto:${tenant.email}`} className="font-semibold text-primary hover:underline truncate block">{tenant.email}</a>
+                            <a href={`mailto:${tenant.email}`} className="font-semibold text-primary hover:underline break-all block">{tenant.email}</a>
                         </div>
                     </div>
-                    <div className="flex items-center gap-4 min-w-0">
+                    <div className="flex items-center gap-4">
                         <div className="p-2 rounded-lg bg-primary/10 shrink-0">
                             <Phone className="h-5 w-5 text-primary" />
                         </div>
-                        <div className="min-w-0 flex-1">
+                        <div>
                             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Telephone</p>
-                            <p className="font-semibold truncate">{tenant.telephone}</p>
+                            <p className="font-semibold">{tenant.telephone}</p>
                         </div>
                     </div>
                 </CardContent>
@@ -194,7 +194,7 @@ export default function TenantDetailPage() {
                                 <MapPin className="h-5 w-5 text-muted-foreground" />
                             </div>
                             <div className="min-w-0">
-                                <Link href={`/dashboard/properties/${tenant.propertyId}`} className="text-lg font-bold text-primary hover:underline leading-tight">
+                                <Link href={`/dashboard/properties/${tenant.propertyId}`} className="text-lg font-bold text-primary hover:underline leading-tight block">
                                     {propertyAddress}
                                 </Link>
                                 <div className="flex items-center gap-2 mt-2">

@@ -249,7 +249,7 @@ export default function PropertyDetailPage() {
                   <div className="p-4 rounded-lg bg-muted/50 flex flex-col items-center gap-1">
                       <Home className="h-5 w-5 text-primary mb-1" />
                       <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider text-center">Type</span>
-                      <span className="text-sm font-semibold">{property.propertyType}</span>
+                      <span className="text-sm font-semibold text-center">{property.propertyType}</span>
                   </div>
                   <div className="p-4 rounded-lg bg-muted/50 flex flex-col items-center gap-1">
                       <Bed className="h-5 w-5 text-primary mb-1" />
@@ -299,25 +299,25 @@ export default function PropertyDetailPage() {
                     </div>
                 ) : tenant ? (
                   <>
-                    <div className="flex items-start gap-3 min-w-0">
+                    <div className="flex items-start gap-3">
                       <User className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
-                      <div className="min-w-0 flex-1">
-                        <p className="text-sm font-medium truncate">{tenant.name}</p>
+                      <div>
+                        <p className="text-sm font-medium">{tenant.name}</p>
                         <Link href={`/dashboard/tenants/${tenant.id}`} className="text-sm text-primary hover:underline">View Profile</Link>
                       </div>
                     </div>
-                    <div className="flex items-start gap-3 min-w-0">
+                    <div className="flex items-start gap-3">
                       <Mail className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
-                      <div className="min-w-0 flex-1">
+                      <div className="min-w-0">
                         <p className="text-sm font-medium">Email</p>
-                        <a href={`mailto:${tenant.email}`} className="text-sm text-muted-foreground hover:underline truncate block">{tenant.email}</a>
+                        <a href={`mailto:${tenant.email}`} className="text-sm text-muted-foreground hover:underline break-all block">{tenant.email}</a>
                       </div>
                     </div>
-                    <div className="flex items-start gap-3 min-w-0">
+                    <div className="flex items-start gap-3">
                       <Phone className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
-                      <div className="min-w-0 flex-1">
+                      <div>
                         <p className="text-sm font-medium">Phone</p>
-                        <p className="text-sm text-muted-foreground truncate">{tenant.telephone}</p>
+                        <p className="text-sm text-muted-foreground">{tenant.telephone}</p>
                       </div>
                     </div>
                   </>

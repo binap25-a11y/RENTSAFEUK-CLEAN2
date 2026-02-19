@@ -129,27 +129,27 @@ export default function ContractorDetailPage() {
             </CardHeader>
             <CardContent className="space-y-4">
                 <div className="flex items-start gap-4">
-                    <HardHat className="h-5 w-5 text-muted-foreground mt-1" />
+                    <HardHat className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                     <div>
                         <p className="text-sm text-muted-foreground">Trade</p>
                         <p>{contractor.trade}</p>
                     </div>
                 </div>
                 <div className="flex items-start gap-4">
-                    <Phone className="h-5 w-5 text-muted-foreground mt-1" />
+                    <Phone className="h-5 w-5 text-muted-foreground mt-1 shrink-0" />
                      <div>
                         <p className="text-sm text-muted-foreground">Phone</p>
-                        <a href={`tel:${contractor.phone}`} className="text-primary hover:underline">
+                        <a href={`tel:${contractor.phone}`} className="text-primary hover:underline block">
                             {contractor.phone}
                         </a>
                     </div>
                 </div>
                 {contractor.email && (
-                    <div className="flex items-start gap-4 min-w-0">
+                    <div className="flex items-start gap-4">
                         <Mail className="h-5 w-5 text-muted-foreground shrink-0 mt-1" />
-                        <div className="min-w-0 flex-1">
+                        <div className="min-w-0">
                             <p className="text-sm text-muted-foreground">Email</p>
-                            <a href={`mailto:${contractor.email}`} className="text-primary hover:underline truncate block">
+                            <a href={`mailto:${contractor.email}`} className="text-primary hover:underline break-all block">
                                 {contractor.email}
                             </a>
                         </div>
@@ -164,7 +164,7 @@ export default function ContractorDetailPage() {
                     <CardTitle>Notes</CardTitle>
                 </CardHeader>
                 <CardContent>
-                    <p className="text-sm text-muted-foreground whitespace-pre-wrap">{contractor.notes}</p>
+                    <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed">{contractor.notes}</p>
                 </CardContent>
             </Card>
         )}
