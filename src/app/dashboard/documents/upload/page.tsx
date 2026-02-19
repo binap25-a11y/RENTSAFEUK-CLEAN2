@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Wand2, Info } from 'lucide-react';
+import { Loader2, Info } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -40,7 +40,6 @@ import {
   useMemoFirebase,
 } from '@/firebase';
 import { collection, query, where, addDoc, limit } from 'firebase/firestore';
-import { analyzeDocument } from '@/ai/flows/document-analysis-flow';
 import { differenceInMonths } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -69,15 +68,11 @@ interface Property {
   status: string;
 }
 
-const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
-
 export default function UploadDocumentPage() {
   const router = useRouter();
   const { user } = useUser();
   const firestore = useFirestore();
   const [isSaving, setIsSaving] = useState(false);
-  const [isAnalyzing, setIsAnalyzing] = useState(false);
-  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<DocumentFormValues>({
     resolver: zodResolver(documentSchema),
@@ -119,44 +114,6 @@ export default function UploadDocumentPage() {
     return allProperties?.filter(p => activeStatuses.includes(p.status)) ?? [];
   }, [allProperties]);
 
-  const handleAIAnalysis = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
-
-    if (file.size > MAX_FILE_SIZE) {
-        toast({ variant: 'destructive', title: 'File too large', description: 'Maximum file size is 5MB.' });
-        return;
-    }
-
-    setIsAnalyzing(true);
-    try {
-        const reader = new FileReader();
-        const dataUriPromise = new Promise<string>((resolve) => {
-            reader.onload = () => resolve(reader.result as string);
-            reader.readAsDataURL(file);
-        });
-        
-        const dataUri = await dataUriPromise;
-        const result = await analyzeDocument({
-            photoDataUri: dataUri,
-            documentHint: form.getValues('title'),
-        });
-
-        form.setValue('title', result.title);
-        form.setValue('documentType', result.documentType);
-        if (result.issueDate) form.setValue('issueDate', new Date(result.issueDate));
-        if (result.expiryDate) form.setValue('expiryDate', new Date(result.expiryDate));
-        form.setValue('notes', result.notes);
-
-        toast({ title: 'Analysis Complete', description: 'Form fields have been updated based on the document.' });
-    } catch (error) {
-        console.error('AI Analysis failed', error);
-        toast({ variant: 'destructive', title: 'AI Error', description: 'Could not analyze document. Please fill in details manually.' });
-    } finally {
-        setIsAnalyzing(false);
-    }
-  };
-
   async function onSubmit(data: DocumentFormValues) {
     if (!user || !firestore) return;
     setIsSaving(true);
@@ -185,33 +142,10 @@ export default function UploadDocumentPage() {
   return (
     <Card className="max-w-2xl mx-auto">
       <CardHeader>
-        <div className="flex justify-between items-start">
-            <div>
-                <CardTitle>Log Property Document</CardTitle>
-                <CardDescription>
-                Record a new legal or compliance document.
-                </CardDescription>
-            </div>
-            <div className="flex flex-col items-end gap-2">
-                <Input
-                    type="file"
-                    className="hidden"
-                    ref={fileInputRef}
-                    onChange={handleAIAnalysis}
-                    accept="image/*"
-                />
-                <Button 
-                    type="button" 
-                    variant="outline" 
-                    size="sm" 
-                    onClick={() => fileInputRef.current?.click()}
-                    disabled={isAnalyzing}
-                >
-                    {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
-                    AI Auto-Fill (Photo)
-                </Button>
-            </div>
-        </div>
+        <CardTitle>Log Property Document</CardTitle>
+        <CardDescription>
+          Record a new legal or compliance document for your portfolio.
+        </CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
