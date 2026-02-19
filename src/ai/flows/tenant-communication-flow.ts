@@ -5,6 +5,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
+import { gemini15Flash } from '@genkit-ai/google-genai';
 
 const TenantCommunicationInputSchema = z.object({
   tenantName: z.string(),
@@ -29,6 +30,7 @@ export async function generateTenantCommunication(
 
 const communicationPrompt = ai.definePrompt({
   name: 'tenantCommunicationPrompt',
+  model: gemini15Flash,
   input: { schema: TenantCommunicationInputSchema },
   output: { schema: TenantCommunicationOutputSchema },
   prompt: `You are an expert UK property manager. Draft a professional notice to a tenant.
@@ -54,11 +56,11 @@ const tenantCommunicationFlow = ai.defineFlow(
     outputSchema: TenantCommunicationOutputSchema,
   },
   async (input) => {
-    // Uses the default model configured in the ai instance
+    // Explicitly using the prompt which now includes the model definition
     const { output } = await communicationPrompt(input);
     if (!output) {
       throw new Error('AI failed to generate communication output.');
     }
-    return output;
+    return output!;
   }
 );

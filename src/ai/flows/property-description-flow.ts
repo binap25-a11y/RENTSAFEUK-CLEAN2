@@ -5,6 +5,7 @@
 
 import { ai } from '@/ai/genkit';
 import { z } from 'zod';
+import { gemini15Flash } from '@genkit-ai/google-genai';
 
 const PropertyDescriptionInputSchema = z.object({
   propertyType: z.string(),
@@ -29,6 +30,7 @@ export async function generatePropertyDescription(
 
 const propertyDescriptionPrompt = ai.definePrompt({
   name: 'propertyDescriptionPrompt',
+  model: gemini15Flash,
   input: { schema: PropertyDescriptionInputSchema },
   output: { schema: PropertyDescriptionOutputSchema },
   prompt: `You are an expert real estate copywriter. Write a professional, high-converting UK property listing.
