@@ -87,7 +87,7 @@ export function TenantCommunicationAssistant({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[95vw] sm:max-w-[650px] h-[85vh] flex flex-col p-0 overflow-hidden shadow-2xl">
+        <DialogContent className="w-[95vw] sm:max-w-[650px] max-h-[90dvh] flex flex-col p-0 overflow-hidden shadow-2xl">
             <DialogHeader className="p-6 pb-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <div className="flex items-center gap-3">
                     <div className="p-2 rounded-full bg-primary/10">
@@ -100,7 +100,7 @@ export function TenantCommunicationAssistant({
                 </div>
             </DialogHeader>
             
-            <ScrollArea className="flex-1 min-h-0">
+            <ScrollArea className="flex-1 min-h-0 bg-muted/5">
                 <div className="p-6 space-y-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
@@ -109,7 +109,7 @@ export function TenantCommunicationAssistant({
                                 Category
                             </Label>
                             <Select value={commType} onValueChange={(v: any) => setCommType(v)}>
-                                <SelectTrigger className="bg-muted/30">
+                                <SelectTrigger className="bg-background">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -123,7 +123,7 @@ export function TenantCommunicationAssistant({
                                 Tone
                             </Label>
                             <Select value={tone} onValueChange={(v: any) => setTone(v)}>
-                                <SelectTrigger className="bg-muted/30">
+                                <SelectTrigger className="bg-background">
                                     <SelectValue />
                                 </SelectTrigger>
                                 <SelectContent>
@@ -139,17 +139,17 @@ export function TenantCommunicationAssistant({
                             placeholder="e.g. rent is 3 days late, inspection scheduled for Tuesday..." 
                             value={commDetails} 
                             onChange={e => setCommDetails(e.target.value)} 
-                            className="min-h-[100px] resize-none bg-muted/30"
+                            className="min-h-[100px] resize-none bg-background"
                         />
                     </div>
 
                     {generatedComm && (
                         <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300 pt-4 border-t pb-6">
-                            <div className="bg-muted/30 p-4 rounded-lg border">
+                            <div className="bg-background p-4 rounded-lg border">
                                 <p className="text-[9px] font-bold text-muted-foreground uppercase mb-1">Subject</p>
                                 <p className="text-sm font-bold">{generatedComm.subject}</p>
                             </div>
-                            <div className="bg-muted/30 p-4 rounded-lg border">
+                            <div className="bg-background p-4 rounded-lg border">
                                 <p className="text-[9px] font-bold text-muted-foreground uppercase mb-2">Message</p>
                                 <div className="text-sm whitespace-pre-wrap leading-relaxed">
                                     {generatedComm.message}
@@ -157,7 +157,7 @@ export function TenantCommunicationAssistant({
                             </div>
                             <div className="grid grid-cols-2 gap-3">
                                 <Button variant="outline" size="sm" onClick={handleCopy} className="w-full">
-                                    <Copy className="mr-2 h-4 w-4" /> Copy
+                                    <Copy className="mr-2 h-4 w-4" /> Copy Text
                                 </Button>
                                 <Button size="sm" onClick={handleSendEmail} className="w-full">
                                     <Mail className="mr-2 h-4 w-4" /> Open Email
@@ -168,15 +168,15 @@ export function TenantCommunicationAssistant({
                 </div>
             </ScrollArea>
             
-            <DialogFooter className="p-4 border-t bg-muted/10 shrink-0">
+            <DialogFooter className="p-4 border-t bg-muted/30 shrink-0">
                 <div className="flex w-full gap-2">
                     <Button variant="ghost" onClick={() => onOpenChange(false)} className="flex-1">
-                        Close
+                        Cancel
                     </Button>
                     <Button 
                         onClick={handleGenerateComm} 
                         disabled={isGenerating || !commDetails.trim()} 
-                        className="flex-[2] font-bold shadow-md active:scale-95 transition-transform"
+                        className="flex-[2] font-bold shadow-lg h-11"
                     >
                         {isGenerating ? (
                             <>
