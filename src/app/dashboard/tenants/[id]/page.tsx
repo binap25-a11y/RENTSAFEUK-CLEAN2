@@ -107,8 +107,23 @@ export default function TenantDetailPage() {
   const firstScreening = screenings?.[0];
 
   const handleGenerateComm = async () => {
-    if (!tenant || !property) return;
+    if (!tenant || !property) {
+        toast({
+            variant: 'destructive',
+            title: 'Data not ready',
+            description: 'Please wait for tenant and property details to load.',
+        });
+        return;
+    }
+
     setIsGenerating(true);
+    setGeneratedComm(null);
+    
+    toast({
+        title: 'Drafting message...',
+        description: 'The AI is generating your communication based on the details provided.',
+    });
+
     try {
         const result = await generateTenantCommunication({
             tenantName: tenant.name,
@@ -118,8 +133,17 @@ export default function TenantDetailPage() {
             tone: 'Professional'
         });
         setGeneratedComm(result);
+        toast({
+            title: 'Message Drafted',
+            description: 'Review the generated notice below.',
+        });
     } catch (e) {
-        toast({ variant: 'destructive', title: 'AI Error', description: 'Could not generate message.' });
+        console.error('Communication Assistant failed:', e);
+        toast({ 
+            variant: 'destructive', 
+            title: 'AI Assistant Error', 
+            description: 'Could not generate the message. Please try again later.' 
+        });
     } finally {
         setIsGenerating(false);
     }
@@ -155,7 +179,7 @@ export default function TenantDetailPage() {
                     <h1 className="text-2xl font-bold">{tenant.name}</h1>
                 </div>
                 <div className="flex gap-2">
-                    <Button variant="outline" onClick={() => setIsAssistantOpen(true)}>
+                    <Button variant="outline" onClick={() => { setGeneratedComm(null); setIsAssistantOpen(true); }} disabled={isLoadingTenant || isLoadingProperty}>
                         <Wand2 className="mr-2 h-4 w-4" /> Comm Assistant
                     </Button>
                     <DropdownMenu>
@@ -223,10 +247,16 @@ export default function TenantDetailPage() {
                         </div>
                         <div className="space-y-2">
                             <Label>Specific Details</Label>
-                            <Textarea placeholder="e.g. rent is 3 days late, inspection scheduled for Tuesday at 10am..." value={commDetails} onChange={e => setCommDetails(e.target.value)} />
+                            <Textarea 
+                                placeholder="e.g. rent is 3 days late, inspection scheduled for Tuesday at 10am..." 
+                                value={commDetails} 
+                                onChange={e => setCommDetails(e.target.value)} 
+                                className="min-h-[100px]"
+                            />
                         </div>
                         <Button onClick={handleGenerateComm} disabled={isGenerating || !commDetails} className="w-full">
-                            {isGenerating ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Wand2 className="mr-2 h-4 w-4" />} Generate Message
+                            {isGenerating ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Wand2 className="mr-2 h-4 w-4" />} 
+                            {isGenerating ? 'Drafting...' : 'Generate Message'}
                         </Button>
 
                         {generatedComm && (
