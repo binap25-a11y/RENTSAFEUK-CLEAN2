@@ -1,22 +1,36 @@
+
 'use client';
 
 import { useEffect, useRef, useCallback } from 'react';
-import { useAuth } from '@/firebase';
+import { useAuth, useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { signOut } from 'firebase/auth';
+import { doc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/hooks/use-toast';
 
 /**
  * @fileOverview Monitors user activity and logs them out after a period of inactivity.
- * Default timeout is 30 minutes.
+ * Reads the timeout period from the user's Firestore profile.
  */
-
-const IDLE_TIMEOUT_MS = 30 * 60 * 1000; // 30 minutes
 
 export function IdleTimeout() {
   const auth = useAuth();
+  const { user } = useUser();
+  const firestore = useFirestore();
   const router = useRouter();
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
+
+  // Fetch the user's profile to get their preferred timeout
+  const userProfileRef = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [firestore, user]);
+  
+  const { data: profile } = useDoc(userProfileRef);
+
+  // Default to 30 minutes if no preference is found
+  const timeoutMinutes = profile?.idleTimeoutMinutes || 30;
+  const idleTimeoutMs = timeoutMinutes * 60 * 1000;
 
   const handleLogout = useCallback(async () => {
     if (auth && auth.currentUser) {
@@ -24,21 +38,21 @@ export function IdleTimeout() {
         await signOut(auth);
         toast({
           title: 'Session Expired',
-          description: 'You have been logged out due to inactivity for security reasons.',
+          description: `You have been logged out due to ${timeoutMinutes} minutes of inactivity.`,
         });
         router.push('/');
       } catch (error) {
         console.error('Failed to sign out during timeout:', error);
       }
     }
-  }, [auth, router]);
+  }, [auth, router, timeoutMinutes]);
 
   const resetTimeout = useCallback(() => {
     if (timeoutRef.current) {
       clearTimeout(timeoutRef.current);
     }
-    timeoutRef.current = setTimeout(handleLogout, IDLE_TIMEOUT_MS);
-  }, [handleLogout]);
+    timeoutRef.current = setTimeout(handleLogout, idleTimeoutMs);
+  }, [handleLogout, idleTimeoutMs]);
 
   useEffect(() => {
     // Events that count as "activity"

@@ -19,6 +19,10 @@
           "type": "string",
           "format": "date-time",
           "description": "The timestamp when the user account was created."
+        },
+        "idleTimeoutMinutes": {
+          "type": "number",
+          "description": "Custom inactivity timeout in minutes before automatic logout."
         }
       },
       "required": [

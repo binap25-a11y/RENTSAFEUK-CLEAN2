@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,15 +15,24 @@ import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
-import { useUser, useAuth } from '@/firebase';
+import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { updateProfile } from 'firebase/auth';
+import { doc, setDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
 import { Loader2, ShieldCheck, Clock, Lock, Key } from 'lucide-react';
 import { useRouter } from 'next/navigation';
@@ -31,6 +41,7 @@ import { Badge } from '@/components/ui/badge';
 const profileSchema = z.object({
   displayName: z.string().min(2, 'Display name must be at least 2 characters.'),
   email: z.string().email().optional(),
+  idleTimeoutMinutes: z.coerce.number().min(5, 'Minimum timeout is 5 minutes.'),
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -38,6 +49,7 @@ type ProfileFormValues = z.infer<typeof profileSchema>;
 export default function SettingsPage() {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
+  const firestore = useFirestore();
   const router = useRouter();
   const [isUpdating, setIsUpdating] = useState(false);
 
@@ -46,20 +58,29 @@ export default function SettingsPage() {
     defaultValues: {
       displayName: '',
       email: '',
+      idleTimeoutMinutes: 30,
     },
   });
+
+  const userDocRef = useMemoFirebase(() => {
+    if (!firestore || !user) return null;
+    return doc(firestore, 'users', user.uid);
+  }, [firestore, user]);
+  
+  const { data: profile, isLoading: isProfileLoading } = useDoc(userDocRef);
 
   useEffect(() => {
     if (user) {
       form.reset({
         displayName: user.displayName || '',
         email: user.email || '',
+        idleTimeoutMinutes: profile?.idleTimeoutMinutes || 30,
       });
     }
-  }, [user, form]);
+  }, [user, profile, form]);
 
   async function onSubmit(data: ProfileFormValues) {
-    if (!auth || !auth.currentUser) {
+    if (!auth || !auth.currentUser || !firestore || !user) {
       toast({
         variant: 'destructive',
         title: 'Authentication Error',
@@ -70,15 +91,22 @@ export default function SettingsPage() {
 
     setIsUpdating(true);
     try {
+      // Update Firebase Auth Profile
       await updateProfile(auth.currentUser, {
         displayName: data.displayName,
       });
       
+      // Update Firestore User Document
+      await setDoc(doc(firestore, 'users', user.uid), {
+        displayName: data.displayName,
+        idleTimeoutMinutes: data.idleTimeoutMinutes,
+      }, { merge: true });
+      
       await auth.currentUser.reload();
 
       toast({
-        title: 'Profile Updated',
-        description: 'Your profile has been successfully updated.',
+        title: 'Settings Saved',
+        description: 'Your profile and session preferences have been updated.',
       });
 
       router.refresh();
@@ -88,14 +116,16 @@ export default function SettingsPage() {
       toast({
         variant: 'destructive',
         title: 'Update Failed',
-        description: error.message || 'There was an error updating your profile. Please try again.',
+        description: error.message || 'There was an error updating your settings. Please try again.',
       });
     } finally {
       setIsUpdating(false);
     }
   }
 
-  if (isUserLoading) {
+  const isLoading = isUserLoading || isProfileLoading;
+
+  if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
         <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
@@ -150,9 +180,39 @@ export default function SettingsPage() {
                     </FormItem>
                   )}
                 />
+
+                <div className="pt-4 border-t">
+                    <FormField
+                        control={form.control}
+                        name="idleTimeoutMinutes"
+                        render={({ field }) => (
+                            <FormItem>
+                                <FormLabel>Automatic Sign-out Period</FormLabel>
+                                <Select onValueChange={field.onChange} value={String(field.value)}>
+                                    <FormControl>
+                                        <SelectTrigger>
+                                            <SelectValue placeholder="Select timeout" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        <SelectItem value="15">15 Minutes</SelectItem>
+                                        <SelectItem value="30">30 Minutes (Recommended)</SelectItem>
+                                        <SelectItem value="60">1 Hour</SelectItem>
+                                        <SelectItem value="120">2 Hours</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                                <FormDescription>
+                                    Set how long the application should wait during inactivity before logging you out.
+                                </FormDescription>
+                                <FormMessage />
+                            </FormItem>
+                        )}
+                    />
+                </div>
+
                 <Button type="submit" disabled={isUpdating}>
                   {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  Save Changes
+                  Save All Changes
                 </Button>
               </form>
             </Form>
@@ -181,7 +241,7 @@ export default function SettingsPage() {
                     <div className="space-y-1">
                         <p className="text-sm font-bold">Automatic Sign-out</p>
                         <p className="text-xs text-muted-foreground leading-relaxed">
-                            For your protection, you will be automatically logged out after <strong>30 minutes</strong> of inactivity.
+                            For your protection, you will be automatically logged out after <strong>{form.watch('idleTimeoutMinutes')} minutes</strong> of inactivity.
                         </p>
                     </div>
                 </div>
