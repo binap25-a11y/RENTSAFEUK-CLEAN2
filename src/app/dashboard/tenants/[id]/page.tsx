@@ -4,6 +4,7 @@ import { useParams, notFound, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, User, Mail, Phone, Calendar as CalendarIcon, Edit, Trash2, Home, Loader2, MoreVertical, UserPlus, Eye, ListTodo, Banknote, Wand2, Send, Sparkles, Copy, ExternalLink } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
