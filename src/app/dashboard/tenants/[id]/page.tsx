@@ -23,9 +23,10 @@ import {
 } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
-// Lazy load the AI assistant
+// Lazy load the AI assistant to optimize page load
 const TenantCommunicationAssistant = dynamic(() => import('@/components/dashboard/tenant-communication-assistant').then(m => m.TenantCommunicationAssistant), {
-    ssr: false
+    ssr: false,
+    loading: () => <div className="h-10 w-32 bg-muted animate-pulse rounded-md" />
 });
 
 // Types
@@ -110,7 +111,7 @@ export default function TenantDetailPage() {
 
   return (
     <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between gap-4">
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className='flex items-center gap-4'>
                 <Button variant="outline" size="icon" asChild>
                     <Link href="/dashboard/tenants"><ArrowLeft className="h-4 w-4" /></Link>
@@ -121,7 +122,7 @@ export default function TenantDetailPage() {
                 </div>
             </div>
             <div className="flex items-center gap-2">
-                <Button variant="outline" onClick={() => setIsAiAiAssistantOpen(true)} className="hidden sm:flex gap-2">
+                <Button variant="default" onClick={() => setIsAiAiAssistantOpen(true)} className="flex-1 sm:flex-none gap-2">
                     <MessageSquare className="h-4 w-4" /> AI Assistant
                 </Button>
                 <Button variant="outline" asChild className="hidden sm:flex">
@@ -136,9 +137,6 @@ export default function TenantDetailPage() {
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setIsAiAiAssistantOpen(true)} className="sm:hidden">
-                            <MessageSquare className="mr-2 h-4 w-4" /> AI Assistant
-                        </DropdownMenuItem>
                         <DropdownMenuItem asChild className="sm:hidden">
                             <Link href={`/dashboard/tenants/${id}/edit`}>
                                 <Edit className="mr-2 h-4 w-4" /> Edit
