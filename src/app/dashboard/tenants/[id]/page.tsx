@@ -3,9 +3,9 @@
 
 import { useParams, notFound, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, User, Mail, Phone, Calendar as CalendarIcon, Edit, Trash2, Home, Loader2, MoreVertical, UserPlus, Eye, ListTodo, Banknote } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, Calendar as CalendarIcon, Edit, Trash2, Home, Loader2, MoreVertical, UserPlus, Eye, ListTodo, Banknote, Wand2, Send, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
 import { doc, collection, query, updateDoc, where, limit } from 'firebase/firestore';
@@ -22,21 +22,20 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
-import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Dialog, DialogContent, DialogDescription, DialogFooter, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Textarea } from '@/components/ui/textarea';
+import { generateTenantCommunication, TenantCommunicationOutput } from '@/ai/flows/tenant-communication-flow';
 
-
-// Type for a Property document from Firestore
+// Types
 interface Property {
     address: {
-      nameOrNumber?: string;
       street: string;
       city: string;
-      county?: string;
       postcode: string;
     };
 }
 
-// Type for tenant from firestore
 interface Tenant {
     id: string;
     name: string;
@@ -44,42 +43,22 @@ interface Tenant {
     telephone: string;
     propertyId: string;
     monthlyRent?: number;
-    tenancyStartDate: { seconds: number, nanoseconds: number } | Date | string;
-    tenancyEndDate?: { seconds: number, nanoseconds: number } | Date | string;
+    tenancyStartDate: any;
+    tenancyEndDate?: any;
     notes?: string;
     status?: string;
 }
 
-// Type for screening record
-interface TenantScreening {
-    id: string;
-    screeningDate: { seconds: number; nanoseconds: number } | Date | string;
-}
+interface TenantScreening { id: string; screeningDate: any; }
+interface Checklist { id: string; completedDate: any; }
 
-// Type for checklist record
-interface Checklist {
-    id: string;
-    completedDate: { seconds: number; nanoseconds: number } | Date | string;
-}
-
-// A robust function to handle various date formats
 function safeCreateDate(dateValue: any): Date | null {
     if (!dateValue) return null;
-    // If it's already a Date object, return it
     if (dateValue instanceof Date) return dateValue;
-    // Handle Firestore Timestamp object
-    if (typeof dateValue === 'object' && dateValue.seconds !== undefined) {
-        return new Date(dateValue.seconds * 1000);
-    }
-    // Handle ISO string or other date-parsable strings/numbers
+    if (typeof dateValue === 'object' && dateValue.seconds !== undefined) return new Date(dateValue.seconds * 1000);
     const d = new Date(dateValue);
-    // Check if the parsed date is valid
-    if (!isNaN(d.getTime())) {
-        return d;
-    }
-    return null;
+    return isNaN(d.getTime()) ? null : d;
 }
-
 
 export default function TenantDetailPage() {
   const params = useParams();
@@ -89,6 +68,13 @@ export default function TenantDetailPage() {
   const { toast } = useToast();
   const { user } = useUser();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  
+  // Communication Assistant State
+  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
+  const [commType, setCommType] = useState<'Rent Arrears' | 'Inspection Notice' | 'Maintenance Update' | 'Tenancy Renewal' | 'General Notice'>('General Notice');
+  const [commDetails, setCommDetails] = useState('');
+  const [isGenerating, setIsGenerating] = useState(false);
+  const [generatedComm, setGeneratedComm] = useState<TenantCommunicationOutput | null>(null);
 
   const tenantRef = useMemoFirebase(() => {
     if (!firestore || !id) return null;
@@ -105,291 +91,153 @@ export default function TenantDetailPage() {
   
   const screeningsQuery = useMemoFirebase(() => {
     if (!firestore || !id || !user) return null;
-    return query(
-        collection(firestore, 'tenants', id, 'screenings'),
-        where('ownerId', '==', user.uid)
-    );
+    return query(collection(firestore, 'tenants', id, 'screenings'), where('ownerId', '==', user.uid));
   }, [firestore, id, user]);
-  const { data: screenings, isLoading: isLoadingScreenings } = useCollection<TenantScreening>(screeningsQuery);
+  const { data: screenings } = useCollection<TenantScreening>(screeningsQuery);
   
   const checklistsQuery = useMemoFirebase(() => {
     if (!firestore || !tenant?.propertyId || !id || !user) return null;
-    return query(
-        collection(firestore, 'properties', tenant.propertyId, 'checklists'),
-        where('ownerId', '==', user.uid),
-        where('tenantId', '==', id),
-        limit(1)
-    );
+    return query(collection(firestore, 'properties', tenant.propertyId, 'checklists'), where('ownerId', '==', user.uid), where('tenantId', '==', id), limit(1));
   }, [firestore, user, tenant?.propertyId, id]);
-  const { data: checklists, isLoading: isLoadingChecklists } = useCollection<Checklist>(checklistsQuery);
+  const { data: checklists } = useCollection<Checklist>(checklistsQuery);
 
   const checklist = checklists?.[0];
   const firstScreening = screenings?.[0];
 
-
-  const handleDeleteConfirm = async () => {
-    if (!firestore || !tenant || !tenantRef) return;
+  const handleGenerateComm = async () => {
+    if (!tenant || !property) return;
+    setIsGenerating(true);
     try {
-      await updateDoc(tenantRef, { status: 'Archived' });
-      toast({
-        title: 'Tenant Deleted',
-        description: `${tenant.name} has been moved to the archived tenants list.`,
-      });
-      router.push('/dashboard/tenants');
+        const result = await generateTenantCommunication({
+            tenantName: tenant.name,
+            propertyAddress: property.address.street,
+            communicationType: commType,
+            details: commDetails,
+            tone: 'Professional'
+        });
+        setGeneratedComm(result);
     } catch (e) {
-      console.error('Error deleting tenant:', e);
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Could not delete the tenant. Please try again.',
-      });
+        toast({ variant: 'destructive', title: 'AI Error', description: 'Could not generate message.' });
     } finally {
-        setIsDeleteDialogOpen(false);
+        setIsGenerating(false);
     }
   };
 
-  const isLoading = isLoadingTenant || isLoadingProperty || isLoadingScreenings || isLoadingChecklists;
-  
-  const formatAddress = (address: Property['address'] | undefined) => {
-    if (!address) return 'N/A';
-    return [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
+  const handleDeleteConfirm = async () => {
+    if (!tenantRef) return;
+    await updateDoc(tenantRef, { status: 'Archived' });
+    toast({ title: 'Tenant Archived' });
+    router.push('/dashboard/tenants');
   };
 
-  if (isLoading) {
-    return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-      </div>
-    );
-  }
+  if (isLoadingTenant) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+  if (!tenant) return notFound();
 
-  if (error) {
-    return <p className='text-destructive'>Error: {error.message}</p>
-  }
-  
-  if (!tenant) {
-    return notFound();
-  }
-
-  const startDate = safeCreateDate(tenant.tenancyStartDate);
-  const endDate = safeCreateDate(tenant.tenancyEndDate);
-  const completedDate = checklist ? safeCreateDate(checklist.completedDate) : null;
+  const formatAddress = (address: Property['address'] | undefined) => {
+    if (!address) return 'N/A';
+    return [address.street, address.city, address.postcode].filter(Boolean).join(', ');
+  };
 
   return (
     <>
         <div className="flex flex-col gap-6">
-        <div className="flex items-center justify-between gap-4">
+            <div className="flex items-center justify-between gap-4">
                 <div className='flex items-center gap-4'>
-                    <Button variant="outline" size="icon" asChild>
-                    <Link href="/dashboard/tenants">
-                        <ArrowLeft className="h-4 w-4" />
-                    </Link>
-                    </Button>
+                    <Button variant="outline" size="icon" asChild><Link href="/dashboard/tenants"><ArrowLeft className="h-4 w-4" /></Link></Button>
                     <h1 className="text-2xl font-bold">{tenant.name}</h1>
                 </div>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon">
-                            <MoreVertical className="h-4 w-4" />
-                        </Button>
-                    </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
-                            <Link href={`/dashboard/tenants/${id}/edit`}>
-                                <Edit className="mr-2 h-4 w-4" /> Edit
-                            </Link>
-                        </DropdownMenuItem>
-                        {tenant.status !== 'Archived' && (
-                            <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
-                                <Trash2 className="mr-2 h-4 w-4" /> Delete
-                            </DropdownMenuItem>
-                        )}
-                    </DropdownMenuContent>
-                </DropdownMenu>
-        </div>
-        <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-            <Card className="lg:col-span-2">
-                <CardHeader>
-                    <CardTitle>Contact Information</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-4">
-                    <div className="flex items-center gap-4">
-                        <User className="h-5 w-5 text-muted-foreground" />
-                        <span>{tenant.name}</span>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <Mail className="h-5 w-5 text-muted-foreground" />
-                        <a href={`mailto:${tenant.email}`} className="text-primary hover:underline">
-                            {tenant.email}
-                        </a>
-                    </div>
-                    <div className="flex items-center gap-4">
-                        <Phone className="h-5 w-5 text-muted-foreground" />
-                        <span>{tenant.telephone}</span>
-                    </div>
-                </CardContent>
-            </Card>
+                <div className="flex gap-2">
+                    <Button variant="outline" onClick={() => setIsAssistantOpen(true)}>
+                        <Wand2 className="mr-2 h-4 w-4" /> Comm Assistant
+                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem asChild><Link href={`/dashboard/tenants/${id}/edit`}><Edit className="mr-2 h-4 w-4" /> Edit</Link></DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
+            </div>
+
+            <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
+                <Card className="lg:col-span-2">
+                    <CardHeader><CardTitle>Contact Information</CardTitle></CardHeader>
+                    <CardContent className="space-y-4">
+                        <div className="flex items-center gap-4"><User className="h-5 w-5 text-muted-foreground" /><span>{tenant.name}</span></div>
+                        <div className="flex items-center gap-4"><Mail className="h-5 w-5 text-muted-foreground" /><a href={`mailto:${tenant.email}`} className="text-primary hover:underline">{tenant.email}</a></div>
+                        <div className="flex items-center gap-4"><Phone className="h-5 w-5 text-muted-foreground" /><span>{tenant.telephone}</span></div>
+                    </CardContent>
+                </Card>
+                <Card>
+                    <CardHeader><CardTitle>Assigned Property</CardTitle></CardHeader>
+                    <CardContent><div className="flex items-center gap-4"><Home className="h-5 w-5 text-muted-foreground" /><Link href={`/dashboard/properties/${tenant.propertyId}`} className="text-primary hover:underline">{formatAddress(property?.address)}</Link></div></CardContent>
+                </Card>
+            </div>
 
             <Card>
-                <CardHeader>
-                    <CardTitle>Assigned Property</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                    <div className="flex items-center gap-4">
-                        <Home className="h-5 w-5 text-muted-foreground" />
-                        {isLoadingProperty ? (
-                            <span>Loading property...</span>
-                        ) : property ? (
-                            <Link href={`/dashboard/properties/${tenant.propertyId}`} className="text-primary hover:underline">
-                                {formatAddress(property.address)}
-                            </Link>
+                <CardHeader><CardTitle>Onboarding & Compliance</CardTitle></CardHeader>
+                <CardContent className="space-y-6">
+                    <div>
+                        <h3 className="text-lg font-semibold">Tenant Screening</h3>
+                        {firstScreening ? (
+                            <div className="flex items-center justify-between p-4 border rounded-lg bg-muted/50 mt-2">
+                                <div><p className="font-medium">Screening Completed</p><p className="text-sm text-muted-foreground">{format(safeCreateDate(firstScreening.screeningDate)!, 'PPP')}</p></div>
+                                <Button asChild variant="outline"><Link href={`/dashboard/tenants/${id}/screenings/${firstScreening.id}`}><Eye className="mr-2 h-4 w-4" /> View</Link></Button>
+                            </div>
                         ) : (
-                            <span>Property not found</span>
+                            <div className="text-center border-2 border-dashed rounded-lg p-6 mt-2">
+                                <Button asChild size="sm"><Link href={`/dashboard/tenants/screening?tenantId=${id}`}><UserPlus className="mr-2 h-4 w-4" /> Create Screening</Link></Button>
+                            </div>
                         )}
                     </div>
                 </CardContent>
             </Card>
         </div>
 
-        <Card>
-            <CardHeader>
-                <CardTitle>Tenancy Details</CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-4">
-                <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                    <div className="flex items-start gap-4">
-                        <CalendarIcon className="h-5 w-5 text-muted-foreground mt-1" />
-                        <div>
-                            <p className="text-sm text-muted-foreground">Tenancy Start</p>
-                            <p>{startDate ? format(startDate, 'PPP') : 'N/A'}</p>
-                        </div>
+        {/* Communication Assistant Dialog */}
+        <Dialog open={isAssistantOpen} onOpenChange={setIsAssistantOpen}>
+            <DialogContent className="sm:max-w-[600px]">
+                <DialogHeader>
+                    <DialogTitle className="flex items-center gap-2"><Sparkles className="h-5 w-5 text-primary" /> Tenant Communication Assistant</DialogTitle>
+                    <DialogDescription>Draft professional landlord notices tailored to this tenant.</DialogDescription>
+                </DialogHeader>
+                <div className="space-y-4 py-4">
+                    <div className="space-y-2">
+                        <Label>Reason for contact</Label>
+                        <Select value={commType} onValueChange={(v: any) => setCommType(v)}>
+                            <SelectTrigger><SelectValue /></SelectTrigger>
+                            <SelectContent>
+                                {['Rent Arrears', 'Inspection Notice', 'Maintenance Update', 'Tenancy Renewal', 'General Notice'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                            </SelectContent>
+                        </Select>
                     </div>
-                    <div className="flex items-start gap-4">
-                        <CalendarIcon className="h-5 w-5 text-muted-foreground mt-1" />
-                        <div>
-                            <p className="text-sm text-muted-foreground">Tenancy End</p>
-                            <p>{endDate ? format(endDate, 'PPP') : 'N/A'}</p>
-                        </div>
+                    <div className="space-y-2">
+                        <Label>Specific Details</Label>
+                        <Textarea placeholder="e.g. rent is 3 days late, inspection scheduled for Tuesday at 10am..." value={commDetails} onChange={e => setCommDetails(e.target.value)} />
                     </div>
-                    <div className="flex items-start gap-4">
-                        <Banknote className="h-5 w-5 text-muted-foreground mt-1" />
-                        <div>
-                            <p className="text-sm text-muted-foreground">Monthly Rent</p>
-                            <p className='font-semibold'>£{tenant.monthlyRent ? tenant.monthlyRent.toLocaleString() : 'Not set'}</p>
-                        </div>
-                    </div>
-                </div>
-                {tenant.notes && (
-                    <div className="border-t pt-4 mt-4">
-                        <h4 className="text-sm font-semibold mb-2">Notes</h4>
-                        <p className="text-sm text-muted-foreground whitespace-pre-wrap">{tenant.notes}</p>
-                    </div>
-                )}
-            </CardContent>
-        </Card>
+                    <Button onClick={handleGenerateComm} disabled={isGenerating || !commDetails} className="w-full">
+                        {isGenerating ? <Loader2 className="animate-spin mr-2 h-4 w-4" /> : <Wand2 className="mr-2 h-4 w-4" />} Generate Message
+                    </Button>
 
-        <Card>
-            <CardHeader>
-                <CardTitle>Onboarding &amp; Compliance</CardTitle>
-                <CardDescription>Manage screening records and pre-tenancy tasks for {tenant.name}.</CardDescription>
-            </CardHeader>
-            <CardContent className="space-y-6">
-                 <div>
-                    <h3 className="text-lg font-semibold">Tenant Screening</h3>
-                     {isLoadingScreenings ? (
-                        <div className="flex justify-center items-center h-24">
-                            <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
-                        </div>
-                    ) : firstScreening ? (
-                        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between p-4 border rounded-lg bg-muted/50 mt-2">
-                           <div>
-                             <p className="font-medium">Screening on File</p>
-                             <p className="text-sm text-muted-foreground">
-                               Completed on {safeCreateDate(firstScreening.screeningDate) ? format(safeCreateDate(firstScreening.screeningDate)!, 'PPP') : 'N/A'}
-                             </p>
-                           </div>
-                           <div className="flex gap-2">
-                               <Button asChild variant="outline">
-                                    <Link href={`/dashboard/tenants/${id}/screenings/${firstScreening.id}`}>
-                                        <Eye className="mr-2 h-4 w-4" /> View
-                                    </Link>
-                               </Button>
-                                <Button asChild>
-                                    <Link href={`/dashboard/tenants/${id}/screenings/${firstScreening.id}/edit`}>
-                                        <Edit className="mr-2 h-4 w-4" /> Edit
-                                    </Link>
-                                </Button>
-                           </div>
-                        </div>
-                    ) : (
-                        <div className="text-center border-2 border-dashed rounded-lg p-6 mt-2">
-                            <p className="text-muted-foreground mb-4">No screening record found for this tenant.</p>
-                            <Button asChild size="sm">
-                                <Link href={`/dashboard/tenants/screening?tenantId=${id}`}>
-                                    <UserPlus className="mr-2 h-4 w-4" /> Create Screening Record
-                                </Link>
-                            </Button>
+                    {generatedComm && (
+                        <div className="mt-4 p-4 rounded-lg bg-muted border">
+                            <p className="font-bold text-sm mb-2">Subject: {generatedComm.subject}</p>
+                            <p className="text-sm whitespace-pre-wrap">{generatedComm.message}</p>
+                            <Button className="w-full mt-4" variant="outline" onClick={() => {
+                                navigator.clipboard.writeText(`Subject: ${generatedComm.subject}\n\n${generatedComm.message}`);
+                                toast({ title: 'Copied to clipboard' });
+                            }}>Copy to Clipboard</Button>
                         </div>
                     )}
                 </div>
+            </DialogContent>
+        </Dialog>
 
-                <div className="border-t pt-6">
-                     <h3 className="text-lg font-semibold">Pre-Tenancy Checklist</h3>
-                     <p className="text-sm text-muted-foreground mb-4">A single checklist can be created for this tenant's current tenancy.</p>
-                     {isLoadingChecklists ? (
-                        <div className="flex items-center gap-2">
-                           <Loader2 className="h-5 w-5 animate-spin" />
-                           <span>Loading checklist status...</span>
-                        </div>
-                     ) : checklist ? (
-                        <div className="flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between p-4 border rounded-lg bg-muted/50">
-                           <div>
-                             <p className="font-medium">Checklist Completed</p>
-                             <p className="text-sm text-muted-foreground">
-                               {completedDate ? format(completedDate, 'PPP') : 'N/A'}
-                             </p>
-                           </div>
-                           <div className="flex gap-2">
-                               <Button asChild>
-                                    <Link href={`/dashboard/checklists/${checklist.id}?propertyId=${tenant.propertyId}&tenantId=${id}`}>
-                                        <Eye className="mr-2 h-4 w-4" /> View Checklist
-                                    </Link>
-                               </Button>
-                           </div>
-                        </div>
-                     ) : (
-                        <>
-                            <Button asChild disabled={!tenant.propertyId}>
-                                <Link href={tenant.propertyId ? `/dashboard/checklists?propertyId=${tenant.propertyId}&tenantId=${id}` : '#'}>
-                                    <ListTodo className="mr-2 h-4 w-4" /> Create Pre-Tenancy Checklist
-                                </Link>
-                            </Button>
-                            {!tenant.propertyId && (
-                                <p className="text-xs text-muted-foreground mt-2">A property must be assigned to the tenant to create a checklist.</p>
-                            )}
-                        </>
-                     )}
-                </div>
-            </CardContent>
-        </Card>
-    </div>
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
             <AlertDialogContent>
-            <AlertDialogHeader>
-                <AlertDialogTitle>Are you sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                This will move {tenant.name} to the archived tenants list. You can restore them later.
-                </AlertDialogDescription>
-            </AlertDialogHeader>
-            <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
-                <AlertDialogAction
-                className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
-                onClick={handleDeleteConfirm}
-                >
-                Delete
-                </AlertDialogAction>
-            </AlertDialogFooter>
+                <AlertDialogHeader><AlertDialogTitle>Archive Tenant?</AlertDialogTitle></AlertDialogHeader>
+                <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive">Archive</AlertDialogAction></AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
     </>

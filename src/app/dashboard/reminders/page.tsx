@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -19,7 +20,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Download, Loader2, FileWarning, CalendarClock } from 'lucide-react';
+import { Download, Loader2, FileWarning, CalendarClock, Activity } from 'lucide-react';
 import { format, isBefore, addDays, isFuture } from 'date-fns';
 import {
   useUser,
@@ -52,6 +53,7 @@ interface Document {
   title: string;
   propertyId: string;
   expiryDate: Timestamp | Date | { seconds: number; nanoseconds: number };
+  documentType: string;
 }
 
 interface Inspection {
@@ -96,7 +98,6 @@ export default function RemindersPage() {
     setToday(new Date());
   }, []);
 
-  // Primary Properties Listener
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(collection(firestore, 'properties'), where('ownerId', '==', user.uid));
@@ -107,7 +108,6 @@ export default function RemindersPage() {
   const [allInspections, setAllInspections] = useState<Inspection[]>([]);
   const [isAggregating, setIsAggregating] = useState(false);
 
-  // Manual Aggregation Effect
   useEffect(() => {
     if (!user || !properties || properties.length === 0) {
         setAllDocuments([]);
@@ -165,6 +165,7 @@ export default function RemindersPage() {
           id: `doc-${doc.id}`,
           type: 'Compliance',
           description: doc.title,
+          category: doc.documentType,
           property: propertyMap[doc.propertyId] || 'Unknown Property',
           dueDate: doc.expiryDate,
           status: doc.status,
@@ -182,6 +183,7 @@ export default function RemindersPage() {
           id: `insp-${insp.id}`,
           type: 'Task',
           description: insp.inspectionType || insp.type || 'Inspection',
+          category: 'Routine Check',
           property: propertyMap[insp.propertyId] || 'Unknown Property',
           dueDate: insp.scheduledDate,
           status: 'Scheduled',
@@ -191,20 +193,36 @@ export default function RemindersPage() {
     return [...documentReminders, ...inspectionReminders].sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
   }, [allDocuments, allInspections, propertyMap, today]);
   
+  const generateComplianceReport = () => {
+    const doc = new jsPDF();
+    doc.setFontSize(20);
+    doc.text('Portfolio Compliance Health Report', 14, 22);
+    doc.setFontSize(10);
+    doc.text(`Generated on: ${format(new Date(), 'PPP')}`, 14, 30);
+    
+    const complianceData = allReminders.map(r => [
+        r.property,
+        r.category,
+        r.description,
+        format(r.dueDate, 'dd/MM/yyyy'),
+        r.status
+    ]);
+
+    doc.autoTable({
+        startY: 40,
+        head: [['Property', 'Compliance Area', 'Details', 'Due Date', 'Status']],
+        body: complianceData,
+        theme: 'grid',
+        headStyles: { fillColor: [38, 102, 114] }
+    });
+
+    doc.save('Portfolio-Compliance-Health.pdf');
+  };
+
   const urgentCount = useMemo(() => allReminders.filter(r => r.status === 'Expired').length, [allReminders]);
   const upcomingCount = useMemo(() => allReminders.filter(r => r.status !== 'Expired').length, [allReminders]);
 
   const isLoading = isLoadingProps || isAggregating || !today;
-
-  const exportToPDF = () => {
-    const doc = new jsPDF();
-    doc.setFontSize(18);
-    doc.text('Compliance and Task Reminders', 14, 22);
-    const tableColumn = ['Type', 'Description', 'Property', 'Due Date', 'Status'];
-    const tableRows = allReminders.map(r => [r.type, r.description, r.property, format(r.dueDate, 'dd/MM/yyyy'), r.status]);
-    doc.autoTable({ head: [tableColumn], body: tableRows, startY: 30, theme: 'striped' });
-    doc.save('portfolio-reminders.pdf');
-  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -216,7 +234,7 @@ export default function RemindersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold text-destructive">{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : urgentCount}</div>
-            <p className="text-xs text-muted-foreground">Expired documents needing action</p>
+            <p className="text-xs text-muted-foreground">Expired documents</p>
           </CardContent>
         </Card>
         <Card>
@@ -226,7 +244,7 @@ export default function RemindersPage() {
           </CardHeader>
           <CardContent>
             <div className="text-2xl font-bold">{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : upcomingCount}</div>
-            <p className="text-xs text-muted-foreground">Tasks due in the next 90 days</p>
+            <p className="text-xs text-muted-foreground">Tasks next 90 days</p>
           </CardContent>
         </Card>
       </div>
@@ -236,10 +254,10 @@ export default function RemindersPage() {
           <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-start">
             <div>
               <CardTitle>Portfolio Reminders</CardTitle>
-              <CardDescription>A consolidated list of all upcoming compliance and maintenance tasks.</CardDescription>
+              <CardDescription>Upcoming compliance and maintenance tasks.</CardDescription>
             </div>
-            <Button onClick={exportToPDF} disabled={isLoading || allReminders.length === 0} className="w-full sm:w-auto">
-              <Download className="mr-2 h-4 w-4" /> Export Report
+            <Button onClick={generateComplianceReport} disabled={isLoading} className="w-full sm:w-auto">
+              <Activity className="mr-2 h-4 w-4" /> Compliance Health PDF
             </Button>
           </div>
         </CardHeader>
@@ -249,46 +267,25 @@ export default function RemindersPage() {
           ) : allReminders.length === 0 ? (
             <div className="h-48 text-center flex flex-col justify-center items-center text-muted-foreground italic">
                 <p>You're all caught up!</p>
-                <p className="text-sm">No pending compliance or scheduled tasks found.</p>
             </div>
           ) : (
-            <div className="space-y-4">
-                <div className="hidden md:block border rounded-md overflow-hidden">
-                    <Table>
-                        <TableHeader className="bg-muted/50">
-                            <TableRow><TableHead>Type</TableHead><TableHead>Description</TableHead><TableHead>Property</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Due Date</TableHead></TableRow>
-                        </TableHeader>
-                        <TableBody>
-                            {allReminders.map((reminder) => (
-                                <TableRow key={reminder.id}>
-                                    <TableCell><Badge variant="outline">{reminder.type}</Badge></TableCell>
-                                    <TableCell className="font-semibold"><Link href={reminder.href} className="hover:underline">{reminder.description}</Link></TableCell>
-                                    <TableCell className="text-sm">{reminder.property}</TableCell>
-                                    <TableCell><Badge variant={getStatusVariant(reminder.status)}>{reminder.status}</Badge></TableCell>
-                                    <TableCell className="text-right font-medium">{format(reminder.dueDate, 'dd/MM/yyyy')}</TableCell>
-                                </TableRow>
-                            ))}
-                        </TableBody>
-                    </Table>
-                </div>
-                <div className="grid gap-4 md:hidden">
-                    {allReminders.map((reminder) => (
-                        <Card key={reminder.id} className="relative overflow-hidden">
-                            <Link href={reminder.href} className="block p-4">
-                                <div className="flex justify-between items-start gap-2 mb-2">
-                                    <Badge variant={getStatusVariant(reminder.status)}>{reminder.status}</Badge>
-                                    <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest">{reminder.type}</span>
-                                </div>
-                                <p className="font-bold text-lg mb-1">{reminder.description}</p>
-                                <p className="text-sm text-muted-foreground mb-3">{reminder.property}</p>
-                                <div className="pt-2 border-t flex justify-between items-center text-xs">
-                                    <span className="text-muted-foreground">Deadline</span>
-                                    <span className="font-bold">{format(reminder.dueDate, 'PPP')}</span>
-                                </div>
-                            </Link>
-                        </Card>
-                    ))}
-                </div>
+            <div className="rounded-md border overflow-hidden">
+                <Table>
+                    <TableHeader className="bg-muted/50">
+                        <TableRow><TableHead>Type</TableHead><TableHead>Description</TableHead><TableHead>Property</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Due Date</TableHead></TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {allReminders.map((reminder) => (
+                            <TableRow key={reminder.id}>
+                                <TableCell><Badge variant="outline">{reminder.type}</Badge></TableCell>
+                                <TableCell className="font-semibold"><Link href={reminder.href} className="hover:underline">{reminder.description}</Link></TableCell>
+                                <TableCell className="text-sm">{reminder.property}</TableCell>
+                                <TableCell><Badge variant={getStatusVariant(reminder.status)}>{reminder.status}</Badge></TableCell>
+                                <TableCell className="text-right font-medium">{format(reminder.dueDate, 'dd/MM/yyyy')}</TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
+                </Table>
             </div>
           )}
         </CardContent>

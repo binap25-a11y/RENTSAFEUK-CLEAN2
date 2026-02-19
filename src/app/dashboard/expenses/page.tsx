@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -54,9 +55,11 @@ import {
   Clock,
   LayoutList,
   History,
-  Edit2
+  Edit2,
+  Receipt,
+  ArrowUpRight
 } from 'lucide-react';
-import { getYear, format, isSameYear } from 'date-fns';
+import { getYear, format, isSameYear, differenceInYears } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import {
   Table,
@@ -112,6 +115,8 @@ interface Property {
   };
   status: string;
   ownerId: string;
+  purchasePrice?: number;
+  currentValuation?: number;
 }
 
 interface Expense {
@@ -174,12 +179,10 @@ export default function FinancialsPage() {
   const [portfolioRentPayments, setPortfolioRentPayments] = useState<RentPayment[]>([]);
   const [isAggregating, setIsAggregating] = useState(false);
 
-  // UseEffect to set initial year on client side only to prevent hydration mismatch
   useEffect(() => {
     setSelectedYear(getYear(new Date()));
   }, []);
 
-  // 1. Fetch properties - strictly scoped to user
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
@@ -191,7 +194,6 @@ export default function FinancialsPage() {
 
   const { data: allProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
   
-  // Filtering for truly active properties related to the logged-in user
   const activeProperties = useMemo(() => {
     const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
     return allProperties?.filter(p => activeStatuses.includes(p.status || '')) ?? [];
@@ -202,7 +204,6 @@ export default function FinancialsPage() {
     return allProperties?.find(p => p.id === selectedPropertyId);
   }, [allProperties, selectedPropertyId]);
 
-  // 2. Fetch expenses for the SELECTED property
   const expensesQuery = useMemoFirebase(() => {
     if (!user || !firestore || selectedPropertyId === 'all') return null;
     return query(
@@ -213,7 +214,6 @@ export default function FinancialsPage() {
   
   const { data: rawExpenses, isLoading: isLoadingExpenses, error: expensesError } = useCollection<Expense>(expensesQuery);
 
-  // 3. Fetch rent payments for the SELECTED property
   const rentPaymentsQuery = useMemoFirebase(() => {
     if (!user || !firestore || selectedPropertyId === 'all' || !selectedYear) return null;
     return query(
@@ -224,7 +224,6 @@ export default function FinancialsPage() {
   }, [firestore, user, selectedPropertyId, selectedYear]);
   const { data: rawRentPayments, isLoading: isLoadingPayments } = useCollection<RentPayment>(rentPaymentsQuery);
 
-  // Aggregation Effect: Fetch data for all properties when no specific one is selected
   useEffect(() => {
     if (!user || activeProperties.length === 0 || selectedPropertyId !== 'all' || !selectedYear) {
         setPortfolioExpenses([]);
@@ -259,7 +258,6 @@ export default function FinancialsPage() {
     aggregateData();
   }, [user, activeProperties, firestore, selectedPropertyId, selectedYear]);
 
-  // 4. Final Data Resolution
   const expenses = useMemo(() => {
     if (!selectedYear) return [];
     const list = selectedPropertyId !== 'all' ? (rawExpenses || []) : portfolioExpenses;
@@ -273,7 +271,6 @@ export default function FinancialsPage() {
     return selectedPropertyId !== 'all' ? (rawRentPayments || []) : portfolioRentPayments;
   }, [rawRentPayments, portfolioRentPayments, selectedPropertyId]);
 
-  // 5. Calculations
   const portfolioIncome = useMemo(() => {
     return activeProperties.reduce((total, prop) => {
         const rent = Number(prop.tenancy?.monthlyRent || 0);
@@ -293,9 +290,37 @@ export default function FinancialsPage() {
   
   const isLoading = isLoadingProperties || !selectedYear || (selectedPropertyId !== 'all' ? (isLoadingExpenses || isLoadingPayments) : isAggregating);
 
+  const generateHMRCPDF = () => {
+    if (!selectedYear) return;
+    const doc = new jsPDF();
+    doc.setFontSize(20);
+    doc.text(`HMRC Self-Assessment Export (SA105) - ${selectedYear}`, 14, 22);
+    doc.setFontSize(10);
+    doc.text('This report categorizes your expenses according to the UK Self-Assessment property section.', 14, 30);
+    
+    const hmrcCategories = {
+        'Rent received': totalPaidRent,
+        'Rent, rates, insurance, ground rent etc': expenses.filter(e => ['Insurance', 'Utilities'].includes(e.expenseType)).reduce((a, b) => a + b.amount, 0),
+        'Property repairs and maintenance': expenses.filter(e => ['Repairs and Maintenance', 'Cleaning', 'Gardening'].includes(e.expenseType)).reduce((a, b) => a + b.amount, 0),
+        'Loan interest and other financial costs': expenses.filter(e => e.expenseType === 'Mortgage Interest').reduce((a, b) => a + b.amount, 0),
+        'Legal, management and other professional fees': expenses.filter(e => e.expenseType === 'Letting Agent Fees').reduce((a, b) => a + b.amount, 0),
+        'Other allowable property expenses': expenses.filter(e => e.expenseType === 'Other').reduce((a, b) => a + b.amount, 0),
+    };
+
+    const tableData = Object.entries(hmrcCategories).map(([label, value]) => [label, formatCurrency(value)]);
+    doc.autoTable({
+        startY: 40,
+        head: [['HMRC Category', 'Amount (£)']],
+        body: tableData,
+        theme: 'striped',
+        headStyles: { fillColor: [38, 102, 114] }
+    });
+
+    doc.save(`HMRC-Tax-Report-${selectedYear}.pdf`);
+  };
+
   return (
     <div className="flex flex-col gap-6">
-        {/* Filters positioned at the very top */}
         <div className="flex flex-col gap-4 max-w-md bg-card p-6 rounded-lg border shadow-sm">
             <div className="grid w-full gap-1.5">
                 <Label htmlFor="property-filter" className="flex items-center gap-2 font-bold text-xs uppercase tracking-wider text-muted-foreground">
@@ -331,19 +356,18 @@ export default function FinancialsPage() {
             </div>
         </div>
 
-        {/* Metric Summary Cards */}
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
+            <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Annual Portfolio Rent</CardTitle>
                 <PoundSterling className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                 <div className="text-2xl font-bold">{formatCurrency(portfolioIncome)}</div>
-                <p className="text-xs text-muted-foreground">{activeProperties.length} active properties tracked</p>
+                <p className="text-xs text-muted-foreground">{activeProperties.length} active properties</p>
                 </CardContent>
             </Card>
-            <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
+            <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Annual Income Received</CardTitle>
                 <TrendingUp className="h-4 w-4 text-green-500" />
@@ -352,12 +376,10 @@ export default function FinancialsPage() {
                     <div className="text-2xl font-bold">
                         {isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(totalPaidRent)}
                     </div>
-                    <div className="text-[10px] font-medium text-muted-foreground h-4 uppercase tracking-tight">
-                        {selectedProperty ? [selectedProperty.address.street].filter(Boolean).join(', ') : `Portfolio Total - ${selectedYear}`}
-                    </div>
+                    <p className="text-[10px] text-muted-foreground uppercase">{selectedYear}</p>
                 </CardContent>
             </Card>
-            <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
+            <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Annual Expenses</CardTitle>
                 <TrendingDown className="h-4 w-4 text-muted-foreground" />
@@ -366,10 +388,10 @@ export default function FinancialsPage() {
                     <div className="text-2xl font-bold">
                         {isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(totalExpenses)}
                     </div>
-                    <p className="text-[10px] font-medium text-muted-foreground h-4 uppercase tracking-tight">Period: {selectedYear}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase">{selectedYear}</p>
                 </CardContent>
             </Card>
-            <Card className="cursor-pointer hover:bg-muted/50 transition-colors">
+            <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
                 <CardTitle className="text-sm font-medium">Annual Net Position</CardTitle>
                 <Banknote className="h-4 w-4 text-muted-foreground" />
@@ -378,36 +400,30 @@ export default function FinancialsPage() {
                     <div className={"text-2xl font-bold " + (netIncome < 0 ? " text-destructive" : " text-primary")}>
                         {isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(netIncome)}
                     </div>
-                     <p className="text-[10px] font-medium text-muted-foreground h-4 uppercase tracking-tight">Net result for year</p>
+                     <p className="text-[10px] text-muted-foreground uppercase">Net result</p>
                 </CardContent>
             </Card>
         </div>
 
        <Card className='border-none shadow-none bg-transparent'>
         <CardContent className="p-0 space-y-4">
-           {expensesError && (
-               <Alert variant="destructive" className="mt-4">
-                   <AlertTriangle className="h-4 w-4" />
-                   <AlertTitle>Database Sync Error</AlertTitle>
-                   <AlertDescription>{expensesError.message}</AlertDescription>
-               </Alert>
-           )}
-
            <Tabs defaultValue="expenses" className="pt-4">
-              <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:grid-cols-4 bg-muted/50 p-1 rounded-lg h-auto">
-                <TabsTrigger value="expenses" className="py-2">Expenses</TabsTrigger>
-                <TabsTrigger value="summary" className="py-2">Annual Summary</TabsTrigger>
-                <TabsTrigger value="statement" className="py-2">Rent Statement</TabsTrigger>
-                <TabsTrigger value="arrears" className="py-2">Arrears</TabsTrigger>
+              <TabsList className="grid w-full grid-cols-2 sm:w-auto sm:grid-cols-5 bg-muted/50 p-1 rounded-lg h-auto">
+                <TabsTrigger value="expenses">Expenses</TabsTrigger>
+                <TabsTrigger value="summary">Summary</TabsTrigger>
+                <TabsTrigger value="investment">Yield & ROI</TabsTrigger>
+                <TabsTrigger value="statement">Rent Ledger</TabsTrigger>
+                <TabsTrigger value="arrears">Arrears</TabsTrigger>
               </TabsList>
-              <TabsContent value="expenses" className="animate-in fade-in-50 duration-300">
-                <ExpenseTracker 
-                  properties={activeProperties} 
-                  selectedPropertyId={selectedPropertyId} 
-                  isLoadingProperties={isLoadingProperties}
-                />
+              <TabsContent value="expenses">
+                <ExpenseTracker properties={activeProperties} selectedPropertyId={selectedPropertyId} isLoadingProperties={isLoadingProperties} />
               </TabsContent>
-              <TabsContent value="summary" className="animate-in fade-in-50 duration-300">
+              <TabsContent value="summary">
+                <div className="flex justify-end gap-2 mb-4">
+                    <Button onClick={generateHMRCPDF} size="sm" variant="outline">
+                        <Receipt className="mr-2 h-4 w-4" /> HMRC Tax Export
+                    </Button>
+                </div>
                 <AnnualSummary 
                     selectedProperty={selectedProperty} 
                     selectedYear={selectedYear || 0}
@@ -421,15 +437,13 @@ export default function FinancialsPage() {
                     netIncome={netIncome}
                 />
               </TabsContent>
-              <TabsContent value="statement" className="animate-in fade-in-50 duration-300">
-                <RentStatement 
-                    selectedProperty={selectedProperty} 
-                    selectedYear={selectedYear || 0}
-                    rentPayments={rawRentPayments}
-                    isLoadingPayments={isLoadingPayments}
-                />
+              <TabsContent value="investment">
+                <InvestmentAnalytics properties={activeProperties} selectedPropertyId={selectedPropertyId} allExpenses={expenses} />
               </TabsContent>
-              <TabsContent value="arrears" className="animate-in fade-in-50 duration-300">
+              <TabsContent value="statement">
+                <RentStatement selectedProperty={selectedProperty} selectedYear={selectedYear || 0} rentPayments={rawRentPayments} isLoadingPayments={isLoadingPayments} />
+              </TabsContent>
+              <TabsContent value="arrears">
                 <ArrearsManagement properties={activeProperties} />
               </TabsContent>
             </Tabs>
@@ -437,6 +451,67 @@ export default function FinancialsPage() {
        </Card>
     </div>
   );
+}
+
+function InvestmentAnalytics({ properties, selectedPropertyId, allExpenses }: { properties: Property[], selectedPropertyId: string, allExpenses: Expense[] }) {
+    const analysisProperties = useMemo(() => {
+        if (selectedPropertyId === 'all') return properties;
+        return properties.filter(p => p.id === selectedPropertyId);
+    }, [properties, selectedPropertyId]);
+
+    if (analysisProperties.length === 0) return <Card className="mt-6"><CardContent className="p-10 text-center text-muted-foreground italic">No properties found for analysis.</CardContent></Card>;
+
+    return (
+        <div className="grid gap-6 mt-6 md:grid-cols-2 lg:grid-cols-3">
+            {analysisProperties.map(prop => {
+                const annualRent = (prop.tenancy?.monthlyRent || 0) * 12;
+                const propExpenses = allExpenses.filter(e => e.propertyId === prop.id).reduce((a, b) => a + b.amount, 0);
+                const purchasePrice = prop.purchasePrice || 0;
+                const currentValuation = prop.currentValuation || purchasePrice;
+                
+                const grossYield = purchasePrice > 0 ? (annualRent / purchasePrice) * 100 : 0;
+                const netYield = purchasePrice > 0 ? ((annualRent - propExpenses) / purchasePrice) * 100 : 0;
+                const capitalAppreciation = purchasePrice > 0 ? ((currentValuation - purchasePrice) / purchasePrice) * 100 : 0;
+
+                return (
+                    <Card key={prop.id} className="overflow-hidden">
+                        <CardHeader className="bg-muted/30 pb-4">
+                            <CardTitle className="text-sm truncate">{[prop.address.street, prop.address.city].filter(Boolean).join(', ')}</CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-6 space-y-4">
+                            <div className="grid grid-cols-2 gap-4">
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-bold uppercase text-muted-foreground">Gross Yield</p>
+                                    <p className="text-2xl font-bold text-primary">{grossYield.toFixed(2)}%</p>
+                                </div>
+                                <div className="space-y-1">
+                                    <p className="text-[10px] font-bold uppercase text-muted-foreground">Net Yield</p>
+                                    <p className="text-2xl font-bold text-green-600">{netYield.toFixed(2)}%</p>
+                                </div>
+                            </div>
+                            <div className="border-t pt-4 space-y-2">
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-muted-foreground">Capital Growth</span>
+                                    <span className="font-bold text-primary flex items-center gap-1">
+                                        <ArrowUpRight className="h-3 w-3" /> {capitalAppreciation.toFixed(1)}%
+                                    </span>
+                                </div>
+                                <div className="flex justify-between text-xs">
+                                    <span className="text-muted-foreground">Current Value</span>
+                                    <span className="font-bold">{formatCurrency(currentValuation)}</span>
+                                </div>
+                            </div>
+                        </CardContent>
+                        {!prop.purchasePrice && (
+                            <CardFooter className="bg-yellow-50 p-2 border-t">
+                                <p className="text-[10px] text-yellow-800 text-center w-full">Update Purchase Price in Property Settings for accurate ROI.</p>
+                            </CardFooter>
+                        )}
+                    </Card>
+                );
+            })}
+        </div>
+    );
 }
 
 function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }: { properties: Property[], selectedPropertyId: string, isLoadingProperties: boolean }) {
@@ -475,24 +550,11 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }:
     
     addDoc(expensesCollection, newExpense)
       .then(() => {
-        toast({ title: 'Expense Saved', description: 'Your new expense record has been successfully logged.' });
-        form.reset({ 
-            propertyId: data.propertyId, 
-            expenseType: '', 
-            amount: undefined as any, 
-            notes: '',
-            date: new Date(),
-            paidBy: 'Landlord'
-        });
+        toast({ title: 'Expense Saved', description: 'Expense record successfully logged.' });
+        form.reset({ propertyId: data.propertyId, expenseType: '', notes: '', date: new Date(), paidBy: 'Landlord' });
       })
-      .catch(async (serverError) => {
-        const permissionError = new FirestorePermissionError({
-          path: expensesCollection.path,
-          operation: 'create',
-          requestResourceData: newExpense,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        toast({ variant: 'destructive', title: 'Save Failed', description: serverError.message || 'Error saving expense.' });
+      .catch(() => {
+        toast({ variant: 'destructive', title: 'Save Failed' });
       })
       .finally(() => setIsSubmitting(false));
   }
@@ -512,7 +574,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }:
                     <Select onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger>
-                          <SelectValue placeholder={isLoadingProperties ? 'Loading portfolio...' : 'Select a property'} />
+                          <SelectValue placeholder={isLoadingProperties ? 'Loading...' : 'Select a property'} />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -533,11 +595,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }:
                     <FormItem>
                       <FormLabel>Date</FormLabel>
                       <FormControl>
-                        <Input
-                            type="date"
-                            value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
-                            onChange={(e) => field.onChange(e.target.value)}
-                        />
+                        <Input type="date" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -553,7 +611,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }:
                           <SelectTrigger><SelectValue placeholder="Select a type" /></SelectTrigger>
                         </FormControl>
                         <SelectContent>
-                          {['Repairs and Maintenance','Utilities','Insurance','Mortgage Interest','Cleaning','Gardening','Letting Agent Fees',].map((type) => (
+                          {['Repairs and Maintenance','Utilities','Insurance','Mortgage Interest','Cleaning','Gardening','Letting Agent Fees', 'Other'].map((type) => (
                             <SelectItem key={type} value={type}>{type}</SelectItem>
                           ))}
                         </SelectContent>
@@ -579,7 +637,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }:
                   render={({ field }) => (
                     <FormItem>
                       <FormLabel>Paid By</FormLabel>
-                      <FormControl><Input placeholder="e.g., Landlord, Management Company" {...field} value={field.value ?? ''} /></FormControl>
+                      <FormControl><Input placeholder="e.g., Landlord" {...field} value={field.value ?? ''} /></FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -590,21 +648,19 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }:
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel>Notes (Optional)</FormLabel>
-                    <FormControl><Textarea placeholder="Add description or reference details..." {...field} value={field.value ?? ''} /></FormControl>
+                    <FormControl><Textarea placeholder="Details..." {...field} value={field.value ?? ''} /></FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
               <div className="flex justify-end gap-2 pt-2">
-                <Button asChild type="button">
+                <Button asChild type="button" variant="outline">
                     <Link href="/dashboard/expenses/logged">
-                        <History className="mr-2 h-4 w-4" />
-                        View Full Expense History
+                        <History className="mr-2 h-4 w-4" /> History
                     </Link>
                 </Button>
                 <Button type="submit" disabled={isSubmitting}>
-                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                    Save
+                    {isSubmitting && <Loader2 className="mr-2 h-4 w-4 animate-spin" />} Save
                 </Button>
               </div>
             </form>
@@ -658,17 +714,14 @@ function AnnualSummary({
 
   const chartConfig = useMemo(() => {
     return expensesByCategory.reduce((acc, category) => {
-        acc[category.name] = {
-            label: category.name,
-            color: category.fill,
-        };
+        acc[category.name] = { label: category.name, color: category.fill };
         return acc;
     }, {} as ChartConfig);
   }, [expensesByCategory]);
   
   const generatePDF = () => {
     if (!selectedProperty) {
-      toast({ variant: "destructive", title: "Selection Required", description: "Please select a property to generate a report." });
+      toast({ variant: "destructive", title: "Selection Required", description: "Select a property for this report." });
       return;
     }
     const doc = new jsPDF();
@@ -685,105 +738,61 @@ function AnnualSummary({
       ['Net Position', formatCurrency(netIncome)],
     ];
     doc.autoTable({ startY: 40, head: [['Metric', 'Value']], body: summaryData, theme: 'striped', headStyles: { fillColor: [38, 102, 114] } });
-    let finalY = (doc as any).lastAutoTable.finalY;
-    if (expensesByCategory.length > 0) {
-      doc.setFontSize(16);
-      doc.text('Expense Category Breakdown', 14, finalY + 15);
-      const expenseBody = expensesByCategory.map(cat => [cat.name, formatCurrency(cat.amount)]);
-      doc.autoTable({ startY: finalY + 22, head: [['Category', 'Amount']], body: expenseBody, theme: 'grid' });
-      finalY = (doc as any).lastAutoTable.finalY;
-    }
-    if (rentPayments && rentPayments.length > 0) {
-      doc.setFontSize(16);
-      doc.text('Monthly Rent Receipts', 14, finalY + 15);
-      const rentBody = rentPayments.filter(p => p.status === 'Paid' || p.status === 'Partially Paid').map(p => [p.month, formatCurrency(p.amountPaid || 0), formatCurrency(p.expectedAmount), p.status]);
-      if (rentBody.length > 0) {
-        doc.autoTable({ startY: finalY + 22, head: [['Month', 'Paid', 'Expected', 'Status']], body: rentBody, theme: 'grid' });
-      }
-    }
-    const safeAddress = addressString.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
-    doc.save(`Financial-Report-${safeAddress}-${selectedYear}.pdf`);
+    doc.save(`Financial-Report-${selectedYear}.pdf`);
   };
 
   return (
     <div className="space-y-6 mt-6">
         <div className='flex justify-end'>
             <Button onClick={generatePDF} disabled={!selectedProperty || isLoading} size="sm">
-                <Download className="mr-2 h-4 w-4" />
-                Export Statement (PDF)
+                <Download className="mr-2 h-4 w-4" /> Export Report (PDF)
             </Button>
         </div>
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-            <Card className="bg-primary/5 border-primary/10 shadow-none">
+            <Card className="bg-primary/5">
                 <CardHeader className="pb-2">
-                    <CardTitle className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                        <Banknote className="h-3 w-3" /> Projected Gross
-                    </CardTitle>
+                    <CardTitle className="text-[10px] font-bold uppercase text-muted-foreground">Projected Gross</CardTitle>
                 </CardHeader>
                 <CardContent>
                     <div className="text-2xl font-bold text-primary">{formatCurrency(portfolioIncome)}</div>
-                    <p className="text-[10px] text-muted-foreground font-medium mt-1 uppercase tracking-tight">Full Portfolio Estimate</p>
                 </CardContent>
             </Card>
-            <Card className="bg-muted/5 border-muted shadow-none">
+            <Card className="bg-muted/5">
                 <CardHeader className="pb-2">
-                    <CardTitle className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                        <TrendingDown className="h-3 w-3" /> Actual Outgoings
-                    </CardTitle>
+                    <CardTitle className="text-[10px] font-bold uppercase text-muted-foreground">Actual Outgoings</CardTitle>
                 </CardHeader>
                 <CardContent>
                     {isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <div className="text-2xl font-bold">{formatCurrency(totalExpenses)}</div>}
-                    <div className="text-[10px] text-muted-foreground font-medium mt-1">
-                        {selectedProperty ? [selectedProperty.address.street].filter(Boolean).join(', ') : 'Portfolio-wide History'}
-                    </div>
                 </CardContent>
             </Card>
-            <Card className="bg-muted/5 border-muted shadow-none">
+            <Card className="bg-muted/5">
                 <CardHeader className="pb-2">
-                    <CardTitle className="text-[10px] font-bold uppercase tracking-wider text-muted-foreground flex items-center gap-2">
-                        <TrendingUp className="h-3 w-3" /> Year-to-Date Net
-                    </CardTitle>
+                    <CardTitle className="text-[10px] font-bold uppercase text-muted-foreground">Year-to-Date Net</CardTitle>
                 </CardHeader>
                 <CardContent>
                      {isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : <div className={"text-2xl font-bold " + (netIncome < 0 ? "text-destructive" : "text-green-600")}>{formatCurrency(netIncome)}</div>}
-                    <p className="text-[10px] text-muted-foreground font-medium mt-1 uppercase tracking-tight">Total Receipts Minus Expenses</p>
                 </CardContent>
             </Card>
         </div>
         <div className="grid gap-6 lg:grid-cols-5">
-            <Card className="lg:col-span-3 overflow-hidden">
-                <CardHeader className="border-b pb-4 bg-muted/20">
-                    <div className="flex items-center gap-2">
-                        <List className="h-4 w-4 text-primary" />
-                        <CardTitle className="text-base font-bold">Expense Breakdown</CardTitle>
-                    </div>
-                    <CardDescription className="text-xs">Detailed totals per category for {selectedYear}.</CardDescription>
+            <Card className="lg:col-span-3">
+                <CardHeader className="border-b bg-muted/20">
+                    <CardTitle className="text-base font-bold">Expense Breakdown</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6">
                     {isLoading ? (
-                        <div className="flex h-48 items-center justify-center">
-                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        </div>
+                        <div className="flex h-48 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
                     ) : expensesByCategory.length === 0 ? (
-                        <div className="py-16 text-center text-muted-foreground border-2 border-dashed rounded-lg bg-muted/10">
-                            <Banknote className="h-10 w-10 mx-auto mb-4 opacity-20" />
-                            <p className="text-xs italic">No financial records found for this selection.</p>
-                        </div>
+                        <div className="py-16 text-center text-muted-foreground italic border-2 border-dashed rounded-lg">No records found.</div>
                     ) : (
                         <div className="rounded-md border overflow-hidden">
                             <Table>
                                 <TableHeader className="bg-muted/50">
-                                    <TableRow>
-                                        <TableHead className="text-[10px] font-bold uppercase tracking-wider">Category</TableHead>
-                                        <TableHead className="text-right text-[10px] font-bold uppercase tracking-wider">Total (£)</TableHead>
-                                    </TableRow>
+                                    <TableRow><TableHead className="text-[10px] uppercase font-bold">Category</TableHead><TableHead className="text-right text-[10px] uppercase font-bold">Total</TableHead></TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {expensesByCategory.map(cat => (
-                                        <TableRow key={cat.name} className="hover:bg-muted/20 transition-colors">
-                                            <TableCell className="font-semibold text-sm">{cat.name}</TableCell>
-                                            <TableCell className="text-right font-bold whitespace-nowrap text-sm">{formatCurrency(cat.amount)}</TableCell>
-                                        </TableRow>
+                                        <TableRow key={cat.name}><TableCell className="font-semibold text-sm">{cat.name}</TableCell><TableCell className="text-right font-bold text-sm">{formatCurrency(cat.amount)}</TableCell></TableRow>
                                     ))}
                                 </TableBody>
                             </Table>
@@ -791,35 +800,26 @@ function AnnualSummary({
                     )}
                 </CardContent>
             </Card>
-             <Card className="lg:col-span-2 overflow-hidden">
-                <CardHeader className="border-b pb-4 bg-muted/20">
-                    <div className="flex items-center gap-2">
-                        <PieChartIcon className="h-4 w-4 text-primary" />
-                        <CardTitle className="text-base font-bold">Spend Distribution</CardTitle>
-                    </div>
-                    <CardDescription className="text-xs">Visual overview of financial outgoings.</CardDescription>
+             <Card className="lg:col-span-2">
+                <CardHeader className="border-b bg-muted/20">
+                    <CardTitle className="text-base font-bold">Spend Distribution</CardTitle>
                 </CardHeader>
                 <CardContent className="pt-6">
                     <div className="flex flex-col items-center justify-center min-h-[300px]">
                     {isLoading ? (
-                        <div className="flex h-[250px] w-full items-center justify-center">
-                            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                        </div>
+                        <Loader2 className="h-8 w-8 animate-spin text-primary" />
                     ) : expensesByCategory.length > 0 ? (
                         <ChartContainer config={chartConfig} className="mx-auto aspect-square w-full max-w-[280px]">
                             <PieChart>
                                 <ChartTooltip cursor={false} content={<ChartTooltipContent hideLabel nameKey="amount" formatter={(value) => formatCurrency(Number(value))} />} />
                                 <Pie data={expensesByCategory} dataKey="amount" nameKey="name" innerRadius={65} strokeWidth={8}>
-                                    {expensesByCategory.map((entry) => <Cell key={`cell-${entry.name}`} fill={entry.fill} className="stroke-background outline-none focus:outline-none"/>)}
+                                    {expensesByCategory.map((entry) => <Cell key={`cell-${entry.name}`} fill={entry.fill} />)}
                                 </Pie>
                                 <ChartLegend content={<ChartLegendContent nameKey="name" />} className="mt-4 flex-wrap text-[10px]" />
                             </PieChart>
                         </ChartContainer>
                     ) : (
-                        <div className="flex flex-col items-center justify-center text-center p-8">
-                            <PieChartIcon className="h-12 w-12 text-muted-foreground opacity-10 mb-4" />
-                            <p className="text-xs text-muted-foreground italic">Add expenses to visualize your distribution graph.</p>
-                        </div>
+                        <p className="text-xs text-muted-foreground italic">Add expenses to view graph.</p>
                     )}
                     </div>
                 </CardContent>
@@ -852,17 +852,12 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
   const handleSavePartialPayment = async () => {
     if (!firestore || !user || !selectedProperty || !editingPayment) return;
     const amount = Number(partialAmount);
-    if (isNaN(amount) || amount <= 0 || amount >= editingPayment.expectedAmount) {
-        toast({ variant: 'destructive', title: 'Invalid Amount', description: `Please enter a value between 0 and ${formatCurrency(editingPayment.expectedAmount)}.` });
-        return;
-    }
+    if (isNaN(amount) || amount <= 0 || amount >= editingPayment.expectedAmount) return;
     const { month } = editingPayment;
     const rentPaymentRef = doc(firestore, 'properties', selectedProperty.id, 'rentPayments', `${selectedYear}-${month}`);
     const paymentData = { ownerId: user.uid, propertyId: selectedProperty.id, year: selectedYear, month, status: 'Partially Paid' as PaymentStatus, expectedAmount: editingPayment.expectedAmount, amountPaid: amount };
     setDoc(rentPaymentRef, paymentData, { merge: true }).then(() => {
-      toast({ title: 'Status Updated', description: `Partial payment for ${month} has been recorded.` });
-    }).catch(() => {
-      toast({ variant: 'destructive', title: 'Database Error' });
+      toast({ title: 'Status Updated' });
     });
     setPartialDialogOpen(false); setEditingPayment(null); setPartialAmount('');
   };
@@ -870,40 +865,21 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
   const handleSaveExpectedRent = async () => {
     if (!firestore || !user || !selectedProperty || !editingPayment) return;
     const amount = Number(newRentAmount);
-    if (isNaN(amount) || amount < 0) {
-        toast({ variant: 'destructive', title: 'Invalid Amount', description: "Please enter a valid rent amount." });
-        return;
-    }
+    if (isNaN(amount) || amount < 0) return;
     const { month } = editingPayment;
     const rentPaymentRef = doc(firestore, 'properties', selectedProperty.id, 'rentPayments', `${selectedYear}-${month}`);
-    
-    // Fetch existing data if any to preserve it
     const existing = statement.find(s => s.month === month)?.rawPayment;
-    
-    const paymentData = { 
-        ownerId: user.uid, 
-        propertyId: selectedProperty.id, 
-        year: selectedYear, 
-        month, 
-        status: existing?.status || 'Pending' as PaymentStatus, 
-        expectedAmount: amount, 
-        amountPaid: existing?.amountPaid ?? 0
-    };
-
+    const paymentData = { ownerId: user.uid, propertyId: selectedProperty.id, year: selectedYear, month, status: existing?.status || 'Pending' as PaymentStatus, expectedAmount: amount, amountPaid: existing?.amountPaid ?? 0 };
     setDoc(rentPaymentRef, paymentData, { merge: true }).then(() => {
-      toast({ title: 'Rent Adjusted', description: `Expected rent for ${month} updated to ${formatCurrency(amount)}.` });
-    }).catch(() => {
-      toast({ variant: 'destructive', title: 'Database Error' });
+      toast({ title: 'Rent Adjusted' });
     });
     setRentDialogOpen(false); setEditingPayment(null); setNewRentAmount('');
   };
 
   const handleStatusChange = (month: string, status: PaymentStatus) => {
     if (!firestore || !user || !selectedProperty) return;
-    
     const existingEntry = statement.find(s => s.month === month);
     const expectedAmount = existingEntry?.rent ?? selectedProperty.tenancy?.monthlyRent ?? 0;
-
     if (status === 'Partially Paid') {
         setEditingPayment({ month, expectedAmount }); setPartialAmount(''); setPartialDialogOpen(true);
         return;
@@ -911,16 +887,8 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
     const rentPaymentRef = doc(firestore, 'properties', selectedProperty.id, 'rentPayments', `${selectedYear}-${month}`);
     const paymentData = { ownerId: user.uid, propertyId: selectedProperty.id, year: selectedYear, month, status, expectedAmount, amountPaid: status === 'Paid' ? expectedAmount : 0 };
     setDoc(rentPaymentRef, paymentData, { merge: true }).then(() => {
-      toast({ title: 'Record Saved', description: `Rent for ${month} updated to ${status}.` });
-    }).catch(() => {
-      toast({ variant: 'destructive', title: 'Database Error' });
+      toast({ title: 'Record Saved' });
     });
-  };
-
-  const handleEditRentClick = (month: string, currentRent: number) => {
-      setEditingPayment({ month, expectedAmount: currentRent });
-      setNewRentAmount(String(currentRent));
-      setRentDialogOpen(true);
   };
 
   const totalExpectedRent = useMemo(() => statement.reduce((acc, row) => acc + row.rent, 0), [statement]);
@@ -935,108 +903,59 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
     }
   };
 
-  if (!selectedProperty) return <Card className="mt-6 shadow-none border-dashed"><CardContent className='pt-16 pb-16 text-center text-muted-foreground bg-muted/10'><Filter className="h-10 w-10 mx-auto mb-4 opacity-20" /><p className='text-sm italic'>Choose a property to access the full rent ledger.</p></CardContent></Card>;
-  if (!selectedProperty.tenancy?.monthlyRent) return <Card className="mt-6 border-yellow-200 bg-yellow-50/30 shadow-none"><CardContent className="pt-16 pb-16 text-center"><Banknote className="h-10 w-10 mx-auto mb-4 text-yellow-600/40" /><p className="font-semibold text-yellow-800">No rent data configured</p><p className='text-xs text-muted-foreground mt-1'>Please update the property details to set the monthly expected rent.</p><Button asChild variant="outline" size="sm" className="mt-6 bg-background border-yellow-200 hover:bg-yellow-100"><Link href={`/dashboard/properties/${selectedProperty.id}/edit`}>Setup Property Ledger</Link></Button></CardContent></Card>;
+  if (!selectedProperty) return <Card className="mt-6 border-dashed"><CardContent className='py-16 text-center text-muted-foreground italic'><Filter className="h-10 w-10 mx-auto mb-4 opacity-20" />Select property to view ledger.</CardContent></Card>;
 
   return (
     <>
-      {/* Partial Payment Dialog */}
       <Dialog open={isPartialDialogOpen} onOpenChange={setPartialDialogOpen}>
-        <DialogContent><DialogHeader><DialogTitle>Partial Payment Details</DialogTitle></DialogHeader>
-          <div className="grid gap-4 py-4"><div className="grid grid-cols-4 items-center gap-4"><Label htmlFor="amount" className="text-right font-medium">Amount (£)</Label><Input id="amount" type="text" inputMode="decimal" value={partialAmount} onChange={(e) => setPartialAmount(e.target.value)} className="col-span-3" placeholder="0.00" /></div></div>
+        <DialogContent><DialogHeader><DialogTitle>Partial Payment</DialogTitle></DialogHeader>
+          <div className="py-4"><Label htmlFor="amount">Amount (£)</Label><Input id="amount" type="text" inputMode="decimal" value={partialAmount} onChange={(e) => setPartialAmount(e.target.value)} /></div>
           <DialogFooter><Button variant="outline" onClick={() => setPartialDialogOpen(false)}>Cancel</Button><Button onClick={handleSavePartialPayment}>Save</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Edit Expected Rent Dialog */}
       <Dialog open={isRentDialogOpen} onOpenChange={setRentDialogOpen}>
-        <DialogContent>
-            <DialogHeader>
-                <DialogTitle>Adjust Monthly Rent</DialogTitle>
-                <DialogDescription>Change the expected rent amount for {editingPayment?.month} {selectedYear}.</DialogDescription>
-            </DialogHeader>
-            <div className="grid gap-4 py-4">
-                <div className="grid grid-cols-4 items-center gap-4">
-                    <Label htmlFor="rent-amount" className="text-right font-medium">Expected (£)</Label>
-                    <Input id="rent-amount" type="text" inputMode="decimal" value={newRentAmount} onChange={(e) => setNewRentAmount(e.target.value)} className="col-span-3" placeholder="0.00" />
-                </div>
-            </div>
-            <DialogFooter>
-                <Button variant="outline" onClick={() => setRentDialogOpen(false)}>Cancel</Button>
-                <Button onClick={handleSaveExpectedRent}>Update Rent</Button>
-            </DialogFooter>
+        <DialogContent><DialogHeader><DialogTitle>Adjust Monthly Rent</DialogTitle></DialogHeader>
+            <div className="py-4"><Label htmlFor="rent-amount">Expected (£)</Label><Input id="rent-amount" type="text" inputMode="decimal" value={newRentAmount} onChange={(e) => setNewRentAmount(e.target.value)} /></div>
+            <DialogFooter><Button variant="outline" onClick={() => setRentDialogOpen(false)}>Cancel</Button><Button onClick={handleSaveExpectedRent}>Update</Button></DialogFooter>
         </DialogContent>
       </Dialog>
 
-      <Card className="mt-6 overflow-hidden">
-        <CardHeader className="border-b pb-4 bg-muted/20"><CardTitle className="text-lg flex items-center gap-2"><LayoutList className='h-5 w-5 text-primary' /> Portfolio Ledger</CardTitle></CardHeader>
+      <Card className="mt-6">
+        <CardHeader className="border-b bg-muted/20"><CardTitle className="text-lg">Portfolio Ledger</CardTitle></CardHeader>
         <CardContent className='pt-6'>
-           {isLoadingPayments ? <div className="flex justify-center items-center h-48"><Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /></div> : (
-            <>
-                <div className="hidden rounded-md border md:block overflow-hidden">
-                    <Table>
-                    <TableHeader className="bg-muted/30"><TableRow><TableHead>Month</TableHead><TableHead>Monthly Rent</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-                    <TableBody>
-                        {statement.map((row) => {
-                        const { Icon, className } = getRentStatusProps(row.status);
-                        return (
-                            <TableRow key={row.month} className="hover:bg-muted/20 transition-colors">
-                            <TableCell className="font-bold text-sm">{row.month}</TableCell>
-                            <TableCell className="text-sm font-medium">
-                                <Button 
-                                    variant="ghost" 
-                                    size="sm" 
-                                    className="h-auto p-1 font-medium hover:bg-primary/10 transition-colors group"
-                                    onClick={() => handleEditRentClick(row.month, row.rent)}
-                                >
-                                    {formatCurrency(row.rent)}
-                                    <Edit2 className="h-3 w-3 ml-2 opacity-0 group-hover:opacity-50" />
-                                </Button>
-                            </TableCell>
-                            <TableCell>
-                                <Select value={row.status} onValueChange={(newStatus) => handleStatusChange(row.month, newStatus as PaymentStatus)}>
-                                <SelectTrigger className={"w-[160px] h-9 text-xs font-bold " + className}><div className="flex items-center gap-2"><Icon className="h-3.5 w-3.5" /><SelectValue /></div></SelectTrigger>
-                                <SelectContent><SelectItem value="Paid">Paid</SelectItem><SelectItem value="Partially Paid">Partially Paid</SelectItem><SelectItem value="Unpaid">Unpaid</SelectItem><SelectItem value="Pending">Pending</SelectItem></SelectContent>
-                                </Select>
-                            </TableCell>
-                            </TableRow>
-                        )})}
-                    </TableBody>
-                    </Table>
-                </div>
-                 <div className="grid gap-4 md:hidden">
+           {isLoadingPayments ? <Loader2 className="mx-auto h-6 w-6 animate-spin text-primary" /> : (
+            <div className="rounded-md border">
+                <Table>
+                <TableHeader className="bg-muted/30"><TableRow><TableHead>Month</TableHead><TableHead>Monthly Rent</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
+                <TableBody>
                     {statement.map((row) => {
-                        const { Icon, className } = getRentStatusProps(row.status);
-                        return (
-                            <Card key={row.month} className="shadow-none border-muted/60">
-                                <CardHeader className="flex flex-row items-center justify-between pb-2">
-                                    <CardTitle className="text-base font-bold">{row.month}</CardTitle>
-                                    <Button 
-                                        variant="ghost" 
-                                        size="sm" 
-                                        className="h-auto p-1 font-semibold flex items-center gap-1"
-                                        onClick={() => handleEditRentClick(row.month, row.rent)}
-                                    >
-                                        {formatCurrency(row.rent)}
-                                        <Edit2 className="h-3 w-3 text-muted-foreground" />
-                                    </Button>
-                                </CardHeader>
-                                <CardContent>
-                                    <Select value={row.status} onValueChange={(newStatus) => handleStatusChange(row.month, newStatus as PaymentStatus)}>
-                                    <SelectTrigger className={"w-full font-bold text-xs " + className}><div className="flex items-center gap-2"><Icon className="h-4 w-4" /><SelectValue /></div></SelectTrigger>
-                                    <SelectContent><SelectItem value="Paid">Paid</SelectItem><SelectItem value="Partially Paid">Partially Paid</SelectItem><SelectItem value="Unpaid">Unpaid</SelectItem><SelectItem value="Pending">Pending</SelectItem></SelectContent>
-                                    </Select>
-                                </CardContent>
-                            </Card>
-                        )})}
-                </div>
-            </>
+                    const { Icon, className } = getRentStatusProps(row.status);
+                    return (
+                        <TableRow key={row.month}>
+                        <TableCell className="font-bold text-sm">{row.month}</TableCell>
+                        <TableCell className="text-sm">
+                            <Button variant="ghost" size="sm" className="h-auto p-1 font-medium hover:bg-primary/10 transition-colors group" onClick={() => { setEditingPayment({ month: row.month, expectedAmount: row.rent }); setNewRentAmount(String(row.rent)); setRentDialogOpen(true); }}>
+                                {formatCurrency(row.rent)}<Edit2 className="h-3 w-3 ml-2 opacity-0 group-hover:opacity-50" />
+                            </Button>
+                        </TableCell>
+                        <TableCell>
+                            <Select value={row.status} onValueChange={(v) => handleStatusChange(row.month, v as PaymentStatus)}>
+                            <SelectTrigger className={"w-[160px] h-9 text-xs font-bold " + className}><div className="flex items-center gap-2"><Icon className="h-3.5 w-3.5" /><SelectValue /></div></SelectTrigger>
+                            <SelectContent><SelectItem value="Paid">Paid</SelectItem><SelectItem value="Partially Paid">Partially Paid</SelectItem><SelectItem value="Unpaid">Unpaid</SelectItem><SelectItem value="Pending">Pending</SelectItem></SelectContent>
+                            </Select>
+                        </TableCell>
+                        </TableRow>
+                    )})}
+                </TableBody>
+                </Table>
+            </div>
           )}
         </CardContent>
         {selectedProperty && (
-            <CardFooter className='flex-col items-end space-y-1 pt-6 border-t mt-4 bg-muted/10'>
+            <CardFooter className='flex-col items-end border-t pt-6 bg-muted/10'>
                 <div className="font-bold text-2xl text-primary">{formatCurrency(totalPaid)} Collected YTD</div>
-                <div className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">Target for period: {formatCurrency(totalExpectedRent)}</div>
+                <div className="text-[10px] text-muted-foreground font-bold uppercase">Target: {formatCurrency(totalExpectedRent)}</div>
             </CardFooter>
         )}
       </Card>
@@ -1053,10 +972,7 @@ function ArrearsManagement({ properties }: { properties: Property[] }) {
   const [period, setPeriod] = useState<{ year: number; month: string } | null>(null);
 
   useEffect(() => {
-    setPeriod({
-        year: new Date().getFullYear(),
-        month: format(new Date(), 'MMMM')
-    });
+    setPeriod({ year: new Date().getFullYear(), month: format(new Date(), 'MMMM') });
   }, []);
 
   const fetchArrears = async () => {
@@ -1065,10 +981,7 @@ function ArrearsManagement({ properties }: { properties: Property[] }) {
     try {
       const results: RentPayment[] = [];
       const occupiedProps = properties.filter(p => p.status === 'Occupied');
-      
-      const promises = occupiedProps.map(prop => {
-        return getDocs(query(collection(firestore, 'properties', prop.id, 'rentPayments'), where('ownerId', '==', user.uid), where('year', '==', period.year), where('month', '==', period.month)));
-      });
+      const promises = occupiedProps.map(prop => getDocs(query(collection(firestore, 'properties', prop.id, 'rentPayments'), where('ownerId', '==', user.uid), where('year', '==', period.year), where('month', '==', period.month))));
       const snapshots = await Promise.all(promises);
       snapshots.forEach((snap, index) => {
         const propertyId = occupiedProps[index].id;
@@ -1076,9 +989,7 @@ function ArrearsManagement({ properties }: { properties: Property[] }) {
         if (!data || (data.status !== 'Paid')) {
           results.push({ 
             id: snap.docs[0]?.id || `${period.year}-${period.month}`, 
-            propertyId, 
-            year: period.year, 
-            month: period.month, 
+            propertyId, year: period.year, month: period.month, 
             status: data?.status || 'Unpaid', 
             expectedAmount: data?.expectedAmount || occupiedProps[index].tenancy?.monthlyRent || 0, 
             amountPaid: data?.amountPaid || 0 
@@ -1095,19 +1006,13 @@ function ArrearsManagement({ properties }: { properties: Property[] }) {
     if (!firestore || !user) return;
     const rentPaymentRef = doc(firestore, 'properties', payment.propertyId, 'rentPayments', `${payment.year}-${payment.month}`);
     const updateData = { ...payment, ownerId: user.uid, status: newStatus, amountPaid: amountPaid ?? (newStatus === 'Paid' ? payment.expectedAmount : 0) };
-    try { 
-      await setDoc(rentPaymentRef, updateData, { merge: true }); 
-      toast({ title: 'Record Saved' }); 
-      fetchArrears(); 
-    } catch (error) { 
-      toast({ variant: 'destructive', title: 'Update Failed' }); 
-    }
+    try { await setDoc(rentPaymentRef, updateData, { merge: true }); toast({ title: 'Record Saved' }); fetchArrears(); } catch (error) { toast({ variant: 'destructive', title: 'Update Failed' }); }
   };
 
   const handleSavePartial = async () => {
     if (!partialPaymentData) return;
     const amount = Number(partialPaymentData.amount);
-    if (isNaN(amount) || amount <= 0 || amount >= partialPaymentData.payment.expectedAmount) { toast({ variant: 'destructive', title: 'Error', description: 'Invalid payment amount.' }); return; }
+    if (isNaN(amount) || amount <= 0 || amount >= partialPaymentData.payment.expectedAmount) return;
     await handleUpdateStatus(partialPaymentData.payment, 'Partially Paid', amount);
     setPartialPaymentData(null);
   };
@@ -1116,29 +1021,25 @@ function ArrearsManagement({ properties }: { properties: Property[] }) {
     <div className="space-y-6 mt-6">
       <Dialog open={!!partialPaymentData} onOpenChange={(open) => !open && setPartialPaymentData(null)}>
         <DialogContent><DialogHeader><DialogTitle>Record Partial Collection</DialogTitle></DialogHeader>
-          <div className="py-4 space-y-2">
-              <Label className='text-xs font-bold uppercase text-muted-foreground'>Collected Sum (£)</Label>
-              <Input type="text" inputMode="decimal" placeholder="0.00" value={partialPaymentData?.amount || ''} onChange={(e) => setPartialPaymentData(prev => prev ? { ...prev, amount: e.target.value } : null)} />
-          </div>
+          <div className="py-4"><Label>Collected Sum (£)</Label><Input type="text" inputMode="decimal" value={partialPaymentData?.amount || ''} onChange={(e) => setPartialPaymentData(prev => prev ? { ...prev, amount: e.target.value } : null)} /></div>
           <DialogFooter><Button variant="outline" onClick={() => setPartialPaymentData(null)}>Cancel</Button><Button onClick={handleSavePartial}>Save</Button></DialogFooter>
         </DialogContent>
       </Dialog>
       <Card className="border-destructive/20 bg-destructive/5 shadow-none">
-        <CardHeader className="border-b pb-4"><CardTitle className="flex items-center gap-2 text-destructive"><AlertCircle className="h-5 w-5" /> Arrears Monitoring</CardTitle></CardHeader>
+        <CardHeader className="border-b"><CardTitle className="text-destructive">Arrears Monitoring</CardTitle></CardHeader>
         <CardContent className="pt-6">
-          {isLoading ? <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin text-destructive" /></div> : arrears.length === 0 ? (
-            <div className="text-center py-20 border-2 border-dashed rounded-lg bg-background"><CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-4 opacity-50" /><p className="text-lg font-bold text-green-700">Portfolio is fully up-to-date</p><p className='text-sm text-muted-foreground mt-1'>All occupied properties have cleared their rent for {period?.month}.</p></div>
+          {isLoading ? <Loader2 className="h-8 w-8 animate-spin text-destructive mx-auto" /> : arrears.length === 0 ? (
+            <div className="text-center py-20 bg-background rounded-lg border-2 border-dashed"><CheckCircle2 className="h-12 w-12 text-green-500 mx-auto mb-4 opacity-50" /><p className="font-bold text-green-700">Portfolio is up-to-date</p></div>
           ) : (
             <div className="rounded-md border bg-background overflow-hidden">
               <Table>
-                <TableHeader className="bg-muted/50"><TableRow><TableHead className='text-[10px] font-bold uppercase'>Property</TableHead><TableHead className='text-[10px] font-bold uppercase'>Monthly Rent</TableHead><TableHead className='text-[10px] font-bold uppercase'>Received</TableHead><TableHead className='text-[10px] font-bold uppercase'>Status</TableHead><TableHead className="text-right text-[10px] font-bold uppercase">Actions</TableHead></TableRow></TableHeader>
+                <TableHeader className="bg-muted/50"><TableRow><TableHead>Property</TableHead><TableHead>Received</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
                 <TableBody>
                   {arrears.map((row) => (
-                    <TableRow key={row.propertyId} className='hover:bg-muted/10 transition-colors'>
+                    <TableRow key={row.propertyId}>
                       <TableCell className="font-bold text-sm">{properties.find(p => p.id === row.propertyId)?.address.street}</TableCell>
-                      <TableCell className="text-sm font-medium">{formatCurrency(row.expectedAmount)}</TableCell>
                       <TableCell className="text-destructive font-bold text-sm">{formatCurrency(row.amountPaid || 0)}</TableCell>
-                      <TableCell><Badge variant={row.status === 'Partially Paid' ? 'secondary' : 'destructive'} className='text-[10px] font-bold'>{row.status}</Badge></TableCell>
+                      <TableCell><Badge variant={row.status === 'Partially Paid' ? 'secondary' : 'destructive'}>{row.status}</Badge></TableCell>
                       <TableCell className="text-right"><div className="flex justify-end gap-1.5"><Button size="sm" variant="outline" className='h-8 text-xs' onClick={() => setPartialPaymentData({ payment: row, amount: '' })}>Partial</Button><Button size="sm" className='h-8 text-xs' onClick={() => handleUpdateStatus(row, 'Paid')}>Clear Full</Button></div></TableCell>
                     </TableRow>
                   ))}

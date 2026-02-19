@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -5,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import {
   Card,
   CardContent,
@@ -30,7 +31,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Wand2, Upload } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -42,6 +43,7 @@ import {
 } from '@/firebase';
 import { collection, query, where, addDoc, limit } from 'firebase/firestore';
 import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { analyzeDocument } from '@/ai/flows/document-analysis-flow';
 
 // Schema for the form
 const MAX_FILE_SIZE = 5 * 1024 * 1024; // 5MB
@@ -51,11 +53,6 @@ const documentSchema = z.object({
   documentType: z.string({ required_error: 'Please select a document type.' }),
   issueDate: z.coerce.date({ required_error: 'Please select an issue date.' }),
   expiryDate: z.coerce.date({ required_error: 'Please select an expiry date.' }),
-  documentFile: z
-    .custom<FileList>()
-    .optional()
-    .refine((files) => !files || files.length <= 1, 'Please select a single file.')
-    .refine((files) => !files || files.length === 0 || files[0].size <= MAX_FILE_SIZE, `Max file size is 5MB.`),
   notes: z.string().optional(),
 });
 
@@ -79,6 +76,8 @@ export default function UploadDocumentPage() {
   const firestore = useFirestore();
   const storage = useStorage();
   const [isSaving, setIsSaving] = useState(false);
+  const [isAnalyzing, setIsAnalyzing] = useState(false);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<DocumentFormValues>({
     resolver: zodResolver(documentSchema),
@@ -90,7 +89,7 @@ export default function UploadDocumentPage() {
     }
   });
   
-  // Fetch properties - strictly scoped to user
+  // Fetch properties
   const propertiesQuery = useMemoFirebase(() => {
     if (!user) return null;
     return query(
@@ -102,64 +101,65 @@ export default function UploadDocumentPage() {
 
   const { data: allProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
 
-  // Filter for active properties in-memory to bypass index requirement
   const activeProperties = useMemo(() => {
     const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
     return allProperties?.filter(p => activeStatuses.includes(p.status)) ?? [];
   }, [allProperties]);
 
-  async function onSubmit(data: DocumentFormValues) {
-    if (!user || !firestore) {
-      toast({
-        variant: 'destructive',
-        title: 'Authentication Error',
-        description: 'You must be logged in.',
-      });
-      return;
+  const handleAIAnalysis = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+
+    if (file.size > MAX_FILE_SIZE) {
+        toast({ variant: 'destructive', title: 'File too large', description: 'Maximum file size is 5MB.' });
+        return;
     }
-    
+
+    setIsAnalyzing(true);
+    try {
+        const reader = new FileReader();
+        const dataUriPromise = new Promise<string>((resolve) => {
+            reader.onload = () => resolve(reader.result as string);
+            reader.readAsDataURL(file);
+        });
+        
+        const dataUri = await dataUriPromise;
+        const result = await analyzeDocument({
+            photoDataUri: dataUri,
+            documentHint: form.getValues('title'),
+        });
+
+        form.setValue('title', result.title);
+        form.setValue('documentType', result.documentType);
+        if (result.issueDate) form.setValue('issueDate', new Date(result.issueDate));
+        if (result.expiryDate) form.setValue('expiryDate', new Date(result.expiryDate));
+        form.setValue('notes', result.notes);
+
+        toast({ title: 'Analysis Complete', description: 'Form fields have been updated based on the document.' });
+    } catch (error) {
+        console.error('AI Analysis failed', error);
+        toast({ variant: 'destructive', title: 'AI Error', description: 'Could not analyze document. Please fill in details manually.' });
+    } finally {
+        setIsAnalyzing(false);
+    }
+  };
+
+  async function onSubmit(data: DocumentFormValues) {
+    if (!user || !firestore) return;
     setIsSaving(true);
 
     try {
-      let fileUri = '';
-      let finalFileName = '';
-
-      // Only upload if a file is provided (currently hidden in UI)
-      if (storage && data.documentFile && data.documentFile.length > 0) {
-        const file = data.documentFile[0];
-        const uniqueFileName = `${Date.now()}-${file.name}`;
-        const fileStorageRef = storageRef(storage, `documents/${user.uid}/${uniqueFileName}`);
-
-        // Upload file
-        const uploadResult = await uploadBytes(fileStorageRef, file);
-        fileUri = await getDownloadURL(uploadResult.ref);
-        finalFileName = file.name;
-      }
-
-      const { documentFile, ...formData } = data;
-      
-      const newDocument = {
-        ...formData,
-        ownerId: user.uid,
-        fileUri: fileUri || null,
-        fileName: finalFileName || null,
-      };
-
       const documentsCollection = collection(firestore, 'properties', data.propertyId, 'documents');
-      await addDoc(documentsCollection, newDocument);
-      
-      toast({
-        title: 'Document Logged',
-        description: 'The document details have been successfully saved to the property records.',
+      await addDoc(documentsCollection, {
+        ...data,
+        ownerId: user.uid,
       });
+      
+      toast({ title: 'Document Logged', description: 'The record has been saved successfully.' });
       router.push('/dashboard/documents');
     } catch (error) {
         console.error('Failed to save document', error);
-        toast({
-            variant: 'destructive',
-            title: 'Save Failed',
-            description: 'There was an error saving the document record. Please try again.',
-        });
+        toast({ variant: 'destructive', title: 'Save Failed' });
     } finally {
         setIsSaving(false);
     }
@@ -172,10 +172,33 @@ export default function UploadDocumentPage() {
   return (
     <Card className="max-w-2xl mx-auto">
       <CardHeader>
-        <CardTitle>Log Property Document</CardTitle>
-        <CardDescription>
-          Fill in the details to record a new legal or compliance document for your property portfolio.
-        </CardDescription>
+        <div className="flex justify-between items-start">
+            <div>
+                <CardTitle>Log Property Document</CardTitle>
+                <CardDescription>
+                Record a new legal or compliance document.
+                </CardDescription>
+            </div>
+            <div className="flex flex-col items-end gap-2">
+                <Input
+                    type="file"
+                    className="hidden"
+                    ref={fileInputRef}
+                    onChange={handleAIAnalysis}
+                    accept="image/*"
+                />
+                <Button 
+                    type="button" 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={() => fileInputRef.current?.click()}
+                    disabled={isAnalyzing}
+                >
+                    {isAnalyzing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+                    AI Auto-Fill (Photo)
+                </Button>
+            </div>
+        </div>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -278,8 +301,6 @@ export default function UploadDocumentPage() {
                 />
             </div>
             
-            {/* Document File section hidden for later use */}
-            
              <FormField
               control={form.control}
               name="notes"
@@ -303,12 +324,7 @@ export default function UploadDocumentPage() {
                     <Link href="/dashboard/documents">Cancel</Link>
                 </Button>
                 <Button type="submit" disabled={isSaving}>
-                  {isSaving ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : 'Save Record'}
+                  {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Save Record'}
                 </Button>
             </div>
           </form>

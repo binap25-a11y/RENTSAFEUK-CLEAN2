@@ -96,6 +96,14 @@
           "type": "string",
           "description": "Additional notes about the property."
         },
+        "purchasePrice": {
+          "type": "number",
+          "description": "The initial purchase price of the property."
+        },
+        "currentValuation": {
+          "type": "number",
+          "description": "The most recent estimated market value."
+        },
         "tenancy": {
           "type": "object",
           "description": "Financial details related to the property's tenancy.",
