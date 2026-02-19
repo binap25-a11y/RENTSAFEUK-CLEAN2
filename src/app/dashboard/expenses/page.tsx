@@ -275,14 +275,43 @@ export default function FinancialsPage() {
     const doc = new jsPDF();
     doc.setFontSize(20);
     doc.text(`HMRC Self-Assessment Export - ${selectedYear}`, 14, 22);
-    const hmrcCategories = {
-        'Rent received': totalPaidRent,
-        'Property repairs and maintenance': expenses.filter(e => ['Repairs and Maintenance', 'Cleaning', 'Gardening'].includes(e.expenseType)).reduce((a, b) => a + b.amount, 0),
-        'Other allowable property expenses': expenses.filter(e => e.expenseType === 'Other').reduce((a, b) => a + b.amount, 0),
-    };
-    const tableData = Object.entries(hmrcCategories).map(([label, value]) => [label, formatCurrency(value)]);
-    doc.autoTable({ startY: 40, head: [['HMRC Category', 'Amount (£)']], body: tableData, theme: 'striped' });
-    doc.save(`HMRC-Report-${selectedYear}.pdf`);
+    doc.setFontSize(10);
+    doc.text(`Generated for: ${user?.displayName || user?.email}`, 14, 30);
+    doc.text(`Portfolio Scope: ${selectedPropertyId === 'all' ? 'Entire Active Portfolio' : selectedProperty?.address.street}`, 14, 36);
+    doc.setLineWidth(0.5);
+    doc.line(14, 40, 200, 40);
+
+    // Grouping internal categories into standard HMRC groupings
+    const ratesInsurance = expenses.filter(e => ['Insurance', 'Utilities'].includes(e.expenseType)).reduce((a, b) => a + Number(b.amount || 0), 0);
+    const maintenance = expenses.filter(e => ['Repairs and Maintenance', 'Cleaning', 'Gardening'].includes(e.expenseType)).reduce((a, b) => a + Number(b.amount || 0), 0);
+    const professionalFees = expenses.filter(e => ['Letting Agent Fees'].includes(e.expenseType)).reduce((a, b) => a + Number(b.amount || 0), 0);
+    const financeCosts = expenses.filter(e => ['Mortgage Interest'].includes(e.expenseType)).reduce((a, b) => a + Number(b.amount || 0), 0);
+    const otherExpenses = expenses.filter(e => e.expenseType === 'Other').reduce((a, b) => a + Number(b.amount || 0), 0);
+
+    const hmrcCategories = [
+        ['Rent received (total for period)', formatCurrency(totalPaidRent)],
+        ['Rates, council tax, insurance, ground rents etc.', formatCurrency(ratesInsurance)],
+        ['Property repairs and maintenance', formatCurrency(maintenance)],
+        ['Management fees and other professional fees', formatCurrency(professionalFees)],
+        ['Other allowable property expenses', formatCurrency(otherExpenses)],
+        ['Residential finance costs (for reference)', formatCurrency(financeCosts)],
+    ];
+
+    doc.autoTable({ 
+        startY: 45, 
+        head: [['Standard HMRC Category Grouping', 'Total Amount (£)']], 
+        body: hmrcCategories, 
+        theme: 'striped',
+        headStyles: { fillColor: [33, 114, 249] } 
+    });
+
+    const finalY = (doc as any).lastAutoTable.finalY + 15;
+    doc.setFontSize(9);
+    doc.setTextColor(100);
+    const note = "Note: Residential finance costs (Mortgage Interest) are listed for reference. Under UK law (Section 24), these are typically claimed as a 20% basic rate tax reduction on your overall return rather than as a direct expense against rental profit.";
+    doc.text(doc.splitTextToSize(note, 180), 14, finalY);
+
+    doc.save(`RentSafeUK-HMRC-Tax-Report-${selectedYear}.pdf`);
   };
 
   return (
@@ -482,8 +511,15 @@ function InvestmentAnalytics({ properties, selectedPropertyId, allExpenses }: { 
                 const purchasePrice = prop.purchasePrice || 0;
                 const grossYield = purchasePrice > 0 ? (annualRent / purchasePrice) * 100 : 0;
                 return (
-                    <Card key={prop.id}><CardHeader className="bg-muted/30"><CardTitle className="text-sm truncate">{prop.address.street}</CardTitle></CardHeader>
-                    <CardContent className="pt-6"><p className="text-[10px] font-bold uppercase text-muted-foreground">Gross Yield</p><p className="text-2xl font-bold text-primary">{grossYield.toFixed(2)}%</p></CardContent></Card>
+                    <Card key={prop.id}>
+                        <CardHeader className="bg-muted/30">
+                            <CardTitle className="text-sm truncate">{prop.address.street}</CardTitle>
+                        </CardHeader>
+                        <CardContent className="pt-6">
+                            <p className="text-[10px] font-bold uppercase text-muted-foreground">Gross Yield</p>
+                            <p className="text-2xl font-bold text-primary">{grossYield.toFixed(2)}%</p>
+                        </CardContent>
+                    </Card>
                 );
             })}
         </div>
