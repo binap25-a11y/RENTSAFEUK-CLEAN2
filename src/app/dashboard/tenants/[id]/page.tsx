@@ -2,9 +2,10 @@
 
 import { useParams, notFound, useRouter } from 'next/navigation';
 import Link from 'next/link';
+import dynamic from 'next/dynamic';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, User, Mail, Phone, Edit, Trash2, Home, Loader2, MoreVertical, UserPlus, Eye } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, Edit, Trash2, Home, Loader2, MoreVertical, UserPlus, Eye, Sparkles } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
 import { doc, collection, query, updateDoc, where, limit } from 'firebase/firestore';
@@ -20,6 +21,12 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
+
+// Dynamically import heavy AI components to prevent ChunkLoadErrors and improve initial load time
+const TenantCommunicationAssistant = dynamic(() => import('@/components/dashboard/tenant-communication-assistant').then(mod => mod.TenantCommunicationAssistant), {
+  ssr: false,
+  loading: () => <div className="h-10 w-32 animate-pulse bg-muted rounded-md" />
+});
 
 // Types
 interface Property {
@@ -61,6 +68,7 @@ export default function TenantDetailPage() {
   const { toast } = useToast();
   const { user } = useUser();
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isCommAssistantOpen, setIsCommAssistantOpen] = useState(false);
 
   const tenantRef = useMemoFirebase(() => {
     if (!firestore || !id) return null;
@@ -98,6 +106,8 @@ export default function TenantDetailPage() {
     return [address.street, address.city, address.postcode].filter(Boolean).join(', ');
   };
 
+  const propertyAddress = formatAddress(property?.address);
+
   return (
     <>
         <div className="flex flex-col gap-6">
@@ -106,13 +116,21 @@ export default function TenantDetailPage() {
                     <Button variant="outline" size="icon" asChild><Link href="/dashboard/tenants"><ArrowLeft className="h-4 w-4" /></Link></Button>
                     <h1 className="text-2xl font-bold">{tenant.name}</h1>
                 </div>
-                <DropdownMenu>
-                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild><Link href={`/dashboard/tenants/${id}/edit`}><Edit className="mr-2 h-4 w-4" /> Edit</Link></DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
-                    </DropdownMenuContent>
-                </DropdownMenu>
+                <div className="flex items-center gap-2">
+                    <Button onClick={() => setIsCommAssistantOpen(true)} variant="outline" className="hidden sm:flex">
+                        <Sparkles className="mr-2 h-4 w-4 text-primary" /> AI Communication
+                    </Button>
+                    <DropdownMenu>
+                        <DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                        <DropdownMenuContent align="end">
+                            <DropdownMenuItem onClick={() => setIsCommAssistantOpen(true)} className="sm:hidden">
+                                <Sparkles className="mr-2 h-4 w-4" /> AI Communication
+                            </DropdownMenuItem>
+                            <DropdownMenuItem asChild><Link href={`/dashboard/tenants/${id}/edit`}><Edit className="mr-2 h-4 w-4" /> Edit</Link></DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
+                        </DropdownMenuContent>
+                    </DropdownMenu>
+                </div>
             </div>
 
             <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -126,7 +144,7 @@ export default function TenantDetailPage() {
                 </Card>
                 <Card>
                     <CardHeader><CardTitle>Assigned Property</CardTitle></CardHeader>
-                    <CardContent><div className="flex items-center gap-4"><Home className="h-5 w-5 text-muted-foreground" /><Link href={`/dashboard/properties/${tenant.propertyId}`} className="text-primary hover:underline">{formatAddress(property?.address)}</Link></div></CardContent>
+                    <CardContent><div className="flex items-center gap-4"><Home className="h-5 w-5 text-muted-foreground" /><Link href={`/dashboard/properties/${tenant.propertyId}`} className="text-primary hover:underline">{propertyAddress}</Link></div></CardContent>
                 </Card>
             </div>
 
@@ -146,9 +164,26 @@ export default function TenantDetailPage() {
                             </div>
                         )}
                     </div>
+
+                    <div className="flex items-center justify-between pt-6 border-t">
+                        <div>
+                            <h3 className="text-lg font-semibold">AI Communication Assistant</h3>
+                            <p className="text-sm text-muted-foreground">Draft professional landlord notices tailored to this tenant.</p>
+                        </div>
+                        <Button onClick={() => setIsCommAssistantOpen(true)} variant="secondary">
+                            <Sparkles className="mr-2 h-4 w-4" /> Launch Assistant
+                        </Button>
+                    </div>
                 </CardContent>
             </Card>
         </div>
+
+        <TenantCommunicationAssistant 
+            isOpen={isCommAssistantOpen}
+            onOpenChange={setIsCommAssistantOpen}
+            tenant={{ name: tenant.name, email: tenant.email }}
+            propertyAddress={propertyAddress}
+        />
 
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
             <AlertDialogContent>
