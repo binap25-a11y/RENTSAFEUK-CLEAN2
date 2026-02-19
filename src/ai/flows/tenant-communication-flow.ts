@@ -27,7 +27,7 @@ export async function generateTenantCommunication(input: TenantCommunicationInpu
 
 const communicationPrompt = ai.definePrompt({
   name: 'tenantCommunicationPrompt',
-  model: 'googleai/gemini-1.5-flash',
+  model: 'gemini-1.5-flash',
   input: { schema: TenantCommunicationInputSchema },
   output: { schema: TenantCommunicationOutputSchema },
   prompt: `You are an expert UK property manager. Write a professional communication to a tenant.

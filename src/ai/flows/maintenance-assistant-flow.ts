@@ -32,7 +32,7 @@ export async function runMaintenanceAssistant(
 
 const maintenanceAssistantPrompt = ai.definePrompt({
     name: 'maintenanceAssistantPrompt',
-    model: 'googleai/gemini-1.5-flash',
+    model: 'gemini-1.5-flash',
     input: { schema: MaintenanceAssistantInputSchema },
     output: { schema: MaintenanceAssistantOutputSchema },
     prompt: `You are an expert AI assistant for UK property landlords. Your role is to diagnose common household maintenance issues based on a user's description.
