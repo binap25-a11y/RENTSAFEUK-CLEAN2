@@ -66,7 +66,7 @@ export function TenantCommunicationAssistant({
         toast({ 
             variant: 'destructive', 
             title: 'AI Error', 
-            description: 'Could not generate message. Please try again.' 
+            description: 'Could not generate message. Please ensure your API key is configured.' 
         });
     } finally {
         setIsGenerating(false);
@@ -87,14 +87,14 @@ export function TenantCommunicationAssistant({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent className="sm:max-w-[650px] h-[90vh] flex flex-col p-0 overflow-hidden">
-            <DialogHeader className="p-6 pb-4 border-b shrink-0">
+        <DialogContent className="w-[95vw] sm:max-w-[650px] max-h-[90dvh] flex flex-col p-0 overflow-hidden shadow-2xl">
+            <DialogHeader className="p-6 pb-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <div className="flex items-center gap-3">
                     <div className="p-2 rounded-full bg-primary/10">
                         <Sparkles className="h-5 w-5 text-primary" />
                     </div>
                     <div>
-                        <DialogTitle className="text-xl">AI Communication Assistant</DialogTitle>
+                        <DialogTitle className="text-xl font-headline font-bold">AI Communication Assistant</DialogTitle>
                         <DialogDescription className="text-xs">Draft professional notices for {tenant.name}.</DialogDescription>
                     </div>
                 </div>
@@ -168,7 +168,7 @@ export function TenantCommunicationAssistant({
                 </div>
             </ScrollArea>
             
-            <DialogFooter className="p-4 border-t bg-muted/10 shrink-0">
+            <DialogFooter className="p-4 border-t bg-muted/10 shrink-0 mt-auto">
                 <div className="flex w-full gap-2">
                     <Button variant="ghost" onClick={() => onOpenChange(false)} className="flex-1">
                         Close
@@ -176,7 +176,7 @@ export function TenantCommunicationAssistant({
                     <Button 
                         onClick={handleGenerateComm} 
                         disabled={isGenerating || !commDetails.trim()} 
-                        className="flex-[2] font-bold"
+                        className="flex-[2] font-bold shadow-md active:scale-95 transition-transform"
                     >
                         {isGenerating ? (
                             <>

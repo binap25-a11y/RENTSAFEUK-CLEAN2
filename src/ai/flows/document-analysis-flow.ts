@@ -4,6 +4,7 @@
  */
 
 import { ai } from '@/ai/genkit';
+import { gemini15Flash } from '@genkit-ai/google-genai';
 import { z } from 'zod';
 
 const DocumentAnalysisInputSchema = z.object({
@@ -30,7 +31,7 @@ export async function analyzeDocument(input: DocumentAnalysisInput): Promise<Doc
 
 const documentAnalysisPrompt = ai.definePrompt({
   name: 'documentAnalysisPrompt',
-  model: 'googleai/gemini-1.5-flash',
+  model: gemini15Flash,
   input: { schema: DocumentAnalysisInputSchema },
   output: { schema: DocumentAnalysisOutputSchema },
   prompt: `You are an expert UK property compliance assistant. Analyze the provided image of a property document and extract metadata.
