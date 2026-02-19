@@ -342,11 +342,27 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }:
 
   const form = useForm<ExpenseFormValues>({
     resolver: zodResolver(expenseSchema),
-    defaultValues: { propertyId: (selectedPropertyId && selectedPropertyId !== 'all') ? selectedPropertyId : '', expenseType: '', paidBy: 'Landlord', notes: '' },
+    defaultValues: { 
+      propertyId: (selectedPropertyId && selectedPropertyId !== 'all') ? selectedPropertyId : '', 
+      expenseType: '', 
+      paidBy: 'Landlord', 
+      notes: '' 
+    },
   });
 
-  useEffect(() => { form.setValue('date', new Date()); }, [form]);
-  useEffect(() => { if (selectedPropertyId && selectedPropertyId !== 'all') form.setValue('propertyId', selectedPropertyId); }, [selectedPropertyId, form]);
+  // Keep the form's property ID in sync with the global filter
+  useEffect(() => {
+    if (selectedPropertyId && selectedPropertyId !== 'all') {
+      form.setValue('propertyId', selectedPropertyId);
+    } else {
+      // If global filter is 'all', clear the form selection to force a choice
+      form.setValue('propertyId', '');
+    }
+  }, [selectedPropertyId, form]);
+
+  useEffect(() => {
+    form.setValue('date', new Date());
+  }, [form]);
 
   function onSubmit(data: ExpenseFormValues) {
     if (!user || !firestore) return;
@@ -354,21 +370,57 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }:
     addDoc(collection(firestore, 'properties', data.propertyId, 'expenses'), { ...data, ownerId: user.uid })
       .then(() => {
         toast({ title: 'Expense Saved' });
-        form.reset({ propertyId: data.propertyId, expenseType: '', notes: '', date: new Date(), paidBy: 'Landlord', amount: 0 });
+        // Reset form but keep the selected property ID if we're filtering for one
+        form.reset({ 
+          propertyId: selectedPropertyId !== 'all' ? selectedPropertyId : '', 
+          expenseType: '', 
+          notes: '', 
+          date: new Date(), 
+          paidBy: 'Landlord', 
+          amount: 0 
+        });
         router.refresh();
       })
       .catch(() => toast({ variant: 'destructive', title: 'Save Failed' }))
       .finally(() => setIsSubmitting(false));
   }
 
+  const formatAddress = (address: Property['address']) => {
+    return [address.nameOrNumber, address.street, address.city].filter(Boolean).join(', ');
+  };
+
   return (
     <Card className="mt-6">
-        <CardHeader><CardTitle className="text-lg">Add New Expense</CardTitle></CardHeader>
+        <CardHeader>
+          <CardTitle className="text-lg">Add New Expense</CardTitle>
+          <CardDescription>
+            {selectedPropertyId !== 'all' 
+              ? "Property pre-selected from your current filter." 
+              : "Select a property from your active portfolio."}
+          </CardDescription>
+        </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField control={form.control} name="propertyId" render={({ field }) => (
-                  <FormItem><FormLabel>Target Property</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder={isLoadingProperties ? 'Loading...' : 'Select property'} /></SelectTrigger></FormControl><SelectContent>{properties.map(p => (<SelectItem key={p.id} value={p.id}>{[p.address.street, p.address.city].filter(Boolean).join(', ')}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>
+                  <FormItem>
+                    <FormLabel>Target Property</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder={isLoadingProperties ? 'Loading...' : 'Select property'} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {properties.map(p => (
+                          <SelectItem key={p.id} value={p.id}>
+                            {formatAddress(p.address)}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
               )} />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField control={form.control} name="date" render={({ field }) => (
