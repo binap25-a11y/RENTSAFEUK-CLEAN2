@@ -87,7 +87,7 @@ export function TenantCommunicationAssistant({
 
   return (
     <Dialog open={isOpen} onOpenChange={onOpenChange}>
-        <DialogContent className="w-[95vw] sm:max-w-[650px] max-h-[90dvh] flex flex-col p-0 overflow-hidden shadow-2xl">
+        <DialogContent className="w-[95vw] sm:max-w-[650px] h-[85vh] flex flex-col p-0 overflow-hidden shadow-2xl">
             <DialogHeader className="p-6 pb-4 border-b shrink-0 bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60">
                 <div className="flex items-center gap-3">
                     <div className="p-2 rounded-full bg-primary/10">
@@ -100,7 +100,7 @@ export function TenantCommunicationAssistant({
                 </div>
             </DialogHeader>
             
-            <ScrollArea className="flex-1">
+            <ScrollArea className="flex-1 min-h-0">
                 <div className="p-6 space-y-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="space-y-2">
@@ -144,7 +144,7 @@ export function TenantCommunicationAssistant({
                     </div>
 
                     {generatedComm && (
-                        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300 pt-4 border-t pb-10">
+                        <div className="space-y-4 animate-in fade-in slide-in-from-bottom-2 duration-300 pt-4 border-t pb-6">
                             <div className="bg-muted/30 p-4 rounded-lg border">
                                 <p className="text-[9px] font-bold text-muted-foreground uppercase mb-1">Subject</p>
                                 <p className="text-sm font-bold">{generatedComm.subject}</p>
@@ -168,7 +168,7 @@ export function TenantCommunicationAssistant({
                 </div>
             </ScrollArea>
             
-            <DialogFooter className="p-4 border-t bg-muted/10 shrink-0 mt-auto">
+            <DialogFooter className="p-4 border-t bg-muted/10 shrink-0">
                 <div className="flex w-full gap-2">
                     <Button variant="ghost" onClick={() => onOpenChange(false)} className="flex-1">
                         Close
