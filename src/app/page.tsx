@@ -2,7 +2,7 @@
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
-import { GoogleIcon } from '@/components/icons';
+import { Logo, GoogleIcon } from '@/components/icons';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
@@ -161,13 +161,18 @@ export default function LoginPage() {
     <div className="w-full">
       <div className="flex items-center justify-center py-12 min-h-screen">
         <Card className="mx-auto w-full max-w-sm">
-          <CardHeader className="text-center">
-            <CardTitle className="text-3xl font-bold font-headline">
-              {mode === 'login' ? 'Welcome Back' : 'Create an Account'}
-            </CardTitle>
-            <CardDescription>
-              Enter your credentials to {mode}
-            </CardDescription>
+          <CardHeader className="text-center space-y-4">
+            <div className="flex justify-center">
+              <Logo className="w-16 h-16 text-primary" />
+            </div>
+            <div className="space-y-1">
+              <CardTitle className="text-3xl font-bold font-headline">
+                {mode === 'login' ? 'RentSafeUK' : 'Create an Account'}
+              </CardTitle>
+              <CardDescription>
+                Enter your credentials to {mode}
+              </CardDescription>
+            </div>
           </CardHeader>
           <CardContent>
             {authError && (
