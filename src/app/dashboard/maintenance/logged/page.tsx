@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -69,6 +70,7 @@ import {
   useMemoFirebase,
 } from '@/firebase';
 import { collection, query, where, doc, updateDoc, deleteDoc, onSnapshot, limit } from 'firebase/firestore';
+import { useRouter } from 'next/navigation';
 
 // Types
 interface Property {
@@ -95,6 +97,7 @@ interface MaintenanceLog {
 export default function MaintenanceLoggedPage() {
   const { user } = useUser();
   const firestore = useFirestore();
+  const router = useRouter();
   const [selectedPropertyFilter, setSelectedPropertyFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [logToCancel, setLogToCancel] = useState<MaintenanceLog | null>(null);
@@ -121,6 +124,8 @@ export default function MaintenanceLoggedPage() {
     return allProperties?.filter(p => activeStatuses.includes(p.status || '')) ?? [];
   }, [allProperties]);
 
+  const propertyIdsKey = useMemo(() => properties.map(p => p.id).join(','), [properties]);
+
   const propertyMap = useMemo(() => {
     if (!properties) return {};
     return properties.reduce((acc, prop) => {
@@ -129,65 +134,41 @@ export default function MaintenanceLoggedPage() {
     }, {} as Record<string, string>);
   }, [properties]);
 
-  // Real-time Aggregation Logic for all active properties
+  // STABLE REAL-TIME AGGREGATION
   useEffect(() => {
-    if (!user || !properties) {
+    if (!user || !properties || properties.length === 0) {
         setPortfolioLogsMap({});
         return;
     }
-
-    if (properties.length === 0 && !isLoadingProperties) {
-        setPortfolioLogsMap({});
-        return;
-    }
-
-    const activeIds = new Set(properties.map(p => p.id));
-
-    // Prune data for properties that are no longer active to prevent "ghost" counts
-    setPortfolioLogsMap(prev => {
-        const next = { ...prev };
-        let changed = false;
-        Object.keys(next).forEach(id => { 
-            if (!activeIds.has(id)) {
-                delete next[id];
-                changed = true;
-            }
-        });
-        return changed ? next : prev;
-    });
 
     const unsubs: (() => void)[] = [];
 
     properties.forEach(p => {
-        const ownerFilter = where('ownerId', '==', user.uid);
         const q = query(
             collection(firestore, 'properties', p.id, 'maintenanceLogs'), 
-            ownerFilter
+            where('ownerId', '==', user.uid)
         );
         const unsub = onSnapshot(q, (snap) => {
             const logs = snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog));
-            setPortfolioLogsMap(prev => ({ ...prev, [p.id]: logs }));
+            setPortfolioLogsMap(prev => {
+                if (JSON.stringify(prev[p.id]) === JSON.stringify(logs)) return prev;
+                return { ...prev, [p.id]: logs };
+            });
         }, (err) => {
             console.error(`Listener failed for property ${p.id}:`, err);
         });
         unsubs.push(unsub);
     });
 
-    return () => {
-        unsubs.forEach(u => u());
-    };
-  }, [user, properties, firestore, isLoadingProperties]);
+    return () => unsubs.forEach(u => u());
+  }, [user, propertyIdsKey, firestore]);
 
   const allCurrentLogs = useMemo(() => {
-    const activeIds = new Set(properties.map(p => p.id));
-    
     if (selectedPropertyFilter === 'all') {
-        return Object.entries(portfolioLogsMap)
-            .filter(([id]) => activeIds.has(id))
-            .flatMap(([, logs]) => logs);
+        return Object.values(portfolioLogsMap).flat();
     }
     return portfolioLogsMap[selectedPropertyFilter] || [];
-  }, [selectedPropertyFilter, portfolioLogsMap, properties]);
+  }, [selectedPropertyFilter, portfolioLogsMap]);
 
   const filteredLogs = useMemo(() => {
     if (!allCurrentLogs) return [];
@@ -206,6 +187,7 @@ export default function MaintenanceLoggedPage() {
     try {
       await updateDoc(doc(firestore, 'properties', propertyId, 'maintenanceLogs', logId), { status: newStatus });
       toast({ title: 'Status Updated' });
+      router.refresh();
     } catch (error) {
       console.error('Failed to update status:', error);
       toast({ variant: 'destructive', title: 'Update Failed' });
@@ -217,6 +199,7 @@ export default function MaintenanceLoggedPage() {
     try {
       await updateDoc(doc(firestore, 'properties', logToCancel.propertyId, 'maintenanceLogs', logToCancel.id), { status: 'Cancelled' });
       toast({ title: 'Log Cancelled' });
+      router.refresh();
     } catch (error) {
       console.error('Failed to cancel log:', error);
       toast({ variant: 'destructive', title: 'Update Failed' });
@@ -230,6 +213,7 @@ export default function MaintenanceLoggedPage() {
     try {
       await deleteDoc(doc(firestore, 'properties', logToDelete.propertyId, 'maintenanceLogs', logToDelete.id));
       toast({ title: 'Log Deleted' });
+      router.refresh();
     } catch (error) {
       console.error('Failed to delete log:', error);
       toast({ variant: 'destructive', title: 'Delete Failed' });

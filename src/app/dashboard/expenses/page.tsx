@@ -73,7 +73,7 @@ import {
   errorEmitter,
   FirestorePermissionError,
 } from '@/firebase';
-import { collection, query, where, doc, setDoc, addDoc, limit, getDocs } from 'firebase/firestore';
+import { collection, query, where, doc, setDoc, addDoc, limit, getDocs, onSnapshot } from 'firebase/firestore';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import {
@@ -89,6 +89,7 @@ import { Pie, PieChart, Cell } from 'recharts';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import Link from 'next/link';
+import { useRouter } from 'next/navigation';
 
 // Constants
 const MONTHS = [
@@ -166,6 +167,7 @@ const formatCurrency = (val: number) => {
 export default function FinancialsPage() {
   const { user } = useUser();
   const firestore = useFirestore();
+  const router = useRouter();
   const [selectedPropertyId, setSelectedPropertyId] = useState('all');
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
 
@@ -207,6 +209,7 @@ export default function FinancialsPage() {
   }, [firestore, user, selectedPropertyId, selectedYear]);
   const { data: rawRentPayments, isLoading: isLoadingPayments } = useCollection<RentPayment>(rentPaymentsQuery);
 
+  // REAL-TIME AGGREGATION: Subscribe to all active properties for the "Portfolio View"
   useEffect(() => {
     if (!user || activeProperties.length === 0 || selectedPropertyId !== 'all' || !selectedYear) {
         setPortfolioExpenses([]);
@@ -214,21 +217,34 @@ export default function FinancialsPage() {
         return;
     }
 
-    const aggregateData = async () => {
-        setIsAggregating(true);
-        try {
-            const expPromises = activeProperties.map(p => getDocs(query(collection(firestore, 'properties', p.id, 'expenses'), where('ownerId', '==', user.uid))));
-            const rentPromises = activeProperties.map(p => getDocs(query(collection(firestore, 'properties', p.id, 'rentPayments'), where('ownerId', '==', user.uid), where('year', '==', selectedYear))));
-            const [expSnaps, rentSnaps] = await Promise.all([Promise.all(expPromises), Promise.all(rentPromises)]);
-            setPortfolioExpenses(expSnaps.flatMap(snap => snap.docs.map(d => ({ id: d.id, ...d.data() } as Expense))));
-            setPortfolioRentPayments(rentSnaps.flatMap(snap => snap.docs.map(d => ({ id: d.id, ...d.data() } as RentPayment))));
-        } catch (err) {
-            console.error("Aggregation failed:", err);
-        } finally {
-            setIsAggregating(false);
-        }
+    setIsAggregating(true);
+    const unsubs: (() => void)[] = [];
+    const expensesMap: Record<string, Expense[]> = {};
+    const rentMap: Record<string, RentPayment[]> = {};
+
+    const updateState = () => {
+        setPortfolioExpenses(Object.values(expensesMap).flat());
+        setPortfolioRentPayments(Object.values(rentMap).flat());
+        setIsAggregating(false);
     };
-    aggregateData();
+
+    activeProperties.forEach(p => {
+        const ownerFilter = where('ownerId', '==', user.uid);
+        
+        // Listen to Expenses
+        unsubs.push(onSnapshot(query(collection(firestore, 'properties', p.id, 'expenses'), ownerFilter), (snap) => {
+            expensesMap[p.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Expense));
+            updateState();
+        }));
+
+        // Listen to Rent Payments
+        unsubs.push(onSnapshot(query(collection(firestore, 'properties', p.id, 'rentPayments'), ownerFilter, where('year', '==', selectedYear)), (snap) => {
+            rentMap[p.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as RentPayment));
+            updateState();
+        }));
+    });
+
+    return () => unsubs.forEach(u => u());
   }, [user, activeProperties, firestore, selectedPropertyId, selectedYear]);
 
   const expenses = useMemo(() => {
@@ -321,6 +337,7 @@ export default function FinancialsPage() {
 function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }: { properties: Property[], selectedPropertyId: string, isLoadingProperties: boolean }) {
   const { user } = useUser();
   const firestore = useFirestore();
+  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<ExpenseFormValues>({
@@ -338,6 +355,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }:
       .then(() => {
         toast({ title: 'Expense Saved' });
         form.reset({ propertyId: data.propertyId, expenseType: '', notes: '', date: new Date(), paidBy: 'Landlord', amount: 0 });
+        router.refresh();
       })
       .catch(() => toast({ variant: 'destructive', title: 'Save Failed' }))
       .finally(() => setIsSubmitting(false));
@@ -423,6 +441,7 @@ function InvestmentAnalytics({ properties, selectedPropertyId, allExpenses }: { 
 function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoadingPayments }: { selectedProperty: Property | undefined, selectedYear: number, rentPayments: RentPayment[] | null, isLoadingPayments: boolean }) {
   const { user } = useUser();
   const firestore = useFirestore();
+  const router = useRouter();
   const statement = useMemo(() => {
     const defaultRent = selectedProperty?.tenancy?.monthlyRent || 0;
     const paymentsMap = rentPayments?.reduce((acc, p) => { acc[p.month] = p; return acc; }, {} as Record<string, RentPayment>);
@@ -433,7 +452,10 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
     if (!firestore || !user || !selectedProperty) return;
     const rentPaymentRef = doc(firestore, 'properties', selectedProperty.id, 'rentPayments', `${selectedYear}-${month}`);
     const expectedAmount = statement.find(s => s.month === month)?.rent ?? 0;
-    setDoc(rentPaymentRef, { ownerId: user.uid, propertyId: selectedProperty.id, year: selectedYear, month, status, expectedAmount, amountPaid: status === 'Paid' ? expectedAmount : 0 }, { merge: true }).then(() => toast({ title: 'Record Updated' }));
+    setDoc(rentPaymentRef, { ownerId: user.uid, propertyId: selectedProperty.id, year: selectedYear, month, status, expectedAmount, amountPaid: status === 'Paid' ? expectedAmount : 0 }, { merge: true }).then(() => {
+        toast({ title: 'Record Updated' });
+        router.refresh();
+    });
   };
 
   if (!selectedProperty) return <Card className="mt-6 border-dashed"><CardContent className='py-16 text-center text-muted-foreground'>Select property to view ledger.</CardContent></Card>;

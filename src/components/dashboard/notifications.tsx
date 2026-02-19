@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -14,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Bell, FileWarning, CalendarClock, Loader2 } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, Timestamp, getDocs } from 'firebase/firestore';
+import { collection, query, where, Timestamp, getDocs, onSnapshot } from 'firebase/firestore';
 import { format, isBefore, addDays, isFuture } from 'date-fns';
 
 // Interfaces
@@ -74,7 +75,7 @@ export function Notifications() {
   const [allInspections, setAllInspections] = useState<Inspection[]>([]);
   const [isLoadingAggregates, setIsLoadingAggregates] = useState(false);
 
-  // Manual Aggregation Effect
+  // REAL-TIME NOTIFICATION AGGREGATION
   useEffect(() => {
     if (!user || !properties || properties.length === 0) {
         setAllDocuments([]);
@@ -82,33 +83,34 @@ export function Notifications() {
         return;
     }
 
-    const fetchAggregates = async () => {
-        setIsLoadingAggregates(true);
-        try {
-            const docPromises: Promise<any>[] = [];
-            const inspPromises: Promise<any>[] = [];
+    setIsLoadingAggregates(true);
+    const unsubs: (() => void)[] = [];
+    const docMap: Record<string, Document[]> = {};
+    const inspMap: Record<string, Inspection[]> = {};
 
-            properties.forEach(prop => {
-                const ownerFilter = where('ownerId', '==', user.uid);
-                docPromises.push(getDocs(query(collection(firestore, 'properties', prop.id, 'documents'), ownerFilter)));
-                inspPromises.push(getDocs(query(collection(firestore, 'properties', prop.id, 'inspections'), ownerFilter)));
-            });
-
-            const [docSnaps, inspSnaps] = await Promise.all([
-                Promise.all(docPromises),
-                Promise.all(inspPromises)
-            ]);
-
-            setAllDocuments(docSnaps.flatMap(snap => snap.docs.map((d: any) => ({ id: d.id, ...d.data() } as Document))));
-            setAllInspections(inspSnaps.flatMap(snap => snap.docs.map((d: any) => ({ id: d.id, ...d.data() } as Inspection))));
-        } catch (err) {
-            console.error("Notification aggregation failed:", err);
-        } finally {
-            setIsLoadingAggregates(false);
-        }
+    const updateState = () => {
+        setAllDocuments(Object.values(docMap).flat());
+        setAllInspections(Object.values(inspMap).flat());
+        setIsLoadingAggregates(false);
     };
 
-    fetchAggregates();
+    properties.forEach(prop => {
+        const ownerFilter = where('ownerId', '==', user.uid);
+        
+        // Subscribe to documents
+        unsubs.push(onSnapshot(query(collection(firestore, 'properties', prop.id, 'documents'), ownerFilter), (snap) => {
+            docMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Document));
+            updateState();
+        }));
+
+        // Subscribe to inspections
+        unsubs.push(onSnapshot(query(collection(firestore, 'properties', prop.id, 'inspections'), ownerFilter), (snap) => {
+            inspMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Inspection));
+            updateState();
+        }));
+    });
+
+    return () => unsubs.forEach(u => u());
   }, [user, properties, firestore]);
 
   const propertyMap = useMemo(() => {

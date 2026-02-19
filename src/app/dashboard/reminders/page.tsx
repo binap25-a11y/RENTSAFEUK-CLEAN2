@@ -28,7 +28,7 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, Timestamp, getDocs } from 'firebase/firestore';
+import { collection, query, where, Timestamp, getDocs, onSnapshot } from 'firebase/firestore';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 
@@ -108,6 +108,7 @@ export default function RemindersPage() {
   const [allInspections, setAllInspections] = useState<Inspection[]>([]);
   const [isAggregating, setIsAggregating] = useState(false);
 
+  // REAL-TIME COMPLIANCE AGGREGATION
   useEffect(() => {
     if (!user || !properties || properties.length === 0) {
         setAllDocuments([]);
@@ -115,33 +116,34 @@ export default function RemindersPage() {
         return;
     }
 
-    const fetchAggregates = async () => {
-        setIsAggregating(true);
-        try {
-            const docPromises: Promise<any>[] = [];
-            const inspPromises: Promise<any>[] = [];
+    setIsAggregating(true);
+    const unsubs: (() => void)[] = [];
+    const docMap: Record<string, Document[]> = {};
+    const inspMap: Record<string, Inspection[]> = {};
 
-            properties.forEach(prop => {
-                const ownerFilter = where('ownerId', '==', user.uid);
-                docPromises.push(getDocs(query(collection(firestore, 'properties', prop.id, 'documents'), ownerFilter)));
-                inspPromises.push(getDocs(query(collection(firestore, 'properties', prop.id, 'inspections'), ownerFilter)));
-            });
-
-            const [docSnaps, inspSnaps] = await Promise.all([
-                Promise.all(docPromises),
-                Promise.all(inspPromises)
-            ]);
-
-            setAllDocuments(docSnaps.flatMap(snap => snap.docs.map((d: any) => ({ id: d.id, ...d.data() } as Document))));
-            setAllInspections(inspSnaps.flatMap(snap => snap.docs.map((d: any) => ({ id: d.id, ...d.data() } as Inspection))));
-        } catch (err) {
-            console.error("Aggregation failed:", err);
-        } finally {
-            setIsAggregating(false);
-        }
+    const updateState = () => {
+        setAllDocuments(Object.values(docMap).flat());
+        setAllInspections(Object.values(inspMap).flat());
+        setIsAggregating(false);
     };
 
-    fetchAggregates();
+    properties.forEach(prop => {
+        const ownerFilter = where('ownerId', '==', user.uid);
+        
+        // Listen to documents
+        unsubs.push(onSnapshot(query(collection(firestore, 'properties', prop.id, 'documents'), ownerFilter), (snap) => {
+            docMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Document));
+            updateState();
+        }));
+
+        // Listen to inspections
+        unsubs.push(onSnapshot(query(collection(firestore, 'properties', prop.id, 'inspections'), ownerFilter), (snap) => {
+            inspMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Inspection));
+            updateState();
+        }));
+    });
+
+    return () => unsubs.forEach(u => u());
   }, [user, properties, firestore]);
 
   const propertyMap = useMemo(() => {
@@ -265,7 +267,8 @@ export default function RemindersPage() {
           {isLoading ? (
              <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
           ) : allReminders.length === 0 ? (
-            <div className="h-48 text-center flex flex-col justify-center items-center text-muted-foreground italic">
+            <div className="h-48 text-center flex flex-col justify-center items-center text-muted-foreground italic border-2 border-dashed rounded-lg">
+                <CalendarClock className="h-10 w-10 opacity-10 mb-2" />
                 <p>You're all caught up!</p>
             </div>
           ) : (
@@ -276,7 +279,7 @@ export default function RemindersPage() {
                     </TableHeader>
                     <TableBody>
                         {allReminders.map((reminder) => (
-                            <TableRow key={reminder.id}>
+                            <TableRow key={reminder.id} className="hover:bg-muted/30 transition-colors">
                                 <TableCell><Badge variant="outline">{reminder.type}</Badge></TableCell>
                                 <TableCell className="font-semibold"><Link href={reminder.href} className="hover:underline">{reminder.description}</Link></TableCell>
                                 <TableCell className="text-sm">{reminder.property}</TableCell>

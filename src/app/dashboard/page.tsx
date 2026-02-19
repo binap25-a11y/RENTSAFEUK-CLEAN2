@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -40,6 +41,7 @@ import {
   type ChartConfig,
 } from "@/components/ui/chart"
 import { Pie, PieChart, Cell } from 'recharts';
+import { useRouter } from 'next/navigation';
 
 // Interfaces
 interface Property {
@@ -123,6 +125,7 @@ const formatAddress = (address: Property['address']) => {
 export default function DashboardPage() {
   const { user } = useUser();
   const firestore = useFirestore();
+  const router = useRouter();
 
   // Primary Properties Listener
   const propertiesQuery = useMemoFirebase(() => {
@@ -151,47 +154,17 @@ export default function DashboardPage() {
     return allProperties?.filter(p => activeStatuses.includes(p.status || '')) ?? [];
   }, [allProperties]);
 
-  // Real-time Aggregation Effect: Subscribe to sub-collections for each active property
+  const propertyIdsKey = useMemo(() => properties.map(p => p.id).join(','), [properties]);
+
+  // STABLE REAL-TIME AGGREGATION
   useEffect(() => {
-    if (!user || !properties) {
+    if (!user || properties.length === 0) {
         setMaintenanceMap({});
         setInspectionsMap({});
         setDocumentsMap({});
         setRentPaymentsMap({});
         return;
     }
-
-    if (properties.length === 0 && !isLoadingProperties) {
-        setMaintenanceMap({});
-        setInspectionsMap({});
-        setDocumentsMap({});
-        setRentPaymentsMap({});
-        return;
-    }
-
-    const activeIds = new Set(properties.map(p => p.id));
-
-    // Prune data for properties that are no longer active to prevent "ghost" counts
-    setMaintenanceMap(prev => {
-        const next = { ...prev };
-        Object.keys(next).forEach(id => { if (!activeIds.has(id)) delete next[id]; });
-        return Object.keys(next).length === Object.keys(prev).length ? prev : next;
-    });
-    setInspectionsMap(prev => {
-        const next = { ...prev };
-        Object.keys(next).forEach(id => { if (!activeIds.has(id)) delete next[id]; });
-        return Object.keys(next).length === Object.keys(prev).length ? prev : next;
-    });
-    setDocumentsMap(prev => {
-        const next = { ...prev };
-        Object.keys(next).forEach(id => { if (!activeIds.has(id)) delete next[id]; });
-        return Object.keys(next).length === Object.keys(prev).length ? prev : next;
-    });
-    setRentPaymentsMap(prev => {
-        const next = { ...prev };
-        Object.keys(next).forEach(id => { if (!activeIds.has(id)) delete next[id]; });
-        return Object.keys(next).length === Object.keys(prev).length ? prev : next;
-    });
 
     const unsubs: (() => void)[] = [];
 
@@ -199,67 +172,38 @@ export default function DashboardPage() {
         const ownerFilter = where('ownerId', '==', user.uid);
         
         // Maintenance Logs
-        const maintQ = query(collection(firestore, 'properties', prop.id, 'maintenanceLogs'), ownerFilter);
-        unsubs.push(onSnapshot(maintQ, (snap) => {
-            const logs = snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog));
-            setMaintenanceMap(prev => ({ ...prev, [prop.id]: logs }));
+        unsubs.push(onSnapshot(query(collection(firestore, 'properties', prop.id, 'maintenanceLogs'), ownerFilter), (snap) => {
+            const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog));
+            setMaintenanceMap(prev => ({ ...prev, [prop.id]: data }));
         }));
 
         // Inspections
-        const inspQ = query(collection(firestore, 'properties', prop.id, 'inspections'), ownerFilter);
-        unsubs.push(onSnapshot(inspQ, (snap) => {
-            const insps = snap.docs.map(d => ({ id: d.id, ...d.data() } as Inspection));
-            setInspectionsMap(prev => ({ ...prev, [prop.id]: insps }));
+        unsubs.push(onSnapshot(query(collection(firestore, 'properties', prop.id, 'inspections'), ownerFilter), (snap) => {
+            const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Inspection));
+            setInspectionsMap(prev => ({ ...prev, [prop.id]: data }));
         }));
 
         // Documents
-        const docQ = query(collection(firestore, 'properties', prop.id, 'documents'), ownerFilter);
-        unsubs.push(onSnapshot(docQ, (snap) => {
-            const docs = snap.docs.map(d => ({ id: d.id, ...d.data() } as Document));
-            setDocumentsMap(prev => ({ ...prev, [prop.id]: docs }));
+        unsubs.push(onSnapshot(query(collection(firestore, 'properties', prop.id, 'documents'), ownerFilter), (snap) => {
+            const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Document));
+            setDocumentsMap(prev => ({ ...prev, [prop.id]: data }));
         }));
 
         // Rent Payments
-        const rentQ = query(collection(firestore, 'properties', prop.id, 'rentPayments'), ownerFilter);
-        unsubs.push(onSnapshot(rentQ, (snap) => {
-            const payments = snap.docs.map(d => ({ id: d.id, ...d.data() } as RentPayment));
-            setRentPaymentsMap(prev => ({ ...prev, [prop.id]: payments }));
+        unsubs.push(onSnapshot(query(collection(firestore, 'properties', prop.id, 'rentPayments'), ownerFilter), (snap) => {
+            const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as RentPayment));
+            setRentPaymentsMap(prev => ({ ...prev, [prop.id]: data }));
         }));
     });
 
-    return () => {
-        unsubs.forEach(u => u());
-    };
-  }, [user, properties, firestore, isLoadingProperties]);
+    return () => unsubs.forEach(u => u());
+  }, [user, propertyIdsKey, firestore]);
 
   // Combined data for calculations
-  const maintenanceLogs = useMemo(() => {
-    const activeIds = new Set(properties.map(p => p.id));
-    return Object.entries(maintenanceMap)
-      .filter(([id]) => activeIds.has(id))
-      .flatMap(([, logs]) => logs);
-  }, [maintenanceMap, properties]);
-
-  const inspections = useMemo(() => {
-    const activeIds = new Set(properties.map(p => p.id));
-    return Object.entries(inspectionsMap)
-      .filter(([id]) => activeIds.has(id))
-      .flatMap(([, items]) => items);
-  }, [inspectionsMap, properties]);
-
-  const documents = useMemo(() => {
-    const activeIds = new Set(properties.map(p => p.id));
-    return Object.entries(documentsMap)
-      .filter(([id]) => activeIds.has(id))
-      .flatMap(([, items]) => items);
-  }, [documentsMap, properties]);
-
-  const allRentPayments = useMemo(() => {
-    const activeIds = new Set(properties.map(p => p.id));
-    return Object.entries(rentPaymentsMap)
-      .filter(([id]) => activeIds.has(id))
-      .flatMap(([, items]) => items);
-  }, [rentPaymentsMap, properties]);
+  const maintenanceLogs = useMemo(() => Object.values(maintenanceMap).flat(), [maintenanceMap]);
+  const inspections = useMemo(() => Object.values(inspectionsMap).flat(), [inspectionsMap]);
+  const documents = useMemo(() => Object.values(documentsMap).flat(), [documentsMap]);
+  const allRentPayments = useMemo(() => Object.values(rentPaymentsMap).flat(), [rentPaymentsMap]);
 
   const isLoading = isLoadingProperties || !currentYear;
 
@@ -530,7 +474,10 @@ export default function DashboardPage() {
                   ))}
               </div>
            ) : (
-              <div className="text-center text-muted-foreground py-10 italic text-sm">You're all caught up! No upcoming tasks.</div>
+              <div className="text-center text-muted-foreground py-10 italic text-sm border-2 border-dashed rounded-lg">
+                  <ListTodo className="h-10 w-10 opacity-10 mx-auto mb-2" />
+                  <p>You're all caught up! No upcoming tasks.</p>
+              </div>
            )}
         </CardContent>
       </Card>
