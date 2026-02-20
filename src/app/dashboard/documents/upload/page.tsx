@@ -143,7 +143,7 @@ export default function UploadDocumentPage() {
         const filePath = `documents/${user.uid}/${data.propertyId}/${uniqueId}-${file.name}`;
         const fileRef = storageRef(storage, filePath);
         
-        toast({ title: 'Uploading file...', description: 'Please wait.' });
+        toast({ title: 'Uploading file...', description: 'This may take a moment. Please do not navigate away.' });
         const uploadResult = await uploadBytes(fileRef, file);
         const downloadURL = await getDownloadURL(uploadResult.ref);
 
