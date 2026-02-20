@@ -17,7 +17,6 @@ import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
-  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -31,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Info, Upload } from 'lucide-react';
+import { Loader2, Info } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -39,12 +38,10 @@ import {
   useFirestore,
   useCollection,
   useMemoFirebase,
-  useStorage,
   errorEmitter,
   FirestorePermissionError,
 } from '@/firebase';
 import { collection, query, where, addDoc, doc, limit } from 'firebase/firestore';
-import { ref as storageRef, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { differenceInMonths } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
@@ -55,7 +52,6 @@ const documentSchema = z.object({
   issueDate: z.coerce.date({ required_error: 'Please select an issue date.' }),
   expiryDate: z.coerce.date({ required_error: 'Please select an expiry date.' }),
   notes: z.string().optional(),
-  file: z.any().optional(),
 }).refine(data => data.expiryDate > data.issueDate, {
   message: "Expiry date must be after the issue date.",
   path: ["expiryDate"]
@@ -78,7 +74,6 @@ export default function UploadDocumentPage() {
   const router = useRouter();
   const { user } = useUser();
   const firestore = useFirestore();
-  const storage = useStorage();
   const [isSaving, setIsSaving] = useState(false);
 
   const form = useForm<DocumentFormValues>({
@@ -122,35 +117,20 @@ export default function UploadDocumentPage() {
   }, [allProperties]);
 
   async function onSubmit(data: DocumentFormValues) {
-    if (!user || !firestore || !storage) {
+    if (!user || !firestore) {
         toast({ variant: 'destructive', title: 'Error', description: 'Services not available. Please try again.' });
         return;
     }
     setIsSaving(true);
     
     const documentsCollection = collection(firestore, 'properties', data.propertyId, 'documents');
-    const { file: files, ...docData } = data;
-    const file = files?.[0];
-
+    
     const dataToSave: any = {
-      ...docData,
+      ...data,
       ownerId: user.uid,
     };
 
     try {
-      if (file) {
-        const uniqueId = doc(collection(firestore, 'dummy')).id;
-        const filePath = `documents/${user.uid}/${data.propertyId}/${uniqueId}-${file.name}`;
-        const fileRef = storageRef(storage, filePath);
-        
-        toast({ title: 'Uploading file...', description: 'This may take a moment. Please do not navigate away.' });
-        const uploadResult = await uploadBytes(fileRef, file);
-        const downloadURL = await getDownloadURL(uploadResult.ref);
-
-        dataToSave.fileUri = downloadURL;
-        dataToSave.fileName = file.name;
-      }
-      
       await addDoc(documentsCollection, dataToSave);
       
       toast({ title: 'Document Logged', description: 'The record has been saved successfully.' });
@@ -178,7 +158,7 @@ export default function UploadDocumentPage() {
       <CardHeader>
         <CardTitle>Log Property Document</CardTitle>
         <CardDescription>
-          Record a new legal or compliance document and optionally upload the file.
+          Record a new legal or compliance document.
         </CardDescription>
       </CardHeader>
       <CardContent>
@@ -290,26 +270,6 @@ export default function UploadDocumentPage() {
                 />
             </div>
             
-             <FormField
-              control={form.control}
-              name="file"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Attach File (Optional)</FormLabel>
-                  <FormControl>
-                    <Input
-                      type="file"
-                      onChange={(e) => field.onChange(e.target.files)}
-                    />
-                  </FormControl>
-                  <FormDescription>
-                    Attach a PDF, PNG, or JPG file. Max size: 5MB.
-                  </FormDescription>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
              <FormField
               control={form.control}
               name="notes"

@@ -58,7 +58,6 @@ interface Document {
     documentType: string;
     issueDate: { seconds: number; nanoseconds: number; } | Date;
     expiryDate: { seconds: number; nanoseconds: number; } | Date;
-    fileUri?: string;
     propertyAddress?: string; // For display
 }
 
@@ -264,7 +263,6 @@ export default function DocumentsPage() {
                     <TableHead>Type</TableHead>
                     <TableHead>Status</TableHead>
                     <TableHead>Expiry Date</TableHead>
-                    <TableHead className="text-right">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -276,16 +274,6 @@ export default function DocumentsPage() {
                         <Badge variant={getStatusVariant(doc.status)}>{doc.status}</Badge>
                       </TableCell>
                       <TableCell>{format(doc.expiryDate, 'dd/MM/yyyy')}</TableCell>
-                      <TableCell className="text-right">
-                        {doc.fileUri && (
-                          <Button asChild variant="ghost" size="icon">
-                            <a href={doc.fileUri} target="_blank" rel="noopener noreferrer">
-                              <Eye className="h-4 w-4" />
-                              <span className="sr-only">View Document</span>
-                            </a>
-                          </Button>
-                        )}
-                      </TableCell>
                     </TableRow>
                   ))}
                 </TableBody>
@@ -302,14 +290,6 @@ export default function DocumentsPage() {
                         <CardTitle className='text-base font-bold'>{doc.title}</CardTitle>
                         <CardDescription>{doc.documentType}</CardDescription>
                       </div>
-                      {doc.fileUri && (
-                        <Button asChild variant="outline" size="sm">
-                          <a href={doc.fileUri} target="_blank" rel="noopener noreferrer">
-                            <Eye className="mr-2 h-4 w-4" />
-                            View
-                          </a>
-                        </Button>
-                      )}
                     </div>
                   </CardHeader>
                   <CardContent className="space-y-2 text-sm pt-0">

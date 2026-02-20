@@ -14,25 +14,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ## Firebase Setup Guide
 
-### 1. **CRITICAL STEP**: Enable File Uploads
-
-File uploads will fail until you run a one-time command in your terminal. This is a required security step.
-
-**Instructions:**
-
-1.  **Open a NEW Terminal Tab.** In your code editor, look for a `+` icon next to your existing terminal tabs. Click it to open a new, clean terminal prompt.
-2.  **Copy the Command Below.** Click the copy icon or highlight the entire command and copy it. Make sure you get it exactly right.
-
-    ```bash
-    gcloud storage buckets update gs://studio-7375290328-5d091.appspot.com --cors-file=cors.json
-    ```
-
-3.  **Paste and Run.** Paste the command into your **new** terminal and press `Enter`.
-
-Wait for the command to finish. You should see a confirmation message. After this, file uploads will work correctly in your app. **You only need to do this once.**
-
-
-### 2. Authorized Domains
+### 1. Authorized Domains
 If you see "Google error of access" during sign-in or workstation use, ensure your current domain is added to the Firebase Console:
 1. Go to **Authentication** > **Settings** > **Authorized domains**.
 2. Add your workstation domain (e.g., `*.cloudworkstations.dev`).
