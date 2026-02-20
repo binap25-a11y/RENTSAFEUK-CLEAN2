@@ -80,7 +80,6 @@ export default function LoginPage() {
       } else {
         await signInWithEmailAndPassword(auth, data.email, data.password);
       }
-      // The useEffect will handle the redirect on user state change
     } catch (error: any) {
         if (mode === 'login' && (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential')) {
             setAuthError('Invalid email or password. Please try again.');
@@ -159,18 +158,18 @@ export default function LoginPage() {
 
   return (
     <div className="w-full">
-      <div className="flex items-center justify-center py-12 min-h-screen">
-        <Card className="mx-auto w-full max-w-sm">
-          <CardHeader className="text-center space-y-4">
+      <div className="flex items-center justify-center py-12 min-h-screen bg-muted/30">
+        <Card className="mx-auto w-full max-w-sm shadow-xl border-none">
+          <CardHeader className="text-center space-y-4 pb-2">
             <div className="flex justify-center">
               <Logo className="w-16 h-16 text-primary" />
             </div>
             <div className="space-y-1">
-              <CardTitle className="text-3xl font-bold font-headline">
-                {mode === 'login' ? 'RentSafeUK' : 'Create an Account'}
+              <CardTitle className="text-3xl font-bold font-headline tracking-tight text-primary">
+                RentSafeUK
               </CardTitle>
-              <CardDescription>
-                Enter your credentials to {mode}
+              <CardDescription className="text-sm font-medium">
+                {mode === 'login' ? 'Sign in to your portfolio' : 'Create your landlord account'}
               </CardDescription>
             </div>
           </CardHeader>
@@ -191,7 +190,7 @@ export default function LoginPage() {
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input placeholder="name@example.com" {...field} />
+                        <Input placeholder="name@example.com" {...field} className="h-11" />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -209,12 +208,13 @@ export default function LoginPage() {
                             type={showPassword ? 'text' : 'password'}
                             placeholder="••••••••"
                             {...field}
+                            className="h-11 pr-10"
                           />
                           <Button
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="absolute right-1 top-1/2 h-7 w-7 -translate-y-1/2 text-muted-foreground hover:bg-transparent"
+                            className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:bg-transparent"
                             onClick={() => setShowPassword((prev) => !prev)}
                           >
                             <span className="sr-only">
@@ -230,11 +230,11 @@ export default function LoginPage() {
                       </FormControl>
                       <FormMessage />
                        {mode === 'login' && (
-                          <div className="text-right -mt-2">
+                          <div className="text-right -mt-1">
                             <Button
                                 type="button"
                                 variant="link"
-                                className="py-0 px-0 h-auto text-sm font-normal"
+                                className="py-0 px-0 h-auto text-xs font-semibold text-muted-foreground hover:text-primary"
                                 onClick={handlePasswordReset}
                                 disabled={isProcessing}
                             >
@@ -245,55 +245,55 @@ export default function LoginPage() {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full" disabled={isProcessing}>
+                <Button type="submit" className="w-full h-11 font-bold text-base shadow-md" disabled={isProcessing}>
                   {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {mode === 'login' ? 'Login' : 'Sign Up'}
+                  {mode === 'login' ? 'Login' : 'Get Started'}
                 </Button>
               </form>
             </Form>
-            <div className="relative my-4">
+            <div className="relative my-6">
               <div className="absolute inset-0 flex items-center">
                 <span className="w-full border-t" />
               </div>
-              <div className="relative flex justify-center text-xs uppercase">
-                <span className="bg-card px-2 text-muted-foreground">
+              <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-widest">
+                <span className="bg-card px-3 text-muted-foreground">
                   Or continue with
                 </span>
               </div>
             </div>
             <div className="grid grid-cols-1 gap-2">
-                <Button variant="outline" onClick={handleGoogleSignIn} disabled={isProcessing}>
+                <Button variant="outline" className="h-11 border-muted-foreground/20" onClick={handleGoogleSignIn} disabled={isProcessing}>
                   <GoogleIcon className="mr-2 h-4 w-4" />
                   Google
                 </Button>
             </div>
           </CardContent>
-          <CardFooter className="flex flex-col gap-4">
+          <CardFooter className="flex flex-col gap-4 pt-2">
             <div className="text-center text-sm">
               {mode === 'login' ? (
                 <>
-                  Don&apos;t have an account?{' '}
-                  <Button variant="link" className="p-0 h-auto" onClick={() => toggleMode('signup')}>
+                  <span className="text-muted-foreground">Don&apos;t have an account?</span>{' '}
+                  <Button variant="link" className="p-0 h-auto font-bold" onClick={() => toggleMode('signup')}>
                     Sign up
                   </Button>
                 </>
               ) : (
                 <>
-                  Already have an account?{' '}
-                  <Button variant="link" className="p-0 h-auto" onClick={() => toggleMode('login')}>
+                  <span className="text-muted-foreground">Already have an account?</span>{' '}
+                  <Button variant="link" className="p-0 h-auto font-bold" onClick={() => toggleMode('login')}>
                     Login
                   </Button>
                 </>
               )}
             </div>
-             <div className="text-center text-xs text-muted-foreground">
+             <div className="text-center text-[10px] text-muted-foreground/60 leading-relaxed max-w-[280px]">
                 By continuing, you agree to our{' '}
                 <Link href="/terms-of-service" className="underline hover:text-primary">
-                Terms
+                Terms of Service
                 </Link>
                 {' & '}
                 <Link href="/privacy-policy" className="underline hover:text-primary">
-                Privacy
+                Privacy Policy
                 </Link>
                 .
             </div>
