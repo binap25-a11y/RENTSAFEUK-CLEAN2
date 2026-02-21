@@ -40,9 +40,13 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ### Troubleshooting AI Errors
 
-*   **"AI service is not reachable" / "fetch failed"**: Make sure you have the Genkit server running in a separate terminal with `npm run genkit:dev`. If you've just updated the code, you may need to stop (Ctrl+C) and restart both the AI server and the web server.
-*   **"API key not valid"**: Ensure your `GEMINI_API_KEY` in the `.env` file is correct and that you have restarted both servers after adding it.
-*   **"Failed Precondition"**: This error comes directly from Google's servers and usually means one of two things:
+*   **"AI service is not reachable" / "fetch failed"**: This means the main web app can't connect to the AI server. Make sure you have the Genkit server running in a separate terminal with `npm run genkit:dev`. If you've just updated the code, you may need to stop (Ctrl+C) and restart both the AI server and the web server.
+
+*   **`GenkitError: FAILED_PRECONDITION: Please pass in the API key`**: This error in your `genkit:dev` terminal means the AI server couldn't find your API key. Ensure your `.env` file is in the project's root folder and is correctly named.
+
+*   **"API key not valid"**: This error in the browser means your `GEMINI_API_KEY` in the `.env` file is incorrect. Double-check that you copied it correctly from Google AI Studio and restart both servers.
+
+*   **"Failed Precondition" (in browser)**: This error comes directly from Google's servers and usually means one of two things:
     1.  **Billing is not enabled** on the Google Cloud project associated with your API key.
     2.  The **"Generative Language API"** (or sometimes "Vertex AI API") is not enabled for that project.
     
