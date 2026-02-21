@@ -70,28 +70,30 @@ export default function LoginPage() {
     }
   }, [user, isUserLoading, router]);
 
-  const handleAuthAction = async (data: FormValues) => {
+  const handleAuthAction = (data: FormValues) => {
     if (!auth) return;
     setIsProcessing(true);
     setAuthError(null);
-    try {
-      if (mode === 'signup') {
-        await createUserWithEmailAndPassword(auth, data.email, data.password);
+
+    const handleAuthError = (error: any) => {
+      if (mode === 'login' && (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential')) {
+          setAuthError('Invalid email or password. Please try again.');
       } else {
-        await signInWithEmailAndPassword(auth, data.email, data.password);
+          toast({
+              variant: 'destructive',
+              title: `Failed to ${mode}`,
+              description: error.message,
+          });
       }
-    } catch (error: any) {
-        if (mode === 'login' && (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential')) {
-            setAuthError('Invalid email or password. Please try again.');
-        } else {
-            toast({
-                variant: 'destructive',
-                title: `Failed to ${mode}`,
-                description: error.message,
-            });
-        }
-    } finally {
       setIsProcessing(false);
+    };
+
+    if (mode === 'signup') {
+      createUserWithEmailAndPassword(auth, data.email, data.password)
+        .catch(handleAuthError);
+    } else {
+      signInWithEmailAndPassword(auth, data.email, data.password)
+        .catch(handleAuthError);
     }
   };
 
