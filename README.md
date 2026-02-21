@@ -13,12 +13,15 @@ This project uses the Google Gemini API for its AI features.
 1.  **[Click here to get your Gemini API key from Google AI Studio](https://aistudio.google.com/app/apikey)**. You may need to sign in with your Google account.
 2.  Click **"Create API key"** in a new project.
 3.  Copy the generated key to your clipboard.
-4.  In this project, create a file named `.env` in the root folder.
-5.  Add the following line to the `.env` file, replacing `YOUR_API_KEY` with the key you just copied:
+4.  Open the `.env` file located in the root of this project.
+5.  You will see a line like `GEMINI_API_KEY="YOUR_API_KEY_HERE"`.
+6.  Replace `YOUR_API_KEY_HERE` with the key you just copied from AI Studio.
 
-    ```
-    GEMINI_API_KEY=YOUR_API_KEY
-    ```
+    **Before:**
+    `GEMINI_API_KEY="YOUR_API_KEY_HERE"`
+
+    **After (example):**
+    `GEMINI_API_KEY="aIzaSy...your...key...here"`
 
 ### 2. Run the AI Server (Genkit)
 
@@ -42,7 +45,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 *   **"AI service is not reachable" / "fetch failed"**: This means the main web app can't connect to the AI server. Make sure you have the Genkit server running in a separate terminal with `npm run genkit:dev`. If you've just updated the code, you may need to stop (Ctrl+C) and restart both the AI server and the web server.
 
-*   **`GenkitError: FAILED_PRECONDITION: Please pass in the API key`**: This error in your `genkit:dev` terminal means the AI server couldn't find your API key. Ensure your `.env` file is in the project's root folder and is correctly named.
+*   **`GenkitError: FAILED_PRECONDITION: Please pass in the API key`**: This error in your `genkit:dev` terminal means the AI server couldn't find your API key. Ensure your `.env` file is in the project's root folder and contains your key.
 
 *   **"API key not valid"**: This error in the browser means your `GEMINI_API_KEY` in the `.env` file is incorrect. Double-check that you copied it correctly from Google AI Studio and restart both servers.
 
