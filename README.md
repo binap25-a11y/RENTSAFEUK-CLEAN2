@@ -10,8 +10,11 @@ This application uses Next.js for the frontend and Genkit for AI features. You m
 
 This project uses the Google Gemini API for its AI features.
 
-1.  Create a file named `.env` in the root of the project if it doesn't already exist.
-2.  Add the following line to the `.env` file, replacing `YOUR_API_KEY` with your actual Gemini API key:
+1.  **[Click here to get your Gemini API key from Google AI Studio](https://aistudio.google.com/app/apikey)**. You may need to sign in with your Google account.
+2.  Click **"Create API key"** in a new project.
+3.  Copy the generated key to your clipboard.
+4.  In this project, create a file named `.env` in the root folder.
+5.  Add the following line to the `.env` file, replacing `YOUR_API_KEY` with the key you just copied:
 
     ```
     GEMINI_API_KEY=YOUR_API_KEY
@@ -19,7 +22,7 @@ This project uses the Google Gemini API for its AI features.
 
 ### 2. Run the AI Server (Genkit)
 
-Open a terminal and run the following command to start the AI service. This command ensures the AI server is accessible from other services on your machine.
+Open a terminal and run the following command to start the AI service.
 
 ```bash
 npm run genkit:dev
