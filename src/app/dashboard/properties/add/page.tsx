@@ -46,10 +46,11 @@ const propertySchema = z.object({
     depositScheme: z.string().optional(),
   }).optional(),
 }).refine(data => {
-  if (!data.tenancy?.depositAmount || data.tenancy.depositAmount <= 0) {
-    return true;
-  }
-  return !!(data.tenancy.depositScheme && data.tenancy.depositScheme.trim());
+    if (!data.tenancy?.depositAmount || data.tenancy.depositAmount <= 0) {
+        return true;
+    }
+    // Only validate depositScheme if a depositAmount is actually entered.
+    return !!data.tenancy.depositScheme?.trim();
 }, {
   message: "Deposit scheme is required if a deposit amount is entered.",
   path: ["tenancy", "depositScheme"]
@@ -107,8 +108,23 @@ export default function AddPropertyPage() {
 
       form.setValue('notes', `${result.headline}\n\n${result.description}`);
       toast({ title: 'Description Generated' });
-    } catch (error) {
-      toast({ variant: 'destructive', title: 'AI Error', description: 'Failed to generate description.' });
+    } catch (error: any) {
+      console.error('AI Description Generation Error:', error);
+      let description = 'Failed to generate description. Please try again.';
+      if (error.message && error.message.includes('fetch failed')) {
+        description = 'The AI service is not reachable. Please ensure the Genkit server is running. (See README.md)';
+      } else if (error.message && error.message.includes('API key not valid')) {
+        description = 'Your Gemini API key is invalid or missing. Please check your .env file. (See README.md)';
+      } else if (error.message && error.message.toLowerCase().includes('failed precondition')) {
+          description = 'The AI service failed. This may be due to billing not being enabled on your Google Cloud project. Please check your Google Cloud console.';
+      } else if (error.message) {
+        description = `An unexpected error occurred: ${error.message}`;
+      }
+      toast({
+        variant: 'destructive',
+        title: 'AI Error',
+        description: description,
+      });
     } finally {
       setIsGenerating(false);
     }

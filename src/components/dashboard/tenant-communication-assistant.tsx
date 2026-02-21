@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -61,12 +62,22 @@ export function TenantCommunicationAssistant({
         });
         setGeneratedComm(result);
         toast({ title: 'Draft Ready' });
-    } catch (e) {
-        console.error('Communication Assistant failed:', e);
+    } catch (error: any) {
+        console.error('Communication Assistant failed:', error);
+        let description = 'Could not generate message. Please try again.';
+        if (error.message && error.message.includes('fetch failed')) {
+            description = 'The AI service is not reachable. Please ensure the Genkit server is running. (See README.md)';
+        } else if (error.message && error.message.includes('API key not valid')) {
+            description = 'Your Gemini API key is invalid or missing. Please check your .env file. (See README.md)';
+        } else if (error.message && error.message.toLowerCase().includes('failed precondition')) {
+            description = 'The AI service failed. This may be due to billing not being enabled on your Google Cloud project. Please check your Google Cloud console.';
+        } else if (error.message) {
+            description = `An unexpected error occurred: ${error.message}`;
+        }
         toast({ 
             variant: 'destructive', 
             title: 'AI Error', 
-            description: 'Could not generate message. Please ensure your API key is configured.' 
+            description: description 
         });
     } finally {
         setIsGenerating(false);
