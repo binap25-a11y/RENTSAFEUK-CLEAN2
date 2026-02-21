@@ -65,14 +65,18 @@ export function TenantCommunicationAssistant({
     } catch (error: any) {
         console.error('Communication Assistant failed:', error);
         let description = 'Could not generate message. Please try again.';
-        if (error.message && error.message.includes('fetch failed')) {
-            description = 'The AI service is not reachable. Please ensure the Genkit server is running. (See README.md)';
-        } else if (error.message && error.message.includes('API key not valid')) {
+        if (error.message) {
+          if (error.message.includes('fetch failed') && error.message.includes('generativelanguage.googleapis.com')) {
+            description = 'Could not connect to the Google AI service. This is often caused by an invalid API key, or because billing has not been enabled on your Google Cloud project. Please check your .env file and Google Cloud console settings. (See README.md)';
+          } else if (error.message.includes('fetch failed')) {
+            description = 'The AI service is not reachable. Please ensure the Genkit server is running in a separate terminal. (See README.md)';
+          } else if (error.message.includes('API key not valid')) {
             description = 'Your Gemini API key is invalid or missing. Please check your .env file. (See README.md)';
-        } else if (error.message && error.message.toLowerCase().includes('failed precondition')) {
-            description = 'The AI service failed. This may be due to billing not being enabled on your Google Cloud project. Please check your Google Cloud console.';
-        } else if (error.message) {
+          } else if (error.message.toLowerCase().includes('failed precondition')) {
+            description = 'The AI service failed. This may be due to billing not being enabled on your Google Cloud project or the "Generative Language API" is not active. Please check your Google Cloud console.';
+          } else {
             description = `An unexpected error occurred: ${error.message}`;
+          }
         }
         toast({ 
             variant: 'destructive', 
