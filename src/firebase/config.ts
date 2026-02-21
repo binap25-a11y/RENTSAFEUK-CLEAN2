@@ -1,7 +1,10 @@
-export const firebaseConfig = {
-  "projectId": "rentsafeuk-app-3981",
-  "appId": "1:40608219532:web:93daeb35ed554320b38a09",
-  "apiKey": "AIzaSyC1x...YOUR_KEY",
-  "authDomain": "rentsafeuk-app-3981.firebaseapp.com",
-  "storageBucket": "rentsafeuk-app-3981.appspot.com"
+// For Firebase JS SDK v7.20.0 and later, measurementId is optional
+const firebaseConfig = {
+  apiKey: "AIzaSyB61GBEd9HhRgBhhZTx6VKTrLkYxaDa7nU",
+  authDomain: "rentsafeuk---final.firebaseapp.com",
+  projectId: "rentsafeuk---final",
+  storageBucket: "rentsafeuk---final.firebasestorage.app",
+  messagingSenderId: "922536058808",
+  appId: "1:922536058808:web:0a5022e12d1b52e92cb94d",
+  measurementId: "G-MR29MHDWFP"
 };
