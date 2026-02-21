@@ -8,11 +8,9 @@ import { useRouter } from 'next/navigation';
 import {
   signInWithRedirect,
   GoogleAuthProvider,
-  createUserWithEmailAndPassword,
-  signInWithEmailAndPassword,
   sendPasswordResetEmail,
 } from 'firebase/auth';
-import { useAuth, useUser } from '@/firebase';
+import { useAuth, useUser, createUserNonBlocking, signInNonBlocking } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -71,30 +69,42 @@ export default function LoginPage() {
   }, [user, isUserLoading, router]);
 
   const handleAuthAction = (data: FormValues) => {
-    if (!auth) return;
+    if (!auth) {
+      setAuthError("Authentication service is not available. Please try again later.");
+      return;
+    }
     setIsProcessing(true);
     setAuthError(null);
 
-    const handleAuthError = (error: any) => {
-      if (mode === 'login' && (error.code === 'auth/wrong-password' || error.code === 'auth/user-not-found' || error.code === 'auth/invalid-credential')) {
-          setAuthError('Invalid email or password. Please try again.');
-      } else {
-          toast({
-              variant: 'destructive',
-              title: `Failed to ${mode}`,
-              description: error.message,
-          });
+    const handleError = (error: any) => {
+      // Provide specific, user-friendly error messages
+      switch (error.code) {
+          case 'auth/invalid-api-key':
+              setAuthError('The provided API Key is invalid. Please check your Firebase project configuration in src/firebase/config.ts.');
+              break;
+          case 'auth/wrong-password':
+          case 'auth/user-not-found':
+          case 'auth/invalid-credential':
+              setAuthError('Invalid email or password. Please try again.');
+              break;
+          case 'auth/email-already-in-use':
+              setAuthError('An account with this email already exists. Please try logging in.');
+              break;
+          case 'auth/weak-password':
+              setAuthError('The password is too weak. Please use at least 6 characters.');
+              break;
+          default:
+              setAuthError(error.message || 'An unexpected error occurred. Please try again.');
       }
       setIsProcessing(false);
     };
 
     if (mode === 'signup') {
-      createUserWithEmailAndPassword(auth, data.email, data.password)
-        .catch(handleAuthError);
+      createUserNonBlocking(auth, data.email, data.password, handleError);
     } else {
-      signInWithEmailAndPassword(auth, data.email, data.password)
-        .catch(handleAuthError);
+      signInNonBlocking(auth, data.email, data.password, handleError);
     }
+    // On success, the onAuthStateChanged listener in the provider will trigger a redirect.
   };
 
   const handlePasswordReset = async () => {
@@ -179,7 +189,7 @@ export default function LoginPage() {
             {authError && (
               <Alert variant="destructive" className="mb-4">
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Login Failed</AlertTitle>
+                <AlertTitle>Authentication Failed</AlertTitle>
                 <AlertDescription>{authError}</AlertDescription>
               </Alert>
             )}
