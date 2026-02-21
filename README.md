@@ -35,6 +35,16 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
+### Troubleshooting AI Errors
+
+*   **"AI service is not reachable"**: Make sure you have the Genkit server running in a separate terminal with `npm run genkit:dev`.
+*   **"API key not valid"**: Ensure your `GEMINI_API_KEY` in the `.env` file is correct and that you have restarted both servers after adding it.
+*   **"Failed Precondition"**: This error comes directly from Google's servers and usually means one of two things:
+    1.  **Billing is not enabled** on the Google Cloud project associated with your API key.
+    2.  The **"Generative Language API"** (or sometimes "Vertex AI API") is not enabled for that project.
+    
+    You must go to your [Google Cloud Console](https://console.cloud.google.com/) to verify that both are active for your project.
+
 ---
 
 ## Firebase Setup Guide

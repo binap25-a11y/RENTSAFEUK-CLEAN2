@@ -56,6 +56,8 @@ export function MaintenanceAssistantDialog({
         description = 'The AI service is not reachable. Please ensure the Genkit server is running in a separate terminal. (See README.md)';
       } else if (error.message && error.message.includes('API key not valid')) {
         description = 'Your Gemini API key is invalid or missing. Please check your .env file. (See README.md)';
+      } else if (error.message && error.message.toLowerCase().includes('failed precondition')) {
+          description = 'The AI service failed. This is often because billing is not enabled for your Google Cloud project or the "Generative Language API" is not active. Please check your Google Cloud console.';
       } else if (error.message) {
         description = `An unexpected error occurred: ${error.message}`;
       }
