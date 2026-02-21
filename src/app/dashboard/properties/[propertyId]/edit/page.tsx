@@ -42,10 +42,10 @@ const propertySchema = z.object({
     depositScheme: z.string().optional(),
   }).optional(),
 }).refine(data => {
-  if (data.tenancy?.depositAmount && data.tenancy.depositAmount > 0) {
-    return typeof data.tenancy.depositScheme === 'string' && data.tenancy.depositScheme.trim() !== '';
+  if (!data.tenancy?.depositAmount || data.tenancy.depositAmount <= 0) {
+    return true;
   }
-  return true;
+  return !!data.tenancy.depositScheme?.trim();
 }, {
   message: "Deposit scheme is required if a deposit amount is entered.",
   path: ["tenancy", "depositScheme"]
@@ -217,5 +217,3 @@ export default function EditPropertyPage() {
     </Card>
   )
 }
-
-    
