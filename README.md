@@ -19,7 +19,7 @@ This project uses the Google Gemini API for its AI features.
 
 ### 2. Run the AI Server (Genkit)
 
-Open a terminal and run the following command to start the AI service:
+Open a terminal and run the following command to start the AI service. This command ensures the AI server is accessible from other services on your machine.
 
 ```bash
 npm run genkit:dev
@@ -37,7 +37,7 @@ Open [http://localhost:3000](http://localhost:3000) with your browser to see the
 
 ### Troubleshooting AI Errors
 
-*   **"AI service is not reachable"**: Make sure you have the Genkit server running in a separate terminal with `npm run genkit:dev`.
+*   **"AI service is not reachable" / "fetch failed"**: Make sure you have the Genkit server running in a separate terminal with `npm run genkit:dev`. If you've just updated the code, you may need to stop (Ctrl+C) and restart both the AI server and the web server.
 *   **"API key not valid"**: Ensure your `GEMINI_API_KEY` in the `.env` file is correct and that you have restarted both servers after adding it.
 *   **"Failed Precondition"**: This error comes directly from Google's servers and usually means one of two things:
     1.  **Billing is not enabled** on the Google Cloud project associated with your API key.
