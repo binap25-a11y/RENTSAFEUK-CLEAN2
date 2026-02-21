@@ -8,26 +8,19 @@ This application uses Next.js for the frontend and Genkit for AI features. You m
 
 ### 1. Get Your Gemini API Key
 
-This project uses the Google Gemini API for its AI features. Your API key is a secret credential that connects the app to your Google account.
-
-**If you don't have a key yet:**
+This project uses the Google Gemini API for its AI features. Your API key connects the app to your Google account. **You must add your key to the `.env` file.**
 
 1.  **[Click here to go to Google AI Studio](https://aistudio.google.com/app/apikey)**. You may need to sign in with your Google account.
-2.  Click the **Create API key** button. This will likely create a new Google Cloud project for you.
-3.  Copy the generated key. It will be a long string of letters and numbers.
 
-**If you already have projects or can't find your key:**
+2.  You should see a project named **`rentsafeuk-app-3981`** in the list.
 
-1.  **[Click here to go to Google AI Studio](https://aistudio.google.com/app/apikey)**.
-2.  On the left side of the screen, you will see a list of your existing API keys and the projects they belong to.
-3.  You can copy an **existing key** from this list.
-4.  If you don't see any keys or projects, click **Create API key** to make a new one.
+3.  Click **"Create API key"** within that project.
 
-**Putting the key in your app:**
+4.  Copy the generated key. It will be a long string of letters and numbers.
 
-1.  Open the `.env` file located in the root of this project.
-2.  You will see a line: `GEMINI_API_KEY="YOUR_API_KEY_HERE"`.
-3.  Replace `YOUR_API_KEY_HERE` with the key you just copied.
+5.  Open the `.env` file in your project.
+
+6.  Replace `YOUR_API_KEY_HERE` with the key you just copied.
 
     **Before:**
     `GEMINI_API_KEY="YOUR_API_KEY_HERE"`
@@ -35,7 +28,7 @@ This project uses the Google Gemini API for its AI features. Your API key is a s
     **After (example):**
     `GEMINI_API_KEY="aIzaSy...your...key...here"`
 
-4.  **Important:** After saving the `.env` file, you must **restart both servers** (`npm run genkit:dev` and `npm run dev`) for the new key to be recognized.
+7.  **Important:** After saving the `.env` file, you must **restart both servers** for the new key to be recognized.
 
 ### 2. Run the AI Server (Genkit)
 
@@ -55,38 +48,7 @@ npm run dev
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
-### Troubleshooting AI Errors
-
-*   **"AI service is not reachable" / "fetch failed"**: This means the main web app can't connect to the AI server. Make sure you have the Genkit server running in a separate terminal with `npm run genkit:dev`. If you've just updated the code, you may need to stop (Ctrl+C) and restart both the AI server and the web server.
-
-*   **`GenkitError: FAILED_PRECONDITION: Please pass in the API key`**: This error in your `genkit:dev` terminal means the AI server couldn't find your API key. Ensure your `.env` file is in the project's root folder and contains your key.
-
-*   **"API key not valid"**: This error in the browser means your `GEMINI_API_KEY` in the `.env` file is incorrect. Double-check that you copied it correctly from Google AI Studio and restart both servers.
-
-*   **"Failed Precondition" (in browser)**: This error comes directly from Google's servers and usually means one of two things:
-    1.  **Billing is not enabled** on the Google Cloud project associated with your API key.
-    2.  The **"Generative Language API"** (or sometimes "Vertex AI API") is not enabled for that project.
-    
-    You must go to your [Google Cloud Console](https://console.cloud.google.com/) to verify that both are active for your project.
-
 ---
+## Firebase Setup
 
-## Firebase Setup Guide
-
-### 1. Authorized Domains
-If you see "Google error of access" during sign-in or workstation use, ensure your current domain is added to the Firebase Console:
-1. Go to **Authentication** > **Settings** > **Authorized domains**.
-2. Add your workstation domain (e.g., `*.cloudworkstations.dev`).
-
-## Mobile Testing Troubleshooting
-
-If you scan the QR code and see "401" or "Workstation does not exist":
-*   **Authentication:** Workstations are private. You must be logged into the **same Google account** in your mobile browser that owns the workstation.
-*   **Recommended Solution:** Deploy the app to **Firebase App Hosting**. This provides a public URL that works seamlessly on any mobile device without proxy authentication.
-
-## Key Features
-*   **AI Property Description:** Generate professional listings using Gemini.
-*   **AI Maintenance Assistant:** Diagnose household issues and troubleshooting steps.
-*   **Compliance Tracking:** Automated reminders for EPC, Gas Safety, and EICR.
-*   **Financial Reporting:** Track income/expenses and export annual PDF statements.
-*   **Tenant Screening:** Detailed pre-tenancy background checks.
+This app is connected to the Firebase project `rentsafeuk-app-3981`. All data is stored in this project.
