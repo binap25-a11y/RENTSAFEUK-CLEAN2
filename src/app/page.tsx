@@ -1,16 +1,17 @@
+
 'use client';
 
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Logo, GoogleIcon } from '@/components/icons';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useContext } from 'react';
 import { useRouter } from 'next/navigation';
 import {
   signInWithRedirect,
   GoogleAuthProvider,
   sendPasswordResetEmail,
 } from 'firebase/auth';
-import { useAuth, useUser, createUserNonBlocking, signInNonBlocking } from '@/firebase';
+import { FirebaseContext, createUserNonBlocking, signInNonBlocking } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -45,8 +46,12 @@ type FormValues = z.infer<typeof formSchema>;
 type AuthMode = 'login' | 'signup';
 
 export default function LoginPage() {
-  const { user, isUserLoading } = useUser();
-  const auth = useAuth();
+  const firebaseContext = useContext(FirebaseContext);
+  const user = firebaseContext?.user;
+  const isUserLoading = firebaseContext?.isUserLoading ?? true; // Default to true if context is not yet available
+  const auth = firebaseContext?.auth;
+  const areServicesAvailable = firebaseContext?.areServicesAvailable ?? false;
+
   const router = useRouter();
   const { toast } = useToast();
   const [mode, setMode] = useState<AuthMode>('login');
@@ -80,7 +85,12 @@ export default function LoginPage() {
       // Provide specific, user-friendly error messages
       switch (error.code) {
           case 'auth/invalid-api-key':
-              setAuthError('The provided API Key is invalid. Please check your Firebase project configuration in src/firebase/config.ts.');
+          case 'auth/app-deleted':
+          case 'auth/invalid-app-id':
+              setAuthError('The Firebase configuration is invalid. Please check your config in `src/firebase/config.ts`.');
+              break;
+          case 'auth/configuration-not-found':
+              setAuthError('Email/Password sign-in is not enabled. Please enable it in your Firebase project Authentication settings.');
               break;
           case 'auth/wrong-password':
           case 'auth/user-not-found':
@@ -104,7 +114,7 @@ export default function LoginPage() {
     } else {
       signInNonBlocking(auth, data.email, data.password, handleError);
     }
-    // On success, the onAuthStateChanged listener in the provider will trigger a redirect.
+    // On success, the onAuthStateChanged listener in the provider will handle a redirect.
   };
 
   const handlePasswordReset = async () => {
@@ -186,7 +196,19 @@ export default function LoginPage() {
             </div>
           </CardHeader>
           <CardContent>
-            {authError && (
+            {!areServicesAvailable ? (
+              <Alert variant="destructive" className="mb-4">
+                <AlertCircle className="h-4 w-4" />
+                <AlertTitle>Action Required: Configure Firebase</AlertTitle>
+                <AlertDescription>
+                  Your app is not connected to Firebase. Please open the file{' '}
+                  <code className="relative rounded bg-muted px-[0.3rem] py-[0.2rem] font-mono text-sm font-semibold">
+                    src/firebase/config.ts
+                  </code>{' '}
+                  and replace the placeholder values with your Firebase project's configuration.
+                </AlertDescription>
+              </Alert>
+            ) : authError && (
               <Alert variant="destructive" className="mb-4">
                 <AlertCircle className="h-4 w-4" />
                 <AlertTitle>Authentication Failed</AlertTitle>
@@ -202,7 +224,7 @@ export default function LoginPage() {
                     <FormItem>
                       <FormLabel>Email</FormLabel>
                       <FormControl>
-                        <Input placeholder="name@example.com" {...field} className="h-11" />
+                        <Input placeholder="name@example.com" {...field} className="h-11" disabled={!areServicesAvailable} />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -221,6 +243,7 @@ export default function LoginPage() {
                             placeholder="••••••••"
                             {...field}
                             className="h-11 pr-10"
+                            disabled={!areServicesAvailable}
                           />
                           <Button
                             type="button"
@@ -228,6 +251,7 @@ export default function LoginPage() {
                             size="icon"
                             className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:bg-transparent"
                             onClick={() => setShowPassword((prev) => !prev)}
+                            disabled={!areServicesAvailable}
                           >
                             <span className="sr-only">
                               {showPassword ? 'Hide password' : 'Show password'}
@@ -248,7 +272,7 @@ export default function LoginPage() {
                                 variant="link"
                                 className="py-0 px-0 h-auto text-xs font-semibold text-muted-foreground hover:text-primary"
                                 onClick={handlePasswordReset}
-                                disabled={isProcessing}
+                                disabled={isProcessing || !areServicesAvailable}
                             >
                                 Forgot password?
                             </Button>
@@ -257,7 +281,7 @@ export default function LoginPage() {
                     </FormItem>
                   )}
                 />
-                <Button type="submit" className="w-full h-11 font-bold text-base shadow-md" disabled={isProcessing}>
+                <Button type="submit" className="w-full h-11 font-bold text-base shadow-md" disabled={isProcessing || !areServicesAvailable}>
                   {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   {mode === 'login' ? 'Login' : 'Get Started'}
                 </Button>
@@ -274,7 +298,7 @@ export default function LoginPage() {
               </div>
             </div>
             <div className="grid grid-cols-1 gap-2">
-                <Button variant="outline" className="h-11 border-muted-foreground/20" onClick={handleGoogleSignIn} disabled={isProcessing}>
+                <Button variant="outline" className="h-11 border-muted-foreground/20" onClick={handleGoogleSignIn} disabled={isProcessing || !areServicesAvailable}>
                   <GoogleIcon className="mr-2 h-4 w-4" />
                   Google
                 </Button>
@@ -285,14 +309,14 @@ export default function LoginPage() {
               {mode === 'login' ? (
                 <>
                   <span className="text-muted-foreground">Don&apos;t have an account?</span>{' '}
-                  <Button variant="link" className="p-0 h-auto font-bold" onClick={() => toggleMode('signup')}>
+                  <Button variant="link" className="p-0 h-auto font-bold" onClick={() => toggleMode('signup')} disabled={!areServicesAvailable}>
                     Sign up
                   </Button>
                 </>
               ) : (
                 <>
                   <span className="text-muted-foreground">Already have an account?</span>{' '}
-                  <Button variant="link" className="p-0 h-auto font-bold" onClick={() => toggleMode('login')}>
+                  <Button variant="link" className="p-0 h-auto font-bold" onClick={() => toggleMode('login')} disabled={!areServicesAvailable}>
                     Login
                   </Button>
                 </>
@@ -315,3 +339,4 @@ export default function LoginPage() {
     </div>
   );
 }
+    

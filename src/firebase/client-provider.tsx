@@ -1,8 +1,10 @@
+
 'use client';
 
 import React, { useMemo, type ReactNode } from 'react';
 import { FirebaseProvider } from '@/firebase/provider';
 import { initializeFirebase } from '@/firebase/init';
+import { firebaseConfig } from '@/firebase/config';
 
 interface FirebaseClientProviderProps {
   children: ReactNode;
@@ -17,11 +19,16 @@ interface FirebaseClientProviderProps {
  * @returns {React.ReactElement} The provider component wrapping the children.
  */
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
-  // useMemo is crucial here. It ensures that `initializeFirebase` is called
-  // only once when the component mounts for the first time. Without it,
-  // Firebase would be re-initialized on every render, leading to errors and
-  // unnecessary connections.
   const firebaseServices = useMemo(() => {
+    // A simple check to see if the config has been filled out.
+    // This is NOT a security check, just a check for placeholder values.
+    const isFirebaseConfigured = firebaseConfig && firebaseConfig.apiKey && !firebaseConfig.apiKey.includes('PASTE');
+
+    if (!isFirebaseConfigured) {
+        // Return null services if not configured, preventing a crash.
+        // The UI will handle showing a configuration message.
+        return { firebaseApp: null, auth: null, firestore: null, storage: null };
+    }
     return initializeFirebase();
   }, []); // The empty dependency array `[]` ensures this runs only once.
 
@@ -36,3 +43,4 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
     </FirebaseProvider>
   );
 }
+    

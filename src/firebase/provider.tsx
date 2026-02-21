@@ -1,3 +1,4 @@
+
 'use client';
 
 import React, { DependencyList, createContext, useContext, ReactNode, useMemo, useState, useEffect } from 'react';
@@ -32,10 +33,10 @@ function FirebaseErrorListener() {
 
 interface FirebaseProviderProps {
   children: ReactNode;
-  firebaseApp: FirebaseApp;
-  firestore: Firestore;
-  auth: Auth;
-  storage: Storage;
+  firebaseApp: FirebaseApp | null;
+  firestore: Firestore | null;
+  auth: Auth | null;
+  storage: Storage | null;
 }
 
 // Internal state for user authentication
@@ -109,7 +110,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   // Effect to subscribe to Firebase auth state changes.
   useEffect(() => {
     if (!auth) {
-      setUserAuthState({ user: null, isUserLoading: false, userError: new Error("Auth service not provided.") });
+      setUserAuthState({ user: null, isUserLoading: false, userError: null });
       return;
     }
 
@@ -193,7 +194,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
 /**
  * A custom hook to safely access all core Firebase services and user authentication state.
- * It ensures that it's used within a FirebaseProvider and that services are available.
+ * It ensures that it's used within a FirebaseProvider and that services are missing.
  * @throws {Error} If used outside of a FirebaseProvider or if services are missing.
  * @returns {FirebaseServicesAndUser} An object containing all Firebase services and user state.
  */
@@ -272,3 +273,5 @@ export const useUser = (): UserHookResult => {
   const { user, isUserLoading, userError } = useFirebase(); // Leverages the main hook for its state.
   return { user, isUserLoading, userError };
 };
+
+    
