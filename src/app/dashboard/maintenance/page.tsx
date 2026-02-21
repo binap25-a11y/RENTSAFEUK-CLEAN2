@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -44,8 +43,6 @@ import {
   FirestorePermissionError,
 } from '@/firebase';
 import { collection, query, where, addDoc, limit } from 'firebase/firestore';
-import { MaintenanceAssistantDialog } from '@/components/dashboard/maintenance-assistant-dialog';
-import type { MaintenanceAssistantOutput } from '@/ai/flows/maintenance-assistant-flow';
 
 
 // Schema for the form
@@ -91,7 +88,6 @@ export default function MaintenancePage() {
   const { user } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
-  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<MaintenanceFormValues>({
@@ -142,19 +138,6 @@ export default function MaintenancePage() {
   }, [firestore, user]);
   const { data: contractors } = useCollection<Contractor>(contractorsQuery);
 
-  const handleLogFromAssistant = (suggestion: MaintenanceAssistantOutput) => {
-    form.setValue('title', suggestion.suggestedTitle);
-    const description = `AI Diagnosis:\n- ${suggestion.likelyCause}\n\nSuggested Troubleshooting:\n- ${suggestion.troubleshootingSteps.join('\n- ')}`;
-    form.setValue('description', description);
-    form.setValue('priority', suggestion.urgency);
-    form.setValue('category', suggestion.suggestedCategory);
-    setIsAssistantOpen(false);
-    toast({
-      title: 'Form Pre-filled',
-      description: 'The maintenance form has been pre-filled with the AI suggestions.',
-    });
-  };
-
   async function handleFormSubmit(data: MaintenanceFormValues) {
     if (!user || !firestore) {
       toast({ variant: 'destructive', title: 'Authentication Error', description: 'You must be logged in.' });
@@ -196,23 +179,18 @@ export default function MaintenancePage() {
           </div>
         </div>
 
-        <MaintenanceAssistantDialog 
-            isOpen={isAssistantOpen} 
-            onOpenChange={setIsAssistantOpen}
-            onLogIssue={handleLogFromAssistant}
-        />
         <Card>
           <CardHeader>
             <CardTitle>Log Maintenance Issue</CardTitle>
             <CardDescription>
-              Fill in the details below or use our AI assistant to get started.
+              Fill in the details below. The AI assistant is temporarily unavailable.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="mb-6">
-              <Button onClick={() => setIsAssistantOpen(true)} variant="outline">
+              <Button variant="outline" disabled>
                   <Wand2 className="mr-2 h-4 w-4" />
-                  AI Assistant
+                  AI Assistant (Unavailable)
               </Button>
             </div>
             <Form {...form}>
@@ -315,5 +293,3 @@ export default function MaintenancePage() {
     </>
   );
 }
-
-    

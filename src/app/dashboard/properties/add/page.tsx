@@ -21,7 +21,6 @@ import {
 } from '@/firebase';
 import { collection, addDoc, query, where, getDocs, limit } from 'firebase/firestore';
 import { Loader2, Wand2, ShieldAlert } from 'lucide-react';
-import { generatePropertyDescription } from '@/ai/flows/property-description-flow';
 
 const ukPostcodeRegex = /^[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}$/i;
 
@@ -64,7 +63,6 @@ export default function AddPropertyPage() {
   const firestore = useFirestore();
   
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isGenerating, setIsGenerating] = useState(false);
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
@@ -87,52 +85,6 @@ export default function AddPropertyPage() {
       },
     },
   });
-
-  const handleMagicDescription = async () => {
-    const values = form.getValues();
-    if (!values.propertyType || !values.address.city) {
-      toast({ variant: 'destructive', title: 'Details Missing', description: 'Enter property type and city first.' });
-      return;
-    }
-
-    setIsGenerating(true);
-    try {
-      const addressString = [values.address.street, values.address.city, values.address.postcode].filter(Boolean).join(', ');
-      const result = await generatePropertyDescription({
-        propertyType: values.propertyType,
-        bedrooms: Number(values.bedrooms),
-        bathrooms: Number(values.bathrooms),
-        address: addressString,
-        keyFeatures: values.notes,
-      });
-
-      form.setValue('notes', `${result.headline}\n\n${result.description}`);
-      toast({ title: 'Description Generated' });
-    } catch (error: any) {
-      console.error('AI Description Generation Error:', error);
-      let description = 'Failed to generate description. Please try again.';
-      if (error.message) {
-        if (error.message.includes('fetch failed') && error.message.includes('generativelanguage.googleapis.com')) {
-          description = 'Could not connect to the Google AI service. This is often caused by an invalid API key, or because billing has not been enabled on your Google Cloud project. Please check your .env file and Google Cloud console settings. (See README.md)';
-        } else if (error.message.includes('fetch failed')) {
-          description = 'The AI service is not reachable. Please ensure the Genkit server is running in a separate terminal. (See README.md)';
-        } else if (error.message.includes('API key not valid')) {
-          description = 'Your Gemini API key is invalid or missing. Please check your .env file. (See README.md)';
-        } else if (error.message.toLowerCase().includes('failed precondition')) {
-          description = 'The AI service failed. This may be due to billing not being enabled on your Google Cloud project or the "Generative Language API" is not active. Please check your Google Cloud console.';
-        } else {
-          description = `An unexpected error occurred: ${error.message}`;
-        }
-      }
-      toast({
-        variant: 'destructive',
-        title: 'AI Error',
-        description: description,
-      });
-    } finally {
-      setIsGenerating(false);
-    }
-  };
 
   async function onSubmit(data: PropertyFormValues) {
     if (!user || !firestore) return;
@@ -234,11 +186,11 @@ export default function AddPropertyPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-xl font-headline">Description</CardTitle>
-                <Button type="button" variant="outline" size="sm" onClick={handleMagicDescription} disabled={isGenerating}>
-                  {isGenerating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />} AI Description
+                <Button type="button" variant="outline" size="sm" disabled>
+                  <Wand2 className="mr-2 h-4 w-4" /> AI Description (Unavailable)
                 </Button>
               </CardHeader>
-              <CardContent><FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormControl><Textarea placeholder="AI description will appear here..." className="resize-none" rows={8} {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)}/></CardContent>
+              <CardContent><FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormControl><Textarea placeholder="Enter a description for the property..." className="resize-none" rows={8} {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)}/></CardContent>
             </Card>
 
             <div className="flex justify-end gap-2">
