@@ -6,22 +6,36 @@ This is a comprehensive property management application built with Next.js and F
 
 This application uses Next.js for the frontend and Genkit for AI features. You must run **two separate servers** for all features to work correctly.
 
-### 1. Set Up Your Gemini API Key
+### 1. Get Your Gemini API Key
 
-This project uses the Google Gemini API for its AI features.
+This project uses the Google Gemini API for its AI features. Your API key is a secret credential that connects the app to your Google account.
 
-1.  **[Click here to get your Gemini API key from Google AI Studio](https://aistudio.google.com/app/apikey)**. You may need to sign in with your Google account.
-2.  Click **"Create API key"** in a new project.
-3.  Copy the generated key to your clipboard.
-4.  Open the `.env` file located in the root of this project.
-5.  You will see a line like `GEMINI_API_KEY="YOUR_API_KEY_HERE"`.
-6.  Replace `YOUR_API_KEY_HERE` with the key you just copied from AI Studio.
+**If you don't have a key yet:**
+
+1.  **[Click here to go to Google AI Studio](https://aistudio.google.com/app/apikey)**. You may need to sign in with your Google account.
+2.  Click the **Create API key** button. This will likely create a new Google Cloud project for you.
+3.  Copy the generated key. It will be a long string of letters and numbers.
+
+**If you already have projects or can't find your key:**
+
+1.  **[Click here to go to Google AI Studio](https://aistudio.google.com/app/apikey)**.
+2.  On the left side of the screen, you will see a list of your existing API keys and the projects they belong to.
+3.  You can copy an **existing key** from this list.
+4.  If you don't see any keys or projects, click **Create API key** to make a new one.
+
+**Putting the key in your app:**
+
+1.  Open the `.env` file located in the root of this project.
+2.  You will see a line: `GEMINI_API_KEY="YOUR_API_KEY_HERE"`.
+3.  Replace `YOUR_API_KEY_HERE` with the key you just copied.
 
     **Before:**
     `GEMINI_API_KEY="YOUR_API_KEY_HERE"`
 
     **After (example):**
     `GEMINI_API_KEY="aIzaSy...your...key...here"`
+
+4.  **Important:** After saving the `.env` file, you must **restart both servers** (`npm run genkit:dev` and `npm run dev`) for the new key to be recognized.
 
 ### 2. Run the AI Server (Genkit)
 
