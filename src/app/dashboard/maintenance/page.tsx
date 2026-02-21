@@ -183,14 +183,14 @@ export default function MaintenancePage() {
           <CardHeader>
             <CardTitle>Log Maintenance Issue</CardTitle>
             <CardDescription>
-              Fill in the details below. The AI assistant is temporarily unavailable.
+              Fill in the details below. The AI assistant is temporarily unavailable due to a platform issue.
             </CardDescription>
           </CardHeader>
           <CardContent>
             <div className="mb-6">
               <Button variant="outline" disabled>
                   <Wand2 className="mr-2 h-4 w-4" />
-                  AI Assistant (Unavailable)
+                  AI Assistant (Temporarily Unavailable)
               </Button>
             </div>
             <Form {...form}>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -187,7 +186,7 @@ export default function AddPropertyPage() {
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-xl font-headline">Description</CardTitle>
                 <Button type="button" variant="outline" size="sm" disabled>
-                  <Wand2 className="mr-2 h-4 w-4" /> AI Description (Unavailable)
+                  <Wand2 className="mr-2 h-4 w-4" /> AI Description (Temporarily Unavailable)
                 </Button>
               </CardHeader>
               <CardContent><FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormControl><Textarea placeholder="Enter a description for the property..." className="resize-none" rows={8} {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)}/></CardContent>
