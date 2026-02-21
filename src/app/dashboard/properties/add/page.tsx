@@ -47,7 +47,7 @@ const propertySchema = z.object({
   }).optional(),
 }).refine(data => {
   if (data.tenancy?.depositAmount && data.tenancy.depositAmount > 0) {
-    return !!data.tenancy.depositScheme?.trim();
+    return typeof data.tenancy.depositScheme === 'string' && data.tenancy.depositScheme.trim() !== '';
   }
   return true;
 }, {
@@ -233,3 +233,5 @@ export default function AddPropertyPage() {
     </Card>
   );
 }
+
+    
