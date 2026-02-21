@@ -4,13 +4,38 @@ This is a comprehensive property management application built with Next.js and F
 
 ## Getting Started
 
-To run the development server:
+This application uses Next.js for the frontend and Genkit for AI features. You must run **two separate servers** for all features to work correctly.
+
+### 1. Set Up Your Gemini API Key
+
+This project uses the Google Gemini API for its AI features.
+
+1.  Create a file named `.env` in the root of the project if it doesn't already exist.
+2.  Add the following line to the `.env` file, replacing `YOUR_API_KEY` with your actual Gemini API key:
+
+    ```
+    GEMINI_API_KEY=YOUR_API_KEY
+    ```
+
+### 2. Run the AI Server (Genkit)
+
+Open a terminal and run the following command to start the AI service:
+
+```bash
+npm run genkit:dev
+```
+
+### 3. Run the Web Application
+
+Open a **second, separate terminal** and run the following command to start the main web application:
 
 ```bash
 npm run dev
 ```
 
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+
+---
 
 ## Firebase Setup Guide
 

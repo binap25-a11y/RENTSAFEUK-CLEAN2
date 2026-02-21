@@ -49,12 +49,20 @@ export function MaintenanceAssistantDialog({
     try {
       const assistantResult = await runMaintenanceAssistant({ problemDescription });
       setResult(assistantResult);
-    } catch (error) {
+    } catch (error: any) {
       console.error('AI Maintenance Assistant Error:', error);
+      let description = 'Could not get a diagnosis. Please try again.';
+      if (error.message && error.message.includes('fetch failed')) {
+        description = 'The AI service is not reachable. Please ensure the Genkit server is running in a separate terminal. (See README.md)';
+      } else if (error.message && error.message.includes('API key not valid')) {
+        description = 'Your Gemini API key is invalid or missing. Please check your .env file. (See README.md)';
+      } else if (error.message) {
+        description = `An unexpected error occurred: ${error.message}`;
+      }
       toast({
         variant: 'destructive',
         title: 'AI Assistant Error',
-        description: 'Could not get a diagnosis. Please try again.',
+        description: description,
       });
     } finally {
       setIsLoading(false);
