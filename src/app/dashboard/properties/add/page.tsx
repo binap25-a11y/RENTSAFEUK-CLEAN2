@@ -49,7 +49,7 @@ const propertySchema = z.object({
   if (!data.tenancy?.depositAmount || data.tenancy.depositAmount <= 0) {
     return true;
   }
-  return !!data.tenancy.depositScheme?.trim();
+  return !!(data.tenancy.depositScheme && data.tenancy.depositScheme.trim());
 }, {
   message: "Deposit scheme is required if a deposit amount is entered.",
   path: ["tenancy", "depositScheme"]
