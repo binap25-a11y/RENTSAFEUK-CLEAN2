@@ -20,6 +20,7 @@ import {
 } from '@/firebase';
 import { collection, addDoc, query, where, getDocs, limit } from 'firebase/firestore';
 import { Loader2, Wand2, ShieldAlert } from 'lucide-react';
+import { generatePropertyDescription } from '@/ai/flows/property-description-flow';
 
 const ukPostcodeRegex = /^[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}$/i;
 
@@ -62,6 +63,7 @@ export default function AddPropertyPage() {
   const firestore = useFirestore();
   
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isGeneratingDesc, setIsGeneratingDesc] = useState(false);
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
@@ -84,6 +86,30 @@ export default function AddPropertyPage() {
       },
     },
   });
+
+  const handleGenerateDescription = async () => {
+    const { propertyType, bedrooms, bathrooms, address } = form.getValues();
+    if (!propertyType || bedrooms === undefined || bathrooms === undefined || !address.street) {
+        toast({ variant: 'destructive', title: 'Details Needed', description: 'Please fill in property type, bed/bath count, and address first.' });
+        return;
+    }
+
+    setIsGeneratingDesc(true);
+    try {
+        const result = await generatePropertyDescription({
+            propertyType,
+            bedrooms,
+            bathrooms,
+            address: `${address.street}, ${address.city}`,
+        });
+        form.setValue('notes', `${result.headline}\n\n${result.description}`);
+        toast({ title: 'AI Description Generated!' });
+    } catch (error: any) {
+        toast({ variant: 'destructive', title: 'AI Error', description: error.message });
+    } finally {
+        setIsGeneratingDesc(false);
+    }
+  };
 
   async function onSubmit(data: PropertyFormValues) {
     if (!user || !firestore) return;
@@ -185,8 +211,9 @@ export default function AddPropertyPage() {
             <Card>
               <CardHeader className="flex flex-row items-center justify-between">
                 <CardTitle className="text-xl font-headline">Description</CardTitle>
-                <Button type="button" variant="outline" size="sm" disabled>
-                  <Wand2 className="mr-2 h-4 w-4" /> AI Description (Temporarily Unavailable)
+                <Button type="button" variant="outline" size="sm" onClick={handleGenerateDescription} disabled={isGeneratingDesc}>
+                  {isGeneratingDesc ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Wand2 className="mr-2 h-4 w-4" />}
+                  Generate with AI
                 </Button>
               </CardHeader>
               <CardContent><FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormControl><Textarea placeholder="Enter a description for the property..." className="resize-none" rows={8} {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)}/></CardContent>

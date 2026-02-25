@@ -2,19 +2,6 @@
 
 This is a comprehensive property management application built with Next.js and Firebase.
 
-**CRITICAL PLATFORM ISSUE: LOGIN & AI FEATURES UNAVAILABLE**
-
-There is an ongoing platform issue preventing me from creating and connecting a new Firebase project to your account. Because of this:
-
-1.  **Login will not work.** The app cannot connect to a backend for user authentication.
-2.  **All AI features are disabled.**
-
-This is a server-side problem with the services I use, and it is outside of my control to fix directly. The only solution is to wait for the platform services to recover.
-
-Please try asking me to "fix the firebase connection" again in a little while. I will attempt to provision a new project for you then.
-
-I sincerely apologize for this major roadblock.
-
 ## Getting Started
 
 To run the web application, open a terminal and run the following command:
@@ -26,6 +13,18 @@ npm run dev
 Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 ---
-## Firebase Setup
+## Firebase & AI Setup
 
-This app is connected to a Firebase project. All data is stored in this project.
+This app is connected to a Firebase project. All AI features are powered by the Google AI (Gemini) API.
+
+**Action Required: Add Your Gemini API Key**
+
+1.  Go to the [Google AI Studio](https://aistudio.google.com/app/apikey) to get your API key.
+2.  Create a new file named `.env` in the root of the project.
+3.  Add the following line to the `.env` file, replacing `YOUR_API_KEY` with the key you just copied:
+
+```
+GEMINI_API_KEY=YOUR_API_KEY
+```
+
+The application will automatically use this key for all AI features.
