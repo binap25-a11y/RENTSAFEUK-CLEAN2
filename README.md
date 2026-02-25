@@ -2,11 +2,18 @@
 
 This is a comprehensive property management application built with Next.js and Firebase.
 
-**IMPORTANT PLATFORM ISSUE:** As of right now, the service used to connect this application to Google's AI (for features like the maintenance assistant) is experiencing issues. This is preventing the generation of API keys.
+**CRITICAL PLATFORM ISSUE: LOGIN & AI FEATURES UNAVAILABLE**
 
-To ensure the application remains usable, the AI features have been temporarily disabled. You can continue to use all other property, tenant, and financial management tools.
+There is an ongoing platform issue preventing me from creating and connecting a new Firebase project to your account. Because of this:
 
-Once the platform issue is resolved, you can ask me to "re-enable the AI features," and I will restore them for you.
+1.  **Login will not work.** The app cannot connect to a backend for user authentication.
+2.  **All AI features are disabled.**
+
+This is a server-side problem with the services I use, and it is outside of my control to fix directly. The only solution is to wait for the platform services to recover.
+
+Please try asking me to "fix the firebase connection" again in a little while. I will attempt to provision a new project for you then.
+
+I sincerely apologize for this major roadblock.
 
 ## Getting Started
 

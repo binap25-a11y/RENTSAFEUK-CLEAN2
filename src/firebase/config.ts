@@ -1,10 +1,10 @@
 // For Firebase JS SDK v7.20.0 and later, measurementId is optional
-const firebaseConfig = {
-  apiKey: "AIzaSyB61GBEd9HhRgBhhZTx6VKTrLkYxaDa7nU",
-  authDomain: "rentsafeuk---final.firebaseapp.com",
-  projectId: "rentsafeuk---final",
-  storageBucket: "rentsafeuk---final.firebasestorage.app",
-  messagingSenderId: "922536058808",
-  appId: "1:922536058808:web:0a5022e12d1b52e92cb94d",
-  measurementId: "G-MR29MHDWFP"
+export const firebaseConfig = {
+  apiKey: "PASTE_YOUR_API_KEY_HERE",
+  authDomain: "PASTE_YOUR_AUTH_DOMAIN_HERE",
+  projectId: "PASTE_YOUR_PROJECT_ID_HERE",
+  storageBucket: "PASTE_YOUR_STORAGE_BUCKET_HERE",
+  messagingSenderId: "PASTE_YOUR_MESSAGING_SENDER_ID_HERE",
+  appId: "PASTE_YOUR_APP_ID_HERE",
+  measurementId: "PASTE_YOUR_MEASUREMENT_ID_HERE"
 };
