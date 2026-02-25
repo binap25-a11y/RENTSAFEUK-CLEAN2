@@ -29,7 +29,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Wand2, List } from 'lucide-react';
+import { Loader2, List } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
@@ -43,7 +43,6 @@ import {
   FirestorePermissionError,
 } from '@/firebase';
 import { collection, query, where, addDoc, limit } from 'firebase/firestore';
-import { MaintenanceAssistantDialog } from '@/components/dashboard/maintenance-assistant-dialog';
 
 
 // Schema for the form
@@ -90,7 +89,6 @@ export default function MaintenancePage() {
   const firestore = useFirestore();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [isAssistantOpen, setIsAssistantOpen] = useState(false);
 
   const form = useForm<MaintenanceFormValues>({
     resolver: zodResolver(maintenanceSchema),
@@ -103,7 +101,6 @@ export default function MaintenancePage() {
       reportedBy: '',
       contractorName: '',
       contractorPhone: '',
-      // Dates set in useEffect to avoid hydration mismatch
     },
   });
 
@@ -185,16 +182,10 @@ export default function MaintenancePage() {
           <CardHeader>
             <CardTitle>Log Maintenance Issue</CardTitle>
             <CardDescription>
-              Fill in the details below, or use the AI assistant to help diagnose the issue.
+              Fill in the details below to record a maintenance task.
             </CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="mb-6">
-              <Button type="button" variant="outline" onClick={() => setIsAssistantOpen(true)}>
-                  <Wand2 className="mr-2 h-4 w-4" />
-                  AI Assistant
-              </Button>
-            </div>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-8">
                 <Card>
@@ -292,18 +283,6 @@ export default function MaintenancePage() {
             </Button>
         </div>
       </div>
-      <MaintenanceAssistantDialog
-        isOpen={isAssistantOpen}
-        onOpenChange={setIsAssistantOpen}
-        onLogIssue={(suggestion) => {
-          form.setValue('title', suggestion.suggestedTitle);
-          form.setValue('category', suggestion.suggestedCategory);
-          form.setValue('priority', suggestion.urgency);
-          form.setValue('description', `AI Diagnosis:\n- Likely Cause: ${suggestion.likelyCause}\n- Troubleshooting: ${suggestion.troubleshootingSteps.join(', ')}`);
-          toast({ title: 'AI Suggestions Applied', description: "The form has been populated with the AI's diagnosis." });
-          setIsAssistantOpen(false);
-        }}
-      />
     </>
   );
 }
