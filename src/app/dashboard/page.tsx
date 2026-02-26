@@ -112,7 +112,7 @@ const getDocumentStatus = (expiryDate: Date) => {
 
 const formatAddress = (address: Property['address']) => {
     if (!address) return 'Unknown Property';
-    return `${address.street}, ${address.city}`;
+    return [address.street, address.city, address.county, address.postcode].filter(Boolean).join(', ');
 }
 
 export default function DashboardPage() {

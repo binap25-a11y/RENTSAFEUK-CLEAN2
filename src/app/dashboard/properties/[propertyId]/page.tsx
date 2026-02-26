@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -189,7 +190,7 @@ export default function PropertyDetailPage() {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <AlertTriangle className="h-12 w-12 text-destructive" />
-        <Card className="w-full max-w-lg text-center">
+        <Card className="w-full max-lg text-center">
             <CardHeader><CardTitle>Loading Error</CardTitle></CardHeader>
             <CardContent><p className="text-sm text-muted-foreground">There was a problem accessing this property record.</p></CardContent>
             <CardFooter className="flex justify-center"><Button asChild><Link href="/dashboard/properties">Return to Properties</Link></Button></CardFooter>
@@ -216,7 +217,7 @@ export default function PropertyDetailPage() {
   }
 
   const propertyAddressTitle = [property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ');
-  const propertyAddressSubtitle = `${property.address.city}, ${property.address.postcode}`;
+  const propertyAddressSubtitle = [property.address.city, property.address.county, property.address.postcode].filter(Boolean).join(', ');
 
   return (
     <>
@@ -377,7 +378,7 @@ export default function PropertyDetailPage() {
                           allowFullScreen
                           referrerPolicy="no-referrer-when-downgrade"
                           src={`https://maps.google.com/maps?q=${encodeURIComponent(
-                            [property.address.street, property.address.city, property.address.postcode].filter(Boolean).join(', ')
+                            [property.address.street, property.address.city, property.address.county, property.address.postcode].filter(Boolean).join(', ')
                           )}&output=embed`}
                         ></iframe>
                     </div>

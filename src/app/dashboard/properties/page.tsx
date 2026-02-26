@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -194,7 +195,7 @@ export default function PropertiesPage() {
     
     const headers = ["Address", "Type", "Status", "Bedrooms", "Bathrooms", "Postcode", "Open Maintenance"];
     const rows = filteredProperties.map(p => [
-      `"${[p.address.nameOrNumber, p.address.street, p.address.city].filter(Boolean).join(', ')}"`,
+      `"${[p.address.nameOrNumber, p.address.street, p.address.city, p.address.county].filter(Boolean).join(', ')}"`,
       p.propertyType,
       p.status,
       p.bedrooms,
@@ -409,7 +410,9 @@ export default function PropertiesPage() {
                                 >
                                     <TableCell className="font-medium">
                                           <div>{[property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ')}</div>
-                                          <div className="text-xs text-muted-foreground">{`${property.address.city}, ${property.address.postcode}`}</div>
+                                          <div className="text-xs text-muted-foreground">
+                                              {[property.address.city, property.address.county, property.address.postcode].filter(Boolean).join(', ')}
+                                          </div>
                                     </TableCell>
                                     <TableCell>{property.propertyType}</TableCell>
                                     <TableCell>

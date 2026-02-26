@@ -20,7 +20,13 @@ interface Searchable {
   [key: string]: any;
 }
 interface Property extends Searchable {
-  address: { nameOrNumber?: string; street: string; city: string; postcode: string; };
+  address: { 
+    nameOrNumber?: string; 
+    street: string; 
+    city: string; 
+    county?: string;
+    postcode: string; 
+  };
   status?: string;
   ownerId: string;
 }
@@ -97,7 +103,7 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
 
     const formatAddress = (address: Property['address']) => {
         if (!address) return 'Unknown Property';
-        return [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
+        return [address.nameOrNumber, address.street, address.city, address.county, address.postcode].filter(Boolean).join(', ');
     }
 
     const propertyItems = allData.properties
