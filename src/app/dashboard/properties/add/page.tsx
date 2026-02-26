@@ -56,14 +56,14 @@ const propertySchema = z.object({
   }),
   propertyType: z.string({ required_error: 'Please select a property type.' }),
   status: z.string({ required_error: 'Please select a status.' }),
-  bedrooms: z.coerce.number().min(0, 'Bedrooms cannot be negative'),
-  bathrooms: z.coerce.number().min(0, 'Bathrooms cannot be negative'),
+  bedrooms: z.coerce.number().nonnegative('Bedrooms cannot be negative'),
+  bathrooms: z.coerce.number().nonnegative('Bathrooms cannot be negative'),
   notes: z.string().optional(),
-  purchasePrice: z.coerce.number().min(0, 'Price cannot be negative').optional(),
-  currentValuation: z.coerce.number().min(0, 'Valuation cannot be negative').optional(),
+  purchasePrice: z.coerce.number().nonnegative('Price cannot be negative').optional(),
+  currentValuation: z.coerce.number().nonnegative('Valuation cannot be negative').optional(),
   tenancy: z.object({
-    monthlyRent: z.coerce.number().min(0, 'Rent cannot be negative').optional(),
-    depositAmount: z.coerce.number().min(0, 'Deposit cannot be negative').optional(),
+    monthlyRent: z.coerce.number().nonnegative('Rent cannot be negative').optional(),
+    depositAmount: z.coerce.number().nonnegative('Deposit cannot be negative').optional(),
     depositScheme: z.string().optional(),
   }).optional(),
 }).refine(data => {
@@ -120,16 +120,13 @@ export default function AddPropertyPage() {
 
   const watchAddress = form.watch('address');
   
-  const fullAddressString = useMemo(() => {
-    const { street, city, postcode } = watchAddress;
-    if (!street && !city && !postcode) return null;
-    return [street, city, postcode].filter(Boolean).join(', ');
-  }, [watchAddress]);
-
   const mapUrl = useMemo(() => {
-    if (!fullAddressString || fullAddressString.length < 5) return null;
-    return `https://maps.google.com/maps?q=${encodeURIComponent(fullAddressString)}&output=embed`;
-  }, [fullAddressString]);
+    if (!watchAddress) return null;
+    const { street, city, postcode } = watchAddress;
+    const fullAddress = [street, city, postcode].filter(Boolean).join(', ');
+    if (fullAddress.length < 5) return null;
+    return `https://maps.google.com/maps?q=${encodeURIComponent(fullAddress)}&output=embed`;
+  }, [watchAddress]);
 
   const progress = (step / 4) * 100;
 
@@ -532,7 +529,7 @@ export default function AddPropertyPage() {
             <CardContent className="pt-6 space-y-4">
               <div className="space-y-1">
                 <p className="text-[10px] uppercase font-bold text-muted-foreground">Property Address</p>
-                <p className="text-sm font-bold truncate">{fullAddressString || "Not specified yet"}</p>
+                <p className="text-sm font-bold truncate">{(watchAddress?.street || watchAddress?.city || watchAddress?.postcode) ? [watchAddress.street, watchAddress.city, watchAddress.postcode].filter(Boolean).join(', ') : "Not specified yet"}</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">

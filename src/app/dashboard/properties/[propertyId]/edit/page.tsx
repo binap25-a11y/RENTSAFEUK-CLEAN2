@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,7 +16,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, setDoc, query, collection, where, getDocs, limit } from 'firebase/firestore';
-import { Loader2, ShieldAlert } from 'lucide-react';
+import { Loader2, ShieldAlert, MapPin } from 'lucide-react';
 
 // Robust UK Postcode Regex
 const ukPostcodeRegex = /^[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}$/i;
@@ -31,14 +31,14 @@ const propertySchema = z.object({
   }),
   propertyType: z.string({ required_error: 'Please select a property type.' }),
   status: z.string({ required_error: 'Please select a status.' }),
-  bedrooms: z.coerce.number().min(0, 'Cannot be negative'),
-  bathrooms: z.coerce.number().min(0, 'Cannot be negative'),
+  bedrooms: z.coerce.number().nonnegative('Cannot be negative'),
+  bathrooms: z.coerce.number().nonnegative('Cannot be negative'),
   notes: z.string().optional(),
-  purchasePrice: z.coerce.number().min(0, 'Cannot be negative').optional(),
-  currentValuation: z.coerce.number().min(0, 'Cannot be negative').optional(),
+  purchasePrice: z.coerce.number().nonnegative('Cannot be negative').optional(),
+  currentValuation: z.coerce.number().nonnegative('Cannot be negative').optional(),
   tenancy: z.object({
-    monthlyRent: z.coerce.number().min(0, 'Cannot be negative').optional(),
-    depositAmount: z.coerce.number().min(0, 'Cannot be negative').optional(),
+    monthlyRent: z.coerce.number().nonnegative('Cannot be negative').optional(),
+    depositAmount: z.coerce.number().nonnegative('Cannot be negative').optional(),
     depositScheme: z.string().optional(),
   }).optional(),
 }).refine(data => {
@@ -108,6 +108,16 @@ export default function EditPropertyPage() {
     }
   }, [property, form]);
 
+  const watchAddress = form.watch('address');
+  
+  const mapUrl = useMemo(() => {
+    if (!watchAddress) return null;
+    const { street, city, postcode } = watchAddress;
+    const fullAddress = [street, city, postcode].filter(Boolean).join(', ');
+    if (fullAddress.length < 5) return null;
+    return `https://maps.google.com/maps?q=${encodeURIComponent(fullAddress)}&output=embed`;
+  }, [watchAddress]);
+
 
   async function onSubmit(data: PropertyFormValues) {
     if (!firestore || !propertyId || !user) return;
@@ -154,7 +164,7 @@ export default function EditPropertyPage() {
   if (isLoading) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
 
   return (
-      <Card className="max-w-4xl mx-auto shadow-md">
+      <Card className="max-w-5xl mx-auto shadow-md">
       <CardHeader>
         <CardTitle className="text-2xl font-headline">Edit Property</CardTitle>
         <CardDescription>Update the location and details for your portfolio property.</CardDescription>
@@ -163,17 +173,36 @@ export default function EditPropertyPage() {
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             
-            <Card className="border-none shadow-none bg-muted/30">
-              <CardHeader><CardTitle className="text-lg font-headline">Address</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
-                  <FormField control={form.control} name="address.nameOrNumber" render={({ field }) => (<FormItem><FormLabel>Building Name/No</FormLabel><FormControl><Input placeholder="e.g. Flat 1 or 12" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                  <FormField control={form.control} name="address.street" render={({ field }) => (<FormItem><FormLabel>Street Address</FormLabel><FormControl><Input placeholder="e.g. High Street" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField control={form.control} name="address.city" render={({ field }) => (<FormItem><FormLabel>City/Town</FormLabel><FormControl><Input placeholder="London" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="address.postcode" render={({ field }) => (<FormItem><FormLabel>Post Code</FormLabel><FormControl><Input placeholder="W1A 1AA" className="uppercase" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                  </div>
-              </CardContent>
-            </Card>
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
+                <Card className="border-none shadow-none bg-muted/30">
+                    <CardHeader><CardTitle className="text-lg font-headline">Address</CardTitle></CardHeader>
+                    <CardContent className="space-y-4">
+                        <FormField control={form.control} name="address.nameOrNumber" render={({ field }) => (<FormItem><FormLabel>Building Name/No</FormLabel><FormControl><Input placeholder="e.g. Flat 1 or 12" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="address.street" render={({ field }) => (<FormItem><FormLabel>Street Address</FormLabel><FormControl><Input placeholder="e.g. High Street" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                            <FormField control={form.control} name="address.city" render={({ field }) => (<FormItem><FormLabel>City/Town</FormLabel><FormControl><Input placeholder="London" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="address.postcode" render={({ field }) => (<FormItem><FormLabel>Post Code</FormLabel><FormControl><Input placeholder="W1A 1AA" className="uppercase" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        </div>
+                    </CardContent>
+                </Card>
+
+                <div className="space-y-2">
+                    <FormLabel className="font-bold flex items-center gap-2">
+                        <MapPin className="h-4 w-4 text-primary" />
+                        Live Location Verification
+                    </FormLabel>
+                    <div className="aspect-video lg:aspect-square w-full rounded-xl overflow-hidden border-2 border-muted bg-muted shadow-inner relative">
+                        {mapUrl ? (
+                            <iframe width="100%" height="100%" style={{ border: 0 }} title="Property Map" loading="lazy" src={mapUrl}></iframe>
+                        ) : (
+                            <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 text-muted-foreground/40">
+                                <MapPin className="h-12 w-12 mb-2" />
+                                <p className="text-xs font-bold uppercase tracking-widest">Awaiting valid address info...</p>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            </div>
 
             <Card className="border-none shadow-none bg-muted/30">
               <CardHeader><CardTitle className="text-lg font-headline">Investment & Tenancy</CardTitle></CardHeader>
