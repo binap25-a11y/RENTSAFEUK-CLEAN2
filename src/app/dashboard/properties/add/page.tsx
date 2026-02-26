@@ -317,14 +317,14 @@ export default function AddPropertyPage() {
                       <FormField control={form.control} name="bedrooms" render={({ field }) => (
                         <FormItem>
                           <FormLabel className="font-bold flex items-center gap-2"><Bed className="h-4 w-4" /> Bedrooms</FormLabel>
-                          <FormControl><Input type="number" className="h-11" {...field} /></FormControl>
+                          <FormControl><Input type="number" min="0" className="h-11" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )} />
                       <FormField control={form.control} name="bathrooms" render={({ field }) => (
                         <FormItem>
                           <FormLabel className="font-bold flex items-center gap-2"><Bath className="h-4 w-4" /> Bathrooms</FormLabel>
-                          <FormControl><Input type="number" className="h-11" {...field} /></FormControl>
+                          <FormControl><Input type="number" min="0" className="h-11" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )} />
@@ -356,7 +356,7 @@ export default function AddPropertyPage() {
                         <FormField control={form.control} name="purchasePrice" render={({ field }) => (
                           <FormItem>
                             <FormLabel className="font-bold">Purchase Price (£)</FormLabel>
-                            <FormControl><Input type="number" placeholder="0.00" className="h-11" {...field} /></FormControl>
+                            <FormControl><Input type="number" min="0" placeholder="0.00" className="h-11" {...field} /></FormControl>
                             <FormDescription>Basis for yield calculations.</FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -364,7 +364,7 @@ export default function AddPropertyPage() {
                         <FormField control={form.control} name="currentValuation" render={({ field }) => (
                           <FormItem>
                             <FormLabel className="font-bold">Current Valuation (£)</FormLabel>
-                            <FormControl><Input type="number" placeholder="0.00" className="h-11" {...field} /></FormControl>
+                            <FormControl><Input type="number" min="0" placeholder="0.00" className="h-11" {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
@@ -377,14 +377,14 @@ export default function AddPropertyPage() {
                         <FormField control={form.control} name="tenancy.monthlyRent" render={({ field }) => (
                           <FormItem>
                             <FormLabel className="font-bold">Estimated Monthly Rent (£)</FormLabel>
-                            <FormControl><Input type="number" placeholder="0.00" className="h-11" {...field} /></FormControl>
+                            <FormControl><Input type="number" min="0" placeholder="0.00" className="h-11" {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
                         <FormField control={form.control} name="tenancy.depositAmount" render={({ field }) => (
                           <FormItem>
                             <FormLabel className="font-bold">Required Deposit (£)</FormLabel>
-                            <FormControl><Input type="number" placeholder="0.00" className="h-11" {...field} /></FormControl>
+                            <FormControl><Input type="number" min="0" placeholder="0.00" className="h-11" {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
