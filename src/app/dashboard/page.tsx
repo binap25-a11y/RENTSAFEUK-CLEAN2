@@ -24,7 +24,8 @@ import {
   ShieldCheck,
   ChevronRight,
   PlusCircle,
-  ArrowUpRight
+  ArrowUpRight,
+  CheckCircle2
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -279,12 +280,14 @@ export default function DashboardPage() {
     const nonPendingCount = statusCounts.Paid + statusCounts['Partially Paid'] + statusCounts.Unpaid;
     const pendingCount = Math.max(0, occupiedPropertiesCount - nonPendingCount);
     
-    return [
+    const data = [
       { status: 'Paid', count: statusCounts.Paid, fill: 'hsl(var(--chart-2))' },
       { status: 'Partially Paid', count: statusCounts['Partially Paid'], fill: 'hsl(var(--chart-4))' },
       { status: 'Unpaid', count: statusCounts.Unpaid, fill: 'hsl(var(--chart-1))' },
       { status: 'Pending', count: pendingCount, fill: 'hsl(var(--muted))' },
     ].filter(item => item.count > 0);
+
+    return data;
   }, [isLoading, properties, allRentPayments, currentYear, currentMonth]);
 
   const rentChartConfig = {
@@ -295,114 +298,88 @@ export default function DashboardPage() {
       Pending: { label: "Pending", color: "hsl(var(--muted))" },
   } satisfies ChartConfig;
 
-  if (!isLoading && allProperties?.length === 0) {
-    return (
-      <div className="flex flex-col gap-8 max-w-4xl mx-auto py-12">
-        <div className="text-center space-y-4">
-          <h1 className="text-4xl font-bold font-headline text-primary">Welcome to RentSafeUK</h1>
-          <p className="text-muted-foreground text-lg">Let's get your rental portfolio set up for high performance.</p>
-        </div>
-        <div className="grid gap-6 md:grid-cols-3">
-          <Card className="relative overflow-hidden border-primary/20 shadow-lg cursor-pointer group">
-            <Link href="/dashboard/properties/add" className="absolute inset-0 z-10" />
-            <div className="absolute top-0 right-0 p-4 opacity-10"><Home className="h-24 w-24" /></div>
-            <CardHeader>
-              <Badge className="w-fit mb-2">Step 1</Badge>
-              <CardTitle>Add Property</CardTitle>
-              <CardDescription>Enter address and basic details.</CardDescription>
-            </CardHeader>
-            <CardFooter>
-              <Button asChild className="w-full relative z-20">
-                <span>Add Property <ArrowRight className="ml-2 h-4 w-4" /></span>
-              </Button>
-            </CardFooter>
-          </Card>
-          <Card className="opacity-50 grayscale">
-            <CardHeader>
-              <Badge variant="outline" className="w-fit mb-2">Step 2</Badge>
-              <CardTitle>Assign Tenant</CardTitle>
-              <CardDescription>Link a tenant to manage rent.</CardDescription>
-            </CardHeader>
-            <CardFooter>
-              <Button disabled className="w-full">Assign Tenant</Button>
-            </CardFooter>
-          </Card>
-          <Card className="opacity-50 grayscale">
-            <CardHeader>
-              <Badge variant="outline" className="w-fit mb-2">Step 3</Badge>
-              <CardTitle>Compliance</CardTitle>
-              <CardDescription>Upload Gas Safety and EICR records.</CardDescription>
-            </CardHeader>
-            <CardFooter>
-              <Button disabled className="w-full">Upload Documents</Button>
-            </CardFooter>
-          </Card>
-        </div>
-      </div>
-    );
-  }
-
   return (
     <div className="flex flex-col gap-8 p-2 md:p-0">
+      {/* Welcome Header */}
+      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+        <div>
+          <h1 className="text-3xl font-bold font-headline tracking-tight text-primary">Portfolio Hub</h1>
+          <p className="text-muted-foreground font-medium">Overview of your estate health and performance.</p>
+        </div>
+        <div className="flex items-center gap-2">
+          <Button asChild variant="outline" size="sm" className="shadow-sm">
+            <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Add Property</Link>
+          </Button>
+        </div>
+      </div>
+
       {/* Header Summary Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-none shadow-md overflow-hidden group">
-          <div className="h-1 bg-primary w-full" />
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">My Properties</CardTitle>
-            <Home className="h-4 w-4 text-primary" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold tracking-tight">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : activePropertiesCount}</div>
-            <p className="text-[10px] text-muted-foreground mt-1 font-semibold flex items-center gap-1">
-                Active in Portfolio <ArrowUpRight className="h-2 w-2" />
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="border-none shadow-md overflow-hidden group">
-          <div className="h-1 bg-destructive w-full" />
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Maintenance</CardTitle>
-            <Wrench className="h-4 w-4 text-destructive" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold tracking-tight">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : openMaintenance.length}</div>
-            <p className="text-[10px] text-muted-foreground mt-1 font-semibold flex items-center gap-1">
-                Issues Requiring Action <ArrowUpRight className="h-2 w-2" />
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="border-none shadow-md overflow-hidden group">
-          <div className="h-1 bg-amber-500 w-full" />
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Inspections</CardTitle>
-            <CalendarCheck className="h-4 w-4 text-amber-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold tracking-tight">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : upcomingInspections.length}</div>
-            <p className="text-[10px] text-muted-foreground mt-1 font-semibold flex items-center gap-1">
-                Scheduled Field Checks <ArrowUpRight className="h-2 w-2" />
-            </p>
-          </CardContent>
-        </Card>
-        <Card className="border-none shadow-md overflow-hidden group">
-          <div className="h-1 bg-green-500 w-full" />
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Compliance</CardTitle>
-            <Files className="h-4 w-4 text-green-500" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-3xl font-bold tracking-tight">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : documents.length}</div>
-            <p className="text-[10px] text-muted-foreground mt-1 font-semibold flex items-center gap-1">
-                Verified Certificates <ArrowUpRight className="h-2 w-2" />
-            </p>
-          </CardContent>
-        </Card>
+        <Link href="/dashboard/properties" className="block group">
+          <Card className="border-none shadow-md overflow-hidden relative transition-all hover:scale-[1.02] active:scale-[0.98]">
+            <div className="h-1 bg-primary w-full" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">My Properties</CardTitle>
+              <Home className="h-4 w-4 text-primary" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold tracking-tight">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : activePropertiesCount}</div>
+              <p className="text-[10px] text-muted-foreground mt-1 font-semibold flex items-center gap-1">
+                  Active in Portfolio <ArrowUpRight className="h-2 w-2" />
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/dashboard/maintenance/logged" className="block group">
+          <Card className="border-none shadow-md overflow-hidden relative transition-all hover:scale-[1.02] active:scale-[0.98]">
+            <div className="h-1 bg-destructive w-full" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Maintenance</CardTitle>
+              <Wrench className="h-4 w-4 text-destructive" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold tracking-tight">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : openMaintenance.length}</div>
+              <p className="text-[10px] text-muted-foreground mt-1 font-semibold flex items-center gap-1">
+                  Issues Requiring Action <ArrowUpRight className="h-2 w-2" />
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/dashboard/inspections" className="block group">
+          <Card className="border-none shadow-md overflow-hidden relative transition-all hover:scale-[1.02] active:scale-[0.98]">
+            <div className="h-1 bg-amber-500 w-full" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Inspections</CardTitle>
+              <CalendarCheck className="h-4 w-4 text-amber-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold tracking-tight">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : upcomingInspections.length}</div>
+              <p className="text-[10px] text-muted-foreground mt-1 font-semibold flex items-center gap-1">
+                  Scheduled Field Checks <ArrowUpRight className="h-2 w-2" />
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
+        <Link href="/dashboard/documents" className="block group">
+          <Card className="border-none shadow-md overflow-hidden relative transition-all hover:scale-[1.02] active:scale-[0.98]">
+            <div className="h-1 bg-green-500 w-full" />
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Compliance</CardTitle>
+              <Files className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+              <div className="text-3xl font-bold tracking-tight">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : documents.length}</div>
+              <p className="text-[10px] text-muted-foreground mt-1 font-semibold flex items-center gap-1">
+                  Verified Certificates <ArrowUpRight className="h-2 w-2" />
+              </p>
+            </CardContent>
+          </Card>
+        </Link>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-12">
         {/* Rent Tracker & Statistics */}
-        <Card className="lg:col-span-4 shadow-lg border-none">
+        <Card className="lg:col-span-4 shadow-lg border-none flex flex-col">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
               <CardTitle className="flex items-center gap-2 text-lg font-bold font-headline">
@@ -415,7 +392,7 @@ export default function DashboardPage() {
             </div>
             <CardDescription className="text-xs">Monthly collection progress per unit.</CardDescription>
           </CardHeader>
-          <CardContent className="pt-2 flex flex-col items-center">
+          <CardContent className="pt-2 flex flex-col items-center justify-center flex-1 min-h-[300px]">
             {isLoading ? (
               <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
             ) : rentStatusData.length > 0 ? (
@@ -436,8 +413,14 @@ export default function DashboardPage() {
                 </Button>
               </>
             ) : (
-              <div className="text-center text-muted-foreground py-16 text-sm italic bg-muted/20 rounded-xl border border-dashed w-full">
-                No occupied units to track.
+              <div className="text-center text-muted-foreground p-8 text-sm italic bg-muted/20 rounded-xl border border-dashed w-full flex flex-col items-center gap-4">
+                <div className="bg-background p-4 rounded-full shadow-sm">
+                  <PoundSterling className="h-8 w-8 opacity-20" />
+                </div>
+                <div>
+                  <p className="font-bold text-foreground">No Payment Data</p>
+                  <p className="max-w-[200px] mx-auto">Once properties are occupied, their rent status will appear here.</p>
+                </div>
               </div>
             )}
           </CardContent>
@@ -483,9 +466,17 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <div className="text-center text-muted-foreground py-24 italic text-sm bg-muted/10 rounded-2xl border border-dashed flex flex-col items-center gap-3 m-2">
-                <Activity className="h-10 w-10 opacity-10" />
-                <p>System is currently idle. No recent events logged.</p>
+              <div className="text-center text-muted-foreground py-24 italic text-sm bg-muted/10 rounded-2xl border border-dashed flex flex-col items-center justify-center gap-3 m-2 min-h-[350px]">
+                <div className="bg-background p-6 rounded-full shadow-sm">
+                  <Activity className="h-12 w-12 opacity-10" />
+                </div>
+                <div className="space-y-1">
+                  <p className="font-bold text-foreground text-lg">System Standby</p>
+                  <p className="max-w-xs mx-auto">Your recent activity, maintenance logs, and audit events will be streamed here in real-time.</p>
+                </div>
+                <Button asChild size="sm" variant="outline" className="mt-4 border-primary/20 text-primary hover:bg-primary/5">
+                  <Link href="/dashboard/maintenance">Log New Issue</Link>
+                </Button>
               </div>
             )}
           </CardContent>
@@ -494,7 +485,7 @@ export default function DashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Critical Compliance Overviews */}
-        <Card className="border-none shadow-lg overflow-hidden">
+        <Card className="border-none shadow-lg overflow-hidden flex flex-col">
           <CardHeader className="bg-destructive/5 border-b border-destructive/10 pb-4">
             <div className="flex items-center justify-between">
                 <div>
@@ -504,10 +495,10 @@ export default function DashboardPage() {
                     </CardTitle>
                     <CardDescription className="text-[11px] text-destructive/70 uppercase font-bold tracking-tighter">Immediate Attention Required</CardDescription>
                 </div>
-                <Badge variant="destructive" className="animate-pulse">Risk Alert</Badge>
+                <Badge variant="destructive" className={cn("animate-pulse", criticalCompliance.length === 0 && "opacity-0")}>Risk Alert</Badge>
             </div>
           </CardHeader>
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 flex-1 flex flex-col justify-center">
             {isLoading ? (
               <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin text-destructive" /></div>
             ) : criticalCompliance.length > 0 ? (
@@ -535,6 +526,9 @@ export default function DashboardPage() {
               <div className="text-center py-20 italic text-sm bg-green-50/20 rounded-2xl border border-dashed border-green-200 flex flex-col items-center gap-3">
                 <ShieldCheck className="h-12 w-12 text-green-500 opacity-30" />
                 <p className="text-green-700 font-bold uppercase text-xs tracking-widest">All Compliance Items Valid</p>
+                <Button asChild size="sm" variant="ghost" className="text-green-700 hover:bg-green-100">
+                  <Link href="/dashboard/documents/upload">Upload New Doc</Link>
+                </Button>
               </div>
             )}
           </CardContent>
@@ -548,7 +542,7 @@ export default function DashboardPage() {
         </Card>
 
         {/* Upcoming Inspections & Tasks */}
-        <Card className="border-none shadow-lg overflow-hidden">
+        <Card className="border-none shadow-lg overflow-hidden flex flex-col">
           <CardHeader className="bg-primary/5 border-b border-primary/10 pb-4">
             <CardTitle className="flex items-center gap-2 text-lg font-bold text-primary font-headline">
               <ListTodo className="h-5 w-5" /> 
@@ -556,7 +550,7 @@ export default function DashboardPage() {
             </CardTitle>
             <CardDescription className="text-[11px] text-primary/70 uppercase font-bold tracking-tighter">Scheduled Property Checks</CardDescription>
           </CardHeader>
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 flex-1 flex flex-col justify-center">
             {isLoading ? (
               <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
             ) : upcomingInspections.length > 0 ? (
@@ -586,12 +580,12 @@ export default function DashboardPage() {
                   <PlusCircle className="h-8 w-8 text-primary opacity-20" />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm font-bold">No Pending Inspections</p>
-                  <p className="text-[10px] text-muted-foreground uppercase font-bold">Maintain safety with regular checks.</p>
+                  <p className="text-sm font-bold text-foreground">No Pending Inspections</p>
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold">Stay compliant with regular checks.</p>
                 </div>
-                <div className="flex gap-2">
-                  <Button asChild size="sm" variant="outline" className="text-[10px] font-bold h-8 border-none bg-muted/50"><Link href="/dashboard/inspections/single-let">New Single-Let</Link></Button>
-                  <Button asChild size="sm" variant="outline" className="text-[10px] font-bold h-8 border-none bg-muted/50"><Link href="/dashboard/inspections/hmo">New HMO</Link></Button>
+                <div className="flex flex-wrap justify-center gap-2">
+                  <Button asChild size="sm" variant="outline" className="text-[10px] font-bold h-8 border-none bg-muted/50 transition-colors hover:bg-muted"><Link href="/dashboard/inspections/single-let">New Single-Let</Link></Button>
+                  <Button asChild size="sm" variant="outline" className="text-[10px] font-bold h-8 border-none bg-muted/50 transition-colors hover:bg-muted"><Link href="/dashboard/inspections/hmo">New HMO</Link></Button>
                 </div>
               </div>
             )}
