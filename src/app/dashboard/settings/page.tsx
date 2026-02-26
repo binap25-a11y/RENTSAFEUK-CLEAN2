@@ -64,7 +64,7 @@ export default function SettingsPage() {
 
   const userDocRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    return doc(firestore, 'users', user.uid);
+    return doc(firestore, 'userProfiles', user.uid);
   }, [firestore, user]);
   
   const { data: profile, isLoading: isProfileLoading } = useDoc(userDocRef);
@@ -97,7 +97,8 @@ export default function SettingsPage() {
       });
       
       // Update Firestore User Document
-      await setDoc(doc(firestore, 'users', user.uid), {
+      await setDoc(doc(firestore, 'userProfiles', user.uid), {
+        id: user.uid,
         displayName: data.displayName,
         idleTimeoutMinutes: data.idleTimeoutMinutes,
       }, { merge: true });

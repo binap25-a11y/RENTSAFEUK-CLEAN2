@@ -23,7 +23,7 @@ export function IdleTimeout() {
   // Fetch the user's profile to get their preferred timeout
   const userProfileRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    return doc(firestore, 'users', user.uid);
+    return doc(firestore, 'userProfiles', user.uid);
   }, [firestore, user]);
   
   const { data: profile } = useDoc(userProfileRef);
