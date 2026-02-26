@@ -25,14 +25,15 @@ export interface UseCollectionResult<T> {
   error: FirestoreError | Error | null; // Error object, or null.
 }
 
-/* Internal implementation of Query used for error reporting. */
+/* Internal implementation of Query:
+  https://github.com/firebase/firebase-js-sdk/blob/c5f08a9bc5da0d2b0207802c972d53724ccef055/packages/firestore/src/lite-api/reference.ts#L143
+*/
 export interface InternalQuery extends Query<DocumentData> {
   _query: {
     path: {
       canonicalString(): string;
       toString(): string;
     }
-    collectionGroup?: string;
   }
 }
 
@@ -57,7 +58,7 @@ export function useCollection<T = any>(
   type StateDataType = ResultItemType[] | null;
 
   const [data, setData] = useState<StateDataType>(null);
-  const [isLoading, setIsLoading] = useState<boolean>(true);
+  const [isLoading, setIsLoading] = useState<boolean>(false);
   const [error, setError] = useState<FirestoreError | Error | null>(null);
 
   useEffect(() => {
@@ -84,38 +85,30 @@ export function useCollection<T = any>(
         setIsLoading(false);
       },
       (error: FirestoreError) => {
-        setData(null);
-        setIsLoading(false);
+        // This logic extracts the path from either a ref or a query
+        const path: string =
+          memoizedTargetRefOrQuery.type === 'collection'
+            ? (memoizedTargetRefOrQuery as CollectionReference).path
+            : (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.path.canonicalString()
 
-        // If it's a permission error, create and emit the detailed error.
-        if (error.code === 'permission-denied') {
-            let path: string;
-            const internalQuery = memoizedTargetRefOrQuery as unknown as InternalQuery;
+        const contextualError = new FirestorePermissionError({
+          operation: 'list',
+          path,
+        })
 
-            if (memoizedTargetRefOrQuery.type === 'collection') {
-                path = (memoizedTargetRefOrQuery as CollectionReference).path;
-            } else if (internalQuery._query.collectionGroup) {
-                path = internalQuery._query.collectionGroup;
-            } else {
-                path = internalQuery._query.path.canonicalString();
-            }
+        setError(contextualError)
+        setData(null)
+        setIsLoading(false)
 
-            const contextualError = new FirestorePermissionError({
-              operation: 'list',
-              path,
-            });
-            setError(contextualError);
-            // trigger global error propagation
-            errorEmitter.emit('permission-error', contextualError);
-        } else {
-            // For all other errors (like missing index), use the original error.
-            setError(error);
-        }
+        // trigger global error propagation
+        errorEmitter.emit('permission-error', contextualError);
       }
     );
 
     return () => unsubscribe();
   }, [memoizedTargetRefOrQuery]); // Re-run if the target query/reference changes.
-
+  if(memoizedTargetRefOrQuery && !memoizedTargetRefOrQuery.__memo) {
+    throw new Error(memoizedTargetRefOrQuery + ' was not properly memoized using useMemoFirebase');
+  }
   return { data, isLoading, error };
 }
