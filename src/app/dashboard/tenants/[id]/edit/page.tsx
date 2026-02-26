@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -6,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
-import { useEffect } from 'react';
+import { useEffect, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -38,10 +37,9 @@ import {
   useUser,
   useFirestore,
   useCollection,
-  useDoc,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, collectionGroup } from 'firebase/firestore';
 
 // Zod schema for tenant form validation
 const tenantSchema = z.object({
@@ -57,7 +55,6 @@ const tenantSchema = z.object({
 
 type TenantFormValues = z.infer<typeof tenantSchema>;
 
-// Type for property documents from Firestore
 interface Property {
   id: string;
   address: {
@@ -69,8 +66,8 @@ interface Property {
   };
 }
 
-// Type for tenant from firestore
 interface Tenant {
+    id: string;
     name: string;
     email: string;
     telephone: string;
@@ -81,7 +78,6 @@ interface Tenant {
     notes?: string;
 }
 
-// Helper to safely format dates for input[type="date"]
 const formatDateForInput = (value: any) => {
   if (!value) return '';
   const date = value instanceof Date ? value : new Date(value);
@@ -92,7 +88,6 @@ const formatDateForInput = (value: any) => {
     return '';
   }
 };
-
 
 export default function EditTenantPage() {
   const router = useRouter();
@@ -106,26 +101,30 @@ export default function EditTenantPage() {
     resolver: zodResolver(tenantSchema),
   });
   
-  // Fetch the specific tenant to edit
-  const tenantRef = useMemoFirebase(() => {
-    if (!firestore || !tenantId) return null;
-    return doc(firestore, 'tenants', tenantId);
-  }, [firestore, tenantId]);
+  // Use collectionGroup to find the tenant across properties
+  const tenantSearchQuery = useMemoFirebase(() => {
+    if (!firestore || !tenantId || !user) return null;
+    return query(
+      collectionGroup(firestore, 'tenants'),
+      where('ownerId', '==', user.uid),
+      where('id', '==', tenantId)
+    );
+  }, [firestore, tenantId, user]);
 
-  const { data: tenant, isLoading: isLoadingTenant } = useDoc<Tenant>(tenantRef);
+  const { data: searchResults, isLoading: isLoadingTenant } = useCollection<Tenant>(tenantSearchQuery);
+  const tenant = useMemo(() => searchResults?.[0] || null, [searchResults]);
 
   // Fetch properties for the dropdown
   const propertiesQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user || !firestore) return null;
     return query(
-      collection(firestore, 'properties'),
+      collection(firestore, 'userProfiles', user.uid, 'properties'),
       where('ownerId', '==', user.uid),
       where('status', 'in', ['Vacant', 'Occupied'])
     );
   }, [firestore, user]);
   const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
   
-  // Populate form with tenant data once loaded
   useEffect(() => {
     if (tenant) {
         const tenantData = {
@@ -139,25 +138,19 @@ export default function EditTenantPage() {
     }
   }, [tenant, form]);
 
-
   async function onSubmit(data: TenantFormValues) {
-    if (!user || !firestore || !tenantId) {
+    if (!user || !firestore || !tenant) {
       toast({
         variant: 'destructive',
-        title: 'Authentication Error',
-        description: 'You must be logged in to update a tenant.',
+        title: 'Error',
+        description: 'Authentication error or tenant not found.',
       });
       return;
     }
     
     try {
-      const tenantDocRef = doc(firestore, 'tenants', tenantId);
-      const updateData = {
-          ...data,
-          ownerId: user.uid, // ensure ownerId is preserved
-      };
-
-      // Firestore doesn't support 'undefined'. This removes any fields that are undefined.
+      const tenantDocRef = doc(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId, 'tenants', tenant.id);
+      const updateData = { ...data, ownerId: user.uid };
       const cleanedUpdateData = JSON.parse(JSON.stringify(updateData));
 
       await updateDoc(tenantDocRef, cleanedUpdateData);
@@ -166,14 +159,10 @@ export default function EditTenantPage() {
         title: 'Tenant Updated',
         description: `${data.name}'s details have been successfully updated.`,
       });
-      router.push('/dashboard/tenants');
+      router.push(`/dashboard/tenants/${tenant.id}`);
     } catch (error) {
       console.error('Failed to update tenant:', error);
-      toast({
-        variant: 'destructive',
-        title: 'Update Failed',
-        description: 'There was an error updating the tenant. Please try again.',
-      });
+      toast({ variant: 'destructive', title: 'Update Failed' });
     }
   }
   
@@ -182,31 +171,16 @@ export default function EditTenantPage() {
   };
 
   if (isLoadingTenant || isLoadingProperties) {
-    return (
-        <div className="flex justify-center items-center h-64">
-            <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
-        </div>
-    );
+    return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
   }
   
-  if (!tenant) {
-      return (
-          <div className="text-center py-10">
-              <p>Tenant not found.</p>
-              <Button asChild variant="link">
-                  <Link href="/dashboard/tenants">Return to Tenants List</Link>
-              </Button>
-          </div>
-      )
-  }
+  if (searchResults && !tenant) return <div className="text-center py-10"><p>Tenant not found.</p><Button asChild variant="link"><Link href="/dashboard/tenants">Return to Tenants List</Link></Button></div>;
 
   return (
     <Card className="max-w-2xl mx-auto">
       <CardHeader>
         <CardTitle>Edit Tenant</CardTitle>
-        <CardDescription>
-          Update the details for {tenant.name}.
-        </CardDescription>
+        <CardDescription>Update the details for {tenant?.name}.</CardDescription>
       </CardHeader>
       <CardContent>
         <Form {...form}>
@@ -220,7 +194,7 @@ export default function EditTenantPage() {
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
                       <SelectTrigger>
-                        <SelectValue placeholder={isLoadingProperties ? <div className='flex items-center gap-2'><Loader2 className='animate-spin' /> Loading...</div> : "Select a property"} />
+                        <SelectValue placeholder="Select a property" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
@@ -235,126 +209,21 @@ export default function EditTenantPage() {
                 </FormItem>
               )}
             />
-            
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Full Name</FormLabel>
-                  <FormControl>
-                    <Input placeholder="e.g., John Doe" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
+            <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Full Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-               <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Email Address</FormLabel>
-                    <FormControl>
-                      <Input type="email" placeholder="john.doe@example.com" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-               <FormField
-                control={form.control}
-                name="telephone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel>Telephone</FormLabel>
-                    <FormControl>
-                      <Input type="tel" placeholder="07123456789" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+               <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email Address</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>)} />
+               <FormField control={form.control} name="telephone" render={({ field }) => (<FormItem><FormLabel>Telephone</FormLabel><FormControl><Input type="tel" {...field} /></FormControl><FormMessage /></FormItem>)} />
             </div>
-
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField
-                    control={form.control}
-                    name="monthlyRent"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Monthly Rent (£)</FormLabel>
-                        <FormControl>
-                            <Input type="number" placeholder="0.00" {...field} value={field.value ?? ''} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
+                <FormField control={form.control} name="monthlyRent" render={({ field }) => (<FormItem><FormLabel>Monthly Rent (£)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
             </div>
-            
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField
-                    control={form.control}
-                    name="tenancyStartDate"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Tenancy Start Date</FormLabel>
-                         <FormControl>
-                            <Input
-                                type="date"
-                                value={formatDateForInput(field.value)}
-                                onChange={(e) => field.onChange(e.target.value)}
-                            />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                 <FormField
-                    control={form.control}
-                    name="tenancyEndDate"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Tenancy End Date (Optional)</FormLabel>
-                        <FormControl>
-                            <Input
-                                type="date"
-                                value={formatDateForInput(field.value)}
-                                onChange={(e) => field.onChange(e.target.value)}
-                            />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
+                <FormField control={form.control} name="tenancyStartDate" render={({ field }) => (<FormItem><FormLabel>Tenancy Start Date</FormLabel><FormControl><Input type="date" value={formatDateForInput(field.value)} onChange={(e) => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>)} />
+                 <FormField control={form.control} name="tenancyEndDate" render={({ field }) => (<FormItem><FormLabel>Tenancy End Date (Optional)</FormLabel><FormControl><Input type="date" value={formatDateForInput(field.value)} onChange={(e) => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>)} />
             </div>
-            
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Notes (Optional)</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Any additional notes about the tenant or tenancy..."
-                      className="resize-none"
-                      rows={4}
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-
+            <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel>Notes (Optional)</FormLabel><FormControl><Textarea rows={4} {...field} /></FormControl><FormMessage /></FormItem>)} />
             <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" asChild>
-                    <Link href="/dashboard/tenants">Cancel</Link>
-                </Button>
+                <Button type="button" variant="outline" asChild><Link href={`/dashboard/tenants/${tenantId}`}>Cancel</Link></Button>
                 <Button type="submit">Save Changes</Button>
             </div>
           </form>

@@ -8,9 +8,9 @@ import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, User, Mail, Phone, Edit, Trash2, Home, Loader2, MoreVertical, UserPlus, Eye, FileCheck, MapPin } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
-import { doc, collection, query, updateDoc, where } from 'firebase/firestore';
+import { doc, collection, query, updateDoc, where, collectionGroup } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import { useState, useMemo } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -45,6 +45,7 @@ interface Tenant {
     tenancyEndDate?: any;
     notes?: string;
     status?: string;
+    ownerId: string;
 }
 
 interface TenantScreening { id: string; screeningDate: any; }
@@ -67,30 +68,40 @@ export default function TenantDetailPage() {
   
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  const tenantRef = useMemoFirebase(() => {
-    if (!firestore || !id) return null;
-    return doc(firestore, 'tenants', id);
-  }, [firestore, id]);
+  // Use collectionGroup to find the tenant regardless of property ID
+  const tenantSearchQuery = useMemoFirebase(() => {
+    if (!firestore || !id || !user) return null;
+    return query(
+      collectionGroup(firestore, 'tenants'),
+      where('ownerId', '==', user.uid),
+      where('id', '==', id)
+    );
+  }, [firestore, id, user]);
 
-  const { data: tenant, isLoading: isLoadingTenant } = useDoc<Tenant>(tenantRef);
-  
+  const { data: searchResults, isLoading: isLoadingTenant } = useCollection<Tenant>(tenantSearchQuery);
+  const tenant = useMemo(() => searchResults?.[0] || null, [searchResults]);
+
   const propertyRef = useMemoFirebase(() => {
-    if (!firestore || !tenant?.propertyId) return null;
-    return doc(firestore, 'properties', tenant.propertyId);
-  }, [firestore, tenant?.propertyId]);
+    if (!firestore || !tenant?.propertyId || !user) return null;
+    return doc(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId);
+  }, [firestore, tenant?.propertyId, user]);
   const { data: property } = useDoc<Property>(propertyRef);
   
   const screeningsQuery = useMemoFirebase(() => {
-    if (!firestore || !id || !user) return null;
-    return query(collection(firestore, 'tenants', id, 'screenings'), where('ownerId', '==', user.uid));
-  }, [firestore, id, user]);
+    if (!firestore || !tenant || !user) return null;
+    return query(
+      collection(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId, 'tenants', tenant.id, 'screenings'),
+      where('ownerId', '==', user.uid)
+    );
+  }, [firestore, tenant, user]);
   const { data: screenings } = useCollection<TenantScreening>(screeningsQuery);
   
   const firstScreening = screenings?.[0];
 
   const handleDeleteConfirm = async () => {
-    if (!tenantRef) return;
-    updateDoc(tenantRef, { status: 'Archived' })
+    if (!firestore || !user || !tenant) return;
+    const ref = doc(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId, 'tenants', tenant.id);
+    updateDoc(ref, { status: 'Archived' })
       .then(() => {
         toast({ title: 'Tenant Archived' });
         router.push('/dashboard/tenants');
@@ -98,7 +109,7 @@ export default function TenantDetailPage() {
   };
 
   if (isLoadingTenant) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
-  if (!tenant) return notFound();
+  if (searchResults && !tenant) return notFound();
 
   const formatAddress = (address: Property['address'] | undefined) => {
     if (!address) return 'N/A';
@@ -115,7 +126,7 @@ export default function TenantDetailPage() {
                     <Link href="/dashboard/tenants"><ArrowLeft className="h-4 w-4" /></Link>
                 </Button>
                 <div>
-                    <h1 className="text-2xl font-bold font-headline leading-tight break-words">{tenant.name}</h1>
+                    <h1 className="text-2xl font-bold font-headline leading-tight break-words">{tenant?.name}</h1>
                     <p className="text-sm text-muted-foreground">Tenant Profile</p>
                 </div>
             </div>
@@ -158,7 +169,7 @@ export default function TenantDetailPage() {
                         </div>
                         <div className="min-w-0">
                             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Full Name</p>
-                            <p className="font-semibold text-foreground break-words">{tenant.name}</p>
+                            <p className="font-semibold text-foreground break-words">{tenant?.name}</p>
                         </div>
                     </div>
                     <div className="flex items-start gap-4">
@@ -167,8 +178,8 @@ export default function TenantDetailPage() {
                         </div>
                         <div className="min-w-0 overflow-hidden">
                             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Email</p>
-                            <a href={`mailto:${tenant.email}`} className="font-semibold text-primary hover:underline break-all block">
-                                {tenant.email}
+                            <a href={`mailto:${tenant?.email}`} className="font-semibold text-primary hover:underline break-all block">
+                                {tenant?.email}
                             </a>
                         </div>
                     </div>
@@ -178,7 +189,7 @@ export default function TenantDetailPage() {
                         </div>
                         <div className="min-w-0">
                             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Telephone</p>
-                            <p className="font-semibold text-foreground break-words">{tenant.telephone}</p>
+                            <p className="font-semibold text-foreground break-words">{tenant?.telephone}</p>
                         </div>
                     </div>
                 </CardContent>
@@ -196,14 +207,14 @@ export default function TenantDetailPage() {
                                 <MapPin className="h-5 w-5 text-muted-foreground" />
                             </div>
                             <div className="min-w-0 flex-1">
-                                <Link href={`/dashboard/properties/${tenant.propertyId}`} className="text-lg font-bold text-primary hover:underline leading-tight block whitespace-normal">
+                                <Link href={`/dashboard/properties/${tenant?.propertyId}`} className="text-lg font-bold text-primary hover:underline leading-tight block whitespace-normal">
                                     {propertyAddress}
                                 </Link>
                                 <div className="flex items-center flex-wrap gap-2 mt-2">
                                     <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider">
-                                        Status: {tenant.status || 'Active'}
+                                        Status: {tenant?.status || 'Active'}
                                     </Badge>
-                                    {tenant.monthlyRent && (
+                                    {tenant?.monthlyRent && (
                                         <Badge variant="secondary" className="text-[10px] uppercase font-bold tracking-wider">
                                             Rent: £{tenant.monthlyRent.toLocaleString()}/mo
                                         </Badge>
@@ -212,7 +223,7 @@ export default function TenantDetailPage() {
                             </div>
                         </div>
                         <Button variant="outline" asChild className="shrink-0 w-full md:w-auto">
-                            <Link href={`/dashboard/properties/${tenant.propertyId}`}>
+                            <Link href={`/dashboard/properties/${tenant?.propertyId}`}>
                                 <Home className="mr-2 h-4 w-4" />
                                 Full Property Profile
                             </Link>
@@ -264,7 +275,7 @@ export default function TenantDetailPage() {
                 <AlertDialogHeader>
                     <AlertDialogTitle>Archive this tenant?</AlertDialogTitle>
                     <AlertDialogDescription>
-                        This will move {tenant.name} to your archived tenants list. You can restore them later from the archives page.
+                        This will move {tenant?.name} to your archived tenants list. You can restore them later from the archives page.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>
