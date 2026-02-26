@@ -43,15 +43,16 @@ import {
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 
+// Robust UK Postcode Regex
 const ukPostcodeRegex = /^[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}$/i;
 
 const propertySchema = z.object({
   address: z.object({
-    nameOrNumber: z.string().optional(),
-    street: z.string().min(3, 'Please enter a street address.'),
-    city: z.string().min(2, 'Please enter a city or town.'),
-    county: z.string().optional(),
-    postcode: z.string().regex(ukPostcodeRegex, 'Please enter a valid UK postcode (e.g. SW1A 1AA).'),
+    nameOrNumber: z.string().trim().optional(),
+    street: z.string().trim().min(3, 'Please enter a valid street address.'),
+    city: z.string().trim().min(2, 'Please enter a valid city or town.'),
+    county: z.string().trim().optional(),
+    postcode: z.string().trim().regex(ukPostcodeRegex, 'Please enter a valid UK postcode (e.g. SW1A 1AA).'),
   }),
   propertyType: z.string({ required_error: 'Please select a property type.' }),
   status: z.string({ required_error: 'Please select a status.' }),
@@ -224,14 +225,14 @@ export default function AddPropertyPage() {
                         <FormField control={form.control} name="address.nameOrNumber" render={({ field }) => (
                           <FormItem>
                             <FormLabel className="font-bold">Building Name/No</FormLabel>
-                            <FormControl><Input placeholder="e.g. Flat 1 or Rose Cottage" className="h-11" {...field} /></FormControl>
+                            <FormControl><Input placeholder="e.g. Flat 1 or 12" className="h-11" {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
                         <FormField control={form.control} name="address.street" render={({ field }) => (
                           <FormItem>
                             <FormLabel className="font-bold">Street Address</FormLabel>
-                            <FormControl><Input placeholder="e.g. 12 High Street" className="h-11" {...field} /></FormControl>
+                            <FormControl><Input placeholder="e.g. High Street" className="h-11" {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />

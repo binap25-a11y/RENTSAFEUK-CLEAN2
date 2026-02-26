@@ -18,15 +18,16 @@ import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, setDoc, query, collection, where, getDocs, limit } from 'firebase/firestore';
 import { Loader2, ShieldAlert } from 'lucide-react';
 
+// Robust UK Postcode Regex
 const ukPostcodeRegex = /^[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}$/i;
 
 const propertySchema = z.object({
   address: z.object({
-    nameOrNumber: z.string().optional(),
-    street: z.string().min(3, 'Please enter a street address.'),
-    city: z.string().min(2, 'Please enter a city or town.'),
-    county: z.string().optional(),
-    postcode: z.string().regex(ukPostcodeRegex, 'Please enter a valid UK postcode (e.g. SW1A 1AA).'),
+    nameOrNumber: z.string().trim().optional(),
+    street: z.string().trim().min(3, 'Please enter a valid street address.'),
+    city: z.string().trim().min(2, 'Please enter a valid city or town.'),
+    county: z.string().trim().optional(),
+    postcode: z.string().trim().regex(ukPostcodeRegex, 'Please enter a valid UK postcode (e.g. SW1A 1AA).'),
   }),
   propertyType: z.string({ required_error: 'Please select a property type.' }),
   status: z.string({ required_error: 'Please select a status.' }),
@@ -165,11 +166,11 @@ export default function EditPropertyPage() {
             <Card className="border-none shadow-none bg-muted/30">
               <CardHeader><CardTitle className="text-lg font-headline">Address</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                  <FormField control={form.control} name="address.nameOrNumber" render={({ field }) => (<FormItem><FormLabel>Building Name/No</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                  <FormField control={form.control} name="address.street" render={({ field }) => (<FormItem><FormLabel>Street Address</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="address.nameOrNumber" render={({ field }) => (<FormItem><FormLabel>Building Name/No</FormLabel><FormControl><Input placeholder="e.g. Flat 1 or 12" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="address.street" render={({ field }) => (<FormItem><FormLabel>Street Address</FormLabel><FormControl><Input placeholder="e.g. High Street" {...field} /></FormControl><FormMessage /></FormItem>)} />
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField control={form.control} name="address.city" render={({ field }) => (<FormItem><FormLabel>City/Town</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="address.postcode" render={({ field }) => (<FormItem><FormLabel>Post Code</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="address.city" render={({ field }) => (<FormItem><FormLabel>City/Town</FormLabel><FormControl><Input placeholder="London" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="address.postcode" render={({ field }) => (<FormItem><FormLabel>Post Code</FormLabel><FormControl><Input placeholder="W1A 1AA" className="uppercase" {...field} /></FormControl><FormMessage /></FormItem>)} />
                   </div>
               </CardContent>
             </Card>
