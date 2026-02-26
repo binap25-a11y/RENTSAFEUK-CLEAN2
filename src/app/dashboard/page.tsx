@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -50,7 +51,6 @@ import { Pie, PieChart, Cell } from 'recharts';
 import { useRouter } from 'next/navigation';
 import { cn } from '@/lib/utils';
 
-// Interfaces
 interface Property {
   id: string;
   address: {
@@ -120,7 +120,6 @@ export default function DashboardPage() {
   const firestore = useFirestore();
   const router = useRouter();
 
-  // Primary Properties Listener - strictly hierarchical
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
@@ -130,7 +129,6 @@ export default function DashboardPage() {
   }, [user, firestore]);
   const { data: allProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
 
-  // States for aggregated data
   const [maintenanceMap, setMaintenanceMap] = useState<Record<string, MaintenanceLog[]>>({});
   const [inspectionsMap, setInspectionsMap] = useState<Record<string, Inspection[]>>({});
   const [documentsMap, setDocumentsMap] = useState<Record<string, Document[]>>({});
@@ -144,7 +142,6 @@ export default function DashboardPage() {
     setCurrentMonth(format(new Date(), 'MMMM'));
   }, []);
 
-  // Define properties that are truly "Active"
   const properties = useMemo(() => {
     const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
     return allProperties?.filter(p => activeStatuses.includes(p.status || '')) ?? [];
@@ -152,7 +149,6 @@ export default function DashboardPage() {
 
   const propertyIdsKey = useMemo(() => properties.map(p => p.id).join(','), [properties]);
 
-  // STABLE REAL-TIME AGGREGATION
   useEffect(() => {
     if (!user || !firestore || properties.length === 0) {
         setMaintenanceMap({});
@@ -166,26 +162,18 @@ export default function DashboardPage() {
 
     properties.forEach(prop => {
         const ownerFilter = where('ownerId', '==', user.uid);
-        
-        // Maintenance Logs
         unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'maintenanceLogs'), ownerFilter), (snap) => {
             const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog));
             setMaintenanceMap(prev => ({ ...prev, [prop.id]: data }));
         }));
-
-        // Inspections
         unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'inspections'), ownerFilter), (snap) => {
             const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Inspection));
             setInspectionsMap(prev => ({ ...prev, [prop.id]: data }));
         }));
-
-        // Documents
         unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'documents'), ownerFilter), (snap) => {
             const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Document));
             setDocumentsMap(prev => ({ ...prev, [prop.id]: data }));
         }));
-
-        // Rent Payments
         unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'rentPayments'), ownerFilter), (snap) => {
             const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as RentPayment));
             setRentPaymentsMap(prev => ({ ...prev, [prop.id]: data }));
@@ -195,7 +183,6 @@ export default function DashboardPage() {
     return () => unsubs.forEach(u => u());
   }, [user, propertyIdsKey, firestore, properties.length]);
 
-  // Combined data for calculations
   const maintenanceLogs = useMemo(() => Object.values(maintenanceMap).flat(), [maintenanceMap]);
   const inspections = useMemo(() => Object.values(inspectionsMap).flat(), [inspectionsMap]);
   const documents = useMemo(() => Object.values(documentsMap).flat(), [documentsMap]);
@@ -271,23 +258,17 @@ export default function DashboardPage() {
   const rentStatusData = useMemo(() => {
     if (isLoading || !properties || !currentYear || !currentMonth) return [];
     const occupiedPropertiesCount = properties.filter(p => p.status === 'Occupied').length;
-    
     const monthlyPayments = allRentPayments.filter(p => p.year === currentYear && p.month === currentMonth);
-    
     const statusCounts: Record<'Paid' | 'Partially Paid' | 'Unpaid', number> = { 'Paid': 0, 'Partially Paid': 0, 'Unpaid': 0 };
     monthlyPayments.forEach(payment => { if (statusCounts[payment.status] !== undefined) statusCounts[payment.status]++; });
-    
     const nonPendingCount = statusCounts.Paid + statusCounts['Partially Paid'] + statusCounts.Unpaid;
     const pendingCount = Math.max(0, occupiedPropertiesCount - nonPendingCount);
-    
-    const data = [
+    return [
       { status: 'Paid', count: statusCounts.Paid, fill: 'hsl(var(--chart-2))' },
       { status: 'Partially Paid', count: statusCounts['Partially Paid'], fill: 'hsl(var(--chart-4))' },
       { status: 'Unpaid', count: statusCounts.Unpaid, fill: 'hsl(var(--chart-1))' },
       { status: 'Pending', count: pendingCount, fill: 'hsl(var(--muted))' },
     ].filter(item => item.count > 0);
-
-    return data;
   }, [isLoading, properties, allRentPayments, currentYear, currentMonth]);
 
   const rentChartConfig = {
@@ -300,7 +281,6 @@ export default function DashboardPage() {
 
   return (
     <div className="flex flex-col gap-8 p-2 md:p-0">
-      {/* Welcome Header */}
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold font-headline tracking-tight text-primary">Portfolio Hub</h1>
@@ -313,7 +293,6 @@ export default function DashboardPage() {
         </div>
       </div>
 
-      {/* Header Summary Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
         <Link href="/dashboard/properties" className="block group">
           <Card className="border-none shadow-md overflow-hidden relative transition-all hover:scale-[1.02] active:scale-[0.98]">
@@ -378,7 +357,6 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-12">
-        {/* Rent Tracker & Statistics */}
         <Card className="lg:col-span-4 shadow-lg border-none flex flex-col">
           <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
@@ -426,7 +404,6 @@ export default function DashboardPage() {
           </CardContent>
         </Card>
 
-        {/* Active Feed (Recent Activity) */}
         <Card className="lg:col-span-8 shadow-lg border-none">
           <CardHeader className="flex flex-row items-center justify-between pb-4">
             <div>
@@ -484,7 +461,6 @@ export default function DashboardPage() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2">
-        {/* Critical Compliance Overviews */}
         <Card className="border-none shadow-lg overflow-hidden flex flex-col">
           <CardHeader className="bg-destructive/5 border-b border-destructive/10 pb-4">
             <div className="flex items-center justify-between">
@@ -541,7 +517,6 @@ export default function DashboardPage() {
           )}
         </Card>
 
-        {/* Upcoming Inspections & Tasks */}
         <Card className="border-none shadow-lg overflow-hidden flex flex-col">
           <CardHeader className="bg-primary/5 border-b border-primary/10 pb-4">
             <CardTitle className="flex items-center gap-2 text-lg font-bold text-primary font-headline">

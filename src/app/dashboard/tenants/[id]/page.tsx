@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, notFound, useRouter, useSearchParams } from 'next/navigation';
@@ -23,7 +24,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
-// Types
 interface Property {
     id: string;
     address: {
@@ -70,25 +70,33 @@ export default function TenantDetailPage() {
   
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  // Attempt to build a direct reference first if propertyId is available
+  // construction of the hierarchical path requires propertyId.
+  // We prefer the propertyId from the URL for absolute reliability.
   const directTenantRef = useMemoFirebase(() => {
     if (!firestore || !id || !urlPropertyId || !user) return null;
     return doc(firestore, 'userProfiles', user.uid, 'properties', urlPropertyId, 'tenants', id);
   }, [firestore, id, urlPropertyId, user]);
+  
   const { data: directTenant, isLoading: isLoadingDirect } = useDoc<Tenant>(directTenantRef);
 
-  // Fallback to collectionGroup if propertyId is missing
+  // collectionGroup fallback is only for safety if URL is broken
   const tenantSearchQuery = useMemoFirebase(() => {
     if (!firestore || !id || !user || urlPropertyId) return null;
     return query(
       collectionGroup(firestore, 'tenants'),
       where('ownerId', '==', user.uid),
-      where('id', '==', id)
+      where('name', '>', '') // Dummy filter to allow listing
     );
   }, [firestore, id, user, urlPropertyId]);
+  
   const { data: searchResults, isLoading: isLoadingSearch } = useCollection<Tenant>(tenantSearchQuery);
 
-  const tenant = useMemo(() => directTenant || searchResults?.[0] || null, [directTenant, searchResults]);
+  const tenant = useMemo(() => {
+      if (directTenant) return directTenant;
+      // manual search in group results if direct ref was null
+      return searchResults?.find(t => t.id === id) || null;
+  }, [directTenant, searchResults, id]);
+
   const isLoadingTenant = isLoadingDirect || isLoadingSearch;
 
   const propertyRef = useMemoFirebase(() => {
@@ -255,7 +263,7 @@ export default function TenantDetailPage() {
                         Tenant Screening
                     </h3>
                     {firstScreening ? (
-                        <div className="flex flex-col sm:flex-row sm:items-center justify-between p-5 border rounded-xl bg-muted/20 gap-4">
+                        <div className="flex flex-col sm:row sm:items-center justify-between p-5 border rounded-xl bg-muted/20 gap-4">
                             <div>
                                 <p className="font-bold text-foreground">Comprehensive Screening Completed</p>
                                 <p className="text-xs text-muted-foreground mt-1 font-medium">Finalized on: {format(safeCreateDate(firstScreening.screeningDate)!, 'PPP')}</p>
@@ -270,7 +278,7 @@ export default function TenantDetailPage() {
                         <div className="text-center border-2 border-dashed rounded-xl p-10 bg-muted/5">
                             <p className="text-sm text-muted-foreground mb-6 font-medium">No screening report found for this tenant.</p>
                             <Button asChild className="shadow-md">
-                                <Link href={`/dashboard/tenants/screening?tenantId=${id}`}>
+                                <Link href={`/dashboard/tenants/screening?tenantId=${id}&propertyId=${tenant?.propertyId}`}>
                                     <UserPlus className="mr-2 h-4 w-4" /> Create Screening Report
                                 </Link>
                             </Button>

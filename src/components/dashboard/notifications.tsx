@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -14,10 +15,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Bell, FileWarning, CalendarClock, Loader2 } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, Timestamp, getDocs, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, Timestamp, onSnapshot } from 'firebase/firestore';
 import { format, isBefore, addDays, isFuture } from 'date-fns';
 
-// Interfaces
 interface Property {
   id: string;
   address: {
@@ -63,7 +63,6 @@ export function Notifications() {
   const { user } = useUser();
   const firestore = useFirestore();
 
-  // Primary Properties Listener
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(collection(firestore, 'userProfiles', user.uid, 'properties'), where('ownerId', '==', user.uid));
@@ -74,7 +73,6 @@ export function Notifications() {
   const [allInspections, setAllInspections] = useState<Inspection[]>([]);
   const [isLoadingAggregates, setIsLoadingAggregates] = useState(false);
 
-  // REAL-TIME NOTIFICATION AGGREGATION
   useEffect(() => {
     if (!user || !firestore || !properties || properties.length === 0) {
         setAllDocuments([]);
@@ -95,14 +93,10 @@ export function Notifications() {
 
     properties.forEach(prop => {
         const ownerFilter = where('ownerId', '==', user.uid);
-        
-        // Subscribe to documents
         unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'documents'), ownerFilter), (snap) => {
             docMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Document));
             updateState();
         }));
-
-        // Subscribe to inspections
         unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'inspections'), ownerFilter), (snap) => {
             inspMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Inspection));
             updateState();
@@ -134,7 +128,7 @@ export function Notifications() {
           dueDate: doc.expiryDate,
           status: doc.status,
           icon: FileWarning,
-          href: '/dashboard/documents'
+          href: `/dashboard/documents?propertyId=${doc.propertyId}`
         }));
 
     const inspectionReminders = allInspections

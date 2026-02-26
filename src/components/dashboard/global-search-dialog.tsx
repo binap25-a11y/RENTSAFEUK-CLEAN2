@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -11,10 +12,9 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, query, where, getDocs, limit, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { Home, Users, HardHat, Loader2, Search } from 'lucide-react';
 
-// Data types
 interface Searchable {
   id: string;
   [key: string]: any;
@@ -27,7 +27,6 @@ interface Property extends Searchable {
 interface Tenant extends Searchable { name: string; email: string; status?: string; propertyId: string; }
 interface Contractor extends Searchable { name: string; trade: string; status?: string; }
 
-// Result group type
 interface SearchResultGroup {
   title: string;
   icon: React.ElementType;
@@ -57,15 +56,12 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
     contractors: Contractor[];
   } | null>(null);
 
-  // Load data efficiently when search is opened. 
   useEffect(() => {
     if (isOpen && !allData && user && firestore) {
       const fetchData = async () => {
         setIsLoading(true);
         try {
-          // STRICT HIERARCHICAL QUERIES
           const ownerFilter = where('ownerId', '==', user.uid);
-          
           const propQuery = query(collection(firestore, 'userProfiles', user.uid, 'properties'), ownerFilter, limit(100));
           const contractorQuery = query(collection(firestore, 'userProfiles', user.uid, 'contractors'), ownerFilter, limit(100));
           
@@ -77,18 +73,13 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
           const properties = propSnap.docs.map(d => ({ id: d.id, ...d.data() } as Property));
           const contractors = contractorSnap.docs.map(d => ({ id: d.id, ...d.data() } as Contractor));
           
-          // Gather tenants from all found properties to maintain strict hierarchy
           const tenantPromises = properties.map(p => 
-            getDocs(query(collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'tenants'), ownerFilter, limit(5)))
+            getDocs(query(collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'tenants'), ownerFilter, limit(10)))
           );
           const tenantSnaps = await Promise.all(tenantPromises);
           const tenants = tenantSnaps.flatMap(snap => snap.docs.map(d => ({ id: d.id, ...d.data() } as Tenant)));
           
-          setAllData({
-            properties,
-            tenants,
-            contractors,
-          });
+          setAllData({ properties, tenants, contractors });
         } catch (error) {
           console.error("Failed to fetch search data:", error);
         } finally {
@@ -109,13 +100,11 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
         return [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
     }
 
-    // Properties
     const propertyItems = allData.properties
       .filter(p => p.status !== 'Deleted' && formatAddress(p.address).toLowerCase().includes(term))
       .map(p => ({ id: p.id, title: formatAddress(p.address), description: 'Property', href: `/dashboard/properties/${p.id}` }));
     if (propertyItems.length) results.push({ title: 'Properties', icon: Home, items: propertyItems.slice(0, 5) });
 
-    // Tenants
     const tenantItems = allData.tenants
       .filter(t => t.name.toLowerCase().includes(term) || t.email.toLowerCase().includes(term))
       .map(t => ({ 
@@ -126,7 +115,6 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
       }));
     if (tenantItems.length) results.push({ title: 'Tenants', icon: Users, items: tenantItems.slice(0, 5) });
     
-    // Contractors
     const contractorItems = allData.contractors
       .filter(c => c.name.toLowerCase().includes(term) || c.trade.toLowerCase().includes(term))
       .map(c => ({ id: c.id, title: c.name, description: 'Contractor', href: `/dashboard/contractors/${c.id}` }));
