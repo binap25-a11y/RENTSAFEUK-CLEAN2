@@ -1,4 +1,4 @@
 /**
- * @fileOverview Genkit configuration removed.
+ * @fileOverview AI configuration removed.
  */
 export const ai = null;
