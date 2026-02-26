@@ -122,8 +122,8 @@ export default function AddPropertyPage() {
   
   const mapUrl = useMemo(() => {
     if (!watchAddress) return null;
-    const { street, city, postcode } = watchAddress;
-    const fullAddress = [street, city, postcode].filter(Boolean).join(', ');
+    const { street, city, county, postcode } = watchAddress;
+    const fullAddress = [street, city, county, postcode].filter(Boolean).join(', ');
     if (fullAddress.length < 5) return null;
     return `https://maps.google.com/maps?q=${encodeURIComponent(fullAddress)}&output=embed`;
   }, [watchAddress]);
@@ -175,7 +175,7 @@ export default function AddPropertyPage() {
 
   const nextStep = async () => {
     let fieldsToValidate: any[] = [];
-    if (step === 1) fieldsToValidate = ['address.nameOrNumber', 'address.street', 'address.city', 'address.postcode'];
+    if (step === 1) fieldsToValidate = ['address.nameOrNumber', 'address.street', 'address.city', 'address.county', 'address.postcode'];
     if (step === 2) fieldsToValidate = ['propertyType', 'bedrooms', 'bathrooms', 'status'];
     if (step === 3) fieldsToValidate = ['purchasePrice', 'currentValuation', 'tenancy.monthlyRent', 'tenancy.depositAmount', 'tenancy.depositScheme'];
 
@@ -241,14 +241,21 @@ export default function AddPropertyPage() {
                               <FormMessage />
                             </FormItem>
                           )} />
-                          <FormField control={form.control} name="address.postcode" render={({ field }) => (
+                          <FormField control={form.control} name="address.county" render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="font-bold">Post Code</FormLabel>
-                              <FormControl><Input placeholder="W1A 1AA" className="h-11 uppercase" {...field} /></FormControl>
+                              <FormLabel className="font-bold">County</FormLabel>
+                              <FormControl><Input placeholder="e.g. Essex" className="h-11" {...field} /></FormControl>
                               <FormMessage />
                             </FormItem>
                           )} />
                         </div>
+                        <FormField control={form.control} name="address.postcode" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="font-bold">Post Code</FormLabel>
+                            <FormControl><Input placeholder="W1A 1AA" className="h-11 uppercase" {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
                       </div>
                       <div className="space-y-2">
                         <FormLabel className="font-bold flex items-center gap-2">
@@ -529,7 +536,7 @@ export default function AddPropertyPage() {
             <CardContent className="pt-6 space-y-4">
               <div className="space-y-1">
                 <p className="text-[10px] uppercase font-bold text-muted-foreground">Property Address</p>
-                <p className="text-sm font-bold truncate">{(watchAddress?.street || watchAddress?.city || watchAddress?.postcode) ? [watchAddress.street, watchAddress.city, watchAddress.postcode].filter(Boolean).join(', ') : "Not specified yet"}</p>
+                <p className="text-sm font-bold truncate">{(watchAddress?.street || watchAddress?.city || watchAddress?.county || watchAddress?.postcode) ? [watchAddress.street, watchAddress.city, watchAddress.county, watchAddress.postcode].filter(Boolean).join(', ') : "Not specified yet"}</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">

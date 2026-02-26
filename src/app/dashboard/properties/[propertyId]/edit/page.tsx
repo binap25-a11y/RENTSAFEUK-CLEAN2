@@ -112,8 +112,8 @@ export default function EditPropertyPage() {
   
   const mapUrl = useMemo(() => {
     if (!watchAddress) return null;
-    const { street, city, postcode } = watchAddress;
-    const fullAddress = [street, city, postcode].filter(Boolean).join(', ');
+    const { street, city, county, postcode } = watchAddress;
+    const fullAddress = [street, city, county, postcode].filter(Boolean).join(', ');
     if (fullAddress.length < 5) return null;
     return `https://maps.google.com/maps?q=${encodeURIComponent(fullAddress)}&output=embed`;
   }, [watchAddress]);
@@ -181,8 +181,9 @@ export default function EditPropertyPage() {
                         <FormField control={form.control} name="address.street" render={({ field }) => (<FormItem><FormLabel>Street Address</FormLabel><FormControl><Input placeholder="e.g. High Street" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <FormField control={form.control} name="address.city" render={({ field }) => (<FormItem><FormLabel>City/Town</FormLabel><FormControl><Input placeholder="London" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={form.control} name="address.postcode" render={({ field }) => (<FormItem><FormLabel>Post Code</FormLabel><FormControl><Input placeholder="W1A 1AA" className="uppercase" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="address.county" render={({ field }) => (<FormItem><FormLabel>County</FormLabel><FormControl><Input placeholder="e.g. Surrey" {...field} /></FormControl><FormMessage /></FormItem>)} />
                         </div>
+                        <FormField control={form.control} name="address.postcode" render={({ field }) => (<FormItem><FormLabel>Post Code</FormLabel><FormControl><Input placeholder="W1A 1AA" className="uppercase" {...field} /></FormControl><FormMessage /></FormItem>)} />
                     </CardContent>
                 </Card>
 
