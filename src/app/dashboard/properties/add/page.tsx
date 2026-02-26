@@ -177,7 +177,7 @@ export default function AddPropertyPage() {
 
   const nextStep = async () => {
     let fieldsToValidate: any[] = [];
-    if (step === 1) fieldsToValidate = ['address.street', 'address.city', 'address.postcode'];
+    if (step === 1) fieldsToValidate = ['address.nameOrNumber', 'address.street', 'address.city', 'address.postcode'];
     if (step === 2) fieldsToValidate = ['propertyType', 'bedrooms', 'bathrooms', 'status'];
     if (step === 3) fieldsToValidate = ['purchasePrice', 'currentValuation', 'tenancy.monthlyRent', 'tenancy.depositAmount', 'tenancy.depositScheme'];
 
@@ -221,6 +221,13 @@ export default function AddPropertyPage() {
                   <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                     <div className="grid gap-6 sm:grid-cols-2">
                       <div className="space-y-4">
+                        <FormField control={form.control} name="address.nameOrNumber" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="font-bold">Building Name/No</FormLabel>
+                            <FormControl><Input placeholder="e.g. Flat 1 or Rose Cottage" className="h-11" {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
                         <FormField control={form.control} name="address.street" render={({ field }) => (
                           <FormItem>
                             <FormLabel className="font-bold">Street Address</FormLabel>
@@ -231,26 +238,19 @@ export default function AddPropertyPage() {
                         <div className="grid grid-cols-2 gap-4">
                           <FormField control={form.control} name="address.city" render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="font-bold">City / Town</FormLabel>
+                              <FormLabel className="font-bold">City/Town</FormLabel>
                               <FormControl><Input placeholder="London" className="h-11" {...field} /></FormControl>
                               <FormMessage />
                             </FormItem>
                           )} />
                           <FormField control={form.control} name="address.postcode" render={({ field }) => (
                             <FormItem>
-                              <FormLabel className="font-bold">Postcode</FormLabel>
+                              <FormLabel className="font-bold">Post Code</FormLabel>
                               <FormControl><Input placeholder="W1A 1AA" className="h-11 uppercase" {...field} /></FormControl>
                               <FormMessage />
                             </FormItem>
                           )} />
                         </div>
-                        <FormField control={form.control} name="address.nameOrNumber" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="font-bold">Building Name/No. (Optional)</FormLabel>
-                            <FormControl><Input placeholder="Apt 4" className="h-11" {...field} /></FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
                       </div>
                       <div className="space-y-2">
                         <FormLabel className="font-bold flex items-center gap-2">

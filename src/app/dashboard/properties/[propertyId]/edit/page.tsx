@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -65,7 +64,7 @@ export default function EditPropertyPage() {
 
   const propertyRef = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
-    return doc(firestore, 'properties', propertyId);
+    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId);
   }, [firestore, user, propertyId]);
   
   const { data: property, isLoading, error } = useDoc(propertyRef);
@@ -118,7 +117,7 @@ export default function EditPropertyPage() {
       // UNIQUENESS CHECK (if address changed)
       if (data.address.street !== property?.address.street || data.address.postcode !== property?.address.postcode) {
           const duplicateQuery = query(
-              collection(firestore, 'properties'),
+              collection(firestore, 'userProfiles', user.uid, 'properties'),
               where('ownerId', '==', user.uid),
               where('address.street', '==', data.address.street),
               where('address.postcode', '==', data.address.postcode),
@@ -137,7 +136,7 @@ export default function EditPropertyPage() {
           }
       }
 
-      const docRef = doc(firestore, 'properties', propertyId);
+      const docRef = doc(firestore, 'userProfiles', user.uid, 'properties', propertyId);
       const cleanedData = JSON.parse(JSON.stringify(data));
       await setDoc(docRef, { ...cleanedData, ownerId: user.uid }, { merge: true });
       
@@ -166,11 +165,11 @@ export default function EditPropertyPage() {
             <Card className="border-none shadow-none bg-muted/30">
               <CardHeader><CardTitle className="text-lg font-headline">Address</CardTitle></CardHeader>
               <CardContent className="space-y-4">
-                  <FormField control={form.control} name="address.nameOrNumber" render={({ field }) => (<FormItem><FormLabel>Property Name / Number</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                  <FormField control={form.control} name="address.nameOrNumber" render={({ field }) => (<FormItem><FormLabel>Building Name/No</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                   <FormField control={form.control} name="address.street" render={({ field }) => (<FormItem><FormLabel>Street Address</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                    <FormField control={form.control} name="address.city" render={({ field }) => (<FormItem><FormLabel>City / Town</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                    <FormField control={form.control} name="address.postcode" render={({ field }) => (<FormItem><FormLabel>Postcode</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="address.city" render={({ field }) => (<FormItem><FormLabel>City/Town</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="address.postcode" render={({ field }) => (<FormItem><FormLabel>Post Code</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                   </div>
               </CardContent>
             </Card>
