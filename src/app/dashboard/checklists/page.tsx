@@ -160,21 +160,20 @@ export default function ChecklistPage() {
     },
   });
 
-  // Set default date after mount to avoid hydration mismatch
   useEffect(() => {
     form.setValue('completedDate', new Date());
   }, [form]);
 
   const propertyRef = useMemoFirebase(() => {
-    if (!firestore || !propertyIdFromUrl) return null;
-    return doc(firestore, 'properties', propertyIdFromUrl);
-  }, [firestore, propertyIdFromUrl]);
+    if (!firestore || !user || !propertyIdFromUrl) return null;
+    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyIdFromUrl);
+  }, [firestore, user, propertyIdFromUrl]);
   const { data: property, isLoading: isLoadingProperty } = useDoc<Property>(propertyRef);
 
   const tenantRef = useMemoFirebase(() => {
-    if (!firestore || !tenantIdFromUrl) return null;
-    return doc(firestore, 'tenants', tenantIdFromUrl);
-  }, [firestore, tenantIdFromUrl]);
+    if (!firestore || !user || !propertyIdFromUrl || !tenantIdFromUrl) return null;
+    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyIdFromUrl, 'tenants', tenantIdFromUrl);
+  }, [firestore, user, propertyIdFromUrl, tenantIdFromUrl]);
   const { data: tenant, isLoading: isLoadingTenant } = useDoc<Tenant>(tenantRef);
 
   async function proceedToSave(data: ChecklistFormValues) {
@@ -194,7 +193,7 @@ export default function ChecklistPage() {
         ownerId: user.uid,
     }));
 
-    const checklistsCollection = collection(firestore, 'properties', data.propertyId, 'checklists');
+    const checklistsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', data.propertyId, 'checklists');
 
     addDoc(checklistsCollection, cleanedData)
       .then(() => {
@@ -202,7 +201,7 @@ export default function ChecklistPage() {
           title: 'Checklist Saved',
           description: 'The pre-tenancy checklist has been successfully saved.',
         });
-        router.push(`/dashboard/tenants/${data.tenantId}`);
+        router.push(`/dashboard/tenants/${data.tenantId}?propertyId=${data.propertyId}`);
       })
       .catch(async (serverError) => {
         const permissionError = new FirestorePermissionError({
@@ -224,7 +223,6 @@ export default function ChecklistPage() {
   }
 
   async function onSubmit(data: ChecklistFormValues) {
-    // CHECKLIST COMPLETION CHECK (Mandatory Sections Only)
     const requiredSections = ['beforeTenancy', 'deposit', 'atMoveIn'] as const;
     let allRequiredTicked = true;
 
@@ -353,7 +351,7 @@ export default function ChecklistPage() {
 
               <div className="flex justify-end gap-2 pt-4">
                 <Button type="button" variant="outline" asChild>
-                  <Link href="/dashboard/tenants">Cancel</Link>
+                  <Link href={`/dashboard/tenants/${tenantIdFromUrl}?propertyId=${propertyIdFromUrl}`}>Cancel</Link>
                 </Button>
                 <Button type="submit" disabled={isSubmitting}>
                   {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}

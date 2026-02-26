@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, notFound } from 'next/navigation';
+import { useParams, notFound, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -99,21 +99,23 @@ const screeningSections = {
 // Main Page Component
 export default function ViewScreeningPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const tenantId = params.id as string;
   const screeningId = params.screeningId as string;
+  const propertyId = searchParams.get('propertyId');
   const firestore = useFirestore();
   const { user } = useUser();
 
   const screeningRef = useMemoFirebase(() => {
-    if (!firestore || !tenantId || !screeningId) return null;
-    return doc(firestore, 'tenants', tenantId, 'screenings', screeningId);
-  }, [firestore, tenantId, screeningId]);
+    if (!firestore || !user || !tenantId || !screeningId || !propertyId) return null;
+    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'tenants', tenantId, 'screenings', screeningId);
+  }, [firestore, user, tenantId, screeningId, propertyId]);
   const { data: screening, isLoading: isLoadingScreening, error: screeningError } = useDoc(screeningRef);
   
   const tenantRef = useMemoFirebase(() => {
-    if(!firestore || !tenantId) return null;
-    return doc(firestore, 'tenants', tenantId);
-  }, [firestore, tenantId]);
+    if(!firestore || !user || !tenantId || !propertyId) return null;
+    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'tenants', tenantId);
+  }, [firestore, user, tenantId, propertyId]);
   const { data: tenant, isLoading: isLoadingTenant } = useDoc(tenantRef);
 
   const generatePDF = () => {
@@ -209,8 +211,8 @@ export default function ViewScreeningPage() {
     return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
   }
 
-  if (screeningError) {
-    return <div className="text-center text-destructive">Error loading screening report: {screeningError.message}</div>;
+  if (screeningError || !propertyId) {
+    return <div className="text-center text-destructive">Error loading screening report. Check parameters.</div>;
   }
 
   if (!screening) {
@@ -224,7 +226,7 @@ export default function ViewScreeningPage() {
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
             <Button variant="outline" size="icon" asChild>
-                <Link href={`/dashboard/tenants/${tenantId}`}><ArrowLeft className="h-4 w-4" /></Link>
+                <Link href={`/dashboard/tenants/${tenantId}?propertyId=${propertyId}`}><ArrowLeft className="h-4 w-4" /></Link>
             </Button>
             <div>
                 <h1 className="text-2xl font-bold">Screening Report</h1>

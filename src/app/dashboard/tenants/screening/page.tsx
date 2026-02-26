@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -44,13 +43,14 @@ import {
   FirestorePermissionError,
   useDoc,
 } from '@/firebase';
-import { collection, query, where, addDoc, doc } from 'firebase/firestore';
+import { collection, query, where, addDoc, doc, collectionGroup } from 'firebase/firestore';
 import { useEffect, useState, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 
 
 const screeningSchema = z.object({
   tenantId: z.string({ required_error: 'Please select a tenant.' }).min(1, "Please select a tenant."),
+  propertyId: z.string({ required_error: 'Property ID is missing.' }).min(1),
   screeningDate: z.coerce.date(),
   monthlyIncome: z.coerce.number().min(0, "Income cannot be negative").optional(),
   rightToRent: z.object({
@@ -116,6 +116,7 @@ interface Tenant {
   id: string;
   name: string;
   monthlyRent?: number;
+  propertyId: string;
 }
 
 const ChecklistItem = ({ form, name, label }: { form: any, name: any, label: string }) => (
@@ -154,11 +155,12 @@ const NotesField = ({ form, name, placeholder }: { form: any, name: any, placeho
 export default function TenantScreeningPageWrapper() {
   const searchParams = useSearchParams();
   const tenantIdFromUrl = searchParams.get('tenantId');
+  const propertyIdFromUrl = searchParams.get('propertyId');
 
-  return <TenantScreeningPage key={tenantIdFromUrl} tenantIdFromUrl={tenantIdFromUrl} />;
+  return <TenantScreeningPage key={tenantIdFromUrl} tenantIdFromUrl={tenantIdFromUrl} propertyIdFromUrl={propertyIdFromUrl} />;
 }
 
-function TenantScreeningPage({ tenantIdFromUrl }: { tenantIdFromUrl: string | null }) {
+function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdFromUrl: string | null, propertyIdFromUrl: string | null }) {
     const router = useRouter();
     const { user } = useUser();
     const firestore = useFirestore();
@@ -167,6 +169,7 @@ function TenantScreeningPage({ tenantIdFromUrl }: { tenantIdFromUrl: string | nu
         resolver: zodResolver(screeningSchema),
         defaultValues: {
             tenantId: tenantIdFromUrl || '',
+            propertyId: propertyIdFromUrl || '',
             monthlyIncome: undefined,
         }
     });
@@ -177,21 +180,19 @@ function TenantScreeningPage({ tenantIdFromUrl }: { tenantIdFromUrl: string | nu
         form.setValue('screeningDate', new Date());
     }, [form]);
 
+    // Reliable hierarchical tenant fetch
     const tenantRef = useMemoFirebase(() => {
-        if (!firestore || !tenantIdFromUrl) return null;
-        return doc(firestore, 'tenants', tenantIdFromUrl);
-    }, [firestore, tenantIdFromUrl]);
+        if (!firestore || !user || !tenantIdFromUrl || !propertyIdFromUrl) return null;
+        return doc(firestore, 'userProfiles', user.uid, 'properties', propertyIdFromUrl, 'tenants', tenantIdFromUrl);
+    }, [firestore, user, tenantIdFromUrl, propertyIdFromUrl]);
     const { data: selectedTenant, isLoading: isLoadingSelectedTenant } = useDoc<Tenant>(tenantRef);
 
-    const tenantsQuery = useMemoFirebase(() => {
-        if (!user || tenantIdFromUrl) return null;
-        return query(
-            collection(firestore, 'tenants'),
-            where('ownerId', '==', user.uid),
-            where('status', '==', 'Active')
-        );
-    }, [firestore, user, tenantIdFromUrl]);
-    const { data: tenants, isLoading: isLoadingTenants } = useCollection<Tenant>(tenantsQuery);
+    // If tenantId was provided but selectedTenant is missing, we might need a fallback or check propertyId
+    useEffect(() => {
+        if (selectedTenant && !form.getValues('propertyId')) {
+            form.setValue('propertyId', selectedTenant.propertyId);
+        }
+    }, [selectedTenant, form]);
 
     const affordabilityMetrics = useMemo(() => {
         const rent = selectedTenant?.monthlyRent || 0;
@@ -217,15 +218,16 @@ function TenantScreeningPage({ tenantIdFromUrl }: { tenantIdFromUrl: string | nu
             return;
         }
 
-        const { tenantId, ...screeningData } = data;
+        const { tenantId, propertyId, ...screeningData } = data;
 
         const newScreeningRecord = {
             ...screeningData,
             ownerId: user.uid,
             tenantId: tenantId,
+            propertyId: propertyId,
         };
 
-        const screeningsCollection = collection(firestore, 'tenants', tenantId, 'screenings');
+        const screeningsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'tenants', tenantId, 'screenings');
 
         addDoc(screeningsCollection, newScreeningRecord)
           .then(() => {
@@ -233,7 +235,7 @@ function TenantScreeningPage({ tenantIdFromUrl }: { tenantIdFromUrl: string | nu
                 title: 'Screening Record Saved',
                 description: 'The tenant screening checklist has been successfully saved.',
             });
-            router.push(tenantId ? `/dashboard/tenants/${tenantId}` : '/dashboard/tenants');
+            router.push(`/dashboard/tenants/${tenantId}?propertyId=${propertyId}`);
           })
           .catch(async (serverError) => {
              const permissionError = new FirestorePermissionError({
@@ -250,6 +252,15 @@ function TenantScreeningPage({ tenantIdFromUrl }: { tenantIdFromUrl: string | nu
           });
     }
 
+    if (!tenantIdFromUrl || !propertyIdFromUrl) {
+        return (
+            <div className="text-center py-20">
+                <p className="text-muted-foreground">Tenant selection required. Please start screening from a tenant's profile.</p>
+                <Button asChild className="mt-4"><Link href="/dashboard/tenants">Go to Tenants</Link></Button>
+            </div>
+        );
+    }
+
     return (
         <Card className="max-w-4xl mx-auto">
             <CardHeader>
@@ -262,40 +273,19 @@ function TenantScreeningPage({ tenantIdFromUrl }: { tenantIdFromUrl: string | nu
                 <Form {...form}>
                     <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                             {tenantIdFromUrl ? (
-                                <div className="space-y-2">
-                                    <FormLabel>Tenant to Screen</FormLabel>
-                                    <div className="flex items-center justify-between rounded-md border p-3 bg-muted min-h-[40px]">
-                                        {isLoadingSelectedTenant ? (
-                                            <Loader2 className="h-4 w-4 animate-spin" />
-                                        ) : (
-                                            <div className="flex flex-col">
-                                                <p className="font-medium text-sm">{selectedTenant ? selectedTenant.name : 'Tenant not found'}</p>
-                                                {selectedTenant?.monthlyRent && <p className="text-[10px] text-muted-foreground uppercase font-bold">Rent: £{selectedTenant.monthlyRent}/mo</p>}
-                                            </div>
-                                        )}
-                                    </div>
-                                </div>
-                             ) : (
-                                 <FormField
-                                    control={form.control}
-                                    name="tenantId"
-                                    render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel>Tenant to Screen</FormLabel>
-                                            <Select onValueChange={field.onChange} value={field.value}>
-                                                <FormControl>
-                                                    <SelectTrigger>
-                                                        <SelectValue placeholder={isLoadingTenants ? <div className='flex items-center gap-2'><Loader2 className='animate-spin' /> Loading...</div> : "Select a tenant"} />
-                                                    </SelectTrigger>
-                                                </FormControl>
-                                                <SelectContent>{tenants?.map((t) => (<SelectItem key={t.id} value={t.id}>{t.name}</SelectItem>))}</SelectContent>
-                                            </Select>
-                                            <FormMessage />
-                                        </FormItem>
+                            <div className="space-y-2">
+                                <FormLabel>Tenant to Screen</FormLabel>
+                                <div className="flex items-center justify-between rounded-md border p-3 bg-muted min-h-[40px]">
+                                    {isLoadingSelectedTenant ? (
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                    ) : (
+                                        <div className="flex flex-col">
+                                            <p className="font-medium text-sm">{selectedTenant ? selectedTenant.name : 'Tenant not found'}</p>
+                                            {selectedTenant?.monthlyRent && <p className="text-[10px] text-muted-foreground uppercase font-bold">Rent: £{selectedTenant.monthlyRent}/mo</p>}
+                                        </div>
                                     )}
-                                />
-                             )}
+                                </div>
+                            </div>
                             <FormField
                                 control={form.control}
                                 name="screeningDate"
@@ -573,7 +563,7 @@ function TenantScreeningPage({ tenantIdFromUrl }: { tenantIdFromUrl: string | nu
                         />
                         <div className="flex justify-end gap-2 pt-4">
                             <Button type="button" variant="outline" asChild>
-                                <Link href={tenantIdFromUrl ? `/dashboard/tenants/${tenantIdFromUrl}` : '/dashboard/tenants'}>Cancel</Link>
+                                <Link href={`/dashboard/tenants/${tenantIdFromUrl}?propertyId=${propertyIdFromUrl}`}>Cancel</Link>
                             </Button>
                             <Button type="submit">Save Screening Record</Button>
                         </div>

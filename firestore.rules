@@ -26,7 +26,11 @@ service cloud.firestore {
         allow read, write: if isOwner(userId);
         
         // All related records are nested under the specific property
-        match /tenants/{id} { allow read, write: if isOwner(userId); }
+        match /tenants/{id} { 
+          allow read, write: if isOwner(userId); 
+          // Sub-collections under tenant
+          match /screenings/{sId} { allow read, write: if isOwner(userId); }
+        }
         match /maintenanceRequests/{id} { allow read, write: if isOwner(userId); }
         match /maintenanceLogs/{id} { allow read, write: if isOwner(userId); }
         match /inspections/{id} { allow read, write: if isOwner(userId); }

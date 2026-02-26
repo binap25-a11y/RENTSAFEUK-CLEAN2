@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -246,9 +245,9 @@ export default function HmoInspectionPage() {
     }, [form]);
 
     const propertiesQuery = useMemoFirebase(() => {
-        if (!user) return null;
+        if (!user || !firestore) return null;
         return query(
-            collection(firestore, 'properties'),
+            collection(firestore, 'userProfiles', user.uid, 'properties'),
             where('ownerId', '==', user.uid),
             limit(500)
         );
@@ -283,7 +282,8 @@ export default function HmoInspectionPage() {
 
         try {
             const cleanedSubmission = prepareForFirestore(newInspection);
-            await addDoc(collection(firestore, 'properties', propertyId, 'inspections'), cleanedSubmission);
+            const inspectionsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'inspections');
+            await addDoc(inspectionsCollection, cleanedSubmission);
             toast({ title: 'HMO Inspection Saved' });
             router.push('/dashboard/inspections');
         } catch (error) {

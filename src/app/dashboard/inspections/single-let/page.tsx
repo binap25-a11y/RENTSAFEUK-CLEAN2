@@ -223,15 +223,14 @@ export default function SingleLetInspectionPage() {
     }
   });
 
-  // Set default date after mount to avoid hydration mismatch
   useEffect(() => {
     form.setValue('scheduledDate', new Date());
   }, [form]);
 
   const propertiesQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user || !firestore) return null;
     return query(
-        collection(firestore, 'properties'),
+        collection(firestore, 'userProfiles', user.uid, 'properties'),
         where('ownerId', '==', user.uid),
         limit(500)
     );
@@ -269,7 +268,7 @@ export default function SingleLetInspectionPage() {
 
       const cleanedSubmission = prepareForFirestore(newInspection);
 
-      const inspectionsCollection = collection(firestore, 'properties', propertyId, 'inspections');
+      const inspectionsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'inspections');
       await addDoc(inspectionsCollection, cleanedSubmission);
       
       toast({
@@ -290,7 +289,6 @@ export default function SingleLetInspectionPage() {
   }
 
   async function onSubmit(data: InspectionFormValues) {
-    // CHECKLIST COMPLETION CHECK
     const checklistSections = ['exterior', 'safety', 'interior', 'kitchen', 'bathrooms', 'heating', 'bedrooms', 'tenantResponsibilities'] as const;
     let totalFields = 0;
     let tickedFields = 0;
@@ -524,7 +522,7 @@ export default function SingleLetInspectionPage() {
                   <AccordionTrigger suppressHydrationWarning className='text-lg font-semibold'>Interior General Condition</AccordionTrigger>
                   <AccordionContent className='pt-4'>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <ChecklistItem form={form} name="interior.wallsCeilingsFloors" label="Walls, ceilings, floors" />
+                          <ChecklistItem form={form} name="interior.wallsCeilorsFloors" label="Walls, ceilings, floors" />
                           <ChecklistItem form={form} name="interior.noDamp" label="No signs of damp, mould, or condensation" />
                           <ChecklistItem form={form} name="interior.windows" label="Windows open and close correctly" />
                           <ChecklistItem form={form} name="interior.doors" label="Internal doors and locks functioning" />

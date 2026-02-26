@@ -11,7 +11,7 @@ import {
 } from '@/components/ui/dialog';
 import { Input } from '@/components/ui/input';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, query, where, getDocs, limit } from 'firebase/firestore';
+import { collection, query, where, getDocs, limit, onSnapshot } from 'firebase/firestore';
 import { Home, Users, HardHat, Loader2, Search } from 'lucide-react';
 
 // Data types
@@ -22,8 +22,9 @@ interface Searchable {
 interface Property extends Searchable {
   address: { nameOrNumber?: string; street: string; city: string; postcode: string; };
   status?: string;
+  ownerId: string;
 }
-interface Tenant extends Searchable { name: string; email: string; status?: string; }
+interface Tenant extends Searchable { name: string; email: string; status?: string; propertyId: string; }
 interface Contractor extends Searchable { name: string; trade: string; status?: string; }
 
 // Result group type
@@ -62,25 +63,31 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
       const fetchData = async () => {
         setIsLoading(true);
         try {
+          // STRICT HIERARCHICAL QUERIES
           const ownerFilter = where('ownerId', '==', user.uid);
           
-          // STRICT HIERARCHICAL QUERIES
-          const queries = [
-            getDocs(query(collection(firestore, 'userProfiles', user.uid, 'properties'), ownerFilter, limit(100))),
-            getDocs(query(collection(firestore, 'userProfiles', user.uid, 'contractors'), ownerFilter, limit(100))),
-          ];
+          const propQuery = query(collection(firestore, 'userProfiles', user.uid, 'properties'), ownerFilter, limit(100));
+          const contractorQuery = query(collection(firestore, 'userProfiles', user.uid, 'contractors'), ownerFilter, limit(100));
           
-          const [propSnap, contractorSnap] = await Promise.all(queries);
+          const [propSnap, contractorSnap] = await Promise.all([
+            getDocs(propQuery),
+            getDocs(contractorQuery)
+          ]);
           
-          // For tenants, we might still need collectionGroup if we don't want to loop properties,
-          // but let's try to gather them from the gathered properties if possible,
-          // or just fallback to collectionGroup knowing the ownerId index is required.
-          const tenantSnap = await getDocs(query(collection(firestore, 'tenants'), ownerFilter, limit(100)));
+          const properties = propSnap.docs.map(d => ({ id: d.id, ...d.data() } as Property));
+          const contractors = contractorSnap.docs.map(d => ({ id: d.id, ...d.data() } as Contractor));
+          
+          // Gather tenants from all found properties to maintain strict hierarchy
+          const tenantPromises = properties.map(p => 
+            getDocs(query(collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'tenants'), ownerFilter, limit(5)))
+          );
+          const tenantSnaps = await Promise.all(tenantPromises);
+          const tenants = tenantSnaps.flatMap(snap => snap.docs.map(d => ({ id: d.id, ...d.data() } as Tenant)));
           
           setAllData({
-            properties: propSnap.docs.map(d => ({ id: d.id, ...d.data() } as Property)),
-            tenants: tenantSnap.docs.map(d => ({ id: d.id, ...d.data() } as Tenant)),
-            contractors: contractorSnap.docs.map(d => ({ id: d.id, ...d.data() } as Contractor)),
+            properties,
+            tenants,
+            contractors,
           });
         } catch (error) {
           console.error("Failed to fetch search data:", error);
@@ -111,7 +118,12 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
     // Tenants
     const tenantItems = allData.tenants
       .filter(t => t.name.toLowerCase().includes(term) || t.email.toLowerCase().includes(term))
-      .map(t => ({ id: t.id, title: t.name, description: t.status === 'Archived' ? 'Archived Tenant' : 'Tenant', href: `/dashboard/tenants/${t.id}` }));
+      .map(t => ({ 
+          id: t.id, 
+          title: t.name, 
+          description: t.status === 'Archived' ? 'Archived Tenant' : 'Tenant', 
+          href: `/dashboard/tenants/${t.id}?propertyId=${t.propertyId}` 
+      }));
     if (tenantItems.length) results.push({ title: 'Tenants', icon: Users, items: tenantItems.slice(0, 5) });
     
     // Contractors
