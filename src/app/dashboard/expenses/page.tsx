@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,29 +30,12 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import {
-  Dialog,
-  DialogContent,
-  DialogHeader,
-  DialogTitle,
-  DialogDescription,
-  DialogFooter,
-} from '@/components/ui/dialog';
 import { 
   PoundSterling, 
-  TrendingDown, 
-  TrendingUp, 
   Loader2, 
-  CheckCircle2, 
-  AlertCircle, 
-  Download, 
-  Filter, 
-  Banknote,
+  Receipt, 
   History,
-  Receipt,
   ArrowUpRight,
-  Edit2,
-  Clock
 } from 'lucide-react';
 import { getYear, format, isSameYear } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -70,22 +52,11 @@ import {
   useFirestore,
   useCollection,
   useMemoFirebase,
-  errorEmitter,
-  FirestorePermissionError,
 } from '@/firebase';
-import { collection, query, where, doc, setDoc, addDoc, limit, getDocs, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, doc, setDoc, addDoc, limit, onSnapshot } from 'firebase/firestore';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import {
-  ChartConfig,
-  ChartContainer,
-  ChartLegend,
-  ChartLegendContent,
-  ChartTooltip,
-  ChartTooltipContent,
-} from '@/components/ui/chart';
 import { Badge } from '@/components/ui/badge';
-import { Pie, PieChart, Cell } from 'recharts';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import Link from 'next/link';
@@ -96,8 +67,6 @@ const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'
 ];
-
-// TYPE DEFINITIONS
 
 interface Property {
   id: string;
@@ -167,7 +136,6 @@ const formatCurrency = (val: number) => {
 export default function FinancialsPage() {
   const { user } = useUser();
   const firestore = useFirestore();
-  const router = useRouter();
   const [selectedPropertyId, setSelectedPropertyId] = useState('all');
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
 
@@ -180,8 +148,8 @@ export default function FinancialsPage() {
   }, []);
 
   const propertiesQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    return query(collection(firestore, 'properties'), where('ownerId', '==', user.uid), limit(500));
+    if (!user || !firestore) return null;
+    return query(collection(firestore, 'userProfiles', user.uid, 'properties'), where('ownerId', '==', user.uid), limit(500));
   }, [firestore, user]);
 
   const { data: allProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
@@ -196,22 +164,9 @@ export default function FinancialsPage() {
     return allProperties?.find(p => p.id === selectedPropertyId);
   }, [allProperties, selectedPropertyId]);
 
-  const expensesQuery = useMemoFirebase(() => {
-    if (!user || !firestore || selectedPropertyId === 'all') return null;
-    return query(collection(firestore, 'properties', selectedPropertyId, 'expenses'), where('ownerId', '==', user.uid));
-  }, [firestore, user, selectedPropertyId]);
-  
-  const { data: rawExpenses, isLoading: isLoadingExpenses } = useCollection<Expense>(expensesQuery);
-
-  const rentPaymentsQuery = useMemoFirebase(() => {
-    if (!user || !firestore || selectedPropertyId === 'all' || !selectedYear) return null;
-    return query(collection(firestore, 'properties', selectedPropertyId, 'rentPayments'), where('ownerId', '==', user.uid), where('year', '==', selectedYear));
-  }, [firestore, user, selectedPropertyId, selectedYear]);
-  const { data: rawRentPayments, isLoading: isLoadingPayments } = useCollection<RentPayment>(rentPaymentsQuery);
-
-  // REAL-TIME AGGREGATION: Subscribe to all active properties for the "Portfolio View"
+  // Aggregated Listeners
   useEffect(() => {
-    if (!user || activeProperties.length === 0 || selectedPropertyId !== 'all' || !selectedYear) {
+    if (!user || activeProperties.length === 0 || selectedPropertyId !== 'all' || !selectedYear || !firestore) {
         setPortfolioExpenses([]);
         setPortfolioRentPayments([]);
         return;
@@ -232,13 +187,13 @@ export default function FinancialsPage() {
         const ownerFilter = where('ownerId', '==', user.uid);
         
         // Listen to Expenses
-        unsubs.push(onSnapshot(query(collection(firestore, 'properties', p.id, 'expenses'), ownerFilter), (snap) => {
+        unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'expenses'), ownerFilter), (snap) => {
             expensesMap[p.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Expense));
             updateState();
         }));
 
         // Listen to Rent Payments
-        unsubs.push(onSnapshot(query(collection(firestore, 'properties', p.id, 'rentPayments'), ownerFilter, where('year', '==', selectedYear)), (snap) => {
+        unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'rentPayments'), ownerFilter, where('year', '==', selectedYear)), (snap) => {
             rentMap[p.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as RentPayment));
             updateState();
         }));
@@ -249,16 +204,16 @@ export default function FinancialsPage() {
 
   const expenses = useMemo(() => {
     if (!selectedYear) return [];
-    const list = selectedPropertyId !== 'all' ? (rawExpenses || []) : portfolioExpenses;
+    const list = selectedPropertyId !== 'all' ? (portfolioExpenses.filter(e => e.propertyId === selectedPropertyId)) : portfolioExpenses;
     return list.filter(exp => {
         const d = safeToDate(exp.date);
         return d && isSameYear(d, new Date(selectedYear, 0, 1));
     });
-  }, [rawExpenses, portfolioExpenses, selectedPropertyId, selectedYear]);
+  }, [portfolioExpenses, selectedPropertyId, selectedYear]);
 
   const rentPayments = useMemo(() => {
-    return selectedPropertyId !== 'all' ? (rawRentPayments || []) : portfolioRentPayments;
-  }, [rawRentPayments, portfolioRentPayments, selectedPropertyId]);
+    return selectedPropertyId !== 'all' ? (portfolioRentPayments.filter(p => p.propertyId === selectedPropertyId)) : portfolioRentPayments;
+  }, [portfolioRentPayments, selectedPropertyId]);
 
   const portfolioIncome = useMemo(() => {
     return activeProperties.reduce((total, prop) => (total + (Number(prop.tenancy?.monthlyRent || 0) * 12)), 0);
@@ -268,7 +223,7 @@ export default function FinancialsPage() {
   const totalExpenses = useMemo(() => expenses.reduce((acc, expense) => acc + Number(expense.amount || 0), 0), [expenses]);
   const netIncome = totalPaidRent - totalExpenses;
   
-  const isLoading = isLoadingProperties || !selectedYear || (selectedPropertyId !== 'all' ? (isLoadingExpenses || isLoadingPayments) : isAggregating);
+  const isLoading = isLoadingProperties || !selectedYear || isAggregating;
 
   const generateHMRCPDF = () => {
     if (!selectedYear) return;
@@ -281,7 +236,6 @@ export default function FinancialsPage() {
     doc.setLineWidth(0.5);
     doc.line(14, 40, 200, 40);
 
-    // Grouping internal categories into standard HMRC groupings
     const ratesInsurance = expenses.filter(e => ['Insurance', 'Utilities'].includes(e.expenseType)).reduce((a, b) => a + Number(b.amount || 0), 0);
     const maintenance = expenses.filter(e => ['Repairs and Maintenance', 'Cleaning', 'Gardening'].includes(e.expenseType)).reduce((a, b) => a + Number(b.amount || 0), 0);
     const professionalFees = expenses.filter(e => ['Letting Agent Fees'].includes(e.expenseType)).reduce((a, b) => a + Number(b.amount || 0), 0);
@@ -297,7 +251,7 @@ export default function FinancialsPage() {
         ['Residential finance costs (for reference)', formatCurrency(financeCosts)],
     ];
 
-    doc.autoTable({ 
+    (doc as any).autoTable({ 
         startY: 45, 
         head: [['Standard HMRC Category Grouping', 'Total Amount (£)']], 
         body: hmrcCategories, 
@@ -318,12 +272,12 @@ export default function FinancialsPage() {
     <div className="flex flex-col gap-6">
         <div className="flex flex-col gap-4 max-w-md bg-card p-6 rounded-lg border shadow-sm">
             <div className="grid w-full gap-1.5">
-                <Label htmlFor="property-filter" className="text-xs uppercase font-bold text-muted-foreground">Selected Property</Label>
+                <Label htmlFor="property-filter" className="text-xs uppercase font-bold text-muted-foreground">Scope View</Label>
                 <Select onValueChange={setSelectedPropertyId} value={selectedPropertyId}>
                     <SelectTrigger id="property-filter" className="h-12"><SelectValue placeholder="All Properties" /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Properties (Portfolio View)</SelectItem>
-                        {activeProperties.map((prop) => (<SelectItem key={prop.id} value={prop.id}>{[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}</SelectItem>))}
+                        {activeProperties.map((prop) => (<SelectItem key={prop.id} value={prop.id}>{[prop.address.street, prop.address.city].filter(Boolean).join(', ')}</SelectItem>))}
                     </SelectContent>
                 </Select>
             </div>
@@ -337,26 +291,23 @@ export default function FinancialsPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Portfolio Gross</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{formatCurrency(portfolioIncome)}</div></CardContent></Card>
-            <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-green-600">Income Received</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : formatCurrency(totalPaidRent)}</div></CardContent></Card>
-            <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium text-destructive">Expenses</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : formatCurrency(totalExpenses)}</div></CardContent></Card>
-            <Card><CardHeader className="pb-2"><CardTitle className="text-sm font-medium">Net Position</CardTitle></CardHeader><CardContent><div className={"text-2xl font-bold " + (netIncome < 0 ? "text-destructive" : "text-primary")}>{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : formatCurrency(netIncome)}</div></CardContent></Card>
+            <Card className="border-none shadow-md overflow-hidden"><div className="h-1 bg-primary w-full" /><CardHeader className="pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Portfolio Gross</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold tracking-tight">{formatCurrency(portfolioIncome)}</div></CardContent></Card>
+            <Card className="border-none shadow-md overflow-hidden"><div className="h-1 bg-green-500 w-full" /><CardHeader className="pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-green-600">Income Received</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold tracking-tight">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : formatCurrency(totalPaidRent)}</div></CardContent></Card>
+            <Card className="border-none shadow-md overflow-hidden"><div className="h-1 bg-destructive w-full" /><CardHeader className="pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-destructive">Expenses</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold tracking-tight">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : formatCurrency(totalExpenses)}</div></CardContent></Card>
+            <Card className="border-none shadow-md overflow-hidden"><div className="h-1 bg-amber-500 w-full" /><CardHeader className="pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Net Position</CardTitle></CardHeader><CardContent><div className={"text-2xl font-bold tracking-tight " + (netIncome < 0 ? "text-destructive" : "text-primary")}>{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : formatCurrency(netIncome)}</div></CardContent></Card>
         </div>
 
         <Tabs defaultValue="expenses" className="pt-4">
-            <TabsList className="bg-muted/50 p-1 h-auto"><TabsTrigger value="expenses">Expenses</TabsTrigger><TabsTrigger value="summary">Summary</TabsTrigger><TabsTrigger value="investment">Yield</TabsTrigger><TabsTrigger value="statement">Rent Ledger</TabsTrigger></TabsList>
+            <TabsList className="bg-muted/50 p-1 h-auto"><TabsTrigger value="expenses">Tracker</TabsTrigger><TabsTrigger value="summary">Tax Summary</TabsTrigger><TabsTrigger value="statement">Rent Ledger</TabsTrigger></TabsList>
             <TabsContent value="expenses">
                 <ExpenseTracker properties={activeProperties} selectedPropertyId={selectedPropertyId} isLoadingProperties={isLoadingProperties} />
             </TabsContent>
             <TabsContent value="summary">
-                <div className="flex justify-end gap-2 mb-4"><Button onClick={generateHMRCPDF} size="sm" variant="outline"><Receipt className="mr-2 h-4 w-4" /> HMRC Tax Export</Button></div>
-                <AnnualSummary selectedProperty={selectedProperty} selectedYear={selectedYear || 0} expenses={expenses} isLoadingExpenses={isLoading} totalPaidRent={totalPaidRent} totalExpenses={totalExpenses} netIncome={netIncome} />
-            </TabsContent>
-            <TabsContent value="investment">
-                <InvestmentAnalytics properties={activeProperties} selectedPropertyId={selectedPropertyId} allExpenses={expenses} />
+                <div className="flex justify-end gap-2 mb-4 pt-4"><Button onClick={generateHMRCPDF} size="sm" variant="outline" className="font-bold text-xs uppercase tracking-widest"><Receipt className="mr-2 h-4 w-4" /> HMRC Tax Export (PDF)</Button></div>
+                <AnnualSummary selectedYear={selectedYear || 0} expenses={expenses} isLoadingExpenses={isLoading} />
             </TabsContent>
             <TabsContent value="statement">
-                <RentStatement selectedProperty={selectedProperty} selectedYear={selectedYear || 0} rentPayments={rawRentPayments} isLoadingPayments={isLoadingPayments} />
+                <RentStatement selectedProperty={selectedProperty} selectedYear={selectedYear || 0} rentPayments={rentPayments} isLoadingPayments={isLoading} />
             </TabsContent>
         </Tabs>
     </div>
@@ -366,7 +317,6 @@ export default function FinancialsPage() {
 function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }: { properties: Property[], selectedPropertyId: string, isLoadingProperties: boolean }) {
   const { user } = useUser();
   const firestore = useFirestore();
-  const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
 
   const form = useForm<ExpenseFormValues>({
@@ -379,13 +329,9 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }:
     },
   });
 
-  // Keep the form's property ID in sync with the global filter
   useEffect(() => {
     if (selectedPropertyId && selectedPropertyId !== 'all') {
       form.setValue('propertyId', selectedPropertyId);
-    } else {
-      // If global filter is 'all', clear the form selection to force a choice
-      form.setValue('propertyId', '');
     }
   }, [selectedPropertyId, form]);
 
@@ -396,19 +342,11 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }:
   function onSubmit(data: ExpenseFormValues) {
     if (!user || !firestore) return;
     setIsSubmitting(true);
-    addDoc(collection(firestore, 'properties', data.propertyId, 'expenses'), { ...data, ownerId: user.uid })
+    const expCol = collection(firestore, 'userProfiles', user.uid, 'properties', data.propertyId, 'expenses');
+    addDoc(expCol, { ...data, ownerId: user.uid })
       .then(() => {
-        toast({ title: 'Expense Saved' });
-        // Reset form but keep the selected property ID if we're filtering for one
-        form.reset({ 
-          propertyId: selectedPropertyId !== 'all' ? selectedPropertyId : '', 
-          expenseType: '', 
-          notes: '', 
-          date: new Date(), 
-          paidBy: 'Landlord', 
-          amount: 0 
-        });
-        router.refresh();
+        toast({ title: 'Expense Logged' });
+        form.reset({ propertyId: selectedPropertyId !== 'all' ? selectedPropertyId : '', expenseType: '', notes: '', date: new Date(), paidBy: 'Landlord', amount: 0 });
       })
       .catch(() => toast({ variant: 'destructive', title: 'Save Failed' }))
       .finally(() => setIsSubmitting(false));
@@ -419,56 +357,44 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }:
   };
 
   return (
-    <Card className="mt-6">
+    <Card className="mt-6 border-none shadow-lg">
         <CardHeader>
-          <CardTitle className="text-lg">Add New Expense</CardTitle>
-          <CardDescription>
-            {selectedPropertyId !== 'all' 
-              ? "Property pre-selected from your current filter." 
-              : "Select a property from your active portfolio."}
-          </CardDescription>
+          <CardTitle className="text-lg">Log New Financial Outgoing</CardTitle>
+          <CardDescription>Select a property and category to record a new expense.</CardDescription>
         </CardHeader>
         <CardContent>
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               <FormField control={form.control} name="propertyId" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Target Property</FormLabel>
+                    <FormLabel className="font-bold">Target Property</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl>
-                        <SelectTrigger>
-                          <SelectValue placeholder={isLoadingProperties ? 'Loading...' : 'Select property'} />
-                        </SelectTrigger>
-                      </FormControl>
-                      <SelectContent>
-                        {properties.map(p => (
-                          <SelectItem key={p.id} value={p.id}>
-                            {formatAddress(p.address)}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
+                      <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select from portfolio" /></SelectTrigger></FormControl>
+                      <SelectContent>{properties.map(p => (<SelectItem key={p.id} value={p.id}>{formatAddress(p.address)}</SelectItem>))}</SelectContent>
                     </Select>
                     <FormMessage />
                   </FormItem>
               )} />
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField control={form.control} name="date" render={({ field }) => (
-                    <FormItem><FormLabel>Date</FormLabel><FormControl><Input type="date" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel className="font-bold">Date</FormLabel><FormControl><Input type="date" className="h-11" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="expenseType" render={({ field }) => (
-                    <FormItem><FormLabel>Category</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger><SelectValue placeholder="Select type" /></SelectTrigger></FormControl><SelectContent>{['Repairs and Maintenance','Utilities','Insurance','Mortgage Interest','Cleaning','Gardening','Letting Agent Fees', 'Other'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>
+                    <FormItem><FormLabel className="font-bold">Category</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl><SelectContent>{['Repairs and Maintenance','Utilities','Insurance','Mortgage Interest','Cleaning','Gardening','Letting Agent Fees', 'Other'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>
                 )} />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField control={form.control} name="amount" render={({ field }) => (
-                    <FormItem><FormLabel>Amount (£)</FormLabel><FormControl><Input type="number" step="0.01" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel className="font-bold">Amount (£)</FormLabel><FormControl><Input type="number" step="0.01" className="h-11" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
-                <FormField control={form.control} name="paidBy" render={({ field }) => (<FormItem><FormLabel>Paid By</FormLabel><FormControl><Input placeholder="e.g. Landlord" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="paidBy" render={({ field }) => (<FormItem><FormLabel className="font-bold">Paid By</FormLabel><FormControl><Input placeholder="e.g. Landlord" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>)} />
               </div>
-              <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel>Notes (Optional)</FormLabel><FormControl><Textarea placeholder="Details..." {...field} /></FormControl><FormMessage /></FormItem>)} />
-              <div className="flex justify-end gap-2 pt-2">
-                <Button asChild type="button" variant="outline"><Link href="/dashboard/expenses/logged"><History className="mr-2 h-4 w-4" /> History</Link></Button>
-                <Button type="submit" disabled={isSubmitting}>{isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Save'}</Button>
+              <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel className="font-bold">Audit Notes</FormLabel><FormControl><Textarea placeholder="Details for tax records..." className="rounded-xl min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>)} />
+              <div className="flex justify-end gap-2 pt-4">
+                <Button asChild type="button" variant="outline" className="font-bold h-11"><Link href="/dashboard/expenses/logged"><History className="mr-2 h-4 w-4" /> View History</Link></Button>
+                <Button type="submit" disabled={isSubmitting} className="font-bold h-11 px-10 shadow-md">
+                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Log Expense'}
+                </Button>
               </div>
             </form>
           </Form>
@@ -477,7 +403,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }:
   );
 }
 
-function AnnualSummary({ selectedProperty, selectedYear, expenses, isLoadingExpenses, totalPaidRent, totalExpenses, netIncome }: { selectedProperty: Property | undefined, selectedYear: number, expenses: Expense[], isLoadingExpenses: boolean, totalPaidRent: number, totalExpenses: number, netIncome: number }) {
+function AnnualSummary({ selectedYear, expenses, isLoadingExpenses }: { selectedYear: number, expenses: Expense[], isLoadingExpenses: boolean }) {
   const expensesByCategory = useMemo(() => {
     const map: Record<string, number> = {};
     expenses.forEach(e => { map[e.expenseType] = (map[e.expenseType] || 0) + Number(e.amount); });
@@ -485,51 +411,30 @@ function AnnualSummary({ selectedProperty, selectedYear, expenses, isLoadingExpe
   }, [expenses]);
 
   return (
-    <div className="space-y-6 mt-6">
-        <div className="grid gap-6 lg:grid-cols-5">
-            <Card className="lg:col-span-3">
-                <CardHeader className="bg-muted/20 border-b"><CardTitle className="text-base font-bold">Expense Breakdown</CardTitle></CardHeader>
-                <CardContent className="pt-6">
-                    {isLoadingExpenses ? (<div className="flex h-48 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>) : expensesByCategory.length === 0 ? (<p className="py-16 text-center text-muted-foreground italic">No records found for this year.</p>) : (
-                        <Table><TableHeader className="bg-muted/50"><TableRow><TableHead>Category</TableHead><TableHead className="text-right">Total</TableHead></TableRow></TableHeader>
-                        <TableBody>{expensesByCategory.map(([name, amount]) => (<TableRow key={name}><TableCell className="font-semibold">{name}</TableCell><TableCell className="text-right font-bold">{formatCurrency(amount)}</TableCell></TableRow>))}</TableBody></Table>
-                    )}
-                </CardContent>
-            </Card>
-        </div>
-    </div>
+    <Card className="mt-6 border-none shadow-lg overflow-hidden">
+        <CardHeader className="bg-primary/5 border-b border-primary/10">
+            <CardTitle className="text-lg">Tax Year Summary: {selectedYear}</CardTitle>
+            <CardDescription>Aggregated outgoings for self-assessment reporting.</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6">
+            {isLoadingExpenses ? (<div className="flex h-48 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>) : expensesByCategory.length === 0 ? (<p className="py-16 text-center text-muted-foreground italic">No expense data found for this period.</p>) : (
+                <Table>
+                    <TableHeader className="bg-muted/50">
+                        <TableRow><TableHead className="font-bold text-[10px] uppercase tracking-wider">Category</TableHead><TableHead className="text-right font-bold text-[10px] uppercase tracking-wider pr-6">Total Outgoing</TableHead></TableRow>
+                    </TableHeader>
+                    <TableBody>{expensesByCategory.map(([name, amount]) => (<TableRow key={name} className="hover:bg-muted/30 transition-colors"><TableCell className="font-bold">{name}</TableCell><TableCell className="text-right font-bold pr-6">{formatCurrency(amount)}</TableCell></TableRow>))}</TableBody>
+                </Table>
+            )}
+        </CardContent>
+    </Card>
   );
-}
-
-function InvestmentAnalytics({ properties, selectedPropertyId, allExpenses }: { properties: Property[], selectedPropertyId: string, allExpenses: Expense[] }) {
-    const analysisProperties = useMemo(() => (selectedPropertyId === 'all' ? properties : properties.filter(p => p.id === selectedPropertyId)), [properties, selectedPropertyId]);
-    if (analysisProperties.length === 0) return <Card className="mt-6"><CardContent className="p-10 text-center text-muted-foreground">No properties available for analysis.</CardContent></Card>;
-    return (
-        <div className="grid gap-6 mt-6 md:grid-cols-2 lg:grid-cols-3">
-            {analysisProperties.map(prop => {
-                const annualRent = (prop.tenancy?.monthlyRent || 0) * 12;
-                const purchasePrice = prop.purchasePrice || 0;
-                const grossYield = purchasePrice > 0 ? (annualRent / purchasePrice) * 100 : 0;
-                return (
-                    <Card key={prop.id}>
-                        <CardHeader className="bg-muted/30">
-                            <CardTitle className="text-sm truncate">{prop.address.street}</CardTitle>
-                        </CardHeader>
-                        <CardContent className="pt-6">
-                            <p className="text-[10px] font-bold uppercase text-muted-foreground">Gross Yield</p>
-                            <p className="text-2xl font-bold text-primary">{grossYield.toFixed(2)}%</p>
-                        </CardContent>
-                    </Card>
-                );
-            })}
-        </div>
-    );
 }
 
 function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoadingPayments }: { selectedProperty: Property | undefined, selectedYear: number, rentPayments: RentPayment[] | null, isLoadingPayments: boolean }) {
   const { user } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
+  
   const statement = useMemo(() => {
     const defaultRent = selectedProperty?.tenancy?.monthlyRent || 0;
     const paymentsMap = rentPayments?.reduce((acc, p) => { acc[p.month] = p; return acc; }, {} as Record<string, RentPayment>);
@@ -538,22 +443,47 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
 
   const handleStatusChange = (month: string, status: PaymentStatus) => {
     if (!firestore || !user || !selectedProperty) return;
-    const rentPaymentRef = doc(firestore, 'properties', selectedProperty.id, 'rentPayments', `${selectedYear}-${month}`);
+    const rentPaymentRef = doc(firestore, 'userProfiles', user.uid, 'properties', selectedProperty.id, 'rentPayments', `${selectedYear}-${month}`);
     const expectedAmount = statement.find(s => s.month === month)?.rent ?? 0;
     setDoc(rentPaymentRef, { ownerId: user.uid, propertyId: selectedProperty.id, year: selectedYear, month, status, expectedAmount, amountPaid: status === 'Paid' ? expectedAmount : 0 }, { merge: true }).then(() => {
-        toast({ title: 'Record Updated' });
-        router.refresh();
+        toast({ title: 'Ledger Updated' });
     });
   };
 
-  if (!selectedProperty) return <Card className="mt-6 border-dashed"><CardContent className='py-16 text-center text-muted-foreground'>Select property to view ledger.</CardContent></Card>;
+  if (!selectedProperty) return <Card className="mt-6 border-dashed bg-muted/5"><CardContent className='py-24 text-center'><div className="bg-background p-4 rounded-full w-fit mx-auto shadow-sm mb-4"><PoundSterling className="h-10 w-10 text-muted-foreground opacity-20" /></div><p className="text-muted-foreground font-medium">Select a specific property to view its rent ledger.</p></CardContent></Card>;
 
   return (
-    <Card className="mt-6"><CardHeader className="border-b bg-muted/20"><CardTitle className="text-lg">Portfolio Ledger</CardTitle></CardHeader>
-    <CardContent className='pt-6'>{isLoadingPayments ? <Loader2 className="mx-auto h-6 w-6 animate-spin" /> : (
-        <Table><TableHeader className="bg-muted/30"><TableRow><TableHead>Month</TableHead><TableHead>Monthly Rent</TableHead><TableHead>Status</TableHead></TableRow></TableHeader>
-        <TableBody>{statement.map((row) => (<TableRow key={row.month}><TableCell className="font-bold">{row.month}</TableCell><TableCell>{formatCurrency(row.rent)}</TableCell>
-            <TableCell><Select value={row.status} onValueChange={(v) => handleStatusChange(row.month, v as PaymentStatus)}><SelectTrigger className="w-[160px] h-9 text-xs"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Paid">Paid</SelectItem><SelectItem value="Partially Paid">Partially Paid</SelectItem><SelectItem value="Unpaid">Unpaid</SelectItem><SelectItem value="Pending">Pending</SelectItem></SelectContent></Select></TableCell></TableRow>))}</TableBody></Table>
-    )}</CardContent></Card>
+    <Card className="mt-6 border-none shadow-lg overflow-hidden">
+        <CardHeader className="bg-primary/5 border-b border-primary/10">
+            <CardTitle className="text-lg">Rent Ledger: {selectedYear}</CardTitle>
+            <CardDescription>Track collection status month-by-month.</CardDescription>
+        </CardHeader>
+        <CardContent className='p-0'>{isLoadingPayments ? <div className="p-20 flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : (
+            <Table>
+                <TableHeader className="bg-muted/50">
+                    <TableRow><TableHead className="pl-6 font-bold text-[10px] uppercase tracking-wider">Month</TableHead><TableHead className="font-bold text-[10px] uppercase tracking-wider">Expected Rent</TableHead><TableHead className="font-bold text-[10px] uppercase tracking-wider pr-6">Payment Status</TableHead></TableRow>
+                </TableHeader>
+                <TableBody>
+                    {statement.map((row) => (
+                        <TableRow key={row.month} className="hover:bg-muted/30 transition-colors">
+                            <TableCell className="font-bold pl-6">{row.month}</TableCell>
+                            <TableCell className="font-medium">{formatCurrency(row.rent)}</TableCell>
+                            <TableCell className="pr-6">
+                                <Select value={row.status} onValueChange={(v) => handleStatusChange(row.month, v as PaymentStatus)}>
+                                    <SelectTrigger className="w-[160px] h-9 text-xs font-bold shadow-none"><SelectValue /></SelectTrigger>
+                                    <SelectContent>
+                                        <SelectItem value="Paid">Paid</SelectItem>
+                                        <SelectItem value="Partially Paid">Partially Paid</SelectItem>
+                                        <SelectItem value="Unpaid">Unpaid</SelectItem>
+                                        <SelectItem value="Pending">Pending</SelectItem>
+                                    </SelectContent>
+                                </Select>
+                            </TableCell>
+                        </TableRow>
+                    ))}
+                </TableBody>
+            </Table>
+        )}</CardContent>
+    </Card>
   );
 }

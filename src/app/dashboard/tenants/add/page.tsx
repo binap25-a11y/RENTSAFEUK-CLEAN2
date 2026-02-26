@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -112,27 +111,25 @@ export default function AddTenantPage() {
     },
   });
 
-  // Set default date after mount to avoid hydration mismatch
   useEffect(() => {
     form.setValue('tenancyStartDate', new Date());
   }, [form]);
 
-  // Fetch properties for the dropdown if no specific property is pre-selected
+  // Fetch properties - strictly hierarchical
   const propertiesQuery = useMemoFirebase(() => {
-    if (!user || propertyIdFromUrl) return null; // Only fetch if we need the dropdown
+    if (!user || !firestore) return null;
     return query(
-      collection(firestore, 'properties'),
+      collection(firestore, 'userProfiles', user.uid, 'properties'),
       where('ownerId', '==', user.uid),
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
     );
-  }, [firestore, user, propertyIdFromUrl]);
+  }, [firestore, user]);
   const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
   
-  // Fetch the specific property if an ID is in the URL
   const propertyRef = useMemoFirebase(() => {
-    if (!firestore || !propertyIdFromUrl) return null;
-    return doc(firestore, 'properties', propertyIdFromUrl);
-  }, [firestore, propertyIdFromUrl]);
+    if (!firestore || !user || !propertyIdFromUrl) return null;
+    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyIdFromUrl);
+  }, [firestore, user, propertyIdFromUrl]);
   const { data: selectedProperty, isLoading: isLoadingSelectedProperty } = useDoc<Property>(propertyRef);
   
   useEffect(() => {
@@ -143,64 +140,37 @@ export default function AddTenantPage() {
 
 
   async function onSubmit(data: TenantFormValues) {
-    if (!user || !firestore) {
-      toast({
-        variant: 'destructive',
-        title: 'Authentication Error',
-        description: 'You must be logged in to add a tenant.',
-      });
-      return;
-    }
-
+    if (!user || !firestore) return;
     setIsSubmitting(true);
 
     try {
-        // DUPLICATE CHECK: Verify email uniqueness for this landlord
-        const emailCheckQuery = query(
-            collection(firestore, 'tenants'),
-            where('ownerId', '==', user.uid),
-            where('email', '==', data.email.toLowerCase()),
-            where('status', '==', 'Active'),
-            limit(1)
-        );
-        const emailCheckSnap = await getDocs(emailCheckQuery);
-        
-        if (!emailCheckSnap.empty) {
-            toast({
-                variant: 'destructive',
-                title: 'Duplicate Tenant',
-                description: `A tenant with email ${data.email} already exists in your active records.`,
-            });
-            setIsSubmitting(false);
-            return;
-        }
-
-        const tenantsCollection = collection(firestore, 'tenants');
+        const tenantsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', data.propertyId, 'tenants');
         const newTenant = {
             ...data,
             email: data.email.toLowerCase(),
             ownerId: user.uid,
             status: 'Active',
+            createdDate: new Date().toISOString(),
         };
 
         const cleanedTenantData = JSON.parse(JSON.stringify(newTenant));
-
         await addDoc(tenantsCollection, cleanedTenantData);
         
-        // After successfully adding tenant, update property status
-        const propertyDocRef = doc(firestore, 'properties', data.propertyId);
+        // Update property status
+        const propertyDocRef = doc(firestore, 'userProfiles', user.uid, 'properties', data.propertyId);
         await updateDoc(propertyDocRef, { status: 'Occupied' });
         
         toast({
           title: 'Tenant Assigned',
-          description: `${data.name} has been assigned to the property.`,
+          description: `${data.name} has been assigned successfully.`,
         });
         router.push(`/dashboard/properties/${data.propertyId}`);
-    } catch (serverError: any) {
+    } catch (error: any) {
+        console.error("Save failed:", error);
         toast({
           variant: 'destructive',
           title: 'Save Failed',
-          description: 'Could not save tenant. Please try again.',
+          description: 'Permission denied or data error. Check property hierarchy.',
         });
     } finally {
         setIsSubmitting(false);
@@ -212,25 +182,21 @@ export default function AddTenantPage() {
   };
 
   return (
-    <Card className="max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle>Add New Tenant</CardTitle>
+    <Card className="max-w-2xl mx-auto shadow-lg border-none">
+      <CardHeader className="bg-primary/5 border-b border-primary/10">
+        <CardTitle className="text-2xl font-headline text-primary">Assign New Tenant</CardTitle>
         <CardDescription>
-          Fill in the details below to add a new tenant and assign them to a property.
+          Record tenant identity and tenancy terms for your property records.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-6">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {propertyIdFromUrl ? (
+            {propertyIdFromUrl && selectedProperty ? (
                 <div className="space-y-2">
-                    <FormLabel>Assign to Property</FormLabel>
-                    <div className="flex items-center justify-between rounded-md border p-3 bg-muted min-h-[40px]">
-                        {isLoadingSelectedProperty ? (
-                        <Loader2 className="h-4 w-4 animate-spin" />
-                        ) : (
-                        <p className="font-medium text-sm">{selectedProperty ? formatAddress(selectedProperty.address) : 'Property not found'}</p>
-                        )}
+                    <FormLabel className="font-bold">Target Property</FormLabel>
+                    <div className="flex items-center justify-between rounded-md border-2 border-primary/20 p-4 bg-primary/5 min-h-[40px]">
+                        <p className="font-bold text-primary">{formatAddress(selectedProperty.address)}</p>
                     </div>
                 </div>
             ) : (
@@ -239,11 +205,11 @@ export default function AddTenantPage() {
                 name="propertyId"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Assign to Property</FormLabel>
+                    <FormLabel className="font-bold">Select Portfolio Property</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                        <SelectTrigger>
-                            <SelectValue placeholder={isLoadingProperties ? "Loading..." : "Select a property"} />
+                        <SelectTrigger className="h-11">
+                            <SelectValue placeholder={isLoadingProperties ? "Loading portfolio..." : "Choose property"} />
                         </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -265,9 +231,9 @@ export default function AddTenantPage() {
               name="name"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Full Name</FormLabel>
+                  <FormLabel className="font-bold">Full Legal Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="e.g. John Smith" {...field} />
+                    <Input placeholder="John Smith" className="h-11" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -280,9 +246,9 @@ export default function AddTenantPage() {
                 name="email"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Email Address</FormLabel>
+                    <FormLabel className="font-bold">Email Address</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="email@example.com" {...field} />
+                      <Input type="email" placeholder="john@example.com" className="h-11" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -293,9 +259,9 @@ export default function AddTenantPage() {
                 name="telephone"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Telephone (UK format)</FormLabel>
+                    <FormLabel className="font-bold">Telephone</FormLabel>
                     <FormControl>
-                      <Input type="tel" placeholder="07123 456789" {...field} />
+                      <Input type="tel" placeholder="07123 456789" className="h-11" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -303,15 +269,15 @@ export default function AddTenantPage() {
               />
             </div>
 
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t pt-6">
                 <FormField
                     control={form.control}
                     name="monthlyRent"
                     render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Monthly Rent (£)</FormLabel>
+                        <FormLabel className="font-bold">Agreed Monthly Rent (£)</FormLabel>
                         <FormControl>
-                            <Input type="number" placeholder="0.00" {...field} value={field.value ?? ''} />
+                            <Input type="number" placeholder="0.00" className="h-11" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -325,10 +291,11 @@ export default function AddTenantPage() {
                 name="tenancyStartDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tenancy Start Date</FormLabel>
+                    <FormLabel className="font-bold">Tenancy Start</FormLabel>
                     <FormControl>
                         <Input
                             type="date"
+                            className="h-11"
                             value={formatDateForInput(field.value)}
                             onChange={(e) => field.onChange(e.target.value)}
                         />
@@ -342,10 +309,11 @@ export default function AddTenantPage() {
                 name="tenancyEndDate"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Tenancy End Date (Optional)</FormLabel>
+                    <FormLabel className="font-bold">Tenancy End (Optional)</FormLabel>
                     <FormControl>
                         <Input
                             type="date"
+                            className="h-11"
                             value={formatDateForInput(field.value)}
                             onChange={(e) => field.onChange(e.target.value)}
                         />
@@ -361,12 +329,11 @@ export default function AddTenantPage() {
               name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Notes (Optional)</FormLabel>
+                  <FormLabel className="font-bold">Management Notes</FormLabel>
                   <FormControl>
                     <Textarea
-                      placeholder="Add tenancy notes..."
-                      className="resize-none"
-                      rows={4}
+                      placeholder="Special requirements, pets allowed, reference notes..."
+                      className="resize-none min-h-[100px] rounded-xl"
                       {...field}
                     />
                   </FormControl>
@@ -375,19 +342,12 @@ export default function AddTenantPage() {
               )}
             />
 
-            <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" asChild>
+            <div className="flex items-center justify-end gap-3 pt-4 border-t">
+                <Button type="button" variant="ghost" asChild className="font-bold uppercase tracking-widest text-xs h-11">
                     <Link href={propertyIdFromUrl ? `/dashboard/properties/${propertyIdFromUrl}` : '/dashboard/tenants'}>Cancel</Link>
                 </Button>
-                <Button type="submit" disabled={isSubmitting}>
-                  {isSubmitting ? (
-                    <>
-                      <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
-                    </>
-                  ) : (
-                    'Save Tenant'
-                  )}
+                <Button type="submit" disabled={isSubmitting} className="font-bold uppercase tracking-widest text-xs h-11 px-10 shadow-lg">
+                  {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : 'Confirm Assignment'}
                 </Button>
             </div>
           </form>
