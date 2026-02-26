@@ -7,8 +7,8 @@ import { getFirestore, Firestore } from 'firebase/firestore';
 import { getStorage, FirebaseStorage } from 'firebase/storage';
 
 /**
- * Initializes Firebase app and returns singleton instances of Auth, Firestore, and Storage.
- * Designed to be safe with Next.js hot reload / SSR.
+ * Robust Firebase initialization for Next.js environments.
+ * Ensures services are only initialized once.
  */
 export function initializeFirebase() {
   const firebaseApp: FirebaseApp =
@@ -18,12 +18,12 @@ export function initializeFirebase() {
 }
 
 /**
- * Returns initialized Firebase services.
+ * Returns initialized Firebase client-side services.
  */
 export function getSdks(firebaseApp: FirebaseApp) {
   const auth: Auth = getAuth(firebaseApp);
   const firestore: Firestore = getFirestore(firebaseApp);
-  const storage: FirebaseStorage = getStorage(firebaseApp, firebaseConfig.storageBucket);
+  const storage: FirebaseStorage = getStorage(firebaseApp);
 
   return { firebaseApp, auth, firestore, storage };
 }
