@@ -101,24 +101,17 @@ export default function DocumentsPage() {
         if (!user || !firestore) return null;
         return query(
             collection(firestore, 'userProfiles', user.uid, 'properties'),
-            where('ownerId', '==', user.uid),
+            where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance']),
             limit(500)
         );
     }, [firestore, user]);
-    const { data: allProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
+    const { data: activeProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
     
-    // Filter active properties in-memory
-    const activeProperties = useMemo(() => {
-        const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
-        return allProperties?.filter(p => activeStatuses.includes(p.status || '')) ?? [];
-    }, [allProperties]);
-
     // Fetch documents for the selected property
     const documentsQuery = useMemoFirebase(() => {
         if (!user || !firestore || !selectedPropertyId) return null;
         return query(
           collection(firestore, 'userProfiles', user.uid, 'properties', selectedPropertyId, 'documents'),
-          where('ownerId', '==', user.uid),
           limit(500)
         );
     }, [firestore, user, selectedPropertyId]);
@@ -210,7 +203,7 @@ export default function DocumentsPage() {
                         <SelectValue placeholder={isLoadingProperties ? 'Loading portfolio...' : 'Select a property to view documents'} />
                     </SelectTrigger>
                     <SelectContent>
-                        {activeProperties.map(prop => (
+                        {activeProperties?.map(prop => (
                             <SelectItem key={prop.id} value={prop.id}>
                                 {[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}
                             </SelectItem>

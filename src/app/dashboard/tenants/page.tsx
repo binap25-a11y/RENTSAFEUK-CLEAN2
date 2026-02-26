@@ -41,7 +41,7 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, doc, updateDoc, collectionGroup, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { useMemo, useState, useEffect } from 'react';
 import { Input } from '@/components/ui/input';
@@ -92,7 +92,6 @@ export default function TenantsPage() {
     if(!user || !firestore) return null;
     return query(
         collection(firestore, 'userProfiles', user.uid, 'properties'),
-        where('ownerId', '==', user.uid),
         where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
     );
   }, [firestore, user]);
@@ -115,10 +114,7 @@ export default function TenantsPage() {
     };
 
     properties.forEach(p => {
-        const q = query(
-            collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'tenants'),
-            where('ownerId', '==', user.uid)
-        );
+        const q = collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'tenants');
         unsubs.push(onSnapshot(q, (snap) => {
             tenantsMap[p.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Tenant));
             updateState();

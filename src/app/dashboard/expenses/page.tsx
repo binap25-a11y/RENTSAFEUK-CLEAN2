@@ -149,24 +149,19 @@ export default function FinancialsPage() {
 
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    return query(collection(firestore, 'userProfiles', user.uid, 'properties'), where('ownerId', '==', user.uid), limit(500));
+    return query(collection(firestore, 'userProfiles', user.uid, 'properties'), where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance']), limit(500));
   }, [firestore, user]);
 
-  const { data: allProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
+  const { data: activeProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
   
-  const activeProperties = useMemo(() => {
-    const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
-    return allProperties?.filter(p => activeStatuses.includes(p.status || '')) ?? [];
-  }, [allProperties]);
-
   const selectedProperty = useMemo(() => {
     if (selectedPropertyId === 'all') return undefined;
-    return allProperties?.find(p => p.id === selectedPropertyId);
-  }, [allProperties, selectedPropertyId]);
+    return activeProperties?.find(p => p.id === selectedPropertyId);
+  }, [activeProperties, selectedPropertyId]);
 
   // Aggregated Listeners
   useEffect(() => {
-    if (!user || activeProperties.length === 0 || selectedPropertyId !== 'all' || !selectedYear || !firestore) {
+    if (!user || !activeProperties || activeProperties.length === 0 || selectedPropertyId !== 'all' || !selectedYear || !firestore) {
         setPortfolioExpenses([]);
         setPortfolioRentPayments([]);
         return;
@@ -184,16 +179,14 @@ export default function FinancialsPage() {
     };
 
     activeProperties.forEach(p => {
-        const ownerFilter = where('ownerId', '==', user.uid);
-        
         // Listen to Expenses
-        unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'expenses'), ownerFilter), (snap) => {
+        unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'expenses'), (snap) => {
             expensesMap[p.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Expense));
             updateState();
         }));
 
         // Listen to Rent Payments
-        unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'rentPayments'), ownerFilter, where('year', '==', selectedYear)), (snap) => {
+        unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'rentPayments'), where('year', '==', selectedYear)), (snap) => {
             rentMap[p.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as RentPayment));
             updateState();
         }));
@@ -216,7 +209,7 @@ export default function FinancialsPage() {
   }, [portfolioRentPayments, selectedPropertyId]);
 
   const portfolioIncome = useMemo(() => {
-    return activeProperties.reduce((total, prop) => (total + (Number(prop.tenancy?.monthlyRent || 0) * 12)), 0);
+    return activeProperties?.reduce((total, prop) => (total + (Number(prop.tenancy?.monthlyRent || 0) * 12)), 0) || 0;
   }, [activeProperties]);
 
   const totalPaidRent = useMemo(() => rentPayments.reduce((acc, p) => acc + Number(p.amountPaid || 0), 0), [rentPayments]);
@@ -277,7 +270,7 @@ export default function FinancialsPage() {
                     <SelectTrigger id="property-filter" className="h-12"><SelectValue placeholder="All Properties" /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Properties (Portfolio View)</SelectItem>
-                        {activeProperties.map((prop) => (<SelectItem key={prop.id} value={prop.id}>{[prop.address.street, prop.address.city].filter(Boolean).join(', ')}</SelectItem>))}
+                        {activeProperties?.map((prop) => (<SelectItem key={prop.id} value={prop.id}>{[prop.address.street, prop.address.city].filter(Boolean).join(', ')}</SelectItem>))}
                     </SelectContent>
                 </Select>
             </div>
@@ -300,7 +293,7 @@ export default function FinancialsPage() {
         <Tabs defaultValue="expenses" className="pt-4">
             <TabsList className="bg-muted/50 p-1 h-auto"><TabsTrigger value="expenses">Tracker</TabsTrigger><TabsTrigger value="summary">Tax Summary</TabsTrigger><TabsTrigger value="statement">Rent Ledger</TabsTrigger></TabsList>
             <TabsContent value="expenses">
-                <ExpenseTracker properties={activeProperties} selectedPropertyId={selectedPropertyId} isLoadingProperties={isLoadingProperties} />
+                <ExpenseTracker properties={activeProperties || []} selectedPropertyId={selectedPropertyId} />
             </TabsContent>
             <TabsContent value="summary">
                 <div className="flex justify-end gap-2 mb-4 pt-4"><Button onClick={generateHMRCPDF} size="sm" variant="outline" className="font-bold text-xs uppercase tracking-widest"><Receipt className="mr-2 h-4 w-4" /> HMRC Tax Export (PDF)</Button></div>
@@ -314,7 +307,7 @@ export default function FinancialsPage() {
   );
 }
 
-function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }: { properties: Property[], selectedPropertyId: string, isLoadingProperties: boolean }) {
+function ExpenseTracker({ properties, selectedPropertyId }: { properties: Property[], selectedPropertyId: string }) {
   const { user } = useUser();
   const firestore = useFirestore();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -380,7 +373,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }:
                     <FormItem><FormLabel className="font-bold">Date</FormLabel><FormControl><Input type="date" className="h-11" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="expenseType" render={({ field }) => (
-                    <FormItem><FormLabel className="font-bold">Category</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl><SelectContent>{['Repairs and Maintenance','Utilities','Insurance','Mortgage Interest','Cleaning','Gardening','Letting Agent Fees', 'Other'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>
+                    <FormItem><FormLabel className="font-bold">Category</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl><SelectContent>{['Repairs and Maintenance','Utilities','Insurance','Mortgage Interest','Cleaning','Gardening','Letting Agent Fees', 'Other'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</Select><FormMessage /></FormItem>
                 )} />
               </div>
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -392,7 +385,7 @@ function ExpenseTracker({ properties, selectedPropertyId, isLoadingProperties }:
               <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel className="font-bold">Audit Notes</FormLabel><FormControl><Textarea placeholder="Details for tax records..." className="rounded-xl min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>)} />
               <div className="flex justify-end gap-2 pt-4">
                 <Button asChild type="button" variant="outline" className="font-bold h-11"><Link href="/dashboard/expenses/logged"><History className="mr-2 h-4 w-4" /> View History</Link></Button>
-                <Button type="submit" disabled={isSubmitting} className="font-bold h-11 px-10 shadow-md">
+                <Button type="submit" disabled={isSubmitting} className="font-bold h-11 px-12 shadow-md">
                     {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Log Expense'}
                 </Button>
               </div>
@@ -433,7 +426,6 @@ function AnnualSummary({ selectedYear, expenses, isLoadingExpenses }: { selected
 function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoadingPayments }: { selectedProperty: Property | undefined, selectedYear: number, rentPayments: RentPayment[] | null, isLoadingPayments: boolean }) {
   const { user } = useUser();
   const firestore = useFirestore();
-  const router = useRouter();
   
   const statement = useMemo(() => {
     const defaultRent = selectedProperty?.tenancy?.monthlyRent || 0;

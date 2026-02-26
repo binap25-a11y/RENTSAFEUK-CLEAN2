@@ -90,7 +90,7 @@ export default function RemindersPage() {
 
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    return query(collection(firestore, 'userProfiles', user.uid, 'properties'), where('ownerId', '==', user.uid));
+    return query(collection(firestore, 'userProfiles', user.uid, 'properties'), where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance']));
   }, [firestore, user]);
   const { data: properties, isLoading: isLoadingProps } = useCollection<Property>(propertiesQuery);
 
@@ -117,12 +117,13 @@ export default function RemindersPage() {
     };
 
     properties.forEach(prop => {
-        const ownerFilter = where('ownerId', '==', user.uid);
-        unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'documents'), ownerFilter), (snap) => {
+        // Listen to Documents
+        unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'documents'), (snap) => {
             docMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Document));
             updateState();
         }));
-        unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'inspections'), ownerFilter), (snap) => {
+        // Listen to Inspections
+        unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'inspections'), (snap) => {
             inspMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Inspection));
             updateState();
         }));
@@ -147,7 +148,7 @@ export default function RemindersPage() {
           return { ...doc, expiryDate: expiry, status: getDocumentStatus(expiry, today) };
         })
         .filter((doc): doc is NonNullable<typeof doc> => doc !== null && doc.status !== 'Valid')
-        .map((doc) => ({ id: `doc-${doc.id}`, type: 'Compliance', description: doc.title, category: doc.documentType, property: propertyMap[doc.propertyId] || 'Unknown', dueDate: doc.expiryDate, status: doc.status, href: '/dashboard/documents' }));
+        .map((doc) => ({ id: `doc-${doc.id}`, type: 'Compliance', description: doc.title, category: doc.documentType, property: propertyMap[doc.propertyId] || 'Unknown', dueDate: doc.expiryDate, status: doc.status, href: `/dashboard/documents?propertyId=${doc.propertyId}` }));
 
     const inspectionReminders = allInspections
         .map((insp) => {

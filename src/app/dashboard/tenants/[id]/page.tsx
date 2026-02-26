@@ -1,12 +1,11 @@
-
 'use client';
 
-import { useParams, notFound, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, User, Mail, Phone, Edit, Trash2, Home, Loader2, MoreVertical, UserPlus, Eye, FileCheck, MapPin } from 'lucide-react';
+import { ArrowLeft, User, Mail, Phone, Edit, Trash2, Home, Loader2, MoreVertical, UserPlus, Eye, FileCheck, MapPin, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
 import { doc, collection, query, updateDoc, where, collectionGroup } from 'firebase/firestore';
@@ -70,8 +69,7 @@ export default function TenantDetailPage() {
   
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  // construction of the hierarchical path requires propertyId.
-  // We prefer the propertyId from the URL for absolute reliability.
+  // Directly fetch using the propertyId if available in URL
   const directTenantRef = useMemoFirebase(() => {
     if (!firestore || !id || !urlPropertyId || !user) return null;
     return doc(firestore, 'userProfiles', user.uid, 'properties', urlPropertyId, 'tenants', id);
@@ -79,13 +77,12 @@ export default function TenantDetailPage() {
   
   const { data: directTenant, isLoading: isLoadingDirect } = useDoc<Tenant>(directTenantRef);
 
-  // collectionGroup fallback is only for safety if URL is broken
+  // Fallback: Search globally across all property sub-collections if propertyId is missing
   const tenantSearchQuery = useMemoFirebase(() => {
     if (!firestore || !id || !user || urlPropertyId) return null;
     return query(
       collectionGroup(firestore, 'tenants'),
-      where('ownerId', '==', user.uid),
-      where('name', '>', '') // Dummy filter to allow listing
+      where('ownerId', '==', user.uid)
     );
   }, [firestore, id, user, urlPropertyId]);
   
@@ -93,7 +90,6 @@ export default function TenantDetailPage() {
 
   const tenant = useMemo(() => {
       if (directTenant) return directTenant;
-      // manual search in group results if direct ref was null
       return searchResults?.find(t => t.id === id) || null;
   }, [directTenant, searchResults, id]);
 
@@ -107,10 +103,7 @@ export default function TenantDetailPage() {
   
   const screeningsQuery = useMemoFirebase(() => {
     if (!firestore || !tenant || !user) return null;
-    return query(
-      collection(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId, 'tenants', tenant.id, 'screenings'),
-      where('ownerId', '==', user.uid)
-    );
+    return collection(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId, 'tenants', tenant.id, 'screenings');
   }, [firestore, tenant, user]);
   const { data: screenings } = useCollection<TenantScreening>(screeningsQuery);
   
@@ -126,8 +119,31 @@ export default function TenantDetailPage() {
       });
   };
 
-  if (isLoadingTenant) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
-  if (!tenant && !isLoadingTenant) return notFound();
+  if (isLoadingTenant) {
+    return (
+      <div className="flex h-64 flex-col items-center justify-center gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground animate-pulse">Resolving secure path...</p>
+      </div>
+    );
+  }
+
+  if (!tenant) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 gap-6">
+        <div className="bg-muted p-6 rounded-full">
+          <AlertCircle className="h-12 w-12 text-muted-foreground opacity-20" />
+        </div>
+        <div className="text-center space-y-2">
+          <h2 className="text-xl font-bold">Tenant Record Not Found</h2>
+          <p className="text-muted-foreground max-w-xs mx-auto">This record may have been deleted, or you might be accessing a link without the required property context.</p>
+        </div>
+        <Button asChild variant="outline">
+          <Link href="/dashboard/tenants">Return to Tenants List</Link>
+        </Button>
+      </div>
+    );
+  }
 
   const formatAddress = (address: Property['address'] | undefined) => {
     if (!address) return 'N/A';
@@ -144,13 +160,13 @@ export default function TenantDetailPage() {
                     <Link href="/dashboard/tenants"><ArrowLeft className="h-4 w-4" /></Link>
                 </Button>
                 <div>
-                    <h1 className="text-2xl font-bold font-headline leading-tight break-words">{tenant?.name}</h1>
+                    <h1 className="text-2xl font-bold font-headline leading-tight break-words">{tenant.name}</h1>
                     <p className="text-sm text-muted-foreground">Tenant Profile</p>
                 </div>
             </div>
             <div className="flex items-center gap-2">
                 <Button variant="outline" asChild className="hidden sm:inline-flex">
-                    <Link href={`/dashboard/tenants/${id}/edit?propertyId=${tenant?.propertyId}`}>
+                    <Link href={`/dashboard/tenants/${id}/edit?propertyId=${tenant.propertyId}`}>
                         <Edit className="mr-2 h-4 w-4" /> Edit Profile
                     </Link>
                 </Button>
@@ -162,7 +178,7 @@ export default function TenantDetailPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         <DropdownMenuItem asChild className="sm:hidden">
-                            <Link href={`/dashboard/tenants/${id}/edit?propertyId=${tenant?.propertyId}`}>
+                            <Link href={`/dashboard/tenants/${id}/edit?propertyId=${tenant.propertyId}`}>
                                 <Edit className="mr-2 h-4 w-4" /> Edit Profile
                             </Link>
                         </DropdownMenuItem>
@@ -187,7 +203,7 @@ export default function TenantDetailPage() {
                         </div>
                         <div className="min-w-0">
                             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Full Name</p>
-                            <p className="font-semibold text-foreground break-words">{tenant?.name}</p>
+                            <p className="font-semibold text-foreground break-words">{tenant.name}</p>
                         </div>
                     </div>
                     <div className="flex items-start gap-4">
@@ -196,8 +212,8 @@ export default function TenantDetailPage() {
                         </div>
                         <div className="min-w-0 overflow-hidden">
                             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Email</p>
-                            <a href={`mailto:${tenant?.email}`} className="font-semibold text-primary hover:underline break-all block">
-                                {tenant?.email}
+                            <a href={`mailto:${tenant.email}`} className="font-semibold text-primary hover:underline break-all block">
+                                {tenant.email}
                             </a>
                         </div>
                     </div>
@@ -207,7 +223,7 @@ export default function TenantDetailPage() {
                         </div>
                         <div className="min-w-0">
                             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Telephone</p>
-                            <p className="font-semibold text-foreground break-words">{tenant?.telephone}</p>
+                            <p className="font-semibold text-foreground break-words">{tenant.telephone}</p>
                         </div>
                     </div>
                 </CardContent>
@@ -225,14 +241,14 @@ export default function TenantDetailPage() {
                                 <MapPin className="h-5 w-5 text-muted-foreground" />
                             </div>
                             <div className="min-w-0 flex-1">
-                                <Link href={`/dashboard/properties/${tenant?.propertyId}`} className="text-lg font-bold text-primary hover:underline leading-tight block whitespace-normal">
+                                <Link href={`/dashboard/properties/${tenant.propertyId}`} className="text-lg font-bold text-primary hover:underline leading-tight block whitespace-normal">
                                     {propertyAddress}
                                 </Link>
                                 <div className="flex items-center flex-wrap gap-2 mt-2">
                                     <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider">
-                                        Status: {tenant?.status || 'Active'}
+                                        Status: {tenant.status || 'Active'}
                                     </Badge>
-                                    {tenant?.monthlyRent && (
+                                    {tenant.monthlyRent && (
                                         <Badge variant="secondary" className="text-[10px] uppercase font-bold tracking-wider">
                                             Rent: £{tenant.monthlyRent.toLocaleString()}/mo
                                         </Badge>
@@ -241,7 +257,7 @@ export default function TenantDetailPage() {
                             </div>
                         </div>
                         <Button variant="outline" asChild className="shrink-0 w-full md:w-auto">
-                            <Link href={`/dashboard/properties/${tenant?.propertyId}`}>
+                            <Link href={`/dashboard/properties/${tenant.propertyId}`}>
                                 <Home className="mr-2 h-4 w-4" />
                                 Full Property Profile
                             </Link>
@@ -266,10 +282,10 @@ export default function TenantDetailPage() {
                         <div className="flex flex-col sm:row sm:items-center justify-between p-5 border rounded-xl bg-muted/20 gap-4">
                             <div>
                                 <p className="font-bold text-foreground">Comprehensive Screening Completed</p>
-                                <p className="text-xs text-muted-foreground mt-1 font-medium">Finalized on: {format(safeCreateDate(firstScreening.screeningDate)!, 'PPP')}</p>
+                                <p className="text-xs text-muted-foreground mt-1 font-medium">Finalized on: {safeCreateDate(firstScreening.screeningDate) ? format(safeCreateDate(firstScreening.screeningDate)!, 'PPP') : 'N/A'}</p>
                             </div>
                             <Button asChild variant="outline" className="w-full sm:w-auto">
-                                <Link href={`/dashboard/tenants/${id}/screenings/${firstScreening.id}?propertyId=${tenant?.propertyId}`}>
+                                <Link href={`/dashboard/tenants/${id}/screenings/${firstScreening.id}?propertyId=${tenant.propertyId}`}>
                                     <Eye className="mr-2 h-4 w-4" /> View Report
                                 </Link>
                             </Button>
@@ -278,7 +294,7 @@ export default function TenantDetailPage() {
                         <div className="text-center border-2 border-dashed rounded-xl p-10 bg-muted/5">
                             <p className="text-sm text-muted-foreground mb-6 font-medium">No screening report found for this tenant.</p>
                             <Button asChild className="shadow-md">
-                                <Link href={`/dashboard/tenants/screening?tenantId=${id}&propertyId=${tenant?.propertyId}`}>
+                                <Link href={`/dashboard/tenants/screening?tenantId=${id}&propertyId=${tenant.propertyId}`}>
                                     <UserPlus className="mr-2 h-4 w-4" /> Create Screening Report
                                 </Link>
                             </Button>
@@ -293,7 +309,7 @@ export default function TenantDetailPage() {
                 <AlertDialogHeader>
                     <AlertDialogTitle>Archive this tenant?</AlertDialogTitle>
                     <AlertDialogDescription>
-                        This will move {tenant?.name} to your archived tenants list. You can restore them later from the archives page.
+                        This will move {tenant.name} to your archived tenants list. You can restore them later from the archives page.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter>

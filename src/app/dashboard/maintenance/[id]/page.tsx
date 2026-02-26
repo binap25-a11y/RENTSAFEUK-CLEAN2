@@ -1,12 +1,12 @@
 'use client';
 
-import { useParams, useSearchParams, notFound, useRouter } from 'next/navigation';
+import { useParams, useSearchParams, useRouter } from 'next/navigation';
 import Image from 'next/image';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2, CalendarIcon, User, HardHat, Phone, Tag, AlertTriangle, Home, Building, Banknote, FileText, MoreVertical, Edit, XCircle, Trash2 } from 'lucide-react';
+import { ArrowLeft, Loader2, CalendarIcon, User, HardHat, Phone, Banknote, MoreVertical, Edit, XCircle, Trash2, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
@@ -110,23 +110,44 @@ export default function MaintenanceDetailPage() {
 
   if (isLoadingLog || isLoadingProperty) {
     return (
-      <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+      <div className="flex h-64 flex-col items-center justify-center gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground animate-pulse">Loading maintenance record...</p>
       </div>
     );
   }
 
   if (error || !propertyId) {
-    return <p className='text-destructive'>Error: Could not load maintenance details. {error?.message}</p>
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4 p-6 text-center">
+        <AlertCircle className="h-12 w-12 text-destructive opacity-20" />
+        <h2 className="text-lg font-bold">Failed to Load Maintenance Log</h2>
+        <p className="text-sm text-muted-foreground max-w-xs">There was an error loading the record details. Ensure the URL is correct.</p>
+        <Button asChild variant="outline"><Link href="/dashboard/maintenance/logged">Return to History</Link></Button>
+      </div>
+    );
   }
   
   if (!maintenanceLog) {
-    return notFound();
+    return (
+      <div className="flex flex-col items-center justify-center h-96 gap-6 p-6 text-center">
+        <div className="bg-muted p-6 rounded-full">
+          <Wrench className="h-12 w-12 text-muted-foreground opacity-20" />
+        </div>
+        <div className="text-center space-y-2">
+          <h2 className="text-xl font-bold">Log Record Not Found</h2>
+          <p className="text-muted-foreground max-w-xs mx-auto">This maintenance record may have been deleted, or you might be accessing a link without the required property context.</p>
+        </div>
+        <Button asChild variant="outline">
+          <Link href="/dashboard/maintenance/logged">Return to History</Link>
+        </Button>
+      </div>
+    );
   }
 
   const reportedDate = maintenanceLog.reportedDate ? (maintenanceLog.reportedDate instanceof Date ? maintenanceLog.reportedDate : new Date(maintenanceLog.reportedDate.seconds * 1000)) : null;
   const scheduledDate = maintenanceLog.scheduledDate ? (maintenanceLog.scheduledDate instanceof Date ? maintenanceLog.scheduledDate : new Date(maintenanceLog.scheduledDate.seconds * 1000)) : null;
-  const propertyAddress = property?.address ? [property.address.nameOrNumber, property.address.street, property.address.city, property.address.postcode].filter(Boolean).join(', ') : 'Loading...';
+  const propertyAddress = property?.address ? [property.address.nameOrNumber, property.address.street, property.address.city, property.address.postcode].filter(Boolean).join(', ') : 'Property Context Missing';
 
    const getPriorityVariant = (priority: string) => {
     switch (priority) {

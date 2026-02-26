@@ -1,11 +1,11 @@
 'use client';
 
-import { useParams, notFound, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Loader2, Calendar as CalendarIcon, User, Shield, AlertTriangle, Download } from 'lucide-react';
+import { ArrowLeft, Loader2, Calendar as CalendarIcon, User, Shield, AlertTriangle, Download, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -281,20 +281,45 @@ export default function ViewInspectionPage() {
   const isLoading = isLoadingInspection || isLoadingProperty;
 
   if (isLoading) {
-    return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
+    return (
+      <div className="flex h-64 flex-col items-center justify-center gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground animate-pulse">Loading inspection report...</p>
+      </div>
+    );
   }
 
   if (inspectionError || !propertyId) {
-    return <div className="text-center text-destructive">Error loading inspection: {inspectionError?.message || "Property ID missing."}</div>;
+    return (
+      <div className="flex flex-col items-center justify-center h-64 gap-4 p-6 text-center">
+        <AlertCircle className="h-12 w-12 text-destructive opacity-20" />
+        <h2 className="text-lg font-bold">Failed to Load Inspection</h2>
+        <p className="text-sm text-muted-foreground max-w-xs">There was an error loading the record details. Ensure the URL is correct.</p>
+        <Button asChild variant="outline"><Link href="/dashboard/inspections">Return to Inspections</Link></Button>
+      </div>
+    );
   }
 
   if (!inspection) {
-    return notFound();
+    return (
+      <div className="flex flex-col items-center justify-center h-96 gap-6 p-6 text-center">
+        <div className="bg-muted p-6 rounded-full">
+          <CalendarIcon className="h-12 w-12 text-muted-foreground opacity-20" />
+        </div>
+        <div className="text-center space-y-2">
+          <h2 className="text-xl font-bold">Inspection Report Not Found</h2>
+          <p className="text-muted-foreground max-w-xs mx-auto">This inspection record may have been deleted, or you might be accessing a link without the required property context.</p>
+        </div>
+        <Button asChild variant="outline">
+          <Link href="/dashboard/inspections">Return to Inspections</Link>
+        </Button>
+      </div>
+    );
   }
   
   const inspectionDate = inspection.scheduledDate?.seconds ? format(new Date(inspection.scheduledDate.seconds * 1000), 'PPP') : 'N/A';
   const nextInspectionDate = inspection.followUp?.nextInspectionDate?.seconds ? format(new Date(inspection.followUp.nextInspectionDate.seconds * 1000), 'PPP') : null;
-  const propertyAddress = property ? formatAddress(property.address) : 'Loading property...';
+  const propertyAddress = property ? formatAddress(property.address) : 'Property Context Missing';
 
 
   return (
@@ -318,7 +343,7 @@ export default function ViewInspectionPage() {
         <CardHeader>
             <CardTitle>Inspection Summary</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
             <div className="flex items-start gap-4">
                 <CalendarIcon className="h-5 w-5 text-muted-foreground mt-1" />
                 <div>

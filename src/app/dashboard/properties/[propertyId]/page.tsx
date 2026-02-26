@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, notFound, useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -99,7 +99,7 @@ export default function PropertyDetailPage() {
     );
   }, [firestore, user, propertyId]);
 
-  const { data: tenants, isLoading: isLoadingTenants, error: tenantError } = useCollection<Tenant>(tenantForPropertyQuery);
+  const { data: tenants, isLoading: isLoadingTenants } = useCollection<Tenant>(tenantForPropertyQuery);
   
   const tenant = useMemo(() => {
     return tenants?.[0] || null;
@@ -107,19 +107,13 @@ export default function PropertyDetailPage() {
 
   const maintenanceQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
-    return query(
-        collection(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'maintenanceLogs'), 
-        where('ownerId', '==', user.uid)
-    );
+    return collection(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'maintenanceLogs');
   }, [firestore, propertyId, user]);
   const { data: allMaintenanceLogs, isLoading: isLoadingMaintenance } = useCollection<MaintenanceLog>(maintenanceQuery);
 
   const inspectionQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
-    return query(
-        collection(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'inspections'), 
-        where('ownerId', '==', user.uid)
-    );
+    return collection(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'inspections');
   }, [firestore, propertyId, user]);
   const { data: allInspections, isLoading: isLoadingInspections } = useCollection<Inspection>(inspectionQuery);
 
@@ -183,23 +177,43 @@ export default function PropertyDetailPage() {
   };
 
   if (isLoadingProperty) {
-    return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
+    return (
+      <div className="flex h-64 flex-col items-center justify-center gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-sm text-muted-foreground animate-pulse">Loading property details...</p>
+      </div>
+    );
   }
 
-  if (propertyError || (property && user && property.ownerId !== user.uid)) {
+  if (propertyError) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4">
         <AlertTriangle className="h-12 w-12 text-destructive" />
         <Card className="w-full max-w-lg text-center">
-            <CardHeader><CardTitle>Access Denied</CardTitle></CardHeader>
-            <CardContent><p className="text-sm text-muted-foreground">You do not have permission to view this property.</p></CardContent>
+            <CardHeader><CardTitle>Loading Error</CardTitle></CardHeader>
+            <CardContent><p className="text-sm text-muted-foreground">There was a problem accessing this property record.</p></CardContent>
             <CardFooter className="flex justify-center"><Button asChild><Link href="/dashboard/properties">Return to Properties</Link></Button></CardFooter>
         </Card>
       </div>
     );
   }
   
-  if (!property) return notFound();
+  if (!property) {
+    return (
+      <div className="flex flex-col items-center justify-center h-96 gap-6">
+        <div className="bg-muted p-6 rounded-full">
+          <Home className="h-12 w-12 text-muted-foreground opacity-20" />
+        </div>
+        <div className="text-center space-y-2">
+          <h2 className="text-xl font-bold">Property Not Found</h2>
+          <p className="text-muted-foreground max-w-xs mx-auto">The requested property does not exist in your portfolio or has been moved.</p>
+        </div>
+        <Button asChild>
+          <Link href="/dashboard/properties">Return to Portfolio</Link>
+        </Button>
+      </div>
+    );
+  }
 
   const propertyAddressTitle = [property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ');
   const propertyAddressSubtitle = `${property.address.city}, ${property.address.postcode}`;
@@ -320,7 +334,7 @@ export default function PropertyDetailPage() {
                       <div className="min-w-0 flex-1">
                         <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-0.5">Tenant Name</p>
                         <p className="font-bold text-foreground leading-tight">{tenant.name}</p>
-                        <Link href={`/dashboard/tenants/${tenant.id}`} className="text-xs text-primary hover:underline mt-1 inline-block font-semibold">View Profile</Link>
+                        <Link href={`/dashboard/tenants/${tenant.id}?propertyId=${propertyId}`} className="text-xs text-primary hover:underline mt-1 inline-block font-semibold">View Profile</Link>
                       </div>
                     </div>
                     <div className="flex items-start gap-3">
@@ -397,7 +411,10 @@ export default function PropertyDetailPage() {
       <AlertDialog open={isDeleting} onOpenChange={setIsDeleting}>
         <AlertDialogContent>
           <AlertDialogHeader><AlertDialogTitle>Archive Property?</AlertDialogTitle><AlertDialogDescription>This will move the property to your archive. You can restore it later if needed.</AlertDialogDescription></AlertDialogHeader>
-          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleDeleteConfirm}>Archive Property</AlertDialogAction></AlertDialogFooter>
+          <AlertDialogFooter>
+            <AlertDialogCancel>Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleDeleteConfirm}>Archive Property</AlertDialogAction>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>

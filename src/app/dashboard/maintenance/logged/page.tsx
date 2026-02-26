@@ -8,7 +8,6 @@ import {
   CardDescription,
   CardHeader,
   CardTitle,
-  CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import {
@@ -69,7 +68,6 @@ import {
   useMemoFirebase,
 } from '@/firebase';
 import { collection, query, where, doc, updateDoc, deleteDoc, onSnapshot, limit } from 'firebase/firestore';
-import { useRouter } from 'next/navigation';
 
 interface Property {
   id: string;
@@ -95,7 +93,6 @@ interface MaintenanceLog {
 export default function MaintenanceLoggedPage() {
   const { user } = useUser();
   const firestore = useFirestore();
-  const router = useRouter();
   const [selectedPropertyFilter, setSelectedPropertyFilter] = useState<string>('all');
   const [searchTerm, setSearchTerm] = useState('');
   const [logToCancel, setLogToCancel] = useState<MaintenanceLog | null>(null);
@@ -107,19 +104,14 @@ export default function MaintenanceLoggedPage() {
     if (!user || !firestore) return null;
     return query(
       collection(firestore, 'userProfiles', user.uid, 'properties'),
-      where('ownerId', '==', user.uid),
+      where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance']),
       limit(500)
     );
   }, [firestore, user]);
 
-  const { data: allProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
+  const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
   
-  const properties = useMemo(() => {
-    const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
-    return allProperties?.filter(p => activeStatuses.includes(p.status || '')) ?? [];
-  }, [allProperties]);
-
-  const propertyIdsKey = useMemo(() => properties.map(p => p.id).join(','), [properties]);
+  const propertyIdsKey = useMemo(() => properties?.map(p => p.id).join(',') || '', [properties]);
 
   const propertyMap = useMemo(() => {
     if (!properties) return {};
@@ -130,7 +122,7 @@ export default function MaintenanceLoggedPage() {
   }, [properties]);
 
   useEffect(() => {
-    if (!user || !firestore || properties.length === 0) {
+    if (!user || !firestore || !properties || properties.length === 0) {
         setPortfolioLogsMap({});
         return;
     }
@@ -138,10 +130,7 @@ export default function MaintenanceLoggedPage() {
     const unsubs: (() => void)[] = [];
 
     properties.forEach(p => {
-        const q = query(
-            collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'maintenanceLogs'), 
-            where('ownerId', '==', user.uid)
-        );
+        const q = collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'maintenanceLogs');
         const unsub = onSnapshot(q, (snap) => {
             const logs = snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog));
             setPortfolioLogsMap(prev => ({ ...prev, [p.id]: logs }));
@@ -150,7 +139,7 @@ export default function MaintenanceLoggedPage() {
     });
 
     return () => unsubs.forEach(u => u());
-  }, [user, propertyIdsKey, firestore, properties.length]);
+  }, [user, propertyIdsKey, firestore, properties?.length]);
 
   const allCurrentLogs = useMemo(() => {
     if (selectedPropertyFilter === 'all') return Object.values(portfolioLogsMap).flat();
@@ -251,7 +240,7 @@ export default function MaintenanceLoggedPage() {
                                         <TableCell className="text-xs text-muted-foreground truncate"><Link href={`/dashboard/properties/${log.propertyId}`} className="hover:underline">{propertyMap[log.propertyId]}</Link></TableCell>
                                         <TableCell><Select value={log.status} onValueChange={(v) => handleStatusChange(log.id, log.propertyId, v)}><SelectTrigger className="w-[140px] h-8 text-xs font-bold"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Open">Open</SelectItem><SelectItem value="In Progress">In Progress</SelectItem><SelectItem value="Completed">Completed</SelectItem><SelectItem value="Cancelled">Cancelled</SelectItem></SelectContent></Select></TableCell>
                                         <TableCell><Badge variant={getPriorityVariant(log.priority)} className="capitalize text-[10px]">{log.priority}</Badge></TableCell>
-                                        <TableCell className="text-right pr-6"><div className="flex justify-end gap-1"><Button asChild variant="ghost" size="icon"><Link href={`/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`}><Eye className="h-4 w-4" /></Link></Button><Button asChild variant="ghost" size="icon"><Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${log.propertyId}`}><Edit className="h-4 w-4" /></Link></Button><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={() => setLogToCancel(log)}>Cancel Issue</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem onClick={() => setLogToDelete(log)} className="text-destructive">Delete Permanently</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div></TableCell>
+                                        <TableCell className="text-right pr-6"><div className="flex justify-end gap-1"><Button asChild variant="ghost" size="icon"><Link href={`/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`} title="View Details"><Eye className="h-4 w-4" /></Link></Button><Button asChild variant="ghost" size="icon"><Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${log.propertyId}`} title="Edit Log"><Edit className="h-4 w-4" /></Link></Button><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" title="More Options"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end"><DropdownMenuItem onClick={() => setLogToCancel(log)}>Cancel Issue</DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem onClick={() => setLogToDelete(log)} className="text-destructive">Delete Permanently</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div></TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>

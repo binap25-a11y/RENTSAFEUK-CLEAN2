@@ -22,7 +22,7 @@ import {
 import { ArrowLeft, RefreshCw, Loader2, Mail, Phone, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { query, where, doc, updateDoc, deleteDoc, collectionGroup } from 'firebase/firestore';
 import { useMemo, useState } from 'react';
 import {
   AlertDialog,
@@ -64,9 +64,9 @@ export default function ArchivedTenantsPage() {
     const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null);
 
     const tenantsQuery = useMemoFirebase(() => {
-        if (!user) return null;
+        if (!user || !firestore) return null;
         return query(
-            collection(firestore, 'tenants'),
+            collectionGroup(firestore, 'tenants'),
             where('ownerId', '==', user.uid),
             where('status', '==', 'Archived')
         );
@@ -74,9 +74,9 @@ export default function ArchivedTenantsPage() {
     const { data: archivedTenants, isLoading: isLoadingTenants, error } = useCollection<Tenant>(tenantsQuery);
 
      const propertiesQuery = useMemoFirebase(() => {
-        if(!user) return null;
+        if(!user || !firestore) return null;
         return query(
-            collection(firestore, 'properties'),
+            collectionGroup(firestore, 'properties'),
             where('ownerId', '==', user.uid)
         );
       }, [firestore, user]);
@@ -90,16 +90,15 @@ export default function ArchivedTenantsPage() {
         }, {} as Record<string, string>);
     }, [properties]);
 
-    const handleRestore = async (tenantId: string, tenantName: string) => {
+    const handleRestore = async (tenantId: string, tenantName: string, propertyId: string) => {
         if (!firestore || !user) return;
         try {
-            const docRef = doc(firestore, 'tenants', tenantId);
+            const docRef = doc(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'tenants', tenantId);
             await updateDoc(docRef, { status: 'Active' });
             toast({
                 title: 'Tenant Restored',
                 description: `${tenantName} has been restored to your active tenants list.`,
             });
-            router.refresh();
         } catch (e) {
             console.error('Error restoring tenant:', e);
             toast({
@@ -113,13 +112,12 @@ export default function ArchivedTenantsPage() {
     const handleDeletePermanently = async () => {
         if (!firestore || !user || !tenantToDelete) return;
         try {
-            const docRef = doc(firestore, 'tenants', tenantToDelete.id);
+            const docRef = doc(firestore, 'userProfiles', user.uid, 'properties', tenantToDelete.propertyId, 'tenants', tenantToDelete.id);
             await deleteDoc(docRef);
             toast({
                 title: 'Tenant Permanently Deleted',
                 description: `${tenantToDelete.name} has been removed from the database. This action cannot be undone.`,
             });
-            router.refresh();
         } catch (e) {
             console.error('Error deleting tenant permanently:', e);
             toast({
@@ -186,7 +184,7 @@ export default function ArchivedTenantsPage() {
                                         <TableCell>{tenant.email}</TableCell>
                                         <TableCell>{propertyMap[tenant.propertyId] || 'N/A'}</TableCell>
                                         <TableCell className="text-right space-x-2">
-                                            <Button size="sm" variant="outline" className="w-28 justify-center" onClick={() => handleRestore(tenant.id, tenant.name)}>
+                                            <Button size="sm" variant="outline" className="w-28 justify-center" onClick={() => handleRestore(tenant.id, tenant.name, tenant.propertyId)}>
                                                 <RefreshCw className="mr-2 h-4 w-4" /> Restore
                                             </Button>
                                             <Button size="sm" variant="destructive" className="w-28 justify-center" onClick={() => setTenantToDelete(tenant)}>
@@ -220,7 +218,7 @@ export default function ArchivedTenantsPage() {
                                         )}
                                     </CardContent>
                                     <CardFooter className="grid grid-cols-2 gap-2">
-                                        <Button size="sm" variant="outline" onClick={() => handleRestore(tenant.id, tenant.name)}>
+                                        <Button size="sm" variant="outline" onClick={() => handleRestore(tenant.id, tenant.name, tenant.propertyId)}>
                                             <RefreshCw className="mr-2 h-4 w-4" /> Restore
                                         </Button>
                                         <Button size="sm" variant="destructive" onClick={() => setTenantToDelete(tenant)}>
