@@ -23,7 +23,8 @@ import {
   Clock,
   ShieldCheck,
   ChevronRight,
-  PlusCircle
+  PlusCircle,
+  ArrowUpRight
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -345,132 +346,146 @@ export default function DashboardPage() {
     <div className="flex flex-col gap-8 p-2 md:p-0">
       {/* Header Summary Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        <Card className="border-l-4 border-l-primary">
+        <Card className="border-none shadow-md overflow-hidden group">
+          <div className="h-1 bg-primary w-full" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Portfolio</CardTitle>
+            <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">My Properties</CardTitle>
             <Home className="h-4 w-4 text-primary" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : activePropertiesCount}</div>
-            <p className="text-xs text-muted-foreground mt-1 font-medium">Active Properties</p>
+            <div className="text-3xl font-bold tracking-tight">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : activePropertiesCount}</div>
+            <p className="text-[10px] text-muted-foreground mt-1 font-semibold flex items-center gap-1">
+                Active in Portfolio <ArrowUpRight className="h-2 w-2" />
+            </p>
           </CardContent>
         </Card>
-        <Card className="border-l-4 border-l-destructive">
+        <Card className="border-none shadow-md overflow-hidden group">
+          <div className="h-1 bg-destructive w-full" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Maintenance</CardTitle>
+            <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Maintenance</CardTitle>
             <Wrench className="h-4 w-4 text-destructive" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : openMaintenance.length}</div>
-            <p className="text-xs text-muted-foreground mt-1 font-medium">Open Issues</p>
+            <div className="text-3xl font-bold tracking-tight">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : openMaintenance.length}</div>
+            <p className="text-[10px] text-muted-foreground mt-1 font-semibold flex items-center gap-1">
+                Issues Requiring Action <ArrowUpRight className="h-2 w-2" />
+            </p>
           </CardContent>
         </Card>
-        <Card className="border-l-4 border-l-amber-500">
+        <Card className="border-none shadow-md overflow-hidden group">
+          <div className="h-1 bg-amber-500 w-full" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Inspections</CardTitle>
+            <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Inspections</CardTitle>
             <CalendarCheck className="h-4 w-4 text-amber-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : upcomingInspections.length}</div>
-            <p className="text-xs text-muted-foreground mt-1 font-medium">Scheduled Checks</p>
+            <div className="text-3xl font-bold tracking-tight">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : upcomingInspections.length}</div>
+            <p className="text-[10px] text-muted-foreground mt-1 font-semibold flex items-center gap-1">
+                Scheduled Field Checks <ArrowUpRight className="h-2 w-2" />
+            </p>
           </CardContent>
         </Card>
-        <Card className="border-l-4 border-l-green-500">
+        <Card className="border-none shadow-md overflow-hidden group">
+          <div className="h-1 bg-green-500 w-full" />
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Documents</CardTitle>
+            <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Compliance</CardTitle>
             <Files className="h-4 w-4 text-green-500" />
           </CardHeader>
           <CardContent>
-            <div className="text-3xl font-bold">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : documents.length}</div>
-            <p className="text-xs text-muted-foreground mt-1 font-medium">Compliance Items</p>
+            <div className="text-3xl font-bold tracking-tight">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : documents.length}</div>
+            <p className="text-[10px] text-muted-foreground mt-1 font-semibold flex items-center gap-1">
+                Verified Certificates <ArrowUpRight className="h-2 w-2" />
+            </p>
           </CardContent>
         </Card>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-12">
         {/* Rent Tracker & Statistics */}
-        <Card className="lg:col-span-4 shadow-sm">
-          <CardHeader>
+        <Card className="lg:col-span-4 shadow-lg border-none">
+          <CardHeader className="pb-2">
             <div className="flex items-center justify-between">
-              <CardTitle className="flex items-center gap-2 text-lg font-bold">
+              <CardTitle className="flex items-center gap-2 text-lg font-bold font-headline">
                 <PoundSterling className="h-5 w-5 text-primary" /> 
                 Rent Tracker
               </CardTitle>
-              <Badge variant="outline" className="text-[10px] font-bold uppercase">
+              <Badge variant="outline" className="text-[10px] font-bold uppercase tracking-wider bg-muted/50 border-none">
                 {currentMonth} {currentYear}
               </Badge>
             </div>
-            <CardDescription>Collection status for occupied properties.</CardDescription>
+            <CardDescription className="text-xs">Monthly collection progress per unit.</CardDescription>
           </CardHeader>
-          <CardContent className="pt-2">
+          <CardContent className="pt-2 flex flex-col items-center">
             {isLoading ? (
               <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
             ) : rentStatusData.length > 0 ? (
-              <div className="flex flex-col items-center">
+              <>
                 <ChartContainer config={rentChartConfig} className="w-full aspect-square max-h-[220px]">
                   <PieChart>
                     <ChartTooltip cursor={false} content={<ChartTooltipContent nameKey="count" hideLabel />} />
                     <Pie data={rentStatusData} dataKey="count" nameKey="status" innerRadius={65} strokeWidth={5}>
-                      {rentStatusData.map((entry) => <Cell key={`cell-${entry.status}`} fill={entry.fill} className="stroke-background"/>)}
+                      {rentStatusData.map((entry) => <Cell key={`cell-${entry.status}`} fill={entry.fill} className="stroke-background outline-none"/>)}
                     </Pie>
-                    <ChartLegend content={<ChartLegendContent nameKey="status" />} className="-mt-4" />
+                    <ChartLegend content={<ChartLegendContent nameKey="status" />} className="-mt-4 text-[10px] font-bold uppercase" />
                   </PieChart>
                 </ChartContainer>
-                <Button asChild variant="outline" size="sm" className="mt-4 w-full h-10 font-semibold group">
+                <Button asChild variant="outline" size="sm" className="mt-6 w-full h-10 font-bold text-xs uppercase tracking-widest group bg-muted/20 border-none hover:bg-muted/40">
                   <Link href="/dashboard/expenses">
-                    Detailed Rent Ledger <ChevronRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                    Detailed Rent Ledger <ChevronRight className="ml-2 h-3 w-3 group-hover:translate-x-1 transition-transform" />
                   </Link>
                 </Button>
-              </div>
+              </>
             ) : (
-              <div className="text-center text-muted-foreground py-16 text-sm italic bg-muted/20 rounded-lg border border-dashed">
-                No occupied properties tracked.
+              <div className="text-center text-muted-foreground py-16 text-sm italic bg-muted/20 rounded-xl border border-dashed w-full">
+                No occupied units to track.
               </div>
             )}
           </CardContent>
         </Card>
 
         {/* Active Feed (Recent Activity) */}
-        <Card className="lg:col-span-8 shadow-sm">
+        <Card className="lg:col-span-8 shadow-lg border-none">
           <CardHeader className="flex flex-row items-center justify-between pb-4">
             <div>
-              <CardTitle className="flex items-center gap-2 text-lg font-bold">
+              <CardTitle className="flex items-center gap-2 text-lg font-bold font-headline">
                 <Activity className="h-5 w-5 text-primary" /> 
-                Activity Feed
+                Active Activity Feed
               </CardTitle>
-              <CardDescription>Latest maintenance events across your portfolio.</CardDescription>
+              <CardDescription className="text-xs">Latest maintenance and system events across the portfolio.</CardDescription>
             </div>
-            <Button variant="ghost" size="sm" asChild className="text-primary font-semibold">
-              <Link href="/dashboard/maintenance/logged">View Log <ChevronRight className="ml-1 h-4 w-4" /></Link>
+            <Button variant="ghost" size="sm" asChild className="text-primary font-bold text-xs uppercase tracking-widest hover:bg-primary/5">
+              <Link href="/dashboard/maintenance/logged">See All <ChevronRight className="ml-1 h-3 w-3" /></Link>
             </Button>
           </CardHeader>
-          <CardContent>
+          <CardContent className="px-6">
             {isLoading ? (
               <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
             ) : recentActivities.length > 0 ? (
-              <div className="relative space-y-4 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-muted before:to-transparent">
+              <div className="space-y-4">
                 {recentActivities.map((activity) => (
-                  <Link href={activity.href} key={activity.id} className="relative flex items-center gap-4 p-3 rounded-xl hover:bg-accent/50 transition-all group border border-transparent hover:border-border">
-                    <div className={cn(
-                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 bg-background z-10",
-                      activity.priority === 'Emergency' ? 'border-destructive text-destructive' : 'border-primary text-primary'
-                    )}>
-                      <Wrench className="h-5 w-5" />
-                    </div>
-                    <div className="min-w-0 flex-1">
-                      <div className="flex items-center justify-between mb-0.5">
-                        <p className="font-bold text-sm truncate group-hover:text-primary transition-colors">{activity.activity}</p>
-                        <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded uppercase">{activity.date}</span>
-                      </div>
-                      <p className="text-xs text-muted-foreground truncate font-medium">{activity.property}</p>
+                  <Link href={activity.href} key={activity.id} className="block group">
+                    <div className="flex items-center gap-4 p-3 rounded-xl hover:bg-muted/30 transition-all border border-transparent hover:border-border">
+                        <div className={cn(
+                        "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 bg-background",
+                        activity.priority === 'Emergency' ? 'border-destructive text-destructive shadow-[0_0_10px_rgba(239,68,68,0.2)]' : 'border-primary/20 text-primary'
+                        )}>
+                        <Wrench className="h-5 w-5" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                        <div className="flex items-center justify-between mb-0.5">
+                            <p className="font-bold text-sm truncate group-hover:text-primary transition-colors">{activity.activity}</p>
+                            <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded uppercase">{activity.date}</span>
+                        </div>
+                        <p className="text-[11px] text-muted-foreground truncate font-medium uppercase tracking-tighter opacity-70">{activity.property}</p>
+                        </div>
                     </div>
                   </Link>
                 ))}
               </div>
             ) : (
-              <div className="text-center text-muted-foreground py-20 italic text-sm bg-muted/20 rounded-xl border border-dashed flex flex-col items-center gap-3">
-                <Activity className="h-8 w-8 opacity-20" />
-                No recent maintenance logs found.
+              <div className="text-center text-muted-foreground py-24 italic text-sm bg-muted/10 rounded-2xl border border-dashed flex flex-col items-center gap-3 m-2">
+                <Activity className="h-10 w-10 opacity-10" />
+                <p>System is currently idle. No recent events logged.</p>
               </div>
             )}
           </CardContent>
@@ -479,13 +494,18 @@ export default function DashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-2">
         {/* Critical Compliance Overviews */}
-        <Card className="border-destructive/20 shadow-sm">
-          <CardHeader className="bg-destructive/5 border-b border-destructive/10">
-            <CardTitle className="flex items-center gap-2 text-lg font-bold text-destructive">
-              <AlertCircle className="h-5 w-5" /> 
-              Critical Compliance
-            </CardTitle>
-            <CardDescription className="text-destructive/70">Legal documents needing immediate attention.</CardDescription>
+        <Card className="border-none shadow-lg overflow-hidden">
+          <CardHeader className="bg-destructive/5 border-b border-destructive/10 pb-4">
+            <div className="flex items-center justify-between">
+                <div>
+                    <CardTitle className="flex items-center gap-2 text-lg font-bold text-destructive font-headline">
+                    <AlertCircle className="h-5 w-5" /> 
+                    Critical Compliance
+                    </CardTitle>
+                    <CardDescription className="text-[11px] text-destructive/70 uppercase font-bold tracking-tighter">Immediate Attention Required</CardDescription>
+                </div>
+                <Badge variant="destructive" className="animate-pulse">Risk Alert</Badge>
+            </div>
           </CardHeader>
           <CardContent className="pt-6">
             {isLoading ? (
@@ -494,16 +514,16 @@ export default function DashboardPage() {
               <div className="space-y-3">
                 {criticalCompliance.map((item) => (
                   <Link href={item.href} key={item.id} className="block group">
-                    <div className="flex items-center justify-between p-4 rounded-xl border-2 border-transparent bg-muted/30 group-hover:border-destructive/30 transition-all">
+                    <div className="flex items-center justify-between p-4 rounded-2xl border-2 border-transparent bg-muted/20 group-hover:border-destructive/20 transition-all">
                       <div className="min-w-0 flex-1">
                         <p className="font-bold text-sm truncate">{item.task}</p>
-                        <p className="text-[11px] text-muted-foreground font-medium mt-0.5">{item.property}</p>
+                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tight mt-1">{item.property}</p>
                       </div>
                       <div className="text-right ml-4 shrink-0 flex flex-col items-end gap-1.5">
-                        <Badge variant={item.status === 'Expired' ? 'destructive' : 'secondary'} className="h-5 text-[10px] font-bold uppercase tracking-wider">
+                        <Badge variant={item.status === 'Expired' ? 'destructive' : 'secondary'} className="h-5 text-[9px] font-bold uppercase">
                           {item.status}
                         </Badge>
-                        <p className="text-[10px] font-bold text-muted-foreground flex items-center gap-1">
+                        <p className="text-[10px] font-bold text-muted-foreground flex items-center gap-1 tabular-nums">
                           <Clock className="h-3 w-3" /> {format(item.dueDate, 'dd/MM/yyyy')}
                         </p>
                       </div>
@@ -512,29 +532,29 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <div className="text-center text-muted-foreground py-16 italic text-sm bg-green-50/30 rounded-xl border border-dashed border-green-200 flex flex-col items-center gap-3">
-                <ShieldCheck className="h-10 w-10 text-green-500 opacity-40" />
-                <p className="text-green-700 font-medium">All compliance items are valid!</p>
+              <div className="text-center py-20 italic text-sm bg-green-50/20 rounded-2xl border border-dashed border-green-200 flex flex-col items-center gap-3">
+                <ShieldCheck className="h-12 w-12 text-green-500 opacity-30" />
+                <p className="text-green-700 font-bold uppercase text-xs tracking-widest">All Compliance Items Valid</p>
               </div>
             )}
           </CardContent>
           {criticalCompliance.length > 0 && (
-            <CardFooter className="bg-muted/10 border-t py-3">
-              <Button asChild variant="link" className="text-xs font-bold text-primary w-full justify-center">
-                <Link href="/dashboard/documents">Manage All Documents</Link>
+            <CardFooter className="bg-muted/5 border-t py-3">
+              <Button asChild variant="link" className="text-xs font-bold text-primary w-full justify-center uppercase tracking-widest">
+                <Link href="/dashboard/documents">Manage Audit Trail</Link>
               </Button>
             </CardFooter>
           )}
         </Card>
 
         {/* Upcoming Inspections & Tasks */}
-        <Card className="shadow-sm border-primary/20">
-          <CardHeader className="bg-primary/5 border-b border-primary/10">
-            <CardTitle className="flex items-center gap-2 text-lg font-bold text-primary">
+        <Card className="border-none shadow-lg overflow-hidden">
+          <CardHeader className="bg-primary/5 border-b border-primary/10 pb-4">
+            <CardTitle className="flex items-center gap-2 text-lg font-bold text-primary font-headline">
               <ListTodo className="h-5 w-5" /> 
               Portfolio Tasks
             </CardTitle>
-            <CardDescription className="text-primary/70">Scheduled property checks and management tasks.</CardDescription>
+            <CardDescription className="text-[11px] text-primary/70 uppercase font-bold tracking-tighter">Scheduled Property Checks</CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
             {isLoading ? (
@@ -543,16 +563,16 @@ export default function DashboardPage() {
               <div className="space-y-3">
                 {upcomingInspections.map((insp) => (
                   <Link href={`/dashboard/inspections/${insp.id}?propertyId=${insp.propertyId}`} key={insp.id} className="block group">
-                    <div className="flex items-center justify-between p-4 rounded-xl border-2 border-transparent bg-muted/30 group-hover:border-primary/30 transition-all">
+                    <div className="flex items-center justify-between p-4 rounded-2xl border-2 border-transparent bg-muted/20 group-hover:border-primary/20 transition-all">
                       <div className="min-w-0 flex-1">
                         <p className="font-bold text-sm truncate">{insp.type}</p>
-                        <p className="text-[11px] text-muted-foreground font-medium mt-0.5">
+                        <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tight mt-1">
                           {propertyMap[insp.propertyId] ? formatAddress(propertyMap[insp.propertyId]) : 'Property Check'}
                         </p>
                       </div>
                       <div className="text-right ml-4 shrink-0 flex flex-col items-end gap-1.5">
-                        <Badge variant="secondary" className="h-5 text-[10px] font-bold uppercase tracking-wider">Scheduled</Badge>
-                        <p className="text-[10px] font-bold text-muted-foreground flex items-center gap-1">
+                        <Badge variant="secondary" className="h-5 text-[9px] font-bold uppercase bg-primary/10 text-primary border-none">Scheduled</Badge>
+                        <p className="text-[10px] font-bold text-muted-foreground flex items-center gap-1 tabular-nums">
                           <CalendarCheck className="h-3 w-3" /> {format(toDate(insp.scheduledDate)!, 'dd/MM/yyyy')}
                         </p>
                       </div>
@@ -561,17 +581,17 @@ export default function DashboardPage() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-16 bg-muted/20 rounded-xl border border-dashed flex flex-col items-center gap-4">
+              <div className="text-center py-16 bg-muted/10 rounded-2xl border border-dashed flex flex-col items-center gap-4 m-2">
                 <div className="bg-background p-4 rounded-full shadow-sm">
-                  <PlusCircle className="h-8 w-8 text-primary opacity-40" />
+                  <PlusCircle className="h-8 w-8 text-primary opacity-20" />
                 </div>
                 <div className="space-y-1">
-                  <p className="text-sm font-bold">No Inspections Scheduled</p>
-                  <p className="text-xs text-muted-foreground">Keep your portfolio safe with regular checks.</p>
+                  <p className="text-sm font-bold">No Pending Inspections</p>
+                  <p className="text-[10px] text-muted-foreground uppercase font-bold">Maintain safety with regular checks.</p>
                 </div>
                 <div className="flex gap-2">
-                  <Button asChild size="sm" variant="outline"><Link href="/dashboard/inspections/single-let">New Single-Let</Link></Button>
-                  <Button asChild size="sm" variant="outline"><Link href="/dashboard/inspections/hmo">New HMO</Link></Button>
+                  <Button asChild size="sm" variant="outline" className="text-[10px] font-bold h-8 border-none bg-muted/50"><Link href="/dashboard/inspections/single-let">New Single-Let</Link></Button>
+                  <Button asChild size="sm" variant="outline" className="text-[10px] font-bold h-8 border-none bg-muted/50"><Link href="/dashboard/inspections/hmo">New HMO</Link></Button>
                 </div>
               </div>
             )}
