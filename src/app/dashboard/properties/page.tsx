@@ -92,10 +92,11 @@ export default function PropertiesPage() {
   // Real-time maintenance aggregation state
   const [openMaintenanceMap, setOpenMaintenanceMap] = useState<Record<string, number>>({});
 
+  // strictly hierarchical properties query
   const propertiesQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user || !firestore) return null;
     return query(
-      collection(firestore, 'properties'),
+      collection(firestore, 'userProfiles', user.uid, 'properties'),
       where('ownerId', '==', user.uid),
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
     );
@@ -109,7 +110,7 @@ export default function PropertiesPage() {
 
   // Aggregation: Real-time count of open maintenance for each property
   useEffect(() => {
-    if (!user || !properties || properties.length === 0) {
+    if (!user || !firestore || !properties || properties.length === 0) {
         setOpenMaintenanceMap({});
         return;
     }
@@ -118,7 +119,7 @@ export default function PropertiesPage() {
 
     properties.forEach((p) => {
         const q = query(
-            collection(firestore, 'properties', p.id, 'maintenanceLogs'),
+            collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'maintenanceLogs'),
             where('ownerId', '==', user.uid),
             where('status', 'in', ['Open', 'In Progress'])
         );
@@ -141,17 +142,16 @@ export default function PropertiesPage() {
     const checkSafeguards = async () => {
         setIsCheckingSafeguards(true);
         try {
-            // Check for active tenants
+            // Check for active tenants - nested strictly
             const tenantSnap = await getDocs(query(
-                collection(firestore, 'tenants'),
-                where('propertyId', '==', propertyToDelete.id),
+                collection(firestore, 'userProfiles', user.uid, 'properties', propertyToDelete.id, 'tenants'),
                 where('status', '==', 'Active'),
                 limit(1)
             ));
 
             // Check for open maintenance logs
             const maintenanceSnap = await getDocs(query(
-                collection(firestore, 'properties', propertyToDelete.id, 'maintenanceLogs'),
+                collection(firestore, 'userProfiles', user.uid, 'properties', propertyToDelete.id, 'maintenanceLogs'),
                 where('status', 'in', ['Open', 'In Progress']),
                 limit(1)
             ));
@@ -219,9 +219,9 @@ export default function PropertiesPage() {
   };
 
   const handleDeleteConfirm = async () => {
-    if (!firestore || !propertyToDelete) return;
+    if (!firestore || !user || !propertyToDelete) return;
     try {
-      const docRef = doc(firestore, 'properties', propertyToDelete.id);
+      const docRef = doc(firestore, 'userProfiles', user.uid, 'properties', propertyToDelete.id);
       await updateDoc(docRef, { status: 'Deleted' });
       toast({
         title: 'Property Deleted',

@@ -83,19 +83,17 @@ export default function PropertyDetailPage() {
   
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // --- Data Fetching using Hooks ---
+  // --- Data Fetching using Hooks - strictly hierarchical paths ---
   const propertyRef = useMemoFirebase(() => {
-    if (!firestore || !propertyId) return null;
-    return doc(firestore, 'properties', propertyId);
-  }, [firestore, propertyId]);
+    if (!firestore || !propertyId || !user) return null;
+    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId);
+  }, [firestore, propertyId, user]);
   const { data: property, isLoading: isLoadingProperty, error: propertyError } = useDoc<Property>(propertyRef);
   
   const tenantForPropertyQuery = useMemoFirebase(() => {
     if (!user || !firestore || !propertyId) return null;
     return query(
-      collection(firestore, 'tenants'),
-      where('ownerId', '==', user.uid),
-      where('propertyId', '==', propertyId),
+      collection(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'tenants'),
       where('status', '==', 'Active'),
       limit(1)
     );
@@ -110,7 +108,7 @@ export default function PropertyDetailPage() {
   const maintenanceQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
     return query(
-        collection(firestore, 'properties', propertyId, 'maintenanceLogs'), 
+        collection(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'maintenanceLogs'), 
         where('ownerId', '==', user.uid)
     );
   }, [firestore, propertyId, user]);
@@ -119,7 +117,7 @@ export default function PropertyDetailPage() {
   const inspectionQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
     return query(
-        collection(firestore, 'properties', propertyId, 'inspections'), 
+        collection(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'inspections'), 
         where('ownerId', '==', user.uid)
     );
   }, [firestore, propertyId, user]);
@@ -139,10 +137,10 @@ export default function PropertyDetailPage() {
   }, [allInspections]);
 
   const handleDeleteConfirm = async () => {
-    if (!firestore || !property) return;
+    if (!firestore || !user || !property) return;
     
     try {
-      const docRef = doc(firestore, 'properties', propertyId);
+      const docRef = doc(firestore, 'userProfiles', user.uid, 'properties', propertyId);
       await updateDoc(docRef, { status: 'Deleted' });
       toast({
         title: 'Property Deleted',

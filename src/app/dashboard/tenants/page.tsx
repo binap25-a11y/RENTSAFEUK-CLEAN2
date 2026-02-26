@@ -40,7 +40,7 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, collectionGroup } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
@@ -84,22 +84,22 @@ export default function TenantsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [tenantToArchive, setTenantToArchive] = useState<Tenant | null>(null);
 
-  // Fetch tenants
+  // Fetch tenants using collectionGroup to find them regardless of which property they belong to
   const tenantsQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user || !firestore) return null;
     return query(
-      collection(firestore, 'tenants'),
+      collectionGroup(firestore, 'tenants'),
       where('ownerId', '==', user.uid),
       where('status', '==', 'Active')
     );
   }, [firestore, user]);
   const { data: activeTenants, isLoading: isLoadingTenants, error: tenantsError } = useCollection<Tenant>(tenantsQuery);
   
-  // Fetch properties to map propertyId to address
+  // Fetch properties - strictly hierarchical
   const propertiesQuery = useMemoFirebase(() => {
-    if(!user) return null;
+    if(!user || !firestore) return null;
     return query(
-        collection(firestore, 'properties'),
+        collection(firestore, 'userProfiles', user.uid, 'properties'),
         where('ownerId', '==', user.uid)
     );
   }, [firestore, user]);
@@ -126,7 +126,9 @@ export default function TenantsPage() {
   const handleArchiveConfirm = async () => {
     if (!firestore || !user || !tenantToArchive) return;
     try {
-      await updateDoc(doc(firestore, 'tenants', tenantToArchive.id), { status: 'Archived' });
+      // Correct hierarchical path needed for updateDoc
+      const docRef = doc(firestore, 'userProfiles', user.uid, 'properties', tenantToArchive.propertyId, 'tenants', tenantToArchive.id);
+      await updateDoc(docRef, { status: 'Archived' });
       toast({
         title: 'Tenant Archived',
         description: `${tenantToArchive.name} has been moved to the archives.`,

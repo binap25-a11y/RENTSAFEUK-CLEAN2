@@ -3,140 +3,67 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * Maintain UK Security Rules
-     *
-     * CORE PHILOSOPHY:
-     * This ruleset enforces a strict User-Ownership model. The application is designed for
-     * property managers and landlords to manage their own portfolios in isolation.
-     *
-     * DATA STRUCTURE:
-     * The database follows a strictly hierarchical structure nested under the user's
-     * unique identifier: /userProfiles/{userId}/...
-     * This ensures that path-based authorization is the primary security mechanism.
-     *
-     * KEY SECURITY DECISIONS:
-     * 1. Authorization Independence: Every document in a subcollection (e.g., tenants, inspections)
-     *    includes denormalized ownership fields (like 'propertyOwnerId') that match the top-level
-     *    {userId}. This allows for "Authorization Independence" where a rule can verify access
-     *    without performing expensive get() calls to parent documents.
-     * 2. Strict Privacy: There are no public read or write permissions. All access requires
-     *    authentication, and users can only see or modify data within their own path.
-     * 3. Prototyping Flexibility: While authorization is strictly enforced based on UIDs,
-     *    the internal data schema (types and optional fields) is not validated to allow
-     *    for rapid UI and feature iteration.
-     *
-     * DENORMALIZATION FOR AUTHORIZATION:
-     * Fields such as 'ownerId', 'propertyOwnerId', and 'createdByUserId' are strictly 
-     * validated on creation to ensure they match the path and the authenticated user's UID.
+     * RentSafeUK Security Rules
+     * Enforces a strict User-Ownership model where data is isolated per landlord.
      */
 
-    // --- Helper Functions ---
-
-    /** @description Checks if the request is from a signed-in user. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /** @description Checks if the authenticated user matches the provided userId. */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /** @description Checks ownership and ensures the document exists for updates/deletes. */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
-    /** @description Validates that the propertyOwnerId in the data matches the userId in the path. */
-    function matchesPathOwner(userId) {
-      return request.resource.data.propertyOwnerId == userId;
-    }
-
-    // --- Collection Rules ---
-
     /**
-     * @description Rules for UserProfile documents. Users can only manage their own profile.
-     * @path /userProfiles/{userId}
-     * @allow (get) If auth.uid == userId
-     * @deny (list) Even for the owner, to prevent accidental bulk user listing.
-     * @principle Enforces path-based identity and data consistency.
+     * @description Rules for UserProfile and nested property data.
      */
     match /userProfiles/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if false;
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(userId);
-
-      /**
-       * @description Rules for Property documents. Each property is private to the landlord/manager.
-       * @path /userProfiles/{userId}/properties/{propertyId}
-       * @allow (create) If auth.uid == userId AND ownerId field matches userId.
-       * @deny (update) If the ownerId field is being changed to a different user.
-       * @principle Authorization independence via denormalized ownerId.
-       */
+      allow get, create, update: if isOwner(userId);
+      
+      // Properties are nested under the user who owns them
       match /properties/{propertyId} {
-        allow get, list: if isOwner(userId);
-        allow create: if isOwner(userId) && request.resource.data.ownerId == userId;
-        allow update: if isExistingOwner(userId) && request.resource.data.ownerId == resource.data.ownerId;
-        allow delete: if isExistingOwner(userId);
-
-        /**
-         * @description Rules for Tenants associated with a property.
-         * @path /userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}
-         * @allow (create) If the propertyOwnerId matches the path's userId.
-         * @deny (create) If propertyId in data does not match propertyId in path.
-         * @principle Relational integrity between nested subcollections and parents.
-         */
-        match /tenants/{tenantId} {
-          allow get, list: if isOwner(userId);
-          allow create: if isOwner(userId) && matchesPathOwner(userId) && request.resource.data.propertyId == propertyId;
-          allow update: if isExistingOwner(userId) && matchesPathOwner(userId) && request.resource.data.propertyOwnerId == resource.data.propertyOwnerId;
-          allow delete: if isExistingOwner(userId);
-        }
-
-        /**
-         * @description Rules for Maintenance Requests.
-         * @path /userProfiles/{userId}/properties/{propertyId}/maintenanceRequests/{maintenanceRequestId}
-         * @allow (create) If creator and owner fields match the authenticated user.
-         * @deny (update) Attempting to modify the createdByUserId or propertyOwnerId.
-         * @principle Ownership validation for auditability.
-         */
-        match /maintenanceRequests/{maintenanceRequestId} {
-          allow get, list: if isOwner(userId);
-          allow create: if isOwner(userId) && matchesPathOwner(userId) && request.resource.data.createdByUserId == userId;
-          allow update: if isExistingOwner(userId) && matchesPathOwner(userId) && request.resource.data.propertyOwnerId == resource.data.propertyOwnerId;
-          allow delete: if isExistingOwner(userId);
-        }
-
-        /**
-         * @description Rules for Property Inspections.
-         * @path /userProfiles/{userId}/properties/{propertyId}/inspections/{inspectionId}
-         * @allow (list) If auth.uid matches the parent user path.
-         * @deny (delete) If document does not exist or user is not the owner.
-         * @principle Restricts access to a user's own data tree.
-         */
-        match /inspections/{inspectionId} {
-          allow get, list: if isOwner(userId);
-          allow create: if isOwner(userId) && matchesPathOwner(userId) && request.resource.data.createdByUserId == userId;
-          allow update: if isExistingOwner(userId) && matchesPathOwner(userId) && request.resource.data.propertyOwnerId == resource.data.propertyOwnerId;
-          allow delete: if isExistingOwner(userId);
-        }
-
-        /**
-         * @description Rules for Property Documents (contracts, certificates, etc.).
-         * @path /userProfiles/{userId}/properties/{propertyId}/documents/{documentId}
-         * @allow (create) Validating that the document is linked to the correct property and owner.
-         * @deny (get) If requesting a document outside the user's authenticated path.
-         * @principle Secure file reference management.
-         */
-        match /documents/{documentId} {
-          allow get, list: if isOwner(userId);
-          allow create: if isOwner(userId) && matchesPathOwner(userId) && request.resource.data.uploadedByUserId == userId;
-          allow update: if isExistingOwner(userId) && matchesPathOwner(userId) && request.resource.data.propertyOwnerId == resource.data.propertyOwnerId;
-          allow delete: if isExistingOwner(userId);
-        }
+        allow read, write: if isOwner(userId);
+        
+        // All related records are nested under the specific property
+        match /tenants/{id} { allow read, write: if isOwner(userId); }
+        match /maintenanceRequests/{id} { allow read, write: if isOwner(userId); }
+        match /maintenanceLogs/{id} { allow read, write: if isOwner(userId); }
+        match /inspections/{id} { allow read, write: if isOwner(userId); }
+        match /documents/{id} { allow read, write: if isOwner(userId); }
+        match /expenses/{id} { allow read, write: if isOwner(userId); }
+        match /rentPayments/{id} { allow read, write: if isOwner(userId); }
+        match /checklists/{id} { allow read, write: if isOwner(userId); }
       }
+      
+      // Contractors are associated with the landlord profile
+      match /contractors/{id} { allow read, write: if isOwner(userId); }
+    }
+
+    /**
+     * @description Collection Group rules to allow portfolio-wide listing.
+     * Requires 'ownerId' field in documents to verify ownership.
+     */
+    match /{path=**}/properties/{id} {
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+    }
+    match /{path=**}/tenants/{id} {
+      allow list: if isSignedIn() && (resource == null || resource.data.ownerId == request.auth.uid);
+    }
+    match /{path=**}/maintenanceRequests/{id} {
+      allow list: if isSignedIn() && (resource == null || resource.data.ownerId == request.auth.uid);
+    }
+    match /{path=**}/maintenanceLogs/{id} {
+      allow list: if isSignedIn() && (resource == null || resource.data.ownerId == request.auth.uid);
+    }
+    match /{path=**}/inspections/{id} {
+      allow list: if isSignedIn() && (resource == null || resource.data.ownerId == request.auth.uid);
+    }
+    match /{path=**}/documents/{id} {
+      allow list: if isSignedIn() && (resource == null || resource.data.ownerId == request.auth.uid);
+    }
+    match /{path=**}/contractors/{id} {
+      allow list: if isSignedIn() && (resource == null || resource.data.ownerId == request.auth.uid);
     }
   }
 }

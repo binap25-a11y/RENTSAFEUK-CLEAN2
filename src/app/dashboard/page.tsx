@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -29,7 +28,7 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, onSnapshot, Timestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, Timestamp, collectionGroup } from 'firebase/firestore';
 import { useMemo, useState, useEffect } from 'react';
 import { format, isFuture, isBefore, addDays } from 'date-fns';
 import {
@@ -127,10 +126,13 @@ export default function DashboardPage() {
   const firestore = useFirestore();
   const router = useRouter();
 
-  // Primary Properties Listener
+  // Primary Properties Listener - strictly hierarchical
   const propertiesQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    return query(collection(firestore, 'properties'), where('ownerId', '==', user.uid));
+    if (!user || !firestore) return null;
+    return query(
+      collection(firestore, 'userProfiles', user.uid, 'properties'), 
+      where('ownerId', '==', user.uid)
+    );
   }, [user, firestore]);
   const { data: allProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
 
@@ -158,7 +160,7 @@ export default function DashboardPage() {
 
   // STABLE REAL-TIME AGGREGATION
   useEffect(() => {
-    if (!user || properties.length === 0) {
+    if (!user || !firestore || properties.length === 0) {
         setMaintenanceMap({});
         setInspectionsMap({});
         setDocumentsMap({});
@@ -172,32 +174,32 @@ export default function DashboardPage() {
         const ownerFilter = where('ownerId', '==', user.uid);
         
         // Maintenance Logs
-        unsubs.push(onSnapshot(query(collection(firestore, 'properties', prop.id, 'maintenanceLogs'), ownerFilter), (snap) => {
+        unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'maintenanceLogs'), ownerFilter), (snap) => {
             const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog));
             setMaintenanceMap(prev => ({ ...prev, [prop.id]: data }));
         }));
 
         // Inspections
-        unsubs.push(onSnapshot(query(collection(firestore, 'properties', prop.id, 'inspections'), ownerFilter), (snap) => {
+        unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'inspections'), ownerFilter), (snap) => {
             const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Inspection));
             setInspectionsMap(prev => ({ ...prev, [prop.id]: data }));
         }));
 
         // Documents
-        unsubs.push(onSnapshot(query(collection(firestore, 'properties', prop.id, 'documents'), ownerFilter), (snap) => {
+        unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'documents'), ownerFilter), (snap) => {
             const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Document));
             setDocumentsMap(prev => ({ ...prev, [prop.id]: data }));
         }));
 
         // Rent Payments
-        unsubs.push(onSnapshot(query(collection(firestore, 'properties', prop.id, 'rentPayments'), ownerFilter), (snap) => {
+        unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'rentPayments'), ownerFilter), (snap) => {
             const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as RentPayment));
             setRentPaymentsMap(prev => ({ ...prev, [prop.id]: data }));
         }));
     });
 
     return () => unsubs.forEach(u => u());
-  }, [user, propertyIdsKey, firestore]);
+  }, [user, propertyIdsKey, firestore, properties.length]);
 
   // Combined data for calculations
   const maintenanceLogs = useMemo(() => Object.values(maintenanceMap).flat(), [maintenanceMap]);

@@ -90,9 +90,9 @@ export default function AddPropertyPage() {
     setIsSubmitting(true);
 
     try {
-        // UNIQUENESS CHECK: Street and Postcode
+        // UNIQUENESS CHECK: Street and Postcode - strictly hierarchical
         const duplicateQuery = query(
-            collection(firestore, 'properties'),
+            collection(firestore, 'userProfiles', user.uid, 'properties'),
             where('ownerId', '==', user.uid),
             where('address.street', '==', data.address.street),
             where('address.postcode', '==', data.address.postcode),
@@ -116,7 +116,7 @@ export default function AddPropertyPage() {
             ...JSON.parse(JSON.stringify(data)),
         };
 
-        const propertiesCollection = collection(firestore, 'properties');
+        const propertiesCollection = collection(firestore, 'userProfiles', user.uid, 'properties');
         await addDoc(propertiesCollection, propertyData);
         
         toast({ title: 'Property Added', description: 'The property has been added to your portfolio.' });
