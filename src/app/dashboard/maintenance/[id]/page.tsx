@@ -8,7 +8,7 @@ import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { ArrowLeft, Loader2, CalendarIcon, User, HardHat, Phone, Tag, AlertTriangle, Home, Building, Banknote, FileText, MoreVertical, Edit, XCircle, Trash2 } from 'lucide-react';
 import { format } from 'date-fns';
-import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState } from 'react';
@@ -58,6 +58,7 @@ export default function MaintenanceDetailPage() {
   const searchParams = useSearchParams();
   const router = useRouter();
   const { toast } = useToast();
+  const { user } = useUser();
   const [isCancelDialogOpen, setIsCancelDialogOpen] = useState(false);
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
@@ -66,16 +67,16 @@ export default function MaintenanceDetailPage() {
   const firestore = useFirestore();
 
   const maintenanceLogRef = useMemoFirebase(() => {
-    if (!firestore || !propertyId || !id) return null;
-    return doc(firestore, 'properties', propertyId, 'maintenanceLogs', id);
-  }, [firestore, propertyId, id]);
+    if (!firestore || !propertyId || !id || !user) return null;
+    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'maintenanceLogs', id);
+  }, [firestore, propertyId, id, user]);
 
   const { data: maintenanceLog, isLoading: isLoadingLog, error } = useDoc<MaintenanceLog>(maintenanceLogRef);
   
   const propertyRef = useMemoFirebase(() => {
-    if (!firestore || !propertyId) return null;
-    return doc(firestore, 'properties', propertyId);
-  }, [firestore, propertyId]);
+    if (!firestore || !propertyId || !user) return null;
+    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId);
+  }, [firestore, propertyId, user]);
   const { data: property, isLoading: isLoadingProperty } = useDoc<Property>(propertyRef);
   
   const handleCancelConfirm = async () => {

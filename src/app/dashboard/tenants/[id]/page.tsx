@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, notFound, useRouter } from 'next/navigation';
+import { useParams, notFound, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -60,7 +60,9 @@ function safeCreateDate(dateValue: any): Date | null {
 
 export default function TenantDetailPage() {
   const params = useParams();
+  const searchParams = useSearchParams();
   const id = params.id as string;
+  const urlPropertyId = searchParams.get('propertyId');
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
@@ -68,18 +70,26 @@ export default function TenantDetailPage() {
   
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  // Use collectionGroup to find the tenant regardless of property ID
+  // Attempt to build a direct reference first if propertyId is available
+  const directTenantRef = useMemoFirebase(() => {
+    if (!firestore || !id || !urlPropertyId || !user) return null;
+    return doc(firestore, 'userProfiles', user.uid, 'properties', urlPropertyId, 'tenants', id);
+  }, [firestore, id, urlPropertyId, user]);
+  const { data: directTenant, isLoading: isLoadingDirect } = useDoc<Tenant>(directTenantRef);
+
+  // Fallback to collectionGroup if propertyId is missing
   const tenantSearchQuery = useMemoFirebase(() => {
-    if (!firestore || !id || !user) return null;
+    if (!firestore || !id || !user || urlPropertyId) return null;
     return query(
       collectionGroup(firestore, 'tenants'),
       where('ownerId', '==', user.uid),
       where('id', '==', id)
     );
-  }, [firestore, id, user]);
+  }, [firestore, id, user, urlPropertyId]);
+  const { data: searchResults, isLoading: isLoadingSearch } = useCollection<Tenant>(tenantSearchQuery);
 
-  const { data: searchResults, isLoading: isLoadingTenant } = useCollection<Tenant>(tenantSearchQuery);
-  const tenant = useMemo(() => searchResults?.[0] || null, [searchResults]);
+  const tenant = useMemo(() => directTenant || searchResults?.[0] || null, [directTenant, searchResults]);
+  const isLoadingTenant = isLoadingDirect || isLoadingSearch;
 
   const propertyRef = useMemoFirebase(() => {
     if (!firestore || !tenant?.propertyId || !user) return null;
@@ -109,7 +119,7 @@ export default function TenantDetailPage() {
   };
 
   if (isLoadingTenant) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
-  if (searchResults && !tenant) return notFound();
+  if (!tenant && !isLoadingTenant) return notFound();
 
   const formatAddress = (address: Property['address'] | undefined) => {
     if (!address) return 'N/A';
@@ -132,7 +142,7 @@ export default function TenantDetailPage() {
             </div>
             <div className="flex items-center gap-2">
                 <Button variant="outline" asChild className="hidden sm:inline-flex">
-                    <Link href={`/dashboard/tenants/${id}/edit`}>
+                    <Link href={`/dashboard/tenants/${id}/edit?propertyId=${tenant?.propertyId}`}>
                         <Edit className="mr-2 h-4 w-4" /> Edit Profile
                     </Link>
                 </Button>
@@ -144,7 +154,7 @@ export default function TenantDetailPage() {
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         <DropdownMenuItem asChild className="sm:hidden">
-                            <Link href={`/dashboard/tenants/${id}/edit`}>
+                            <Link href={`/dashboard/tenants/${id}/edit?propertyId=${tenant?.propertyId}`}>
                                 <Edit className="mr-2 h-4 w-4" /> Edit Profile
                             </Link>
                         </DropdownMenuItem>
@@ -251,7 +261,7 @@ export default function TenantDetailPage() {
                                 <p className="text-xs text-muted-foreground mt-1 font-medium">Finalized on: {format(safeCreateDate(firstScreening.screeningDate)!, 'PPP')}</p>
                             </div>
                             <Button asChild variant="outline" className="w-full sm:w-auto">
-                                <Link href={`/dashboard/tenants/${id}/screenings/${firstScreening.id}`}>
+                                <Link href={`/dashboard/tenants/${id}/screenings/${firstScreening.id}?propertyId=${tenant?.propertyId}`}>
                                     <Eye className="mr-2 h-4 w-4" /> View Report
                                 </Link>
                             </Button>

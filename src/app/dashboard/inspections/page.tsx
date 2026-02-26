@@ -117,9 +117,9 @@ export default function InspectionsPage() {
 
   // Fetch properties - strictly scoped to logged-in user
   const propertiesQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user || !firestore) return null;
     return query(
-      collection(firestore, 'properties'),
+      collection(firestore, 'userProfiles', user.uid, 'properties'),
       where('ownerId', '==', user.uid),
       limit(500)
     );
@@ -135,9 +135,9 @@ export default function InspectionsPage() {
 
   // Fetch inspections for the selected property - strictly scoped to logged-in user
   const inspectionsQuery = useMemoFirebase(() => {
-    if (!user || !selectedPropertyId) return null;
+    if (!user || !firestore || !selectedPropertyId) return null;
     return query(
-      collection(firestore, 'properties', selectedPropertyId, 'inspections'),
+      collection(firestore, 'userProfiles', user.uid, 'properties', selectedPropertyId, 'inspections'),
       where('ownerId', '==', user.uid),
       limit(500)
     );
@@ -163,10 +163,12 @@ export default function InspectionsPage() {
   };
 
   const handleDeleteConfirm = async () => {
-    if (!firestore || !inspectionToDelete || !selectedPropertyId) return;
+    if (!firestore || !user || !inspectionToDelete || !selectedPropertyId) return;
     try {
       const docRef = doc(
         firestore,
+        'userProfiles',
+        user.uid,
         'properties',
         selectedPropertyId,
         'inspections',

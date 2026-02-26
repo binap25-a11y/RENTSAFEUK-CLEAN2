@@ -154,21 +154,21 @@ export default function EditChecklistPage() {
   });
 
   const checklistRef = useMemoFirebase(() => {
-    if (!firestore || !propertyId || !id) return null;
-    return doc(firestore, 'properties', propertyId, 'checklists', id);
-  }, [firestore, propertyId, id]);
+    if (!firestore || !propertyId || !id || !user) return null;
+    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'checklists', id);
+  }, [firestore, propertyId, id, user]);
   const { data: checklist, isLoading: isLoadingChecklist } = useDoc(checklistRef);
 
   const propertyRef = useMemoFirebase(() => {
-    if (!firestore || !propertyId) return null;
-    return doc(firestore, 'properties', propertyId);
-  }, [firestore, propertyId]);
+    if (!firestore || !propertyId || !user) return null;
+    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId);
+  }, [firestore, propertyId, user]);
   const { data: property, isLoading: isLoadingProperty } = useDoc(propertyRef);
 
   const tenantRef = useMemoFirebase(() => {
-    if (!firestore || !tenantId) return null;
-    return doc(firestore, 'tenants', tenantId);
-  }, [firestore, tenantId]);
+    if (!firestore || !tenantId || !propertyId || !user) return null;
+    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'tenants', tenantId);
+  }, [firestore, tenantId, propertyId, user]);
   const { data: tenant, isLoading: isLoadingTenant } = useDoc(tenantRef);
 
   useEffect(() => {

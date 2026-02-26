@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Loader2, Calendar as CalendarIcon, User, Home, Edit } from 'lucide-react';
 import { format } from 'date-fns';
-import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc } from 'firebase/firestore';
 
 const sections = {
@@ -43,23 +43,24 @@ export default function ViewChecklistPage() {
   const propertyId = searchParams.get('propertyId');
   const tenantId = searchParams.get('tenantId');
   const firestore = useFirestore();
+  const { user } = useUser();
 
   const checklistRef = useMemoFirebase(() => {
-    if (!firestore || !propertyId || !id) return null;
-    return doc(firestore, 'properties', propertyId, 'checklists', id);
-  }, [firestore, propertyId, id]);
+    if (!firestore || !propertyId || !id || !user) return null;
+    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'checklists', id);
+  }, [firestore, propertyId, id, user]);
   const { data: checklist, isLoading: isLoadingChecklist, error: checklistError } = useDoc(checklistRef);
   
   const propertyRef = useMemoFirebase(() => {
-    if(!firestore || !propertyId) return null;
-    return doc(firestore, 'properties', propertyId);
-  }, [firestore, propertyId]);
+    if(!firestore || !propertyId || !user) return null;
+    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId);
+  }, [firestore, propertyId, user]);
   const { data: property, isLoading: isLoadingProperty } = useDoc(propertyRef);
 
   const tenantRef = useMemoFirebase(() => {
-    if (!firestore || !tenantId) return null;
-    return doc(firestore, 'tenants', tenantId);
-  }, [firestore, tenantId]);
+    if (!firestore || !tenantId || !propertyId || !user) return null;
+    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'tenants', tenantId);
+  }, [firestore, tenantId, propertyId, user]);
   const { data: tenant, isLoading: isLoadingTenant } = useDoc(tenantRef);
 
 
@@ -88,7 +89,7 @@ export default function ViewChecklistPage() {
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
             <Button variant="outline" size="icon" asChild>
-                <Link href={`/dashboard/tenants/${tenantId}`}><ArrowLeft className="h-4 w-4" /></Link>
+                <Link href={`/dashboard/tenants/${tenantId}?propertyId=${propertyId}`}><ArrowLeft className="h-4 w-4" /></Link>
             </Button>
             <div>
                 <h1 className="text-2xl font-bold">Pre-Tenancy Checklist</h1>

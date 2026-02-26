@@ -98,15 +98,15 @@ export default function EditMaintenancePage() {
     });
 
     const maintenanceLogRef = useMemoFirebase(() => {
-        if (!firestore || !propertyId || !logId) return null;
-        return doc(firestore, 'properties', propertyId, 'maintenanceLogs', logId);
-    }, [firestore, propertyId, logId]);
+        if (!firestore || !propertyId || !logId || !user) return null;
+        return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'maintenanceLogs', logId);
+    }, [firestore, propertyId, logId, user]);
 
     const { data: maintenanceLog, isLoading: isLoadingLog } = useDoc<MaintenanceLog>(maintenanceLogRef);
 
     const contractorsQuery = useMemoFirebase(() => {
-        if (!user) return null;
-        return query(collection(firestore, 'contractors'), where('ownerId', '==', user.uid));
+        if (!user || !firestore) return null;
+        return query(collection(firestore, 'userProfiles', user.uid, 'contractors'), where('ownerId', '==', user.uid));
     }, [firestore, user]);
     const { data: contractors } = useCollection<Contractor>(contractorsQuery);
 

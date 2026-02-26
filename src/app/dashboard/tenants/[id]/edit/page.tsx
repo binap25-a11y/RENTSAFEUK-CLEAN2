@@ -3,7 +3,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useMemo } from 'react';
 import {
@@ -38,6 +38,7 @@ import {
   useFirestore,
   useCollection,
   useMemoFirebase,
+  useDoc,
 } from '@/firebase';
 import { collection, query, where, doc, updateDoc, collectionGroup } from 'firebase/firestore';
 
@@ -92,7 +93,9 @@ const formatDateForInput = (value: any) => {
 export default function EditTenantPage() {
   const router = useRouter();
   const params = useParams();
+  const searchParams = useSearchParams();
   const tenantId = params.id as string;
+  const urlPropertyId = searchParams.get('propertyId');
 
   const { user } = useUser();
   const firestore = useFirestore();
@@ -101,18 +104,26 @@ export default function EditTenantPage() {
     resolver: zodResolver(tenantSchema),
   });
   
-  // Use collectionGroup to find the tenant across properties
+  // Direct reference if propertyId is known
+  const directTenantRef = useMemoFirebase(() => {
+    if (!firestore || !tenantId || !urlPropertyId || !user) return null;
+    return doc(firestore, 'userProfiles', user.uid, 'properties', urlPropertyId, 'tenants', tenantId);
+  }, [firestore, tenantId, urlPropertyId, user]);
+  const { data: directTenant, isLoading: isLoadingDirect } = useDoc<Tenant>(directTenantRef);
+
+  // collectionGroup fallback
   const tenantSearchQuery = useMemoFirebase(() => {
-    if (!firestore || !tenantId || !user) return null;
+    if (!firestore || !tenantId || !user || urlPropertyId) return null;
     return query(
       collectionGroup(firestore, 'tenants'),
       where('ownerId', '==', user.uid),
       where('id', '==', tenantId)
     );
-  }, [firestore, tenantId, user]);
+  }, [firestore, tenantId, user, urlPropertyId]);
+  const { data: searchResults, isLoading: isLoadingSearch } = useCollection<Tenant>(tenantSearchQuery);
 
-  const { data: searchResults, isLoading: isLoadingTenant } = useCollection<Tenant>(tenantSearchQuery);
-  const tenant = useMemo(() => searchResults?.[0] || null, [searchResults]);
+  const tenant = useMemo(() => directTenant || searchResults?.[0] || null, [directTenant, searchResults]);
+  const isLoadingTenant = isLoadingDirect || isLoadingSearch;
 
   // Fetch properties for the dropdown
   const propertiesQuery = useMemoFirebase(() => {
@@ -159,7 +170,7 @@ export default function EditTenantPage() {
         title: 'Tenant Updated',
         description: `${data.name}'s details have been successfully updated.`,
       });
-      router.push(`/dashboard/tenants/${tenant.id}`);
+      router.push(`/dashboard/tenants/${tenant.id}?propertyId=${tenant.propertyId}`);
     } catch (error) {
       console.error('Failed to update tenant:', error);
       toast({ variant: 'destructive', title: 'Update Failed' });
@@ -174,7 +185,7 @@ export default function EditTenantPage() {
     return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
   }
   
-  if (searchResults && !tenant) return <div className="text-center py-10"><p>Tenant not found.</p><Button asChild variant="link"><Link href="/dashboard/tenants">Return to Tenants List</Link></Button></div>;
+  if (!tenant && !isLoadingTenant) return <div className="text-center py-10"><p>Tenant not found.</p><Button asChild variant="link"><Link href="/dashboard/tenants">Return to Tenants List</Link></Button></div>;
 
   return (
     <Card className="max-w-2xl mx-auto">
@@ -223,7 +234,7 @@ export default function EditTenantPage() {
             </div>
             <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel>Notes (Optional)</FormLabel><FormControl><Textarea rows={4} {...field} /></FormControl><FormMessage /></FormItem>)} />
             <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" asChild><Link href={`/dashboard/tenants/${tenantId}`}>Cancel</Link></Button>
+                <Button type="button" variant="outline" asChild><Link href={`/dashboard/tenants/${tenantId}?propertyId=${tenant?.propertyId}`}>Cancel</Link></Button>
                 <Button type="submit">Save Changes</Button>
             </div>
           </form>

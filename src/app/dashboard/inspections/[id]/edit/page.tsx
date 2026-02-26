@@ -73,9 +73,9 @@ export default function EditInspectionPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const inspectionRef = useMemoFirebase(() => {
-    if (!firestore || !propertyId || !id) return null;
-    return doc(firestore, 'properties', propertyId, 'inspections', id);
-  }, [firestore, propertyId, id]);
+    if (!firestore || !propertyId || !id || !user) return null;
+    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'inspections', id);
+  }, [firestore, propertyId, id, user]);
 
   const { data: inspection, isLoading } = useDoc(inspectionRef);
 

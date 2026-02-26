@@ -148,9 +148,9 @@ export default function LoggedExpensesPage() {
 
   // Fetch properties
   const propertiesQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user || !firestore) return null;
     return query(
-      collection(firestore, 'properties'),
+      collection(firestore, 'userProfiles', user.uid, 'properties'),
       where('ownerId', '==', user.uid),
       limit(500)
     );
@@ -164,9 +164,9 @@ export default function LoggedExpensesPage() {
 
   // Fetch expenses for the selected property
   const expensesQuery = useMemoFirebase(() => {
-    if (!user || !selectedPropertyId) return null;
+    if (!user || !firestore || !selectedPropertyId) return null;
     return query(
-      collection(firestore, 'properties', selectedPropertyId, 'expenses'),
+      collection(firestore, 'userProfiles', user.uid, 'properties', selectedPropertyId, 'expenses'),
       where('ownerId', '==', user.uid)
     );
   }, [firestore, user, selectedPropertyId]);
@@ -207,9 +207,9 @@ export default function LoggedExpensesPage() {
   }, [editingExpense, editForm]);
 
   const handleUpdate = async (data: ExpenseFormValues) => {
-    if (!firestore || !editingExpense) return;
+    if (!firestore || !editingExpense || !user) return;
     setIsSubmitting(true);
-    const docRef = doc(firestore, 'properties', editingExpense.propertyId, 'expenses', editingExpense.id);
+    const docRef = doc(firestore, 'userProfiles', user.uid, 'properties', editingExpense.propertyId, 'expenses', editingExpense.id);
     
     updateDoc(docRef, { ...data })
       .then(() => {
@@ -224,9 +224,9 @@ export default function LoggedExpensesPage() {
   };
 
   const handleDelete = async () => {
-    if (!firestore || !deletingExpense) return;
+    if (!firestore || !deletingExpense || !user) return;
     setIsSubmitting(true);
-    const docRef = doc(firestore, 'properties', deletingExpense.propertyId, 'expenses', deletingExpense.id);
+    const docRef = doc(firestore, 'userProfiles', user.uid, 'properties', deletingExpense.propertyId, 'expenses', deletingExpense.id);
     
     deleteDoc(docRef)
       .then(() => {

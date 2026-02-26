@@ -7,7 +7,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { ArrowLeft, Loader2, Calendar as CalendarIcon, User, Shield, AlertTriangle, Download } from 'lucide-react';
 import { format } from 'date-fns';
-import { useDoc, useFirestore, useMemoFirebase } from '@/firebase';
+import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
@@ -116,17 +116,18 @@ export default function ViewInspectionPage() {
   const id = params.id as string;
   const propertyId = searchParams.get('propertyId');
   const firestore = useFirestore();
+  const { user } = useUser();
 
   const inspectionRef = useMemoFirebase(() => {
-    if (!firestore || !propertyId || !id) return null;
-    return doc(firestore, 'properties', propertyId, 'inspections', id);
-  }, [firestore, propertyId, id]);
+    if (!firestore || !propertyId || !id || !user) return null;
+    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'inspections', id);
+  }, [firestore, propertyId, id, user]);
   const { data: inspection, isLoading: isLoadingInspection, error: inspectionError } = useDoc(inspectionRef);
   
   const propertyRef = useMemoFirebase(() => {
-    if(!firestore || !propertyId) return null;
-    return doc(firestore, 'properties', propertyId);
-  }, [firestore, propertyId]);
+    if(!firestore || !propertyId || !user) return null;
+    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId);
+  }, [firestore, propertyId, user]);
   const { data: property, isLoading: isLoadingProperty } = useDoc<Property>(propertyRef);
 
 

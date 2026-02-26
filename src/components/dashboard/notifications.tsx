@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -66,8 +65,8 @@ export function Notifications() {
 
   // Primary Properties Listener
   const propertiesQuery = useMemoFirebase(() => {
-    if (!user) return null;
-    return query(collection(firestore, 'properties'), where('ownerId', '==', user.uid));
+    if (!user || !firestore) return null;
+    return query(collection(firestore, 'userProfiles', user.uid, 'properties'), where('ownerId', '==', user.uid));
   }, [firestore, user]);
   const { data: properties } = useCollection<Property>(propertiesQuery);
 
@@ -77,7 +76,7 @@ export function Notifications() {
 
   // REAL-TIME NOTIFICATION AGGREGATION
   useEffect(() => {
-    if (!user || !properties || properties.length === 0) {
+    if (!user || !firestore || !properties || properties.length === 0) {
         setAllDocuments([]);
         setAllInspections([]);
         return;
@@ -98,13 +97,13 @@ export function Notifications() {
         const ownerFilter = where('ownerId', '==', user.uid);
         
         // Subscribe to documents
-        unsubs.push(onSnapshot(query(collection(firestore, 'properties', prop.id, 'documents'), ownerFilter), (snap) => {
+        unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'documents'), ownerFilter), (snap) => {
             docMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Document));
             updateState();
         }));
 
         // Subscribe to inspections
-        unsubs.push(onSnapshot(query(collection(firestore, 'properties', prop.id, 'inspections'), ownerFilter), (snap) => {
+        unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'inspections'), ownerFilter), (snap) => {
             inspMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Inspection));
             updateState();
         }));
