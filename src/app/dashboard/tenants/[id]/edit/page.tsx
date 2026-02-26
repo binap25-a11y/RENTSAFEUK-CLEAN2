@@ -42,11 +42,14 @@ import {
 } from '@/firebase';
 import { collection, query, where, doc, updateDoc, collectionGroup } from 'firebase/firestore';
 
+// Standard UK phone regex (Mobile & Landline)
+const ukPhoneRegex = /^(((\+44\s?\d{4}|\(?0\d{4}\)?)\s?\d{3}\s?\d{3})|((\+44\s?\d{3}|\(?0\d{3}\)?)\s?\d{3}\s?\d{4})|((\+44\s?\d{2}|\(?0\d{2}\)?)\s?\d{4}\s?\d{4}))(\s?\#(\d{4}|\d{3}))?$/;
+
 // Zod schema for tenant form validation
 const tenantSchema = z.object({
   name: z.string().min(2, 'Name is too short'),
-  email: z.string().email('Invalid email address'),
-  telephone: z.string().min(10, 'Invalid phone number'),
+  email: z.string().email('Please enter a valid email address.'),
+  telephone: z.string().regex(ukPhoneRegex, 'Please enter a valid UK phone number.'),
   propertyId: z.string({ required_error: 'Please select a property.' }),
   monthlyRent: z.coerce.number().min(0, 'Rent cannot be negative').optional(),
   tenancyStartDate: z.coerce.date({ required_error: 'Please select a start date.' }),
@@ -131,7 +134,7 @@ export default function EditTenantPage() {
     return query(
       collection(firestore, 'userProfiles', user.uid, 'properties'),
       where('ownerId', '==', user.uid),
-      where('status', 'in', ['Vacant', 'Occupied'])
+      where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
     );
   }, [firestore, user]);
   const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
@@ -178,7 +181,7 @@ export default function EditTenantPage() {
   }
   
   const formatAddress = (address: Property['address']) => {
-    return [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
+    return [address.nameOrNumber, address.street, address.city, address.county, address.postcode].filter(Boolean).join(', ');
   };
 
   if (isLoadingTenant || isLoadingProperties) {
@@ -226,7 +229,7 @@ export default function EditTenantPage() {
                <FormField control={form.control} name="telephone" render={({ field }) => (<FormItem><FormLabel>Telephone</FormLabel><FormControl><Input type="tel" {...field} /></FormControl><FormMessage /></FormItem>)} />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField control={form.control} name="monthlyRent" render={({ field }) => (<FormItem><FormLabel>Monthly Rent (£)</FormLabel><FormControl><Input type="number" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="monthlyRent" render={({ field }) => (<FormItem><FormLabel>Monthly Rent (£)</FormLabel><FormControl><Input type="number" min="0" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField control={form.control} name="tenancyStartDate" render={({ field }) => (<FormItem><FormLabel>Tenancy Start Date</FormLabel><FormControl><Input type="date" value={formatDateForInput(field.value)} onChange={(e) => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>)} />

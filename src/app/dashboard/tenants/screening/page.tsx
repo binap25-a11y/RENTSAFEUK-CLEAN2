@@ -321,7 +321,7 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
                                             <FormItem>
                                                 <FormLabel>Tenant Monthly Net Income (£)</FormLabel>
                                                 <FormControl>
-                                                    <Input type="number" placeholder="0.00" {...field} />
+                                                    <Input type="number" min="0" placeholder="0.00" {...field} />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>

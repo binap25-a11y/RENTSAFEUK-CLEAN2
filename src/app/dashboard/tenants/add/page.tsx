@@ -48,7 +48,7 @@ const ukPhoneRegex = /^(((\+44\s?\d{4}|\(?0\d{4}\)?)\s?\d{3}\s?\d{3})|((\+44\s?\
 // Zod schema for tenant form validation
 const tenantSchema = z.object({
   name: z.string().min(2, 'Name is too short'),
-  email: z.string().email('Invalid email address'),
+  email: z.string().email('Please enter a valid email address.'),
   telephone: z.string().regex(ukPhoneRegex, 'Please enter a valid UK phone number.'),
   propertyId: z.string({ required_error: 'Please select a property.' }).min(1, 'Please select a property.'),
   monthlyRent: z.coerce.number().min(0, 'Rent cannot be negative').optional(),
@@ -178,7 +178,7 @@ export default function AddTenantPage() {
   }
 
   const formatAddress = (address: Property['address']) => {
-    return [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
+    return [address.nameOrNumber, address.street, address.city, address.county, address.postcode].filter(Boolean).join(', ');
   };
 
   return (
@@ -277,7 +277,7 @@ export default function AddTenantPage() {
                     <FormItem>
                         <FormLabel className="font-bold">Agreed Monthly Rent (£)</FormLabel>
                         <FormControl>
-                            <Input type="number" placeholder="0.00" className="h-11" {...field} value={field.value ?? ''} />
+                            <Input type="number" min="0" placeholder="0.00" className="h-11" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
