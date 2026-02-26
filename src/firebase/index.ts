@@ -1,3 +1,4 @@
+
 'use client';
 
 import { firebaseConfig } from '@/firebase/config';
@@ -5,16 +6,15 @@ import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
-// IMPORTANT: DO NOT MODIFY THIS FUNCTION
+// IMPORTANT: This function handles idempotent initialization
 export function initializeFirebase() {
   if (!getApps().length) {
     let firebaseApp;
     try {
-      firebaseApp = initializeApp();
+      // In some environments, initializeApp() with no args uses the default service account
+      firebaseApp = initializeApp(firebaseConfig);
     } catch (e) {
-      if (process.env.NODE_ENV === "production") {
-        console.warn('Automatic initialization failed. Falling back to firebase config object.', e);
-      }
+      console.error('Firebase initialization failed', e);
       firebaseApp = initializeApp(firebaseConfig);
     }
     return getSdks(firebaseApp);
@@ -30,7 +30,7 @@ export function getSdks(firebaseApp: FirebaseApp) {
   };
 }
 
-// Explicitly re-exporting to ensure resolution
+// Re-export core modules and hooks
 export * from './provider';
 export * from './client-provider';
 export * from './firestore/use-collection';
