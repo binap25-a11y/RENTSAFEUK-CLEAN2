@@ -78,8 +78,8 @@ const menuItems = [
         { href: '/dashboard/documents/upload', label: 'Log Document' },
     ],
   },
-  { href: '/dashboard/reminders', label: 'Reminders', icon: Bell },
   { href: '/dashboard/expenses', label: 'Financials', icon: CreditCard },
+  { href: '/dashboard/reminders', label: 'Reminders', icon: Bell },
 ];
 
 export function MainNav() {
