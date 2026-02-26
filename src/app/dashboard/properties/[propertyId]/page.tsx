@@ -1,13 +1,35 @@
 
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Bed, Bath, Edit, Trash2, MoreVertical, Loader2, AlertTriangle, User, Home, Wrench, CalendarCheck, FileText, Banknote, Shield, Phone, Mail, MapPin, AlertCircle } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  Bed, 
+  Bath, 
+  Edit, 
+  Trash2, 
+  MoreVertical, 
+  Loader2, 
+  AlertTriangle, 
+  User, 
+  Home, 
+  Wrench, 
+  CalendarCheck, 
+  FileText, 
+  Banknote, 
+  Shield, 
+  Phone, 
+  Mail, 
+  MapPin, 
+  AlertCircle,
+  PlusCircle,
+  ChevronRight
+} from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, collection, query, where, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -91,20 +113,15 @@ export default function PropertyDetailPage() {
   }, [firestore, propertyId, user]);
   const { data: property, isLoading: isLoadingProperty, error: propertyError } = useDoc<Property>(propertyRef);
   
-  const tenantForPropertyQuery = useMemoFirebase(() => {
+  const tenantsForPropertyQuery = useMemoFirebase(() => {
     if (!user || !firestore || !propertyId) return null;
     return query(
       collection(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'tenants'),
-      where('status', '==', 'Active'),
-      limit(1)
+      where('status', '==', 'Active')
     );
   }, [firestore, user, propertyId]);
 
-  const { data: tenants, isLoading: isLoadingTenants } = useCollection<Tenant>(tenantForPropertyQuery);
-  
-  const tenant = useMemo(() => {
-    return tenants?.[0] || null;
-  }, [tenants]);
+  const { data: activeTenants, isLoading: isLoadingTenants } = useCollection<Tenant>(tenantsForPropertyQuery);
 
   const maintenanceQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
@@ -322,40 +339,57 @@ export default function PropertyDetailPage() {
           
           <div className="space-y-6">
             <Card className="shadow-sm">
-              <CardHeader className="pb-4"><CardTitle className="font-headline text-lg">Current Tenant</CardTitle></CardHeader>
-              <CardContent className="space-y-5 pt-6 border-t bg-muted/5">
+              <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
+                <CardTitle className="font-headline text-lg">Current Tenants</CardTitle>
+                <Button variant="ghost" size="icon" asChild className="h-8 w-8 text-primary">
+                  <Link href={`/dashboard/tenants/add?propertyId=${propertyId}`} title="Add Tenant">
+                    <PlusCircle className="h-5 w-5" />
+                  </Link>
+                </Button>
+              </CardHeader>
+              <CardContent className="space-y-4 pt-6 border-t bg-muted/5">
                 {isLoadingTenants ? (
                   <div className="flex justify-center items-center h-24">
                     <Loader2 className="h-6 w-6 animate-spin text-muted-foreground" />
                   </div>
-                ) : tenant ? (
-                  <>
-                    <div className="flex items-start gap-3">
-                      <div className="p-2.5 rounded-lg bg-primary/10 shrink-0"><User className="h-5 w-5 text-primary" /></div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-0.5">Tenant Name</p>
-                        <p className="font-bold text-foreground leading-tight">{tenant.name}</p>
-                        <Link href={`/dashboard/tenants/${tenant.id}?propertyId=${propertyId}`} className="text-xs text-primary hover:underline mt-1 inline-block font-semibold">View Profile</Link>
+                ) : activeTenants && activeTenants.length > 0 ? (
+                  <div className="space-y-4">
+                    {activeTenants.map((tenant) => (
+                      <div key={tenant.id} className="p-4 rounded-xl bg-background border shadow-sm group hover:border-primary/50 transition-colors">
+                        <div className="flex items-start justify-between gap-2 mb-3">
+                          <div className="flex items-center gap-3">
+                            <div className="p-2 rounded-full bg-primary/10 text-primary">
+                              <User className="h-4 w-4" />
+                            </div>
+                            <p className="font-bold text-foreground truncate max-w-[140px]">{tenant.name}</p>
+                          </div>
+                          <Button variant="ghost" size="icon" asChild className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Link href={`/dashboard/tenants/${tenant.id}?propertyId=${propertyId}`}>
+                              <ChevronRight className="h-4 w-4" />
+                            </Link>
+                          </Button>
+                        </div>
+                        <div className="space-y-2">
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground overflow-hidden">
+                            <Mail className="h-3 w-3 shrink-0" />
+                            <span className="truncate">{tenant.email}</span>
+                          </div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                            <Phone className="h-3 w-3 shrink-0" />
+                            <span>{tenant.telephone}</span>
+                          </div>
+                        </div>
                       </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <div className="p-2.5 rounded-lg bg-primary/10 shrink-0"><Mail className="h-5 w-5 text-primary" /></div>
-                      <div className="min-w-0 flex-1 overflow-hidden">
-                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-0.5">Email</p>
-                        <a href={`mailto:${tenant.email}`} className="text-sm font-semibold text-primary hover:underline break-all block">{tenant.email}</a>
-                      </div>
-                    </div>
-                    <div className="flex items-start gap-3">
-                      <div className="p-2.5 rounded-lg bg-primary/10 shrink-0"><Phone className="h-5 w-5 text-primary" /></div>
-                      <div className="min-w-0 flex-1">
-                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-0.5">Phone</p>
-                        <p className="text-sm font-semibold text-foreground">{tenant.telephone}</p>
-                      </div>
-                    </div>
-                  </>
+                    ))}
+                    <Button asChild variant="outline" className="w-full border-dashed border-2 hover:bg-primary/5 hover:text-primary transition-all">
+                      <Link href={`/dashboard/tenants/add?propertyId=${propertyId}`}>
+                        <PlusCircle className="mr-2 h-4 w-4" /> Add Another Tenant
+                      </Link>
+                    </Button>
+                  </div>
                 ) : (
                   <div className="text-center py-4">
-                    <p className="text-sm text-muted-foreground mb-4 font-medium italic">No active tenant assigned.</p>
+                    <p className="text-sm text-muted-foreground mb-4 font-medium italic">No active tenants assigned.</p>
                     <Button asChild variant="secondary" className="w-full shadow-sm">
                       <Link href={`/dashboard/tenants/add?propertyId=${propertyId}`}>Assign Tenant</Link>
                     </Button>
