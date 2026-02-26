@@ -1,5 +1,5 @@
-
 'use client';
+
 import {
   Auth,
   signInAnonymously,
@@ -7,12 +7,18 @@ import {
   signInWithEmailAndPassword,
 } from 'firebase/auth';
 
-/** Initiate anonymous sign-in (non-blocking). */
+/**
+ * Initiate anonymous sign-in (non-blocking).
+ */
 export function initiateAnonymousSignIn(auth: Auth): void {
-  signInAnonymously(auth);
+  signInAnonymously(auth).catch((error) => {
+    console.error('Anonymous sign-in failed:', error);
+  });
 }
 
-/** Initiate email/password sign-up (non-blocking). */
+/**
+ * Initiate email/password sign-up (non-blocking).
+ */
 export function createUserNonBlocking(
   auth: Auth,
   email: string,
@@ -24,7 +30,9 @@ export function createUserNonBlocking(
   });
 }
 
-/** Initiate email/password sign-in (non-blocking). */
+/**
+ * Initiate email/password sign-in (non-blocking).
+ */
 export function signInNonBlocking(
   auth: Auth,
   email: string,
