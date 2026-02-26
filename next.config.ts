@@ -11,7 +11,7 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   experimental: {
-    serverComponentsExternalPackages: ['google-auth-library'],
+    serverExternalPackages: ['firebase'],
   },
   allowedDevOrigins: ["https://*.cloudworkstations.dev"],
 };

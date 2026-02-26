@@ -10,7 +10,7 @@ To run the web application, open a terminal and run the following command:
 npm run dev
 ```
 
-Open [http://localhost:3000](http://localhost:3000) with your browser to see the result.
+Open [hfirebase projects:listttp://localhost:3000](http://localhost:3000) with your browser to see the result.
 
 ---
 ## Firebase Setup
