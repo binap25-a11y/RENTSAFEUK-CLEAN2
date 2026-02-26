@@ -101,9 +101,9 @@ export default function UploadDocumentPage() {
   }, [watchType, watchIssueDate, watchExpiryDate]);
   
   const propertiesQuery = useMemoFirebase(() => {
-    if (!user) return null;
+    if (!user || !firestore) return null;
     return query(
-      collection(firestore, 'properties'),
+      collection(firestore, 'userProfiles', user.uid, 'properties'),
       where('ownerId', '==', user.uid),
       limit(500)
     );
@@ -123,7 +123,8 @@ export default function UploadDocumentPage() {
     }
     setIsSaving(true);
     
-    const documentsCollection = collection(firestore, 'properties', data.propertyId, 'documents');
+    // Correct hierarchical path
+    const documentsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', data.propertyId, 'documents');
     
     const dataToSave: any = {
       ...data,

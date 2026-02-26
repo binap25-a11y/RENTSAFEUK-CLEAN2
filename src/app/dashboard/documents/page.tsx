@@ -27,7 +27,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Search, PlusCircle, FileWarning, Clock, ShieldCheck, Loader2, Eye, Filter } from 'lucide-react';
+import { Search, PlusCircle, FileWarning, Clock, ShieldCheck, Loader2, Filter } from 'lucide-react';
 import { format, isBefore, addDays } from 'date-fns';
 import {
   useUser,
@@ -96,18 +96,18 @@ export default function DocumentsPage() {
         setToday(new Date());
     }, []);
 
-    // Fetch properties - strictly scoped to user
+    // Fetch properties - strictly hierarchical
     const propertiesQuery = useMemoFirebase(() => {
-        if (!user) return null;
+        if (!user || !firestore) return null;
         return query(
-            collection(firestore, 'properties'),
+            collection(firestore, 'userProfiles', user.uid, 'properties'),
             where('ownerId', '==', user.uid),
             limit(500)
         );
     }, [firestore, user]);
     const { data: allProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
     
-    // Filter active properties in-memory to bypass index requirements
+    // Filter active properties in-memory
     const activeProperties = useMemo(() => {
         const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
         return allProperties?.filter(p => activeStatuses.includes(p.status || '')) ?? [];
@@ -115,9 +115,9 @@ export default function DocumentsPage() {
 
     // Fetch documents for the selected property
     const documentsQuery = useMemoFirebase(() => {
-        if (!user || !selectedPropertyId) return null;
+        if (!user || !firestore || !selectedPropertyId) return null;
         return query(
-          collection(firestore, 'properties', selectedPropertyId, 'documents'),
+          collection(firestore, 'userProfiles', user.uid, 'properties', selectedPropertyId, 'documents'),
           where('ownerId', '==', user.uid),
           limit(500)
         );
@@ -128,7 +128,7 @@ export default function DocumentsPage() {
     const documentsWithStatus = useMemo(() => {
         if (!today) return [];
         return documents?.map(doc => {
-            const expiry = doc.expiryDate instanceof Date ? doc.expiryDate : new Date(doc.expiryDate.seconds * 1000);
+            const expiry = doc.expiryDate instanceof Date ? doc.expiryDate : new Date((doc.expiryDate as any).seconds * 1000);
             return {
                 ...doc,
                 status: getDocumentStatus(expiry, today),

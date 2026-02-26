@@ -44,9 +44,9 @@ export default function ContractorDetailPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
   const contractorRef = useMemoFirebase(() => {
-    if (!firestore || !id) return null;
-    return doc(firestore, 'contractors', id);
-  }, [firestore, id]);
+    if (!firestore || !id || !user) return null;
+    return doc(firestore, 'userProfiles', user.uid, 'contractors', id);
+  }, [firestore, id, user]);
 
   const { data: contractor, isLoading, error } = useDoc<Contractor>(contractorRef);
 

@@ -50,9 +50,9 @@ export default function ArchivedContractorsPage() {
     const [isDeleting, setIsDeleting] = useState(false);
 
     const archivedContractorsQuery = useMemoFirebase(() => {
-        if (!user) return null;
+        if (!user || !firestore) return null;
         return query(
-            collection(firestore, 'contractors'),
+            collection(firestore, 'userProfiles', user.uid, 'contractors'),
             where('ownerId', '==', user.uid),
             where('status', '==', 'Archived')
         );
@@ -61,9 +61,9 @@ export default function ArchivedContractorsPage() {
     const { data: archivedContractors, isLoading, error } = useCollection<Contractor>(archivedContractorsQuery);
 
     const handleRestore = async (contractorId: string, name: string) => {
-        if (!firestore) return;
+        if (!firestore || !user) return;
         try {
-            const docRef = doc(firestore, 'contractors', contractorId);
+            const docRef = doc(firestore, 'userProfiles', user.uid, 'contractors', contractorId);
             await updateDoc(docRef, { status: 'Active' });
             toast({
                 title: 'Contractor Restored',
@@ -80,10 +80,10 @@ export default function ArchivedContractorsPage() {
     };
 
     const handleDeletePermanently = async () => {
-        if (!firestore || !contractorToDelete) return;
+        if (!firestore || !contractorToDelete || !user) return;
         setIsDeleting(true);
         try {
-            const docRef = doc(firestore, 'contractors', contractorToDelete.id);
+            const docRef = doc(firestore, 'userProfiles', user.uid, 'contractors', contractorToDelete.id);
             await deleteDoc(docRef);
             toast({
                 title: 'Contractor Deleted Permanently',

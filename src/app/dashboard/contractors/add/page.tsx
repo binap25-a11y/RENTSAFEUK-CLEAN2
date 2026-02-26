@@ -74,9 +74,10 @@ export default function AddContractorPage() {
         setIsSubmitting(true);
 
         try {
-            // DUPLICATE CHECK: Verify phone uniqueness for this user
+            // DUPLICATE CHECK: Verify phone uniqueness for this user - strictly hierarchical
+            const contractorsCollection = collection(firestore, 'userProfiles', user.uid, 'contractors');
             const phoneCheckQuery = query(
-                collection(firestore, 'contractors'),
+                contractorsCollection,
                 where('ownerId', '==', user.uid),
                 where('phone', '==', data.phone),
                 where('status', '==', 'Active'),
@@ -99,7 +100,7 @@ export default function AddContractorPage() {
                 ownerId: user.uid,
                 status: 'Active'
             };
-            const contractorsCollection = collection(firestore, 'contractors');
+            
             await addDoc(contractorsCollection, newContractor);
             
             toast({

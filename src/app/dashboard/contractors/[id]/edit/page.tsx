@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -75,9 +74,9 @@ export default function EditContractorPage() {
     });
 
     const contractorRef = useMemoFirebase(() => {
-        if (!firestore || !contractorId) return null;
-        return doc(firestore, 'contractors', contractorId);
-    }, [firestore, contractorId]);
+        if (!firestore || !contractorId || !user) return null;
+        return doc(firestore, 'userProfiles', user.uid, 'contractors', contractorId);
+    }, [firestore, contractorId, user]);
 
     const { data: contractor, isLoading } = useDoc<Contractor>(contractorRef);
 
@@ -93,19 +92,17 @@ export default function EditContractorPage() {
 
 
     async function onSubmit(data: ContractorFormValues) {
-        if (!user || !firestore) {
+        if (!user || !firestore || !contractorId) {
         toast({
             variant: 'destructive',
-            title: 'Authentication Error',
-            description: 'You must be logged in.',
+            title: 'Error',
+            description: 'Could not update contractor.',
         });
         return;
         }
 
-        if (!contractorId) return;
-
         try {
-            const contractorDocRef = doc(firestore, 'contractors', contractorId);
+            const contractorDocRef = doc(firestore, 'userProfiles', user.uid, 'contractors', contractorId);
             await updateDoc(contractorDocRef, { ...data });
             
             toast({

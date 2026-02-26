@@ -73,7 +73,7 @@ export default function ContractorsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [contractorToArchive, setContractorToArchive] = useState<Contractor | null>(null);
 
-  // Fetch contractors nested under user profile
+  // Fetch contractors nested under user profile - strictly hierarchical
   const contractorsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(

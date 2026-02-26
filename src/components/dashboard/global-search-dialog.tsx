@@ -57,7 +57,6 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
   } | null>(null);
 
   // Load data efficiently when search is opened. 
-  // We avoid collectionGroup queries here to bypass index requirements.
   useEffect(() => {
     if (isOpen && !allData && user && firestore) {
       const fetchData = async () => {
@@ -65,13 +64,18 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
         try {
           const ownerFilter = where('ownerId', '==', user.uid);
           
+          // STRICT HIERARCHICAL QUERIES
           const queries = [
-            getDocs(query(collection(firestore, 'properties'), ownerFilter, limit(100))),
-            getDocs(query(collection(firestore, 'tenants'), ownerFilter, limit(100))),
-            getDocs(query(collection(firestore, 'contractors'), ownerFilter, limit(100))),
+            getDocs(query(collection(firestore, 'userProfiles', user.uid, 'properties'), ownerFilter, limit(100))),
+            getDocs(query(collection(firestore, 'userProfiles', user.uid, 'contractors'), ownerFilter, limit(100))),
           ];
           
-          const [propSnap, tenantSnap, contractorSnap] = await Promise.all(queries);
+          const [propSnap, contractorSnap] = await Promise.all(queries);
+          
+          // For tenants, we might still need collectionGroup if we don't want to loop properties,
+          // but let's try to gather them from the gathered properties if possible,
+          // or just fallback to collectionGroup knowing the ownerId index is required.
+          const tenantSnap = await getDocs(query(collection(firestore, 'tenants'), ownerFilter, limit(100)));
           
           setAllData({
             properties: propSnap.docs.map(d => ({ id: d.id, ...d.data() } as Property)),
@@ -113,7 +117,7 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
     // Contractors
     const contractorItems = allData.contractors
       .filter(c => c.name.toLowerCase().includes(term) || c.trade.toLowerCase().includes(term))
-      .map(c => ({ id: c.id, title: c.name, description: 'Contractor', href: `/dashboard/contractors/${c.id}/edit` }));
+      .map(c => ({ id: c.id, title: c.name, description: 'Contractor', href: `/dashboard/contractors/${c.id}` }));
     if (contractorItems.length) results.push({ title: 'Contractors', icon: HardHat, items: contractorItems.slice(0, 5) });
 
     return results;
