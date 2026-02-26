@@ -10,10 +10,7 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  experimental: {
-    serverExternalPackages: ['firebase'],
-  },
-  allowedDevOrigins: ["https://*.cloudworkstations.dev"],
+  serverExternalPackages: ['firebase'],
 };
 
 export default nextConfig;
