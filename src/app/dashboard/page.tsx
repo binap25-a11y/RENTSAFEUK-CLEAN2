@@ -19,6 +19,11 @@ import {
   Loader2,
   PoundSterling,
   ArrowRight,
+  AlertCircle,
+  Clock,
+  ShieldCheck,
+  ChevronRight,
+  PlusCircle
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -28,7 +33,7 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, onSnapshot, Timestamp, collectionGroup } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, Timestamp } from 'firebase/firestore';
 import { useMemo, useState, useEffect } from 'react';
 import { format, isFuture, isBefore, addDays } from 'date-fns';
 import {
@@ -41,6 +46,7 @@ import {
 } from "@/components/ui/chart"
 import { Pie, PieChart, Cell } from 'recharts';
 import { useRouter } from 'next/navigation';
+import { cn } from '@/lib/utils';
 
 // Interfaces
 interface Property {
@@ -59,6 +65,7 @@ interface MaintenanceLog {
   title: string;
   propertyId: string;
   status: string;
+  priority: string;
   reportedDate: Timestamp | Date | { seconds: number; nanoseconds: number };
 }
 
@@ -99,21 +106,6 @@ const getDocumentStatus = (expiryDate: Date) => {
     if (isBefore(expiryDate, today)) return 'Expired';
     if (isBefore(expiryDate, ninetyDaysFromNow)) return 'Expiring Soon';
     return 'Valid';
-};
-
-const getStatusVariant = (status: string) => {
-  switch (status) {
-    case 'Pending':
-    case 'Scheduled':
-    case 'Expiring Soon':
-      return 'secondary';
-    case 'Due':
-    case 'Expired':
-    case 'Unpaid':
-        return 'destructive';
-    default:
-      return 'outline';
-  }
 };
 
 const formatAddress = (address: Property['address']) => {
@@ -218,15 +210,15 @@ export default function DashboardPage() {
 
   const activePropertiesCount = properties.length;
   
-  const openMaintenanceCount = useMemo(() => 
-    maintenanceLogs.filter(log => log.status === 'Open' || log.status === 'In Progress').length, 
+  const openMaintenance = useMemo(() => 
+    maintenanceLogs.filter(log => log.status === 'Open' || log.status === 'In Progress'), 
   [maintenanceLogs]);
   
-  const upcomingInspectionsCount = useMemo(() => inspections.filter(insp => {
+  const upcomingInspections = useMemo(() => inspections.filter(insp => {
       const scheduledDate = toDate(insp.scheduledDate);
       if (!scheduledDate) return false;
       return insp.status === 'Scheduled' && isFuture(scheduledDate);
-  }).length, [inspections]);
+  }).sort((a,b) => (toDate(a.scheduledDate)?.getTime() || 0) - (toDate(b.scheduledDate)?.getTime() || 0)), [inspections]);
 
   const recentActivities = useMemo(() => 
     maintenanceLogs
@@ -235,36 +227,23 @@ export default function DashboardPage() {
             const dateB = toDate(b.reportedDate) || new Date(0);
             return dateB.getTime() - dateA.getTime();
         })
-        .slice(0, 4)
+        .slice(0, 5)
         .map(log => {
             const date = toDate(log.reportedDate) || new Date();
             return {
                 id: log.id,
                 property: propertyMap[log.propertyId] ? formatAddress(propertyMap[log.propertyId]) : 'Portfolio Wide',
                 activity: log.title,
-                date: format(date, 'dd/MM/yyyy'),
+                status: log.status,
+                priority: log.priority,
+                date: format(date, 'dd MMM'),
                 href: `/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`
             };
         })
   , [maintenanceLogs, propertyMap]);
 
-  const upcomingTasks = useMemo(() => {
-    const inspectionTasks = inspections
-        .map(insp => {
-            const date = toDate(insp.scheduledDate);
-            if (!date || insp.status !== 'Scheduled' || !isFuture(date)) return null;
-            return {
-                id: `insp-${insp.id}`,
-                task: insp.type || 'Inspection',
-                property: propertyMap[insp.propertyId] ? formatAddress(propertyMap[insp.propertyId]) : 'Portfolio Wide',
-                status: 'Scheduled',
-                dueDate: date,
-                href: `/dashboard/inspections/${insp.id}?propertyId=${insp.propertyId}`
-            };
-        })
-        .filter((t): t is NonNullable<typeof t> => t !== null);
-    
-    const documentTasks = documents
+  const criticalCompliance = useMemo(() => {
+    const expiringDocs = documents
         .map(doc => {
           const expiry = toDate(doc.expiryDate);
           if (!expiry) return null;
@@ -276,19 +255,16 @@ export default function DashboardPage() {
               property: propertyMap[doc.propertyId] ? formatAddress(propertyMap[doc.propertyId]) : 'Portfolio Wide',
               status: status,
               dueDate: expiry,
+              type: 'Document',
               href: '/dashboard/documents'
           };
         })
         .filter((t): t is NonNullable<typeof t> => t !== null);
 
-        return [...inspectionTasks, ...documentTasks]
+        return expiringDocs
             .sort((a,b) => a.dueDate.getTime() - b.dueDate.getTime())
-            .slice(0, 4)
-            .map(t => ({
-                ...t,
-                dueDate: format(t.dueDate, 'dd/MM/yyyy')
-            }));
-  }, [inspections, documents, propertyMap]);
+            .slice(0, 5);
+  }, [documents, propertyMap]);
   
   const rentStatusData = useMemo(() => {
     if (isLoading || !properties || !currentYear || !currentMonth) return [];
@@ -318,18 +294,11 @@ export default function DashboardPage() {
       Pending: { label: "Pending", color: "hsl(var(--muted))" },
   } satisfies ChartConfig;
 
-  const infoCards = [
-    { title: 'Total Properties', value: isLoading ? '-' : activePropertiesCount, icon: Home, description: 'Active portfolio', href: '/dashboard/properties' },
-    { title: 'Open Maintenance', value: isLoading ? '-' : openMaintenanceCount, icon: Wrench, description: 'Needing attention', href: '/dashboard/maintenance/logged' },
-    { title: 'Upcoming Inspections', value: isLoading ? '-' : upcomingInspectionsCount, icon: CalendarCheck, description: 'Next 30 days', href: '/dashboard/inspections' },
-    { title: 'Total Documents', value: isLoading ? '-' : documents.length, icon: Files, description: 'Compliance items', href: '/dashboard/documents' },
-  ];
-
   if (!isLoading && allProperties?.length === 0) {
     return (
       <div className="flex flex-col gap-8 max-w-4xl mx-auto py-12">
         <div className="text-center space-y-4">
-          <h1 className="text-4xl font-bold font-headline text-primary">Welcome to RentSafeUK!</h1>
+          <h1 className="text-4xl font-bold font-headline text-primary">Welcome to RentSafeUK</h1>
           <p className="text-muted-foreground text-lg">Let's get your rental portfolio set up for high performance.</p>
         </div>
         <div className="grid gap-6 md:grid-cols-3">
@@ -373,116 +342,242 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-8 p-2 md:p-0">
+      {/* Header Summary Stats */}
       <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-        {infoCards.map((card) => (
-          <Link key={card.title} href={card.href} className="block transition-transform hover:scale-[1.02] active:scale-[0.98] cursor-pointer">
-            <Card className="h-full relative overflow-hidden">
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                <CardTitle className="text-sm font-medium">{card.title}</CardTitle>
-                <card.icon className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                <div className="text-2xl font-bold">{isLoading ? <Loader2 className="h-4 w-4 animate-spin text-primary" /> : card.value}</div>
-                <p className="text-xs text-muted-foreground">{card.description}</p>
-                </CardContent>
-            </Card>
-          </Link>
-        ))}
+        <Card className="border-l-4 border-l-primary">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Portfolio</CardTitle>
+            <Home className="h-4 w-4 text-primary" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : activePropertiesCount}</div>
+            <p className="text-xs text-muted-foreground mt-1 font-medium">Active Properties</p>
+          </CardContent>
+        </Card>
+        <Card className="border-l-4 border-l-destructive">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Maintenance</CardTitle>
+            <Wrench className="h-4 w-4 text-destructive" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : openMaintenance.length}</div>
+            <p className="text-xs text-muted-foreground mt-1 font-medium">Open Issues</p>
+          </CardContent>
+        </Card>
+        <Card className="border-l-4 border-l-amber-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Inspections</CardTitle>
+            <CalendarCheck className="h-4 w-4 text-amber-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : upcomingInspections.length}</div>
+            <p className="text-xs text-muted-foreground mt-1 font-medium">Scheduled Checks</p>
+          </CardContent>
+        </Card>
+        <Card className="border-l-4 border-l-green-500">
+          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+            <CardTitle className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Documents</CardTitle>
+            <Files className="h-4 w-4 text-green-500" />
+          </CardHeader>
+          <CardContent>
+            <div className="text-3xl font-bold">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : documents.length}</div>
+            <p className="text-xs text-muted-foreground mt-1 font-medium">Compliance Items</p>
+          </CardContent>
+        </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <Card className="lg:col-span-1">
-            <CardHeader>
-                <CardTitle className="flex items-center gap-2"><PoundSterling className="h-5 w-5" /> Rent Status</CardTitle>
-                <CardDescription>{currentMonth} {currentYear}</CardDescription>
-            </CardHeader>
-            <CardContent>
-                {isLoading ? (
-                    <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-                ) : rentStatusData.length > 0 ? (
-                    <ChartContainer config={rentChartConfig} className="mx-auto aspect-square max-h-[250px]">
-                        <PieChart>
-                            <ChartTooltip cursor={false} content={<ChartTooltipContent nameKey="count" hideLabel />} />
-                            <Pie data={rentStatusData} dataKey="count" nameKey="status" innerRadius={60} strokeWidth={5}>
-                                {rentStatusData.map((entry) => <Cell key={`cell-${entry.status}`} fill={entry.fill} className="stroke-background"/>)}
-                            </Pie>
-                            <ChartLegend content={<ChartLegendContent nameKey="status" />} className="-mt-4" />
-                        </PieChart>
-                    </ChartContainer>
-                ) : (
-                    <div className="text-center text-muted-foreground py-10 text-sm italic">No occupied properties tracked this month.</div>
-                )}
-            </CardContent>
+      <div className="grid gap-6 lg:grid-cols-12">
+        {/* Rent Tracker & Statistics */}
+        <Card className="lg:col-span-4 shadow-sm">
+          <CardHeader>
+            <div className="flex items-center justify-between">
+              <CardTitle className="flex items-center gap-2 text-lg font-bold">
+                <PoundSterling className="h-5 w-5 text-primary" /> 
+                Rent Tracker
+              </CardTitle>
+              <Badge variant="outline" className="text-[10px] font-bold uppercase">
+                {currentMonth} {currentYear}
+              </Badge>
+            </div>
+            <CardDescription>Collection status for occupied properties.</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-2">
+            {isLoading ? (
+              <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+            ) : rentStatusData.length > 0 ? (
+              <div className="flex flex-col items-center">
+                <ChartContainer config={rentChartConfig} className="w-full aspect-square max-h-[220px]">
+                  <PieChart>
+                    <ChartTooltip cursor={false} content={<ChartTooltipContent nameKey="count" hideLabel />} />
+                    <Pie data={rentStatusData} dataKey="count" nameKey="status" innerRadius={65} strokeWidth={5}>
+                      {rentStatusData.map((entry) => <Cell key={`cell-${entry.status}`} fill={entry.fill} className="stroke-background"/>)}
+                    </Pie>
+                    <ChartLegend content={<ChartLegendContent nameKey="status" />} className="-mt-4" />
+                  </PieChart>
+                </ChartContainer>
+                <Button asChild variant="outline" size="sm" className="mt-4 w-full h-10 font-semibold group">
+                  <Link href="/dashboard/expenses">
+                    Detailed Rent Ledger <ChevronRight className="ml-2 h-4 w-4 group-hover:translate-x-1 transition-transform" />
+                  </Link>
+                </Button>
+              </div>
+            ) : (
+              <div className="text-center text-muted-foreground py-16 text-sm italic bg-muted/20 rounded-lg border border-dashed">
+                No occupied properties tracked.
+              </div>
+            )}
+          </CardContent>
         </Card>
 
-        <Card className="lg:col-span-2">
-          <CardHeader className="flex flex-row items-center justify-between">
+        {/* Active Feed (Recent Activity) */}
+        <Card className="lg:col-span-8 shadow-sm">
+          <CardHeader className="flex flex-row items-center justify-between pb-4">
             <div>
-                <CardTitle className="flex items-center gap-2"><Activity className="h-5 w-5" /> Recent Activity</CardTitle>
-                <CardDescription>Latest maintenance reports across your portfolio.</CardDescription>
+              <CardTitle className="flex items-center gap-2 text-lg font-bold">
+                <Activity className="h-5 w-5 text-primary" /> 
+                Activity Feed
+              </CardTitle>
+              <CardDescription>Latest maintenance events across your portfolio.</CardDescription>
             </div>
-            <Button variant="ghost" size="sm" asChild><Link href="/dashboard/maintenance/logged">View All</Link></Button>
+            <Button variant="ghost" size="sm" asChild className="text-primary font-semibold">
+              <Link href="/dashboard/maintenance/logged">View Log <ChevronRight className="ml-1 h-4 w-4" /></Link>
+            </Button>
           </CardHeader>
           <CardContent>
             {isLoading ? (
-                <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+              <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
             ) : recentActivities.length > 0 ? (
-                <div className="space-y-4">
-                    {recentActivities.map((activity) => (
-                        <Link href={activity.href} key={activity.id} className="flex items-center justify-between p-3 rounded-lg border hover:bg-accent transition-colors cursor-pointer">
-                            <div className="min-w-0 flex-1">
-                                <p className="font-medium text-sm truncate">{activity.activity}</p>
-                                <p className="text-xs text-muted-foreground truncate">{activity.property}</p>
-                            </div>
-                            <div className="text-right ml-4">
-                                <p className="text-xs font-medium">{activity.date}</p>
-                            </div>
-                        </Link>
-                    ))}
-                </div>
+              <div className="relative space-y-4 before:absolute before:inset-0 before:ml-5 before:-translate-x-px before:h-full before:w-0.5 before:bg-gradient-to-b before:from-transparent before:via-muted before:to-transparent">
+                {recentActivities.map((activity) => (
+                  <Link href={activity.href} key={activity.id} className="relative flex items-center gap-4 p-3 rounded-xl hover:bg-accent/50 transition-all group border border-transparent hover:border-border">
+                    <div className={cn(
+                      "flex h-10 w-10 shrink-0 items-center justify-center rounded-full border-2 bg-background z-10",
+                      activity.priority === 'Emergency' ? 'border-destructive text-destructive' : 'border-primary text-primary'
+                    )}>
+                      <Wrench className="h-5 w-5" />
+                    </div>
+                    <div className="min-w-0 flex-1">
+                      <div className="flex items-center justify-between mb-0.5">
+                        <p className="font-bold text-sm truncate group-hover:text-primary transition-colors">{activity.activity}</p>
+                        <span className="text-[10px] font-bold text-muted-foreground bg-muted px-2 py-0.5 rounded uppercase">{activity.date}</span>
+                      </div>
+                      <p className="text-xs text-muted-foreground truncate font-medium">{activity.property}</p>
+                    </div>
+                  </Link>
+                ))}
+              </div>
             ) : (
-                <div className="text-center text-muted-foreground py-10 italic text-sm">No maintenance activity logged yet.</div>
+              <div className="text-center text-muted-foreground py-20 italic text-sm bg-muted/20 rounded-xl border border-dashed flex flex-col items-center gap-3">
+                <Activity className="h-8 w-8 opacity-20" />
+                No recent maintenance logs found.
+              </div>
             )}
           </CardContent>
         </Card>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="flex items-center gap-2"><ListTodo className="h-5 w-5" /> Critical Tasks & Compliance</CardTitle>
-          <CardDescription>Upcoming inspections and expiring legal documents.</CardDescription>
-        </CardHeader>
-        <CardContent>
-           {isLoading ? (
+      <div className="grid gap-6 lg:grid-cols-2">
+        {/* Critical Compliance Overviews */}
+        <Card className="border-destructive/20 shadow-sm">
+          <CardHeader className="bg-destructive/5 border-b border-destructive/10">
+            <CardTitle className="flex items-center gap-2 text-lg font-bold text-destructive">
+              <AlertCircle className="h-5 w-5" /> 
+              Critical Compliance
+            </CardTitle>
+            <CardDescription className="text-destructive/70">Legal documents needing immediate attention.</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            {isLoading ? (
+              <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin text-destructive" /></div>
+            ) : criticalCompliance.length > 0 ? (
+              <div className="space-y-3">
+                {criticalCompliance.map((item) => (
+                  <Link href={item.href} key={item.id} className="block group">
+                    <div className="flex items-center justify-between p-4 rounded-xl border-2 border-transparent bg-muted/30 group-hover:border-destructive/30 transition-all">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-sm truncate">{item.task}</p>
+                        <p className="text-[11px] text-muted-foreground font-medium mt-0.5">{item.property}</p>
+                      </div>
+                      <div className="text-right ml-4 shrink-0 flex flex-col items-end gap-1.5">
+                        <Badge variant={item.status === 'Expired' ? 'destructive' : 'secondary'} className="h-5 text-[10px] font-bold uppercase tracking-wider">
+                          {item.status}
+                        </Badge>
+                        <p className="text-[10px] font-bold text-muted-foreground flex items-center gap-1">
+                          <Clock className="h-3 w-3" /> {format(item.dueDate, 'dd/MM/yyyy')}
+                        </p>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            ) : (
+              <div className="text-center text-muted-foreground py-16 italic text-sm bg-green-50/30 rounded-xl border border-dashed border-green-200 flex flex-col items-center gap-3">
+                <ShieldCheck className="h-10 w-10 text-green-500 opacity-40" />
+                <p className="text-green-700 font-medium">All compliance items are valid!</p>
+              </div>
+            )}
+          </CardContent>
+          {criticalCompliance.length > 0 && (
+            <CardFooter className="bg-muted/10 border-t py-3">
+              <Button asChild variant="link" className="text-xs font-bold text-primary w-full justify-center">
+                <Link href="/dashboard/documents">Manage All Documents</Link>
+              </Button>
+            </CardFooter>
+          )}
+        </Card>
+
+        {/* Upcoming Inspections & Tasks */}
+        <Card className="shadow-sm border-primary/20">
+          <CardHeader className="bg-primary/5 border-b border-primary/10">
+            <CardTitle className="flex items-center gap-2 text-lg font-bold text-primary">
+              <ListTodo className="h-5 w-5" /> 
+              Portfolio Tasks
+            </CardTitle>
+            <CardDescription className="text-primary/70">Scheduled property checks and management tasks.</CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            {isLoading ? (
               <div className="flex justify-center items-center h-48"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
-           ) : upcomingTasks.length > 0 ? (
-              <div className="grid gap-4 md:grid-cols-2">
-                  {upcomingTasks.map((task) => (
-                      <Link href={task.href} key={task.id} className="block group cursor-pointer">
-                          <Card className="hover:border-primary transition-colors">
-                              <CardContent className="p-4 flex items-center justify-between">
-                                  <div className="min-w-0 flex-1">
-                                      <p className="font-semibold text-sm group-hover:text-primary transition-colors truncate">{task.task}</p>
-                                      <p className="text-xs text-muted-foreground truncate">{task.property}</p>
-                                  </div>
-                                  <div className="text-right ml-4 shrink-0">
-                                      <Badge variant={getStatusVariant(task.status)} className="mb-1">{task.status}</Badge>
-                                      <p className="text-[10px] font-bold text-muted-foreground">DUE: {task.dueDate}</p>
-                                  </div>
-                              </CardContent>
-                          </Card>
-                      </Link>
-                  ))}
+            ) : upcomingInspections.length > 0 ? (
+              <div className="space-y-3">
+                {upcomingInspections.map((insp) => (
+                  <Link href={`/dashboard/inspections/${insp.id}?propertyId=${insp.propertyId}`} key={insp.id} className="block group">
+                    <div className="flex items-center justify-between p-4 rounded-xl border-2 border-transparent bg-muted/30 group-hover:border-primary/30 transition-all">
+                      <div className="min-w-0 flex-1">
+                        <p className="font-bold text-sm truncate">{insp.type}</p>
+                        <p className="text-[11px] text-muted-foreground font-medium mt-0.5">
+                          {propertyMap[insp.propertyId] ? formatAddress(propertyMap[insp.propertyId]) : 'Property Check'}
+                        </p>
+                      </div>
+                      <div className="text-right ml-4 shrink-0 flex flex-col items-end gap-1.5">
+                        <Badge variant="secondary" className="h-5 text-[10px] font-bold uppercase tracking-wider">Scheduled</Badge>
+                        <p className="text-[10px] font-bold text-muted-foreground flex items-center gap-1">
+                          <CalendarCheck className="h-3 w-3" /> {format(toDate(insp.scheduledDate)!, 'dd/MM/yyyy')}
+                        </p>
+                      </div>
+                    </div>
+                  </Link>
+                ))}
               </div>
-           ) : (
-              <div className="text-center text-muted-foreground py-10 italic text-sm border-2 border-dashed rounded-lg">
-                  <ListTodo className="h-10 w-10 opacity-10 mx-auto mb-2" />
-                  <p>You're all caught up! No upcoming tasks.</p>
+            ) : (
+              <div className="text-center py-16 bg-muted/20 rounded-xl border border-dashed flex flex-col items-center gap-4">
+                <div className="bg-background p-4 rounded-full shadow-sm">
+                  <PlusCircle className="h-8 w-8 text-primary opacity-40" />
+                </div>
+                <div className="space-y-1">
+                  <p className="text-sm font-bold">No Inspections Scheduled</p>
+                  <p className="text-xs text-muted-foreground">Keep your portfolio safe with regular checks.</p>
+                </div>
+                <div className="flex gap-2">
+                  <Button asChild size="sm" variant="outline"><Link href="/dashboard/inspections/single-let">New Single-Let</Link></Button>
+                  <Button asChild size="sm" variant="outline"><Link href="/dashboard/inspections/hmo">New HMO</Link></Button>
+                </div>
               </div>
-           )}
-        </CardContent>
-      </Card>
+            )}
+          </CardContent>
+        </Card>
+      </div>
     </div>
   );
 }
