@@ -4,7 +4,7 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import Link from 'next/link';
-import { useRouter, useParams } from 'next/navigation';
+import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import {
   Card,
   CardContent,
@@ -23,7 +23,7 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2 } from 'lucide-react';
+import { Loader2, AlertCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -152,8 +152,10 @@ const convertTimestampsToDates = (obj: any): any => {
 export default function EditTenantScreeningPage() {
     const router = useRouter();
     const params = useParams();
+    const searchParams = useSearchParams();
     const tenantId = params.id as string;
     const screeningId = params.screeningId as string;
+    const propertyId = searchParams.get('propertyId');
     const { user } = useUser();
     const firestore = useFirestore();
 
@@ -162,15 +164,16 @@ export default function EditTenantScreeningPage() {
     });
 
     const screeningRef = useMemoFirebase(() => {
-        if (!firestore || !tenantId || !screeningId) return null;
-        return doc(firestore, 'tenants', tenantId, 'screenings', screeningId);
-    }, [firestore, tenantId, screeningId]);
-    const { data: screening, isLoading: isLoadingScreening } = useDoc(screeningRef);
+        if (!firestore || !user || !tenantId || !screeningId || !propertyId) return null;
+        // Strictly hierarchical path fix
+        return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'tenants', tenantId, 'screenings', screeningId);
+    }, [firestore, user, tenantId, screeningId, propertyId]);
+    const { data: screening, isLoading: isLoadingScreening, error: screeningError } = useDoc(screeningRef);
 
     const tenantRef = useMemoFirebase(() => {
-        if (!firestore || !tenantId) return null;
-        return doc(firestore, 'tenants', tenantId);
-    }, [firestore, tenantId]);
+        if (!firestore || !user || !tenantId || !propertyId) return null;
+        return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'tenants', tenantId);
+    }, [firestore, user, tenantId, propertyId]);
     const { data: tenant, isLoading: isLoadingTenant } = useDoc(tenantRef);
 
     useEffect(() => {
@@ -202,7 +205,7 @@ export default function EditTenantScreeningPage() {
                 title: 'Screening Record Updated',
                 description: 'The screening checklist has been successfully updated.',
             });
-            router.push(`/dashboard/tenants/${tenantId}`);
+            router.push(`/dashboard/tenants/${tenantId}?propertyId=${propertyId}`);
           })
           .catch(async (serverError) => {
              const permissionError = new FirestorePermissionError({
@@ -225,8 +228,32 @@ export default function EditTenantScreeningPage() {
         return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
 
+    if (screeningError || !propertyId) {
+        return (
+            <div className="flex flex-col items-center justify-center h-64 gap-4 p-6 text-center">
+                <AlertCircle className="h-12 w-12 text-destructive opacity-20" />
+                <h2 className="text-lg font-bold">Access Error</h2>
+                <p className="text-sm text-muted-foreground max-w-xs">There was an error accessing the screening record. Property context might be missing.</p>
+                <Button asChild variant="outline"><Link href="/dashboard/tenants">Return to Tenants</Link></Button>
+            </div>
+        );
+    }
+
     if (!screening || !tenant) {
-        return <div className="text-center py-10">Record not found.</div>;
+        return (
+            <div className="flex flex-col items-center justify-center h-96 gap-6 p-6 text-center">
+                <div className="bg-muted p-6 rounded-full">
+                    <AlertCircle className="h-12 w-12 text-muted-foreground opacity-20" />
+                </div>
+                <div className="text-center space-y-2">
+                    <h2 className="text-xl font-bold">Record Not Found</h2>
+                    <p className="text-muted-foreground max-w-xs mx-auto">This screening report may have been deleted or is inaccessible.</p>
+                </div>
+                <Button asChild variant="outline">
+                    <Link href="/dashboard/tenants">Return to Tenants List</Link>
+                </Button>
+            </div>
+        );
     }
 
     return (
@@ -479,7 +506,7 @@ export default function EditTenantScreeningPage() {
                         />
                         <div className="flex justify-end gap-2 pt-4">
                             <Button type="button" variant="outline" asChild>
-                                <Link href={`/dashboard/tenants/${tenantId}`}>Cancel</Link>
+                                <Link href={`/dashboard/tenants/${tenantId}?propertyId=${propertyId}`}>Cancel</Link>
                             </Button>
                             <Button type="submit">Save Changes</Button>
                         </div>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -93,12 +92,11 @@ export default function PropertiesPage() {
   // Real-time maintenance aggregation state
   const [openMaintenanceMap, setOpenMaintenanceMap] = useState<Record<string, number>>({});
 
-  // strictly hierarchical properties query
+  // Strictly hierarchical properties query - ownerId filter removed to avoid redundant index requirement
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
       collection(firestore, 'userProfiles', user.uid, 'properties'),
-      where('ownerId', '==', user.uid),
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
     );
   }, [firestore, user]);
@@ -121,7 +119,6 @@ export default function PropertiesPage() {
     properties.forEach((p) => {
         const q = query(
             collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'maintenanceLogs'),
-            where('ownerId', '==', user.uid),
             where('status', 'in', ['Open', 'In Progress'])
         );
         const unsub = onSnapshot(q, (snap) => {

@@ -73,12 +73,11 @@ export default function ContractorsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [contractorToArchive, setContractorToArchive] = useState<Contractor | null>(null);
 
-  // Fetch contractors nested under user profile - strictly hierarchical
+  // Fetch contractors nested under user profile - strictly hierarchical. redundant ownerId filter removed.
   const contractorsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
       collection(firestore, 'userProfiles', user.uid, 'contractors'),
-      where('ownerId', '==', user.uid),
       where('status', '==', 'Active')
     );
   }, [firestore, user]);
@@ -135,7 +134,7 @@ export default function ContractorsPage() {
             <CardDescription>Your list of saved contractors.</CardDescription>
           </CardHeader>
           <CardContent>
-            <div className="relative w-full max-w-sm mb-4">
+            <div className="relative w-full max-sm mb-4">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input placeholder="Search by name or trade..." className="pl-8" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
             </div>

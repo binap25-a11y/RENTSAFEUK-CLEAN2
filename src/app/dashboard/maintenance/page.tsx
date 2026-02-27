@@ -68,6 +68,7 @@ interface Property {
     nameOrNumber?: string;
     street: string;
     city: string;
+    county?: string;
     postcode: string;
   };
   ownerId: string;
@@ -111,7 +112,6 @@ export default function MaintenancePage() {
     if (!user || !firestore) return null;
     return query(
       collection(firestore, 'userProfiles', user.uid, 'properties'),
-      where('ownerId', '==', user.uid),
       limit(500)
     );
   }, [firestore, user]);
@@ -127,7 +127,6 @@ export default function MaintenancePage() {
     if (!user || !firestore) return null;
     return query(
       collection(firestore, 'userProfiles', user.uid, 'contractors'),
-      where('ownerId', '==', user.uid),
       limit(500)
     );
   }, [firestore, user]);
@@ -154,7 +153,7 @@ export default function MaintenancePage() {
   }
 
   const formatAddress = (address: Property['address']) => {
-    return [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
+    return [address.nameOrNumber, address.street, address.city, address.county, address.postcode].filter(Boolean).join(', ');
   };
 
   return (

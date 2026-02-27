@@ -1,11 +1,11 @@
 'use client';
 
-import { useParams, notFound, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Loader2, Calendar as CalendarIcon, User, Home, Edit } from 'lucide-react';
+import { ArrowLeft, Loader2, Calendar as CalendarIcon, User, Home, Edit, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -70,12 +70,32 @@ export default function ViewChecklistPage() {
     return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
   }
 
-  if (checklistError) {
-    return <div className="text-center text-destructive">Error loading checklist: {checklistError.message}</div>;
+  if (checklistError || !propertyId) {
+    return (
+        <div className="flex flex-col items-center justify-center h-64 gap-4 p-6 text-center">
+            <AlertCircle className="h-12 w-12 text-destructive opacity-20" />
+            <h2 className="text-lg font-bold">Access Error</h2>
+            <p className="text-sm text-muted-foreground max-w-xs">There was an error accessing the checklist. Ensure the URL is correct and you have permission.</p>
+            <Button asChild variant="outline"><Link href="/dashboard">Return to Dashboard</Link></Button>
+        </div>
+    );
   }
 
   if (!checklist) {
-    return notFound();
+    return (
+        <div className="flex flex-col items-center justify-center h-96 gap-6 p-6 text-center">
+            <div className="bg-muted p-6 rounded-full">
+                <AlertCircle className="h-12 w-12 text-muted-foreground opacity-20" />
+            </div>
+            <div className="text-center space-y-2">
+                <h2 className="text-xl font-bold">Checklist Not Found</h2>
+                <p className="text-muted-foreground max-w-xs mx-auto">This checklist may have been deleted or is inaccessible.</p>
+            </div>
+            <Button asChild variant="outline">
+                <Link href={`/dashboard/tenants/${tenantId}?propertyId=${propertyId}`}>Return to Tenant</Link>
+            </Button>
+        </div>
+    );
   }
   
   // Safe data access

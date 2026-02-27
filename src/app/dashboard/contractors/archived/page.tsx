@@ -51,9 +51,9 @@ export default function ArchivedContractorsPage() {
 
     const archivedContractorsQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
+        // Strictly hierarchical. Redundant ownerId filter removed.
         return query(
             collection(firestore, 'userProfiles', user.uid, 'contractors'),
-            where('ownerId', '==', user.uid),
             where('status', '==', 'Archived')
         );
     }, [firestore, user]);

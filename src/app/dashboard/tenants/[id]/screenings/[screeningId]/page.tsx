@@ -1,11 +1,11 @@
 'use client';
 
-import { useParams, notFound, useSearchParams } from 'next/navigation';
+import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Loader2, Calendar as CalendarIcon, User, Download } from 'lucide-react';
+import { ArrowLeft, Loader2, Calendar as CalendarIcon, User, Download, AlertCircle } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc } from 'firebase/firestore';
@@ -212,11 +212,31 @@ export default function ViewScreeningPage() {
   }
 
   if (screeningError || !propertyId) {
-    return <div className="text-center text-destructive">Error loading screening report. Check parameters.</div>;
+    return (
+        <div className="flex flex-col items-center justify-center h-64 gap-4 p-6 text-center">
+            <AlertCircle className="h-12 w-12 text-destructive opacity-20" />
+            <h2 className="text-lg font-bold">Failed to Load Report</h2>
+            <p className="text-sm text-muted-foreground max-w-xs">There was an error loading the record details. Ensure the URL is correct and you have permission.</p>
+            <Button asChild variant="outline"><Link href="/dashboard/tenants">Return to Tenants</Link></Button>
+        </div>
+    );
   }
 
   if (!screening) {
-    return notFound();
+    return (
+        <div className="flex flex-col items-center justify-center h-96 gap-6 p-6 text-center">
+            <div className="bg-muted p-6 rounded-full">
+                <AlertCircle className="h-12 w-12 text-muted-foreground opacity-20" />
+            </div>
+            <div className="text-center space-y-2">
+                <h2 className="text-xl font-bold">Screening Record Not Found</h2>
+                <p className="text-muted-foreground max-w-xs mx-auto">This screening report may have been deleted, or you might be accessing a link without the required property context.</p>
+            </div>
+            <Button asChild variant="outline">
+                <Link href="/dashboard/tenants">Return to Tenants List</Link>
+            </Button>
+        </div>
+    );
   }
   
   const screeningDate = screening.screeningDate?.seconds ? format(new Date(screening.screeningDate.seconds * 1000), 'PPP') : 'N/A';

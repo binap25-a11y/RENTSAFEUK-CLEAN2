@@ -1,10 +1,10 @@
 'use client';
 
-import { useParams, notFound, useRouter } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Edit, Trash2, MoreVertical, Loader2, HardHat, Phone, Mail, FileText } from 'lucide-react';
+import { ArrowLeft, Edit, Trash2, MoreVertical, Loader2, HardHat, Phone, Mail, AlertCircle } from 'lucide-react';
 import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
@@ -79,12 +79,32 @@ export default function ContractorDetailPage() {
     );
   }
 
-  if (error || (contractor && user && contractor.ownerId !== user.uid)) {
-    return <p className='text-destructive'>Error: Could not load contractor details. You may not have permission to view this record.</p>
+  if (error) {
+    return (
+        <div className="flex flex-col items-center justify-center h-64 gap-4 p-6 text-center">
+            <AlertCircle className="h-12 w-12 text-destructive opacity-20" />
+            <h2 className="text-lg font-bold">Access Error</h2>
+            <p className="text-sm text-muted-foreground max-w-xs">There was an error accessing the contractor record. You may not have permission to view this record.</p>
+            <Button asChild variant="outline"><Link href="/dashboard/contractors">Return to Contractors</Link></Button>
+        </div>
+    );
   }
   
   if (!contractor) {
-    return notFound();
+    return (
+        <div className="flex flex-col items-center justify-center h-96 gap-6 p-6 text-center">
+            <div className="bg-muted p-6 rounded-full">
+                <HardHat className="h-12 w-12 text-muted-foreground opacity-20" />
+            </div>
+            <div className="text-center space-y-2">
+                <h2 className="text-xl font-bold">Contractor Not Found</h2>
+                <p className="text-muted-foreground max-w-xs mx-auto">This contractor record may have been deleted or is inaccessible.</p>
+            </div>
+            <Button asChild variant="outline">
+                <Link href="/dashboard/contractors">Return to Contractors List</Link>
+            </Button>
+        </div>
+    );
   }
 
   return (

@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -122,9 +121,9 @@ export default function DashboardPage() {
 
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
+    // Strictly hierarchical - no redundant ownerId filter needed
     return query(
-      collection(firestore, 'userProfiles', user.uid, 'properties'), 
-      where('ownerId', '==', user.uid)
+      collection(firestore, 'userProfiles', user.uid, 'properties')
     );
   }, [user, firestore]);
   const { data: allProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
@@ -161,20 +160,20 @@ export default function DashboardPage() {
     const unsubs: (() => void)[] = [];
 
     properties.forEach(prop => {
-        const ownerFilter = where('ownerId', '==', user.uid);
-        unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'maintenanceLogs'), ownerFilter), (snap) => {
+        // Redundant filters removed to avoid unnecessary composite index requirements
+        unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'maintenanceLogs'), (snap) => {
             const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog));
             setMaintenanceMap(prev => ({ ...prev, [prop.id]: data }));
         }));
-        unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'inspections'), ownerFilter), (snap) => {
+        unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'inspections'), (snap) => {
             const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Inspection));
             setInspectionsMap(prev => ({ ...prev, [prop.id]: data }));
         }));
-        unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'documents'), ownerFilter), (snap) => {
+        unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'documents'), (snap) => {
             const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Document));
             setDocumentsMap(prev => ({ ...prev, [prop.id]: data }));
         }));
-        unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'rentPayments'), ownerFilter), (snap) => {
+        unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'rentPayments')), (snap) => {
             const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as RentPayment));
             setRentPaymentsMap(prev => ({ ...prev, [prop.id]: data }));
         }));
@@ -245,7 +244,7 @@ export default function DashboardPage() {
               status: status,
               dueDate: expiry,
               type: 'Document',
-              href: '/dashboard/documents'
+              href: `/dashboard/documents?propertyId=${doc.propertyId}`
           };
         })
         .filter((t): t is NonNullable<typeof t> => t !== null);
