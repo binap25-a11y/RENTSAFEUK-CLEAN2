@@ -208,7 +208,7 @@ export default function AddTenantPage() {
                     <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
                         <SelectTrigger className="h-11">
-                            <SelectValue placeholder={isLoadingProperties ? "Loading portfolio..." : "Choose property"} />
+                            <SelectValue placeholder={isLoadingProperties ? 'Loading portfolio...' : 'Choose property'} />
                         </SelectTrigger>
                         </FormControl>
                         <SelectContent>

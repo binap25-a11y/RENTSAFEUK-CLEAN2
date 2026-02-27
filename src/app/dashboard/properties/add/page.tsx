@@ -43,7 +43,8 @@ import {
   CheckCircle2,
   AlertCircle,
   X,
-  Images
+  Images,
+  PlusCircle
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
