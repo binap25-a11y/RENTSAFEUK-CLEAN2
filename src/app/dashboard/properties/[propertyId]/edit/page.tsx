@@ -17,10 +17,9 @@ import { toast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useDoc, useMemoFirebase, useFirebase } from '@/firebase';
 import { doc, setDoc, query, collection, where, getDocs, limit } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Loader2, ShieldAlert, MapPin, Home, Building, Hotel, Building2, Warehouse, Upload, X } from 'lucide-react';
+import { Loader2, ShieldAlert, MapPin, Home, Building, Hotel, Building2, Warehouse, Upload, X, Images, PlusCircle } from 'lucide-react';
 import Image from 'next/image';
 
-// Robust UK Postcode Regex
 const ukPostcodeRegex = /^[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}$/i;
 
 const propertySchema = z.object({
@@ -37,6 +36,7 @@ const propertySchema = z.object({
   bathrooms: z.coerce.number().nonnegative('Cannot be negative'),
   notes: z.string().optional(),
   imageUrl: z.string().optional(),
+  additionalImageUrls: z.array(z.string()).optional(),
   purchasePrice: z.coerce.number().nonnegative('Cannot be negative').optional(),
   currentValuation: z.coerce.number().nonnegative('Cannot be negative').optional(),
   tenancy: z.object({
@@ -74,9 +74,17 @@ export default function EditPropertyPage() {
   const { firestore, storage } = useFirebase();
   
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Main Photo State
+  const [selectedMainFile, setSelectedMainFile] = useState<File | null>(null);
+  const [mainPreviewUrl, setMainPreviewUrl] = useState<string | null>(null);
+  const mainInputRef = useRef<HTMLInputElement>(null);
+
+  // Additional Photos State
+  const [existingGallery, setExistingGallery] = useState<string[]>([]);
+  const [newGalleryFiles, setNewGalleryFiles] = useState<File[]>([]);
+  const [newGalleryPreviews, setNewGalleryPreviews] = useState<string[]>([]);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const propertyRef = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
@@ -88,53 +96,33 @@ export default function EditPropertyPage() {
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
     defaultValues: {
-      address: {
-        nameOrNumber: '',
-        street: '',
-        city: '',
-        county: '',
-        postcode: '',
-      },
+      address: { nameOrNumber: '', street: '', city: '', county: '', postcode: '' },
       propertyType: 'House',
       bedrooms: 0,
       bathrooms: 0,
       status: 'Vacant',
       notes: '',
-      tenancy: {
-        monthlyRent: undefined,
-        depositAmount: undefined,
-        depositScheme: '',
-      },
+      tenancy: { monthlyRent: undefined, depositAmount: undefined, depositScheme: '' },
     },
   });
 
   useEffect(() => {
     if (property) {
       form.reset({
-        address: property.address || {
-          nameOrNumber: '',
-          street: '',
-          city: '',
-          county: '',
-          postcode: '',
-        },
+        address: property.address || { nameOrNumber: '', street: '', city: '', county: '', postcode: '' },
         propertyType: property.propertyType || 'House',
         status: property.status || 'Vacant',
         bedrooms: property.bedrooms || 0,
         bathrooms: property.bathrooms || 0,
         notes: property.notes || '',
         imageUrl: property.imageUrl || '',
+        additionalImageUrls: property.additionalImageUrls || [],
         purchasePrice: property.purchasePrice,
         currentValuation: property.currentValuation,
-        tenancy: property.tenancy || {
-          monthlyRent: undefined,
-          depositAmount: undefined,
-          depositScheme: '',
-        },
+        tenancy: property.tenancy || { monthlyRent: undefined, depositAmount: undefined, depositScheme: '' },
       });
-      if (property.imageUrl) {
-        setPreviewUrl(property.imageUrl);
-      }
+      if (property.imageUrl) setMainPreviewUrl(property.imageUrl);
+      if (property.additionalImageUrls) setExistingGallery(property.additionalImageUrls);
     }
   }, [property, form]);
 
@@ -148,33 +136,43 @@ export default function EditPropertyPage() {
     return `https://maps.google.com/maps?q=${encodeURIComponent(fullAddress)}&output=embed`;
   }, [watchAddress]);
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMainFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setSelectedFile(file);
+      setSelectedMainFile(file);
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewUrl(reader.result as string);
-      };
+      reader.onloadend = () => setMainPreviewUrl(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
 
-  const removeFile = () => {
-    setSelectedFile(null);
-    setPreviewUrl(property?.imageUrl || null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+  const handleNewGalleryFiles = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      setNewGalleryFiles(prev => [...prev, ...files]);
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => setNewGalleryPreviews(prev => [...prev, reader.result as string]);
+        reader.readAsDataURL(file);
+      });
     }
+  };
+
+  const removeExistingGalleryImage = (url: string) => {
+    setExistingGallery(prev => prev.filter(item => item !== url));
+  };
+
+  const removeNewGalleryImage = (index: number) => {
+    setNewGalleryFiles(prev => prev.filter((_, i) => i !== index));
+    setNewGalleryPreviews(prev => prev.filter((_, i) => i !== index));
   };
 
   async function onSubmit(data: PropertyFormValues) {
     if (!firestore || !propertyId || !user || !storage) return;
-    
     setIsSubmitting(true);
 
     try {
-      // UNIQUENESS CHECK
+      // DUPLICATE CHECK
       if (data.address.street !== property?.address.street || data.address.postcode !== property?.address.postcode) {
           const propertiesCollection = collection(firestore, 'userProfiles', user.uid, 'properties');
           const duplicateQuery = query(
@@ -186,30 +184,37 @@ export default function EditPropertyPage() {
           );
           const duplicateSnap = await getDocs(duplicateQuery);
           if (!duplicateSnap.empty && duplicateSnap.docs[0].id !== propertyId) {
-              toast({
-                  variant: 'destructive',
-                  title: 'Duplicate Property',
-                  description: 'Another active property with this street and postcode already exists.',
-              });
+              toast({ variant: 'destructive', title: 'Duplicate Property', description: 'Another active property with this street and postcode already exists.' });
               setIsSubmitting(false);
               return;
           }
       }
 
-      // Handle image upload if a new file was selected
-      let imageUrl = data.imageUrl || '';
-      if (selectedFile) {
-          const fileExt = selectedFile.name.split('.').pop();
-          const fileName = `main-photo-${Date.now()}.${fileExt}`;
-          const storageRef = ref(storage, `images/${user.uid}/${propertyId}/${fileName}`);
-          const uploadSnap = await uploadBytes(storageRef, selectedFile);
-          imageUrl = await getDownloadURL(uploadSnap.ref);
+      // 1. Handle main image upload
+      let finalImageUrl = data.imageUrl || '';
+      if (selectedMainFile) {
+          const storageRef = ref(storage, `images/${user.uid}/${propertyId}/main-photo-${Date.now()}.${selectedMainFile.name.split('.').pop()}`);
+          const uploadSnap = await uploadBytes(storageRef, selectedMainFile);
+          finalImageUrl = await getDownloadURL(uploadSnap.ref);
+      }
+
+      // 2. Handle new gallery uploads
+      const galleryUrls = [...existingGallery];
+      if (newGalleryFiles.length > 0) {
+          const uploadPromises = newGalleryFiles.map(async (file, idx) => {
+              const galleryRef = ref(storage, `images/${user.uid}/${propertyId}/gallery-${Date.now()}-${idx}.${file.name.split('.').pop()}`);
+              const snap = await uploadBytes(galleryRef, file);
+              return getDownloadURL(snap.ref);
+          });
+          const newUrls = await Promise.all(uploadPromises);
+          galleryUrls.push(...newUrls);
       }
 
       const docRef = doc(firestore, 'userProfiles', user.uid, 'properties', propertyId);
       const cleanedData = JSON.parse(JSON.stringify({
           ...data,
-          imageUrl,
+          imageUrl: finalImageUrl,
+          additionalImageUrls: galleryUrls,
           ownerId: user.uid
       }));
       
@@ -269,7 +274,72 @@ export default function EditPropertyPage() {
                 </div>
             </div>
 
-            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 border-t pt-10">
+                <div className="space-y-6">
+                    <FormLabel className="font-bold flex items-center gap-2 text-lg">
+                        <Home className="h-5 w-5 text-primary" />
+                        Main Identity Photo
+                    </FormLabel>
+                    
+                    {mainPreviewUrl ? (
+                        <div className="relative w-full aspect-video rounded-2xl overflow-hidden border shadow-lg group bg-muted/10">
+                            <Image src={mainPreviewUrl} alt="Main Photo" fill className="object-cover" />
+                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                                <Button type="button" variant="secondary" size="sm" onClick={() => mainInputRef.current?.click()}>
+                                    <Upload className="mr-2 h-4 w-4" /> Replace Photo
+                                </Button>
+                                <Button type="button" variant="destructive" size="sm" onClick={() => { setSelectedMainFile(null); setMainPreviewUrl(null); }}>
+                                    <X className="mr-2 h-4 w-4" /> Remove
+                                </Button>
+                            </div>
+                        </div>
+                    ) : (
+                        <div className="border-2 border-dashed rounded-2xl p-12 text-center bg-muted/5 cursor-pointer hover:border-primary/50 transition-all" onClick={() => mainInputRef.current?.click()}>
+                            <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
+                            <p className="text-sm font-bold">Assign Main Portfolio Photo</p>
+                        </div>
+                    )}
+                    <input type="file" ref={mainInputRef} onChange={handleMainFileChange} accept="image/*" className="hidden" />
+                </div>
+
+                <div className="space-y-6">
+                    <FormLabel className="font-bold flex items-center gap-2 text-lg">
+                        <Images className="h-5 w-5 text-primary" />
+                        Property Gallery
+                    </FormLabel>
+                    
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        {/* Existing Gallery */}
+                        {existingGallery.map((url, idx) => (
+                            <div key={`existing-${idx}`} className="relative aspect-square rounded-xl overflow-hidden border group">
+                                <Image src={url} alt="Gallery item" fill className="object-cover" />
+                                <button type="button" onClick={() => removeExistingGalleryImage(url)} className="absolute top-1 right-1 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </div>
+                        ))}
+                        
+                        {/* New Gallery Items */}
+                        {newGalleryPreviews.map((preview, idx) => (
+                            <div key={`new-${idx}`} className="relative aspect-square rounded-xl overflow-hidden border border-primary group">
+                                <Image src={preview} alt="New upload" fill className="object-cover" />
+                                <Badge className="absolute bottom-1 left-1 h-4 text-[8px] bg-primary">New</Badge>
+                                <button type="button" onClick={() => removeNewGalleryImage(idx)} className="absolute top-1 right-1 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                                    <X className="h-3 w-3" />
+                                </button>
+                            </div>
+                        ))}
+
+                        <div className="border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 bg-muted/5 cursor-pointer hover:border-primary/50 transition-all aspect-square" onClick={() => galleryInputRef.current?.click()}>
+                            <PlusCircle className="h-6 w-6 text-muted-foreground" />
+                            <span className="text-[10px] font-bold uppercase text-muted-foreground">Add Photos</span>
+                        </div>
+                    </div>
+                    <input type="file" ref={galleryInputRef} onChange={handleNewGalleryFiles} accept="image/*" multiple className="hidden" />
+                </div>
+            </div>
+
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 border-t pt-10">
                 <Card className="border-none shadow-none bg-muted/20">
                     <CardHeader><CardTitle className="text-lg font-headline">Investment & Tenancy</CardTitle></CardHeader>
                     <CardContent className="space-y-6">
@@ -321,112 +391,79 @@ export default function EditPropertyPage() {
                     </CardContent>
                 </Card>
 
-                <div className="space-y-4">
-                    <FormLabel className="font-bold flex items-center gap-2 text-lg">
-                        <Upload className="h-5 w-5 text-primary" />
-                        Main Property Identity Media
-                    </FormLabel>
-                    
-                    {previewUrl ? (
-                        <div className="relative w-full aspect-[4/3] rounded-2xl overflow-hidden border shadow-lg group bg-muted/10">
-                            <Image src={previewUrl} alt="Current Property Photo" fill className="object-cover" />
-                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
-                                <Button type="button" variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
-                                    <Upload className="mr-2 h-4 w-4" /> Replace Photo
-                                </Button>
-                                <Button type="button" variant="destructive" size="sm" onClick={removeFile}>
-                                    <X className="mr-2 h-4 w-4" /> Remove
-                                </Button>
-                            </div>
-                        </div>
-                    ) : (
-                        <div 
-                            className="border-2 border-dashed border-muted-foreground/20 rounded-2xl p-12 text-center flex flex-col items-center justify-center gap-4 bg-muted/5 group hover:border-primary/50 transition-colors cursor-pointer aspect-[4/3]"
-                            onClick={() => fileInputRef.current?.click()}
-                        >
-                            <Upload className="h-10 w-10 text-muted-foreground group-hover:text-primary transition-colors" />
-                            <div className="space-y-1">
-                                <p className="font-bold">Assign Property Photo</p>
-                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Secure Cloud Storage (10MB limit)</p>
-                            </div>
-                        </div>
-                    )}
-                    <input type="file" ref={fileInputRef} onChange={handleFileChange} accept="image/*" className="hidden" />
-                </div>
+                <Card className="border-none shadow-none bg-muted/20">
+                  <CardHeader><CardTitle className="text-lg font-headline">Core Specification</CardTitle></CardHeader>
+                  <CardContent className="space-y-6">
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <FormField control={form.control} name="propertyType" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Architectural Type</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger className="h-11 bg-background">
+                                <SelectValue placeholder="Select type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {propertyTypes.map((type) => (
+                                <SelectItem key={type.value} value={type.value}>
+                                  {type.label}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="status" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Portfolio Status</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                            <FormControl>
+                              <SelectTrigger className="h-11 bg-background">
+                                <SelectValue placeholder="Select status" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {['Vacant', 'Occupied', 'Under Maintenance'].map((status) => (
+                                <SelectItem key={status} value={status}>
+                                  {status}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                    </div>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                      <FormField control={form.control} name="bedrooms" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Bedrooms</FormLabel>
+                          <FormControl><Input type="number" min="0" className="h-11 bg-background" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                      <FormField control={form.control} name="bathrooms" render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Bathrooms</FormLabel>
+                          <FormControl><Input type="number" min="0" className="h-11 bg-background" {...field} /></FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )} />
+                    </div>
+                    <FormField control={form.control} name="notes" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Confidential Audit Notes</FormLabel>
+                            <FormControl>
+                                <Textarea rows={5} className="bg-background resize-none" placeholder="Describe unique features, maintenance history, or specific landlord observations..." {...field} value={field.value ?? ''} />
+                            </FormControl>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                  </CardContent>
+                </Card>
             </div>
-
-            <Card className="border-none shadow-none bg-muted/20">
-              <CardHeader><CardTitle className="text-lg font-headline">Core Specification</CardTitle></CardHeader>
-              <CardContent className="space-y-6">
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <FormField control={form.control} name="propertyType" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Architectural Type</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="h-11 bg-background">
-                            <SelectValue placeholder="Select type" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {propertyTypes.map((type) => (
-                            <SelectItem key={type.value} value={type.value}>
-                              {type.label}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={form.control} name="status" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Portfolio Status</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                          <SelectTrigger className="h-11 bg-background">
-                            <SelectValue placeholder="Select status" />
-                          </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                          {['Vacant', 'Occupied', 'Under Maintenance'].map((status) => (
-                            <SelectItem key={status} value={status}>
-                              {status}
-                            </SelectItem>
-                          ))}
-                        </SelectContent>
-                      </Select>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                </div>
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                  <FormField control={form.control} name="bedrooms" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Bedrooms</FormLabel>
-                      <FormControl><Input type="number" min="0" className="h-11 bg-background" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                  <FormField control={form.control} name="bathrooms" render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Bathrooms</FormLabel>
-                      <FormControl><Input type="number" min="0" className="h-11 bg-background" {...field} /></FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )} />
-                </div>
-                <FormField control={form.control} name="notes" render={({ field }) => (
-                    <FormItem>
-                        <FormLabel>Confidential Audit Notes</FormLabel>
-                        <FormControl>
-                            <Textarea rows={5} className="bg-background resize-none" placeholder="Describe unique features, maintenance history, or specific landlord observations..." {...field} value={field.value ?? ''} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                )} />
-              </CardContent>
-            </Card>
 
             <div className="flex justify-end gap-4 pt-6 border-t">
               <Button type="button" variant="ghost" className="font-bold uppercase tracking-widest text-xs h-11" asChild><Link href={`/dashboard/properties/${propertyId}`}>Cancel</Link></Button>

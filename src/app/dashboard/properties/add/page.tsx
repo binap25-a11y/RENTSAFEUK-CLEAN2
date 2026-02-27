@@ -22,7 +22,7 @@ import {
   useFirestore,
   useFirebase,
 } from '@/firebase';
-import { collection, addDoc, query, where, getDocs, limit, doc, setDoc } from 'firebase/firestore';
+import { collection, addDoc, doc, setDoc, query, where, getDocs, limit } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { 
   Loader2, 
@@ -42,12 +42,12 @@ import {
   Upload, 
   CheckCircle2,
   AlertCircle,
-  X
+  X,
+  Images
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import Image from 'next/image';
 
-// Robust UK Postcode Regex
 const ukPostcodeRegex = /^[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}$/i;
 
 const propertySchema = z.object({
@@ -64,6 +64,7 @@ const propertySchema = z.object({
   bathrooms: z.coerce.number().nonnegative('Bathrooms cannot be negative'),
   notes: z.string().optional(),
   imageUrl: z.string().optional(),
+  additionalImageUrls: z.array(z.string()).optional(),
   purchasePrice: z.coerce.number().nonnegative('Price cannot be negative').optional(),
   currentValuation: z.coerce.number().nonnegative('Valuation cannot be negative').optional(),
   tenancy: z.object({
@@ -99,9 +100,16 @@ export default function AddPropertyPage() {
   
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [selectedFile, setSelectedFile] = useState<File | null>(null);
-  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
-  const fileInputRef = useRef<HTMLInputElement>(null);
+  
+  // Main Photo State
+  const [mainFile, setMainFile] = useState<File | null>(null);
+  const [mainPreview, setMainPreview] = useState<string | null>(null);
+  const mainInputRef = useRef<HTMLInputElement>(null);
+
+  // Gallery Files State
+  const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
+  const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
@@ -138,24 +146,37 @@ export default function AddPropertyPage() {
 
   const progress = (step / 4) * 100;
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+  const handleMainFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (file) {
-      setSelectedFile(file);
+      setMainFile(file);
       const reader = new FileReader();
-      reader.onloadend = () => {
-        setPreviewUrl(reader.result as string);
-      };
+      reader.onloadend = () => setMainPreview(reader.result as string);
       reader.readAsDataURL(file);
     }
   };
 
-  const removeFile = () => {
-    setSelectedFile(null);
-    setPreviewUrl(null);
-    if (fileInputRef.current) {
-      fileInputRef.current.value = '';
+  const handleGalleryFilesChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files || []);
+    if (files.length > 0) {
+      setGalleryFiles(prev => [...prev, ...files]);
+      files.forEach(file => {
+        const reader = new FileReader();
+        reader.onloadend = () => setGalleryPreviews(prev => [...prev, reader.result as string]);
+        reader.readAsDataURL(file);
+      });
     }
+  };
+
+  const removeMainFile = () => {
+    setMainFile(null);
+    setMainPreview(null);
+    if (mainInputRef.current) mainInputRef.current.value = '';
+  };
+
+  const removeGalleryFile = (index: number) => {
+    setGalleryFiles(prev => prev.filter((_, i) => i !== index));
+    setGalleryPreviews(prev => prev.filter((_, i) => i !== index));
   };
 
   async function onSubmit(data: PropertyFormValues) {
@@ -185,25 +206,35 @@ export default function AddPropertyPage() {
             return;
         }
 
-        // First, create the document to get an ID
         const docRef = await addDoc(propertiesCollection, {
             ownerId: user.uid,
             ...JSON.parse(JSON.stringify(data)),
             createdDate: new Date().toISOString(),
         });
 
-        // If an image was selected, upload it
+        const propertyId = docRef.id;
         let imageUrl = '';
-        if (selectedFile) {
-            const fileExt = selectedFile.name.split('.').pop();
-            const fileName = `main-photo.${fileExt}`;
-            const storageRef = ref(storage, `images/${user.uid}/${docRef.id}/${fileName}`);
-            const uploadSnap = await uploadBytes(storageRef, selectedFile);
-            imageUrl = await getDownloadURL(uploadSnap.ref);
-            
-            // Update the document with the image URL
-            await setDoc(docRef, { imageUrl }, { merge: true });
+        const additionalImageUrls: string[] = [];
+
+        // Upload Main Image
+        if (mainFile) {
+            const mainRef = ref(storage, `images/${user.uid}/${propertyId}/main-photo.${mainFile.name.split('.').pop()}`);
+            const mainSnap = await uploadBytes(mainRef, mainFile);
+            imageUrl = await getDownloadURL(mainSnap.ref);
         }
+
+        // Upload Gallery Images
+        if (galleryFiles.length > 0) {
+            const uploadPromises = galleryFiles.map(async (file, idx) => {
+                const galleryRef = ref(storage, `images/${user.uid}/${propertyId}/gallery-${Date.now()}-${idx}.${file.name.split('.').pop()}`);
+                const snap = await uploadBytes(galleryRef, file);
+                return getDownloadURL(snap.ref);
+            });
+            const urls = await Promise.all(uploadPromises);
+            additionalImageUrls.push(...urls);
+        }
+        
+        await setDoc(docRef, { imageUrl, additionalImageUrls }, { merge: true });
         
         toast({ title: 'Property Onboarded', description: 'Your property has been successfully added to the portfolio.' });
         router.push('/dashboard/properties');
@@ -256,7 +287,6 @@ export default function AddPropertyPage() {
             <Form {...form}>
               <form onSubmit={form.handleSubmit(onSubmit)} className="p-6 space-y-8">
                 
-                {/* STEP 1: LOCATION */}
                 {step === 1 && (
                   <div className="space-y-6 animate-in fade-in slide-in-from-right-4 duration-300">
                     <div className="grid gap-6 sm:grid-cols-2">
@@ -319,7 +349,6 @@ export default function AddPropertyPage() {
                   </div>
                 )}
 
-                {/* STEP 2: DETAILS */}
                 {step === 2 && (
                   <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
                     <div className="space-y-4">
@@ -390,7 +419,6 @@ export default function AddPropertyPage() {
                   </div>
                 )}
 
-                {/* STEP 3: FINANCIALS */}
                 {step === 3 && (
                   <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -449,20 +477,22 @@ export default function AddPropertyPage() {
                   </div>
                 )}
 
-                {/* STEP 4: MEDIA & AUDIT */}
                 {step === 4 && (
                   <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
-                    <div className="space-y-4">
-                      <FormLabel className="font-bold text-lg">Property Media Capture</FormLabel>
+                    <div className="space-y-6">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Home className="h-5 w-5 text-primary" />
+                        <h3 className="font-bold text-lg">Main Identity Photo</h3>
+                      </div>
                       
-                      {previewUrl ? (
+                      {mainPreview ? (
                         <div className="relative w-full aspect-video rounded-2xl overflow-hidden border shadow-inner group">
-                          <Image src={previewUrl} alt="Property Preview" fill className="object-cover" />
+                          <Image src={mainPreview} alt="Main Preview" fill className="object-cover" />
                           <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
-                            <Button type="button" variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
-                              <Upload className="mr-2 h-4 w-4" /> Change
+                            <Button type="button" variant="secondary" size="sm" onClick={() => mainInputRef.current?.click()}>
+                              <Upload className="mr-2 h-4 w-4" /> Change Main Photo
                             </Button>
-                            <Button type="button" variant="destructive" size="sm" onClick={removeFile}>
+                            <Button type="button" variant="destructive" size="sm" onClick={removeMainFile}>
                               <X className="mr-2 h-4 w-4" /> Remove
                             </Button>
                           </div>
@@ -470,36 +500,56 @@ export default function AddPropertyPage() {
                       ) : (
                         <div 
                           className="border-2 border-dashed border-muted-foreground/20 rounded-2xl p-12 text-center flex flex-col items-center gap-4 bg-muted/5 group hover:border-primary/50 transition-colors cursor-pointer"
-                          onClick={() => fileInputRef.current?.click()}
+                          onClick={() => mainInputRef.current?.click()}
                         >
-                          <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                            <Upload className="h-8 w-8 text-primary" />
-                          </div>
+                          <Upload className="h-10 w-10 text-muted-foreground group-hover:text-primary transition-colors" />
                           <div className="space-y-1">
-                            <p className="font-bold">Attach Primary Identity Photo</p>
-                            <p className="text-xs text-muted-foreground uppercase tracking-widest font-bold">Secure Upload (JPEG/PNG up to 10MB)</p>
+                            <p className="font-bold text-sm">Assign Main Portfolio Photo</p>
+                            <p className="text-xs text-muted-foreground">This image represents the property on your dashboard.</p>
                           </div>
-                          <Button type="button" variant="outline" size="sm">Select Image</Button>
                         </div>
                       )}
-                      
-                      <input 
-                        type="file" 
-                        ref={fileInputRef} 
-                        onChange={handleFileChange} 
-                        accept="image/*" 
-                        className="hidden" 
-                      />
+                      <input type="file" ref={mainInputRef} onChange={handleMainFileChange} accept="image/*" className="hidden" />
                     </div>
 
-                    <div className="space-y-4 pt-4 border-t">
+                    <div className="space-y-6 pt-6 border-t">
+                      <div className="flex items-center gap-2 mb-2">
+                        <Images className="h-5 w-5 text-primary" />
+                        <h3 className="font-bold text-lg">Property Gallery</h3>
+                      </div>
+                      
+                      <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
+                        {galleryPreviews.map((preview, idx) => (
+                          <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border group">
+                            <Image src={preview} alt={`Gallery ${idx}`} fill className="object-cover" />
+                            <button 
+                              type="button" 
+                              onClick={() => removeGalleryFile(idx)}
+                              className="absolute top-1 right-1 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
+                            >
+                              <X className="h-3 w-3" />
+                            </button>
+                          </div>
+                        ))}
+                        <div 
+                          className="border-2 border-dashed border-muted-foreground/20 rounded-xl flex flex-col items-center justify-center gap-2 bg-muted/5 cursor-pointer hover:border-primary/50 hover:bg-muted/10 transition-all aspect-square"
+                          onClick={() => galleryInputRef.current?.click()}
+                        >
+                          <PlusCircle className="h-6 w-6 text-muted-foreground" />
+                          <span className="text-[10px] font-bold uppercase text-muted-foreground">Add Photos</span>
+                        </div>
+                      </div>
+                      <input type="file" ref={galleryInputRef} onChange={handleGalleryFilesChange} accept="image/*" multiple className="hidden" />
+                    </div>
+
+                    <div className="space-y-4 pt-6 border-t">
                       <FormField control={form.control} name="notes" render={({ field }) => (
                         <FormItem>
                           <FormLabel className="font-bold">Confidential Management Notes</FormLabel>
                           <FormControl>
                             <Textarea 
                               placeholder="Record structural observations, history, or specific management requirements..." 
-                              className="resize-none min-h-[150px] rounded-xl shadow-inner bg-muted/5" 
+                              className="resize-none min-h-[120px] rounded-xl shadow-inner bg-muted/5" 
                               {...field} 
                               value={field.value ?? ''} 
                             />
@@ -508,20 +558,9 @@ export default function AddPropertyPage() {
                         </FormItem>
                       )} />
                     </div>
-
-                    <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
-                      <CheckCircle2 className="h-5 w-5 text-amber-600 mt-0.5" />
-                      <div className="space-y-1">
-                        <p className="text-sm font-bold text-amber-900">Compliance Audit Ready</p>
-                        <p className="text-xs text-amber-800 leading-relaxed">
-                          Finalizing this record will establish the secure hierarchical path for all future compliance events, maintenance logs, and tenant data.
-                        </p>
-                      </div>
-                    </div>
                   </div>
                 )}
 
-                {/* NAVIGATION */}
                 <div className="flex items-center justify-between pt-8 border-t">
                   <Button
                     type="button"
@@ -573,15 +612,9 @@ export default function AddPropertyPage() {
                 </p>
               </div>
               <div className="space-y-2">
-                <p className="text-xs font-bold uppercase text-primary tracking-tighter">2. Financial Basis</p>
+                <p className="text-xs font-bold uppercase text-primary tracking-tighter">2. Digital Audit Trail</p>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Recording purchase price allows the system to calculate gross and net yields automatically across your reporting suites.
-                </p>
-              </div>
-              <div className="space-y-2">
-                <p className="text-xs font-bold uppercase text-primary tracking-tighter">3. Secure Documentation</p>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Property photos are stored using enterprise-grade encryption and are only accessible via your authenticated landlord profile.
+                  Adding multiple photos to the gallery helps document condition at move-in, supporting future deposit recovery or maintenance audits.
                 </p>
               </div>
               <div className="p-4 rounded-xl bg-background border border-primary/10 shadow-sm">
@@ -590,7 +623,7 @@ export default function AddPropertyPage() {
                   <p className="text-[10px] font-bold uppercase tracking-widest text-destructive">Efficiency Tip</p>
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed italic">
-                  "Attaching a clear exterior photo helps contractors identify the property quickly when assigned to maintenance tasks."
+                  "Upload photos of the boiler, consumer unit, and utility meters to the gallery for quick remote reference."
                 </p>
               </div>
             </CardContent>
@@ -621,10 +654,8 @@ export default function AddPropertyPage() {
                   <span className="text-sm font-bold text-green-600">£{((Number(form.watch('tenancy.monthlyRent')) || 0) * 12).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground">Projected Yield</span>
-                  <span className="text-sm font-bold text-primary">
-                    {form.watch('purchasePrice') && Number(form.watch('purchasePrice')) > 0 ? (((Number(form.watch('tenancy.monthlyRent')) || 0) * 12 / Number(form.watch('purchasePrice'))) * 100).toFixed(1) + '%' : '0%'}
-                  </span>
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground">Gallery Items</span>
+                  <span className="text-sm font-bold text-primary">{galleryFiles.length + (mainFile ? 1 : 0)} Photos</span>
                 </div>
               </div>
             </CardContent>
