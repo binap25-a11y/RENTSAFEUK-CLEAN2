@@ -295,6 +295,7 @@ export default function AddTenantPage() {
                         <Input
                             type="date"
                             className="h-11"
+                            min="0"
                             value={formatDateForInput(field.value)}
                             onChange={(e) => field.onChange(e.target.value)}
                         />
