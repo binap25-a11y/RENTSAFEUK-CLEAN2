@@ -22,10 +22,10 @@ import { BackToTopButton } from '@/components/ui/back-to-top-button';
 import { Button } from '@/components/ui/button';
 import { IdleTimeout } from '@/components/dashboard/idle-timeout';
 
-// Dynamically import heavy dashboard components to split the JS chunks and resolve loading timeouts.
+// Dynamically import heavy components to optimize chunk loading
 const Notifications = dynamic(() => import('@/components/dashboard/notifications').then(mod => mod.Notifications), {
   ssr: false,
-  loading: () => <div className="h-8 w-8" />
+  loading: () => <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
 });
 
 const ShareDialog = dynamic(() => import('@/components/dashboard/share-dialog').then(mod => mod.ShareDialog), {
@@ -40,7 +40,6 @@ function DashboardHeader() {
   const [isShareOpen, setIsShareOpen] = useState(false);
   const [isSearchOpen, setIsSearchOpen] = useState(false);
 
-  // Keyboard shortcut listener for Cmd+K / Ctrl+K
   useEffect(() => {
     const down = (e: KeyboardEvent) => {
       if (e.key === 'k' && (e.metaKey || e.ctrlKey)) {
@@ -48,7 +47,6 @@ function DashboardHeader() {
         setIsSearchOpen((open) => !open);
       }
     };
-
     document.addEventListener('keydown', down);
     return () => document.removeEventListener('keydown', down);
   }, []);
@@ -65,6 +63,9 @@ function DashboardHeader() {
           <Search className="mr-2 h-4 w-4" />
           <span className="hidden lg:inline-flex">Search portfolio...</span>
           <span className="inline-flex lg:hidden">Search...</span>
+          <kbd className="pointer-events-none absolute right-1.5 top-1.5 hidden h-6 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
+            <span className="text-xs">⌘</span>K
+          </kbd>
         </Button>
         <GlobalSearchDialog isOpen={isSearchOpen} onOpenChange={setIsSearchOpen} />
       </div>
@@ -96,19 +97,16 @@ export default function DashboardLayout({
   const router = useRouter();
   const [isMounted, setIsMounted] = useState(false);
 
-  // Ensure component is fully mounted on the client to avoid hydration issues
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  // Centralized authentication guard
   useEffect(() => {
     if (isMounted && !isUserLoading && !user) {
       router.push('/');
     }
   }, [user, isUserLoading, router, isMounted]);
 
-  // Loading state during initial mount or user check
   if (!isMounted || isUserLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">

@@ -16,8 +16,8 @@ import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useDoc, useMemoFirebase, useFirebase } from '@/firebase';
 import { doc, setDoc, query, collection, where, getDocs, limit } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { Loader2, ShieldAlert, MapPin, Home, Building, Hotel, Building2, Warehouse, Upload, X, Images, PlusCircle } from 'lucide-react';
+import { uploadPropertyImage } from '@/lib/upload-image';
+import { Loader2, ShieldAlert, MapPin, Home, Upload, X, Images, PlusCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 
@@ -33,23 +33,23 @@ const propertySchema = z.object({
   }),
   propertyType: z.string({ required_error: 'Please select a property type.' }),
   status: z.string({ required_error: 'Please select a status.' }),
-  bedrooms: z.coerce.number().nonnegative('Cannot be negative'),
-  bathrooms: z.coerce.number().nonnegative('Cannot be negative'),
+  bedrooms: z.coerce.number().min(0, 'Cannot be negative'),
+  bathrooms: z.coerce.number().min(0, 'Cannot be negative'),
   notes: z.string().optional(),
   imageUrl: z.string().optional(),
   additionalImageUrls: z.array(z.string()).optional(),
-  purchasePrice: z.coerce.number().nonnegative('Cannot be negative').optional(),
-  currentValuation: z.coerce.number().nonnegative('Cannot be negative').optional(),
+  purchasePrice: z.coerce.number().min(0, 'Cannot be negative').optional(),
+  currentValuation: z.coerce.number().min(0, 'Cannot be negative').optional(),
   tenancy: z.object({
-    monthlyRent: z.coerce.number().nonnegative('Cannot be negative').optional(),
-    depositAmount: z.coerce.number().nonnegative('Cannot be negative').optional(),
+    monthlyRent: z.coerce.number().min(0, 'Cannot be negative').optional(),
+    depositAmount: z.coerce.number().min(0, 'Cannot be negative').optional(),
     depositScheme: z.string().optional(),
   }).optional(),
 }).refine(data => {
-  if (!data.tenancy?.depositAmount || data.tenancy.depositAmount <= 0) {
-    return true;
+  if (data.tenancy?.depositAmount && data.tenancy.depositAmount > 0) {
+    return !!(data.tenancy.depositScheme && data.tenancy.depositScheme.trim());
   }
-  return !!(data.tenancy.depositScheme && data.tenancy.depositScheme.trim());
+  return true;
 }, {
   message: "Deposit scheme is required if a deposit amount is entered.",
   path: ["tenancy", "depositScheme"]
@@ -102,12 +102,10 @@ export default function EditPropertyPage() {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Main Photo State
   const [selectedMainFile, setSelectedMainFile] = useState<File | null>(null);
   const [mainPreviewUrl, setMainPreviewUrl] = useState<string | null>(null);
   const mainInputRef = useRef<HTMLInputElement>(null);
 
-  // Additional Photos State
   const [existingGallery, setExistingGallery] = useState<string[]>([]);
   const [newGalleryFiles, setNewGalleryFiles] = useState<File[]>([]);
   const [newGalleryPreviews, setNewGalleryPreviews] = useState<string[]>([]);
@@ -205,43 +203,19 @@ export default function EditPropertyPage() {
   };
 
   async function onSubmit(data: PropertyFormValues) {
-    if (!firestore || !propertyId || !user || !storage) return;
+    if (!firestore || !propertyId || !user) return;
     setIsSubmitting(true);
 
     try {
-      // DUPLICATE CHECK
-      if (data.address.street !== property?.address.street || data.address.postcode !== property?.address.postcode) {
-          const propertiesCollection = collection(firestore, 'userProfiles', user.uid, 'properties');
-          const duplicateQuery = query(
-              propertiesCollection,
-              where('address.street', '==', data.address.street),
-              where('address.postcode', '==', data.address.postcode),
-              where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance']),
-              limit(1)
-          );
-          const duplicateSnap = await getDocs(duplicateQuery);
-          if (!duplicateSnap.empty && duplicateSnap.docs[0].id !== propertyId) {
-              toast({ variant: 'destructive', title: 'Duplicate Property', description: 'Another active property with this street and postcode already exists.' });
-              setIsSubmitting(false);
-              return;
-          }
-      }
-
-      // 1. Handle main image upload
       let finalImageUrl = data.imageUrl || '';
       if (selectedMainFile) {
-          const storageRef = ref(storage, `images/${user.uid}/${propertyId}/main-photo-${Date.now()}.${selectedMainFile.name.split('.').pop()}`);
-          const uploadSnap = await uploadBytes(storageRef, selectedMainFile);
-          finalImageUrl = await getDownloadURL(uploadSnap.ref);
+          finalImageUrl = await uploadPropertyImage(selectedMainFile, user.uid, propertyId);
       }
 
-      // 2. Handle new gallery uploads
       const galleryUrls = [...existingGallery];
       if (newGalleryFiles.length > 0) {
-          const uploadPromises = newGalleryFiles.map(async (file, idx) => {
-              const galleryRef = ref(storage, `images/${user.uid}/${propertyId}/gallery-${Date.now()}-${idx}.${file.name.split('.').pop()}`);
-              const snap = await uploadBytes(galleryRef, file);
-              return getDownloadURL(snap.ref);
+          const uploadPromises = newGalleryFiles.map(async (file) => {
+              return uploadPropertyImage(file, user.uid, propertyId);
           });
           const newUrls = await Promise.all(uploadPromises);
           galleryUrls.push(...newUrls);
@@ -346,7 +320,6 @@ export default function EditPropertyPage() {
                     </FormLabel>
                     
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
-                        {/* Existing Gallery */}
                         {existingGallery.map((url, idx) => (
                             <div key={`existing-${idx}`} className="relative aspect-square rounded-xl overflow-hidden border group">
                                 <Image src={url} alt="Gallery item" fill className="object-cover" />
@@ -356,7 +329,6 @@ export default function EditPropertyPage() {
                             </div>
                         ))}
                         
-                        {/* New Gallery Items */}
                         {newGalleryPreviews.map((preview, idx) => (
                             <div key={`new-${idx}`} className="relative aspect-square rounded-xl overflow-hidden border border-primary group">
                                 <Image src={preview} alt="New upload" fill className="object-cover" />

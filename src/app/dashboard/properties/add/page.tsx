@@ -1,5 +1,5 @@
 'use client';
-import { uploadPropertyImage } from '@/lib/upload-image';
+
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -17,12 +17,9 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Progress } from '@/components/ui/progress';
 import { Badge } from '@/components/ui/badge';
 import { toast } from '@/hooks/use-toast';
-import {
-  useUser,
-  useFirestore,
-  useFirebase,
-} from '@/firebase';
+import { useUser, useFirestore, useFirebase } from '@/firebase';
 import { collection, addDoc, doc, setDoc, query, where, getDocs, limit } from 'firebase/firestore';
+import { uploadPropertyImage } from '@/lib/upload-image';
 import { 
   Loader2, 
   ShieldAlert, 
@@ -60,23 +57,23 @@ const propertySchema = z.object({
   }),
   propertyType: z.string({ required_error: 'Please select a property type.' }),
   status: z.string({ required_error: 'Please select a status.' }),
-  bedrooms: z.coerce.number().nonnegative('Bedrooms cannot be negative'),
-  bathrooms: z.coerce.number().nonnegative('Bathrooms cannot be negative'),
+  bedrooms: z.coerce.number().min(0, 'Bedrooms cannot be negative'),
+  bathrooms: z.coerce.number().min(0, 'Bathrooms cannot be negative'),
   notes: z.string().optional(),
   imageUrl: z.string().optional(),
   additionalImageUrls: z.array(z.string()).optional(),
-  purchasePrice: z.coerce.number().nonnegative('Price cannot be negative').optional(),
-  currentValuation: z.coerce.number().nonnegative('Valuation cannot be negative').optional(),
+  purchasePrice: z.coerce.number().min(0, 'Price cannot be negative').optional(),
+  currentValuation: z.coerce.number().min(0, 'Valuation cannot be negative').optional(),
   tenancy: z.object({
-    monthlyRent: z.coerce.number().nonnegative('Rent cannot be negative').optional(),
-    depositAmount: z.coerce.number().nonnegative('Deposit cannot be negative').optional(),
+    monthlyRent: z.coerce.number().min(0, 'Rent cannot be negative').optional(),
+    depositAmount: z.coerce.number().min(0, 'Deposit cannot be negative').optional(),
     depositScheme: z.string().optional(),
   }).optional(),
 }).refine(data => {
-    if (!data.tenancy?.depositAmount || data.tenancy.depositAmount <= 0) {
-        return true;
+    if (data.tenancy?.depositAmount && data.tenancy.depositAmount > 0) {
+        return !!data.tenancy.depositScheme?.trim();
     }
-    return !!data.tenancy.depositScheme?.trim();
+    return true;
 }, {
   message: "Deposit scheme is required if a deposit amount is entered.",
   path: ["tenancy", "depositScheme"]
@@ -96,17 +93,15 @@ const propertyTypes = [
 export default function AddPropertyPage() {
   const router = useRouter();
   const { user } = useUser();
-  const { firestore, storage } = useFirebase();
+  const { firestore } = useFirebase();
   
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Main Photo State
   const [mainFile, setMainFile] = useState<File | null>(null);
   const [mainPreview, setMainPreview] = useState<string | null>(null);
   const mainInputRef = useRef<HTMLInputElement>(null);
 
-  // Gallery Files State
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
   const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -118,19 +113,9 @@ export default function AddPropertyPage() {
       bathrooms: 0,
       status: 'Vacant',
       propertyType: 'House',
-      address: {
-        nameOrNumber: '',
-        street: '',
-        city: '',
-        county: '',
-        postcode: '',
-      },
+      address: { nameOrNumber: '', street: '', city: '', county: '', postcode: '' },
       notes: '',
-      tenancy: {
-        monthlyRent: undefined,
-        depositAmount: undefined,
-        depositScheme: '',
-      },
+      tenancy: { monthlyRent: undefined, depositAmount: undefined, depositScheme: '' },
     },
   });
 
@@ -186,7 +171,6 @@ export default function AddPropertyPage() {
     try {
         const propertiesCollection = collection(firestore, 'userProfiles', user.uid, 'properties');
         
-        // Duplicate check
         const duplicateQuery = query(
             propertiesCollection,
             where('address.street', '==', data.address.street),
@@ -216,28 +200,25 @@ export default function AddPropertyPage() {
         let imageUrl = '';
         const additionalImageUrls: string[] = [];
 
-        // Upload Main Image (Supabase)
         if (mainFile) {
-          imageUrl = await uploadPropertyImage(mainFile);
+          imageUrl = await uploadPropertyImage(mainFile, user.uid, propertyId);
         }
 
-        // Upload Gallery Images (Supabase)
         if (galleryFiles.length > 0) {
           const uploadPromises = galleryFiles.map(file =>
-              uploadPropertyImage(file)
+              uploadPropertyImage(file, user.uid, propertyId)
           );
-
           const urls = await Promise.all(uploadPromises);
           additionalImageUrls.push(...urls);
         }
         
         await setDoc(docRef, { imageUrl, additionalImageUrls }, { merge: true });
         
-        toast({ title: 'Property Onboarded', description: 'Your property has been successfully added to the portfolio.' });
+        toast({ title: 'Property Onboarded' });
         router.push('/dashboard/properties');
     } catch (serverError: any) {
         console.error("Save failed:", serverError);
-        toast({ variant: 'destructive', title: 'Save Failed', description: 'An unexpected error occurred during property creation.' });
+        toast({ variant: 'destructive', title: 'Save Failed', description: serverError.message || 'An unexpected error occurred.' });
     } finally {
         setIsSubmitting(false);
     }
@@ -337,7 +318,7 @@ export default function AddPropertyPage() {
                           ) : (
                             <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 text-muted-foreground/40">
                               <MapPin className="h-12 w-12 mb-2" />
-                              <p className="text-xs font-bold uppercase tracking-widest text-center">Awaiting valid address parameters...</p>
+                              <p className="text-xs font-bold uppercase tracking-widest text-center">Awaiting address...</p>
                             </div>
                           )}
                         </div>
@@ -464,7 +445,6 @@ export default function AddPropertyPage() {
                             <FormItem className="animate-in slide-in-from-top-2 duration-200">
                               <FormLabel className="font-bold text-destructive">Compliance: Protection Scheme</FormLabel>
                               <FormControl><Input placeholder="e.g. DPS, TDS, MyDeposits" className="h-11 border-destructive/20 focus:border-destructive" {...field} /></FormControl>
-                              <FormDescription className="text-destructive/70 text-[10px] uppercase font-bold tracking-tight">Required for all UK residential deposits.</FormDescription>
                               <FormMessage />
                             </FormItem>
                           )} />
@@ -500,10 +480,7 @@ export default function AddPropertyPage() {
                           onClick={() => mainInputRef.current?.click()}
                         >
                           <Upload className="h-10 w-10 text-muted-foreground group-hover:text-primary transition-colors" />
-                          <div className="space-y-1">
-                            <p className="font-bold text-sm">Assign Main Portfolio Photo</p>
-                            <p className="text-xs text-muted-foreground">This image represents the property on your dashboard.</p>
-                          </div>
+                          <p className="font-bold text-sm">Assign Main Portfolio Photo</p>
                         </div>
                       )}
                       <input type="file" ref={mainInputRef} onChange={handleMainFileChange} accept="image/*" className="hidden" />
@@ -519,19 +496,10 @@ export default function AddPropertyPage() {
                         {galleryPreviews.map((preview, idx) => (
                           <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border group">
                             <Image src={preview} alt={`Gallery ${idx}`} fill className="object-cover" />
-                            <button 
-                              type="button" 
-                              onClick={() => removeGalleryFile(idx)}
-                              className="absolute top-1 right-1 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity"
-                            >
-                              <X className="h-3 w-3" />
-                            </button>
+                            <button type="button" onClick={() => removeGalleryFile(idx)} className="absolute top-1 right-1 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><X className="h-3 w-3" /></button>
                           </div>
                         ))}
-                        <div 
-                          className="border-2 border-dashed border-muted-foreground/20 rounded-xl flex flex-col items-center justify-center gap-2 bg-muted/5 cursor-pointer hover:border-primary/50 hover:bg-muted/10 transition-all aspect-square"
-                          onClick={() => galleryInputRef.current?.click()}
-                        >
+                        <div className="border-2 border-dashed border-muted-foreground/20 rounded-xl flex flex-col items-center justify-center gap-2 bg-muted/5 cursor-pointer hover:border-primary/50 aspect-square" onClick={() => galleryInputRef.current?.click()}>
                           <PlusCircle className="h-6 w-6 text-muted-foreground" />
                           <span className="text-[10px] font-bold uppercase text-muted-foreground">Add Photos</span>
                         </div>
@@ -544,12 +512,7 @@ export default function AddPropertyPage() {
                         <FormItem>
                           <FormLabel className="font-bold">Confidential Management Notes</FormLabel>
                           <FormControl>
-                            <Textarea 
-                              placeholder="Record structural observations, history, or specific management requirements..." 
-                              className="resize-none min-h-[120px] rounded-xl shadow-inner bg-muted/5" 
-                              {...field} 
-                              value={field.value ?? ''} 
-                            />
+                            <Textarea placeholder="Observations, history, or specific requirements..." className="resize-none min-h-[120px] rounded-xl" {...field} value={field.value ?? ''} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -559,33 +522,11 @@ export default function AddPropertyPage() {
                 )}
 
                 <div className="flex items-center justify-between pt-8 border-t">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    onClick={step === 1 ? () => router.back() : prevStep}
-                    className="font-bold uppercase tracking-widest text-xs h-11"
-                  >
-                    <ChevronLeft className="mr-2 h-4 w-4" />
-                    {step === 1 ? "Cancel" : "Back"}
-                  </Button>
-                  
+                  <Button type="button" variant="ghost" onClick={step === 1 ? () => router.back() : prevStep} className="font-bold uppercase tracking-widest text-xs h-11"><ChevronLeft className="mr-2 h-4 w-4" />{step === 1 ? "Cancel" : "Back"}</Button>
                   {step < 4 ? (
-                    <Button
-                      type="button"
-                      onClick={nextStep}
-                      className="font-bold uppercase tracking-widest text-xs h-11 px-8 shadow-md"
-                    >
-                      Continue
-                      <ChevronRight className="ml-2 h-4 w-4" />
-                    </Button>
+                    <Button type="button" onClick={nextStep} className="font-bold uppercase tracking-widest text-xs h-11 px-8 shadow-md">Continue<ChevronRight className="ml-2 h-4 w-4" /></Button>
                   ) : (
-                    <Button
-                      type="submit"
-                      disabled={isSubmitting}
-                      className="font-bold uppercase tracking-widest text-xs h-11 px-10 shadow-lg bg-primary hover:bg-primary/90"
-                    >
-                      {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Establishing Record...</> : "Finalize Property Capture"}
-                    </Button>
+                    <Button type="submit" disabled={isSubmitting} className="font-bold uppercase tracking-widest text-xs h-11 px-10 shadow-lg bg-primary hover:bg-primary/90">{isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Recording...</> : "Finalize Property Capture"}</Button>
                   )}
                 </div>
               </form>
@@ -595,66 +536,10 @@ export default function AddPropertyPage() {
 
         <div className="lg:col-span-4 space-y-6">
           <Card className="border-none shadow-md bg-muted/20">
-            <CardHeader className="pb-4">
-              <CardTitle className="text-sm flex items-center gap-2">
-                <Info className="h-4 w-4 text-primary" />
-                Portfolio Management Guidance
-              </CardTitle>
-            </CardHeader>
-            <CardContent className="space-y-6">
-              <div className="space-y-2">
-                <p className="text-xs font-bold uppercase text-primary tracking-tighter">1. Accurate Geo-Location</p>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Correct address capture ensures local authority compliance alerts and mapping services function with maximum precision.
-                </p>
-              </div>
-              <div className="space-y-2">
-                <p className="text-xs font-bold uppercase text-primary tracking-tighter">2. Digital Audit Trail</p>
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                  Adding multiple photos to the gallery helps document condition at move-in, supporting future deposit recovery or maintenance audits.
-                </p>
-              </div>
-              <div className="p-4 rounded-xl bg-background border border-primary/10 shadow-sm">
-                <div className="flex items-center gap-3 mb-2">
-                  <AlertCircle className="h-4 w-4 text-destructive" />
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-destructive">Efficiency Tip</p>
-                </div>
-                <p className="text-xs text-muted-foreground leading-relaxed italic">
-                  "Upload photos of the boiler, consumer unit, and utility meters to the gallery for quick remote reference."
-                </p>
-              </div>
-            </CardContent>
-          </Card>
-
-          <Card className="border-none shadow-md overflow-hidden">
-            <CardHeader className="bg-primary/5 pb-4">
-              <CardTitle className="text-sm font-bold uppercase tracking-wider">Onboarding Preview</CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6 space-y-4">
-              <div className="space-y-1">
-                <p className="text-[10px] uppercase font-bold text-muted-foreground">Property Address</p>
-                <p className="text-sm font-bold truncate">{(watchAddress?.street || watchAddress?.city || watchAddress?.county || watchAddress?.postcode) ? [watchAddress.nameOrNumber, watchAddress.street, watchAddress.city, watchAddress.county, watchAddress.postcode].filter(Boolean).join(', ') : "Context pending..."}</p>
-              </div>
-              <div className="grid grid-cols-2 gap-4">
-                <div className="space-y-1">
-                  <p className="text-[10px] uppercase font-bold text-muted-foreground">Classification</p>
-                  <Badge variant="outline" className="h-5 text-[10px]">{form.watch('propertyType')}</Badge>
-                </div>
-                <div className="space-y-1">
-                  <p className="text-[10px] uppercase font-bold text-muted-foreground">Specification</p>
-                  <p className="text-xs font-bold">{form.watch('bedrooms')} Bed / {form.watch('bathrooms')} Bath</p>
-                </div>
-              </div>
-              <div className="pt-4 border-t border-dashed space-y-3">
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground">Annual Gross Potential</span>
-                  <span className="text-sm font-bold text-green-600">£{((Number(form.watch('tenancy.monthlyRent')) || 0) * 12).toLocaleString()}</span>
-                </div>
-                <div className="flex justify-between items-center">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground">Gallery Items</span>
-                  <span className="text-sm font-bold text-primary">{galleryFiles.length + (mainFile ? 1 : 0)} Photos</span>
-                </div>
-              </div>
+            <CardHeader className="pb-4"><CardTitle className="text-sm flex items-center gap-2"><Info className="h-4 w-4 text-primary" />Portfolio Guidance</CardTitle></CardHeader>
+            <CardContent className="space-y-6 text-xs text-muted-foreground leading-relaxed">
+              <p><strong className="text-primary uppercase tracking-tighter">1. Accurate Geo-Location:</strong> Correct address capture ensures local authority compliance alerts function with maximum precision.</p>
+              <p><strong className="text-primary uppercase tracking-tighter">2. Digital Audit Trail:</strong> Adding gallery photos helps document condition at move-in, supporting future deposit recovery audits.</p>
             </CardContent>
           </Card>
         </div>
