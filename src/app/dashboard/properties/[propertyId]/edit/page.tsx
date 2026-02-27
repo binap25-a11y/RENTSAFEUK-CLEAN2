@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useDoc, useMemoFirebase, useFirebase } from '@/firebase';
-import { doc, setDoc, query, collection, where, getDocs, limit } from 'firebase/firestore';
+import { doc, setDoc } from 'firebase/firestore';
 import { uploadPropertyImage } from '@/lib/upload-image';
 import { Loader2, ShieldAlert, MapPin, Home, Upload, X, Images, PlusCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -98,7 +98,7 @@ export default function EditPropertyPage() {
   const propertyId = params.propertyId as string;
   
   const { user } = useUser();
-  const { firestore, storage } = useFirebase();
+  const { firestore } = useFirebase();
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   
@@ -207,7 +207,7 @@ export default function EditPropertyPage() {
     setIsSubmitting(true);
 
     try {
-      let finalImageUrl = data.imageUrl || '';
+      let finalImageUrl = property?.imageUrl || '';
       if (selectedMainFile) {
           finalImageUrl = await uploadPropertyImage(selectedMainFile, user.uid, propertyId);
       }

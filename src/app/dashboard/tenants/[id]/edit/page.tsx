@@ -191,12 +191,12 @@ export default function EditTenantPage() {
   if (!tenant && !isLoadingTenant) return <div className="text-center py-10"><p>Tenant not found.</p><Button asChild variant="link"><Link href="/dashboard/tenants">Return to Tenants List</Link></Button></div>;
 
   return (
-    <Card className="max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle>Edit Tenant</CardTitle>
-        <CardDescription>Update the details for {tenant?.name}.</CardDescription>
+    <Card className="max-w-2xl mx-auto shadow-md border-none">
+      <CardHeader className="bg-primary/5 border-b border-primary/10">
+        <CardTitle className="text-2xl font-headline text-primary">Edit Tenant Profile</CardTitle>
+        <CardDescription>Update identity and contract details for {tenant?.name}.</CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-6">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField
@@ -204,10 +204,10 @@ export default function EditTenantPage() {
               name="propertyId"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Assign to Property</FormLabel>
+                  <FormLabel className="font-bold">Assigned Property</FormLabel>
                   <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl>
-                      <SelectTrigger>
+                      <SelectTrigger className="h-11">
                         <SelectValue placeholder="Select a property" />
                       </SelectTrigger>
                     </FormControl>
@@ -223,22 +223,22 @@ export default function EditTenantPage() {
                 </FormItem>
               )}
             />
-            <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel>Full Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel className="font-bold">Full Legal Name</FormLabel><FormControl><Input className="h-11" {...field} /></FormControl><FormMessage /></FormItem>)} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-               <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel>Email Address</FormLabel><FormControl><Input type="email" {...field} /></FormControl><FormMessage /></FormItem>)} />
-               <FormField control={form.control} name="telephone" render={({ field }) => (<FormItem><FormLabel>Telephone</FormLabel><FormControl><Input type="tel" {...field} /></FormControl><FormMessage /></FormItem>)} />
+               <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel className="font-bold">Email Address</FormLabel><FormControl><Input className="h-11" type="email" {...field} /></FormControl><FormMessage /></FormItem>)} />
+               <FormField control={form.control} name="telephone" render={({ field }) => (<FormItem><FormLabel className="font-bold">Telephone</FormLabel><FormControl><Input className="h-11" type="tel" {...field} /></FormControl><FormMessage /></FormItem>)} />
+            </div>
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t pt-6">
+                <FormField control={form.control} name="monthlyRent" render={({ field }) => (<FormItem><FormLabel className="font-bold">Agreed Rent (£/mo)</FormLabel><FormControl><Input className="h-11" type="number" min="0" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField control={form.control} name="monthlyRent" render={({ field }) => (<FormItem><FormLabel>Monthly Rent (£)</FormLabel><FormControl><Input type="number" min="0" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="tenancyStartDate" render={({ field }) => (<FormItem><FormLabel className="font-bold">Contract Start</FormLabel><FormControl><Input className="h-11" type="date" value={formatDateForInput(field.value)} onChange={(e) => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>)} />
+                 <FormField control={form.control} name="tenancyEndDate" render={({ field }) => (<FormItem><FormLabel className="font-bold">Contract End (Opt)</FormLabel><FormControl><Input className="h-11" type="date" value={formatDateForInput(field.value)} onChange={(e) => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>)} />
             </div>
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField control={form.control} name="tenancyStartDate" render={({ field }) => (<FormItem><FormLabel>Tenancy Start Date</FormLabel><FormControl><Input type="date" value={formatDateForInput(field.value)} onChange={(e) => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>)} />
-                 <FormField control={form.control} name="tenancyEndDate" render={({ field }) => (<FormItem><FormLabel>Tenancy End Date (Optional)</FormLabel><FormControl><Input type="date" value={formatDateForInput(field.value)} onChange={(e) => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>)} />
-            </div>
-            <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel>Notes (Optional)</FormLabel><FormControl><Textarea rows={4} {...field} /></FormControl><FormMessage /></FormItem>)} />
-            <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" asChild><Link href={`/dashboard/tenants/${tenantId}?propertyId=${tenant?.propertyId}`}>Cancel</Link></Button>
-                <Button type="submit">Save Changes</Button>
+            <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel className="font-bold">Management Notes</FormLabel><FormControl><Textarea className="min-h-[100px] resize-none rounded-xl" rows={4} {...field} /></FormControl><FormMessage /></FormItem>)} />
+            <div className="flex items-center justify-end gap-3 pt-4 border-t">
+                <Button type="button" variant="ghost" asChild className="font-bold uppercase tracking-widest text-xs h-11"><Link href={`/dashboard/tenants/${tenantId}?propertyId=${tenant?.propertyId}`}>Cancel</Link></Button>
+                <Button type="submit" className="font-bold uppercase tracking-widest text-xs h-11 px-10 shadow-lg">Save Profile Changes</Button>
             </div>
           </form>
         </Form>

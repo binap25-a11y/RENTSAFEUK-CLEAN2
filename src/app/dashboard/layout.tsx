@@ -1,7 +1,6 @@
 'use client';
 
 import Link from 'next/link';
-import dynamic from 'next/dynamic';
 import {
   SidebarProvider,
   Sidebar,
@@ -21,20 +20,9 @@ import { useEffect, useState } from 'react';
 import { BackToTopButton } from '@/components/ui/back-to-top-button';
 import { Button } from '@/components/ui/button';
 import { IdleTimeout } from '@/components/dashboard/idle-timeout';
-
-// Dynamically import heavy components to optimize chunk loading
-const Notifications = dynamic(() => import('@/components/dashboard/notifications').then(mod => mod.Notifications), {
-  ssr: false,
-  loading: () => <div className="h-8 w-8 rounded-full bg-muted animate-pulse" />
-});
-
-const ShareDialog = dynamic(() => import('@/components/dashboard/share-dialog').then(mod => mod.ShareDialog), {
-  ssr: false
-});
-
-const GlobalSearchDialog = dynamic(() => import('@/components/dashboard/global-search-dialog').then(mod => mod.GlobalSearchDialog), {
-  ssr: false
-});
+import { Notifications } from '@/components/dashboard/notifications';
+import { ShareDialog } from '@/components/dashboard/share-dialog';
+import { GlobalSearchDialog } from '@/components/dashboard/global-search-dialog';
 
 function DashboardHeader() {
   const [isShareOpen, setIsShareOpen] = useState(false);
