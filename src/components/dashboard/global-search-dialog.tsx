@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -67,20 +66,21 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
       const fetchData = async () => {
         setIsLoading(true);
         try {
-          const ownerFilter = where('ownerId', '==', user.uid);
-          const propQuery = query(collection(firestore, 'userProfiles', user.uid, 'properties'), ownerFilter, limit(100));
-          const contractorQuery = query(collection(firestore, 'userProfiles', user.uid, 'contractors'), ownerFilter, limit(100));
+          // Strictly hierarchical fetches
+          const propertiesCollection = collection(firestore, 'userProfiles', user.uid, 'properties');
+          const contractorsCollection = collection(firestore, 'userProfiles', user.uid, 'contractors');
           
           const [propSnap, contractorSnap] = await Promise.all([
-            getDocs(propQuery),
-            getDocs(contractorQuery)
+            getDocs(query(propertiesCollection, limit(100))),
+            getDocs(query(contractorsCollection, limit(100)))
           ]);
           
           const properties = propSnap.docs.map(d => ({ id: d.id, ...d.data() } as Property));
           const contractors = contractorSnap.docs.map(d => ({ id: d.id, ...d.data() } as Contractor));
           
+          // Efficiently fetch tenants for active properties
           const tenantPromises = properties.map(p => 
-            getDocs(query(collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'tenants'), ownerFilter, limit(10)))
+            getDocs(query(collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'tenants'), limit(10)))
           );
           const tenantSnaps = await Promise.all(tenantPromises);
           const tenants = tenantSnaps.flatMap(snap => snap.docs.map(d => ({ id: d.id, ...d.data() } as Tenant)));

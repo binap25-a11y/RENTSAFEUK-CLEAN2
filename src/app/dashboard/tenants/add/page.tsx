@@ -39,7 +39,7 @@ import {
   useMemoFirebase,
   useDoc,
 } from '@/firebase';
-import { collection, query, where, doc, updateDoc, addDoc, getDocs, limit } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, addDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 
 // Standard UK phone regex (Mobile & Landline)
@@ -120,7 +120,6 @@ export default function AddTenantPage() {
     if (!user || !firestore) return null;
     return query(
       collection(firestore, 'userProfiles', user.uid, 'properties'),
-      where('ownerId', '==', user.uid),
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
     );
   }, [firestore, user]);
@@ -130,7 +129,7 @@ export default function AddTenantPage() {
     if (!firestore || !user || !propertyIdFromUrl) return null;
     return doc(firestore, 'userProfiles', user.uid, 'properties', propertyIdFromUrl);
   }, [firestore, user, propertyIdFromUrl]);
-  const { data: selectedProperty, isLoading: isLoadingSelectedProperty } = useDoc<Property>(propertyRef);
+  const { data: selectedProperty } = useDoc<Property>(propertyRef);
   
   useEffect(() => {
     if (propertyIdFromUrl) {

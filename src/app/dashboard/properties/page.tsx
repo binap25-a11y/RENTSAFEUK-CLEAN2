@@ -92,7 +92,7 @@ export default function PropertiesPage() {
   // Real-time maintenance aggregation state
   const [openMaintenanceMap, setOpenMaintenanceMap] = useState<Record<string, number>>({});
 
-  // Strictly hierarchical properties query - ownerId filter removed to avoid redundant index requirement
+  // Strictly hierarchical properties query
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
@@ -140,7 +140,7 @@ export default function PropertiesPage() {
     const checkSafeguards = async () => {
         setIsCheckingSafeguards(true);
         try {
-            // Check for active tenants - nested strictly
+            // Check for active tenants
             const tenantSnap = await getDocs(query(
                 collection(firestore, 'userProfiles', user.uid, 'properties', propertyToDelete.id, 'tenants'),
                 where('status', '==', 'Active'),
@@ -169,15 +169,6 @@ export default function PropertiesPage() {
     checkSafeguards();
   }, [propertyToDelete, user, firestore]);
 
-  // CRITICAL: Filter maintenance badge map by the current list of active property IDs
-  const activeOpenMaintenance = useMemo(() => {
-    if (!properties) return {};
-    const activeIds = new Set(properties.map(p => p.id));
-    return Object.fromEntries(
-        Object.entries(openMaintenanceMap).filter(([id]) => activeIds.has(id))
-    );
-  }, [openMaintenanceMap, properties]);
-
   const filteredProperties = useMemo(() => {
     if (!properties) return [];
     if (!searchTerm) return properties;
@@ -190,15 +181,16 @@ export default function PropertiesPage() {
   const exportToCSV = () => {
     if (!filteredProperties.length) return;
     
-    const headers = ["Address", "Type", "Status", "Bedrooms", "Bathrooms", "Postcode", "Open Maintenance"];
+    const headers = ["Address", "County", "Type", "Status", "Bedrooms", "Bathrooms", "Postcode", "Open Maintenance"];
     const rows = filteredProperties.map(p => [
-      `"${[p.address.nameOrNumber, p.address.street, p.address.city, p.address.county].filter(Boolean).join(', ')}"`,
+      `"${[p.address.nameOrNumber, p.address.street, p.address.city].filter(Boolean).join(', ')}"`,
+      p.address.county || '',
       p.propertyType,
       p.status,
       p.bedrooms,
       p.bathrooms,
       p.address.postcode,
-      activeOpenMaintenance[p.id] || 0
+      openMaintenanceMap[p.id] || 0
     ]);
     
     const csvContent = "data:text/csv;charset=utf-8," 
@@ -319,11 +311,11 @@ export default function PropertiesPage() {
                           key={property.id}
                           className="group overflow-hidden flex flex-col hover:shadow-lg transition-shadow relative"
                       >
-                          {activeOpenMaintenance[property.id] > 0 && (
+                          {openMaintenanceMap[property.id] > 0 && (
                               <div className="absolute top-2 left-2 z-10">
                                   <Badge variant="destructive" className="flex items-center gap-1 shadow-sm">
                                       <AlertCircle className="h-3 w-3" />
-                                      {activeOpenMaintenance[property.id]} Open Issue{activeOpenMaintenance[property.id] > 1 ? 's' : ''}
+                                      {openMaintenanceMap[property.id]} Open Issue{openMaintenanceMap[property.id] > 1 ? 's' : ''}
                                   </Badge>
                               </div>
                           )}
@@ -418,10 +410,10 @@ export default function PropertiesPage() {
                                         </Badge>
                                     </TableCell>
                                     <TableCell>
-                                        {activeOpenMaintenance[property.id] > 0 ? (
+                                        {openMaintenanceMap[property.id] > 0 ? (
                                             <Badge variant="destructive" className="gap-1">
                                                 <AlertCircle className="h-3 w-3" />
-                                                {activeOpenMaintenance[property.id]} Open
+                                                {openMaintenanceMap[property.id]} Open
                                             </Badge>
                                         ) : (
                                             <span className="text-xs text-muted-foreground">Clear</span>

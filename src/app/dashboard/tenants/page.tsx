@@ -97,7 +97,7 @@ export default function TenantsPage() {
   }, [firestore, user]);
   const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
   
-  // Aggregated Tenants Listener
+  // Aggregated Tenants Listener - Fetches from secure nested property paths
   useEffect(() => {
     if (!user || !firestore || !properties || properties.length === 0) {
         setPortfolioTenants([]);
@@ -255,7 +255,7 @@ export default function TenantsPage() {
                                 </Button>
                                 <Button asChild variant="ghost" size="icon" className="h-8 w-8">
                                     <Link href={`/dashboard/tenants/${tenant.id}/edit?propertyId=${tenant.propertyId}`}>
-                                        <Edit className="h-4 w-4" />
+                                        <Edit className="mr-2 h-4 w-4" />
                                     </Link>
                                 </Button>
                                 <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setTenantToArchive(tenant)}>

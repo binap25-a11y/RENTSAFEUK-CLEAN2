@@ -121,7 +121,6 @@ export default function DashboardPage() {
 
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    // Strictly hierarchical - no redundant ownerId filter needed
     return query(
       collection(firestore, 'userProfiles', user.uid, 'properties')
     );
@@ -160,7 +159,6 @@ export default function DashboardPage() {
     const unsubs: (() => void)[] = [];
 
     properties.forEach(prop => {
-        // Redundant filters removed to avoid unnecessary composite index requirements
         unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'maintenanceLogs'), (snap) => {
             const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog));
             setMaintenanceMap(prev => ({ ...prev, [prop.id]: data }));

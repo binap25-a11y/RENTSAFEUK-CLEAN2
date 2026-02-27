@@ -26,7 +26,7 @@ const propertySchema = z.object({
     nameOrNumber: z.string().trim().optional(),
     street: z.string().trim().min(3, 'Please enter a valid street address.'),
     city: z.string().trim().min(2, 'Please enter a valid city or town.'),
-    county: z.string().trim().optional(),
+    county: z.string().trim().min(2, 'Please enter a county.'),
     postcode: z.string().trim().regex(ukPostcodeRegex, 'Please enter a valid UK postcode (e.g. SW1A 1AA).'),
   }),
   propertyType: z.string({ required_error: 'Please select a property type.' }),
@@ -147,9 +147,9 @@ export default function EditPropertyPage() {
     try {
       // UNIQUENESS CHECK (if address changed)
       if (data.address.street !== property?.address.street || data.address.postcode !== property?.address.postcode) {
+          const propertiesCollection = collection(firestore, 'userProfiles', user.uid, 'properties');
           const duplicateQuery = query(
-              collection(firestore, 'userProfiles', user.uid, 'properties'),
-              where('ownerId', '==', user.uid),
+              propertiesCollection,
               where('address.street', '==', data.address.street),
               where('address.postcode', '==', data.address.postcode),
               where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance']),

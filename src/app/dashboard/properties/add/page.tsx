@@ -51,7 +51,7 @@ const propertySchema = z.object({
     nameOrNumber: z.string().trim().optional(),
     street: z.string().trim().min(3, 'Please enter a valid street address.'),
     city: z.string().trim().min(2, 'Please enter a valid city or town.'),
-    county: z.string().trim().optional(),
+    county: z.string().trim().min(2, 'Please enter a county.'),
     postcode: z.string().trim().regex(ukPostcodeRegex, 'Please enter a valid UK postcode (e.g. SW1A 1AA).'),
   }),
   propertyType: z.string({ required_error: 'Please select a property type.' }),
@@ -135,9 +135,11 @@ export default function AddPropertyPage() {
     setIsSubmitting(true);
 
     try {
+        // Hierarchical uniqueness check - nested under user profile
+        const propertiesCollection = collection(firestore, 'userProfiles', user.uid, 'properties');
+        
         const duplicateQuery = query(
-            collection(firestore, 'userProfiles', user.uid, 'properties'),
-            where('ownerId', '==', user.uid),
+            propertiesCollection,
             where('address.street', '==', data.address.street),
             where('address.postcode', '==', data.address.postcode),
             where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance']),
@@ -161,12 +163,12 @@ export default function AddPropertyPage() {
             createdDate: new Date().toISOString(),
         };
 
-        const propertiesCollection = collection(firestore, 'userProfiles', user.uid, 'properties');
         await addDoc(propertiesCollection, propertyData);
         
         toast({ title: 'Property Added', description: 'The property has been successfully added to your portfolio.' });
         router.push('/dashboard/properties');
     } catch (serverError: any) {
+        console.error("Save failed:", serverError);
         toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save property. Please try again.' });
     } finally {
         setIsSubmitting(false);
@@ -556,7 +558,7 @@ export default function AddPropertyPage() {
                 <div className="flex justify-between items-center">
                   <span className="text-[10px] uppercase font-bold text-muted-foreground">Est. Yield</span>
                   <span className="text-sm font-bold text-primary">
-                    {form.watch('purchasePrice') > 0 ? ((form.watch('tenancy.monthlyRent') * 12 / form.watch('purchasePrice')) * 100).toFixed(1) + '%' : '0%'}
+                    {form.watch('purchasePrice') && Number(form.watch('purchasePrice')) > 0 ? (((Number(form.watch('tenancy.monthlyRent')) || 0) * 12 / Number(form.watch('purchasePrice'))) * 100).toFixed(1) + '%' : '0%'}
                   </span>
                 </div>
               </div>

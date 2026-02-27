@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -205,13 +204,11 @@ export default function PropertyDetailPage() {
 
   if (propertyError) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 gap-4">
-        <AlertTriangle className="h-12 w-12 text-destructive" />
-        <Card className="w-full max-lg text-center">
-            <CardHeader><CardTitle>Loading Error</CardTitle></CardHeader>
-            <CardContent><p className="text-sm text-muted-foreground">There was a problem accessing this property record.</p></CardContent>
-            <CardFooter className="flex justify-center"><Button asChild><Link href="/dashboard/properties">Return to Properties</Link></Button></CardFooter>
-        </Card>
+      <div className="flex flex-col items-center justify-center h-64 gap-4 p-6">
+        <AlertCircle className="h-12 w-12 text-destructive opacity-20" />
+        <h2 className="text-lg font-bold">Failed to Load Property</h2>
+        <p className="text-sm text-muted-foreground max-w-xs text-center">There was an error accessing the property details. Please ensure the URL is correct and you have permission.</p>
+        <Button asChild variant="outline"><Link href="/dashboard/properties">Return to Portfolio</Link></Button>
       </div>
     );
   }
@@ -340,7 +337,7 @@ export default function PropertyDetailPage() {
           <div className="space-y-6">
             <Card className="shadow-sm">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                <CardTitle className="font-headline text-lg">Current Tenants</CardTitle>
+                <CardTitle className="font-headline text-lg">Active Tenants</CardTitle>
                 <Button variant="ghost" size="icon" asChild className="h-8 w-8 text-primary">
                   <Link href={`/dashboard/tenants/add?propertyId=${propertyId}`} title="Add Tenant">
                     <PlusCircle className="h-5 w-5" />
