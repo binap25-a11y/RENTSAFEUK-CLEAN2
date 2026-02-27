@@ -18,6 +18,7 @@ import { useUser, useFirestore, useDoc, useMemoFirebase, useFirebase } from '@/f
 import { doc, setDoc, query, collection, where, getDocs, limit } from 'firebase/firestore';
 import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { Loader2, ShieldAlert, MapPin, Home, Building, Hotel, Building2, Warehouse, Upload, X, Images, PlusCircle } from 'lucide-react';
+import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 
 const ukPostcodeRegex = /^[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}$/i;
