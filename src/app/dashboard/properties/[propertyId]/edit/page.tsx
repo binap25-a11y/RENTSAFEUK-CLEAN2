@@ -98,7 +98,7 @@ export default function EditPropertyPage() {
   const propertyId = params.propertyId as string;
   
   const { user } = useUser();
-  const { firestore } = useFirebase();
+  const firestore = useFirestore();
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   
