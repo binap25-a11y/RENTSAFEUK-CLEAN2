@@ -1,5 +1,5 @@
 'use client';
-
+import { uploadPropertyImage } from '@/lib/upload-image';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -23,7 +23,6 @@ import {
   useFirebase,
 } from '@/firebase';
 import { collection, addDoc, doc, setDoc, query, where, getDocs, limit } from 'firebase/firestore';
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { 
   Loader2, 
   ShieldAlert, 
@@ -181,7 +180,7 @@ export default function AddPropertyPage() {
   };
 
   async function onSubmit(data: PropertyFormValues) {
-    if (!user || !firestore || !storage) return;
+    if (!user || !firestore) return;
     setIsSubmitting(true);
 
     try {
@@ -217,22 +216,19 @@ export default function AddPropertyPage() {
         let imageUrl = '';
         const additionalImageUrls: string[] = [];
 
-        // Upload Main Image
+        // Upload Main Image (Supabase)
         if (mainFile) {
-            const mainRef = ref(storage, `images/${user.uid}/${propertyId}/main-photo.${mainFile.name.split('.').pop()}`);
-            const mainSnap = await uploadBytes(mainRef, mainFile);
-            imageUrl = await getDownloadURL(mainSnap.ref);
+          imageUrl = await uploadPropertyImage(mainFile);
         }
 
-        // Upload Gallery Images
+        // Upload Gallery Images (Supabase)
         if (galleryFiles.length > 0) {
-            const uploadPromises = galleryFiles.map(async (file, idx) => {
-                const galleryRef = ref(storage, `images/${user.uid}/${propertyId}/gallery-${Date.now()}-${idx}.${file.name.split('.').pop()}`);
-                const snap = await uploadBytes(galleryRef, file);
-                return getDownloadURL(snap.ref);
-            });
-            const urls = await Promise.all(uploadPromises);
-            additionalImageUrls.push(...urls);
+          const uploadPromises = galleryFiles.map(file =>
+              uploadPropertyImage(file)
+          );
+
+          const urls = await Promise.all(uploadPromises);
+          additionalImageUrls.push(...urls);
         }
         
         await setDoc(docRef, { imageUrl, additionalImageUrls }, { merge: true });
