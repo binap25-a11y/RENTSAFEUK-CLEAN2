@@ -344,6 +344,11 @@ export default function PropertyDetailPage() {
                         </div>
                       </div>
                     ))}
+                    <Button variant="ghost" className="w-full text-xs font-bold uppercase tracking-widest text-primary hover:bg-primary/5 h-10 border border-dashed border-primary/20" asChild>
+                        <Link href={`/dashboard/tenants/add?propertyId=${propertyId}`}>
+                            <PlusCircle className="mr-2 h-3 w-3" /> Add Another Tenant
+                        </Link>
+                    </Button>
                   </div>
                 ) : (
                   <div className="text-center py-4">

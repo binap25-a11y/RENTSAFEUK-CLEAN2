@@ -35,7 +35,7 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, onSnapshot, Timestamp } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, Timestamp, limit } from 'firebase/firestore';
 import { useMemo, useState, useEffect } from 'react';
 import { format, isFuture, isBefore, addDays } from 'date-fns';
 import {
@@ -117,7 +117,11 @@ const formatAddress = (address: Property['address']) => {
 export default function DashboardPage() {
   const { user } = useUser();
   const firestore = useFirestore();
-  const router = useRouter();
+  const [mounted, setMounted] = useState(false);
+
+  useEffect(() => {
+    setMounted(true);
+  }, []);
 
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -132,13 +136,8 @@ export default function DashboardPage() {
   const [documentsMap, setDocumentsMap] = useState<Record<string, Document[]>>({});
   const [rentPaymentsMap, setRentPaymentsMap] = useState<Record<string, RentPayment[]>>({});
   
-  const [currentYear, setCurrentYear] = useState<number | null>(null);
-  const [currentMonth, setCurrentMonth] = useState<string | null>(null);
-
-  useEffect(() => {
-    setCurrentYear(new Date().getFullYear());
-    setCurrentMonth(format(new Date(), 'MMMM'));
-  }, []);
+  const [currentYear, setCurrentYear] = useState<number>(new Date().getFullYear());
+  const [currentMonth, setCurrentMonth] = useState<string>(format(new Date(), 'MMMM'));
 
   const properties = useMemo(() => {
     const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
@@ -171,7 +170,7 @@ export default function DashboardPage() {
             const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Document));
             setDocumentsMap(prev => ({ ...prev, [prop.id]: data }));
         }));
-        unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'rentPayments')), (snap) => {
+        unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'rentPayments'), limit(50)), (snap) => {
             const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as RentPayment));
             setRentPaymentsMap(prev => ({ ...prev, [prop.id]: data }));
         }));
@@ -185,7 +184,7 @@ export default function DashboardPage() {
   const documents = useMemo(() => Object.values(documentsMap).flat(), [documentsMap]);
   const allRentPayments = useMemo(() => Object.values(rentPaymentsMap).flat(), [rentPaymentsMap]);
 
-  const isLoading = isLoadingProperties || !currentYear;
+  const isLoading = isLoadingProperties || !mounted;
 
   const propertyMap = useMemo(() => 
     properties?.reduce((map, prop) => {
@@ -275,6 +274,8 @@ export default function DashboardPage() {
       Unpaid: { label: "Unpaid", color: "hsl(var(--chart-1))" },
       Pending: { label: "Pending", color: "hsl(var(--muted))" },
   } satisfies ChartConfig;
+
+  if (!mounted) return <div className="flex h-screen w-full items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>;
 
   return (
     <div className="flex flex-col gap-8 p-2 md:p-0">
