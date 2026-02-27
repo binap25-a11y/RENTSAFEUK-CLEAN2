@@ -57,6 +57,32 @@ const propertySchema = z.object({
 
 type PropertyFormValues = z.infer<typeof propertySchema>;
 
+interface Property {
+    id: string;
+    ownerId: string;
+    address: {
+      nameOrNumber?: string;
+      street: string;
+      city: string;
+      county?: string;
+      postcode: string;
+    };
+    propertyType: string;
+    status: string;
+    bedrooms: number;
+    bathrooms: number;
+    imageUrl?: string;
+    additionalImageUrls?: string[];
+    notes?: string;
+    purchasePrice?: number;
+    currentValuation?: number;
+    tenancy?: {
+        monthlyRent?: number;
+        depositAmount?: number;
+        depositScheme?: string;
+    };
+}
+
 const propertyTypes = [
   { value: 'House', label: 'House' },
   { value: 'Flat', label: 'Flat / Apt' },
@@ -92,7 +118,7 @@ export default function EditPropertyPage() {
     return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId);
   }, [firestore, user, propertyId]);
   
-  const { data: property, isLoading } = useDoc(propertyRef);
+  const { data: property, isLoading } = useDoc<Property>(propertyRef);
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
@@ -110,7 +136,13 @@ export default function EditPropertyPage() {
   useEffect(() => {
     if (property) {
       form.reset({
-        address: property.address || { nameOrNumber: '', street: '', city: '', county: '', postcode: '' },
+        address: {
+          nameOrNumber: property.address?.nameOrNumber ?? '',
+          street: property.address?.street ?? '',
+          city: property.address?.city ?? '',
+          county: property.address?.county ?? '',
+          postcode: property.address?.postcode ?? '',
+        },
         propertyType: property.propertyType || 'House',
         status: property.status || 'Vacant',
         bedrooms: property.bedrooms || 0,
@@ -120,7 +152,11 @@ export default function EditPropertyPage() {
         additionalImageUrls: property.additionalImageUrls || [],
         purchasePrice: property.purchasePrice,
         currentValuation: property.currentValuation,
-        tenancy: property.tenancy || { monthlyRent: undefined, depositAmount: undefined, depositScheme: '' },
+        tenancy: {
+          monthlyRent: property.tenancy?.monthlyRent,
+          depositAmount: property.tenancy?.depositAmount,
+          depositScheme: property.tenancy?.depositScheme ?? '',
+        },
       });
       if (property.imageUrl) setMainPreviewUrl(property.imageUrl);
       if (property.additionalImageUrls) setExistingGallery(property.additionalImageUrls);
