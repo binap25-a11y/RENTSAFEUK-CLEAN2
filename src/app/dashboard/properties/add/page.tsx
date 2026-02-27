@@ -5,9 +5,9 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useRef } from 'react';
 
-import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
@@ -20,8 +20,10 @@ import { toast } from '@/hooks/use-toast';
 import {
   useUser,
   useFirestore,
+  useFirebase,
 } from '@/firebase';
-import { collection, addDoc, query, where, getDocs, limit } from 'firebase/firestore';
+import { collection, addDoc, query, where, getDocs, limit, doc, setDoc } from 'firebase/firestore';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { 
   Loader2, 
   ShieldAlert, 
@@ -39,9 +41,11 @@ import {
   ChevronLeft, 
   Upload, 
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  X
 } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import Image from 'next/image';
 
 // Robust UK Postcode Regex
 const ukPostcodeRegex = /^[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}$/i;
@@ -59,6 +63,7 @@ const propertySchema = z.object({
   bedrooms: z.coerce.number().nonnegative('Bedrooms cannot be negative'),
   bathrooms: z.coerce.number().nonnegative('Bathrooms cannot be negative'),
   notes: z.string().optional(),
+  imageUrl: z.string().optional(),
   purchasePrice: z.coerce.number().nonnegative('Price cannot be negative').optional(),
   currentValuation: z.coerce.number().nonnegative('Valuation cannot be negative').optional(),
   tenancy: z.object({
@@ -90,10 +95,13 @@ const propertyTypes = [
 export default function AddPropertyPage() {
   const router = useRouter();
   const { user } = useUser();
-  const firestore = useFirestore();
+  const { firestore, storage } = useFirebase();
   
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [previewUrl, setPreviewUrl] = useState<string | null>(null);
+  const fileInputRef = useRef<HTMLInputElement>(null);
 
   const form = useForm<PropertyFormValues>({
     resolver: zodResolver(propertySchema),
@@ -130,14 +138,34 @@ export default function AddPropertyPage() {
 
   const progress = (step / 4) * 100;
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (file) {
+      setSelectedFile(file);
+      const reader = new FileReader();
+      reader.onloadend = () => {
+        setPreviewUrl(reader.result as string);
+      };
+      reader.readAsDataURL(file);
+    }
+  };
+
+  const removeFile = () => {
+    setSelectedFile(null);
+    setPreviewUrl(null);
+    if (fileInputRef.current) {
+      fileInputRef.current.value = '';
+    }
+  };
+
   async function onSubmit(data: PropertyFormValues) {
-    if (!user || !firestore) return;
+    if (!user || !firestore || !storage) return;
     setIsSubmitting(true);
 
     try {
-        // Hierarchical uniqueness check - nested under user profile
         const propertiesCollection = collection(firestore, 'userProfiles', user.uid, 'properties');
         
+        // Duplicate check
         const duplicateQuery = query(
             propertiesCollection,
             where('address.street', '==', data.address.street),
@@ -157,19 +185,31 @@ export default function AddPropertyPage() {
             return;
         }
 
-        const propertyData = {
+        // First, create the document to get an ID
+        const docRef = await addDoc(propertiesCollection, {
             ownerId: user.uid,
             ...JSON.parse(JSON.stringify(data)),
             createdDate: new Date().toISOString(),
-        };
+        });
 
-        await addDoc(propertiesCollection, propertyData);
+        // If an image was selected, upload it
+        let imageUrl = '';
+        if (selectedFile) {
+            const fileExt = selectedFile.name.split('.').pop();
+            const fileName = `main-photo.${fileExt}`;
+            const storageRef = ref(storage, `images/${user.uid}/${docRef.id}/${fileName}`);
+            const uploadSnap = await uploadBytes(storageRef, selectedFile);
+            imageUrl = await getDownloadURL(uploadSnap.ref);
+            
+            // Update the document with the image URL
+            await setDoc(docRef, { imageUrl }, { merge: true });
+        }
         
-        toast({ title: 'Property Added', description: 'The property has been successfully added to your portfolio.' });
+        toast({ title: 'Property Onboarded', description: 'Your property has been successfully added to the portfolio.' });
         router.push('/dashboard/properties');
     } catch (serverError: any) {
         console.error("Save failed:", serverError);
-        toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save property. Please try again.' });
+        toast({ variant: 'destructive', title: 'Save Failed', description: 'An unexpected error occurred during property creation.' });
     } finally {
         setIsSubmitting(false);
     }
@@ -191,7 +231,7 @@ export default function AddPropertyPage() {
     <div className="max-w-6xl mx-auto space-y-8">
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Onboard New Property</h1>
-        <p className="text-muted-foreground font-medium">Follow the steps below to accurately record your property details.</p>
+        <p className="text-muted-foreground font-medium">Complete the secure data capture process for your portfolio property.</p>
       </div>
 
       <div className="grid gap-8 lg:grid-cols-12">
@@ -262,7 +302,7 @@ export default function AddPropertyPage() {
                       <div className="space-y-2">
                         <FormLabel className="font-bold flex items-center gap-2">
                           <MapPin className="h-4 w-4 text-primary" />
-                          Live Map Preview
+                          Live Map Verification
                         </FormLabel>
                         <div className="aspect-square w-full rounded-xl overflow-hidden border-2 border-muted bg-muted shadow-inner relative">
                           {mapUrl ? (
@@ -270,7 +310,7 @@ export default function AddPropertyPage() {
                           ) : (
                             <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 text-muted-foreground/40">
                               <MapPin className="h-12 w-12 mb-2" />
-                              <p className="text-xs font-bold uppercase tracking-widest">Enter address to preview map</p>
+                              <p className="text-xs font-bold uppercase tracking-widest text-center">Awaiting valid address parameters...</p>
                             </div>
                           )}
                         </div>
@@ -283,7 +323,7 @@ export default function AddPropertyPage() {
                 {step === 2 && (
                   <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
                     <div className="space-y-4">
-                      <FormLabel className="font-bold text-lg">What type of property is this?</FormLabel>
+                      <FormLabel className="font-bold text-lg">Property Architecture Type</FormLabel>
                       <FormField
                         control={form.control}
                         name="propertyType"
@@ -336,7 +376,7 @@ export default function AddPropertyPage() {
                       )} />
                       <FormField control={form.control} name="status" render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="font-bold">Current Status</FormLabel>
+                          <FormLabel className="font-bold">Portfolio Status</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl><SelectTrigger className="h-11"><SelectValue /></SelectTrigger></FormControl>
                             <SelectContent>
@@ -357,20 +397,20 @@ export default function AddPropertyPage() {
                       <div className="space-y-6">
                         <h3 className="font-bold text-lg flex items-center gap-2">
                           <PoundSterling className="h-5 w-5 text-primary" />
-                          Investment Data
+                          Acquisition Data
                         </h3>
                         <FormField control={form.control} name="purchasePrice" render={({ field }) => (
                           <FormItem>
                             <FormLabel className="font-bold">Purchase Price (£)</FormLabel>
-                            <FormControl><Input type="number" min="0" placeholder="0.00" className="h-11" {...field} /></FormControl>
-                            <FormDescription>Basis for yield calculations.</FormDescription>
+                            <FormControl><Input type="number" min="0" placeholder="0.00" className="h-11" {...field} value={field.value ?? ''} /></FormControl>
+                            <FormDescription>Original cost for ROI tracking.</FormDescription>
                             <FormMessage />
                           </FormItem>
                         )} />
                         <FormField control={form.control} name="currentValuation" render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="font-bold">Current Valuation (£)</FormLabel>
-                            <FormControl><Input type="number" min="0" placeholder="0.00" className="h-11" {...field} /></FormControl>
+                            <FormLabel className="font-bold">Current Market Value (£)</FormLabel>
+                            <FormControl><Input type="number" min="0" placeholder="0.00" className="h-11" {...field} value={field.value ?? ''} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
@@ -378,28 +418,28 @@ export default function AddPropertyPage() {
                       <div className="space-y-6">
                         <h3 className="font-bold text-lg flex items-center gap-2 text-green-600">
                           <ShieldAlert className="h-5 w-5" />
-                          Rental & Compliance
+                          Rental & Protection
                         </h3>
                         <FormField control={form.control} name="tenancy.monthlyRent" render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="font-bold">Estimated Monthly Rent (£)</FormLabel>
-                            <FormControl><Input type="number" min="0" placeholder="0.00" className="h-11" {...field} /></FormControl>
+                            <FormLabel className="font-bold">Gross Monthly Rent (£)</FormLabel>
+                            <FormControl><Input type="number" min="0" placeholder="0.00" className="h-11" {...field} value={field.value ?? ''} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
                         <FormField control={form.control} name="tenancy.depositAmount" render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="font-bold">Required Deposit (£)</FormLabel>
-                            <FormControl><Input type="number" min="0" placeholder="0.00" className="h-11" {...field} /></FormControl>
+                            <FormLabel className="font-bold">Security Deposit (£)</FormLabel>
+                            <FormControl><Input type="number" min="0" placeholder="0.00" className="h-11" {...field} value={field.value ?? ''} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
                         {form.watch('tenancy.depositAmount') > 0 && (
                           <FormField control={form.control} name="tenancy.depositScheme" render={({ field }) => (
                             <FormItem className="animate-in slide-in-from-top-2 duration-200">
-                              <FormLabel className="font-bold text-destructive">Protection Scheme Name</FormLabel>
+                              <FormLabel className="font-bold text-destructive">Compliance: Protection Scheme</FormLabel>
                               <FormControl><Input placeholder="e.g. DPS, TDS, MyDeposits" className="h-11 border-destructive/20 focus:border-destructive" {...field} /></FormControl>
-                              <FormDescription className="text-destructive/70 text-[10px] uppercase font-bold tracking-tight">Legal requirement for deposits in the UK.</FormDescription>
+                              <FormDescription className="text-destructive/70 text-[10px] uppercase font-bold tracking-tight">Required for all UK residential deposits.</FormDescription>
                               <FormMessage />
                             </FormItem>
                           )} />
@@ -413,28 +453,53 @@ export default function AddPropertyPage() {
                 {step === 4 && (
                   <div className="space-y-8 animate-in fade-in slide-in-from-right-4 duration-300">
                     <div className="space-y-4">
-                      <FormLabel className="font-bold text-lg">Property Media</FormLabel>
-                      <div className="border-2 border-dashed border-muted-foreground/20 rounded-2xl p-12 text-center flex flex-col items-center gap-4 bg-muted/5 group hover:border-primary/50 transition-colors cursor-pointer">
-                        <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
-                          <Upload className="h-8 w-8 text-primary" />
+                      <FormLabel className="font-bold text-lg">Property Media Capture</FormLabel>
+                      
+                      {previewUrl ? (
+                        <div className="relative w-full aspect-video rounded-2xl overflow-hidden border shadow-inner group">
+                          <Image src={previewUrl} alt="Property Preview" fill className="object-cover" />
+                          <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
+                            <Button type="button" variant="secondary" size="sm" onClick={() => fileInputRef.current?.click()}>
+                              <Upload className="mr-2 h-4 w-4" /> Change
+                            </Button>
+                            <Button type="button" variant="destructive" size="sm" onClick={removeFile}>
+                              <X className="mr-2 h-4 w-4" /> Remove
+                            </Button>
+                          </div>
                         </div>
-                        <div className="space-y-1">
-                          <p className="font-bold">Add Main Property Photo</p>
-                          <p className="text-xs text-muted-foreground uppercase tracking-widest font-bold">PNG or JPG up to 10MB</p>
+                      ) : (
+                        <div 
+                          className="border-2 border-dashed border-muted-foreground/20 rounded-2xl p-12 text-center flex flex-col items-center gap-4 bg-muted/5 group hover:border-primary/50 transition-colors cursor-pointer"
+                          onClick={() => fileInputRef.current?.click()}
+                        >
+                          <div className="h-16 w-16 rounded-full bg-primary/10 flex items-center justify-center group-hover:scale-110 transition-transform">
+                            <Upload className="h-8 w-8 text-primary" />
+                          </div>
+                          <div className="space-y-1">
+                            <p className="font-bold">Attach Primary Identity Photo</p>
+                            <p className="text-xs text-muted-foreground uppercase tracking-widest font-bold">Secure Upload (JPEG/PNG up to 10MB)</p>
+                          </div>
+                          <Button type="button" variant="outline" size="sm">Select Image</Button>
                         </div>
-                        <Button type="button" variant="outline" size="sm">Select File</Button>
-                        <p className="text-[10px] text-muted-foreground italic">Note: File storage features will be enabled once property is saved.</p>
-                      </div>
+                      )}
+                      
+                      <input 
+                        type="file" 
+                        ref={fileInputRef} 
+                        onChange={handleFileChange} 
+                        accept="image/*" 
+                        className="hidden" 
+                      />
                     </div>
 
                     <div className="space-y-4 pt-4 border-t">
                       <FormField control={form.control} name="notes" render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="font-bold">Portfolio Audit Notes</FormLabel>
+                          <FormLabel className="font-bold">Confidential Management Notes</FormLabel>
                           <FormControl>
                             <Textarea 
-                              placeholder="Describe structural condition, specific features, or long-term maintenance needs..." 
-                              className="resize-none min-h-[150px] rounded-xl" 
+                              placeholder="Record structural observations, history, or specific management requirements..." 
+                              className="resize-none min-h-[150px] rounded-xl shadow-inner bg-muted/5" 
                               {...field} 
                               value={field.value ?? ''} 
                             />
@@ -447,9 +512,9 @@ export default function AddPropertyPage() {
                     <div className="bg-amber-50 border border-amber-200 rounded-xl p-4 flex items-start gap-3">
                       <CheckCircle2 className="h-5 w-5 text-amber-600 mt-0.5" />
                       <div className="space-y-1">
-                        <p className="text-sm font-bold text-amber-900">Ready to List</p>
+                        <p className="text-sm font-bold text-amber-900">Compliance Audit Ready</p>
                         <p className="text-xs text-amber-800 leading-relaxed">
-                          By saving this property, it will be added to your active management dashboard. You can add tenants, log maintenance, and upload compliance documents immediately after.
+                          Finalizing this record will establish the secure hierarchical path for all future compliance events, maintenance logs, and tenant data.
                         </p>
                       </div>
                     </div>
@@ -483,7 +548,7 @@ export default function AddPropertyPage() {
                       disabled={isSubmitting}
                       className="font-bold uppercase tracking-widest text-xs h-11 px-10 shadow-lg bg-primary hover:bg-primary/90"
                     >
-                      {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Finalizing...</> : "Complete Onboarding"}
+                      {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Establishing Record...</> : "Finalize Property Capture"}
                     </Button>
                   )}
                 </div>
@@ -497,35 +562,35 @@ export default function AddPropertyPage() {
             <CardHeader className="pb-4">
               <CardTitle className="text-sm flex items-center gap-2">
                 <Info className="h-4 w-4 text-primary" />
-                Landlord Compliance Tips
+                Portfolio Management Guidance
               </CardTitle>
             </CardHeader>
             <CardContent className="space-y-6">
               <div className="space-y-2">
-                <p className="text-xs font-bold uppercase text-primary tracking-tighter">1. Gas & Electrical Safety</p>
+                <p className="text-xs font-bold uppercase text-primary tracking-tighter">1. Accurate Geo-Location</p>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  In the UK, you must have a valid Gas Safety Certificate (CP12) updated annually and an EICR valid for 5 years.
+                  Correct address capture ensures local authority compliance alerts and mapping services function with maximum precision.
                 </p>
               </div>
               <div className="space-y-2">
-                <p className="text-xs font-bold uppercase text-primary tracking-tighter">2. The "How to Rent" Guide</p>
+                <p className="text-xs font-bold uppercase text-primary tracking-tighter">2. Financial Basis</p>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  You must serve the latest version of the government's "How to Rent" guide to tenants at the start of any new tenancy.
+                  Recording purchase price allows the system to calculate gross and net yields automatically across your reporting suites.
                 </p>
               </div>
               <div className="space-y-2">
-                <p className="text-xs font-bold uppercase text-primary tracking-tighter">3. Deposit Protection</p>
+                <p className="text-xs font-bold uppercase text-primary tracking-tighter">3. Secure Documentation</p>
                 <p className="text-xs text-muted-foreground leading-relaxed">
-                  Legally, you must protect a tenant's deposit in a government-approved scheme within 30 days of receiving it.
+                  Property photos are stored using enterprise-grade encryption and are only accessible via your authenticated landlord profile.
                 </p>
               </div>
               <div className="p-4 rounded-xl bg-background border border-primary/10 shadow-sm">
                 <div className="flex items-center gap-3 mb-2">
                   <AlertCircle className="h-4 w-4 text-destructive" />
-                  <p className="text-[10px] font-bold uppercase tracking-widest text-destructive">Pro Tip</p>
+                  <p className="text-[10px] font-bold uppercase tracking-widest text-destructive">Efficiency Tip</p>
                 </div>
                 <p className="text-xs text-muted-foreground leading-relaxed italic">
-                  "Accurate addresses ensure compliance reminders are triggered correctly for local authority regulations."
+                  "Attaching a clear exterior photo helps contractors identify the property quickly when assigned to maintenance tasks."
                 </p>
               </div>
             </CardContent>
@@ -533,30 +598,30 @@ export default function AddPropertyPage() {
 
           <Card className="border-none shadow-md overflow-hidden">
             <CardHeader className="bg-primary/5 pb-4">
-              <CardTitle className="text-sm font-bold uppercase tracking-wider">Summary Preview</CardTitle>
+              <CardTitle className="text-sm font-bold uppercase tracking-wider">Onboarding Preview</CardTitle>
             </CardHeader>
             <CardContent className="pt-6 space-y-4">
               <div className="space-y-1">
                 <p className="text-[10px] uppercase font-bold text-muted-foreground">Property Address</p>
-                <p className="text-sm font-bold truncate">{(watchAddress?.street || watchAddress?.city || watchAddress?.county || watchAddress?.postcode) ? [watchAddress.street, watchAddress.city, watchAddress.county, watchAddress.postcode].filter(Boolean).join(', ') : "Not specified yet"}</p>
+                <p className="text-sm font-bold truncate">{(watchAddress?.street || watchAddress?.city || watchAddress?.county || watchAddress?.postcode) ? [watchAddress.nameOrNumber, watchAddress.street, watchAddress.city, watchAddress.county, watchAddress.postcode].filter(Boolean).join(', ') : "Context pending..."}</p>
               </div>
               <div className="grid grid-cols-2 gap-4">
                 <div className="space-y-1">
-                  <p className="text-[10px] uppercase font-bold text-muted-foreground">Type</p>
+                  <p className="text-[10px] uppercase font-bold text-muted-foreground">Classification</p>
                   <Badge variant="outline" className="h-5 text-[10px]">{form.watch('propertyType')}</Badge>
                 </div>
                 <div className="space-y-1">
-                  <p className="text-[10px] uppercase font-bold text-muted-foreground">Layout</p>
+                  <p className="text-[10px] uppercase font-bold text-muted-foreground">Specification</p>
                   <p className="text-xs font-bold">{form.watch('bedrooms')} Bed / {form.watch('bathrooms')} Bath</p>
                 </div>
               </div>
               <div className="pt-4 border-t border-dashed space-y-3">
                 <div className="flex justify-between items-center">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground">Monthly Rent</span>
-                  <span className="text-sm font-bold text-green-600">£{form.watch('tenancy.monthlyRent')?.toLocaleString() || '0'}</span>
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground">Annual Gross Potential</span>
+                  <span className="text-sm font-bold text-green-600">£{((Number(form.watch('tenancy.monthlyRent')) || 0) * 12).toLocaleString()}</span>
                 </div>
                 <div className="flex justify-between items-center">
-                  <span className="text-[10px] uppercase font-bold text-muted-foreground">Est. Yield</span>
+                  <span className="text-[10px] uppercase font-bold text-muted-foreground">Projected Yield</span>
                   <span className="text-sm font-bold text-primary">
                     {form.watch('purchasePrice') && Number(form.watch('purchasePrice')) > 0 ? (((Number(form.watch('tenancy.monthlyRent')) || 0) * 12 / Number(form.watch('purchasePrice'))) * 100).toFixed(1) + '%' : '0%'}
                   </span>
