@@ -133,6 +133,7 @@ export default function EditPropertyPage() {
 
   useEffect(() => {
     if (property) {
+      // Explicitly merging existing Firestore data into the form to ensure County and Type are remembered.
       form.reset({
         address: {
           nameOrNumber: property.address?.nameOrNumber ?? '',
