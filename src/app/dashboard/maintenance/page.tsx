@@ -37,7 +37,6 @@ import {
   Calendar, 
   PlusCircle, 
   Search, 
-  Check, 
   ChevronsUpDown 
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -50,13 +49,11 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, addDoc, limit } from 'firebase/firestore';
+import { collection, query, addDoc, limit } from 'firebase/firestore';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
-
-// Schema for the form
 const maintenanceSchema = z.object({
   propertyId: z.string({ required_error: 'Please select a property.' }).min(1, 'Please select a property.'),
   title: z.string().min(3, 'Title is too short'),
@@ -95,7 +92,6 @@ interface Contractor {
     trade: string;
 }
 
-
 export default function MaintenancePage() {
   const { user } = useUser();
   const firestore = useFirestore();
@@ -127,7 +123,6 @@ export default function MaintenancePage() {
     form.setValue('reportedDate', new Date());
   }, [form]);
 
-  // Fetch properties - strictly hierarchical
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
@@ -191,7 +186,7 @@ export default function MaintenancePage() {
 
   const formatAddress = (address: Property['address']) => {
     if (!address) return 'N/A';
-    return [address.nameOrNumber, address.street, address.city, address.county, address.postcode].filter(Boolean).join(', ');
+    return [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
   };
 
   return (
@@ -218,14 +213,13 @@ export default function MaintenancePage() {
             <Form {...form}>
               <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-8">
                 <div className="grid gap-8">
-                    {/* Basic Info */}
                     <div className="space-y-6">
                         <FormField
                         control={form.control}
                         name="propertyId"
                         render={({ field }) => (
                             <FormItem className="flex flex-col">
-                            <FormLabel className="font-bold">Select Portfolio Property</FormLabel>
+                            <FormLabel className="font-bold">Search Portfolio Property</FormLabel>
                             <Popover open={isPropSelectorOpen} onOpenChange={setIsPropSelectorOpen}>
                                 <PopoverTrigger asChild>
                                     <FormControl>
@@ -239,7 +233,7 @@ export default function MaintenancePage() {
                                         >
                                             {selectedProperty 
                                                 ? formatAddress(selectedProperty.address) 
-                                                : (isLoadingProperties ? "Loading portfolio..." : "Search by address or postcode...")}
+                                                : (isLoadingProperties ? "Loading portfolio..." : "Type street or postcode...")}
                                             <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                                         </Button>
                                     </FormControl>
@@ -357,7 +351,7 @@ export default function MaintenancePage() {
                                     value={field.value ?? ''}
                                   />
                                 </FormControl>
-                                <FormDescription>Provide specifics if none of the preset categories match.</FormDescription>
+                                <FormDescription>Provide specifics for the audit trail.</FormDescription>
                                 <FormMessage />
                               </FormItem>
                             )}
@@ -365,17 +359,16 @@ export default function MaintenancePage() {
                         )}
                     </div>
 
-                    {/* Reporting & Contractor Info */}
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t pt-8">
                         <div className="space-y-6">
-                            <h3 className="font-bold text-lg flex items-center gap-2"><Calendar className="h-5 w-5 text-primary" /> Audit Information</h3>
-                            <FormField control={form.control} name="reportedBy" render={({ field }) => (<FormItem><FormLabel className="font-bold">Reported By</FormLabel><FormControl><Input placeholder="e.g., Tenant name or self" className="h-11 bg-background" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                            <h3 className="font-bold text-lg flex items-center gap-2"><Calendar className="h-5 w-5 text-primary" /> Audit Info</h3>
+                            <FormField control={form.control} name="reportedBy" render={({ field }) => (<FormItem><FormLabel className="font-bold">Reported By</FormLabel><FormControl><Input placeholder="e.g., Tenant name" className="h-11 bg-background" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                             <FormField control={form.control} name="reportedDate" render={({ field }) => (<FormItem><FormLabel className="font-bold">Date of Report</FormLabel><FormControl><Input type="date" className="h-11 bg-background" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>)} />
                         </div>
                         <div className="space-y-6">
-                            <h3 className="font-bold text-lg flex items-center gap-2 text-green-600"><PlusCircle className="h-5 w-5" /> Contractor Assign</h3>
+                            <h3 className="font-bold text-lg flex items-center gap-2 text-green-600"><PlusCircle className="h-5 w-5" /> Assignment</h3>
                             <FormItem>
-                                <FormLabel className="font-bold">Directory Shortcut</FormLabel>
+                                <FormLabel className="font-bold">Quick-select Contractor</FormLabel>
                                 <Select onValueChange={(contractorId) => {
                                     const contractor = contractors?.find(c => c.id === contractorId);
                                     if (contractor) {
@@ -385,7 +378,7 @@ export default function MaintenancePage() {
                                 }}>
                                 <FormControl>
                                     <SelectTrigger className="h-11 bg-background">
-                                        <SelectValue placeholder="Quick-select from directory" />
+                                        <SelectValue placeholder="Search your directory..." />
                                     </SelectTrigger>
                                 </FormControl>
                                 <SelectContent>
@@ -395,15 +388,15 @@ export default function MaintenancePage() {
                                 </SelectContent>
                                 </Select>
                             </FormItem>
-                            <FormField control={form.control} name="contractorName" render={({ field }) => (<FormItem><FormLabel className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Assigned To</FormLabel><FormControl><Input placeholder="Contractor name" className="h-11 bg-background" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="contractorName" render={({ field }) => (<FormItem><FormLabel className="font-bold">Assigned To</FormLabel><FormControl><Input placeholder="Contractor name" className="h-11 bg-background" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                         </div>
                     </div>
                 </div>
 
                 <div className="flex items-center justify-end gap-3 pt-8 border-t">
-                  <Button type="button" variant="ghost" onClick={() => form.reset()} className="font-bold uppercase tracking-widest text-xs h-11">Clear Form</Button>
+                  <Button type="button" variant="ghost" onClick={() => form.reset()} className="font-bold uppercase tracking-widest text-xs h-11">Clear</Button>
                   <Button type="submit" disabled={isSubmitting} className="font-bold uppercase tracking-widest text-xs h-11 px-12 shadow-lg bg-primary hover:bg-primary/90">
-                    {isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Recording...</> : 'Log Maintenance Request'}
+                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Log Maintenance Request'}
                   </Button>
                 </div>
               </form>
@@ -411,7 +404,6 @@ export default function MaintenancePage() {
           </CardContent>
         </Card>
 
-        {/* Navigation Actions below form card */}
         <div className="px-1">
             <Button asChild variant="outline" className="w-full font-bold shadow-sm h-11 px-6 border-primary/20 hover:bg-primary/5 transition-all">
                 <Link href="/dashboard/maintenance/logged">

@@ -61,7 +61,6 @@ import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigge
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
-// Define the Property type
 interface Property {
   id: string;
   address: {
@@ -89,10 +88,8 @@ export default function PropertiesPage() {
   const [safeguardWarning, setSafeguardWarning] = useState<string | null>(null);
   const [view, setView] = useState<'grid' | 'list'>('grid');
   
-  // Real-time maintenance aggregation state
   const [openMaintenanceMap, setOpenMaintenanceMap] = useState<Record<string, number>>({});
 
-  // Strictly hierarchical properties query
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
@@ -107,7 +104,6 @@ export default function PropertiesPage() {
     error,
   } = useCollection<Property>(propertiesQuery);
 
-  // Aggregation: Real-time count of open maintenance for each property
   useEffect(() => {
     if (!user || !firestore || !properties || properties.length === 0) {
         setOpenMaintenanceMap({});
@@ -130,7 +126,6 @@ export default function PropertiesPage() {
     return () => unsubs.forEach(u => u());
   }, [user, properties, firestore]);
 
-  // Safeguard check before deletion
   useEffect(() => {
     if (!propertyToDelete || !user || !firestore) {
         setSafeguardWarning(null);
@@ -140,14 +135,12 @@ export default function PropertiesPage() {
     const checkSafeguards = async () => {
         setIsCheckingSafeguards(true);
         try {
-            // Check for active tenants
             const tenantSnap = await getDocs(query(
                 collection(firestore, 'userProfiles', user.uid, 'properties', propertyToDelete.id, 'tenants'),
                 where('status', '==', 'Active'),
                 limit(1)
             ));
 
-            // Check for open maintenance logs
             const maintenanceSnap = await getDocs(query(
                 collection(firestore, 'userProfiles', user.uid, 'properties', propertyToDelete.id, 'maintenanceLogs'),
                 where('status', 'in', ['Open', 'In Progress']),
@@ -232,7 +225,6 @@ export default function PropertiesPage() {
   return (
     <>
       <div className="flex flex-col gap-8">
-        {/* Header Section */}
         <div className="space-y-2">
             <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">My Properties</h1>
             <p className="text-muted-foreground font-medium text-lg">
@@ -455,7 +447,6 @@ export default function PropertiesPage() {
           </CardContent>
         </Card>
 
-        {/* Action Buttons Container - Repositioned below "Your Portfolio" section */}
         <div className="flex flex-col gap-4 px-1">
             <div className="flex items-center gap-3 w-full">
                 <Button asChild variant="outline" className="flex-1 font-bold shadow-sm h-11 px-6 border-primary/20 hover:bg-primary/5 transition-all">
@@ -491,10 +482,10 @@ export default function PropertiesPage() {
               ) : safeguardWarning ? (
                 <div className="p-5 rounded-2xl bg-destructive/10 border-2 border-destructive/20 text-destructive">
                     <p className="flex items-center gap-2 font-bold mb-2"><AlertCircle className="h-5 w-5" /> Safeguard Warning:</p>
-                    <p className="text-sm font-medium leading-relaxed">{safeguardWarning} Moving this property to deleted status will impact active management tasks. Proceed anyway?</p>
+                    <p className="text-sm font-medium leading-relaxed">{safeguardWarning} Archive anyway?</p>
                 </div>
               ) : (
-                <span className="font-medium">This will move the property record for <strong className="text-foreground">{[propertyToDelete?.address.nameOrNumber, propertyToDelete?.address.street].filter(Boolean).join(', ')}</strong> to your archived assets.</span>
+                <span className="font-medium">This will move <strong className="text-foreground">{[propertyToDelete?.address.nameOrNumber, propertyToDelete?.address.street].filter(Boolean).join(', ')}</strong> to your archived assets.</span>
               )}
             </AlertDialogDescription>
           </AlertDialogHeader>
