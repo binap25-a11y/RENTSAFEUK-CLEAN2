@@ -64,8 +64,11 @@
         "propertyId": { "type": "string" },
         "ownerId": { "type": "string" },
         "title": { "type": "string" },
+        "category": { "type": "string" },
+        "otherCategoryDetails": { "type": "string" },
         "status": { "type": "string" },
-        "priority": { "type": "string" }
+        "priority": { "type": "string" },
+        "notes": { "type": "string" }
       }
     }
   },

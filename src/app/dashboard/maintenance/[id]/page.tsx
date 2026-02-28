@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
@@ -6,7 +7,7 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
-import { ArrowLeft, Loader2, CalendarIcon, User, HardHat, Phone, Banknote, MoreVertical, Edit, XCircle, Trash2, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Loader2, CalendarIcon, User, HardHat, Phone, Banknote, MoreVertical, Edit, XCircle, Trash2, AlertCircle, Wrench, Info } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
@@ -30,6 +31,7 @@ interface MaintenanceLog {
     title: string;
     description?: string;
     category: string;
+    otherCategoryDetails?: string;
     priority: string;
     status: string;
     reportedBy?: string;
@@ -205,6 +207,15 @@ export default function MaintenanceDetailPage() {
                             <Badge variant="secondary">{maintenanceLog.status}</Badge>
                             <Badge variant="outline">{maintenanceLog.category}</Badge>
                         </div>
+                        {maintenanceLog.category === 'Other' && maintenanceLog.otherCategoryDetails && (
+                          <div className="flex items-start gap-2 p-3 bg-muted/50 rounded-lg border border-dashed text-sm">
+                            <Info className="h-4 w-4 text-primary shrink-0 mt-0.5" />
+                            <div>
+                              <span className="font-bold uppercase text-[10px] tracking-wider text-muted-foreground block mb-1">Custom Trade Category</span>
+                              <p className="text-foreground italic">"{maintenanceLog.otherCategoryDetails}"</p>
+                            </div>
+                          </div>
+                        )}
                         {maintenanceLog.description && <p className="text-muted-foreground whitespace-pre-wrap">{maintenanceLog.description}</p>}
                     </CardContent>
                 </Card>
@@ -233,10 +244,10 @@ export default function MaintenanceDetailPage() {
                 {maintenanceLog.notes && (
                     <Card>
                         <CardHeader>
-                            <CardTitle>Additional Notes</CardTitle>
+                            <CardTitle>Audit & Tax Notes</CardTitle>
                         </CardHeader>
                         <CardContent>
-                            <p className="text-muted-foreground whitespace-pre-wrap">{maintenanceLog.notes}</p>
+                            <p className="text-sm text-muted-foreground whitespace-pre-wrap italic">"{maintenanceLog.notes}"</p>
                         </CardContent>
                     </Card>
                 )}

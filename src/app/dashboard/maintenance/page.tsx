@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -49,6 +50,7 @@ const maintenanceSchema = z.object({
   title: z.string().min(3, 'Title is too short'),
   description: z.string().optional(),
   category: z.string({ required_error: 'Please select a category.' }),
+  otherCategoryDetails: z.string().optional(),
   priority: z.string({ required_error: 'Please select a priority.' }),
   reportedBy: z.string().optional(),
   reportedDate: z.coerce.date(),
@@ -56,6 +58,7 @@ const maintenanceSchema = z.object({
   contractorPhone: z.string().optional(),
   scheduledDate: z.coerce.date().optional(),
   estimatedCost: z.coerce.number().optional(),
+  notes: z.string().optional(),
 });
 
 type MaintenanceFormValues = z.infer<typeof maintenanceSchema>;
@@ -94,12 +97,16 @@ export default function MaintenancePage() {
       title: '',
       description: '',
       category: '',
+      otherCategoryDetails: '',
       priority: '',
       reportedBy: '',
       contractorName: '',
       contractorPhone: '',
+      notes: '',
     },
   });
+
+  const watchCategory = form.watch('category');
 
   useEffect(() => {
     form.setValue('reportedDate', new Date());
@@ -207,9 +214,48 @@ export default function MaintenancePage() {
                         <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel className="font-bold">Issue Headline</FormLabel><FormControl><Input placeholder="e.g., Leaking boiler in kitchen" className="h-11 bg-background" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel className="font-bold">Detailed Description</FormLabel><FormControl><Textarea placeholder="Please describe the issue in detail for the contractor." className="min-h-[120px] rounded-xl bg-background" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <FormField control={form.control} name="category" render={({ field }) => (<FormItem><FormLabel className="font-bold">Trade Category</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11 bg-background"><SelectValue placeholder="Select trade" /></SelectTrigger></FormControl><SelectContent>{['Plumbing', 'Electrical', 'Heating', 'Structural', 'Appliances', 'Garden', 'Cleaning', 'Pest Control', 'Other'].map((cat) => (<SelectItem key={cat} value={cat}>{cat}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />
-                        <FormField control={form.control} name="priority" render={({ field }) => (<FormItem><FormLabel className="font-bold">Priority Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11 bg-background"><SelectValue placeholder="Select urgency" /></SelectTrigger></FormControl><SelectContent>{['Emergency', 'Urgent', 'Routine', 'Low'].map((p) => (<SelectItem key={p} value={p}>{p}</SelectItem>))}</SelectContent></Select><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="category" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="font-bold">Trade Category</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                              <FormControl>
+                                <SelectTrigger className="h-11 bg-background">
+                                  <SelectValue placeholder="Select trade" />
+                                </SelectTrigger>
+                              </FormControl>
+                              <SelectContent>
+                                {['Plumbing', 'Electrical', 'Heating', 'Structural', 'Appliances', 'Garden', 'Cleaning', 'Pest Control', 'Other'].map((cat) => (
+                                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                ))}
+                              </SelectContent>
+                            </Select>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <FormField control={form.control} name="priority" render={({ field }) => (<FormItem><FormLabel className="font-bold">Priority Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11 bg-background"><SelectValue placeholder="Select urgency" /></SelectTrigger></FormControl><SelectContent>{['Emergency', 'Urgent', 'Routine', 'Low'].map((p) => (<SelectItem key={p} value={p}>{p}</SelectItem>))}</Select><FormMessage /></FormItem>)} />
                         </div>
+
+                        {watchCategory === 'Other' && (
+                          <FormField
+                            control={form.control}
+                            name="otherCategoryDetails"
+                            render={({ field }) => (
+                              <FormItem className="animate-in fade-in slide-in-from-top-2">
+                                <FormLabel className="font-bold">Category Details</FormLabel>
+                                <FormControl>
+                                  <Textarea
+                                    placeholder="Please specify the type of maintenance required..."
+                                    className="bg-background resize-none"
+                                    {...field}
+                                    value={field.value ?? ''}
+                                  />
+                                </FormControl>
+                                <FormDescription>Provide specifics if none of the preset categories match.</FormDescription>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        )}
                     </div>
 
                     {/* Reporting & Contractor Info */}
