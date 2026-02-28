@@ -15,7 +15,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { doc, setDoc } from 'firebase/firestore';
+import { doc, updateDoc } from 'firebase/firestore';
 import { uploadPropertyImage } from '@/lib/upload-image';
 import { Loader2, ShieldAlert, MapPin, Home, Upload, X, Images, PlusCircle } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -225,14 +225,19 @@ export default function EditPropertyPage() {
       }
 
       const docRef = doc(firestore, 'userProfiles', user.uid, 'properties', propertyId);
-      const cleanedData = JSON.parse(JSON.stringify({
+      
+      // Use updateDoc to ensure we ONLY modify the fields provided, 
+      // preventing accidental document reset or deletion.
+      const updateData = {
           ...data,
           imageUrl: finalImageUrl,
           additionalImageUrls: galleryUrls,
           ownerId: user.uid
-      }));
+      };
       
-      await setDoc(docRef, cleanedData, { merge: true });
+      const cleanedData = JSON.parse(JSON.stringify(updateData));
+      
+      await updateDoc(docRef, cleanedData);
       
       toast({ title: "Property Record Updated" });
       router.push(`/dashboard/properties/${propertyId}`);
@@ -277,7 +282,15 @@ export default function EditPropertyPage() {
                     </FormLabel>
                     <div className="aspect-square w-full rounded-2xl overflow-hidden border-2 border-muted bg-muted shadow-inner relative">
                         {mapUrl ? (
-                            <iframe width="100%" height="100%" style={{ border: 0 }} title="Property Map" loading="lazy" src={mapUrl}></iframe>
+                            <iframe 
+                                key={mapUrl} // Key ensures iframe refreshes when URL changes
+                                width="100%" 
+                                height="100%" 
+                                style={{ border: 0 }} 
+                                title="Property Map" 
+                                loading="lazy" 
+                                src={mapUrl}
+                            ></iframe>
                         ) : (
                             <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 text-muted-foreground/40">
                                 <MapPin className="h-12 w-12 mb-2" />

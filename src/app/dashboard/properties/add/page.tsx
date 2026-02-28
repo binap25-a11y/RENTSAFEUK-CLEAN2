@@ -317,7 +317,15 @@ export default function AddPropertyPage() {
                         </FormLabel>
                         <div className="aspect-square w-full rounded-xl overflow-hidden border-2 border-muted bg-muted shadow-inner relative">
                           {mapUrl ? (
-                            <iframe width="100%" height="100%" style={{ border: 0 }} title="Property Map" loading="lazy" src={mapUrl}></iframe>
+                            <iframe 
+                                key={mapUrl} // key ensures iframe reloads on URL change
+                                width="100%" 
+                                height="100%" 
+                                style={{ border: 0 }} 
+                                title="Property Map" 
+                                loading="lazy" 
+                                src={mapUrl}
+                            ></iframe>
                           ) : (
                             <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 text-muted-foreground/40">
                               <MapPin className="h-12 w-12 mb-2" />
