@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -133,7 +134,6 @@ export default function EditPropertyPage() {
 
   useEffect(() => {
     if (property) {
-      // Perform a deep reset to ensure all Firestore fields like County are populated correctly.
       form.reset({
         address: {
           nameOrNumber: property.address?.nameOrNumber ?? '',
@@ -162,7 +162,6 @@ export default function EditPropertyPage() {
     }
   }, [property, form]);
 
-  // Watch sub-fields for reactive map updates
   const street = form.watch('address.street');
   const city = form.watch('address.city');
   const county = form.watch('address.county');
@@ -227,7 +226,6 @@ export default function EditPropertyPage() {
 
       const docRef = doc(firestore, 'userProfiles', user.uid, 'properties', propertyId);
       
-      // Use updateDoc to modify only the fields provided, protecting the asset from accidental deletion.
       const updateData = {
           ...data,
           imageUrl: finalImageUrl,
@@ -237,6 +235,7 @@ export default function EditPropertyPage() {
       
       const cleanedData = JSON.parse(JSON.stringify(updateData));
       
+      // Use updateDoc to protect against accidental record reset/deletion
       await updateDoc(docRef, cleanedData);
       
       toast({ title: "Property Record Updated" });

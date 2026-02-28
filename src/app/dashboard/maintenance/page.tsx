@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -29,7 +30,17 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, List, Wrench, AlertCircle, Calendar, PlusCircle } from 'lucide-react';
+import { 
+  Loader2, 
+  List, 
+  Wrench, 
+  AlertCircle, 
+  Calendar, 
+  PlusCircle, 
+  Search, 
+  Check, 
+  ChevronsUpDown 
+} from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
@@ -41,6 +52,9 @@ import {
   useMemoFirebase,
 } from '@/firebase';
 import { collection, query, where, addDoc, limit } from 'firebase/firestore';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 
 // Schema for the form
@@ -88,6 +102,8 @@ export default function MaintenancePage() {
   const firestore = useFirestore();
   const router = useRouter();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPropSelectorOpen, setIsPropSelectorOpen] = useState(false);
+  const [propertySearch, setPropertySearch] = useState('');
 
   const form = useForm<MaintenanceFormValues>({
     resolver: zodResolver(maintenanceSchema),
@@ -106,6 +122,7 @@ export default function MaintenancePage() {
   });
 
   const watchCategory = form.watch('category');
+  const selectedPropertyId = form.watch('propertyId');
 
   useEffect(() => {
     form.setValue('reportedDate', new Date());
@@ -126,6 +143,23 @@ export default function MaintenancePage() {
     const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
     return allProperties?.filter(p => activeStatuses.includes(p.status)) ?? [];
   }, [allProperties]);
+
+  const filteredProperties = useMemo(() => {
+    if (!properties) return [];
+    if (!propertySearch) return properties;
+    const term = propertySearch.toLowerCase();
+    return properties.filter(p => 
+        [p.address.nameOrNumber, p.address.street, p.address.city, p.address.postcode]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase()
+            .includes(term)
+    );
+  }, [properties, propertySearch]);
+
+  const selectedProperty = useMemo(() => 
+    properties.find(p => p.id === selectedPropertyId), 
+  [properties, selectedPropertyId]);
 
   const contractorsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -157,6 +191,7 @@ export default function MaintenancePage() {
   }
 
   const formatAddress = (address: Property['address']) => {
+    if (!address) return 'N/A';
     return [address.nameOrNumber, address.street, address.city, address.county, address.postcode].filter(Boolean).join(', ');
   };
 
@@ -190,22 +225,70 @@ export default function MaintenancePage() {
                         control={form.control}
                         name="propertyId"
                         render={({ field }) => (
-                            <FormItem>
+                            <FormItem className="flex flex-col">
                             <FormLabel className="font-bold">Select Portfolio Property</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl>
-                                <SelectTrigger className="h-11 bg-background">
-                                    <SelectValue placeholder={isLoadingProperties ? 'Loading portfolio...' : 'Choose property'} />
-                                </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                {properties?.map((prop) => (
-                                    <SelectItem key={prop.id} value={prop.id}>
-                                    {formatAddress(prop.address)}
-                                    </SelectItem>
-                                ))}
-                                </SelectContent>
-                            </Select>
+                            <Popover open={isPropSelectorOpen} onOpenChange={setIsPropSelectorOpen}>
+                                <PopoverTrigger asChild>
+                                    <FormControl>
+                                        <Button
+                                            variant="outline"
+                                            role="combobox"
+                                            className={cn(
+                                                "w-full justify-between h-11 bg-background text-left font-normal",
+                                                !field.value && "text-muted-foreground"
+                                            )}
+                                        >
+                                            {selectedProperty 
+                                                ? formatAddress(selectedProperty.address) 
+                                                : (isLoadingProperties ? "Loading portfolio..." : "Search by address or postcode...")}
+                                            <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                                        </Button>
+                                    </FormControl>
+                                </PopoverTrigger>
+                                <PopoverContent className="w-[--radix-popover-trigger-width] p-0 shadow-2xl border-primary/10">
+                                    <div className="flex items-center border-b px-3 bg-muted/20">
+                                        <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                                        <Input 
+                                            placeholder="Type address..." 
+                                            className="h-11 border-0 focus-visible:ring-0 bg-transparent" 
+                                            value={propertySearch}
+                                            onChange={(e) => setPropertySearch(e.target.value)}
+                                        />
+                                    </div>
+                                    <ScrollArea className="h-72">
+                                        {filteredProperties.length === 0 ? (
+                                            <div className="p-8 text-center text-sm text-muted-foreground italic">
+                                                No properties found matching your search.
+                                            </div>
+                                        ) : (
+                                            <div className="p-1">
+                                                {filteredProperties.map(p => (
+                                                    <Button
+                                                        key={p.id}
+                                                        variant="ghost"
+                                                        className={cn(
+                                                            "w-full justify-start font-normal text-xs py-6 h-auto whitespace-normal text-left px-4",
+                                                            p.id === field.value && "bg-primary/5 text-primary font-bold"
+                                                        )}
+                                                        onClick={() => {
+                                                            form.setValue('propertyId', p.id);
+                                                            setIsPropSelectorOpen(false);
+                                                        }}
+                                                    >
+                                                        <div className="flex items-center gap-3">
+                                                            <div className={cn(
+                                                                "h-2 w-2 rounded-full",
+                                                                p.id === field.value ? "bg-primary" : "bg-transparent"
+                                                            )} />
+                                                            {formatAddress(p.address)}
+                                                        </div>
+                                                    </Button>
+                                                ))}
+                                            </div>
+                                        )}
+                                    </ScrollArea>
+                                </PopoverContent>
+                            </Popover>
                             <FormMessage />
                             </FormItem>
                         )}
@@ -301,8 +384,16 @@ export default function MaintenancePage() {
                                         form.setValue('contractorPhone', contractor.phone);
                                     }
                                 }}>
-                                <FormControl><SelectTrigger className="h-11 bg-background"><SelectValue placeholder="Quick-select from directory" /></SelectTrigger></FormControl>
-                                <SelectContent>{contractors?.map((c) => (<SelectItem key={c.id} value={c.id}>{c.name} ({c.trade})</SelectItem>))}</SelectContent>
+                                <FormControl>
+                                    <SelectTrigger className="h-11 bg-background">
+                                        <SelectValue placeholder="Quick-select from directory" />
+                                    </SelectTrigger>
+                                </FormControl>
+                                <SelectContent>
+                                    {contractors?.map((c) => (
+                                        <SelectItem key={c.id} value={c.id}>{c.name} ({c.trade})</SelectItem>
+                                    ))}
+                                </SelectContent>
                                 </Select>
                             </FormItem>
                             <FormField control={form.control} name="contractorName" render={({ field }) => (<FormItem><FormLabel className="font-bold text-xs uppercase tracking-widest text-muted-foreground">Assigned To</FormLabel><FormControl><Input placeholder="Contractor name" className="h-11 bg-background" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
