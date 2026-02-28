@@ -248,7 +248,7 @@ export default function PropertiesPage() {
                 <CardDescription>An overview of all active property assets.</CardDescription>
               </div>
               <div className="flex items-center gap-2">
-                <div className="relative w-full md:w-auto md:max-w-sm">
+                <div className="relative w-full md:w-auto md:max-sm">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
                       placeholder="Search by address..."
@@ -272,9 +272,9 @@ export default function PropertiesPage() {
           </CardHeader>
           <CardContent className="pt-6">
             {isLoading ? (
-              <div className="flex flex-col justify-center items-center h-64 gap-2">
+              <div className="flex flex-col justify-center items-center h-64 gap-2 text-muted-foreground">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-sm text-muted-foreground font-medium">Syncing portfolio...</p>
+                <p className="text-sm font-medium">Syncing portfolio...</p>
               </div>
             ) : error ? (
                 <div className="text-center py-10 text-destructive font-medium border border-destructive/20 rounded-lg bg-destructive/5">
@@ -366,8 +366,7 @@ export default function PropertiesPage() {
                               </div>
                           </CardContent>
                       </Card>
-                    )
-                    )}
+                    ))}
                 </div>
               ) : (
                 <div className="rounded-xl border border-muted/60 overflow-hidden shadow-sm">
@@ -456,15 +455,15 @@ export default function PropertiesPage() {
           </CardContent>
         </Card>
 
-        {/* Action Buttons Container - Grouped and repositioned below the main section */}
-        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-1">
-            <div className="flex items-center gap-3 w-full sm:w-auto">
-                <Button asChild variant="outline" className="flex-1 sm:flex-none font-bold shadow-sm h-11 px-6 border-primary/20 hover:bg-primary/5 transition-all">
+        {/* Action Buttons Container - Repositioned below "Your Portfolio" section */}
+        <div className="flex flex-col gap-4 px-1">
+            <div className="flex items-center gap-3 w-full">
+                <Button asChild variant="outline" className="flex-1 font-bold shadow-sm h-11 px-6 border-primary/20 hover:bg-primary/5 transition-all">
                   <Link href="/dashboard/properties/deleted">
                       <Archive className="mr-2 h-4 w-4 text-primary" /> View Deleted
                   </Link>
                 </Button>
-                <Button asChild className="flex-1 sm:flex-none font-bold shadow-lg h-11 px-8 bg-primary hover:bg-primary/90 transition-all">
+                <Button asChild className="flex-1 font-bold shadow-lg h-11 px-8 bg-primary hover:bg-primary/90 transition-all">
                   <Link href="/dashboard/properties/add">
                       <PlusCircle className="mr-2 h-4 w-4" /> Add Property
                   </Link>
@@ -473,7 +472,7 @@ export default function PropertiesPage() {
             
             <Button 
               variant="ghost" 
-              className="font-bold text-muted-foreground hover:text-primary transition-all w-full sm:w-auto h-11 px-6 border border-dashed sm:border-none" 
+              className="font-bold text-muted-foreground hover:text-primary transition-all w-full h-11 px-6 border border-dashed hover:border-primary/50" 
               onClick={exportToCSV} 
               disabled={!filteredProperties.length}
             >

@@ -133,7 +133,7 @@ export default function EditPropertyPage() {
 
   useEffect(() => {
     if (property) {
-      // Explicitly merging existing Firestore data into the form to ensure County and Type are remembered.
+      // Perform a deep reset to ensure all Firestore fields like County are populated correctly.
       form.reset({
         address: {
           nameOrNumber: property.address?.nameOrNumber ?? '',
@@ -171,8 +171,8 @@ export default function EditPropertyPage() {
   const mapUrl = useMemo(() => {
     const parts = [street, city, county, postcode].filter(p => !!p && p.trim().length > 0);
     if (parts.length === 0) return null;
-    const query = parts.join(', ');
-    return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed`;
+    const queryStr = parts.join(', ');
+    return `https://maps.google.com/maps?q=${encodeURIComponent(queryStr)}&output=embed`;
   }, [street, city, county, postcode]);
 
   const handleMainFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
@@ -227,8 +227,7 @@ export default function EditPropertyPage() {
 
       const docRef = doc(firestore, 'userProfiles', user.uid, 'properties', propertyId);
       
-      // Use updateDoc to ensure we ONLY modify the fields provided, 
-      // preventing accidental document reset or deletion.
+      // Use updateDoc to modify only the fields provided, protecting the asset from accidental deletion.
       const updateData = {
           ...data,
           imageUrl: finalImageUrl,
@@ -284,7 +283,7 @@ export default function EditPropertyPage() {
                     <div className="aspect-square w-full rounded-2xl overflow-hidden border-2 border-muted bg-muted shadow-inner relative">
                         {mapUrl ? (
                             <iframe 
-                                key={mapUrl} // Key ensures iframe refreshes when URL changes
+                                key={mapUrl}
                                 width="100%" 
                                 height="100%" 
                                 style={{ border: 0 }} 
