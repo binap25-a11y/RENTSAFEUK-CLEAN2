@@ -64,7 +64,7 @@ interface Property {
       nameOrNumber?: string;
       street: string;
       city: string;
-      county: string;
+      county?: string;
       postcode: string;
     };
     propertyType: string;

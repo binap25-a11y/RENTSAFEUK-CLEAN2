@@ -233,41 +233,14 @@ export default function PropertiesPage() {
     <>
       <div className="flex flex-col gap-8">
         {/* Header Section */}
-        <div className="space-y-6">
-            <div className="space-y-2">
-                <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">My Properties</h1>
-                <p className="text-muted-foreground font-medium text-lg">
-                  View, manage, and add properties to your portfolio.
-                </p>
-            </div>
-            
-            {/* Actions Bar - Repositioned below heading */}
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-1">
-                <div className="flex items-center gap-3 w-full sm:w-auto">
-                    <Button asChild variant="outline" className="flex-1 sm:flex-none font-bold shadow-sm h-11 px-6 border-primary/20 hover:bg-primary/5 transition-all">
-                      <Link href="/dashboard/properties/deleted">
-                          <Archive className="mr-2 h-4 w-4 text-primary" /> View Deleted
-                      </Link>
-                    </Button>
-                    <Button asChild className="flex-1 sm:flex-none font-bold shadow-lg h-11 px-8 bg-primary hover:bg-primary/90 transition-all">
-                      <Link href="/dashboard/properties/add">
-                          <PlusCircle className="mr-2 h-4 w-4" /> Add Property
-                      </Link>
-                    </Button>
-                </div>
-                
-                <Button 
-                  variant="ghost" 
-                  className="font-bold text-muted-foreground hover:text-primary transition-all w-full sm:w-auto h-11 px-6 border border-dashed sm:border-none" 
-                  onClick={exportToCSV} 
-                  disabled={!filteredProperties.length}
-                >
-                    <Download className="mr-2 h-4 w-4" /> Export CSV
-                </Button>
-            </div>
+        <div className="space-y-2">
+            <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">My Properties</h1>
+            <p className="text-muted-foreground font-medium text-lg">
+              View, manage, and add properties to your portfolio.
+            </p>
         </div>
 
-         <Card className="border-none shadow-xl overflow-hidden mt-2">
+         <Card className="border-none shadow-xl overflow-hidden">
           <CardHeader className="bg-muted/30 border-b pb-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
@@ -482,6 +455,31 @@ export default function PropertiesPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Action Buttons Container - Grouped and repositioned below the main section */}
+        <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4 p-1">
+            <div className="flex items-center gap-3 w-full sm:w-auto">
+                <Button asChild variant="outline" className="flex-1 sm:flex-none font-bold shadow-sm h-11 px-6 border-primary/20 hover:bg-primary/5 transition-all">
+                  <Link href="/dashboard/properties/deleted">
+                      <Archive className="mr-2 h-4 w-4 text-primary" /> View Deleted
+                  </Link>
+                </Button>
+                <Button asChild className="flex-1 sm:flex-none font-bold shadow-lg h-11 px-8 bg-primary hover:bg-primary/90 transition-all">
+                  <Link href="/dashboard/properties/add">
+                      <PlusCircle className="mr-2 h-4 w-4" /> Add Property
+                  </Link>
+                </Button>
+            </div>
+            
+            <Button 
+              variant="ghost" 
+              className="font-bold text-muted-foreground hover:text-primary transition-all w-full sm:w-auto h-11 px-6 border border-dashed sm:border-none" 
+              onClick={exportToCSV} 
+              disabled={!filteredProperties.length}
+            >
+                <Download className="mr-2 h-4 w-4" /> Export CSV
+            </Button>
+        </div>
       </div>
 
       <AlertDialog open={!!propertyToDelete} onOpenChange={(open) => !open && setPropertyToDelete(null)}>
