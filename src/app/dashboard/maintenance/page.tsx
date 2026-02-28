@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -213,26 +212,52 @@ export default function MaintenancePage() {
                         />
                         <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel className="font-bold">Issue Headline</FormLabel><FormControl><Input placeholder="e.g., Leaking boiler in kitchen" className="h-11 bg-background" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                         <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel className="font-bold">Detailed Description</FormLabel><FormControl><Textarea placeholder="Please describe the issue in detail for the contractor." className="min-h-[120px] rounded-xl bg-background" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                        
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                        <FormField control={form.control} name="category" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="font-bold">Trade Category</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                              <FormControl>
-                                <SelectTrigger className="h-11 bg-background">
-                                  <SelectValue placeholder="Select trade" />
-                                </SelectTrigger>
-                              </FormControl>
-                              <SelectContent>
-                                {['Plumbing', 'Electrical', 'Heating', 'Structural', 'Appliances', 'Garden', 'Cleaning', 'Pest Control', 'Other'].map((cat) => (
-                                  <SelectItem key={cat} value={cat}>{cat}</SelectItem>
-                                ))}
-                              </SelectContent>
-                            </Select>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                        <FormField control={form.control} name="priority" render={({ field }) => (<FormItem><FormLabel className="font-bold">Priority Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11 bg-background"><SelectValue placeholder="Select urgency" /></SelectTrigger></FormControl><SelectContent>{['Emergency', 'Urgent', 'Routine', 'Low'].map((p) => (<SelectItem key={p} value={p}>{p}</SelectItem>))}</Select><FormMessage /></FormItem>)} />
+                          <FormField
+                            control={form.control}
+                            name="category"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="font-bold">Trade Category</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger className="h-11 bg-background">
+                                      <SelectValue placeholder="Select trade" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {['Plumbing', 'Electrical', 'Heating', 'Structural', 'Appliances', 'Garden', 'Cleaning', 'Pest Control', 'Other'].map((cat) => (
+                                      <SelectItem key={cat} value={cat}>{cat}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name="priority"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="font-bold">Priority Status</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                  <FormControl>
+                                    <SelectTrigger className="h-11 bg-background">
+                                      <SelectValue placeholder="Select urgency" />
+                                    </SelectTrigger>
+                                  </FormControl>
+                                  <SelectContent>
+                                    {['Emergency', 'Urgent', 'Routine', 'Low'].map((p) => (
+                                      <SelectItem key={p} value={p}>{p}</SelectItem>
+                                    ))}
+                                  </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
                         </div>
 
                         {watchCategory === 'Other' && (
@@ -288,7 +313,7 @@ export default function MaintenancePage() {
                 <div className="flex items-center justify-end gap-3 pt-8 border-t">
                   <Button type="button" variant="ghost" onClick={() => form.reset()} className="font-bold uppercase tracking-widest text-xs h-11">Clear Form</Button>
                   <Button type="submit" disabled={isSubmitting} className="font-bold uppercase tracking-widest text-xs h-11 px-12 shadow-lg bg-primary hover:bg-primary/90">
-                    {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Recording...</> : 'Log Maintenance Request'}
+                    {isSubmitting ? <><Loader2 className="h-4 w-4 animate-spin" /> Recording...</> : 'Log Maintenance Request'}
                   </Button>
                 </div>
               </form>
