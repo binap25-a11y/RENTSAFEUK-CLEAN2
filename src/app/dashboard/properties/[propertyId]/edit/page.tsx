@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -162,15 +161,18 @@ export default function EditPropertyPage() {
     }
   }, [property, form]);
 
-  const watchAddress = form.watch('address');
+  // Watch sub-fields for reactive map updates
+  const street = form.watch('address.street');
+  const city = form.watch('address.city');
+  const county = form.watch('address.county');
+  const postcode = form.watch('address.postcode');
   
   const mapUrl = useMemo(() => {
-    if (!watchAddress) return null;
-    const { street, city, county, postcode } = watchAddress;
-    const fullAddress = [street, city, county, postcode].filter(Boolean).join(', ');
-    if (fullAddress.length < 5) return null;
-    return `https://maps.google.com/maps?q=${encodeURIComponent(fullAddress)}&output=embed`;
-  }, [watchAddress]);
+    const parts = [street, city, county, postcode].filter(p => !!p && p.trim().length > 0);
+    if (parts.length === 0) return null;
+    const query = parts.join(', ');
+    return `https://maps.google.com/maps?q=${encodeURIComponent(query)}&output=embed`;
+  }, [street, city, county, postcode]);
 
   const handleMainFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
