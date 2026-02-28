@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo } from 'react';
 import {
   Card,
   CardContent,
@@ -23,15 +23,8 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import {
-  Select,
-  SelectContent,
-  SelectItem,
-  SelectTrigger,
-  SelectValue,
-} from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2 } from 'lucide-react';
+import { Loader2, Search, ChevronsUpDown } from 'lucide-react';
 import {
   useUser,
   useFirestore,
@@ -39,8 +32,11 @@ import {
   useMemoFirebase,
   useDoc,
 } from '@/firebase';
-import { collection, query, where, doc, updateDoc, addDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, addDoc, limit } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
+import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
+import { ScrollArea } from '@/components/ui/scroll-area';
+import { cn } from '@/lib/utils';
 
 // Standard UK phone regex (Mobile & Landline)
 const ukPhoneRegex = /^(((\+44\s?\d{4}|\(?0\d{4}\)?)\s?\d{3}\s?\d{3})|((\+44\s?\d{3}|\(?0\d{3}\)?)\s?\d{3}\s?\d{4})|((\+44\s?\d{2}|\(?0\d{2}\)?)\s?\d{4}\s?\d{4}))(\s?\#(\d{4}|\d{3}))?$/;
@@ -77,6 +73,7 @@ interface Property {
     county?: string;
     postcode: string;
   };
+  status: string;
 }
 
 // Helper to safely format dates for input[type="date"]
@@ -98,6 +95,8 @@ export default function AddTenantPage() {
   const firestore = useFirestore();
   const propertyIdFromUrl = searchParams.get('propertyId');
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [isPropSelectorOpen, setIsPropSelectorOpen] = useState(false);
+  const [propertySearch, setPropertySearch] = useState('');
 
   const form = useForm<TenantFormValues>({
     resolver: zodResolver(tenantSchema),
@@ -111,6 +110,8 @@ export default function AddTenantPage() {
     },
   });
 
+  const selectedPropertyId = form.watch('propertyId');
+
   useEffect(() => {
     form.setValue('tenancyStartDate', new Date());
   }, [form]);
@@ -120,16 +121,32 @@ export default function AddTenantPage() {
     if (!user || !firestore) return null;
     return query(
       collection(firestore, 'userProfiles', user.uid, 'properties'),
-      where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
+      limit(500)
     );
   }, [firestore, user]);
-  const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
+  const { data: allProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
   
-  const propertyRef = useMemoFirebase(() => {
-    if (!firestore || !user || !propertyIdFromUrl) return null;
-    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyIdFromUrl);
-  }, [firestore, user, propertyIdFromUrl]);
-  const { data: selectedProperty } = useDoc<Property>(propertyRef);
+  const properties = useMemo(() => {
+    const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
+    return allProperties?.filter(p => activeStatuses.includes(p.status)) ?? [];
+  }, [allProperties]);
+
+  const filteredProperties = useMemo(() => {
+    if (!properties) return [];
+    if (!propertySearch) return properties;
+    const term = propertySearch.toLowerCase();
+    return properties.filter(p => 
+        [p.address.nameOrNumber, p.address.street, p.address.city, p.address.postcode]
+            .filter(Boolean)
+            .join(' ')
+            .toLowerCase()
+            .includes(term)
+    );
+  }, [properties, propertySearch]);
+
+  const selectedProperty = useMemo(() => 
+    properties.find(p => p.id === selectedPropertyId), 
+  [properties, selectedPropertyId]);
   
   useEffect(() => {
     if (propertyIdFromUrl) {
@@ -177,6 +194,7 @@ export default function AddTenantPage() {
   }
 
   const formatAddress = (address: Property['address']) => {
+    if (!address) return 'N/A';
     return [address.nameOrNumber, address.street, address.city, address.county, address.postcode].filter(Boolean).join(', ');
   };
 
@@ -191,39 +209,78 @@ export default function AddTenantPage() {
       <CardContent className="pt-6">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-            {propertyIdFromUrl && selectedProperty ? (
-                <div className="space-y-2">
-                    <FormLabel className="font-bold">Target Property</FormLabel>
-                    <div className="flex items-center justify-between rounded-md border-2 border-primary/20 p-4 bg-primary/5 min-h-[40px]">
-                        <p className="font-bold text-primary">{formatAddress(selectedProperty.address)}</p>
-                    </div>
-                </div>
-            ) : (
-                <FormField
-                control={form.control}
-                name="propertyId"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel className="font-bold">Select Portfolio Property</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+            <FormField
+              control={form.control}
+              name="propertyId"
+              render={({ field }) => (
+                <FormItem className="flex flex-col">
+                  <FormLabel className="font-bold">Select Portfolio Property</FormLabel>
+                  <Popover open={isPropSelectorOpen} onOpenChange={setIsPropSelectorOpen}>
+                    <PopoverTrigger asChild>
                         <FormControl>
-                        <SelectTrigger className="h-11">
-                            <SelectValue placeholder={isLoadingProperties ? 'Loading portfolio...' : 'Choose property'} />
-                        </SelectTrigger>
+                            <Button
+                                variant="outline"
+                                role="combobox"
+                                className={cn(
+                                    "w-full justify-between h-11 bg-background text-left font-normal",
+                                    !field.value && "text-muted-foreground"
+                                )}
+                            >
+                                {selectedProperty 
+                                    ? formatAddress(selectedProperty.address) 
+                                    : (isLoadingProperties ? "Loading portfolio..." : "Search by address or postcode...")}
+                                <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
+                            </Button>
                         </FormControl>
-                        <SelectContent>
-                        {properties?.map((prop) => (
-                            <SelectItem key={prop.id} value={prop.id}>
-                            {formatAddress(prop.address)}
-                            </SelectItem>
-                        ))}
-                        </SelectContent>
-                    </Select>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-            )}
+                    </PopoverTrigger>
+                    <PopoverContent className="w-[--radix-popover-trigger-width] p-0 shadow-2xl border-primary/10">
+                        <div className="flex items-center border-b px-3 bg-muted/20">
+                            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                            <Input 
+                                placeholder="Type address..." 
+                                className="h-11 border-0 focus-visible:ring-0 bg-transparent" 
+                                value={propertySearch}
+                                onChange={(e) => setPropertySearch(e.target.value)}
+                            />
+                        </div>
+                        <ScrollArea className="h-72">
+                            {filteredProperties.length === 0 ? (
+                                <div className="p-8 text-center text-sm text-muted-foreground italic">
+                                    No properties found matching your search.
+                                </div>
+                            ) : (
+                                <div className="p-1">
+                                    {filteredProperties.map(p => (
+                                        <Button
+                                            key={p.id}
+                                            variant="ghost"
+                                            className={cn(
+                                                "w-full justify-start font-normal text-xs py-6 h-auto whitespace-normal text-left px-4",
+                                                p.id === field.value && "bg-primary/5 text-primary font-bold"
+                                            )}
+                                            onClick={() => {
+                                                form.setValue('propertyId', p.id);
+                                                setIsPropSelectorOpen(false);
+                                            }}
+                                        >
+                                            <div className="flex items-center gap-3">
+                                                <div className={cn(
+                                                    "h-2 w-2 rounded-full",
+                                                    p.id === field.value ? "bg-primary" : "bg-transparent"
+                                                )} />
+                                                {formatAddress(p.address)}
+                                            </div>
+                                        </Button>
+                                    ))}
+                                </div>
+                            )}
+                        </ScrollArea>
+                    </PopoverContent>
+                  </Popover>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
             
             <FormField
               control={form.control}
@@ -295,7 +352,6 @@ export default function AddTenantPage() {
                         <Input
                             type="date"
                             className="h-11"
-                            min="0"
                             value={formatDateForInput(field.value)}
                             onChange={(e) => field.onChange(e.target.value)}
                         />
@@ -346,7 +402,7 @@ export default function AddTenantPage() {
                 <Button type="button" variant="ghost" asChild className="font-bold uppercase tracking-widest text-xs h-11">
                     <Link href={propertyIdFromUrl ? `/dashboard/properties/${propertyIdFromUrl}` : '/dashboard/tenants'}>Cancel</Link>
                 </Button>
-                <Button type="submit" disabled={isSubmitting} className="font-bold uppercase tracking-widest text-xs h-11 px-10 shadow-lg">
+                <Button type="submit" disabled={isSubmitting} className="font-bold uppercase tracking-widest text-xs h-11 px-10 shadow-lg bg-primary hover:bg-primary/90">
                   {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : 'Confirm Assignment'}
                 </Button>
             </div>
