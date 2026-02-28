@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -14,7 +15,7 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { useUser, useFirestore, useDoc, useMemoFirebase, useFirebase } from '@/firebase';
+import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, setDoc } from 'firebase/firestore';
 import { uploadPropertyImage } from '@/lib/upload-image';
 import { Loader2, ShieldAlert, MapPin, Home, Upload, X, Images, PlusCircle } from 'lucide-react';
@@ -64,7 +65,7 @@ interface Property {
       nameOrNumber?: string;
       street: string;
       city: string;
-      county?: string;
+      county: string;
       postcode: string;
     };
     propertyType: string;

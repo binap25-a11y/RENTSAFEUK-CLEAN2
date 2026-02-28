@@ -29,6 +29,7 @@
             "nameOrNumber": { "type": "string" },
             "street": { "type": "string" },
             "city": { "type": "string" },
+            "county": { "type": "string" },
             "postcode": { "type": "string" }
           }
         },
@@ -36,7 +37,9 @@
         "status": { "type": "string" },
         "bedrooms": { "type": "number" },
         "bathrooms": { "type": "number" },
-        "monthlyRent": { "type": "number" }
+        "monthlyRent": { "type": "number" },
+        "imageUrl": { "type": "string" },
+        "additionalImageUrls": { "type": "array", "items": { "type": "string" } }
       },
       "required": ["id", "ownerId", "address", "propertyType", "status"]
     },
@@ -49,7 +52,8 @@
         "ownerId": { "type": "string" },
         "name": { "type": "string" },
         "email": { "type": "string" },
-        "status": { "type": "string" }
+        "status": { "type": "string" },
+        "monthlyRent": { "type": "number" }
       }
     },
     "MaintenanceLog": {
@@ -60,7 +64,8 @@
         "propertyId": { "type": "string" },
         "ownerId": { "type": "string" },
         "title": { "type": "string" },
-        "status": { "type": "string" }
+        "status": { "type": "string" },
+        "priority": { "type": "string" }
       }
     }
   },
@@ -95,6 +100,18 @@
         "definition": {
           "entityName": "MaintenanceLog",
           "description": "Property maintenance records."
+        }
+      },
+      {
+        "path": "/userProfiles/{userId}/properties/{propertyId}/inspections/{inspectionId}",
+        "definition": {
+          "description": "Property inspection reports."
+        }
+      },
+      {
+        "path": "/userProfiles/{userId}/properties/{propertyId}/documents/{docId}",
+        "definition": {
+          "description": "Property compliance documents."
         }
       }
     ]
