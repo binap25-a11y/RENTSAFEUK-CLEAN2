@@ -73,7 +73,7 @@ export default function ContractorsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [contractorToArchive, setContractorToArchive] = useState<Contractor | null>(null);
 
-  // Fetch contractors nested under user profile - strictly hierarchical. redundant ownerId filter removed.
+  // Fetch contractors nested under user profile - strictly hierarchical.
   const contractorsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
@@ -86,9 +86,10 @@ export default function ContractorsPage() {
   const filteredContractors = useMemo(() => {
     if (!contractors) return [];
     if (!searchTerm) return contractors;
+    const lower = searchTerm.toLowerCase();
     return contractors.filter(c =>
-        c.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        c.trade.toLowerCase().includes(searchTerm.toLowerCase())
+        c.name.toLowerCase().includes(lower) ||
+        c.trade.toLowerCase().includes(lower)
     );
   }, [contractors, searchTerm]);
   
@@ -112,54 +113,92 @@ export default function ContractorsPage() {
 
   return (
     <>
-      <div className="flex flex-col gap-6">
-        <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between sm:items-center">
-          <div>
-            <h1 className="text-3xl font-bold">Contractors</h1>
-            <p className="text-muted-foreground">Manage your directory of trusted tradespeople.</p>
-          </div>
-          <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
-              <Button asChild variant="outline" className="w-full sm:w-auto">
-                  <Link href="/dashboard/contractors/archived"><Archive className="mr-2 h-4 w-4" /> View Archived</Link>
-              </Button>
-              <Button asChild className="w-full sm:w-auto">
-                <Link href="/dashboard/contractors/add"><PlusCircle className="mr-2 h-4 w-4" /> Add Contractor</Link>
-              </Button>
-          </div>
+      <div className="flex flex-col gap-8">
+        {/* Header Section */}
+        <div className="space-y-2">
+          <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Contractors</h1>
+          <p className="text-muted-foreground font-medium text-lg">Manage your directory of trusted tradespeople.</p>
         </div>
         
-        <Card>
-          <CardHeader>
-            <CardTitle>Contractor Directory</CardTitle>
-            <CardDescription>Your list of saved contractors.</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="relative w-full max-sm mb-4">
-              <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-              <Input placeholder="Search by name or trade..." className="pl-8" value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} />
+        <Card className="border-none shadow-xl overflow-hidden">
+          {/* Card Header with Search */}
+          <CardHeader className="bg-muted/30 border-b pb-6">
+            <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
+              <div>
+                <CardTitle className="text-xl">Contractor Directory</CardTitle>
+                <CardDescription>Your list of saved contractors.</CardDescription>
+              </div>
+              <div className="relative w-full md:w-auto md:max-sm">
+                <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                <Input 
+                  placeholder="Search by name or trade..." 
+                  className="pl-8 h-10 bg-background" 
+                  value={searchTerm} 
+                  onChange={(e) => setSearchTerm(e.target.value)} 
+                />
+              </div>
             </div>
+          </CardHeader>
+          <CardContent className="pt-6">
             {isLoading ? (
-              <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
+              <div className="flex flex-col justify-center items-center h-64 gap-2 text-muted-foreground">
+                <Loader2 className="h-8 w-8 animate-spin text-primary" />
+                <p className="text-sm font-medium">Loading directory...</p>
+              </div>
             ) : error ? (
-              <div className="text-center py-10 text-destructive">Error: {error.message}</div>
+              <div className="text-center py-10 text-destructive font-medium border border-destructive/20 rounded-lg bg-destructive/5">
+                Error loading contractors: {error.message}
+              </div>
             ) : !filteredContractors?.length ? (
-              <div className="text-center py-10 text-muted-foreground">{searchTerm ? `No contractors found for "${searchTerm}".` : 'No active contractors found.'}</div>
+              <div className="text-center py-24 border-2 border-dashed rounded-2xl bg-muted/5">
+                 <div className="bg-background p-4 rounded-full shadow-sm w-fit mx-auto mb-4">
+                    <HardHat className="w-10 h-10 text-muted-foreground opacity-20" />
+                 </div>
+                 <h3 className="text-xl font-bold">{searchTerm ? 'No matches found' : 'Your directory is empty'}</h3>
+                <p className="text-muted-foreground mb-6 mt-1 max-w-sm mx-auto">
+                  {searchTerm ? `Try a different search term.` : 'Add your first contractor to keep their contact details within reach.'}
+                </p>
+                {!searchTerm && (
+                  <Button asChild size="lg" className="font-bold px-8 shadow-md">
+                    <Link href="/dashboard/contractors/add">
+                        <PlusCircle className="mr-2 h-5 w-5" /> Add First Contractor
+                    </Link>
+                  </Button>
+                )}
+              </div>
             ) : (
               <>
-                <div className="hidden rounded-md border md:block">
+                <div className="hidden rounded-md border md:block overflow-hidden shadow-sm">
                   <Table>
-                    <TableHeader><TableRow><TableHead>Name</TableHead><TableHead>Trade</TableHead><TableHead>Phone</TableHead><TableHead>Email</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                    <TableHeader className="bg-muted/50">
+                      <TableRow>
+                        <TableHead className="font-bold text-[10px] uppercase tracking-wider">Name</TableHead>
+                        <TableHead className="font-bold text-[10px] uppercase tracking-wider">Trade</TableHead>
+                        <TableHead className="font-bold text-[10px] uppercase tracking-wider">Contact</TableHead>
+                        <TableHead className="text-right font-bold text-[10px] uppercase tracking-wider pr-6">Actions</TableHead>
+                      </TableRow>
+                    </TableHeader>
                     <TableBody>
                       {filteredContractors.map((c) => (
-                        <TableRow key={c.id}>
-                          <TableCell className="font-medium"><Link href={`/dashboard/contractors/${c.id}`} className="hover:underline">{c.name}</Link></TableCell>
-                          <TableCell>{c.trade}</TableCell>
-                          <TableCell>{c.phone}</TableCell>
-                          <TableCell>{c.email}</TableCell>
-                          <TableCell className="text-right">
-                            <Button asChild variant="ghost" size="icon"><Link href={`/dashboard/contractors/${c.id}`}><Eye className="h-4 w-4" /></Link></Button>
-                            <Button asChild variant="ghost" size="icon"><Link href={`/dashboard/contractors/${c.id}/edit`}><Edit className="h-4 w-4" /></Link></Button>
-                            <Button variant="ghost" size="icon" onClick={() => setContractorToArchive(c)}><Archive className="h-4 w-4" /></Button>
+                        <TableRow key={c.id} className="hover:bg-muted/30 transition-colors group">
+                          <TableCell className="font-bold py-4">
+                            <Link href={`/dashboard/contractors/${c.id}`} className="hover:underline text-primary">{c.name}</Link>
+                          </TableCell>
+                          <TableCell className="text-xs font-semibold text-muted-foreground uppercase tracking-tighter">
+                            {c.trade}
+                          </TableCell>
+                          <TableCell>
+                            <div className="space-y-0.5">
+                                <p className="text-xs font-semibold">{c.phone}</p>
+                                {c.email && <p className="text-[10px] text-muted-foreground">{c.email}</p>}
+                            </div>
+                          </TableCell>
+                          <TableCell className="text-right pr-6">
+                            <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                              <Button asChild variant="ghost" size="icon" className="h-8 w-8" title="View Details"><Link href={`/dashboard/contractors/${c.id}`}><Eye className="h-4 w-4" /></Link></Button>
+                              <Button asChild variant="ghost" size="icon" className="h-8 w-8" title="Edit Record"><Link href={`/dashboard/contractors/${c.id}/edit`}><Edit className="h-4 w-4" /></Link></Button>
+                              <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" title="Archive" onClick={() => setContractorToArchive(c)}><Archive className="h-4 w-4" /></Button>
+                            </div>
                           </TableCell>
                         </TableRow>
                       ))}
@@ -168,26 +207,26 @@ export default function ContractorsPage() {
                 </div>
                 <div className="grid gap-4 md:hidden">
                   {filteredContractors.map((c) => (
-                    <Card key={c.id}>
-                      <CardHeader>
+                    <Card key={c.id} className="shadow-sm border-muted/60">
+                      <CardHeader className="pb-3">
                         <div className="flex justify-between items-start">
                           <div>
-                            <CardTitle className="text-base"><Link href={`/dashboard/contractors/${c.id}`} className="hover:underline">{c.name}</Link></CardTitle>
-                            <CardDescription>{c.trade}</CardDescription>
+                            <CardTitle className="text-lg font-bold"><Link href={`/dashboard/contractors/${c.id}`} className="hover:underline">{c.name}</Link></CardTitle>
+                            <CardDescription className="text-xs font-bold uppercase tracking-tight mt-1 text-primary">{c.trade}</CardDescription>
                           </div>
                           <DropdownMenu>
                             <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="-mr-2 -mt-2"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
                             <DropdownMenuContent align="end">
-                              <DropdownMenuItem asChild><Link href={`/dashboard/contractors/${c.id}`}><Eye className="mr-2 h-4 w-4" /> View</Link></DropdownMenuItem>
+                              <DropdownMenuItem asChild><Link href={`/dashboard/contractors/${c.id}`}><Eye className="mr-2 h-4 w-4" /> View Details</Link></DropdownMenuItem>
                               <DropdownMenuItem asChild><Link href={`/dashboard/contractors/${c.id}/edit`}><Edit className="mr-2 h-4 w-4" /> Edit</Link></DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => setContractorToArchive(c)} className="text-destructive">Archive</DropdownMenuItem>
+                              <DropdownMenuItem onClick={() => setContractorToArchive(c)} className="text-destructive">Archive Contractor</DropdownMenuItem>
                             </DropdownMenuContent>
                           </DropdownMenu>
                         </div>
                       </CardHeader>
-                      <CardContent className="space-y-2 text-sm">
-                        <div className="flex items-center gap-2"><Phone className="h-4 w-4 text-muted-foreground" /><span>{c.phone}</span></div>
-                        {c.email && (<div className="flex items-center gap-2"><Mail className="h-4 w-4 text-muted-foreground" /><span className='truncate'>{c.email}</span></div>)}
+                      <CardContent className="space-y-2 text-sm pt-0 pb-4 border-b border-dashed">
+                        <div className="flex items-center gap-2"><Phone className="h-3.5 w-3.5 text-muted-foreground" /><span>{c.phone}</span></div>
+                        {c.email && (<div className="flex items-center gap-2"><Mail className="h-3.5 w-3.5 text-muted-foreground" /><span className='truncate'>{c.email}</span></div>)}
                       </CardContent>
                     </Card>
                   ))}
@@ -196,11 +235,39 @@ export default function ContractorsPage() {
             )}
           </CardContent>
         </Card>
+
+        {/* Action Buttons Container - Repositioned below the main directory card */}
+        <div className="flex items-center gap-3 w-full px-1">
+            <Button asChild variant="outline" className="flex-1 font-bold shadow-sm h-11 px-6 border-primary/20 hover:bg-primary/5 transition-all">
+                <Link href="/dashboard/contractors/archived">
+                    <Archive className="mr-2 h-4 w-4 text-primary" /> View Archived
+                </Link>
+            </Button>
+            <Button asChild className="flex-1 font-bold shadow-lg h-11 px-8 bg-primary hover:bg-primary/90 transition-all">
+              <Link href="/dashboard/contractors/add">
+                  <PlusCircle className="mr-2 h-4 w-4" /> Add Contractor
+              </Link>
+            </Button>
+        </div>
       </div>
+
       <AlertDialog open={!!contractorToArchive} onOpenChange={(open) => !open && setContractorToArchive(null)}>
-        <AlertDialogContent>
-          <AlertDialogHeader><AlertDialogTitle>Are you sure?</AlertDialogTitle><AlertDialogDescription>This will archive {contractorToArchive?.name}.</AlertDialogDescription></AlertDialogHeader>
-          <AlertDialogFooter><AlertDialogCancel>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground" onClick={handleArchiveConfirm}>Archive</AlertDialogAction></AlertDialogFooter>
+        <AlertDialogContent className="rounded-2xl">
+          <AlertDialogHeader>
+            <AlertDialogTitle className="text-xl">Archive Contractor?</AlertDialogTitle>
+            <AlertDialogDescription className="text-base font-medium">
+              This will move the record for <strong className="text-foreground">{contractorToArchive?.name}</strong> to your archived directory.
+            </AlertDialogDescription>
+          </AlertDialogHeader>
+          <AlertDialogFooter className="gap-3 mt-4">
+            <AlertDialogCancel className="rounded-xl font-bold uppercase tracking-widest text-xs h-11">Cancel</AlertDialogCancel>
+            <AlertDialogAction 
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold uppercase tracking-widest text-xs h-11 px-8 shadow-lg" 
+              onClick={handleArchiveConfirm}
+            >
+              Archive Record
+            </AlertDialogAction>
+          </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
     </>
