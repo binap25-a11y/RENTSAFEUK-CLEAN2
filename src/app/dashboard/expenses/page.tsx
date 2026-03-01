@@ -75,6 +75,8 @@ interface Property {
     nameOrNumber?: string;
     street: string;
     city: string;
+    county?: string;
+    postcode: string;
   };
   tenancy?: {
     monthlyRent: number;
@@ -271,7 +273,11 @@ export default function FinancialsPage() {
                     <SelectTrigger id="property-filter" className="h-12"><SelectValue placeholder="All Properties" /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Properties (Portfolio View)</SelectItem>
-                        {activeProperties?.map((prop) => (<SelectItem key={prop.id} value={prop.id}>{[prop.address.street, prop.address.city].filter(Boolean).join(', ')}</SelectItem>))}
+                        {activeProperties?.map((prop) => (
+                          <SelectItem key={prop.id} value={prop.id}>
+                            {[prop.address.nameOrNumber, prop.address.street, prop.address.city, prop.address.postcode].filter(Boolean).join(', ')}
+                          </SelectItem>
+                        ))}
                     </SelectContent>
                 </Select>
             </div>
@@ -347,7 +353,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
   }
 
   const formatAddress = (address: Property['address']) => {
-    return [address.nameOrNumber, address.street, address.city].filter(Boolean).join(', ');
+    return [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
   };
 
   return (
