@@ -164,7 +164,7 @@ export default function FinancialsPage() {
 
   // Aggregated Listeners
   useEffect(() => {
-    if (!user || !activeProperties || activeProperties.length === 0 || selectedPropertyId !== 'all' || !selectedYear || !firestore) {
+    if (!user || !activeProperties || activeProperties.length === 0 || !selectedYear || !firestore) {
         setPortfolioExpenses([]);
         setPortfolioRentPayments([]);
         return;
@@ -184,19 +184,19 @@ export default function FinancialsPage() {
     activeProperties.forEach(p => {
         // Listen to Expenses
         unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'expenses'), (snap) => {
-            expensesMap[p.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Expense));
+            expensesMap[p.id] = snap.docs.map(d => ({ id: d.id, ...d.data(), propertyId: p.id } as Expense));
             updateState();
         }));
 
         // Listen to Rent Payments
         unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'rentPayments'), where('year', '==', selectedYear)), (snap) => {
-            rentMap[p.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as RentPayment));
+            rentMap[p.id] = snap.docs.map(d => ({ id: d.id, ...d.data(), propertyId: p.id } as RentPayment));
             updateState();
         }));
     });
 
     return () => unsubs.forEach(u => u());
-  }, [user, activeProperties, firestore, selectedPropertyId, selectedYear]);
+  }, [user, activeProperties, firestore, selectedYear]);
 
   const expenses = useMemo(() => {
     if (!selectedYear) return [];
@@ -211,9 +211,12 @@ export default function FinancialsPage() {
     return selectedPropertyId !== 'all' ? (portfolioRentPayments.filter(p => p.propertyId === selectedPropertyId)) : portfolioRentPayments;
   }, [portfolioRentPayments, selectedPropertyId]);
 
-  const portfolioIncome = useMemo(() => {
+  const displayIncome = useMemo(() => {
+    if (selectedPropertyId !== 'all' && selectedProperty) {
+        return Number(selectedProperty.tenancy?.monthlyRent || 0) * 12;
+    }
     return activeProperties?.reduce((total, prop) => (total + (Number(prop.tenancy?.monthlyRent || 0) * 12)), 0) || 0;
-  }, [activeProperties]);
+  }, [activeProperties, selectedPropertyId, selectedProperty]);
 
   const totalPaidRent = useMemo(() => rentPayments.reduce((acc, p) => acc + Number(p.amountPaid || 0), 0), [rentPayments]);
   const totalExpenses = useMemo(() => expenses.reduce((acc, expense) => acc + Number(expense.amount || 0), 0), [expenses]);
@@ -291,7 +294,7 @@ export default function FinancialsPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card className="border-none shadow-md overflow-hidden"><div className="h-1 bg-primary w-full" /><CardHeader className="pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Portfolio Gross</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold tracking-tight">{formatCurrency(portfolioIncome)}</div></CardContent></Card>
+            <Card className="border-none shadow-md overflow-hidden"><div className="h-1 bg-primary w-full" /><CardHeader className="pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{selectedPropertyId === 'all' ? 'Portfolio Gross' : 'Property Gross'}</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold tracking-tight">{formatCurrency(displayIncome)}</div></CardContent></Card>
             <Card className="border-none shadow-md overflow-hidden"><div className="h-1 bg-green-500 w-full" /><CardHeader className="pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-green-600">Income Received</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold tracking-tight">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : formatCurrency(totalPaidRent)}</div></CardContent></Card>
             <Card className="border-none shadow-md overflow-hidden"><div className="h-1 bg-destructive w-full" /><CardHeader className="pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-destructive">Expenses</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold tracking-tight">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : formatCurrency(totalExpenses)}</div></CardContent></Card>
             <Card className="border-none shadow-md overflow-hidden"><div className="h-1 bg-amber-500 w-full" /><CardHeader className="pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Net Position</CardTitle></CardHeader><CardContent><div className={"text-2xl font-bold tracking-tight " + (netIncome < 0 ? "text-destructive" : "text-primary")}>{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : formatCurrency(netIncome)}</div></CardContent></Card>
@@ -405,7 +408,6 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
             </CardContent>
         </Card>
 
-        {/* Action Buttons grouped below the card consistently */}
         <div className="flex items-center gap-3 w-full px-1">
             <Button asChild variant="outline" className="flex-1 font-bold shadow-sm h-11 px-6 border-primary/20 hover:bg-primary/5 transition-all">
                 <Link href="/dashboard/expenses/logged">
