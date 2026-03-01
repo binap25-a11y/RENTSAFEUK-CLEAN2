@@ -36,6 +36,7 @@ import {
   Receipt, 
   History,
   ArrowUpRight,
+  PlusCircle,
 } from 'lucide-react';
 import { getYear, format, isSameYear } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -262,7 +263,7 @@ export default function FinancialsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 max-w-6xl mx-auto">
         <div className="flex flex-col gap-4 max-w-md bg-card p-6 rounded-lg border shadow-sm">
             <div className="grid w-full gap-1.5">
                 <Label htmlFor="property-filter" className="text-xs uppercase font-bold text-muted-foreground">Scope View</Label>
@@ -350,49 +351,71 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
   };
 
   return (
-    <Card className="mt-6 border-none shadow-lg">
-        <CardHeader>
-          <CardTitle className="text-lg">Log New Financial Outgoing</CardTitle>
-          <CardDescription>Select a property and category to record a new expense.</CardDescription>
-        </CardHeader>
-        <CardContent>
-          <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-              <FormField control={form.control} name="propertyId" render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-bold">Target Property</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select from portfolio" /></SelectTrigger></FormControl>
-                      <SelectContent>{properties.map(p => (<SelectItem key={p.id} value={p.id}>{formatAddress(p.address)}</SelectItem>))}</SelectContent>
-                    </Select>
-                    <FormMessage />
-                  </FormItem>
-              )} />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField control={form.control} name="date" render={({ field }) => (
-                    <FormItem><FormLabel className="font-bold">Date</FormLabel><FormControl><Input type="date" className="h-11" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>
+    <div className="space-y-6">
+        <Card className="mt-6 border-none shadow-lg">
+            <CardHeader>
+            <CardTitle className="text-lg">Log New Financial Outgoing</CardTitle>
+            <CardDescription>Select a property and category to record a new expense.</CardDescription>
+            </CardHeader>
+            <CardContent>
+            <Form {...form}>
+                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                <FormField control={form.control} name="propertyId" render={({ field }) => (
+                    <FormItem>
+                        <FormLabel className="font-bold">Target Property</FormLabel>
+                        <Select onValueChange={field.onChange} value={field.value}>
+                        <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select from portfolio" /></SelectTrigger></FormControl>
+                        <SelectContent>{properties.map(p => (<SelectItem key={p.id} value={p.id}>{formatAddress(p.address)}</SelectItem>))}</SelectContent>
+                        </Select>
+                        <FormMessage />
+                    </FormItem>
                 )} />
-                <FormField control={form.control} name="expenseType" render={({ field }) => (
-                    <FormItem><FormLabel className="font-bold">Category</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl><SelectContent>{['Repairs and Maintenance','Utilities','Insurance','Mortgage Interest','Cleaning','Gardening','Letting Agent Fees', 'Other'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</Select><FormMessage /></FormItem>
-                )} />
-              </div>
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                <FormField control={form.control} name="amount" render={({ field }) => (
-                    <FormItem><FormLabel className="font-bold">Amount (£)</FormLabel><FormControl><Input type="number" step="0.01" className="h-11" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem>
-                )} />
-                <FormField control={form.control} name="paidBy" render={({ field }) => (<FormItem><FormLabel className="font-bold">Paid By</FormLabel><FormControl><Input placeholder="e.g. Landlord" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>)} />
-              </div>
-              <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel className="font-bold">Audit Notes</FormLabel><FormControl><Textarea placeholder="Details for tax records..." className="rounded-xl min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>)} />
-              <div className="flex justify-end gap-2 pt-4">
-                <Button asChild type="button" variant="outline" className="font-bold h-11"><Link href="/dashboard/expenses/logged"><History className="mr-2 h-4 w-4" /> View History</Link></Button>
-                <Button type="submit" disabled={isSubmitting} className="font-bold h-11 px-12 shadow-md">
-                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Log Expense'}
-                </Button>
-              </div>
-            </form>
-          </Form>
-        </CardContent>
-    </Card>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField control={form.control} name="date" render={({ field }) => (
+                        <FormItem><FormLabel className="font-bold">Date</FormLabel><FormControl><Input type="date" className="h-11" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>
+                    )} />
+                    <FormField control={form.control} name="expenseType" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel className="font-bold">Category</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                    {['Repairs and Maintenance','Utilities','Insurance','Mortgage Interest','Cleaning','Gardening','Letting Agent Fees', 'Other'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField control={form.control} name="amount" render={({ field }) => (
+                        <FormItem><FormLabel className="font-bold">Amount (£)</FormLabel><FormControl><Input type="number" step="0.01" className="h-11" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem>
+                    )} />
+                    <FormField control={form.control} name="paidBy" render={({ field }) => (<FormItem><FormLabel className="font-bold">Paid By</FormLabel><FormControl><Input placeholder="e.g. Landlord" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                </div>
+                <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel className="font-bold">Audit Notes</FormLabel><FormControl><Textarea placeholder="Details for tax records..." className="rounded-xl min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                </form>
+            </Form>
+            </CardContent>
+        </Card>
+
+        {/* Action Buttons grouped below the card consistently */}
+        <div className="flex items-center gap-3 w-full px-1">
+            <Button asChild variant="outline" className="flex-1 font-bold shadow-sm h-11 px-6 border-primary/20 hover:bg-primary/5 transition-all">
+                <Link href="/dashboard/expenses/logged">
+                    <History className="mr-2 h-4 w-4 text-primary" /> View History
+                </Link>
+            </Button>
+            <Button 
+                onClick={form.handleSubmit(onSubmit)} 
+                disabled={isSubmitting} 
+                className="flex-1 font-bold shadow-lg h-11 px-8 bg-primary hover:bg-primary/90 transition-all"
+            >
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                Log Expense Record
+            </Button>
+        </div>
+    </div>
   );
 }
 
