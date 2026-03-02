@@ -6,6 +6,15 @@ import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { Loader2, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
+import dynamic from "next/dynamic";
+
+const CheckoutContent = dynamic(() => import("./CheckoutContent"), {
+  ssr: false, // <-- disables server-side rendering
+});
+
+export default function CheckoutPage() {
+  return <CheckoutContent />;
+}
 
 export default function CheckoutPage() {
   const router = useRouter();
