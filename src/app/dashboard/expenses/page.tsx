@@ -35,10 +35,9 @@ import {
   Loader2, 
   Receipt, 
   History,
-  ArrowUpRight,
   PlusCircle,
 } from 'lucide-react';
-import { getYear, format, isSameYear } from 'date-fns';
+import { getYear, isSameYear } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import {
   Table,
@@ -57,11 +56,9 @@ import {
 import { collection, query, where, doc, setDoc, addDoc, limit, onSnapshot } from 'firebase/firestore';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import { Badge } from '@/components/ui/badge';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
 
 // Constants
 const MONTHS = [
@@ -83,8 +80,6 @@ interface Property {
   };
   status: string;
   ownerId: string;
-  purchasePrice?: number;
-  currentValuation?: number;
 }
 
 interface Expense {
@@ -162,7 +157,6 @@ export default function FinancialsPage() {
     return activeProperties?.find(p => p.id === selectedPropertyId);
   }, [activeProperties, selectedPropertyId]);
 
-  // Aggregated Listeners
   useEffect(() => {
     if (!user || !activeProperties || activeProperties.length === 0 || !selectedYear || !firestore) {
         setPortfolioExpenses([]);
@@ -182,13 +176,11 @@ export default function FinancialsPage() {
     };
 
     activeProperties.forEach(p => {
-        // Listen to Expenses
         unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'expenses'), (snap) => {
             expensesMap[p.id] = snap.docs.map(d => ({ id: d.id, ...d.data(), propertyId: p.id } as Expense));
             updateState();
         }));
 
-        // Listen to Rent Payments
         unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'rentPayments'), where('year', '==', selectedYear)), (snap) => {
             rentMap[p.id] = snap.docs.map(d => ({ id: d.id, ...d.data(), propertyId: p.id } as RentPayment));
             updateState();

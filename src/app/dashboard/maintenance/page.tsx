@@ -392,23 +392,24 @@ export default function MaintenancePage() {
                         </div>
                     </div>
                 </div>
-
-                <div className="flex items-center justify-end gap-3 pt-8 border-t">
-                  <Button type="button" variant="ghost" onClick={() => form.reset()} className="font-bold uppercase tracking-widest text-xs h-11">Clear</Button>
-                  <Button type="submit" disabled={isSubmitting} className="font-bold uppercase tracking-widest text-xs h-11 px-12 shadow-lg bg-primary hover:bg-primary/90">
-                    {isSubmitting ? <Loader2 className="h-4 w-4 animate-spin" /> : 'Log Maintenance Request'}
-                  </Button>
-                </div>
               </form>
             </Form>
           </CardContent>
         </Card>
 
-        <div className="px-1">
-            <Button asChild variant="outline" className="w-full font-bold shadow-sm h-11 px-6 border-primary/20 hover:bg-primary/5 transition-all">
+        <div className="flex items-center gap-3 w-full px-1">
+            <Button asChild variant="outline" className="flex-1 font-bold shadow-sm h-11 px-6 border-primary/20 hover:bg-primary/5 transition-all">
                 <Link href="/dashboard/maintenance/logged">
-                    <List className="mr-2 h-4 w-4 text-primary" /> View Maintenance History
+                    <List className="mr-2 h-4 w-4 text-primary" /> View History
                 </Link>
+            </Button>
+            <Button 
+                onClick={form.handleSubmit(handleFormSubmit)} 
+                disabled={isSubmitting} 
+                className="flex-1 font-bold shadow-lg h-11 px-8 bg-primary hover:bg-primary/90 transition-all"
+            >
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                Log Maintenance Request
             </Button>
         </div>
       </div>
