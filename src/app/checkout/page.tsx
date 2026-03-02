@@ -7,13 +7,16 @@ import { useState } from 'react';
 import { Loader2, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
 
-// /checkout/page.tsx
+// src/app/checkout/page.tsx
 import dynamic from "next/dynamic";
 
 const CheckoutContent = dynamic(() => import("./CheckoutContent"), {
-  ssr: false, // ensures client-side rendering
+  ssr: false,
 });
 
+export default function CheckoutPageWrapper() {
+  return <CheckoutContent />;
+}
 export default CheckoutContent; // <-- only export the dynamic component
 export default function CheckoutPage() {
   const router = useRouter();
