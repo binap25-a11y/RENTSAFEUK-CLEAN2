@@ -11,12 +11,10 @@ import Link from 'next/link';
 import dynamic from "next/dynamic";
 
 const CheckoutContent = dynamic(() => import("./CheckoutContent"), {
-  ssr: false,
+  ssr: false, // client-side only
 });
 
-export default function CheckoutPageWrapper() {
-  return <CheckoutContent />;
-}
+export default CheckoutContent;
 export default CheckoutContent; // <-- only export the dynamic component
 export default function CheckoutPage() {
   const router = useRouter();
