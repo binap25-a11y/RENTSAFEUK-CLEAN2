@@ -1,0 +1,122 @@
+
+{
+  "entities": {
+    "UserProfile": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "UserProfile",
+      "type": "object",
+      "description": "Represents a user of the RentSafeUK application.",
+      "properties": {
+        "id": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "displayName": { "type": "string" },
+        "idleTimeoutMinutes": { "type": "number" },
+        "createdDate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "email", "createdDate"]
+    },
+    "Property": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Property",
+      "type": "object",
+      "description": "Represents a rental property.",
+      "properties": {
+        "id": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "address": {
+          "type": "object",
+          "properties": {
+            "nameOrNumber": { "type": "string" },
+            "street": { "type": "string" },
+            "city": { "type": "string" },
+            "county": { "type": "string" },
+            "postcode": { "type": "string" }
+          }
+        },
+        "propertyType": { "type": "string" },
+        "status": { "type": "string" },
+        "bedrooms": { "type": "number" },
+        "bathrooms": { "type": "number" },
+        "monthlyRent": { "type": "number" },
+        "imageUrl": { "type": "string" },
+        "additionalImageUrls": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["id", "ownerId", "address", "propertyType", "status"]
+    },
+    "Tenant": {
+      "title": "Tenant",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "name": { "type": "string" },
+        "email": { "type": "string" },
+        "status": { "type": "string" },
+        "monthlyRent": { "type": "number" }
+      }
+    },
+    "MaintenanceLog": {
+      "title": "MaintenanceLog",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "title": { "type": "string" },
+        "category": { "type": "string" },
+        "otherCategoryDetails": { "type": "string" },
+        "status": { "type": "string" },
+        "priority": { "type": "string" },
+        "notes": { "type": "string" }
+      }
+    }
+  },
+  "auth": {
+    "providers": ["password", "google"]
+  },
+  "firestore": {
+    "structure": [
+      {
+        "path": "/userProfiles/{userId}",
+        "definition": {
+          "entityName": "UserProfile",
+          "description": "Root user profile."
+        }
+      },
+      {
+        "path": "/userProfiles/{userId}/properties/{propertyId}",
+        "definition": {
+          "entityName": "Property",
+          "description": "User properties."
+        }
+      },
+      {
+        "path": "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}",
+        "definition": {
+          "entityName": "Tenant",
+          "description": "Property tenants."
+        }
+      },
+      {
+        "path": "/userProfiles/{userId}/properties/{propertyId}/maintenanceLogs/{logId}",
+        "definition": {
+          "entityName": "MaintenanceLog",
+          "description": "Property maintenance records."
+        }
+      },
+      {
+        "path": "/userProfiles/{userId}/properties/{propertyId}/inspections/{inspectionId}",
+        "definition": {
+          "description": "Property inspection reports."
+        }
+      },
+      {
+        "path": "/userProfiles/{userId}/properties/{propertyId}/documents/{docId}",
+        "definition": {
+          "description": "Property compliance documents."
+        }
+      }
+    ]
+  }
+}

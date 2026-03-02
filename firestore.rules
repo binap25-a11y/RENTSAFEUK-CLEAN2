@@ -1,0 +1,73 @@
+rules_version = '2';
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    /**
+     * RentSafeUK Security Rules
+     * Enforces a strict User-Ownership model where data is isolated per landlord.
+     */
+
+    function isSignedIn() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
+    }
+
+    /**
+     * @description Rules for UserProfile and nested property data.
+     */
+    match /userProfiles/{userId} {
+      allow get, create, update: if isOwner(userId);
+      
+      // Properties are nested under the user who owns them
+      match /properties/{propertyId} {
+        allow read, write: if isOwner(userId);
+        
+        // All related records are nested under the specific property
+        match /tenants/{id} { 
+          allow read, write: if isOwner(userId); 
+          // Sub-collections under tenant
+          match /screenings/{sId} { allow read, write: if isOwner(userId); }
+        }
+        match /maintenanceRequests/{id} { allow read, write: if isOwner(userId); }
+        match /maintenanceLogs/{id} { allow read, write: if isOwner(userId); }
+        match /inspections/{id} { allow read, write: if isOwner(userId); }
+        match /documents/{id} { allow read, write: if isOwner(userId); }
+        match /expenses/{id} { allow read, write: if isOwner(userId); }
+        match /rentPayments/{id} { allow read, write: if isOwner(userId); }
+        match /checklists/{id} { allow read, write: if isOwner(userId); }
+      }
+      
+      // Contractors are associated with the landlord profile
+      match /contractors/{id} { allow read, write: if isOwner(userId); }
+    }
+
+    /**
+     * @description Collection Group rules to allow portfolio-wide listing.
+     * Requires 'ownerId' field in documents to verify ownership.
+     */
+    match /{path=**}/properties/{id} {
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+    }
+    match /{path=**}/tenants/{id} {
+      allow list: if isSignedIn() && (resource == null || resource.data.ownerId == request.auth.uid);
+    }
+    match /{path=**}/maintenanceRequests/{id} {
+      allow list: if isSignedIn() && (resource == null || resource.data.ownerId == request.auth.uid);
+    }
+    match /{path=**}/maintenanceLogs/{id} {
+      allow list: if isSignedIn() && (resource == null || resource.data.ownerId == request.auth.uid);
+    }
+    match /{path=**}/inspections/{id} {
+      allow list: if isSignedIn() && (resource == null || resource.data.ownerId == request.auth.uid);
+    }
+    match /{path=**}/documents/{id} {
+      allow list: if isSignedIn() && (resource == null || resource.data.ownerId == request.auth.uid);
+    }
+    match /{path=**}/contractors/{id} {
+      allow list: if isSignedIn() && (resource == null || resource.data.ownerId == request.auth.uid);
+    }
+  }
+}
