@@ -6,16 +6,15 @@ import { Button } from '@/components/ui/button';
 import { useState } from 'react';
 import { Loader2, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
+
+// /checkout/page.tsx
 import dynamic from "next/dynamic";
 
 const CheckoutContent = dynamic(() => import("./CheckoutContent"), {
-  ssr: false, // <-- disables server-side rendering
+  ssr: false, // ensures client-side rendering
 });
 
-export default function CheckoutPage() {
-  return <CheckoutContent />;
-}
-
+export default CheckoutContent; // <-- only export the dynamic component
 export default function CheckoutPage() {
   const router = useRouter();
   const searchParams = useSearchParams();
