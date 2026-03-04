@@ -369,7 +369,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                     <FormItem>
                         <FormLabel className="font-bold">Target Property</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select from portfolio" /></SelectTrigger></FormControl>
+                        <FormControl><SelectTrigger id="target-property-selector" className="h-11"><SelectValue placeholder="Select from portfolio" /></SelectTrigger></FormControl>
                         <SelectContent>{properties.map(p => (<SelectItem key={p.id} value={p.id}>{formatAddress(p.address)}</SelectItem>))}</SelectContent>
                         </Select>
                         <FormMessage />
@@ -377,13 +377,26 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                 )} />
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={form.control} name="date" render={({ field }) => (
-                        <FormItem><FormLabel className="font-bold">Date</FormLabel><FormControl><Input type="date" className="h-11" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>
+                        <FormItem>
+                          <FormLabel className="font-bold">Date</FormLabel>
+                          <FormControl>
+                            <Input 
+                              id="expense-date"
+                              name="date"
+                              type="date" 
+                              className="h-11" 
+                              value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} 
+                              onChange={(e) => field.onChange(e.target.value)} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
                     )} />
                     <FormField control={form.control} name="expenseType" render={({ field }) => (
                         <FormItem>
                             <FormLabel className="font-bold">Category</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
+                                <FormControl><SelectTrigger id="expense-category" className="h-11"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
                                 <SelectContent>
                                     {['Repairs and Maintenance','Utilities','Insurance','Mortgage Interest','Cleaning','Gardening','Letting Agent Fees', 'Other'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                                 </SelectContent>
@@ -394,11 +407,53 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={form.control} name="amount" render={({ field }) => (
-                        <FormItem><FormLabel className="font-bold">Amount (£)</FormLabel><FormControl><Input type="number" step="0.01" className="h-11" placeholder="0.00" {...field} /></FormControl><FormMessage /></FormItem>
+                        <FormItem>
+                          <FormLabel className="font-bold">Amount (£)</FormLabel>
+                          <FormControl>
+                            <Input 
+                              id="expense-amount"
+                              name="amount"
+                              type="number" 
+                              step="0.01" 
+                              className="h-11" 
+                              placeholder="0.00" 
+                              {...field} 
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
                     )} />
-                    <FormField control={form.control} name="paidBy" render={({ field }) => (<FormItem><FormLabel className="font-bold">Paid By</FormLabel><FormControl><Input placeholder="e.g. Landlord" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                    <FormField control={form.control} name="paidBy" render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="font-bold">Paid By</FormLabel>
+                        <FormControl>
+                          <Input 
+                            id="expense-paid-by"
+                            name="paidBy"
+                            placeholder="e.g. Landlord" 
+                            className="h-11" 
+                            {...field} 
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )} />
                 </div>
-                <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel className="font-bold">Audit Notes</FormLabel><FormControl><Textarea placeholder="Details for tax records..." className="rounded-xl min-h-[100px]" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="notes" render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="font-bold">Audit Notes</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        id="expense-notes"
+                        name="notes"
+                        placeholder="Details for tax records..." 
+                        className="rounded-xl min-h-[100px]" 
+                        {...field} 
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )} />
                 </form>
             </Form>
             </CardContent>
@@ -489,7 +544,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                             <TableCell className="font-medium">{formatCurrency(row.rent)}</TableCell>
                             <TableCell className="pr-6">
                                 <Select value={row.status} onValueChange={(v) => handleStatusChange(row.month, v as PaymentStatus)}>
-                                    <SelectTrigger className="w-[160px] h-9 text-xs font-bold shadow-none"><SelectValue /></SelectTrigger>
+                                    <SelectTrigger id={`payment-status-${row.month}`} className="w-[160px] h-9 text-xs font-bold shadow-none"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="Paid">Paid</SelectItem>
                                         <SelectItem value="Partially Paid">Partially Paid</SelectItem>

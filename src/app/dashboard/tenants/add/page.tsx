@@ -219,6 +219,7 @@ export default function AddTenantPage() {
                     <PopoverTrigger asChild>
                         <FormControl>
                             <Button
+                                id="tenant-property-selector"
                                 variant="outline"
                                 role="combobox"
                                 className={cn(
@@ -237,6 +238,8 @@ export default function AddTenantPage() {
                         <div className="flex items-center border-b px-3 bg-muted/20">
                             <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
                             <Input 
+                                id="tenant-property-search"
+                                name="propertySearch"
                                 placeholder="Type address..." 
                                 className="h-11 border-0 focus-visible:ring-0 bg-transparent" 
                                 value={propertySearch}
@@ -289,7 +292,7 @@ export default function AddTenantPage() {
                 <FormItem>
                   <FormLabel className="font-bold">Full Legal Name</FormLabel>
                   <FormControl>
-                    <Input placeholder="John Smith" className="h-11" {...field} />
+                    <Input id="tenant-name" name="name" placeholder="John Smith" className="h-11" {...field} />
                   </FormControl>
                   <FormMessage />
                 </FormItem>
@@ -304,7 +307,7 @@ export default function AddTenantPage() {
                   <FormItem>
                     <FormLabel className="font-bold">Email Address</FormLabel>
                     <FormControl>
-                      <Input type="email" placeholder="john@example.com" className="h-11" {...field} />
+                      <Input id="tenant-email" name="email" type="email" placeholder="john@example.com" className="h-11" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -317,7 +320,7 @@ export default function AddTenantPage() {
                   <FormItem>
                     <FormLabel className="font-bold">Telephone</FormLabel>
                     <FormControl>
-                      <Input type="tel" placeholder="07123 456789" className="h-11" {...field} />
+                      <Input id="tenant-phone" name="telephone" type="tel" placeholder="07123 456789" className="h-11" {...field} />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -333,7 +336,7 @@ export default function AddTenantPage() {
                     <FormItem>
                         <FormLabel className="font-bold">Agreed Monthly Rent (£)</FormLabel>
                         <FormControl>
-                            <Input type="number" min="0" placeholder="0.00" className="h-11" {...field} value={field.value ?? ''} />
+                            <Input id="tenant-rent" name="monthlyRent" type="number" min="0" placeholder="0.00" className="h-11" {...field} value={field.value ?? ''} />
                         </FormControl>
                         <FormMessage />
                     </FormItem>
@@ -350,6 +353,8 @@ export default function AddTenantPage() {
                     <FormLabel className="font-bold">Tenancy Start</FormLabel>
                     <FormControl>
                         <Input
+                            id="tenancy-start"
+                            name="tenancyStartDate"
                             type="date"
                             className="h-11"
                             value={formatDateForInput(field.value)}
@@ -368,6 +373,8 @@ export default function AddTenantPage() {
                     <FormLabel className="font-bold">Tenancy End (Optional)</FormLabel>
                     <FormControl>
                         <Input
+                            id="tenancy-end"
+                            name="tenancyEndDate"
                             type="date"
                             className="h-11"
                             value={formatDateForInput(field.value)}
@@ -388,6 +395,8 @@ export default function AddTenantPage() {
                   <FormLabel className="font-bold">Management Notes</FormLabel>
                   <FormControl>
                     <Textarea
+                      id="tenant-notes"
+                      name="notes"
                       placeholder="Special requirements, pets allowed, reference notes..."
                       className="resize-none min-h-[100px] rounded-xl"
                       {...field}

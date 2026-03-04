@@ -275,14 +275,18 @@ export default function AddPropertyPage() {
                         <FormField control={form.control} name="address.nameOrNumber" render={({ field }) => (
                           <FormItem>
                             <FormLabel className="font-bold">Building Name/No</FormLabel>
-                            <FormControl><Input placeholder="e.g. Flat 1 or 12" className="h-11" {...field} /></FormControl>
+                            <FormControl>
+                              <Input id="name-or-number" name="nameOrNumber" placeholder="e.g. Flat 1 or 12" className="h-11" {...field} />
+                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
                         <FormField control={form.control} name="address.street" render={({ field }) => (
                           <FormItem>
                             <FormLabel className="font-bold">Street Address</FormLabel>
-                            <FormControl><Input placeholder="e.g. High Street" className="h-11" {...field} /></FormControl>
+                            <FormControl>
+                              <Input id="street-address" name="street" placeholder="e.g. High Street" className="h-11" {...field} />
+                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
@@ -290,14 +294,18 @@ export default function AddPropertyPage() {
                           <FormField control={form.control} name="address.city" render={({ field }) => (
                             <FormItem>
                               <FormLabel className="font-bold">City/Town</FormLabel>
-                              <FormControl><Input placeholder="London" className="h-11" {...field} /></FormControl>
+                              <FormControl>
+                                <Input id="city" name="city" placeholder="London" className="h-11" {...field} />
+                              </FormControl>
                               <FormMessage />
                             </FormItem>
                           )} />
                           <FormField control={form.control} name="address.county" render={({ field }) => (
                             <FormItem>
                               <FormLabel className="font-bold">County</FormLabel>
-                              <FormControl><Input placeholder="e.g. Essex" className="h-11" {...field} /></FormControl>
+                              <FormControl>
+                                <Input id="county" name="county" placeholder="e.g. Essex" className="h-11" {...field} />
+                              </FormControl>
                               <FormMessage />
                             </FormItem>
                           )} />
@@ -305,7 +313,9 @@ export default function AddPropertyPage() {
                         <FormField control={form.control} name="address.postcode" render={({ field }) => (
                           <FormItem>
                             <FormLabel className="font-bold">Post Code</FormLabel>
-                            <FormControl><Input placeholder="W1A 1AA" className="h-11 uppercase" {...field} /></FormControl>
+                            <FormControl>
+                              <Input id="postcode" name="postcode" placeholder="W1A 1AA" className="h-11 uppercase" {...field} />
+                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
@@ -318,7 +328,7 @@ export default function AddPropertyPage() {
                         <div className="aspect-square w-full rounded-xl overflow-hidden border-2 border-muted bg-muted shadow-inner relative">
                           {mapUrl ? (
                             <iframe 
-                                key={mapUrl} // key ensures iframe reloads on URL change
+                                key={mapUrl}
                                 width="100%" 
                                 height="100%" 
                                 style={{ border: 0 }} 
@@ -349,6 +359,7 @@ export default function AddPropertyPage() {
                           <FormItem className="space-y-3">
                             <FormControl>
                               <RadioGroup
+                                id="property-type-group"
                                 onValueChange={field.onChange}
                                 defaultValue={field.value}
                                 className="grid grid-cols-2 md:grid-cols-3 gap-4"
@@ -356,9 +367,9 @@ export default function AddPropertyPage() {
                                 {propertyTypes.map((type) => (
                                   <FormItem key={type.value}>
                                     <FormControl>
-                                      <RadioGroupItem value={type.value} className="sr-only" />
+                                      <RadioGroupItem id={`type-${type.value}`} value={type.value} className="sr-only" />
                                     </FormControl>
-                                    <FormLabel className={cn(
+                                    <FormLabel htmlFor={`type-${type.value}`} className={cn(
                                       "flex flex-col items-center justify-center gap-3 p-4 rounded-xl border-2 cursor-pointer transition-all hover:bg-muted/50",
                                       field.value === type.value ? "border-primary bg-primary/5 ring-1 ring-primary shadow-sm" : "border-muted"
                                     )}>
@@ -381,14 +392,18 @@ export default function AddPropertyPage() {
                       <FormField control={form.control} name="bedrooms" render={({ field }) => (
                         <FormItem>
                           <FormLabel className="font-bold flex items-center gap-2"><Bed className="h-4 w-4" /> Bedrooms</FormLabel>
-                          <FormControl><Input type="number" min="0" className="h-11" {...field} /></FormControl>
+                          <FormControl>
+                            <Input id="bedrooms" name="bedrooms" type="number" min="0" className="h-11" {...field} />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )} />
                       <FormField control={form.control} name="bathrooms" render={({ field }) => (
                         <FormItem>
                           <FormLabel className="font-bold flex items-center gap-2"><Bath className="h-4 w-4" /> Bathrooms</FormLabel>
-                          <FormControl><Input type="number" min="0" className="h-11" {...field} /></FormControl>
+                          <FormControl>
+                            <Input id="bathrooms" name="bathrooms" type="number" min="0" className="h-11" {...field} />
+                          </FormControl>
                           <FormMessage />
                         </FormItem>
                       )} />
@@ -396,7 +411,9 @@ export default function AddPropertyPage() {
                         <FormItem>
                           <FormLabel className="font-bold">Portfolio Status</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
-                            <FormControl><SelectTrigger className="h-11"><SelectValue /></SelectTrigger></FormControl>
+                            <FormControl>
+                              <SelectTrigger id="status-selector" className="h-11"><SelectValue /></SelectTrigger>
+                            </FormControl>
                             <SelectContent>
                               {['Vacant', 'Occupied', 'Under Maintenance'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                             </SelectContent>
@@ -419,7 +436,9 @@ export default function AddPropertyPage() {
                         <FormField control={form.control} name="purchasePrice" render={({ field }) => (
                           <FormItem>
                             <FormLabel className="font-bold">Purchase Price (£)</FormLabel>
-                            <FormControl><Input type="number" min="0" placeholder="0.00" className="h-11" {...field} value={field.value ?? ''} /></FormControl>
+                            <FormControl>
+                              <Input id="purchase-price" name="purchasePrice" type="number" min="0" placeholder="0.00" className="h-11" {...field} value={field.value ?? ''} />
+                            </FormControl>
                             <FormDescription>Original cost for ROI tracking.</FormDescription>
                             <FormMessage />
                           </FormItem>
@@ -427,7 +446,9 @@ export default function AddPropertyPage() {
                         <FormField control={form.control} name="currentValuation" render={({ field }) => (
                           <FormItem>
                             <FormLabel className="font-bold">Current Market Value (£)</FormLabel>
-                            <FormControl><Input type="number" min="0" placeholder="0.00" className="h-11" {...field} value={field.value ?? ''} /></FormControl>
+                            <FormControl>
+                              <Input id="current-valuation" name="currentValuation" type="number" min="0" placeholder="0.00" className="h-11" {...field} value={field.value ?? ''} />
+                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
@@ -440,14 +461,18 @@ export default function AddPropertyPage() {
                         <FormField control={form.control} name="tenancy.monthlyRent" render={({ field }) => (
                           <FormItem>
                             <FormLabel className="font-bold">Gross Monthly Rent (£)</FormLabel>
-                            <FormControl><Input type="number" min="0" placeholder="0.00" className="h-11" {...field} value={field.value ?? ''} /></FormControl>
+                            <FormControl>
+                              <Input id="monthly-rent" name="monthlyRent" type="number" min="0" placeholder="0.00" className="h-11" {...field} value={field.value ?? ''} />
+                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
                         <FormField control={form.control} name="tenancy.depositAmount" render={({ field }) => (
                           <FormItem>
                             <FormLabel className="font-bold">Security Deposit (£)</FormLabel>
-                            <FormControl><Input type="number" min="0" placeholder="0.00" className="h-11" {...field} value={field.value ?? ''} /></FormControl>
+                            <FormControl>
+                              <Input id="deposit-amount" name="depositAmount" type="number" min="0" placeholder="0.00" className="h-11" {...field} value={field.value ?? ''} />
+                            </FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
@@ -455,7 +480,9 @@ export default function AddPropertyPage() {
                           <FormField control={form.control} name="tenancy.depositScheme" render={({ field }) => (
                             <FormItem className="animate-in slide-in-from-top-2 duration-200">
                               <FormLabel className="font-bold text-destructive">Compliance: Protection Scheme</FormLabel>
-                              <FormControl><Input placeholder="e.g. DPS, TDS, MyDeposits" className="h-11 border-destructive/20 focus:border-destructive" {...field} /></FormControl>
+                              <FormControl>
+                                <Input id="deposit-scheme" name="depositScheme" placeholder="e.g. DPS, TDS, MyDeposits" className="h-11 border-destructive/20 focus:border-destructive" {...field} />
+                              </FormControl>
                               <FormMessage />
                             </FormItem>
                           )} />
@@ -494,7 +521,7 @@ export default function AddPropertyPage() {
                           <p className="font-bold text-sm">Assign Main Portfolio Photo</p>
                         </div>
                       )}
-                      <input type="file" ref={mainInputRef} onChange={handleMainFileChange} accept="image/*" className="hidden" />
+                      <input type="file" id="main-photo-upload" name="mainPhoto" ref={mainInputRef} onChange={handleMainFileChange} accept="image/*" className="hidden" />
                     </div>
 
                     <div className="space-y-6 pt-6 border-t">
@@ -515,7 +542,7 @@ export default function AddPropertyPage() {
                           <span className="text-[10px] font-bold uppercase text-muted-foreground">Add Photos</span>
                         </div>
                       </div>
-                      <input type="file" ref={galleryInputRef} onChange={handleGalleryFilesChange} accept="image/*" multiple className="hidden" />
+                      <input type="file" id="gallery-photo-upload" name="galleryPhotos" ref={galleryInputRef} onChange={handleGalleryFilesChange} accept="image/*" multiple className="hidden" />
                     </div>
 
                     <div className="space-y-4 pt-6 border-t">
@@ -523,7 +550,14 @@ export default function AddPropertyPage() {
                         <FormItem>
                           <FormLabel className="font-bold">Confidential Management Notes</FormLabel>
                           <FormControl>
-                            <Textarea placeholder="Observations, history, or specific requirements..." className="resize-none min-h-[120px] rounded-xl" {...field} value={field.value ?? ''} />
+                            <Textarea 
+                              id="management-notes"
+                              name="notes"
+                              placeholder="Observations, history, or specific requirements..." 
+                              className="resize-none min-h-[120px] rounded-xl" 
+                              {...field} 
+                              value={field.value ?? ''} 
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
