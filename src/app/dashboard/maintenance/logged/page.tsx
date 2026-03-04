@@ -210,9 +210,9 @@ export default function MaintenanceLoggedPage() {
         <CardContent className="space-y-6">
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                 <div className="space-y-2">
-                    <Label className="text-sm font-semibold flex items-center gap-2"><Filter className="h-3.5 w-3.5" />Selected Property</Label>
+                    <Label htmlFor="property-filter" className="text-sm font-semibold flex items-center gap-2"><Filter className="h-3.5 w-3.5" />Selected Property</Label>
                     <Select value={selectedPropertyFilter} onValueChange={setSelectedPropertyFilter}>
-                        <SelectTrigger className="w-full bg-background"><SelectValue placeholder="Choose filter" /></SelectTrigger>
+                        <SelectTrigger id="property-filter" className="w-full bg-background"><SelectValue placeholder="Choose filter" /></SelectTrigger>
                         <SelectContent>
                             <SelectItem value="all">All Properties</SelectItem>
                             {properties?.map(prop => (<SelectItem key={prop.id} value={prop.id}>{formatAddress(prop.address)}</SelectItem>))}
@@ -220,8 +220,8 @@ export default function MaintenanceLoggedPage() {
                     </Select>
                 </div>
                 <div className="space-y-2">
-                    <Label className="text-sm font-semibold flex items-center gap-2"><Search className="h-3.5 w-3.5" />Search Issue Title</Label>
-                    <Input placeholder="e.g., 'Leaking'..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="bg-background" />
+                    <Label htmlFor="search-logs" className="text-sm font-semibold flex items-center gap-2"><Search className="h-3.5 w-3.5" />Search Issue Title</Label>
+                    <Input id="search-logs" placeholder="e.g., 'Leaking'..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="bg-background" />
                 </div>
             </div>
         </CardContent>
@@ -265,7 +265,6 @@ export default function MaintenanceLoggedPage() {
         </CardContent>
       </Card>
 
-      {/* Grouped Action Buttons below the records list card */}
       <div className="px-1">
           <Button asChild className="w-full font-bold shadow-lg h-11 px-8 bg-primary hover:bg-primary/90 transition-all">
             <Link href="/dashboard/maintenance">

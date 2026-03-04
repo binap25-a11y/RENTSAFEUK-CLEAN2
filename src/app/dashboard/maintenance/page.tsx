@@ -29,15 +29,16 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { 
   Loader2, 
-  List, 
   Wrench, 
   AlertCircle, 
   Calendar, 
   PlusCircle, 
   Search, 
-  ChevronsUpDown 
+  ChevronsUpDown,
+  List
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useState, useMemo, useEffect } from 'react';
@@ -367,8 +368,8 @@ export default function MaintenancePage() {
                         </div>
                         <div className="space-y-6">
                             <h3 className="font-bold text-lg flex items-center gap-2 text-green-600"><PlusCircle className="h-5 w-5" /> Assignment</h3>
-                            <FormItem>
-                                <FormLabel className="font-bold">Quick-select Contractor</FormLabel>
+                            <div className="space-y-2">
+                                <Label htmlFor="contractor-select" className="font-bold">Quick-select Contractor</Label>
                                 <Select onValueChange={(contractorId) => {
                                     const contractor = contractors?.find(c => c.id === contractorId);
                                     if (contractor) {
@@ -376,18 +377,16 @@ export default function MaintenancePage() {
                                         form.setValue('contractorPhone', contractor.phone);
                                     }
                                 }}>
-                                <FormControl>
-                                    <SelectTrigger className="h-11 bg-background">
+                                    <SelectTrigger id="contractor-select" className="h-11 bg-background">
                                         <SelectValue placeholder="Search your directory..." />
                                     </SelectTrigger>
-                                </FormControl>
-                                <SelectContent>
-                                    {contractors?.map((c) => (
-                                        <SelectItem key={c.id} value={c.id}>{c.name} ({c.trade})</SelectItem>
-                                    ))}
-                                </SelectContent>
+                                    <SelectContent>
+                                        {contractors?.map((c) => (
+                                            <SelectItem key={c.id} value={c.id}>{c.name} ({c.trade})</SelectItem>
+                                        ))}
+                                    </SelectContent>
                                 </Select>
-                            </FormItem>
+                            </div>
                             <FormField control={form.control} name="contractorName" render={({ field }) => (<FormItem><FormLabel className="font-bold">Assigned To</FormLabel><FormControl><Input placeholder="Contractor name" className="h-11 bg-background" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                         </div>
                     </div>

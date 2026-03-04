@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -33,7 +32,8 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2 } from 'lucide-react';
+import { Label } from '@/components/ui/label';
+import { Loader2, ArrowLeft } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
   useUser,
@@ -164,7 +164,7 @@ export default function EditMaintenancePage() {
         <div className="max-w-2xl mx-auto space-y-6">
             <div className='flex items-center gap-4'>
                 <Button variant="outline" size="icon" asChild>
-                    <Link href={`/dashboard/maintenance/${logId}?propertyId=${propertyId}`}><Loader2 className="h-4 w-4 rotate-180" /></Link>
+                    <Link href={`/dashboard/maintenance/${logId}?propertyId=${propertyId}`}><ArrowLeft className="h-4 w-4" /></Link>
                 </Button>
                 <div>
                     <h1 className="text-2xl font-bold font-headline">Edit maintenance</h1>
@@ -254,8 +254,8 @@ export default function EditMaintenancePage() {
                             <Card className="bg-muted/30 border-dashed">
                                 <CardHeader><CardTitle className="text-lg">Contractor & Scheduling</CardTitle></CardHeader>
                                 <CardContent className="space-y-4">
-                                    <FormItem>
-                                        <FormLabel>Select a saved contractor</FormLabel>
+                                    <div className="space-y-2">
+                                        <Label htmlFor="contractor-quick-select">Select a saved contractor</Label>
                                         <Select onValueChange={(contractorId) => {
                                             const contractor = contractors?.find(c => c.id === contractorId);
                                             if (contractor) {
@@ -263,10 +263,12 @@ export default function EditMaintenancePage() {
                                                 form.setValue('contractorPhone', contractor.phone);
                                             }
                                         }}>
-                                            <FormControl><SelectTrigger><SelectValue placeholder="Select from your directory" /></SelectTrigger></FormControl>
+                                            <SelectTrigger id="contractor-quick-select">
+                                                <SelectValue placeholder="Select from your directory" />
+                                            </SelectTrigger>
                                             <SelectContent>{contractors?.map((c) => <SelectItem key={c.id} value={c.id}>{c.name} ({c.trade})</SelectItem>)}</SelectContent>
                                         </Select>
-                                    </FormItem>
+                                    </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <FormField control={form.control} name="contractorName" render={({ field }) => (<FormItem><FormLabel>Contractor Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                                         <FormField control={form.control} name="contractorPhone" render={({ field }) => (<FormItem><FormLabel>Contractor Phone</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
