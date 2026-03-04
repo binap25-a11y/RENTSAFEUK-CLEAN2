@@ -259,6 +259,10 @@ export default function FinancialsPage() {
     doc.save(`RentSafeUK-HMRC-Tax-Report-${selectedYear}.pdf`);
   };
 
+  const formatAddress = (address: Property['address']) => {
+    return [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
+  };
+
   return (
     <div className="flex flex-col gap-6 max-w-6xl mx-auto">
         <div className="flex flex-col gap-4 max-w-md bg-card p-6 rounded-lg border shadow-sm">
@@ -270,7 +274,7 @@ export default function FinancialsPage() {
                         <SelectItem value="all">All Properties (Portfolio View)</SelectItem>
                         {activeProperties?.map((prop) => (
                           <SelectItem key={prop.id} value={prop.id}>
-                            {[prop.address.nameOrNumber, prop.address.street, prop.address.city, prop.address.postcode].filter(Boolean).join(', ')}
+                            {formatAddress(prop.address)}
                           </SelectItem>
                         ))}
                     </SelectContent>
