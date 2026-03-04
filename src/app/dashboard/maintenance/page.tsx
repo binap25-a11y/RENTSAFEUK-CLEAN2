@@ -225,7 +225,8 @@ export default function MaintenancePage() {
                                 <PopoverTrigger asChild>
                                     <FormControl>
                                         <Button
-                                            id="property-selector"
+                                            id="maintenance-property-selector"
+                                            name="propertySelector"
                                             variant="outline"
                                             role="combobox"
                                             className={cn(
@@ -244,8 +245,8 @@ export default function MaintenancePage() {
                                     <div className="flex items-center border-b px-3 bg-muted/20">
                                         <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
                                         <Input 
-                                            id="property-search-input"
-                                            name="property-search"
+                                            id="maintenance-property-search-input"
+                                            name="propertySearch"
                                             placeholder="Type address..." 
                                             className="h-11 border-0 focus-visible:ring-0 bg-transparent" 
                                             value={propertySearch}
@@ -332,7 +333,7 @@ export default function MaintenancePage() {
                                 <FormLabel className="font-bold">Trade Category</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl>
-                                    <SelectTrigger id="issue-category" className="h-11 bg-background">
+                                    <SelectTrigger id="issue-category" name="category" className="h-11 bg-background">
                                       <SelectValue placeholder="Select trade" />
                                     </SelectTrigger>
                                   </FormControl>
@@ -354,7 +355,7 @@ export default function MaintenancePage() {
                                 <FormLabel className="font-bold">Priority Status</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl>
-                                    <SelectTrigger id="issue-priority" className="h-11 bg-background">
+                                    <SelectTrigger id="issue-priority" name="priority" className="h-11 bg-background">
                                       <SelectValue placeholder="Select urgency" />
                                     </SelectTrigger>
                                   </FormControl>
@@ -442,7 +443,7 @@ export default function MaintenancePage() {
                                         form.setValue('contractorPhone', contractor.phone);
                                     }
                                 }}>
-                                    <SelectTrigger id="contractor-quick-select" className="h-11 bg-background">
+                                    <SelectTrigger id="contractor-quick-select" name="contractorQuickSelect" className="h-11 bg-background">
                                         <SelectValue placeholder="Search your directory..." />
                                     </SelectTrigger>
                                     <SelectContent>

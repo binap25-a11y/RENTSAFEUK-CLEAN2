@@ -267,9 +267,9 @@ export default function FinancialsPage() {
     <div className="flex flex-col gap-6 max-w-6xl mx-auto">
         <div className="flex flex-col gap-4 max-w-md bg-card p-6 rounded-lg border shadow-sm">
             <div className="grid w-full gap-1.5">
-                <Label htmlFor="property-filter" className="text-xs uppercase font-bold text-muted-foreground">Scope View</Label>
+                <Label htmlFor="financial-scope-selector" className="text-xs uppercase font-bold text-muted-foreground">Scope View</Label>
                 <Select onValueChange={setSelectedPropertyId} value={selectedPropertyId}>
-                    <SelectTrigger id="property-filter" className="h-12"><SelectValue placeholder="All Properties" /></SelectTrigger>
+                    <SelectTrigger id="financial-scope-selector" name="financialScope"><SelectValue placeholder="All Properties" /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Properties (Portfolio View)</SelectItem>
                         {activeProperties?.map((prop) => (
@@ -281,9 +281,9 @@ export default function FinancialsPage() {
                 </Select>
             </div>
             <div className="grid w-full gap-1.5">
-                <Label htmlFor="year-filter" className="text-xs uppercase font-bold text-muted-foreground">Reporting Year</Label>
+                <Label htmlFor="reporting-year-selector" className="text-xs uppercase font-bold text-muted-foreground">Reporting Year</Label>
                 <Select onValueChange={(value) => setSelectedYear(Number(value))} value={selectedYear ? String(selectedYear) : ''}>
-                    <SelectTrigger id="year-filter" className="h-12"><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="reporting-year-selector" name="reportingYear"><SelectValue /></SelectTrigger>
                     <SelectContent>{Array.from({ length: 5 }, (_, i) => (new Date().getFullYear()) - i).map(year => (<SelectItem key={year} value={String(year)}>{year}</SelectItem>))}</SelectContent>
                 </Select>
             </div>
@@ -369,7 +369,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                     <FormItem>
                         <FormLabel className="font-bold">Target Property</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger id="target-property-selector" className="h-11"><SelectValue placeholder="Select from portfolio" /></SelectTrigger></FormControl>
+                        <FormControl><SelectTrigger id="expense-property-id" name="propertyId" className="h-11"><SelectValue placeholder="Select from portfolio" /></SelectTrigger></FormControl>
                         <SelectContent>{properties.map(p => (<SelectItem key={p.id} value={p.id}>{formatAddress(p.address)}</SelectItem>))}</SelectContent>
                         </Select>
                         <FormMessage />
@@ -396,7 +396,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                         <FormItem>
                             <FormLabel className="font-bold">Category</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl><SelectTrigger id="expense-category" className="h-11"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
+                                <FormControl><SelectTrigger id="expense-category" name="expenseType" className="h-11"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
                                 <SelectContent>
                                     {['Repairs and Maintenance','Utilities','Insurance','Mortgage Interest','Cleaning','Gardening','Letting Agent Fees', 'Other'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                                 </SelectContent>
@@ -544,7 +544,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                             <TableCell className="font-medium">{formatCurrency(row.rent)}</TableCell>
                             <TableCell className="pr-6">
                                 <Select value={row.status} onValueChange={(v) => handleStatusChange(row.month, v as PaymentStatus)}>
-                                    <SelectTrigger id={`payment-status-${row.month}`} className="w-[160px] h-9 text-xs font-bold shadow-none"><SelectValue /></SelectTrigger>
+                                    <SelectTrigger id={`payment-status-${row.month}`} name={`paymentStatus-${row.month}`} className="w-[160px] h-9 text-xs font-bold shadow-none"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="Paid">Paid</SelectItem>
                                         <SelectItem value="Partially Paid">Partially Paid</SelectItem>
