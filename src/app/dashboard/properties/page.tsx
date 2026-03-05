@@ -464,6 +464,8 @@ export default function PropertiesPage() {
             </div>
             
             <Button 
+              id="property-export-button"
+              name="propertyExport"
               variant="ghost" 
               className="font-bold text-muted-foreground hover:text-primary transition-all w-full h-11 px-6 border border-dashed hover:border-primary/50" 
               onClick={exportToCSV} 

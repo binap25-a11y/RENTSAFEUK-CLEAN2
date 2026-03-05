@@ -8,22 +8,32 @@ import { supabase } from './supabase';
  */
 export const uploadPropertyImage = async (file: File, userId: string, propertyId: string): Promise<string> => {
   try {
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}-${file.name}`;
+    if (!file) return '';
+    
+    const fileExt = file.name.split('.').pop();
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
     const filePath = `${userId}/${propertyId}/${fileName}`;
 
+    // Upload to 'images' bucket
     const { data, error } = await supabase.storage
       .from('images') 
-      .upload(filePath, file);
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
 
-    if (error) throw error;
+    if (error) {
+      console.error('Supabase storage upload error:', error.message);
+      return '';
+    }
 
     const { data: urlData } = supabase.storage
       .from('images')
       .getPublicUrl(filePath);
 
-    return urlData.publicUrl;
+    return urlData.publicUrl || '';
   } catch (err) {
-    console.error('Supabase upload error:', err);
+    console.error('Unexpected Supabase upload error:', err);
     return '';
   }
 };
