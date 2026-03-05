@@ -30,6 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { 
   PoundSterling, 
   Loader2, 
@@ -54,7 +55,6 @@ import {
   useMemoFirebase,
 } from '@/firebase';
 import { collection, query, where, doc, setDoc, addDoc, limit, onSnapshot } from 'firebase/firestore';
-import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import jsPDF from 'jspdf';
 import 'jspdf-autotable';
