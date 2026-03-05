@@ -259,6 +259,7 @@ export default function FinancialsPage() {
   };
 
   const formatAddress = (address: Property['address']) => {
+    if (!address) return 'N/A';
     return [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
   };
 
@@ -351,6 +352,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
   }
 
   const formatAddress = (address: Property['address']) => {
+    if (!address) return 'N/A';
     return [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
   };
 

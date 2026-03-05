@@ -297,7 +297,7 @@ export default function MaintenancePage() {
                             name="category"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="font-bold">Trade Category</FormLabel>
+                                <FormLabel className="font-bold" htmlFor="issue-category">Trade Category</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl>
                                     <SelectTrigger id="issue-category" name="category" className="h-11 bg-background">
@@ -319,7 +319,7 @@ export default function MaintenancePage() {
                             name="priority"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="font-bold">Priority Status</FormLabel>
+                                <FormLabel className="font-bold" htmlFor="issue-priority">Priority Status</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl>
                                     <SelectTrigger id="issue-priority" name="priority" className="h-11 bg-background">
@@ -344,7 +344,7 @@ export default function MaintenancePage() {
                             name="otherCategoryDetails"
                             render={({ field }) => (
                               <FormItem className="animate-in fade-in slide-in-from-top-2">
-                                <FormLabel className="font-bold">Category Details</FormLabel>
+                                <FormLabel className="font-bold" htmlFor="other-category-details">Category Details</FormLabel>
                                 <FormControl>
                                   <Textarea
                                     id="other-category-details"
@@ -364,7 +364,7 @@ export default function MaintenancePage() {
 
                         <FormField control={form.control} name="title" render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="font-bold">Issue Headline</FormLabel>
+                            <FormLabel className="font-bold" htmlFor="issue-title">Issue Headline</FormLabel>
                             <FormControl>
                               <Input 
                                 id="issue-title"
@@ -380,7 +380,7 @@ export default function MaintenancePage() {
                         )} />
                         <FormField control={form.control} name="description" render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="font-bold">Detailed Description</FormLabel>
+                            <FormLabel className="font-bold" htmlFor="issue-description">Detailed Description</FormLabel>
                             <FormControl>
                               <Textarea 
                                 id="issue-description"
@@ -401,7 +401,7 @@ export default function MaintenancePage() {
                             <h3 className="font-bold text-lg flex items-center gap-2"><Calendar className="h-5 w-5 text-primary" /> Audit Info</h3>
                             <FormField control={form.control} name="reportedBy" render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="font-bold">Reported By</FormLabel>
+                                <FormLabel className="font-bold" htmlFor="reported-by">Reported By</FormLabel>
                                 <FormControl>
                                   <Input 
                                     id="reported-by"
@@ -417,7 +417,7 @@ export default function MaintenancePage() {
                             )} />
                             <FormField control={form.control} name="reportedDate" render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="font-bold">Date of Report</FormLabel>
+                                <FormLabel className="font-bold" htmlFor="reported-date">Date of Report</FormLabel>
                                 <FormControl>
                                   <Input 
                                     id="reported-date"
@@ -455,7 +455,7 @@ export default function MaintenancePage() {
                             </div>
                             <FormField control={form.control} name="contractorName" render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="font-bold">Assigned To</FormLabel>
+                                <FormLabel className="font-bold" htmlFor="contractor-name">Assigned To</FormLabel>
                                 <FormControl>
                                   <Input 
                                     id="contractor-name"
