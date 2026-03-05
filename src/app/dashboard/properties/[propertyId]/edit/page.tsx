@@ -45,14 +45,6 @@ const propertySchema = z.object({
     depositAmount: z.coerce.number().min(0, 'Cannot be negative').optional(),
     depositScheme: z.string().optional(),
   }).optional(),
-}).refine(data => {
-  if (data.tenancy?.depositAmount && data.tenancy.depositAmount > 0) {
-    return !!(data.tenancy.depositScheme && data.tenancy.depositScheme.trim());
-  }
-  return true;
-}, {
-  message: "Deposit scheme is required if a deposit amount is entered.",
-  path: ["tenancy", "depositScheme"]
 });
 
 type PropertyFormValues = z.infer<typeof propertySchema>;
@@ -102,6 +94,7 @@ export default function EditPropertyPage() {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  // Media state for Supabase integration
   const [selectedMainFile, setSelectedMainFile] = useState<File | null>(null);
   const [mainPreviewUrl, setMainPreviewUrl] = useState<string | null>(null);
   const mainInputRef = useRef<HTMLInputElement>(null);
@@ -209,6 +202,7 @@ export default function EditPropertyPage() {
     setIsSubmitting(true);
 
     try {
+      // Step 1: Upload previewed images to Supabase 'images' bucket
       let finalImageUrl = property?.imageUrl || '';
       if (selectedMainFile) {
           finalImageUrl = await uploadPropertyImage(selectedMainFile, user.uid, propertyId);
@@ -220,9 +214,10 @@ export default function EditPropertyPage() {
               return uploadPropertyImage(file, user.uid, propertyId);
           });
           const newUrls = await Promise.all(uploadPromises);
-          galleryUrls.push(...newUrls);
+          galleryUrls.push(...newUrls.filter(Boolean));
       }
 
+      // Step 2: Update Firestore record with Supabase URLs and form data
       const docRef = doc(firestore, 'userProfiles', user.uid, 'properties', propertyId);
       
       const updateData = {
@@ -233,15 +228,13 @@ export default function EditPropertyPage() {
       };
       
       const cleanedData = JSON.parse(JSON.stringify(updateData));
-      
-      // Use updateDoc to protect against accidental record reset/deletion
       await updateDoc(docRef, cleanedData);
       
       toast({ title: "Property Record Updated" });
       router.push(`/dashboard/properties/${propertyId}`);
     } catch (e) {
       console.error("Update failed:", e);
-      toast({ variant: "destructive", title: "Update Failed", description: "Could not sync changes to the database." });
+      toast({ variant: "destructive", title: "Update Failed", description: "Could not sync media or data." });
     } finally {
       setIsSubmitting(false);
     }
@@ -253,7 +246,7 @@ export default function EditPropertyPage() {
       <Card className="max-w-5xl mx-auto shadow-md border-none">
       <CardHeader className="bg-primary/5 border-b border-primary/10">
         <CardTitle className="text-2xl font-headline text-primary">Edit Portfolio Property</CardTitle>
-        <CardDescription>Refine location data and financial parameters for your property record.</CardDescription>
+        <CardDescription>Update location, financials, and media for your asset.</CardDescription>
       </CardHeader>
       <CardContent className="pt-8">
         <Form {...form}>
@@ -263,20 +256,50 @@ export default function EditPropertyPage() {
                 <Card className="border-none shadow-none bg-muted/20">
                     <CardHeader><CardTitle className="text-lg font-headline">Verified Address</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
-                        <FormField control={form.control} name="address.nameOrNumber" render={({ field }) => (<FormItem><FormLabel>Building Name/No</FormLabel><FormControl><Input placeholder="e.g. Flat 1 or 12" className="h-11 bg-background" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                        <FormField control={form.control} name="address.street" render={({ field }) => (<FormItem><FormLabel>Street Address</FormLabel><FormControl><Input placeholder="e.g. High Street" className="h-11 bg-background" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="address.nameOrNumber" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel htmlFor="edit-nameOrNumber">Building Name/No</FormLabel>
+                            <FormControl><Input id="edit-nameOrNumber" name="nameOrNumber" placeholder="e.g. Flat 1" className="h-11 bg-background" {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <FormField control={form.control} name="address.street" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel htmlFor="edit-street">Street Address</FormLabel>
+                            <FormControl><Input id="edit-street" name="street" placeholder="e.g. High Street" className="h-11 bg-background" {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                            <FormField control={form.control} name="address.city" render={({ field }) => (<FormItem><FormLabel>City/Town</FormLabel><FormControl><Input placeholder="London" className="h-11 bg-background" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                            <FormField control={form.control} name="address.county" render={({ field }) => (<FormItem><FormLabel>County</FormLabel><FormControl><Input placeholder="e.g. Surrey" className="h-11 bg-background" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="address.city" render={({ field }) => (
+                              <FormItem>
+                                <FormLabel htmlFor="edit-city">City/Town</FormLabel>
+                                <FormControl><Input id="edit-city" name="city" placeholder="London" className="h-11 bg-background" {...field} /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )} />
+                            <FormField control={form.control} name="address.county" render={({ field }) => (
+                              <FormItem>
+                                <FormLabel htmlFor="edit-county">County</FormLabel>
+                                <FormControl><Input id="edit-county" name="county" placeholder="e.g. Surrey" className="h-11 bg-background" {...field} /></FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )} />
                         </div>
-                        <FormField control={form.control} name="address.postcode" render={({ field }) => (<FormItem><FormLabel>Post Code</FormLabel><FormControl><Input placeholder="W1A 1AA" className="uppercase h-11 bg-background" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="address.postcode" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel htmlFor="edit-postcode">Post Code</FormLabel>
+                            <FormControl><Input id="edit-postcode" name="postcode" placeholder="W1A 1AA" className="uppercase h-11 bg-background" {...field} /></FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
                     </CardContent>
                 </Card>
 
                 <div className="space-y-4">
                     <FormLabel className="font-bold flex items-center gap-2">
                         <MapPin className="h-4 w-4 text-primary" />
-                        Geo-Location Verification
+                        Location Verification
                     </FormLabel>
                     <div className="aspect-square w-full rounded-2xl overflow-hidden border-2 border-muted bg-muted shadow-inner relative">
                         {mapUrl ? (
@@ -286,13 +309,12 @@ export default function EditPropertyPage() {
                                 height="100%" 
                                 style={{ border: 0 }} 
                                 title="Property Map" 
-                                loading="lazy" 
                                 src={mapUrl}
                             ></iframe>
                         ) : (
                             <div className="absolute inset-0 flex flex-col items-center justify-center text-center p-6 text-muted-foreground/40">
                                 <MapPin className="h-12 w-12 mb-2" />
-                                <p className="text-xs font-bold uppercase tracking-widest text-center">Address resolution pending...</p>
+                                <p className="text-xs font-bold">Awaiting address...</p>
                             </div>
                         )}
                     </div>
@@ -303,15 +325,15 @@ export default function EditPropertyPage() {
                 <div className="space-y-6">
                     <FormLabel className="font-bold flex items-center gap-2 text-lg">
                         <Home className="h-5 w-5 text-primary" />
-                        Main Identity Photo
+                        Portfolio Photo
                     </FormLabel>
                     
                     {mainPreviewUrl ? (
                         <div className="relative w-full aspect-video rounded-2xl overflow-hidden border shadow-lg group bg-muted/10">
-                            <Image src={mainPreviewUrl} alt="Main Photo" fill className="object-cover" />
+                            <Image src={mainPreviewUrl} alt="Main" fill className="object-cover" />
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
                                 <Button type="button" variant="secondary" size="sm" onClick={() => mainInputRef.current?.click()}>
-                                    <Upload className="mr-2 h-4 w-4" /> Replace Photo
+                                    <Upload className="mr-2 h-4 w-4" /> Replace
                                 </Button>
                                 <Button type="button" variant="destructive" size="sm" onClick={() => { setSelectedMainFile(null); setMainPreviewUrl(null); }}>
                                     <X className="mr-2 h-4 w-4" /> Remove
@@ -319,25 +341,25 @@ export default function EditPropertyPage() {
                             </div>
                         </div>
                     ) : (
-                        <div className="border-2 border-dashed rounded-2xl p-12 text-center bg-muted/5 cursor-pointer hover:border-primary/50 transition-all" onClick={() => mainInputRef.current?.click()}>
+                        <div className="border-2 border-dashed rounded-2xl p-12 text-center bg-muted/5 cursor-pointer hover:border-primary/50" onClick={() => mainInputRef.current?.click()}>
                             <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
-                            <p className="text-sm font-bold">Assign Main Portfolio Photo</p>
+                            <p className="text-sm font-bold">Assign Identity Photo</p>
                         </div>
                     )}
-                    <input type="file" ref={mainInputRef} onChange={handleMainFileChange} accept="image/*" className="hidden" />
+                    <input type="file" ref={mainInputRef} onChange={handleMainFileChange} accept="image/*" className="hidden" id="edit-main-photo" name="mainPhoto" />
                 </div>
 
                 <div className="space-y-6">
                     <FormLabel className="font-bold flex items-center gap-2 text-lg">
                         <Images className="h-5 w-5 text-primary" />
-                        Property Gallery
+                        Gallery
                     </FormLabel>
                     
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                         {existingGallery.map((url, idx) => (
                             <div key={`existing-${idx}`} className="relative aspect-square rounded-xl overflow-hidden border group">
-                                <Image src={url} alt="Gallery item" fill className="object-cover" />
-                                <button type="button" onClick={() => removeExistingGalleryImage(url)} className="absolute top-1 right-1 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                                <Image src={url} alt="Gallery" fill className="object-cover" />
+                                <button type="button" onClick={() => removeExistingGalleryImage(url)} className="absolute top-1 right-1 p-1 bg-destructive text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
                                     <X className="h-3 w-3" />
                                 </button>
                             </div>
@@ -345,20 +367,20 @@ export default function EditPropertyPage() {
                         
                         {newGalleryPreviews.map((preview, idx) => (
                             <div key={`new-${idx}`} className="relative aspect-square rounded-xl overflow-hidden border border-primary group">
-                                <Image src={preview} alt="New upload" fill className="object-cover" />
+                                <Image src={preview} alt="New" fill className="object-cover" />
                                 <Badge className="absolute bottom-1 left-1 h-4 text-[8px] bg-primary">New</Badge>
-                                <button type="button" onClick={() => removeNewGalleryImage(idx)} className="absolute top-1 right-1 p-1 bg-destructive text-destructive-foreground rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
+                                <button type="button" onClick={() => removeNewGalleryImage(idx)} className="absolute top-1 right-1 p-1 bg-destructive text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity">
                                     <X className="h-3 w-3" />
                                 </button>
                             </div>
                         ))}
 
-                        <div className="border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 bg-muted/5 cursor-pointer hover:border-primary/50 transition-all aspect-square" onClick={() => galleryInputRef.current?.click()}>
+                        <div className="border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 bg-muted/5 cursor-pointer hover:border-primary/50 aspect-square" onClick={() => galleryInputRef.current?.click()}>
                             <PlusCircle className="h-6 w-6 text-muted-foreground" />
-                            <span className="text-[10px] font-bold uppercase text-muted-foreground">Add Photos</span>
+                            <span className="text-[10px] font-bold">Add Media</span>
                         </div>
                     </div>
-                    <input type="file" ref={galleryInputRef} onChange={handleNewGalleryFiles} accept="image/*" multiple className="hidden" />
+                    <input type="file" ref={galleryInputRef} onChange={handleNewGalleryFiles} accept="image/*" multiple className="hidden" id="edit-gallery-photos" name="galleryPhotos" />
                 </div>
             </div>
 
@@ -369,44 +391,41 @@ export default function EditPropertyPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <FormField control={form.control} name="purchasePrice" render={({ field }) => (
                             <FormItem>
-                            <FormLabel>Purchase Price (£)</FormLabel>
-                            <FormControl><Input type="number" min="0" className="h-11 bg-background" {...field} value={field.value ?? ''} /></FormControl>
+                            <FormLabel htmlFor="edit-purchasePrice">Purchase Price (£)</FormLabel>
+                            <FormControl><Input id="edit-purchasePrice" name="purchasePrice" type="number" min="0" className="h-11 bg-background" {...field} value={field.value ?? ''} /></FormControl>
                             <FormMessage />
                             </FormItem>
                         )} />
                         <FormField control={form.control} name="currentValuation" render={({ field }) => (
                             <FormItem>
-                            <FormLabel>Current Valuation (£)</FormLabel>
-                            <FormControl><Input type="number" min="0" className="h-11 bg-background" {...field} value={field.value ?? ''} /></FormControl>
+                            <FormLabel htmlFor="edit-valuation">Valuation (£)</FormLabel>
+                            <FormControl><Input id="edit-valuation" name="currentValuation" type="number" min="0" className="h-11 bg-background" {...field} value={field.value ?? ''} /></FormControl>
                             <FormMessage />
                             </FormItem>
                         )} />
                         </div>
                         <div className="pt-6 border-t border-muted-foreground/10 space-y-4">
-                            <h4 className="text-sm font-bold uppercase tracking-widest text-primary flex items-center gap-2">
-                                <ShieldAlert className="h-4 w-4" />
-                                Protection Compliance
-                            </h4>
+                            <h4 className="text-sm font-bold uppercase text-primary">Tenancy Status</h4>
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <FormField control={form.control} name="tenancy.monthlyRent" render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Gross Monthly Rent (£)</FormLabel>
-                                    <FormControl><Input type="number" min="0" placeholder="0.00" className="h-11 bg-background" {...field} value={field.value ?? ''} /></FormControl>
+                                    <FormLabel htmlFor="edit-monthlyRent">Monthly Rent (£)</FormLabel>
+                                    <FormControl><Input id="edit-monthlyRent" name="monthlyRent" type="number" min="0" className="h-11 bg-background" {...field} value={field.value ?? ''} /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                                 )} />
                                 <FormField control={form.control} name="tenancy.depositAmount" render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Security Deposit (£)</FormLabel>
-                                    <FormControl><Input type="number" min="0" placeholder="0.00" className="h-11 bg-background" {...field} value={field.value ?? ''} /></FormControl>
+                                    <FormLabel htmlFor="edit-depositAmount">Security Deposit (£)</FormLabel>
+                                    <FormControl><Input id="edit-depositAmount" name="depositAmount" type="number" min="0" className="h-11 bg-background" {...field} value={field.value ?? ''} /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                                 )} />
                             </div>
                             <FormField control={form.control} name="tenancy.depositScheme" render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel>Deposit Protection Scheme</FormLabel>
-                                    <FormControl><Input placeholder="e.g. DPS, TDS, MyDeposits" className="h-11 bg-background" {...field} /></FormControl>
+                                    <FormLabel htmlFor="edit-depositScheme">Deposit Scheme</FormLabel>
+                                    <FormControl><Input id="edit-depositScheme" name="depositScheme" placeholder="e.g. DPS" className="h-11 bg-background" {...field} /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )} />
@@ -415,23 +434,21 @@ export default function EditPropertyPage() {
                 </Card>
 
                 <Card className="border-none shadow-none bg-muted/20">
-                  <CardHeader><CardTitle className="text-lg font-headline">Core Specification</CardTitle></CardHeader>
+                  <CardHeader><CardTitle className="text-lg font-headline">Core Attributes</CardTitle></CardHeader>
                   <CardContent className="space-y-6">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <FormField control={form.control} name="propertyType" render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Architectural Type</FormLabel>
+                          <FormLabel htmlFor="edit-propertyType">Asset Type</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
-                              <SelectTrigger className="h-11 bg-background">
-                                <SelectValue placeholder="Select type" />
+                              <SelectTrigger id="edit-propertyType" name="propertyType" className="h-11 bg-background">
+                                <SelectValue />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
                               {propertyTypes.map((type) => (
-                                <SelectItem key={type.value} value={type.value}>
-                                  {type.label}
-                                </SelectItem>
+                                <SelectItem key={type.value} value={type.value}>{type.label}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
@@ -440,18 +457,16 @@ export default function EditPropertyPage() {
                       )} />
                       <FormField control={form.control} name="status" render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Portfolio Status</FormLabel>
+                          <FormLabel htmlFor="edit-status">Portfolio Status</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
-                              <SelectTrigger className="h-11 bg-background">
-                                <SelectValue placeholder="Select status" />
+                              <SelectTrigger id="edit-status" name="status" className="h-11 bg-background">
+                                <SelectValue />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              {['Vacant', 'Occupied', 'Under Maintenance'].map((status) => (
-                                <SelectItem key={status} value={status}>
-                                  {status}
-                                </SelectItem>
+                              {['Vacant', 'Occupied', 'Under Maintenance'].map((s) => (
+                                <SelectItem key={s} value={s}>{s}</SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
@@ -462,24 +477,24 @@ export default function EditPropertyPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <FormField control={form.control} name="bedrooms" render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Bedrooms</FormLabel>
-                          <FormControl><Input type="number" min="0" className="h-11 bg-background" {...field} /></FormControl>
+                          <FormLabel htmlFor="edit-bedrooms">Bedrooms</FormLabel>
+                          <FormControl><Input id="edit-bedrooms" name="bedrooms" type="number" min="0" className="h-11 bg-background" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )} />
                       <FormField control={form.control} name="bathrooms" render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Bathrooms</FormLabel>
-                          <FormControl><Input type="number" min="0" className="h-11 bg-background" {...field} /></FormControl>
+                          <FormLabel htmlFor="edit-bathrooms">Bathrooms</FormLabel>
+                          <FormControl><Input id="edit-bathrooms" name="bathrooms" type="number" min="0" className="h-11 bg-background" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )} />
                     </div>
                     <FormField control={form.control} name="notes" render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Confidential Audit Notes</FormLabel>
+                            <FormLabel htmlFor="edit-notes">Internal Audit Notes</FormLabel>
                             <FormControl>
-                                <Textarea rows={5} className="bg-background resize-none" placeholder="Describe unique features, maintenance history, or specific landlord observations..." {...field} value={field.value ?? ''} />
+                                <Textarea id="edit-notes" name="notes" rows={5} className="bg-background resize-none" {...field} value={field.value ?? ''} />
                             </FormControl>
                             <FormMessage />
                         </FormItem>
@@ -491,7 +506,7 @@ export default function EditPropertyPage() {
             <div className="flex justify-end gap-4 pt-6 border-t">
               <Button type="button" variant="ghost" className="font-bold uppercase tracking-widest text-xs h-11" asChild><Link href={`/dashboard/properties/${propertyId}`}>Cancel</Link></Button>
               <Button type="submit" disabled={isSubmitting} className="font-bold uppercase tracking-widest text-xs h-11 px-10 shadow-lg">
-                {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Syncing Data...</> : 'Save Portfolio Updates'}
+                {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Syncing Media...</> : 'Save Portfolio Updates'}
               </Button>
             </div>
           </form>
