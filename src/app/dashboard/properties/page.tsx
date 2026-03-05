@@ -224,7 +224,7 @@ export default function PropertiesPage() {
   
   return (
     <>
-      <div className="flex flex-col gap-8">
+      <div className="flex flex-col gap-8 max-w-6xl mx-auto">
         <div className="space-y-2">
             <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">My Properties</h1>
             <p className="text-muted-foreground font-medium text-lg">

@@ -103,7 +103,7 @@ export default function AddPropertyPage() {
       setGalleryFiles(prev => [...prev, ...files]);
       files.forEach(file => {
         const reader = new FileReader();
-        reader.onloadend = () => setNewGalleryPreviews(prev => [...prev, reader.result as string]);
+        reader.onloadend = () => setGalleryPreviews(prev => [...prev, reader.result as string]);
         reader.readAsDataURL(file);
       });
     }
@@ -174,21 +174,21 @@ export default function AddPropertyPage() {
               <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-4">
                   <FormField control={form.control} name="address.nameOrNumber" render={({ field }) => (
-                    <FormItem><FormLabel htmlFor="prop-add-number">Building Name/No</FormLabel><FormControl><Input id="prop-add-number" placeholder="e.g. Flat 1" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel htmlFor="prop-add-number">Building Name/No</FormLabel><FormControl><Input id="prop-add-number" name="nameOrNumber" placeholder="e.g. Flat 1" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={form.control} name="address.street" render={({ field }) => (
-                    <FormItem><FormLabel htmlFor="prop-add-street">Street Address</FormLabel><FormControl><Input id="prop-add-street" placeholder="High Street" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel htmlFor="prop-add-street">Street Address</FormLabel><FormControl><Input id="prop-add-street" name="street" placeholder="High Street" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <div className="grid grid-cols-2 gap-4">
                     <FormField control={form.control} name="address.city" render={({ field }) => (
-                      <FormItem><FormLabel htmlFor="prop-add-city">City</FormLabel><FormControl><Input id="prop-add-city" placeholder="London" {...field} /></FormControl><FormMessage /></FormItem>
+                      <FormItem><FormLabel htmlFor="prop-add-city">City</FormLabel><FormControl><Input id="prop-add-city" name="city" placeholder="London" {...field} /></FormControl><FormMessage /></FormItem>
                     )} />
                     <FormField control={form.control} name="address.postcode" render={({ field }) => (
-                      <FormItem><FormLabel htmlFor="prop-add-postcode">Postcode</FormLabel><FormControl><Input id="prop-add-postcode" placeholder="W1A 1AA" {...field} /></FormControl><FormMessage /></FormItem>
+                      <FormItem><FormLabel htmlFor="prop-add-postcode">Postcode</FormLabel><FormControl><Input id="prop-add-postcode" name="postcode" placeholder="W1A 1AA" {...field} /></FormControl><FormMessage /></FormItem>
                     )} />
                   </div>
                   <FormField control={form.control} name="address.county" render={({ field }) => (
-                    <FormItem><FormLabel htmlFor="prop-add-county">County</FormLabel><FormControl><Input id="prop-add-county" placeholder="Surrey" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel htmlFor="prop-add-county">County</FormLabel><FormControl><Input id="prop-add-county" name="county" placeholder="Surrey" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                 </div>
                 <div className="aspect-square rounded-2xl overflow-hidden border-2 bg-muted relative">
@@ -220,14 +220,14 @@ export default function AddPropertyPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-6">
                   <FormField control={form.control} name="bedrooms" render={({ field }) => (
-                    <FormItem><FormLabel htmlFor="prop-add-beds">Bedrooms</FormLabel><FormControl><Input id="prop-add-beds" type="number" {...field} /></FormControl></FormItem>
+                    <FormItem><FormLabel htmlFor="prop-add-beds">Bedrooms</FormLabel><FormControl><Input id="prop-add-beds" name="bedrooms" type="number" {...field} /></FormControl></FormItem>
                   )} />
                   <FormField control={form.control} name="bathrooms" render={({ field }) => (
-                    <FormItem><FormLabel htmlFor="prop-add-baths">Bathrooms</FormLabel><FormControl><Input id="prop-add-baths" type="number" {...field} /></FormControl></FormItem>
+                    <FormItem><FormLabel htmlFor="prop-add-baths">Bathrooms</FormLabel><FormControl><Input id="prop-add-baths" name="bathrooms" type="number" {...field} /></FormControl></FormItem>
                   )} />
                 </div>
                 <FormField control={form.control} name="notes" render={({ field }) => (
-                  <FormItem><FormLabel htmlFor="prop-add-notes">Confidential Audit Notes</FormLabel><FormControl><Textarea id="prop-add-notes" rows={4} {...field} /></FormControl></FormItem>
+                  <FormItem><FormLabel htmlFor="prop-add-notes">Confidential Audit Notes</FormLabel><FormControl><Textarea id="prop-add-notes" name="notes" rows={4} {...field} /></FormControl></FormItem>
                 )} />
               </CardContent>
               <CardFooter className="justify-between border-t pt-6">
@@ -246,24 +246,24 @@ export default function AddPropertyPage() {
               <CardContent className="pt-6 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField control={form.control} name="purchasePrice" render={({ field }) => (
-                    <FormItem><FormLabel htmlFor="prop-add-purchase">Purchase Price (£)</FormLabel><FormControl><Input id="prop-add-purchase" type="number" {...field} value={field.value ?? ''} /></FormControl></FormItem>
+                    <FormItem><FormLabel htmlFor="prop-add-purchase">Purchase Price (£)</FormLabel><FormControl><Input id="prop-add-purchase" name="purchasePrice" type="number" {...field} value={field.value ?? ''} /></FormControl></FormItem>
                   )} />
                   <FormField control={form.control} name="currentValuation" render={({ field }) => (
-                    <FormItem><FormLabel htmlFor="prop-add-valuation">Market Valuation (£)</FormLabel><FormControl><Input id="prop-add-valuation" type="number" {...field} value={field.value ?? ''} /></FormControl></FormItem>
+                    <FormItem><FormLabel htmlFor="prop-add-valuation">Market Valuation (£)</FormLabel><FormControl><Input id="prop-add-valuation" name="currentValuation" type="number" {...field} value={field.value ?? ''} /></FormControl></FormItem>
                   )} />
                 </div>
                 <div className="pt-6 border-t space-y-4">
                   <h4 className="text-sm font-bold uppercase tracking-widest text-primary">Tenancy Terms</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField control={form.control} name="tenancy.monthlyRent" render={({ field }) => (
-                      <FormItem><FormLabel htmlFor="prop-add-rent">Agreed Rent (£/mo)</FormLabel><FormControl><Input id="prop-add-rent" type="number" {...field} value={field.value ?? ''} /></FormControl></FormItem>
+                      <FormItem><FormLabel htmlFor="prop-add-rent">Agreed Rent (£/mo)</FormLabel><FormControl><Input id="prop-add-rent" name="monthlyRent" type="number" {...field} value={field.value ?? ''} /></FormControl></FormItem>
                     )} />
                     <FormField control={form.control} name="tenancy.depositAmount" render={({ field }) => (
-                      <FormItem><FormLabel htmlFor="prop-add-deposit">Security Deposit (£)</FormLabel><FormControl><Input id="prop-add-deposit" type="number" {...field} value={field.value ?? ''} /></FormControl></FormItem>
+                      <FormItem><FormLabel htmlFor="prop-add-deposit">Security Deposit (£)</FormLabel><FormControl><Input id="prop-add-deposit" name="depositAmount" type="number" {...field} value={field.value ?? ''} /></FormControl></FormItem>
                     )} />
                   </div>
                   <FormField control={form.control} name="tenancy.depositScheme" render={({ field }) => (
-                    <FormItem><FormLabel htmlFor="prop-add-scheme">Protection Scheme</FormLabel><FormControl><Input id="prop-add-scheme" placeholder="e.g. DPS" {...field} /></FormControl></FormItem>
+                    <FormItem><FormLabel htmlFor="prop-add-scheme">Protection Scheme</FormLabel><FormControl><Input id="prop-add-scheme" name="depositScheme" placeholder="e.g. DPS" {...field} /></FormControl></FormItem>
                   )} />
                 </div>
               </CardContent>
@@ -293,7 +293,7 @@ export default function AddPropertyPage() {
                       <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" /><p className="text-sm font-bold">Assign Main Photo</p>
                     </div>
                   )}
-                  <input id="main-photo-upload" type="file" ref={mainInputRef} className="hidden" accept="image/*" onChange={handleMainFileChange} />
+                  <input id="main-photo-upload" name="mainPhoto" type="file" ref={mainInputRef} className="hidden" accept="image/*" onChange={handleMainFileChange} />
                 </div>
 
                 <div className="space-y-4 pt-6 border-t">
@@ -309,7 +309,7 @@ export default function AddPropertyPage() {
                       <PlusCircle className="h-6 w-6 text-muted-foreground" /><span className="text-[10px] font-bold uppercase">Add Photos</span>
                     </div>
                   </div>
-                  <input id="gallery-photo-upload" type="file" ref={galleryInputRef} className="hidden" accept="image/*" multiple onChange={handleGalleryFilesChange} />
+                  <input id="gallery-photo-upload" name="galleryPhotos" type="file" ref={galleryInputRef} className="hidden" accept="image/*" multiple onChange={handleGalleryFilesChange} />
                 </div>
               </CardContent>
               <CardFooter className="justify-between border-t pt-6">
