@@ -25,6 +25,7 @@ interface Property {
     street: string;
     city: string;
   };
+  status: string;
 }
 
 interface Document {
@@ -63,9 +64,13 @@ export function Notifications() {
   const { user } = useUser();
   const firestore = useFirestore();
 
+  // Filter properties by active status to ensure notifications update when a property is deleted
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    return query(collection(firestore, 'userProfiles', user.uid, 'properties'), where('ownerId', '==', user.uid));
+    return query(
+      collection(firestore, 'userProfiles', user.uid, 'properties'), 
+      where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
+    );
   }, [firestore, user]);
   const { data: properties } = useCollection<Property>(propertiesQuery);
 
