@@ -217,7 +217,7 @@ export default function EditPropertyPage() {
           galleryUrls.push(...newUrls.filter(Boolean));
       }
 
-      // Step 2: Update Firestore record with Supabase URLs and form data
+      // Step 2: Update Firestore record using updateDoc to ensure it is NOT deleted or overwritten
       const docRef = doc(firestore, 'userProfiles', user.uid, 'properties', propertyId);
       
       const updateData = {
@@ -228,13 +228,14 @@ export default function EditPropertyPage() {
       };
       
       const cleanedData = JSON.parse(JSON.stringify(updateData));
+      // updateDoc only modifies the provided fields, so the document won't be deleted.
       await updateDoc(docRef, cleanedData);
       
-      toast({ title: "Property Record Updated" });
+      toast({ title: "Property Record Updated", description: "All changes have been successfully saved to your portfolio." });
       router.push(`/dashboard/properties/${propertyId}`);
     } catch (e) {
       console.error("Update failed:", e);
-      toast({ variant: "destructive", title: "Update Failed", description: "Could not sync media or data." });
+      toast({ variant: "destructive", title: "Update Failed", description: "Could not sync media or data. Please check your connection." });
     } finally {
       setIsSubmitting(false);
     }
@@ -246,7 +247,7 @@ export default function EditPropertyPage() {
       <Card className="max-w-5xl mx-auto shadow-md border-none">
       <CardHeader className="bg-primary/5 border-b border-primary/10">
         <CardTitle className="text-2xl font-headline text-primary">Edit Portfolio Property</CardTitle>
-        <CardDescription>Update location, financials, and media for your asset.</CardDescription>
+        <CardDescription>Update location, financials, and media for your asset. This action modifies the record without deleting it.</CardDescription>
       </CardHeader>
       <CardContent className="pt-8">
         <Form {...form}>
@@ -258,38 +259,38 @@ export default function EditPropertyPage() {
                     <CardContent className="space-y-4">
                         <FormField control={form.control} name="address.nameOrNumber" render={({ field }) => (
                           <FormItem>
-                            <FormLabel htmlFor="edit-nameOrNumber">Building Name/No</FormLabel>
-                            <FormControl><Input id="edit-nameOrNumber" name="nameOrNumber" placeholder="e.g. Flat 1" className="h-11 bg-background" {...field} /></FormControl>
+                            <FormLabel htmlFor="edit-prop-number">Building Name/No</FormLabel>
+                            <FormControl><Input id="edit-prop-number" name="address.nameOrNumber" placeholder="e.g. Flat 1" className="h-11 bg-background" {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
                         <FormField control={form.control} name="address.street" render={({ field }) => (
                           <FormItem>
-                            <FormLabel htmlFor="edit-street">Street Address</FormLabel>
-                            <FormControl><Input id="edit-street" name="street" placeholder="e.g. High Street" className="h-11 bg-background" {...field} /></FormControl>
+                            <FormLabel htmlFor="edit-prop-street">Street Address</FormLabel>
+                            <FormControl><Input id="edit-prop-street" name="address.street" placeholder="e.g. High Street" className="h-11 bg-background" {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                             <FormField control={form.control} name="address.city" render={({ field }) => (
                               <FormItem>
-                                <FormLabel htmlFor="edit-city">City/Town</FormLabel>
-                                <FormControl><Input id="edit-city" name="city" placeholder="London" className="h-11 bg-background" {...field} /></FormControl>
+                                <FormLabel htmlFor="edit-prop-city">City/Town</FormLabel>
+                                <FormControl><Input id="edit-prop-city" name="address.city" placeholder="London" className="h-11 bg-background" {...field} /></FormControl>
                                 <FormMessage />
                               </FormItem>
                             )} />
                             <FormField control={form.control} name="address.county" render={({ field }) => (
                               <FormItem>
-                                <FormLabel htmlFor="edit-county">County</FormLabel>
-                                <FormControl><Input id="edit-county" name="county" placeholder="e.g. Surrey" className="h-11 bg-background" {...field} /></FormControl>
+                                <FormLabel htmlFor="edit-prop-county">County</FormLabel>
+                                <FormControl><Input id="edit-prop-county" name="address.county" placeholder="e.g. Surrey" className="h-11 bg-background" {...field} /></FormControl>
                                 <FormMessage />
                               </FormItem>
                             )} />
                         </div>
                         <FormField control={form.control} name="address.postcode" render={({ field }) => (
                           <FormItem>
-                            <FormLabel htmlFor="edit-postcode">Post Code</FormLabel>
-                            <FormControl><Input id="edit-postcode" name="postcode" placeholder="W1A 1AA" className="uppercase h-11 bg-background" {...field} /></FormControl>
+                            <FormLabel htmlFor="edit-prop-postcode">Post Code</FormLabel>
+                            <FormControl><Input id="edit-prop-postcode" name="address.postcode" placeholder="W1A 1AA" className="uppercase h-11 bg-background" {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
@@ -346,7 +347,7 @@ export default function EditPropertyPage() {
                             <p className="text-sm font-bold">Assign Identity Photo</p>
                         </div>
                     )}
-                    <input type="file" ref={mainInputRef} onChange={handleMainFileChange} accept="image/*" className="hidden" id="edit-main-photo" name="mainPhoto" />
+                    <input type="file" ref={mainInputRef} onChange={handleMainFileChange} accept="image/*" className="hidden" id="edit-property-main-photo" name="mainPhoto" />
                 </div>
 
                 <div className="space-y-6">
@@ -380,7 +381,7 @@ export default function EditPropertyPage() {
                             <span className="text-[10px] font-bold">Add Media</span>
                         </div>
                     </div>
-                    <input type="file" ref={galleryInputRef} onChange={handleNewGalleryFiles} accept="image/*" multiple className="hidden" id="edit-gallery-photos" name="galleryPhotos" />
+                    <input type="file" ref={galleryInputRef} onChange={handleNewGalleryFiles} accept="image/*" multiple className="hidden" id="edit-property-gallery-photos" name="galleryPhotos" />
                 </div>
             </div>
 
@@ -391,15 +392,15 @@ export default function EditPropertyPage() {
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <FormField control={form.control} name="purchasePrice" render={({ field }) => (
                             <FormItem>
-                            <FormLabel htmlFor="edit-purchasePrice">Purchase Price (£)</FormLabel>
-                            <FormControl><Input id="edit-purchasePrice" name="purchasePrice" type="number" min="0" className="h-11 bg-background" {...field} value={field.value ?? ''} /></FormControl>
+                            <FormLabel htmlFor="edit-prop-purchasePrice">Purchase Price (£)</FormLabel>
+                            <FormControl><Input id="edit-prop-purchasePrice" name="purchasePrice" type="number" min="0" className="h-11 bg-background" {...field} value={field.value ?? ''} /></FormControl>
                             <FormMessage />
                             </FormItem>
                         )} />
                         <FormField control={form.control} name="currentValuation" render={({ field }) => (
                             <FormItem>
-                            <FormLabel htmlFor="edit-valuation">Valuation (£)</FormLabel>
-                            <FormControl><Input id="edit-valuation" name="currentValuation" type="number" min="0" className="h-11 bg-background" {...field} value={field.value ?? ''} /></FormControl>
+                            <FormLabel htmlFor="edit-prop-valuation">Valuation (£)</FormLabel>
+                            <FormControl><Input id="edit-prop-valuation" name="currentValuation" type="number" min="0" className="h-11 bg-background" {...field} value={field.value ?? ''} /></FormControl>
                             <FormMessage />
                             </FormItem>
                         )} />
@@ -409,23 +410,23 @@ export default function EditPropertyPage() {
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <FormField control={form.control} name="tenancy.monthlyRent" render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel htmlFor="edit-monthlyRent">Monthly Rent (£)</FormLabel>
-                                    <FormControl><Input id="edit-monthlyRent" name="monthlyRent" type="number" min="0" className="h-11 bg-background" {...field} value={field.value ?? ''} /></FormControl>
+                                    <FormLabel htmlFor="edit-prop-monthlyRent">Monthly Rent (£)</FormLabel>
+                                    <FormControl><Input id="edit-prop-monthlyRent" name="tenancy.monthlyRent" type="number" min="0" className="h-11 bg-background" {...field} value={field.value ?? ''} /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                                 )} />
                                 <FormField control={form.control} name="tenancy.depositAmount" render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel htmlFor="edit-depositAmount">Security Deposit (£)</FormLabel>
-                                    <FormControl><Input id="edit-depositAmount" name="depositAmount" type="number" min="0" className="h-11 bg-background" {...field} value={field.value ?? ''} /></FormControl>
+                                    <FormLabel htmlFor="edit-prop-depositAmount">Security Deposit (£)</FormLabel>
+                                    <FormControl><Input id="edit-prop-depositAmount" name="tenancy.depositAmount" type="number" min="0" className="h-11 bg-background" {...field} value={field.value ?? ''} /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                                 )} />
                             </div>
                             <FormField control={form.control} name="tenancy.depositScheme" render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel htmlFor="edit-depositScheme">Deposit Scheme</FormLabel>
-                                    <FormControl><Input id="edit-depositScheme" name="depositScheme" placeholder="e.g. DPS" className="h-11 bg-background" {...field} /></FormControl>
+                                    <FormLabel htmlFor="edit-prop-depositScheme">Deposit Scheme</FormLabel>
+                                    <FormControl><Input id="edit-prop-depositScheme" name="tenancy.depositScheme" placeholder="e.g. DPS" className="h-11 bg-background" {...field} /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )} />
@@ -439,10 +440,10 @@ export default function EditPropertyPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <FormField control={form.control} name="propertyType" render={({ field }) => (
                         <FormItem>
-                          <FormLabel htmlFor="edit-propertyType">Asset Type</FormLabel>
+                          <FormLabel htmlFor="edit-prop-type-select">Asset Type</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
-                              <SelectTrigger id="edit-propertyType" name="propertyType" className="h-11 bg-background">
+                              <SelectTrigger id="edit-prop-type-select" name="propertyType" className="h-11 bg-background">
                                 <SelectValue />
                               </SelectTrigger>
                             </FormControl>
@@ -457,10 +458,10 @@ export default function EditPropertyPage() {
                       )} />
                       <FormField control={form.control} name="status" render={({ field }) => (
                         <FormItem>
-                          <FormLabel htmlFor="edit-status">Portfolio Status</FormLabel>
+                          <FormLabel htmlFor="edit-prop-status-select">Portfolio Status</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl>
-                              <SelectTrigger id="edit-status" name="status" className="h-11 bg-background">
+                              <SelectTrigger id="edit-prop-status-select" name="status" className="h-11 bg-background">
                                 <SelectValue />
                               </SelectTrigger>
                             </FormControl>
@@ -477,24 +478,24 @@ export default function EditPropertyPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <FormField control={form.control} name="bedrooms" render={({ field }) => (
                         <FormItem>
-                          <FormLabel htmlFor="edit-bedrooms">Bedrooms</FormLabel>
-                          <FormControl><Input id="edit-bedrooms" name="bedrooms" type="number" min="0" className="h-11 bg-background" {...field} /></FormControl>
+                          <FormLabel htmlFor="edit-prop-bedrooms">Bedrooms</FormLabel>
+                          <FormControl><Input id="edit-prop-bedrooms" name="bedrooms" type="number" min="0" className="h-11 bg-background" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )} />
                       <FormField control={form.control} name="bathrooms" render={({ field }) => (
                         <FormItem>
-                          <FormLabel htmlFor="edit-bathrooms">Bathrooms</FormLabel>
-                          <FormControl><Input id="edit-bathrooms" name="bathrooms" type="number" min="0" className="h-11 bg-background" {...field} /></FormControl>
+                          <FormLabel htmlFor="edit-prop-bathrooms">Bathrooms</FormLabel>
+                          <FormControl><Input id="edit-prop-bathrooms" name="bathrooms" type="number" min="0" className="h-11 bg-background" {...field} /></FormControl>
                           <FormMessage />
                         </FormItem>
                       )} />
                     </div>
                     <FormField control={form.control} name="notes" render={({ field }) => (
                         <FormItem>
-                            <FormLabel htmlFor="edit-notes">Internal Audit Notes</FormLabel>
+                            <FormLabel htmlFor="edit-prop-notes">Internal Audit Notes</FormLabel>
                             <FormControl>
-                                <Textarea id="edit-notes" name="notes" rows={5} className="bg-background resize-none" {...field} value={field.value ?? ''} />
+                                <Textarea id="edit-prop-notes" name="notes" rows={5} className="bg-background resize-none" {...field} value={field.value ?? ''} />
                             </FormControl>
                             <FormMessage />
                         </FormItem>

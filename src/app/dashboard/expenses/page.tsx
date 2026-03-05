@@ -368,9 +368,9 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <FormField control={form.control} name="propertyId" render={({ field }) => (
                     <FormItem>
-                        <FormLabel className="font-bold" htmlFor="expense-property-id">Target Property</FormLabel>
+                        <FormLabel className="font-bold" htmlFor="expense-property-target">Target Property</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger id="expense-property-id" name="propertyId" className="h-11"><SelectValue placeholder="Select from portfolio" /></SelectTrigger></FormControl>
+                        <FormControl><SelectTrigger id="expense-property-target" name="propertyId" className="h-11"><SelectValue placeholder="Select from portfolio" /></SelectTrigger></FormControl>
                         <SelectContent>{properties.map(p => (<SelectItem key={p.id} value={p.id}>{formatAddress(p.address)}</SelectItem>))}</SelectContent>
                         </Select>
                         <FormMessage />
@@ -545,7 +545,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                             <TableCell className="font-medium">{formatCurrency(row.rent)}</TableCell>
                             <TableCell className="pr-6">
                                 <Select value={row.status} onValueChange={(v) => handleStatusChange(row.month, v as PaymentStatus)}>
-                                    <SelectTrigger id={`payment-status-${row.month}`} name={`paymentStatus-${row.month}`} className="w-[160px] h-9 text-xs font-bold shadow-none"><SelectValue /></SelectTrigger>
+                                    <SelectTrigger id={`rent-payment-status-${row.month}`} name={`paymentStatus-${row.month}`} className="w-[160px] h-9 text-xs font-bold shadow-none"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="Paid">Paid</SelectItem>
                                         <SelectItem value="Partially Paid">Partially Paid</SelectItem>
