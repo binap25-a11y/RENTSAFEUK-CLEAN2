@@ -198,6 +198,8 @@ export default function TenantsPage() {
             <div className="relative w-full max-w-sm mb-6">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
+                id="tenant-search-input"
+                name="tenantSearch"
                 placeholder="Search by name or email..."
                 className="pl-8 h-11"
                 value={searchTerm}
