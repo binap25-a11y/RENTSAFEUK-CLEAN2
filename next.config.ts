@@ -1,4 +1,3 @@
-
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
@@ -24,6 +23,14 @@ const nextConfig: NextConfig = {
       }
     ],
   },
+  // Silence workstation CORS warnings
+  experimental: {
+    allowedDevOrigins: [
+      '*.cloudworkstations.dev',
+      'localhost:9000',
+      'localhost:9002'
+    ]
+  }
 };
 
 export default nextConfig;
