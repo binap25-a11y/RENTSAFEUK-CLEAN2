@@ -11,7 +11,7 @@ import {
   Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
@@ -115,7 +115,6 @@ export default function AddPropertyPage() {
     setIsSubmitting(true);
 
     try {
-      // Step 1: Create the record in Firestore first to get a document ID
       const propertiesCollection = collection(firestore, 'userProfiles', user.uid, 'properties');
       
       const docRef = await addDoc(propertiesCollection, {
@@ -124,7 +123,6 @@ export default function AddPropertyPage() {
         createdDate: new Date().toISOString(),
       });
 
-      // Step 2: Upload previewed images to Supabase 'images' bucket
       let finalImageUrl = '';
       if (mainFile) {
         finalImageUrl = await uploadPropertyImage(mainFile, user.uid, docRef.id);
@@ -135,7 +133,6 @@ export default function AddPropertyPage() {
         additionalUrls = await Promise.all(galleryFiles.map(f => uploadPropertyImage(f, user.uid, docRef.id)));
       }
 
-      // Step 3: Update the Firestore record with the Supabase URLs
       await updateDoc(docRef, { 
         imageUrl: finalImageUrl, 
         additionalImageUrls: additionalUrls.filter(Boolean) 
@@ -145,7 +142,7 @@ export default function AddPropertyPage() {
       router.push('/dashboard/properties');
     } catch (err: any) {
       console.error('Onboarding failed:', err);
-      toast({ variant: 'destructive', title: 'Onboarding Failed', description: 'There was an error syncing your media or data.' });
+      toast({ variant: 'destructive', title: 'Onboarding Failed' });
     } finally {
       setIsSubmitting(false);
     }
@@ -278,7 +275,7 @@ export default function AddPropertyPage() {
             <Card className="border-none shadow-xl">
               <CardHeader className="bg-primary/5 border-b">
                 <CardTitle className="flex items-center gap-2"><Images className="h-5 w-5" /> Media Gallery</CardTitle>
-                <CardDescription>Visual identification for portfolio reporting. Photos will be stored securely.</CardDescription>
+                <CardDescription>Visual identification for portfolio reporting.</CardDescription>
               </CardHeader>
               <CardContent className="pt-6 space-y-8">
                 <div className="space-y-4">

@@ -284,7 +284,11 @@ export default function FinancialsPage() {
                 <Label htmlFor="reporting-year-selector" className="text-xs uppercase font-bold text-muted-foreground">Reporting Year</Label>
                 <Select onValueChange={(value) => setSelectedYear(Number(value))} value={selectedYear ? String(selectedYear) : ''}>
                     <SelectTrigger id="reporting-year-selector" name="reportingYear" className="h-11"><SelectValue /></SelectTrigger>
-                    <SelectContent>{Array.from({ length: 5 }, (_, i) => (new Date().getFullYear()) - i).map(year => (<SelectItem key={year} value={String(year)}>{year}</SelectItem>))}</SelectContent>
+                    <SelectContent>
+                        {Array.from({ length: 5 }, (_, i) => (new Date().getFullYear()) - i).map(year => (
+                            <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                        ))}
+                    </SelectContent>
                 </Select>
             </div>
         </div>
@@ -368,9 +372,9 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <FormField control={form.control} name="propertyId" render={({ field }) => (
                     <FormItem>
-                        <FormLabel className="font-bold" htmlFor="expense-property-target">Target Property</FormLabel>
+                        <FormLabel className="font-bold" htmlFor="expense-target-property">Target Property</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger id="expense-property-target" name="propertyId" className="h-11 bg-background"><SelectValue placeholder="Select from portfolio" /></SelectTrigger></FormControl>
+                        <FormControl><SelectTrigger id="expense-target-property" name="propertyId" className="h-11 bg-background"><SelectValue placeholder="Select from portfolio" /></SelectTrigger></FormControl>
                         <SelectContent>{properties.map(p => (<SelectItem key={p.id} value={p.id}>{formatAddress(p.address)}</SelectItem>))}</SelectContent>
                         </Select>
                         <FormMessage />
@@ -379,10 +383,10 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={form.control} name="date" render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="font-bold" htmlFor="expense-date">Date</FormLabel>
+                          <FormLabel className="font-bold" htmlFor="expense-date-input">Date</FormLabel>
                           <FormControl>
                             <Input 
-                              id="expense-date"
+                              id="expense-date-input"
                               name="date"
                               type="date" 
                               className="h-11 bg-background" 
@@ -395,9 +399,9 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                     )} />
                     <FormField control={form.control} name="expenseType" render={({ field }) => (
                         <FormItem>
-                            <FormLabel className="font-bold" htmlFor="expense-category">Category</FormLabel>
+                            <FormLabel className="font-bold" htmlFor="expense-category-select">Category</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl><SelectTrigger id="expense-category" name="expenseType" className="h-11 bg-background"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
+                                <FormControl><SelectTrigger id="expense-category-select" name="expenseType" className="h-11 bg-background"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
                                 <SelectContent>
                                     {['Repairs and Maintenance','Utilities','Insurance','Mortgage Interest','Cleaning','Gardening','Letting Agent Fees', 'Other'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                                 </SelectContent>
@@ -409,10 +413,10 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={form.control} name="amount" render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="font-bold" htmlFor="expense-amount">Amount (£)</FormLabel>
+                          <FormLabel className="font-bold" htmlFor="expense-amount-input">Amount (£)</FormLabel>
                           <FormControl>
                             <Input 
-                              id="expense-amount"
+                              id="expense-amount-input"
                               name="amount"
                               type="number" 
                               step="0.01" 
@@ -426,10 +430,10 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                     )} />
                     <FormField control={form.control} name="paidBy" render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="font-bold" htmlFor="expense-paid-by">Paid By</FormLabel>
+                        <FormLabel className="font-bold" htmlFor="expense-payer-input">Paid By</FormLabel>
                         <FormControl>
                           <Input 
-                            id="expense-paid-by"
+                            id="expense-payer-input"
                             name="paidBy"
                             placeholder="e.g. Landlord" 
                             className="h-11 bg-background" 
@@ -442,10 +446,10 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                 </div>
                 <FormField control={form.control} name="notes" render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="font-bold" htmlFor="expense-notes">Audit Notes</FormLabel>
+                    <FormLabel className="font-bold" htmlFor="expense-notes-textarea">Audit Notes</FormLabel>
                     <FormControl>
                       <Textarea 
-                        id="expense-notes"
+                        id="expense-notes-textarea"
                         name="notes"
                         placeholder="Details for tax records..." 
                         className="rounded-xl min-h-[100px] bg-background resize-none" 

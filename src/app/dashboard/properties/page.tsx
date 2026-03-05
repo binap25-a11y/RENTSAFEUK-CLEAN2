@@ -243,7 +243,7 @@ export default function PropertiesPage() {
                 <div className="relative w-full md:w-auto md:max-sm">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
-                      id="property-search-input"
+                      id="property-search-filter"
                       name="propertySearch"
                       placeholder="Search by address..."
                       className="pl-8 h-10 bg-background"
@@ -409,12 +409,12 @@ export default function PropertiesPage() {
                                     </TableCell>
                                     <TableCell className="text-right pr-6" onClick={(e) => e.stopPropagation()}>
                                       <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
-                                        <Button asChild variant="ghost" size="icon" className="h-8 w-8">
+                                        <Button asChild variant="ghost" size="icon" className="h-8 w-8" title="View Profile">
                                             <Link href={`/dashboard/properties/${property.id}`}>
                                                 <Eye className="h-4 w-4" />
                                             </Link>
                                         </Button>
-                                        <Button asChild variant="ghost" size="icon" className="h-8 w-8">
+                                        <Button asChild variant="ghost" size="icon" className="h-8 w-8" title="Edit Asset">
                                             <Link href={`/dashboard/properties/${property.id}/edit`}>
                                                 <Edit className="h-4 w-4" />
                                             </Link>
@@ -464,7 +464,7 @@ export default function PropertiesPage() {
             </div>
             
             <Button 
-              id="property-export-action"
+              id="property-export-csv-action"
               name="propertyExport"
               variant="ghost" 
               className="font-bold text-muted-foreground hover:text-primary transition-all w-full h-11 px-6 border border-dashed hover:border-primary/50" 

@@ -94,7 +94,7 @@ export default function EditPropertyPage() {
   
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Media state for Supabase integration
+  // Media state
   const [selectedMainFile, setSelectedMainFile] = useState<File | null>(null);
   const [mainPreviewUrl, setMainPreviewUrl] = useState<string | null>(null);
   const mainInputRef = useRef<HTMLInputElement>(null);
@@ -202,7 +202,6 @@ export default function EditPropertyPage() {
     setIsSubmitting(true);
 
     try {
-      // Step 1: Upload previewed images to Supabase 'images' bucket
       let finalImageUrl = property?.imageUrl || '';
       if (selectedMainFile) {
           finalImageUrl = await uploadPropertyImage(selectedMainFile, user.uid, propertyId);
@@ -217,7 +216,6 @@ export default function EditPropertyPage() {
           galleryUrls.push(...newUrls.filter(Boolean));
       }
 
-      // Step 2: Update Firestore record using updateDoc to ensure it is NOT deleted or overwritten
       const docRef = doc(firestore, 'userProfiles', user.uid, 'properties', propertyId);
       
       const updateData = {
@@ -228,14 +226,13 @@ export default function EditPropertyPage() {
       };
       
       const cleanedData = JSON.parse(JSON.stringify(updateData));
-      // updateDoc only modifies the provided fields, so the document won't be deleted.
       await updateDoc(docRef, cleanedData);
       
-      toast({ title: "Property Record Updated", description: "All changes have been successfully saved to your portfolio." });
+      toast({ title: "Property Record Updated", description: "All changes have been successfully saved." });
       router.push(`/dashboard/properties/${propertyId}`);
     } catch (e) {
       console.error("Update failed:", e);
-      toast({ variant: "destructive", title: "Update Failed", description: "Could not sync media or data. Please check your connection." });
+      toast({ variant: "destructive", title: "Update Failed" });
     } finally {
       setIsSubmitting(false);
     }
@@ -247,7 +244,7 @@ export default function EditPropertyPage() {
       <Card className="max-w-5xl mx-auto shadow-md border-none">
       <CardHeader className="bg-primary/5 border-b border-primary/10">
         <CardTitle className="text-2xl font-headline text-primary">Edit Portfolio Property</CardTitle>
-        <CardDescription>Update location, financials, and media for your asset. This action modifies the record without deleting it.</CardDescription>
+        <CardDescription>Update identity and contract details for your asset.</CardDescription>
       </CardHeader>
       <CardContent className="pt-8">
         <Form {...form}>

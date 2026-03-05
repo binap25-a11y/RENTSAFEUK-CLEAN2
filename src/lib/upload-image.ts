@@ -1,49 +1,33 @@
 'use client';
 
-import { supabase } from './supabase';
-
 /**
- * Uploads a property image to Supabase Storage and returns the public URL.
- * Images are organized by userId and propertyId for security and order.
+ * Uploads a property image via the internal API route to handle Supabase storage.
+ * This approach avoids exposing keys on the client and is more robust against config issues.
  */
 export const uploadPropertyImage = async (file: File, userId: string, propertyId: string): Promise<string> => {
   try {
     if (!file) return '';
     
-    // Safety check for client initialization
-    if (!supabase) {
-        console.error('SUPABASE CONFIG ERROR: Supabase client is not initialized. Please ensure your NEXT_PUBLIC_SUPABASE_ANON_KEY is set in src/lib/supabase.ts');
-        return '';
-    }
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('userId', userId);
+    formData.append('propertyId', propertyId);
 
-    const fileExt = file.name.split('.').pop();
-    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-    const filePath = `${userId}/${propertyId}/${fileName}`;
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData,
+    });
 
-    // Upload to 'images' bucket
-    const { data, error } = await supabase.storage
-      .from('images') 
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false
-      });
-
-    if (error) {
-      if (error.message.includes('Invalid Compact JWS')) {
-          console.error('SUPABASE AUTH ERROR: You are using an invalid Anon Key. Ensure you use the "anon public" key from your Supabase settings.');
-      } else {
-          console.error('Supabase storage upload error:', error.message);
-      }
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error('Upload failed:', errorData.error);
       return '';
     }
 
-    const { data: urlData } = supabase.storage
-      .from('images')
-      .getPublicUrl(filePath);
-
-    return urlData.publicUrl || '';
+    const data = await response.json();
+    return data.url || '';
   } catch (err) {
-    console.error('Unexpected Supabase upload error:', err);
+    console.error('Unexpected upload error:', err);
     return '';
   }
 };

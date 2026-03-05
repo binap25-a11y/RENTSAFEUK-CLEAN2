@@ -10,7 +10,7 @@ const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 // Only initialize if the key is present to prevent runtime crashes.
 // The upload helper (src/lib/upload-image.ts) handles the missing client error gracefully.
-export const supabase = supabaseAnonKey 
+export const supabase = (supabaseUrl && supabaseAnonKey && supabaseAnonKey.length > 0) 
   ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
         persistSession: true,

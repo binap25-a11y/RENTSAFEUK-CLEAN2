@@ -179,7 +179,7 @@ export default function MaintenancePage() {
 
     } catch (error: any) {
       console.error('Failed to log issue:', error);
-      toast({ variant: 'destructive', title: 'Save Failed', description: 'Permission error. Check property link.' });
+      toast({ variant: 'destructive', title: 'Save Failed' });
     } finally {
       setIsSubmitting(false);
     }
@@ -243,7 +243,7 @@ export default function MaintenancePage() {
                                 </PopoverTrigger>
                                 <PopoverContent className="w-[--radix-popover-trigger-width] p-0 shadow-2xl border-primary/10">
                                     <div className="flex items-center border-b px-3 bg-muted/20">
-                                        <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                                        <Search className="h-4 w-4 shrink-0 opacity-50 mr-2" />
                                         <Input 
                                             id="maintenance-prop-search-field"
                                             name="propertySearch"
@@ -364,10 +364,10 @@ export default function MaintenancePage() {
 
                         <FormField control={form.control} name="title" render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="font-bold" htmlFor="maintenance-title">Issue Headline</FormLabel>
+                            <FormLabel className="font-bold" htmlFor="maintenance-issue-title">Issue Headline</FormLabel>
                             <FormControl>
                               <Input 
-                                id="maintenance-title"
+                                id="maintenance-issue-title"
                                 name="title"
                                 placeholder="e.g., Leaking boiler in kitchen" 
                                 className="h-11 bg-background" 
@@ -380,10 +380,10 @@ export default function MaintenancePage() {
                         )} />
                         <FormField control={form.control} name="description" render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="font-bold" htmlFor="maintenance-description">Detailed Description</FormLabel>
+                            <FormLabel className="font-bold" htmlFor="maintenance-detailed-desc">Detailed Description</FormLabel>
                             <FormControl>
                               <Textarea 
-                                id="maintenance-description"
+                                id="maintenance-detailed-desc"
                                 name="description"
                                 placeholder="Please describe the issue in detail for the contractor." 
                                 className="min-h-[120px] rounded-xl bg-background resize-none" 
@@ -401,10 +401,10 @@ export default function MaintenancePage() {
                             <h3 className="font-bold text-lg flex items-center gap-2"><Calendar className="h-5 w-5 text-primary" /> Audit Info</h3>
                             <FormField control={form.control} name="reportedBy" render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="font-bold" htmlFor="maintenance-reporter">Reported By</FormLabel>
+                                <FormLabel className="font-bold" htmlFor="maintenance-reported-by">Reported By</FormLabel>
                                 <FormControl>
                                   <Input 
-                                    id="maintenance-reporter"
+                                    id="maintenance-reported-by"
                                     name="reportedBy"
                                     placeholder="e.g., Tenant name" 
                                     className="h-11 bg-background" 
@@ -417,10 +417,10 @@ export default function MaintenancePage() {
                             )} />
                             <FormField control={form.control} name="reportedDate" render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="font-bold" htmlFor="maintenance-report-date">Date of Report</FormLabel>
+                                <FormLabel className="font-bold" htmlFor="maintenance-reported-date">Date of Report</FormLabel>
                                 <FormControl>
                                   <Input 
-                                    id="maintenance-report-date"
+                                    id="maintenance-reported-date"
                                     name="reportedDate"
                                     type="date" 
                                     className="h-11 bg-background" 
@@ -455,10 +455,10 @@ export default function MaintenancePage() {
                             </div>
                             <FormField control={form.control} name="contractorName" render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="font-bold" htmlFor="maintenance-assigned-name">Assigned To</FormLabel>
+                                <FormLabel className="font-bold" htmlFor="maintenance-assigned-contractor">Assigned To</FormLabel>
                                 <FormControl>
                                   <Input 
-                                    id="maintenance-assigned-name"
+                                    id="maintenance-assigned-contractor"
                                     name="contractorName"
                                     placeholder="Contractor name" 
                                     className="h-11 bg-background" 
