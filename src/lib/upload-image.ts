@@ -10,9 +10,9 @@ export const uploadPropertyImage = async (file: File, userId: string, propertyId
   try {
     if (!file) return '';
     
-    // Safety check for keys
-    if (!process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY && !supabase) {
-        console.error('Supabase client is not initialized. Please check your keys in src/lib/supabase.ts');
+    // Safety check for client initialization
+    if (!supabase) {
+        console.error('SUPABASE CONFIG ERROR: Supabase client is not initialized. Please ensure your NEXT_PUBLIC_SUPABASE_ANON_KEY is set in src/lib/supabase.ts');
         return '';
     }
 
@@ -30,7 +30,7 @@ export const uploadPropertyImage = async (file: File, userId: string, propertyId
 
     if (error) {
       if (error.message.includes('Invalid Compact JWS')) {
-          console.error('SUPABASE CONFIG ERROR: You are using an invalid Anon Key. This often happens if you accidentally pasted a Stripe key (sb_publishable_...) instead of a Supabase Anon Key (eyJ...). Please update your keys in the Supabase dashboard.');
+          console.error('SUPABASE AUTH ERROR: You are using an invalid Anon Key. Ensure you use the "anon public" key from your Supabase settings.');
       } else {
           console.error('Supabase storage upload error:', error.message);
       }
