@@ -1,0 +1,31 @@
+import { createClient } from '@supabase/supabase-js'
+
+const supabaseUrl = 'https://your-project-id.supabase.co'
+const supabaseKey = 'your-anon-key'
+export const supabase = createClient(supabaseUrl, supabaseKey)
+
+async function uploadImage(file) {
+  const fileName = `${Date.now()}_${file.name}` // unique file name
+  const { data, error } = await supabase
+    .storage
+    .from('images') // your bucket name
+    .upload(fileName, file)
+
+  if (error) {
+    console.error('Upload error:', error)
+    return null
+  }
+
+  // Return public URL
+  const publicUrl = `https://your-project-id.supabase.co/storage/v1/object/public/images/${fileName}`
+  return publicUrl
+}
+const imageUrl = await uploadImage(file)
+if (imageUrl) {
+  await firebase.firestore().collection('posts').add({
+    title: 'My Post',
+    image: imageUrl,
+    createdAt: new Date()
+  })
+}
+await supabase.storage.from('images').remove(['fileName.jpg'])

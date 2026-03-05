@@ -1,24 +1,29 @@
 'use client';
 
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { initializeFirebase } from '@/firebase/init';
+import { supabase } from './supabase';
 
 /**
- * Uploads a property image to Firebase Storage and returns the download URL.
- * Scoped to the user's specific directory for security.
+ * Uploads a property image to Supabase Storage and returns the public URL.
+ * Images are organized by userId and propertyId for security and order.
  */
-export const uploadPropertyImage = async (file: File, userId: string, propertyId: string) => {
-  const { storage } = initializeFirebase();
-  if (!storage) throw new Error('Storage service not initialized');
+export const uploadPropertyImage = async (file: File, userId: string, propertyId: string): Promise<string> => {
+  try {
+    const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}-${file.name}`;
+    const filePath = `${userId}/${propertyId}/${fileName}`;
 
-  const fileExt = file.name.split('.').pop();
-  const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-  const filePath = `images/${userId}/${propertyId}/${fileName}`;
-  
-  const storageRef = ref(storage, filePath);
-  
-  const uploadResult = await uploadBytes(storageRef, file);
-  const downloadUrl = await getDownloadURL(uploadResult.ref);
+    const { data, error } = await supabase.storage
+      .from('images') 
+      .upload(filePath, file);
 
-  return downloadUrl;
+    if (error) throw error;
+
+    const { data: urlData } = supabase.storage
+      .from('images')
+      .getPublicUrl(filePath);
+
+    return urlData.publicUrl;
+  } catch (err) {
+    console.error('Supabase upload error:', err);
+    return '';
+  }
 };

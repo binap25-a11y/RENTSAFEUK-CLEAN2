@@ -60,7 +60,6 @@ import jsPDF from 'jspdf';
 import 'jspdf-autotable';
 import Link from 'next/link';
 
-// Constants
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June',
   'July', 'August', 'September', 'October', 'November', 'December'
@@ -367,7 +366,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <FormField control={form.control} name="propertyId" render={({ field }) => (
                     <FormItem>
-                        <FormLabel className="font-bold">Target Property</FormLabel>
+                        <FormLabel className="font-bold" htmlFor="expense-property-id">Target Property</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl><SelectTrigger id="expense-property-id" name="propertyId" className="h-11"><SelectValue placeholder="Select from portfolio" /></SelectTrigger></FormControl>
                         <SelectContent>{properties.map(p => (<SelectItem key={p.id} value={p.id}>{formatAddress(p.address)}</SelectItem>))}</SelectContent>
@@ -378,7 +377,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={form.control} name="date" render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="font-bold">Date</FormLabel>
+                          <FormLabel className="font-bold" htmlFor="expense-date">Date</FormLabel>
                           <FormControl>
                             <Input 
                               id="expense-date"
@@ -394,7 +393,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                     )} />
                     <FormField control={form.control} name="expenseType" render={({ field }) => (
                         <FormItem>
-                            <FormLabel className="font-bold">Category</FormLabel>
+                            <FormLabel className="font-bold" htmlFor="expense-category">Category</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl><SelectTrigger id="expense-category" name="expenseType" className="h-11"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
                                 <SelectContent>
@@ -408,7 +407,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                     <FormField control={form.control} name="amount" render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="font-bold">Amount (£)</FormLabel>
+                          <FormLabel className="font-bold" htmlFor="expense-amount">Amount (£)</FormLabel>
                           <FormControl>
                             <Input 
                               id="expense-amount"
@@ -425,7 +424,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                     )} />
                     <FormField control={form.control} name="paidBy" render={({ field }) => (
                       <FormItem>
-                        <FormLabel className="font-bold">Paid By</FormLabel>
+                        <FormLabel className="font-bold" htmlFor="expense-paid-by">Paid By</FormLabel>
                         <FormControl>
                           <Input 
                             id="expense-paid-by"
@@ -441,7 +440,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                 </div>
                 <FormField control={form.control} name="notes" render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="font-bold">Audit Notes</FormLabel>
+                    <FormLabel className="font-bold" htmlFor="expense-notes">Audit Notes</FormLabel>
                     <FormControl>
                       <Textarea 
                         id="expense-notes"

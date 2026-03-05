@@ -220,13 +220,13 @@ export default function MaintenancePage() {
                         name="propertyId"
                         render={({ field }) => (
                             <FormItem className="flex flex-col">
-                            <FormLabel className="font-bold">Search Portfolio Property</FormLabel>
+                            <FormLabel className="font-bold" htmlFor="maintenance-property-selector">Search Portfolio Property</FormLabel>
                             <Popover open={isPropSelectorOpen} onOpenChange={setIsPropSelectorOpen}>
                                 <PopoverTrigger asChild>
                                     <FormControl>
                                         <Button
                                             id="maintenance-property-selector"
-                                            name="propertySelector"
+                                            name="propertyId"
                                             variant="outline"
                                             role="combobox"
                                             className={cn(
@@ -291,39 +291,6 @@ export default function MaintenancePage() {
                             </FormItem>
                         )}
                         />
-                        <FormField control={form.control} name="title" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="font-bold">Issue Headline</FormLabel>
-                            <FormControl>
-                              <Input 
-                                id="issue-title"
-                                name="title"
-                                placeholder="e.g., Leaking boiler in kitchen" 
-                                className="h-11 bg-background" 
-                                {...field} 
-                                value={field.value ?? ''} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                        <FormField control={form.control} name="description" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="font-bold">Detailed Description</FormLabel>
-                            <FormControl>
-                              <Textarea 
-                                id="issue-description"
-                                name="description"
-                                placeholder="Please describe the issue in detail for the contractor." 
-                                className="min-h-[120px] rounded-xl bg-background" 
-                                {...field} 
-                                value={field.value ?? ''} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                        
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                           <FormField
                             control={form.control}
@@ -394,6 +361,39 @@ export default function MaintenancePage() {
                             )}
                           />
                         )}
+
+                        <FormField control={form.control} name="title" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="font-bold">Issue Headline</FormLabel>
+                            <FormControl>
+                              <Input 
+                                id="issue-title"
+                                name="title"
+                                placeholder="e.g., Leaking boiler in kitchen" 
+                                className="h-11 bg-background" 
+                                {...field} 
+                                value={field.value ?? ''} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <FormField control={form.control} name="description" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="font-bold">Detailed Description</FormLabel>
+                            <FormControl>
+                              <Textarea 
+                                id="issue-description"
+                                name="description"
+                                placeholder="Please describe the issue in detail for the contractor." 
+                                className="min-h-[120px] rounded-xl bg-background" 
+                                {...field} 
+                                value={field.value ?? ''} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t pt-8">
