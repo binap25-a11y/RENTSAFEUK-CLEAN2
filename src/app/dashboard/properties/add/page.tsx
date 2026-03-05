@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -133,7 +132,8 @@ export default function AddPropertyPage() {
 
       let additionalUrls: string[] = [];
       if (galleryFiles.length > 0) {
-        additionalUrls = await Promise.all(galleryFiles.map(f => uploadPropertyImage(f, user.uid, docRef.id)));
+        const uploadPromises = galleryFiles.map(f => uploadPropertyImage(f, user.uid, docRef.id));
+        additionalUrls = await Promise.all(uploadPromises);
       }
 
       // Step 3: Update the record with the final public URLs
@@ -142,11 +142,20 @@ export default function AddPropertyPage() {
         additionalImageUrls: additionalUrls.filter(Boolean) 
       });
 
-      toast({ title: 'Property Onboarded', description: 'Asset successfully added to your portfolio.' });
+      toast({ 
+        title: 'Property Onboarded', 
+        description: 'Asset successfully added to your portfolio with all media synced.' 
+      });
+      
+      // Navigate after success
       router.push('/dashboard/properties');
     } catch (err: any) {
       console.error('Onboarding failed:', err);
-      toast({ variant: 'destructive', title: 'Onboarding Failed' });
+      toast({ 
+        variant: 'destructive', 
+        title: 'Onboarding Failed', 
+        description: "There was an error synchronizing your property media. Please check your connection."
+      });
     } finally {
       setIsSubmitting(false);
     }
@@ -175,21 +184,21 @@ export default function AddPropertyPage() {
               <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-4">
                   <FormField control={form.control} name="address.nameOrNumber" render={({ field }) => (
-                    <FormItem><FormLabel htmlFor="onboard-prop-number">Building Name/No</FormLabel><FormControl><Input id="onboard-prop-number" name="address.nameOrNumber" placeholder="e.g. Flat 1" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel htmlFor="onboard-prop-number">Building Name/No</FormLabel><FormControl><Input id="onboard-prop-number" name="address.nameOrNumber" placeholder="e.g. Flat 1" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={form.control} name="address.street" render={({ field }) => (
-                    <FormItem><FormLabel htmlFor="onboard-prop-street">Street Address</FormLabel><FormControl><Input id="onboard-prop-street" name="address.street" placeholder="High Street" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel htmlFor="onboard-prop-street">Street Address</FormLabel><FormControl><Input id="onboard-prop-street" name="address.street" placeholder="High Street" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <div className="grid grid-cols-2 gap-4">
                     <FormField control={form.control} name="address.city" render={({ field }) => (
-                      <FormItem><FormLabel htmlFor="onboard-prop-city">City</FormLabel><FormControl><Input id="onboard-prop-city" name="address.city" placeholder="London" {...field} /></FormControl><FormMessage /></FormItem>
+                      <FormItem><FormLabel htmlFor="onboard-prop-city">City</FormLabel><FormControl><Input id="onboard-prop-city" name="address.city" placeholder="London" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
                     )} />
                     <FormField control={form.control} name="address.postcode" render={({ field }) => (
-                      <FormItem><FormLabel htmlFor="onboard-prop-postcode">Postcode</FormLabel><FormControl><Input id="onboard-prop-postcode" name="address.postcode" placeholder="W1A 1AA" className="uppercase" {...field} /></FormControl><FormMessage /></FormItem>
+                      <FormItem><FormLabel htmlFor="onboard-prop-postcode">Postcode</FormLabel><FormControl><Input id="onboard-prop-postcode" name="address.postcode" placeholder="W1A 1AA" className="uppercase h-11" {...field} /></FormControl><FormMessage /></FormItem>
                     )} />
                   </div>
                   <FormField control={form.control} name="address.county" render={({ field }) => (
-                    <FormItem><FormLabel htmlFor="onboard-prop-county">County</FormLabel><FormControl><Input id="onboard-prop-county" name="address.county" placeholder="Surrey" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel htmlFor="onboard-prop-county">County</FormLabel><FormControl><Input id="onboard-prop-county" name="address.county" placeholder="Surrey" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                 </div>
                 <div className="aspect-square rounded-2xl overflow-hidden border-2 bg-muted relative shadow-inner">

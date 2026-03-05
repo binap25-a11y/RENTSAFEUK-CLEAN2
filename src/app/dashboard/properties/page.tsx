@@ -306,7 +306,7 @@ export default function PropertiesPage() {
                           <div className="relative cursor-pointer" onClick={() => router.push(`/dashboard/properties/${property.id}`)}>
                               <div className="aspect-[16/10] bg-muted overflow-hidden relative border-b">
                                   {property.imageUrl ? (
-                                      <Image src={property.imageUrl} alt="Property" fill className="object-cover group-hover:scale-110 transition-transform duration-500" />
+                                      <Image src={property.imageUrl} alt="Property" fill className="object-cover group-hover:scale-110 transition-transform duration-500" priority={true} />
                                   ) : (
                                       <div className="w-full h-full flex items-center justify-center bg-primary/5">
                                           <Home className="w-16 h-16 text-primary/10" />

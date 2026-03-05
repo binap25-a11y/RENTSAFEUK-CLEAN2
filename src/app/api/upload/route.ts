@@ -2,6 +2,7 @@ import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
 // Initialize Supabase with service role key for backend storage access
+// Fallback URL used for consistency with client-side configuration
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://owfjowiiyshhqzhatwqr.supabase.co';
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
@@ -12,7 +13,10 @@ const supabase = (supabaseUrl && supabaseKey)
 export async function POST(req: NextRequest) {
   try {
     if (!supabase) {
-      return NextResponse.json({ error: "Supabase server-side client not configured." }, { status: 500 });
+      console.error('Supabase server-side client not configured. Missing SUPABASE_SERVICE_ROLE_KEY.');
+      return NextResponse.json({ 
+        error: "Supabase storage is not configured on the server. Please add your Service Role Key to environment variables." 
+      }, { status: 500 });
     }
 
     const formData = await req.formData();
@@ -24,11 +28,14 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
+    // Generate a unique file name
     const fileExt = file.name.split('.').pop();
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-    // Organize by user and property for security and order
+    
+    // Organize storage path by user and property for security and audit trail
     const filePath = `${userId || 'system'}/${propertyId || 'misc'}/${fileName}`;
 
+    // Perform the binary upload to the 'images' bucket
     const { data, error } = await supabase.storage
       .from("images")
       .upload(filePath, file, {
@@ -37,9 +44,11 @@ export async function POST(req: NextRequest) {
       });
 
     if (error) {
+      console.error('Supabase upload error:', error.message);
       return NextResponse.json({ error: error.message }, { status: 500 });
     }
 
+    // Retrieve the public URL for the newly uploaded file
     const { data: urlData } = supabase.storage
       .from("images")
       .getPublicUrl(filePath);
@@ -47,7 +56,7 @@ export async function POST(req: NextRequest) {
     return NextResponse.json({ url: urlData.publicUrl });
 
   } catch (err) {
-    console.error('Server upload error:', err);
-    return NextResponse.json({ error: "Internal server error during upload" }, { status: 500 });
+    console.error('Server-side upload handler crashed:', err);
+    return NextResponse.json({ error: "Internal server error during media synchronization" }, { status: 500 });
   }
 }
