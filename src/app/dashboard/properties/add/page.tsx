@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -117,12 +118,14 @@ export default function AddPropertyPage() {
     try {
       const propertiesCollection = collection(firestore, 'userProfiles', user.uid, 'properties');
       
+      // Step 1: Create the document first to get the ID
       const docRef = await addDoc(propertiesCollection, {
         ...JSON.parse(JSON.stringify(data)),
         ownerId: user.uid,
         createdDate: new Date().toISOString(),
       });
 
+      // Step 2: Upload images to Supabase using the new ID for folder organization
       let finalImageUrl = '';
       if (mainFile) {
         finalImageUrl = await uploadPropertyImage(mainFile, user.uid, docRef.id);
@@ -133,6 +136,7 @@ export default function AddPropertyPage() {
         additionalUrls = await Promise.all(galleryFiles.map(f => uploadPropertyImage(f, user.uid, docRef.id)));
       }
 
+      // Step 3: Update the record with the final public URLs
       await updateDoc(docRef, { 
         imageUrl: finalImageUrl, 
         additionalImageUrls: additionalUrls.filter(Boolean) 

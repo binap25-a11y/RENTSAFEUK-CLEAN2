@@ -10,6 +10,20 @@ const nextConfig: NextConfig = {
   },
   // In Next.js 15, this is a top-level property
   serverExternalPackages: ['firebase'],
+  images: {
+    remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'owfjowiiyshhqzhatwqr.supabase.co',
+        port: '',
+        pathname: '/storage/v1/object/public/**',
+      },
+      {
+        protocol: 'https',
+        hostname: 'picsum.photos',
+      }
+    ],
+  },
 };
 
 export default nextConfig;
