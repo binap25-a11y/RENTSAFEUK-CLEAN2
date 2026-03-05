@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -64,7 +63,7 @@ export function Notifications() {
   const { user } = useUser();
   const firestore = useFirestore();
 
-  // Filter properties by active status to ensure notifications update when a property is deleted
+  // Explicitly filter for active properties to ensure notifications clear on deletion
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
