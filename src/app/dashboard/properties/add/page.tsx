@@ -59,6 +59,7 @@ export default function AddPropertyPage() {
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // File state for Supabase upload on final submit
   const [mainFile, setMainFile] = useState<File | null>(null);
   const [mainPreview, setMainPreview] = useState<string | null>(null);
   const mainInputRef = useRef<HTMLInputElement>(null);
@@ -109,15 +110,12 @@ export default function AddPropertyPage() {
     }
   };
 
-  const setNewGalleryPreviews = (updater: (prev: string[]) => string[]) => {
-      setGalleryPreviews(updater);
-  };
-
   const onSubmit = async (data: PropertyFormValues) => {
     if (!user || !firestore) return;
     setIsSubmitting(true);
 
     try {
+      // Step 1: Create the record in Firestore first to get a document ID
       const propertiesCollection = collection(firestore, 'userProfiles', user.uid, 'properties');
       
       const docRef = await addDoc(propertiesCollection, {
@@ -126,6 +124,7 @@ export default function AddPropertyPage() {
         createdDate: new Date().toISOString(),
       });
 
+      // Step 2: Upload previewed images to Supabase 'images' bucket
       let finalImageUrl = '';
       if (mainFile) {
         finalImageUrl = await uploadPropertyImage(mainFile, user.uid, docRef.id);
@@ -136,6 +135,7 @@ export default function AddPropertyPage() {
         additionalUrls = await Promise.all(galleryFiles.map(f => uploadPropertyImage(f, user.uid, docRef.id)));
       }
 
+      // Step 3: Update the Firestore record with the Supabase URLs
       await updateDoc(docRef, { 
         imageUrl: finalImageUrl, 
         additionalImageUrls: additionalUrls.filter(Boolean) 
@@ -144,8 +144,8 @@ export default function AddPropertyPage() {
       toast({ title: 'Property Onboarded', description: 'Asset successfully added to your portfolio.' });
       router.push('/dashboard/properties');
     } catch (err: any) {
-      console.error(err);
-      toast({ variant: 'destructive', title: 'Onboarding Failed', description: err.message });
+      console.error('Onboarding failed:', err);
+      toast({ variant: 'destructive', title: 'Onboarding Failed', description: 'There was an error syncing your media or data.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -174,31 +174,31 @@ export default function AddPropertyPage() {
               <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-4">
                   <FormField control={form.control} name="address.nameOrNumber" render={({ field }) => (
-                    <FormItem><FormLabel htmlFor="prop-add-number">Building Name/No</FormLabel><FormControl><Input id="prop-add-number" name="nameOrNumber" placeholder="e.g. Flat 1" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel htmlFor="onboard-prop-number">Building Name/No</FormLabel><FormControl><Input id="onboard-prop-number" name="address.nameOrNumber" placeholder="e.g. Flat 1" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={form.control} name="address.street" render={({ field }) => (
-                    <FormItem><FormLabel htmlFor="prop-add-street">Street Address</FormLabel><FormControl><Input id="prop-add-street" name="street" placeholder="High Street" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel htmlFor="onboard-prop-street">Street Address</FormLabel><FormControl><Input id="onboard-prop-street" name="address.street" placeholder="High Street" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <div className="grid grid-cols-2 gap-4">
                     <FormField control={form.control} name="address.city" render={({ field }) => (
-                      <FormItem><FormLabel htmlFor="prop-add-city">City</FormLabel><FormControl><Input id="prop-add-city" name="city" placeholder="London" {...field} /></FormControl><FormMessage /></FormItem>
+                      <FormItem><FormLabel htmlFor="onboard-prop-city">City</FormLabel><FormControl><Input id="onboard-prop-city" name="address.city" placeholder="London" {...field} /></FormControl><FormMessage /></FormItem>
                     )} />
                     <FormField control={form.control} name="address.postcode" render={({ field }) => (
-                      <FormItem><FormLabel htmlFor="prop-add-postcode">Postcode</FormLabel><FormControl><Input id="prop-add-postcode" name="postcode" placeholder="W1A 1AA" {...field} /></FormControl><FormMessage /></FormItem>
+                      <FormItem><FormLabel htmlFor="onboard-prop-postcode">Postcode</FormLabel><FormControl><Input id="onboard-prop-postcode" name="address.postcode" placeholder="W1A 1AA" className="uppercase" {...field} /></FormControl><FormMessage /></FormItem>
                     )} />
                   </div>
                   <FormField control={form.control} name="address.county" render={({ field }) => (
-                    <FormItem><FormLabel htmlFor="prop-add-county">County</FormLabel><FormControl><Input id="prop-add-county" name="county" placeholder="Surrey" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel htmlFor="onboard-prop-county">County</FormLabel><FormControl><Input id="onboard-prop-county" name="address.county" placeholder="Surrey" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                 </div>
-                <div className="aspect-square rounded-2xl overflow-hidden border-2 bg-muted relative">
+                <div className="aspect-square rounded-2xl overflow-hidden border-2 bg-muted relative shadow-inner">
                   {mapUrl ? <iframe src={mapUrl} width="100%" height="100%" style={{ border: 0 }} title="Location Map" /> : (
                     <div className="absolute inset-0 flex flex-col items-center justify-center text-muted-foreground/40"><MapPin className="h-12 w-12 mb-2" /><p className="text-xs font-bold uppercase tracking-widest">Awaiting Address...</p></div>
                   )}
                 </div>
               </CardContent>
-              <CardFooter className="justify-end border-t pt-6">
-                <Button type="button" onClick={() => setStep(2)}>Next Step <ChevronRight className="ml-2 h-4 w-4" /></Button>
+              <CardFooter className="justify-end border-t pt-6 bg-muted/5">
+                <Button type="button" className="font-bold uppercase tracking-widest text-xs h-11 px-8" onClick={() => setStep(2)}>Next Step <ChevronRight className="ml-2 h-4 w-4" /></Button>
               </CardFooter>
             </Card>
           )}
@@ -212,27 +212,27 @@ export default function AddPropertyPage() {
               <CardContent className="pt-6 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField control={form.control} name="propertyType" render={({ field }) => (
-                    <FormItem><FormLabel htmlFor="prop-add-type">Asset Type</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger id="prop-add-type" name="propertyType"><SelectValue /></SelectTrigger></FormControl><SelectContent>{['House', 'Flat', 'HMO', 'Bungalow', 'Studio'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>
+                    <FormItem><FormLabel htmlFor="onboard-prop-type">Asset Type</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger id="onboard-prop-type" name="propertyType" className="h-11"><SelectValue /></SelectTrigger></FormControl><SelectContent>{['House', 'Flat', 'HMO', 'Bungalow', 'Studio'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>
                   )} />
                   <FormField control={form.control} name="status" render={({ field }) => (
-                    <FormItem><FormLabel htmlFor="prop-add-status">Portfolio Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger id="prop-add-status" name="status"><SelectValue /></SelectTrigger></FormControl><SelectContent>{['Vacant', 'Occupied', 'Under Maintenance'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>
+                    <FormItem><FormLabel htmlFor="onboard-prop-status">Portfolio Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger id="onboard-prop-status" name="status" className="h-11"><SelectValue /></SelectTrigger></FormControl><SelectContent>{['Vacant', 'Occupied', 'Under Maintenance'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>
                   )} />
                 </div>
                 <div className="grid grid-cols-2 gap-6">
                   <FormField control={form.control} name="bedrooms" render={({ field }) => (
-                    <FormItem><FormLabel htmlFor="prop-add-beds">Bedrooms</FormLabel><FormControl><Input id="prop-add-beds" name="bedrooms" type="number" {...field} /></FormControl></FormItem>
+                    <FormItem><FormLabel htmlFor="onboard-prop-beds">Bedrooms</FormLabel><FormControl><Input id="onboard-prop-beds" name="bedrooms" type="number" className="h-11" {...field} /></FormControl></FormItem>
                   )} />
                   <FormField control={form.control} name="bathrooms" render={({ field }) => (
-                    <FormItem><FormLabel htmlFor="prop-add-baths">Bathrooms</FormLabel><FormControl><Input id="prop-add-baths" name="bathrooms" type="number" {...field} /></FormControl></FormItem>
+                    <FormItem><FormLabel htmlFor="onboard-prop-baths">Bathrooms</FormLabel><FormControl><Input id="onboard-prop-baths" name="bathrooms" type="number" className="h-11" {...field} /></FormControl></FormItem>
                   )} />
                 </div>
                 <FormField control={form.control} name="notes" render={({ field }) => (
-                  <FormItem><FormLabel htmlFor="prop-add-notes">Confidential Audit Notes</FormLabel><FormControl><Textarea id="prop-add-notes" name="notes" rows={4} {...field} /></FormControl></FormItem>
+                  <FormItem><FormLabel htmlFor="onboard-prop-notes">Confidential Audit Notes</FormLabel><FormControl><Textarea id="onboard-prop-notes" name="notes" rows={4} className="resize-none rounded-xl" {...field} /></FormControl></FormItem>
                 )} />
               </CardContent>
-              <CardFooter className="justify-between border-t pt-6">
-                <Button type="button" variant="outline" onClick={() => setStep(1)}><ChevronLeft className="mr-2 h-4 w-4" /> Back</Button>
-                <Button type="button" onClick={() => setStep(3)}>Next Step <ChevronRight className="ml-2 h-4 w-4" /></Button>
+              <CardFooter className="justify-between border-t pt-6 bg-muted/5">
+                <Button type="button" variant="outline" className="font-bold uppercase tracking-widest text-xs h-11" onClick={() => setStep(1)}><ChevronLeft className="mr-2 h-4 w-4" /> Back</Button>
+                <Button type="button" className="font-bold uppercase tracking-widest text-xs h-11 px-8" onClick={() => setStep(3)}>Next Step <ChevronRight className="ml-2 h-4 w-4" /></Button>
               </CardFooter>
             </Card>
           )}
@@ -246,30 +246,30 @@ export default function AddPropertyPage() {
               <CardContent className="pt-6 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                   <FormField control={form.control} name="purchasePrice" render={({ field }) => (
-                    <FormItem><FormLabel htmlFor="prop-add-purchase">Purchase Price (£)</FormLabel><FormControl><Input id="prop-add-purchase" name="purchasePrice" type="number" {...field} value={field.value ?? ''} /></FormControl></FormItem>
+                    <FormItem><FormLabel htmlFor="onboard-prop-purchase">Purchase Price (£)</FormLabel><FormControl><Input id="onboard-prop-purchase" name="purchasePrice" type="number" className="h-11" {...field} value={field.value ?? ''} /></FormControl></FormItem>
                   )} />
                   <FormField control={form.control} name="currentValuation" render={({ field }) => (
-                    <FormItem><FormLabel htmlFor="prop-add-valuation">Market Valuation (£)</FormLabel><FormControl><Input id="prop-add-valuation" name="currentValuation" type="number" {...field} value={field.value ?? ''} /></FormControl></FormItem>
+                    <FormItem><FormLabel htmlFor="onboard-prop-valuation">Market Valuation (£)</FormLabel><FormControl><Input id="onboard-prop-valuation" name="currentValuation" type="number" className="h-11" {...field} value={field.value ?? ''} /></FormControl></FormItem>
                   )} />
                 </div>
                 <div className="pt-6 border-t space-y-4">
                   <h4 className="text-sm font-bold uppercase tracking-widest text-primary">Tenancy Terms</h4>
                   <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField control={form.control} name="tenancy.monthlyRent" render={({ field }) => (
-                      <FormItem><FormLabel htmlFor="prop-add-rent">Agreed Rent (£/mo)</FormLabel><FormControl><Input id="prop-add-rent" name="monthlyRent" type="number" {...field} value={field.value ?? ''} /></FormControl></FormItem>
+                      <FormItem><FormLabel htmlFor="onboard-prop-rent">Agreed Rent (£/mo)</FormLabel><FormControl><Input id="onboard-prop-rent" name="monthlyRent" type="number" className="h-11" {...field} value={field.value ?? ''} /></FormControl></FormItem>
                     )} />
                     <FormField control={form.control} name="tenancy.depositAmount" render={({ field }) => (
-                      <FormItem><FormLabel htmlFor="prop-add-deposit">Security Deposit (£)</FormLabel><FormControl><Input id="prop-add-deposit" name="depositAmount" type="number" {...field} value={field.value ?? ''} /></FormControl></FormItem>
+                      <FormItem><FormLabel htmlFor="onboard-prop-deposit">Security Deposit (£)</FormLabel><FormControl><Input id="onboard-prop-deposit" name="depositAmount" type="number" className="h-11" {...field} value={field.value ?? ''} /></FormControl></FormItem>
                     )} />
                   </div>
                   <FormField control={form.control} name="tenancy.depositScheme" render={({ field }) => (
-                    <FormItem><FormLabel htmlFor="prop-add-scheme">Protection Scheme</FormLabel><FormControl><Input id="prop-add-scheme" name="depositScheme" placeholder="e.g. DPS" {...field} /></FormControl></FormItem>
+                    <FormItem><FormLabel htmlFor="onboard-prop-scheme">Protection Scheme</FormLabel><FormControl><Input id="onboard-prop-scheme" name="depositScheme" placeholder="e.g. DPS" className="h-11" {...field} /></FormControl></FormItem>
                   )} />
                 </div>
               </CardContent>
-              <CardFooter className="justify-between border-t pt-6">
-                <Button type="button" variant="outline" onClick={() => setStep(2)}><ChevronLeft className="mr-2 h-4 w-4" /> Back</Button>
-                <Button type="button" onClick={() => setStep(4)}>Next Step <ChevronRight className="ml-2 h-4 w-4" /></Button>
+              <CardFooter className="justify-between border-t pt-6 bg-muted/5">
+                <Button type="button" variant="outline" className="font-bold uppercase tracking-widest text-xs h-11" onClick={() => setStep(2)}><ChevronLeft className="mr-2 h-4 w-4" /> Back</Button>
+                <Button type="button" className="font-bold uppercase tracking-widest text-xs h-11 px-8" onClick={() => setStep(4)}>Next Step <ChevronRight className="ml-2 h-4 w-4" /></Button>
               </CardFooter>
             </Card>
           )}
@@ -278,44 +278,44 @@ export default function AddPropertyPage() {
             <Card className="border-none shadow-xl">
               <CardHeader className="bg-primary/5 border-b">
                 <CardTitle className="flex items-center gap-2"><Images className="h-5 w-5" /> Media Gallery</CardTitle>
-                <CardDescription>Visual identification for portfolio reporting.</CardDescription>
+                <CardDescription>Visual identification for portfolio reporting. Photos will be stored securely.</CardDescription>
               </CardHeader>
               <CardContent className="pt-6 space-y-8">
                 <div className="space-y-4">
-                  <Label htmlFor="main-photo-upload">Primary Identification Photo</Label>
+                  <Label htmlFor="onboard-main-photo-upload" className="font-bold">Primary Identification Photo</Label>
                   {mainPreview ? (
-                    <div className="relative aspect-video rounded-2xl overflow-hidden border group">
-                      <Image src={mainPreview} alt="Main" fill className="object-cover" />
-                      <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => setMainPreview(null)}><X className="h-4 w-4" /></Button>
+                    <div className="relative aspect-video rounded-2xl overflow-hidden border group bg-muted/10 shadow-lg">
+                      <Image src={mainPreview} alt="Main Preview" fill className="object-cover" />
+                      <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => { setMainPreview(null); setMainFile(null); }}><X className="h-4 w-4" /></Button>
                     </div>
                   ) : (
-                    <div className="border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer hover:bg-muted/5 transition-colors" onClick={() => mainInputRef.current?.click()}>
-                      <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" /><p className="text-sm font-bold">Assign Main Photo</p>
+                    <div className="border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer hover:bg-muted/5 transition-colors border-primary/20" onClick={() => mainInputRef.current?.click()}>
+                      <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" /><p className="text-sm font-bold uppercase tracking-wider text-muted-foreground">Assign Identity Photo</p>
                     </div>
                   )}
-                  <input id="main-photo-upload" name="mainPhoto" type="file" ref={mainInputRef} className="hidden" accept="image/*" onChange={handleMainFileChange} />
+                  <input id="onboard-main-photo-upload" name="mainPhoto" type="file" ref={mainInputRef} className="hidden" accept="image/*" onChange={handleMainFileChange} />
                 </div>
 
                 <div className="space-y-4 pt-6 border-t">
-                  <Label htmlFor="gallery-photo-upload">Asset Gallery</Label>
+                  <Label htmlFor="onboard-gallery-photo-upload" className="font-bold">Asset Gallery (Multiple)</Label>
                   <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                     {galleryPreviews.map((url, idx) => (
-                      <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border group">
-                        <Image src={url} alt="Gallery" fill className="object-cover" />
+                      <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border group shadow-sm">
+                        <Image src={url} alt={`Gallery ${idx}`} fill className="object-cover" />
                         <Button type="button" variant="destructive" size="icon" className="h-6 w-6 absolute top-1 right-1 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => { setGalleryPreviews(p => p.filter((_, i) => i !== idx)); setGalleryFiles(f => f.filter((_, i) => i !== idx)); }}><X className="h-3 w-3" /></Button>
                       </div>
                     ))}
-                    <div className="border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-muted/5 min-h-[100px]" onClick={() => galleryInputRef.current?.click()}>
-                      <PlusCircle className="h-6 w-6 text-muted-foreground" /><span className="text-[10px] font-bold uppercase">Add Photos</span>
+                    <div className="border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 cursor-pointer hover:bg-muted/5 min-h-[100px] border-primary/10" onClick={() => galleryInputRef.current?.click()}>
+                      <PlusCircle className="h-6 w-6 text-muted-foreground opacity-50" /><span className="text-[10px] font-bold uppercase tracking-tighter text-muted-foreground">Add Photos</span>
                     </div>
                   </div>
-                  <input id="gallery-photo-upload" name="galleryPhotos" type="file" ref={galleryInputRef} className="hidden" accept="image/*" multiple onChange={handleGalleryFilesChange} />
+                  <input id="onboard-gallery-photo-upload" name="galleryPhotos" type="file" ref={galleryInputRef} className="hidden" accept="image/*" multiple onChange={handleGalleryFilesChange} />
                 </div>
               </CardContent>
-              <CardFooter className="justify-between border-t pt-6">
-                <Button type="button" variant="outline" onClick={() => setStep(3)}><ChevronLeft className="mr-2 h-4 w-4" /> Back</Button>
-                <Button type="submit" disabled={isSubmitting} className="px-10 shadow-lg">
-                  {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Finalizing...</> : 'Complete Onboarding'}
+              <CardFooter className="justify-between border-t pt-6 bg-muted/5">
+                <Button type="button" variant="outline" className="font-bold uppercase tracking-widest text-xs h-11" onClick={() => setStep(3)}><ChevronLeft className="mr-2 h-4 w-4" /> Back</Button>
+                <Button type="submit" disabled={isSubmitting} className="font-bold uppercase tracking-widest text-xs h-11 px-10 shadow-lg">
+                  {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Syncing Media...</> : 'Complete Onboarding'}
                 </Button>
               </CardFooter>
             </Card>

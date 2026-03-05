@@ -495,7 +495,7 @@ export default function EditPropertyPage() {
                         <FormItem>
                             <FormLabel htmlFor="edit-prop-notes">Internal Audit Notes</FormLabel>
                             <FormControl>
-                                <Textarea id="edit-prop-notes" name="notes" rows={5} className="bg-background resize-none" {...field} value={field.value ?? ''} />
+                                <Textarea id="edit-prop-notes" name="notes" rows={5} className="bg-background resize-none rounded-xl" {...field} value={field.value ?? ''} />
                             </FormControl>
                             <FormMessage />
                         </FormItem>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -227,6 +226,7 @@ export default function MaintenancePage() {
                                     <FormControl>
                                         <Button
                                             id="maintenance-property-target"
+                                            name="propertySelector"
                                             variant="outline"
                                             role="combobox"
                                             className={cn(
@@ -350,7 +350,7 @@ export default function MaintenancePage() {
                                     id="other-category-description"
                                     name="otherCategoryDetails"
                                     placeholder="Please specify the type of maintenance required..."
-                                    className="bg-background resize-none"
+                                    className="bg-background resize-none rounded-xl"
                                     {...field}
                                     value={field.value ?? ''}
                                   />
@@ -386,7 +386,7 @@ export default function MaintenancePage() {
                                 id="maintenance-description"
                                 name="description"
                                 placeholder="Please describe the issue in detail for the contractor." 
-                                className="min-h-[120px] rounded-xl bg-background" 
+                                className="min-h-[120px] rounded-xl bg-background resize-none" 
                                 {...field} 
                                 value={field.value ?? ''} 
                               />
@@ -443,7 +443,7 @@ export default function MaintenancePage() {
                                         form.setValue('contractorPhone', contractor.phone);
                                     }
                                 }}>
-                                    <SelectTrigger id="maintenance-contractor-quick-select" className="h-11 bg-background">
+                                    <SelectTrigger id="maintenance-contractor-quick-select" name="contractorQuickSelect" className="h-11 bg-background">
                                         <SelectValue placeholder="Search your directory..." />
                                     </SelectTrigger>
                                     <SelectContent>

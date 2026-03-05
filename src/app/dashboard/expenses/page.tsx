@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -223,7 +222,7 @@ export default function FinancialsPage() {
     doc.text(`HMRC Self-Assessment Export - ${selectedYear}`, 14, 22);
     doc.setFontSize(10);
     doc.text(`Generated for: ${user?.displayName || user?.email}`, 14, 30);
-    doc.text(`Portfolio Scope: ${selectedPropertyId === 'all' ? 'Entire Active Portfolio' : selectedProperty?.address.street}`, 14, 36);
+    doc.text(`Portfolio Scope: ${selectedPropertyId === 'all' ? 'Entire Active Portfolio' : formatAddress(selectedProperty?.address as any)}`, 14, 36);
     doc.setLineWidth(0.5);
     doc.line(14, 40, 200, 40);
 
@@ -259,10 +258,10 @@ export default function FinancialsPage() {
     doc.save(`RentSafeUK-HMRC-Tax-Report-${selectedYear}.pdf`);
   };
 
-  const formatAddress = (address: Property['address']) => {
+  function formatAddress(address: Property['address']) {
     if (!address) return 'N/A';
     return [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
-  };
+  }
 
   return (
     <div className="flex flex-col gap-6 max-w-6xl mx-auto">
@@ -270,7 +269,7 @@ export default function FinancialsPage() {
             <div className="grid w-full gap-1.5">
                 <Label htmlFor="financial-scope-selector" className="text-xs uppercase font-bold text-muted-foreground">Scope View</Label>
                 <Select onValueChange={setSelectedPropertyId} value={selectedPropertyId}>
-                    <SelectTrigger id="financial-scope-selector" name="financialScope"><SelectValue placeholder="All Properties" /></SelectTrigger>
+                    <SelectTrigger id="financial-scope-selector" name="financialScope" className="h-11"><SelectValue placeholder="All Properties" /></SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Properties (Portfolio View)</SelectItem>
                         {activeProperties?.map((prop) => (
@@ -284,7 +283,7 @@ export default function FinancialsPage() {
             <div className="grid w-full gap-1.5">
                 <Label htmlFor="reporting-year-selector" className="text-xs uppercase font-bold text-muted-foreground">Reporting Year</Label>
                 <Select onValueChange={(value) => setSelectedYear(Number(value))} value={selectedYear ? String(selectedYear) : ''}>
-                    <SelectTrigger id="reporting-year-selector" name="reportingYear"><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="reporting-year-selector" name="reportingYear" className="h-11"><SelectValue /></SelectTrigger>
                     <SelectContent>{Array.from({ length: 5 }, (_, i) => (new Date().getFullYear()) - i).map(year => (<SelectItem key={year} value={String(year)}>{year}</SelectItem>))}</SelectContent>
                 </Select>
             </div>
@@ -298,12 +297,12 @@ export default function FinancialsPage() {
         </div>
 
         <Tabs defaultValue="expenses" className="pt-4">
-            <TabsList className="bg-muted/50 p-1 h-auto"><TabsTrigger value="expenses">Tracker</TabsTrigger><TabsTrigger value="summary">Tax Summary</TabsTrigger><TabsTrigger value="statement">Rent Ledger</TabsTrigger></TabsList>
+            <TabsList className="bg-muted/50 p-1 h-auto"><TabsTrigger value="expenses" className="font-bold">Tracker</TabsTrigger><TabsTrigger value="summary" className="font-bold">Tax Summary</TabsTrigger><TabsTrigger value="statement" className="font-bold">Rent Ledger</TabsTrigger></TabsList>
             <TabsContent value="expenses">
                 <ExpenseTracker properties={activeProperties || []} selectedPropertyId={selectedPropertyId} />
             </TabsContent>
             <TabsContent value="summary">
-                <div className="flex justify-end gap-2 mb-4 pt-4"><Button onClick={generateHMRCPDF} size="sm" variant="outline" className="font-bold text-xs uppercase tracking-widest"><Receipt className="mr-2 h-4 w-4" /> HMRC Tax Export (PDF)</Button></div>
+                <div className="flex justify-end gap-2 mb-4 pt-4"><Button onClick={generateHMRCPDF} size="sm" variant="outline" className="font-bold text-xs uppercase tracking-widest h-10 px-6 border-primary/20"><Receipt className="mr-2 h-4 w-4 text-primary" /> HMRC Tax Export (PDF)</Button></div>
                 <AnnualSummary selectedYear={selectedYear || 0} expenses={expenses} isLoadingExpenses={isLoading} />
             </TabsContent>
             <TabsContent value="statement">
@@ -345,17 +344,17 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
     const expCol = collection(firestore, 'userProfiles', user.uid, 'properties', data.propertyId, 'expenses');
     addDoc(expCol, { ...data, ownerId: user.uid })
       .then(() => {
-        toast({ title: 'Expense Logged' });
+        toast({ title: 'Expense Logged', description: 'Financial record added to audit trail.' });
         form.reset({ propertyId: selectedPropertyId !== 'all' ? selectedPropertyId : '', expenseType: '', notes: '', date: new Date(), paidBy: 'Landlord', amount: 0 });
       })
       .catch(() => toast({ variant: 'destructive', title: 'Save Failed' }))
       .finally(() => setIsSubmitting(false));
   }
 
-  const formatAddress = (address: Property['address']) => {
+  function formatAddress(address: Property['address']) {
     if (!address) return 'N/A';
     return [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
-  };
+  }
 
   return (
     <div className="space-y-6">
@@ -371,7 +370,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                     <FormItem>
                         <FormLabel className="font-bold" htmlFor="expense-property-target">Target Property</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger id="expense-property-target" name="propertyId" className="h-11"><SelectValue placeholder="Select from portfolio" /></SelectTrigger></FormControl>
+                        <FormControl><SelectTrigger id="expense-property-target" name="propertyId" className="h-11 bg-background"><SelectValue placeholder="Select from portfolio" /></SelectTrigger></FormControl>
                         <SelectContent>{properties.map(p => (<SelectItem key={p.id} value={p.id}>{formatAddress(p.address)}</SelectItem>))}</SelectContent>
                         </Select>
                         <FormMessage />
@@ -386,7 +385,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                               id="expense-date"
                               name="date"
                               type="date" 
-                              className="h-11" 
+                              className="h-11 bg-background" 
                               value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} 
                               onChange={(e) => field.onChange(e.target.value)} 
                             />
@@ -398,7 +397,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                         <FormItem>
                             <FormLabel className="font-bold" htmlFor="expense-category">Category</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl><SelectTrigger id="expense-category" name="expenseType" className="h-11"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
+                                <FormControl><SelectTrigger id="expense-category" name="expenseType" className="h-11 bg-background"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
                                 <SelectContent>
                                     {['Repairs and Maintenance','Utilities','Insurance','Mortgage Interest','Cleaning','Gardening','Letting Agent Fees', 'Other'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                                 </SelectContent>
@@ -417,7 +416,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                               name="amount"
                               type="number" 
                               step="0.01" 
-                              className="h-11" 
+                              className="h-11 bg-background" 
                               placeholder="0.00" 
                               {...field} 
                             />
@@ -433,7 +432,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                             id="expense-paid-by"
                             name="paidBy"
                             placeholder="e.g. Landlord" 
-                            className="h-11" 
+                            className="h-11 bg-background" 
                             {...field} 
                           />
                         </FormControl>
@@ -449,7 +448,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                         id="expense-notes"
                         name="notes"
                         placeholder="Details for tax records..." 
-                        className="rounded-xl min-h-[100px]" 
+                        className="rounded-xl min-h-[100px] bg-background resize-none" 
                         {...field} 
                       />
                     </FormControl>
@@ -522,7 +521,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
     const rentPaymentRef = doc(firestore, 'userProfiles', user.uid, 'properties', selectedProperty.id, 'rentPayments', `${selectedYear}-${month}`);
     const expectedAmount = statement.find(s => s.month === month)?.rent ?? 0;
     setDoc(rentPaymentRef, { ownerId: user.uid, propertyId: selectedProperty.id, year: selectedYear, month, status, expectedAmount, amountPaid: status === 'Paid' ? expectedAmount : 0 }, { merge: true }).then(() => {
-        toast({ title: 'Ledger Updated' });
+        toast({ title: 'Ledger Updated', description: `Rent for ${month} marked as ${status}.` });
     });
   };
 
@@ -546,7 +545,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                             <TableCell className="font-medium">{formatCurrency(row.rent)}</TableCell>
                             <TableCell className="pr-6">
                                 <Select value={row.status} onValueChange={(v) => handleStatusChange(row.month, v as PaymentStatus)}>
-                                    <SelectTrigger id={`rent-payment-status-${row.month}`} name={`paymentStatus-${row.month}`} className="w-[160px] h-9 text-xs font-bold shadow-none"><SelectValue /></SelectTrigger>
+                                    <SelectTrigger id={`rent-payment-status-${row.month}`} name={`paymentStatus-${row.month}`} className="w-[160px] h-9 text-xs font-bold shadow-none bg-background"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="Paid">Paid</SelectItem>
                                         <SelectItem value="Partially Paid">Partially Paid</SelectItem>
