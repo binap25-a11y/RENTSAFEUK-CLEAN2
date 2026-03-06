@@ -220,13 +220,13 @@ export default function MaintenancePage() {
                         name="propertyId"
                         render={({ field }) => (
                             <FormItem className="flex flex-col">
-                            <FormLabel className="font-bold" htmlFor="maintenance-property-target">Search Portfolio Property</FormLabel>
+                            <FormLabel className="font-bold">Search Portfolio Property</FormLabel>
                             <Popover open={isPropSelectorOpen} onOpenChange={setIsPropSelectorOpen}>
                                 <PopoverTrigger asChild>
                                     <FormControl>
                                         <Button
-                                            id="maintenance-property-target"
-                                            name="propertySelector"
+                                            id="maintenance-prop-trigger"
+                                            name="propTrigger"
                                             variant="outline"
                                             role="combobox"
                                             className={cn(
@@ -245,8 +245,8 @@ export default function MaintenancePage() {
                                     <div className="flex items-center border-b px-3 bg-muted/20">
                                         <Search className="h-4 w-4 shrink-0 opacity-50 mr-2" />
                                         <Input 
-                                            id="maintenance-prop-search-field"
-                                            name="propertySearch"
+                                            id="prop-search-field"
+                                            name="searchField"
                                             placeholder="Type address..." 
                                             className="h-11 border-0 focus-visible:ring-0 bg-transparent" 
                                             value={propertySearch}
@@ -297,10 +297,10 @@ export default function MaintenancePage() {
                             name="category"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="font-bold" htmlFor="maintenance-category-select">Trade Category</FormLabel>
+                                <FormLabel className="font-bold" htmlFor="issue-category-select">Trade Category</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl>
-                                    <SelectTrigger id="maintenance-category-select" name="category" className="h-11 bg-background">
+                                    <SelectTrigger id="issue-category-select" name="category" className="h-11 bg-background">
                                       <SelectValue placeholder="Select trade" />
                                     </SelectTrigger>
                                   </FormControl>
@@ -319,10 +319,10 @@ export default function MaintenancePage() {
                             name="priority"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="font-bold" htmlFor="maintenance-priority-select">Priority Status</FormLabel>
+                                <FormLabel className="font-bold" htmlFor="issue-priority-select">Priority Status</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl>
-                                    <SelectTrigger id="maintenance-priority-select" name="priority" className="h-11 bg-background">
+                                    <SelectTrigger id="issue-priority-select" name="priority" className="h-11 bg-background">
                                       <SelectValue placeholder="Select urgency" />
                                     </SelectTrigger>
                                   </FormControl>
@@ -344,11 +344,11 @@ export default function MaintenancePage() {
                             name="otherCategoryDetails"
                             render={({ field }) => (
                               <FormItem className="animate-in fade-in slide-in-from-top-2">
-                                <FormLabel className="font-bold" htmlFor="other-category-description">Category Details</FormLabel>
+                                <FormLabel className="font-bold" htmlFor="other-details-area">Category Details</FormLabel>
                                 <FormControl>
                                   <Textarea
-                                    id="other-category-description"
-                                    name="otherCategoryDetails"
+                                    id="other-details-area"
+                                    name="otherDetails"
                                     placeholder="Please specify the type of maintenance required..."
                                     className="bg-background resize-none rounded-xl"
                                     {...field}
@@ -364,10 +364,10 @@ export default function MaintenancePage() {
 
                         <FormField control={form.control} name="title" render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="font-bold" htmlFor="maintenance-issue-title">Issue Headline</FormLabel>
+                            <FormLabel className="font-bold" htmlFor="issue-headline-input">Issue Headline</FormLabel>
                             <FormControl>
                               <Input 
-                                id="maintenance-issue-title"
+                                id="issue-headline-input"
                                 name="title"
                                 placeholder="e.g., Leaking boiler in kitchen" 
                                 className="h-11 bg-background" 
@@ -380,10 +380,10 @@ export default function MaintenancePage() {
                         )} />
                         <FormField control={form.control} name="description" render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="font-bold" htmlFor="maintenance-detailed-desc">Detailed Description</FormLabel>
+                            <FormLabel className="font-bold" htmlFor="issue-desc-area">Detailed Description</FormLabel>
                             <FormControl>
                               <Textarea 
-                                id="maintenance-detailed-desc"
+                                id="issue-desc-area"
                                 name="description"
                                 placeholder="Please describe the issue in detail for the contractor." 
                                 className="min-h-[120px] rounded-xl bg-background resize-none" 
@@ -401,10 +401,10 @@ export default function MaintenancePage() {
                             <h3 className="font-bold text-lg flex items-center gap-2"><Calendar className="h-5 w-5 text-primary" /> Audit Info</h3>
                             <FormField control={form.control} name="reportedBy" render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="font-bold" htmlFor="maintenance-reported-by">Reported By</FormLabel>
+                                <FormLabel className="font-bold" htmlFor="reported-by-input">Reported By</FormLabel>
                                 <FormControl>
                                   <Input 
-                                    id="maintenance-reported-by"
+                                    id="reported-by-input"
                                     name="reportedBy"
                                     placeholder="e.g., Tenant name" 
                                     className="h-11 bg-background" 
@@ -417,10 +417,10 @@ export default function MaintenancePage() {
                             )} />
                             <FormField control={form.control} name="reportedDate" render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="font-bold" htmlFor="maintenance-reported-date">Date of Report</FormLabel>
+                                <FormLabel className="font-bold" htmlFor="reported-date-input">Date of Report</FormLabel>
                                 <FormControl>
                                   <Input 
-                                    id="maintenance-reported-date"
+                                    id="reported-date-input"
                                     name="reportedDate"
                                     type="date" 
                                     className="h-11 bg-background" 
@@ -435,7 +435,7 @@ export default function MaintenancePage() {
                         <div className="space-y-6">
                             <h3 className="font-bold text-lg flex items-center gap-2 text-green-600"><PlusCircle className="h-5 w-5" /> Assignment</h3>
                             <div className="space-y-2">
-                                <Label htmlFor="maintenance-contractor-quick-select" className="font-bold">Quick-select Contractor</Label>
+                                <Label htmlFor="contractor-select-quick" className="font-bold">Quick-select Contractor</Label>
                                 <Select onValueChange={(contractorId) => {
                                     const contractor = contractors?.find(c => c.id === contractorId);
                                     if (contractor) {
@@ -443,7 +443,7 @@ export default function MaintenancePage() {
                                         form.setValue('contractorPhone', contractor.phone);
                                     }
                                 }}>
-                                    <SelectTrigger id="maintenance-contractor-quick-select" name="contractorQuickSelect" className="h-11 bg-background">
+                                    <SelectTrigger id="contractor-select-quick" name="quickContractor" className="h-11 bg-background">
                                         <SelectValue placeholder="Search your directory..." />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -455,10 +455,10 @@ export default function MaintenancePage() {
                             </div>
                             <FormField control={form.control} name="contractorName" render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="font-bold" htmlFor="maintenance-assigned-contractor">Assigned To</FormLabel>
+                                <FormLabel className="font-bold" htmlFor="assigned-contractor-input">Assigned To</FormLabel>
                                 <FormControl>
                                   <Input 
-                                    id="maintenance-assigned-contractor"
+                                    id="assigned-contractor-input"
                                     name="contractorName"
                                     placeholder="Contractor name" 
                                     className="h-11 bg-background" 
