@@ -204,7 +204,10 @@ export default function EditPropertyPage() {
     try {
       let finalImageUrl = property?.imageUrl || '';
       if (selectedMainFile) {
-          finalImageUrl = await uploadPropertyImage(selectedMainFile, user.uid, propertyId);
+          const uploadedUrl = await uploadPropertyImage(selectedMainFile, user.uid, propertyId);
+          if (uploadedUrl) {
+              finalImageUrl = uploadedUrl;
+          }
       }
 
       const galleryUrls = [...existingGallery];

@@ -3,10 +3,10 @@ import { createClient } from "@supabase/supabase-js";
 
 // Centrally managed Supabase initialization for server-side storage handling
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://owfjowiiyshhqzhatwqr.supabase.co';
-// We fallback to the Anon key if the Service Role key is missing, as long as bucket rules allow public uploads
+// Robust fallback chain: Service Role > Anon Key
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-const supabase = (supabaseUrl && supabaseKey && supabaseKey.length > 0) 
+const supabase = (supabaseUrl && supabaseKey && supabaseKey.length > 0 && !supabaseKey.startsWith('sk_')) 
   ? createClient(supabaseUrl, supabaseKey)
   : null;
 
