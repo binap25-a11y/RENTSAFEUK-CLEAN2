@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL!,
-  process.env.SUPABASE_SERVICE_ROLE_KEY!
+  process.env.SUPABASE_SERVICE_ROLE_KEY! || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY!
 );
 
 export async function POST(req: NextRequest) {
@@ -18,7 +18,7 @@ export async function POST(req: NextRequest) {
     const fileName = `${Date.now()}-${file.name}`;
 
     const { error } = await supabase.storage
-      .from("images") // must match your bucket name
+      .from("Images") // must match your bucket name
       .upload(fileName, file);
 
     if (error) {
@@ -26,7 +26,7 @@ export async function POST(req: NextRequest) {
     }
 
     const { data } = supabase.storage
-      .from("images")
+      .from("Images")
       .getPublicUrl(fileName);
 
     return NextResponse.json({ url: data.publicUrl });

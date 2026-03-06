@@ -3,17 +3,16 @@ import { createClient } from "@supabase/supabase-js";
 
 // Centrally managed Supabase initialization for server-side storage handling
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://owfjowiiyshhqzhatwqr.supabase.co';
-// Robust fallback chain: Service Role > Anon Key
+// Use Service Role if available, otherwise fallback to Anon Key for public bucket access
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-const supabase = (supabaseUrl && supabaseKey && supabaseKey.length > 0 && !supabaseKey.startsWith('sk_')) 
+const supabase = (supabaseUrl && supabaseKey && supabaseKey.length > 0) 
   ? createClient(supabaseUrl, supabaseKey)
   : null;
 
 export async function POST(req: NextRequest) {
   try {
     if (!supabase) {
-      console.error('Supabase server-side client not configured. Missing valid keys.');
       return NextResponse.json({ 
         error: "Supabase storage is not configured on the server. Please check your environment variables." 
       }, { status: 500 });
@@ -32,12 +31,12 @@ export async function POST(req: NextRequest) {
     const fileExt = file.name.split('.').pop();
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
     
-    // Organize storage path by user and property for precise identification and security
+    // Organize storage path by user and property
     const filePath = `${userId || 'system'}/${propertyId || 'misc'}/${fileName}`;
 
-    // Perform the binary upload to the 'images' bucket
+    // Perform the binary upload to the 'Images' bucket (Case Sensitive)
     const { data, error } = await supabase.storage
-      .from("images")
+      .from("Images")
       .upload(filePath, file, {
         cacheControl: '3600',
         upsert: false
@@ -50,7 +49,7 @@ export async function POST(req: NextRequest) {
 
     // Retrieve the public URL for the newly uploaded asset
     const { data: urlData } = supabase.storage
-      .from("images")
+      .from("Images")
       .getPublicUrl(filePath);
 
     return NextResponse.json({ url: urlData.publicUrl });

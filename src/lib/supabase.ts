@@ -9,7 +9,6 @@ const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://owfjowiiysh
 const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || '';
 
 // Defensive initialization to prevent crashes on startup
-// Ensuring we don't pass an empty string or a placeholder key
 export const supabase = (supabaseUrl && supabaseAnonKey && supabaseAnonKey.length > 0 && !supabaseAnonKey.startsWith('sk_')) 
   ? createClient(supabaseUrl, supabaseAnonKey, {
       auth: {
