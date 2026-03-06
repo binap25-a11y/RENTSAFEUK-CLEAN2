@@ -133,13 +133,14 @@ export default function AddPropertyPage() {
       let additionalUrls: string[] = [];
       if (galleryFiles.length > 0) {
         const uploadPromises = galleryFiles.map(f => uploadPropertyImage(f, user.uid, docRef.id));
-        additionalUrls = await Promise.all(uploadPromises);
+        const uploaded = await Promise.all(uploadPromises);
+        additionalUrls = uploaded.filter(Boolean);
       }
 
       // Step 3: Update the record with the final public URLs
       await updateDoc(docRef, { 
         imageUrl: finalImageUrl, 
-        additionalImageUrls: additionalUrls.filter(Boolean) 
+        additionalImageUrls: additionalUrls 
       });
 
       toast({ 
@@ -147,14 +148,13 @@ export default function AddPropertyPage() {
         description: 'Asset successfully added to your portfolio with all media synced.' 
       });
       
-      // Navigate after success
       router.push('/dashboard/properties');
     } catch (err: any) {
       console.error('Onboarding failed:', err);
       toast({ 
         variant: 'destructive', 
         title: 'Onboarding Failed', 
-        description: "There was an error synchronizing your property media. Please check your connection."
+        description: "There was an error synchronizing your property media."
       });
     } finally {
       setIsSubmitting(false);
