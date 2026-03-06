@@ -294,9 +294,12 @@ export default function AddPropertyPage() {
                 <div className="space-y-4">
                   <Label htmlFor="onboard-main-photo-drop" className="font-bold">Primary Identification Photo</Label>
                   {mainPreview ? (
-                    <div className="relative aspect-video rounded-2xl overflow-hidden border group bg-muted/10 shadow-lg">
+                    <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-primary group bg-muted/10 shadow-lg">
                       <Image src={mainPreview} alt="Main Preview" fill className="object-cover" />
-                      <Button type="button" variant="destructive" size="icon" className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => { setMainPreview(null); setMainFile(null); }}><X className="h-4 w-4" /></Button>
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
+                        <Button type="button" variant="secondary" size="sm" onClick={() => mainInputRef.current?.click()}>Change Image</Button>
+                        <Button type="button" variant="destructive" size="sm" onClick={() => { setMainPreview(null); setMainFile(null); }}>Remove</Button>
+                      </div>
                     </div>
                   ) : (
                     <div className="border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer hover:bg-muted/5 transition-colors border-primary/20" onClick={() => mainInputRef.current?.click()}>

@@ -243,7 +243,7 @@ export default function PropertiesPage() {
                 <div className="relative w-full md:w-auto md:max-sm">
                     <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                     <Input
-                      id="property-dashboard-search"
+                      id="property-search-field"
                       name="propertySearch"
                       placeholder="Search by address..."
                       className="pl-8 h-10 bg-background"
@@ -464,8 +464,8 @@ export default function PropertiesPage() {
             </div>
             
             <Button 
-              id="property-export-action"
-              name="exportCsv"
+              id="property-export-trigger"
+              name="exportAction"
               variant="ghost" 
               className="font-bold text-muted-foreground hover:text-primary transition-all w-full h-11 px-6 border border-dashed hover:border-primary/50" 
               onClick={exportToCSV} 

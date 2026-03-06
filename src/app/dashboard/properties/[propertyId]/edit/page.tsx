@@ -323,15 +323,15 @@ export default function EditPropertyPage() {
                 <div className="space-y-6">
                     <FormLabel className="font-bold flex items-center gap-2 text-lg">
                         <Home className="h-5 w-5 text-primary" />
-                        Portfolio Photo
+                        Portfolio Identity Photo
                     </FormLabel>
                     
                     {mainPreviewUrl ? (
-                        <div className="relative w-full aspect-video rounded-2xl overflow-hidden border shadow-lg group bg-muted/10">
+                        <div className="relative w-full aspect-video rounded-2xl overflow-hidden border-2 border-primary shadow-lg group bg-muted/10">
                             <Image src={mainPreviewUrl} alt="Main" fill className="object-cover" />
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-4">
                                 <Button type="button" variant="secondary" size="sm" onClick={() => mainInputRef.current?.click()}>
-                                    <Upload className="mr-2 h-4 w-4" /> Replace
+                                    <Upload className="mr-2 h-4 w-4" /> Replace Photo
                                 </Button>
                                 <Button type="button" variant="destructive" size="sm" onClick={() => { setSelectedMainFile(null); setMainPreviewUrl(null); }}>
                                     <X className="mr-2 h-4 w-4" /> Remove
@@ -344,13 +344,13 @@ export default function EditPropertyPage() {
                             <p className="text-sm font-bold">Assign Identity Photo</p>
                         </div>
                     )}
-                    <input type="file" ref={mainInputRef} onChange={handleMainFileChange} accept="image/*" className="hidden" id="main-photo-upload-edit" name="mainPhoto" />
+                    <input type="file" ref={mainInputRef} onChange={handleMainFileChange} accept="image/*" className="hidden" id="edit-main-photo-input" name="mainPhoto" />
                 </div>
 
                 <div className="space-y-6">
                     <FormLabel className="font-bold flex items-center gap-2 text-lg">
                         <Images className="h-5 w-5 text-primary" />
-                        Gallery
+                        Asset Gallery
                     </FormLabel>
                     
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -378,7 +378,7 @@ export default function EditPropertyPage() {
                             <span className="text-[10px] font-bold">Add Media</span>
                         </div>
                     </div>
-                    <input type="file" ref={galleryInputRef} onChange={handleNewGalleryFiles} accept="image/*" multiple className="hidden" id="gallery-photo-upload-edit" name="galleryPhotos" />
+                    <input type="file" ref={galleryInputRef} onChange={handleNewGalleryFiles} accept="image/*" multiple className="hidden" id="edit-gallery-photos-input" name="galleryPhotos" />
                 </div>
             </div>
 
