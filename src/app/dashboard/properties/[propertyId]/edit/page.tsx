@@ -80,10 +80,13 @@ export default function EditPropertyPage() {
   const firestore = useFirestore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
+  // Primary Asset Identity Logic
   const [selectedMainFile, setSelectedMainFile] = useState<File | null>(null);
   const [mainPreviewUrl, setMainPreviewUrl] = useState<string | null>(null);
+  const [isMainRemoved, setIsMainRemoved] = useState(false);
   const mainInputRef = useRef<HTMLInputElement>(null);
 
+  // Gallery Logic
   const [existingGallery, setExistingGallery] = useState<string[]>([]);
   const [newGalleryFiles, setNewGalleryFiles] = useState<File[]>([]);
   const [newGalleryPreviews, setNewGalleryPreviews] = useState<string[]>([]);
@@ -120,8 +123,13 @@ export default function EditPropertyPage() {
         currentValuation: property.currentValuation,
         tenancy: property.tenancy,
       });
-      if (property.imageUrl) setMainPreviewUrl(property.imageUrl);
-      if (property.additionalImageUrls) setExistingGallery(property.additionalImageUrls);
+      if (property.imageUrl) {
+          setMainPreviewUrl(property.imageUrl);
+          setIsMainRemoved(false);
+      }
+      if (property.additionalImageUrls) {
+          setExistingGallery(property.additionalImageUrls);
+      }
     }
   }, [property, form]);
 
@@ -136,6 +144,7 @@ export default function EditPropertyPage() {
     const file = e.target.files?.[0];
     if (file) {
       setSelectedMainFile(file);
+      setIsMainRemoved(false);
       if (mainPreviewUrl && mainPreviewUrl.startsWith('blob:')) URL.revokeObjectURL(mainPreviewUrl);
       setMainPreviewUrl(URL.createObjectURL(file));
     }
@@ -159,16 +168,19 @@ export default function EditPropertyPage() {
     setIsSubmitting(true);
 
     try {
-      let finalIdentityUrl = property?.imageUrl || '';
+      // Step 1: Handle Primary Identity Photo Upload
+      let finalIdentityUrl = isMainRemoved ? '' : (property?.imageUrl || '');
+      
       if (selectedMainFile) {
           try {
             finalIdentityUrl = await uploadPropertyImage(selectedMainFile, user.uid, propertyId);
           } catch (uploadErr: any) {
-            console.error('Binary media synchronization failure:', uploadErr);
+            console.error('Identity media synchronization failure:', uploadErr);
             toast({ variant: 'destructive', title: 'Media Error', description: 'Failed to upload new identity photo.' });
           }
       }
 
+      // Step 2: Handle Gallery Uploads
       const newGalleryUrls: string[] = [];
       if (newGalleryFiles.length > 0) {
           try {
@@ -179,23 +191,31 @@ export default function EditPropertyPage() {
           }
       }
 
-      // Reconstruct gallery
-      const combinedGallery = [...existingGallery, ...newGalleryUrls];
+      // Step 3: Reconstruct and Validate Full Gallery
+      let combinedGallery = [...existingGallery, ...newGalleryUrls];
       
-      // Mirror identity photo into gallery if it's new
+      // Mirror identity photo into gallery if it's new or was changed
       if (finalIdentityUrl && !combinedGallery.includes(finalIdentityUrl)) {
           combinedGallery.unshift(finalIdentityUrl);
       }
 
+      // If main was removed and not replaced, clean it from gallery too
+      if (isMainRemoved && !selectedMainFile && property?.imageUrl) {
+          combinedGallery = combinedGallery.filter(url => url !== property.imageUrl);
+      }
+
       const updatePayload = {
           ...data,
-          imageUrl: finalIdentityUrl || property?.imageUrl || '',
+          imageUrl: finalIdentityUrl,
           additionalImageUrls: combinedGallery,
           ownerId: user.uid
       };
 
-      await updateDoc(doc(firestore, 'userProfiles', user.uid, 'properties', propertyId), JSON.parse(JSON.stringify(updatePayload)));
-      toast({ title: "Portfolio Synchronized", description: "Record and media storage updated." });
+      // Sanitize payload for Firestore
+      const sanitizedPayload = JSON.parse(JSON.stringify(updatePayload));
+
+      await updateDoc(doc(firestore, 'userProfiles', user.uid, 'properties', propertyId), sanitizedPayload);
+      toast({ title: "Portfolio Updated", description: "Property records and media storage synchronized." });
       router.push(`/dashboard/properties/${propertyId}`);
     } catch (e: any) {
       console.error("Critical sync failure:", e);
@@ -252,52 +272,53 @@ export default function EditPropertyPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 border-t pt-10">
                 <div className="space-y-6">
                     <FormLabel className="font-bold flex items-center gap-2 text-lg"><Home className="h-5 w-5 text-primary" /> Identity Photo</FormLabel>
+                    <FormDescription className="text-xs">Primary photo for the grid view. Also added to your gallery.</FormDescription>
                     {mainPreviewUrl ? (
                         <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-primary shadow-lg group">
                             <Image 
                               src={mainPreviewUrl} 
-                              alt="Preview" 
+                              alt="Primary Asset Identity" 
                               fill 
                               className="object-cover" 
                               unoptimized
                             />
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                 <Button type="button" variant="secondary" size="sm" onClick={() => mainInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Change</Button>
-                                <Button type="button" variant="destructive" size="sm" onClick={() => { setSelectedMainFile(null); setMainPreviewUrl(null); }}><X className="mr-2 h-4 w-4" /> Remove</Button>
+                                <Button type="button" variant="destructive" size="sm" onClick={() => { setSelectedMainFile(null); setMainPreviewUrl(null); setIsMainRemoved(true); }}><X className="mr-2 h-4 w-4" /> Remove</Button>
                             </div>
                         </div>
                     ) : (
-                        <div className="border-2 border-dashed rounded-2xl p-12 text-center bg-muted/5 cursor-pointer" onClick={() => mainInputRef.current?.click()}>
+                        <div className="border-2 border-dashed rounded-2xl p-12 text-center bg-muted/5 cursor-pointer hover:bg-muted/10 transition-colors" onClick={() => mainInputRef.current?.click()}>
                             <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
-                            <p className="text-sm font-bold">Assign Asset Photo</p>
+                            <p className="text-sm font-bold">Assign Asset Identity Photo</p>
                         </div>
                     )}
                     <input type="file" ref={mainInputRef} onChange={handleMainFileChange} accept="image/*" className="hidden" id="edit-main-photo" name="editMainPhoto" />
                 </div>
 
                 <div className="space-y-6">
-                    <FormLabel className="font-bold flex items-center gap-2 text-lg"><Images className="h-5 w-5 text-primary" /> Additional Media</FormLabel>
+                    <FormLabel className="font-bold flex items-center gap-2 text-lg"><Images className="h-5 w-5 text-primary" /> Additional Gallery Media</FormLabel>
                     <div className="grid grid-cols-3 gap-4">
                         {existingGallery.map((url, idx) => (
-                            <div key={`existing-${idx}`} className="relative aspect-square rounded-xl overflow-hidden border group">
+                            <div key={`existing-${idx}`} className="relative aspect-square rounded-xl overflow-hidden border group shadow-sm bg-background">
                                 <Image 
                                   src={url} 
-                                  alt="Gallery" 
+                                  alt="Gallery Item" 
                                   fill 
                                   className="object-cover" 
                                   unoptimized
                                 />
-                                <button type="button" onClick={() => setExistingGallery(p => p.filter(u => u !== url))} className="absolute top-1 right-1 p-1 bg-destructive text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><X className="h-3 w-3" /></button>
+                                <button type="button" onClick={() => setExistingGallery(p => p.filter(u => u !== url))} className="absolute top-1.5 right-1.5 p-1 bg-destructive/90 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive shadow-md"><X className="h-3 w-3" /></button>
                             </div>
                         ))}
                         {newGalleryPreviews.map((url, idx) => (
-                            <div key={`new-${idx}`} className="relative aspect-square rounded-xl overflow-hidden border border-primary/50 group">
-                                <Image src={url} alt="New Preview" fill className="object-cover" unoptimized />
-                                <button type="button" onClick={() => removeNewGalleryImage(idx)} className="absolute top-1 right-1 p-1 bg-destructive text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><X className="h-3 w-3" /></button>
+                            <div key={`new-${idx}`} className="relative aspect-square rounded-xl overflow-hidden border border-primary/50 group bg-background">
+                                <Image src={url} alt="Pending Upload" fill className="object-cover" unoptimized />
+                                <button type="button" onClick={() => removeNewGalleryImage(idx)} className="absolute top-1.5 right-1.5 p-1 bg-destructive/90 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive shadow-md"><X className="h-3 w-3" /></button>
                             </div>
                         ))}
-                        <div className="border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 bg-muted/5 cursor-pointer aspect-square" onClick={() => galleryInputRef.current?.click()}>
-                            <PlusCircle className="h-6 w-6 text-muted-foreground" /><span className="text-[10px] font-bold">Add Photo</span>
+                        <div className="border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 bg-muted/5 cursor-pointer aspect-square hover:bg-muted/10 transition-colors" onClick={() => galleryInputRef.current?.click()}>
+                            <PlusCircle className="h-6 w-6 text-muted-foreground" /><span className="text-[10px] font-bold uppercase">Add Media</span>
                         </div>
                     </div>
                     <input type="file" ref={galleryInputRef} multiple onChange={handleNewGalleryChange} accept="image/*" className="hidden" id="edit-gallery" name="editGallery" />
@@ -307,7 +328,7 @@ export default function EditPropertyPage() {
             <div className="flex justify-end gap-4 pt-6 border-t">
               <Button type="button" variant="ghost" asChild className="h-11"><Link href={`/dashboard/properties/${propertyId}`}>Cancel</Link></Button>
               <Button type="submit" disabled={isSubmitting} className="h-11 px-10 shadow-lg">
-                {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Synchronizing...</> : 'Save Record Changes'}
+                {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Synchronizing Portfolio...</> : 'Save Record Changes'}
               </Button>
             </div>
           </form>

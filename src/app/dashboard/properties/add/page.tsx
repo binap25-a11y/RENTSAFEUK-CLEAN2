@@ -53,10 +53,12 @@ export default function AddPropertyPage() {
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
+  // Identity Photo States
   const [mainFile, setMainFile] = useState<File | null>(null);
   const [mainPreview, setMainPreview] = useState<string | null>(null);
   const mainInputRef = useRef<HTMLInputElement>(null);
 
+  // Gallery States
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
   const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -112,7 +114,7 @@ export default function AddPropertyPage() {
     setIsSubmitting(true);
 
     try {
-      // Step 1: Create initial record
+      // Step 1: Create initial record to obtain propertyId
       const docRef = await addDoc(collection(firestore, 'userProfiles', user.uid, 'properties'), {
         ...JSON.parse(JSON.stringify(data)),
         ownerId: user.uid,
@@ -143,23 +145,23 @@ export default function AddPropertyPage() {
         }
       }
 
-      // Mirror identity photo into gallery as requested
+      // Mirror identity photo into gallery ensuring it is never missed
       const finalGallery = [...galleryUrls];
       if (finalIdentityUrl && !finalGallery.includes(finalIdentityUrl)) {
         finalGallery.unshift(finalIdentityUrl);
       }
 
-      // Finalize Firestore record
+      // Step 4: Finalize Firestore Record with absolute URLs
       await updateDoc(docRef, { 
-          imageUrl: finalIdentityUrl || '', 
+          imageUrl: finalIdentityUrl, 
           additionalImageUrls: finalGallery 
       });
 
-      toast({ title: 'Property Onboarded', description: 'Asset data and media synchronized.' });
+      toast({ title: 'Property Onboarded', description: 'Asset data and media synchronized successfully.' });
       router.push('/dashboard/properties');
     } catch (err: any) {
       console.error('Critical onboarding failure:', err);
-      toast({ variant: 'destructive', title: 'Onboarding Failed', description: err.message || 'Check connection and try again.' });
+      toast({ variant: 'destructive', title: 'Onboarding Failed', description: err.message || 'Check your connection and try again.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -180,7 +182,7 @@ export default function AddPropertyPage() {
           {step === 1 && (
             <Card className="border-none shadow-xl">
               <CardHeader className="bg-primary/5 border-b">
-                <CardTitle className="flex items-center gap-2"><MapPin className="h-5 w-5" /> Location Profile</CardTitle>
+                <CardTitle className="flex items-center gap-2 font-headline"><MapPin className="h-5 w-5" /> Location Profile</CardTitle>
                 <CardDescription>Enter the property address to verify location.</CardDescription>
               </CardHeader>
               <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-8">
@@ -211,7 +213,7 @@ export default function AddPropertyPage() {
           {step === 2 && (
             <Card className="border-none shadow-xl">
               <CardHeader className="bg-primary/5 border-b">
-                <CardTitle className="flex items-center gap-2"><Home className="h-5 w-5" /> Property Characteristics</CardTitle>
+                <CardTitle className="flex items-center gap-2 font-headline"><Home className="h-5 w-5" /> Property Characteristics</CardTitle>
                 <CardDescription>Define the physical attributes of the rental unit.</CardDescription>
               </CardHeader>
               <CardContent className="pt-6 space-y-6">
@@ -260,7 +262,7 @@ export default function AddPropertyPage() {
           {step === 3 && (
             <Card className="border-none shadow-xl">
               <CardHeader className="bg-primary/5 border-b">
-                <CardTitle className="flex items-center gap-2"><Banknote className="h-5 w-5" /> Financial Setup</CardTitle>
+                <CardTitle className="flex items-center gap-2 font-headline"><Banknote className="h-5 w-5" /> Financial Setup</CardTitle>
                 <CardDescription>Record expected tenancy financials.</CardDescription>
               </CardHeader>
               <CardContent className="pt-6 space-y-6">
@@ -290,28 +292,29 @@ export default function AddPropertyPage() {
 
           {step === 4 && (
             <Card className="border-none shadow-xl">
-              <CardHeader className="bg-primary/5 border-b"><CardTitle className="flex items-center gap-2"><Images className="h-5 w-5" /> Media Gallery</CardTitle></CardHeader>
+              <CardHeader className="bg-primary/5 border-b"><CardTitle className="flex items-center gap-2 font-headline"><Images className="h-5 w-5" /> Media Gallery</CardTitle></CardHeader>
               <CardContent className="pt-6 space-y-8">
                 <div className="space-y-4">
-                  <Label>Primary Identification Photo</Label>
-                  <FormDescription>Assign a primary photo for the property grid and overview. This image will also be added to the gallery.</FormDescription>
+                  <Label className="font-bold text-lg">Primary Identification Photo</Label>
+                  <FormDescription className="text-xs">Select a primary image for grid views. This image will also populate your gallery.</FormDescription>
                   {mainPreview ? (
-                    <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-primary group shadow-lg">
+                    <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-primary group shadow-lg bg-background">
                       <Image 
                         src={mainPreview} 
-                        alt="Main Preview" 
+                        alt="Onboarding Preview" 
                         fill 
                         className="object-cover" 
                         unoptimized
                       />
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                        <Button type="button" variant="secondary" size="sm" onClick={() => mainInputRef.current?.click()}>Change Image</Button>
-                        <Button type="button" variant="destructive" size="sm" onClick={() => { setMainPreview(null); setMainFile(null); }}>Remove</Button>
+                        <Button type="button" variant="secondary" size="sm" onClick={() => mainInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Change Image</Button>
+                        <Button type="button" variant="destructive" size="sm" onClick={() => { setMainPreview(null); setMainFile(null); }}><X className="mr-2 h-4 w-4" /> Remove</Button>
                       </div>
                     </div>
                   ) : (
                     <div className="border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer bg-muted/5 hover:bg-muted/10 transition-colors" onClick={() => mainInputRef.current?.click()}>
-                      <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" /><p className="text-sm font-bold">Assign Identity Photo</p>
+                      <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-4" />
+                      <p className="text-sm font-bold uppercase tracking-tight">Assign Asset Identity Photo</p>
                     </div>
                   )}
                   <input id="main-photo" name="mainPhoto" type="file" ref={mainInputRef} className="hidden" accept="image/*" onChange={handleMainFileChange} />
@@ -319,20 +322,20 @@ export default function AddPropertyPage() {
 
                 <div className="space-y-4 pt-6 border-t">
                     <div className="flex items-center justify-between">
-                        <Label>Additional Asset Photos</Label>
-                        <Button type="button" variant="outline" size="sm" onClick={() => galleryInputRef.current?.click()}><PlusCircle className="mr-2 h-4 w-4" /> Add Media</Button>
+                        <Label className="font-bold">Additional Asset Media</Label>
+                        <Button type="button" variant="outline" size="sm" onClick={() => galleryInputRef.current?.click()}><PlusCircle className="mr-2 h-4 w-4" /> Add Photos</Button>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                         {galleryPreviews.map((url, idx) => (
-                            <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border group shadow-sm">
+                            <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border group shadow-sm bg-background">
                                 <Image 
                                   src={url} 
-                                  alt={`Gallery Preview ${idx}`} 
+                                  alt={`Pending Gallery Photo ${idx}`} 
                                   fill 
                                   className="object-cover" 
                                   unoptimized
                                 />
-                                <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeGalleryImage(idx)}><X className="h-3 w-3" /></Button>
+                                <Button type="button" variant="destructive" size="icon" className="absolute top-1.5 right-1.5 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity hover:scale-110 shadow-lg" onClick={() => removeGalleryImage(idx)}><X className="h-4 w-4" /></Button>
                             </div>
                         ))}
                     </div>
@@ -341,7 +344,7 @@ export default function AddPropertyPage() {
               </CardContent>
               <CardFooter className="justify-between border-t pt-6">
                 <Button type="button" variant="outline" className="h-11" onClick={() => setStep(3)}><ChevronLeft className="mr-2 h-4 w-4" /> Back</Button>
-                <Button type="submit" disabled={isSubmitting} className="h-11 px-10 shadow-lg bg-primary hover:bg-primary/90">
+                <Button type="submit" disabled={isSubmitting} className="h-11 px-10 shadow-lg bg-primary hover:bg-primary/90 font-bold uppercase tracking-widest text-xs">
                   {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Finalizing Assets...</> : 'Complete Onboarding'}
                 </Button>
               </CardFooter>
