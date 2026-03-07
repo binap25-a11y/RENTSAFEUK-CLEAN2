@@ -1,12 +1,15 @@
 import { NextRequest, NextResponse } from "next/server";
 import { createClient } from "@supabase/supabase-js";
 
-// Centrally managed Supabase initialization for server-side storage handling
+/**
+ * Server-side media upload handler.
+ * Manages binary synchronization with the Supabase 'Images' bucket.
+ */
 const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://owfjowiiyshhqzhatwqr.supabase.co';
 // Use Service Role if available, otherwise fallback to Anon Key for public bucket access
 const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
-const supabase = (supabaseUrl && supabaseKey && supabaseKey.length > 0 && !supabaseKey.startsWith('sk_')) 
+const supabase = (supabaseUrl && supabaseKey && supabaseKey.length > 0) 
   ? createClient(supabaseUrl, supabaseKey)
   : null;
 
@@ -14,7 +17,7 @@ export async function POST(req: NextRequest) {
   try {
     if (!supabase) {
       return NextResponse.json({ 
-        error: "Supabase storage is not configured on the server. Please add your Service Role Key to environment variables." 
+        error: "Supabase storage is not configured on the server. Please ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY are set." 
       }, { status: 500 });
     }
 
@@ -31,7 +34,7 @@ export async function POST(req: NextRequest) {
     const fileExt = file.name.split('.').pop();
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
     
-    // Organize storage path by user and property
+    // Organize storage path by user and property for strict isolation
     const filePath = `${userId || 'system'}/${propertyId || 'misc'}/${fileName}`;
 
     // Perform the binary upload to the 'Images' bucket (Case Sensitive)
