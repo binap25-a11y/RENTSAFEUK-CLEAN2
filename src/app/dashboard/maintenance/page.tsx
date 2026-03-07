@@ -226,7 +226,7 @@ export default function MaintenancePage() {
                                     <FormControl>
                                         <Button
                                             id="maintenance-prop-trigger"
-                                            name="propTrigger"
+                                            name="propertyId"
                                             variant="outline"
                                             role="combobox"
                                             className={cn(
@@ -246,7 +246,7 @@ export default function MaintenancePage() {
                                         <Search className="h-4 w-4 shrink-0 opacity-50 mr-2" />
                                         <Input 
                                             id="prop-search-field"
-                                            name="searchField"
+                                            name="propertySearch"
                                             placeholder="Type address..." 
                                             className="h-11 border-0 focus-visible:ring-0 bg-transparent" 
                                             value={propertySearch}
@@ -348,7 +348,7 @@ export default function MaintenancePage() {
                                 <FormControl>
                                   <Textarea
                                     id="other-details-area"
-                                    name="otherDetails"
+                                    name="otherCategoryDetails"
                                     placeholder="Please specify the type of maintenance required..."
                                     className="bg-background resize-none rounded-xl"
                                     {...field}

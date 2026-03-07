@@ -170,9 +170,8 @@ export default function EditPropertyPage() {
     const file = e.target.files?.[0];
     if (file) {
       setSelectedMainFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setMainPreviewUrl(reader.result as string);
-      reader.readAsDataURL(file);
+      if (mainPreviewUrl && mainPreviewUrl.startsWith('blob:')) URL.revokeObjectURL(mainPreviewUrl);
+      setMainPreviewUrl(URL.createObjectURL(file));
     }
   };
 
@@ -180,11 +179,8 @@ export default function EditPropertyPage() {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) {
       setNewGalleryFiles(prev => [...prev, ...files]);
-      files.forEach(file => {
-        const reader = new FileReader();
-        reader.onloadend = () => setNewGalleryPreviews(prev => [...prev, reader.result as string]);
-        reader.readAsDataURL(file);
-      });
+      const newPreviews = files.map(f => URL.createObjectURL(f));
+      setNewGalleryPreviews(prev => [...prev, ...newPreviews]);
     }
   };
 
@@ -260,14 +256,14 @@ export default function EditPropertyPage() {
                         <FormField control={form.control} name="address.nameOrNumber" render={({ field }) => (
                           <FormItem>
                             <FormLabel htmlFor="edit-addr-number">Building Name/No</FormLabel>
-                            <FormControl><Input id="edit-addr-number" name="address.nameOrNumber" placeholder="e.g. Flat 1" className="h-11 bg-background" {...field} /></FormControl>
+                            <FormControl><Input id="edit-addr-number" name="nameOrNumber" placeholder="e.g. Flat 1" className="h-11 bg-background" {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
                         <FormField control={form.control} name="address.street" render={({ field }) => (
                           <FormItem>
                             <FormLabel htmlFor="edit-addr-street">Street Address</FormLabel>
-                            <FormControl><Input id="edit-addr-street" name="address.street" placeholder="e.g. High Street" className="h-11 bg-background" {...field} /></FormControl>
+                            <FormControl><Input id="edit-addr-street" name="street" placeholder="e.g. High Street" className="h-11 bg-background" {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
@@ -275,14 +271,14 @@ export default function EditPropertyPage() {
                             <FormField control={form.control} name="address.city" render={({ field }) => (
                               <FormItem>
                                 <FormLabel htmlFor="edit-addr-city">City/Town</FormLabel>
-                                <FormControl><Input id="edit-addr-city" name="address.city" placeholder="London" className="h-11 bg-background" {...field} /></FormControl>
+                                <FormControl><Input id="edit-addr-city" name="city" placeholder="London" className="h-11 bg-background" {...field} /></FormControl>
                                 <FormMessage />
                               </FormItem>
                             )} />
                             <FormField control={form.control} name="address.county" render={({ field }) => (
                               <FormItem>
                                 <FormLabel htmlFor="edit-addr-county">County</FormLabel>
-                                <FormControl><Input id="edit-addr-county" name="address.county" placeholder="e.g. Surrey" className="h-11 bg-background" {...field} /></FormControl>
+                                <FormControl><Input id="edit-addr-county" name="county" placeholder="e.g. Surrey" className="h-11 bg-background" {...field} /></FormControl>
                                 <FormMessage />
                               </FormItem>
                             )} />
@@ -290,7 +286,7 @@ export default function EditPropertyPage() {
                         <FormField control={form.control} name="address.postcode" render={({ field }) => (
                           <FormItem>
                             <FormLabel htmlFor="edit-addr-postcode">Post Code</FormLabel>
-                            <FormControl><Input id="edit-addr-postcode" name="address.postcode" placeholder="W1A 1AA" className="uppercase h-11 bg-background" {...field} /></FormControl>
+                            <FormControl><Input id="edit-addr-postcode" name="postcode" placeholder="W1A 1AA" className="uppercase h-11 bg-background" {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
@@ -411,14 +407,14 @@ export default function EditPropertyPage() {
                                 <FormField control={form.control} name="tenancy.monthlyRent" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel htmlFor="edit-monthly-rent">Monthly Rent (£)</FormLabel>
-                                    <FormControl><Input id="edit-monthly-rent" name="tenancy.monthlyRent" type="number" min="0" className="h-11 bg-background" {...field} value={field.value ?? ''} /></FormControl>
+                                    <FormControl><Input id="edit-monthly-rent" name="monthlyRent" type="number" min="0" className="h-11 bg-background" {...field} value={field.value ?? ''} /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                                 )} />
                                 <FormField control={form.control} name="tenancy.depositAmount" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel htmlFor="edit-deposit-amount">Security Deposit (£)</FormLabel>
-                                    <FormControl><Input id="edit-deposit-amount" name="tenancy.depositAmount" type="number" min="0" className="h-11 bg-background" {...field} value={field.value ?? ''} /></FormControl>
+                                    <FormControl><Input id="edit-deposit-amount" name="depositAmount" type="number" min="0" className="h-11 bg-background" {...field} value={field.value ?? ''} /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                                 )} />
@@ -426,7 +422,7 @@ export default function EditPropertyPage() {
                             <FormField control={form.control} name="tenancy.depositScheme" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel htmlFor="edit-deposit-scheme">Deposit Scheme</FormLabel>
-                                    <FormControl><Input id="edit-deposit-scheme" name="tenancy.depositScheme" placeholder="e.g. DPS" className="h-11 bg-background" {...field} /></FormControl>
+                                    <FormControl><Input id="edit-deposit-scheme" name="depositScheme" placeholder="e.g. DPS" className="h-11 bg-background" {...field} /></FormControl>
                                     <FormMessage />
                                 </FormItem>
                             )} />

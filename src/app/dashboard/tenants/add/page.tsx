@@ -236,7 +236,7 @@ export default function AddTenantPage() {
                     </PopoverTrigger>
                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0 shadow-2xl border-primary/10">
                         <div className="flex items-center border-b px-3 bg-muted/20">
-                            <Search className="mr-2 h-4 w-4 shrink-0 opacity-50" />
+                            <Search className="h-4 w-4 shrink-0 opacity-50 mr-2" />
                             <Input 
                                 id="tenant-property-search"
                                 name="propertySearch"

@@ -92,9 +92,9 @@ export default function AddPropertyPage() {
     const file = e.target.files?.[0];
     if (file) {
       setMainFile(file);
-      const reader = new FileReader();
-      reader.onloadend = () => setMainPreview(reader.result as string);
-      reader.readAsDataURL(file);
+      // Clean up previous blob if any
+      if (mainPreview && mainPreview.startsWith('blob:')) URL.revokeObjectURL(mainPreview);
+      setMainPreview(URL.createObjectURL(file));
     }
   };
 
@@ -102,11 +102,8 @@ export default function AddPropertyPage() {
     const files = Array.from(e.target.files || []);
     if (files.length > 0) {
       setGalleryFiles(prev => [...prev, ...files]);
-      files.forEach(file => {
-        const reader = new FileReader();
-        reader.onloadend = () => setGalleryPreviews(prev => [...prev, reader.result as string]);
-        reader.readAsDataURL(file);
-      });
+      const newPreviews = files.map(f => URL.createObjectURL(f));
+      setGalleryPreviews(prev => [...prev, ...newPreviews]);
     }
   };
 
@@ -184,21 +181,21 @@ export default function AddPropertyPage() {
               <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-4">
                   <FormField control={form.control} name="address.nameOrNumber" render={({ field }) => (
-                    <FormItem><FormLabel htmlFor="onboard-addr-number">Building Name/No</FormLabel><FormControl><Input id="onboard-addr-number" name="address.nameOrNumber" placeholder="e.g. Flat 1" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel htmlFor="onboard-addr-number">Building Name/No</FormLabel><FormControl><Input id="onboard-addr-number" name="nameOrNumber" placeholder="e.g. Flat 1" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={form.control} name="address.street" render={({ field }) => (
-                    <FormItem><FormLabel htmlFor="onboard-addr-street">Street Address</FormLabel><FormControl><Input id="onboard-addr-street" name="address.street" placeholder="High Street" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel htmlFor="onboard-addr-street">Street Address</FormLabel><FormControl><Input id="onboard-addr-street" name="street" placeholder="High Street" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <div className="grid grid-cols-2 gap-4">
                     <FormField control={form.control} name="address.city" render={({ field }) => (
-                      <FormItem><FormLabel htmlFor="onboard-addr-city">City</FormLabel><FormControl><Input id="onboard-addr-city" name="address.city" placeholder="London" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
+                      <FormItem><FormLabel htmlFor="onboard-addr-city">City</FormLabel><FormControl><Input id="onboard-addr-city" name="city" placeholder="London" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
                     )} />
                     <FormField control={form.control} name="address.postcode" render={({ field }) => (
-                      <FormItem><FormLabel htmlFor="onboard-addr-postcode">Postcode</FormLabel><FormControl><Input id="onboard-addr-postcode" name="address.postcode" placeholder="W1A 1AA" className="uppercase h-11" {...field} /></FormControl><FormMessage /></FormItem>
+                      <FormItem><FormLabel htmlFor="onboard-addr-postcode">Postcode</FormLabel><FormControl><Input id="onboard-addr-postcode" name="postcode" placeholder="W1A 1AA" className="uppercase h-11" {...field} /></FormControl><FormMessage /></FormItem>
                     )} />
                   </div>
                   <FormField control={form.control} name="address.county" render={({ field }) => (
-                    <FormItem><FormLabel htmlFor="onboard-addr-county">County</FormLabel><FormControl><Input id="onboard-addr-county" name="address.county" placeholder="Surrey" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel htmlFor="onboard-addr-county">County</FormLabel><FormControl><Input id="onboard-addr-county" name="county" placeholder="Surrey" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                 </div>
                 <div className="aspect-square rounded-2xl overflow-hidden border-2 bg-muted relative shadow-inner">
