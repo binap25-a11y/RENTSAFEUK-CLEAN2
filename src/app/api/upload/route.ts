@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
 
     if (!supabaseUrl || !supabaseKey) {
       return NextResponse.json({ 
-        error: "Supabase configuration missing on server. Check environment variables." 
+        error: "Supabase configuration missing on server. Ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY (or SUPABASE_SERVICE_ROLE_KEY) are set." 
       }, { status: 500 });
     }
 

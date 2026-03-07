@@ -127,25 +127,17 @@ export default function PropertyDetailPage() {
     if (!firestore || !propertyId || !user) return null;
     return collection(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'maintenanceLogs');
   }, [firestore, propertyId, user]);
-  const { data: allMaintenanceLogs } = useCollection<MaintenanceLog>(maintenanceQuery);
+  const { data: maintenanceLogs } = useCollection<MaintenanceLog>(maintenanceQuery);
 
   const inspectionQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
     return collection(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'inspections');
   }, [firestore, propertyId, user]);
-  const { data: allInspections } = useCollection<Inspection>(inspectionQuery);
-
-  const maintenanceLogs = useMemo(() => {
-    return allMaintenanceLogs?.filter(log => log.status !== 'Cancelled') ?? null;
-  }, [allMaintenanceLogs]);
+  const { data: inspections } = useCollection<Inspection>(inspectionQuery);
 
   const openMaintenanceCount = useMemo(() => {
     return maintenanceLogs?.filter(log => log.status === 'Open' || log.status === 'In Progress').length || 0;
   }, [maintenanceLogs]);
-
-  const inspections = useMemo(() => {
-    return allInspections?.filter(insp => insp.status !== 'Cancelled') ?? null;
-  }, [allInspections]);
 
   const handleDeleteConfirm = async () => {
     if (!firestore || !user || !property) return;
