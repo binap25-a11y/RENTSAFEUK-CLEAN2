@@ -53,8 +53,8 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({ url: urlData.publicUrl });
 
-  } catch (err) {
+  } catch (err: any) {
     console.error('Server-side media upload handler crashed:', err);
-    return NextResponse.json({ error: "Internal server error during media synchronization" }, { status: 500 });
+    return NextResponse.json({ error: err.message || "Internal server error during media synchronization" }, { status: 500 });
   }
 }
