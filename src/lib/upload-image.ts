@@ -8,6 +8,8 @@
 export const uploadPropertyImage = async (file: File, userId: string, propertyId: string): Promise<string> => {
   if (!file) return '';
   
+  console.log(`Initiating media synchronization for property ${propertyId}...`);
+  
   const formData = new FormData();
   formData.append('file', file);
   formData.append('userId', userId);
@@ -21,10 +23,11 @@ export const uploadPropertyImage = async (file: File, userId: string, propertyId
   if (!response.ok) {
     const errorData = await response.json();
     const errorMessage = errorData.error || 'Upload failed';
-    console.error('Upload failed:', errorMessage);
+    console.error('Supabase upload pipeline failure:', errorMessage);
     throw new Error(errorMessage);
   }
 
   const data = await response.json();
+  console.log('Media synchronized successfully. Public URL retrieved.');
   return data.url || '';
 };

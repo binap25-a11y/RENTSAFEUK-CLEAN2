@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 
 /**
  * Server-side media upload handler.
- * Manages binary synchronization with the Supabase 'Images' bucket.
+ * Manages binary synchronization with the Supabase 'Images' bucket (Case Sensitive).
  */
 export async function POST(req: NextRequest) {
   try {
@@ -24,12 +24,12 @@ export async function POST(req: NextRequest) {
     const userId = formData.get("userId") as string;
     const propertyId = formData.get("propertyId") as string;
 
-    if (!file) {
-      return NextResponse.json({ error: "No file provided" }, { status: 400 });
+    if (!file || typeof file === 'string') {
+      return NextResponse.json({ error: "No valid file provided" }, { status: 400 });
     }
 
     // Organize storage path for strict isolation
-    const fileExt = file.name.split('.').pop();
+    const fileExt = file.name.split('.').pop() || 'jpg';
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
     const filePath = `${userId || 'system'}/${propertyId || 'misc'}/${fileName}`;
 
