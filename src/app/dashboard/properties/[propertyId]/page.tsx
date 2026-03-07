@@ -240,7 +240,7 @@ export default function PropertyDetailPage() {
                               fill 
                               className="object-cover" 
                               priority 
-                              unoptimized={property.imageUrl.includes('supabase.co')}
+                              unoptimized
                             />
                         ) : (
                             <div className="w-full h-full flex items-center justify-center bg-primary/5 text-primary/20">
@@ -267,7 +267,7 @@ export default function PropertyDetailPage() {
                                               alt={`Gallery ${idx + 1}`} 
                                               fill 
                                               className="object-cover" 
-                                              unoptimized={url.includes('supabase.co')}
+                                              unoptimized
                                             />
                                         </Link>
                                     ))}
