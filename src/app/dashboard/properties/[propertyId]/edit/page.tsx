@@ -147,16 +147,25 @@ export default function EditPropertyPage() {
     try {
       let finalImageUrl = property?.imageUrl || '';
       if (selectedMainFile) {
-          const uploadedUrl = await uploadPropertyImage(selectedMainFile, user.uid, propertyId);
-          if (uploadedUrl) {
-              finalImageUrl = uploadedUrl;
+          try {
+            const uploadedUrl = await uploadPropertyImage(selectedMainFile, user.uid, propertyId);
+            if (uploadedUrl) {
+                finalImageUrl = uploadedUrl;
+            }
+          } catch (uploadErr: any) {
+            console.error('Identity photo upload failed:', uploadErr);
+            toast({ variant: 'destructive', title: 'Media Upload Failed', description: uploadErr.message });
           }
       }
 
       const newGalleryUrls: string[] = [];
       if (newGalleryFiles.length > 0) {
-          const uploads = await Promise.all(newGalleryFiles.map(f => uploadPropertyImage(f, user.uid, propertyId)));
-          newGalleryUrls.push(...uploads.filter(Boolean));
+          try {
+            const uploads = await Promise.all(newGalleryFiles.map(f => uploadPropertyImage(f, user.uid, propertyId)));
+            newGalleryUrls.push(...uploads.filter(Boolean));
+          } catch (uploadErr: any) {
+            console.error('Gallery upload failed:', uploadErr);
+          }
       }
 
       const updateData = {
@@ -167,11 +176,11 @@ export default function EditPropertyPage() {
       };
 
       await updateDoc(doc(firestore, 'userProfiles', user.uid, 'properties', propertyId), JSON.parse(JSON.stringify(updateData)));
-      toast({ title: "Property Updated", description: "All changes saved successfully." });
+      toast({ title: "Portfolio Updated", description: "Property details and media synchronized successfully." });
       router.push(`/dashboard/properties/${propertyId}`);
-    } catch (e) {
+    } catch (e: any) {
       console.error("Update failed:", e);
-      toast({ variant: "destructive", title: "Update Failed" });
+      toast({ variant: "destructive", title: "Update Failed", description: e.message || "An unexpected error occurred." });
     } finally {
       setIsSubmitting(false);
     }

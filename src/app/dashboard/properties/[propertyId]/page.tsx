@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -241,7 +241,7 @@ export default function PropertyDetailPage() {
                         {property.imageUrl ? (
                             <Image src={property.imageUrl} alt="Property Identity" fill className="object-cover" priority />
                         ) : (
-                            <div className="w-full h-full flex flex-col items-center justify-center bg-primary/5 text-primary/20">
+                            <div className="w-full h-full flex items-center justify-center bg-primary/5 text-primary/20">
                                 <Home className="h-16 w-16 mb-2" />
                                 <p className="text-xs font-bold uppercase tracking-widest">No Identity Photo</p>
                             </div>
@@ -390,8 +390,9 @@ export default function PropertyDetailPage() {
                   <Button variant="ghost" size="sm" asChild className="text-xs font-bold h-8"><Link href={`/dashboard/maintenance/logged?propertyId=${propertyId}`}>History</Link></Button>
               </CardHeader>
               <CardContent className="pt-6 border-t bg-muted/5">
-                {(!maintenanceLogs?.filter(l => l.status === 'Open' || l.status === 'In Progress').length && !inspections?.filter(i => i.status === 'Scheduled').length) ? 
-                  <p className="text-xs text-muted-foreground text-center py-4 italic">No active maintenance or scheduled inspections.</p> : (
+                {(!maintenanceLogs?.filter(l => l.status === 'Open' || l.status === 'In Progress').length && !inspections?.filter(i => i.status === 'Scheduled').length) ? (
+                  <p className="text-xs text-muted-foreground text-center py-4 italic">No active maintenance or scheduled inspections.</p>
+                ) : (
                   <div className="space-y-4">
                     {maintenanceLogs?.filter(l => l.status === 'Open' || l.status === 'In Progress').slice(0, 3).map(log => <div key={log.id} className="text-sm border-l-4 border-destructive pl-3 py-1 bg-background rounded-r shadow-sm"><Link href={`/dashboard/maintenance/${log.id}?propertyId=${propertyId}`} className="font-bold hover:underline">{log.title}</Link><p className="text-[10px] font-bold text-muted-foreground/70 mt-0.5">{log.status} • {safeFormatDate(log.reportedDate, 'dd MMM')}</p></div>)}
                     {inspections?.filter(i => i.status === 'Scheduled').slice(0, 3).map(insp => <div key={insp.id} className="text-sm border-l-4 border-primary pl-3 py-1 bg-background rounded-r shadow-sm"><Link href={`/dashboard/inspections/${insp.id}?propertyId=${propertyId}`} className="font-bold hover:underline">{insp.type}</Link><p className="text-[10px] font-bold text-muted-foreground/70 mt-0.5">Scheduled • {safeFormatDate(insp.scheduledDate, 'dd MMM')}</p></div>)}

@@ -122,29 +122,38 @@ export default function AddPropertyPage() {
       // Step 2: Upload images if present
       let finalImageUrl = '';
       if (mainFile) {
-        const uploadedUrl = await uploadPropertyImage(mainFile, user.uid, docRef.id);
-        if (uploadedUrl) finalImageUrl = uploadedUrl;
+        try {
+          const uploadedUrl = await uploadPropertyImage(mainFile, user.uid, docRef.id);
+          if (uploadedUrl) finalImageUrl = uploadedUrl;
+        } catch (uploadErr: any) {
+          console.error('Main photo upload failed:', uploadErr);
+          toast({ variant: 'destructive', title: 'Media Sync Warning', description: 'Property saved but identity photo upload failed. Please try again later.' });
+        }
       }
 
       let additionalUrls: string[] = [];
       if (galleryFiles.length > 0) {
-        const uploads = await Promise.all(galleryFiles.map(f => uploadPropertyImage(f, user.uid, docRef.id)));
-        additionalUrls = uploads.filter(Boolean);
+        try {
+          const uploads = await Promise.all(galleryFiles.map(f => uploadPropertyImage(f, user.uid, docRef.id)));
+          additionalUrls = uploads.filter(Boolean);
+        } catch (uploadErr: any) {
+          console.error('Gallery upload failed:', uploadErr);
+        }
       }
 
       // Step 3: Update the record with finalized URLs
-      if (finalImageUrl || additionalUrls.length > 0) {
+      if (finalImageUrl !== '' || additionalUrls.length > 0) {
         await updateDoc(docRef, { 
             imageUrl: finalImageUrl || undefined, 
             additionalImageUrls: additionalUrls.length > 0 ? additionalUrls : undefined 
         });
       }
 
-      toast({ title: 'Property Onboarded', description: 'Asset added successfully.' });
+      toast({ title: 'Property Onboarded', description: 'Asset added successfully to your portfolio.' });
       router.push('/dashboard/properties');
-    } catch (err) {
+    } catch (err: any) {
       console.error('Onboarding failed:', err);
-      toast({ variant: 'destructive', title: 'Onboarding Failed' });
+      toast({ variant: 'destructive', title: 'Onboarding Failed', description: err.message || 'Check your internet connection and try again.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -205,7 +214,7 @@ export default function AddPropertyPage() {
                         <FormItem>
                             <FormLabel htmlFor="onboard-type">Asset Type</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl><SelectTrigger id="onboard-type" className="h-11"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
+                                <FormControl><SelectTrigger id="onboard-type" name="propertyType" className="h-11"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
                                 <SelectContent>
                                     {['House', 'Flat', 'HMO', 'Bungalow', 'Studio'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                                 </SelectContent>
@@ -217,7 +226,7 @@ export default function AddPropertyPage() {
                         <FormItem>
                             <FormLabel htmlFor="onboard-status">Portfolio Status</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl><SelectTrigger id="onboard-status" className="h-11"><SelectValue placeholder="Select status" /></SelectTrigger></FormControl>
+                                <FormControl><SelectTrigger id="onboard-status" name="status" className="h-11"><SelectValue placeholder="Select status" /></SelectTrigger></FormControl>
                                 <SelectContent>
                                     {['Vacant', 'Occupied', 'Under Maintenance'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                                 </SelectContent>
