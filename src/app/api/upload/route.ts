@@ -7,6 +7,7 @@ import { createClient } from "@supabase/supabase-js";
  */
 export async function POST(req: NextRequest) {
   try {
+    // Hardcoded fallbacks for workstation reliability
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://owfjowiiyshhqzhatwqr.supabase.co';
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 
                         process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY || 
@@ -27,6 +28,8 @@ export async function POST(req: NextRequest) {
     if (!file || typeof file === 'string') {
       return NextResponse.json({ error: "No valid file provided" }, { status: 400 });
     }
+
+    console.log(`Processing upload for user ${userId}, property ${propertyId}...`);
 
     // Organize storage path for strict isolation
     const fileExt = file.name.split('.').pop() || 'jpg';
@@ -50,6 +53,8 @@ export async function POST(req: NextRequest) {
     const { data: urlData } = supabase.storage
       .from("Images")
       .getPublicUrl(filePath);
+
+    console.log(`Upload successful. Public URL: ${urlData.publicUrl}`);
 
     return NextResponse.json({ url: urlData.publicUrl });
 

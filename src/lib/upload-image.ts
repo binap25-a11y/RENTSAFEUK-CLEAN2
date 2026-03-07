@@ -15,19 +15,24 @@ export const uploadPropertyImage = async (file: File, userId: string, propertyId
   formData.append('userId', userId);
   formData.append('propertyId', propertyId);
 
-  const response = await fetch('/api/upload', {
-    method: 'POST',
-    body: formData,
-  });
+  try {
+    const response = await fetch('/api/upload', {
+      method: 'POST',
+      body: formData,
+    });
 
-  if (!response.ok) {
-    const errorData = await response.json();
-    const errorMessage = errorData.error || 'Upload failed';
-    console.error('Supabase upload pipeline failure:', errorMessage);
-    throw new Error(errorMessage);
+    if (!response.ok) {
+      const errorData = await response.json();
+      const errorMessage = errorData.error || 'Upload failed';
+      console.error('Supabase upload pipeline failure:', errorMessage);
+      throw new Error(errorMessage);
+    }
+
+    const data = await response.json();
+    console.log(`Media synchronized successfully. Public URL: ${data.url}`);
+    return data.url || '';
+  } catch (err: any) {
+    console.error('Network or pipeline error during upload:', err.message);
+    throw err;
   }
-
-  const data = await response.json();
-  console.log('Media synchronized successfully. Public URL retrieved.');
-  return data.url || '';
 };

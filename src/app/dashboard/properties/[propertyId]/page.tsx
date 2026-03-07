@@ -241,6 +241,7 @@ export default function PropertyDetailPage() {
                               className="object-cover" 
                               priority 
                               unoptimized
+                              data-ai-hint="exterior property"
                             />
                         ) : (
                             <div className="w-full h-full flex items-center justify-center bg-primary/5 text-primary/20">
@@ -268,6 +269,7 @@ export default function PropertyDetailPage() {
                                               fill 
                                               className="object-cover" 
                                               unoptimized
+                                              data-ai-hint="interior room"
                                             />
                                         </Link>
                                     ))}
