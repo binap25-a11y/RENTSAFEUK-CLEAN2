@@ -112,7 +112,7 @@ export default function AddPropertyPage() {
     setIsSubmitting(true);
 
     try {
-      // Step 1: Create the record with placeholders to get a stable property ID
+      // Step 1: Create initial record
       const docRef = await addDoc(collection(firestore, 'userProfiles', user.uid, 'properties'), {
         ...JSON.parse(JSON.stringify(data)),
         ownerId: user.uid,
@@ -125,11 +125,10 @@ export default function AddPropertyPage() {
       let finalIdentityUrl = '';
       if (mainFile) {
         try {
-          const uploadedUrl = await uploadPropertyImage(mainFile, user.uid, docRef.id);
-          if (uploadedUrl) finalIdentityUrl = uploadedUrl;
+          finalIdentityUrl = await uploadPropertyImage(mainFile, user.uid, docRef.id);
         } catch (uploadErr: any) {
-          console.error('Identity photo binary sync failed:', uploadErr);
-          toast({ variant: 'destructive', title: 'Media Failure', description: 'Property saved but main photo upload failed.' });
+          console.error('Identity photo sync failure:', uploadErr);
+          toast({ variant: 'destructive', title: 'Upload Error', description: 'Failed to sync identity photo.' });
         }
       }
 
@@ -140,27 +139,27 @@ export default function AddPropertyPage() {
           const uploads = await Promise.all(galleryFiles.map(f => uploadPropertyImage(f, user.uid, docRef.id)));
           galleryUrls = uploads.filter(Boolean);
         } catch (uploadErr: any) {
-          console.error('Gallery media sync failed:', uploadErr);
+          console.error('Gallery sync failure:', uploadErr);
         }
       }
 
-      // Final Assembly: Ensure identity photo is also in the gallery for visibility
+      // Mirror identity photo into gallery as requested
       const finalGallery = [...galleryUrls];
       if (finalIdentityUrl && !finalGallery.includes(finalIdentityUrl)) {
         finalGallery.unshift(finalIdentityUrl);
       }
 
-      // Update the record with finalized absolute URLs from Supabase
+      // Finalize Firestore record
       await updateDoc(docRef, { 
-          imageUrl: finalIdentityUrl || undefined, 
-          additionalImageUrls: finalGallery.length > 0 ? finalGallery : undefined 
+          imageUrl: finalIdentityUrl || '', 
+          additionalImageUrls: finalGallery 
       });
 
-      toast({ title: 'Property Onboarded', description: 'Asset and media synchronized with portfolio.' });
+      toast({ title: 'Property Onboarded', description: 'Asset data and media synchronized.' });
       router.push('/dashboard/properties');
     } catch (err: any) {
-      console.error('Onboarding pipeline failure:', err);
-      toast({ variant: 'destructive', title: 'Onboarding Failed', description: err.message || 'Check your network and try again.' });
+      console.error('Critical onboarding failure:', err);
+      toast({ variant: 'destructive', title: 'Onboarding Failed', description: err.message || 'Check connection and try again.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -295,7 +294,7 @@ export default function AddPropertyPage() {
               <CardContent className="pt-6 space-y-8">
                 <div className="space-y-4">
                   <Label>Primary Identification Photo</Label>
-                  <FormDescription>Visual representation for portfolio cards. Will be added to the gallery automatically.</FormDescription>
+                  <FormDescription>Assign a primary photo for the property grid and overview. This image will also be added to the gallery.</FormDescription>
                   {mainPreview ? (
                     <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-primary group shadow-lg">
                       <Image 

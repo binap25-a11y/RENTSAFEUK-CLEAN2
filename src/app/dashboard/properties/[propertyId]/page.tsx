@@ -106,7 +106,7 @@ export default function PropertyDetailPage() {
   
   const [isDeleting, setIsDeleting] = useState(false);
 
-  // --- Secure Data Fetching ---
+  // Secure Data Fetching
   const propertyRef = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
     return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId);
@@ -144,11 +144,11 @@ export default function PropertyDetailPage() {
     try {
       const docRef = doc(firestore, 'userProfiles', user.uid, 'properties', propertyId);
       await updateDoc(docRef, { status: 'Deleted' });
-      toast({ title: 'Property Archived', description: `${property.address.street} has been moved to the archived records.` });
+      toast({ title: 'Property Archived', description: `${property.address.street} moved to archived records.` });
       router.push('/dashboard/properties');
     } catch (e) {
-      console.error('Error deleting property:', e);
-      toast({ variant: 'destructive', title: 'Action Failed', description: 'Could not archive the property asset.' });
+      console.error('Error archiving property:', e);
+      toast({ variant: 'destructive', title: 'Action Failed' });
     } finally { setIsDeleting(false); }
   };
   
@@ -181,7 +181,7 @@ export default function PropertyDetailPage() {
     );
   }
   
-  if (!property) return <div className="text-center py-20"><p className="text-muted-foreground italic">Property record not found or inaccessible.</p></div>;
+  if (!property) return <div className="text-center py-20"><p className="text-muted-foreground italic">Property record not found.</p></div>;
 
   const propertyAddressTitle = [property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ');
   const propertyAddressSubtitle = [property.address.city, property.address.county, property.address.postcode].filter(Boolean).join(', ');
@@ -202,7 +202,7 @@ export default function PropertyDetailPage() {
                         {openMaintenanceCount > 0 && (
                             <Badge variant="destructive" className="h-5 px-1.5 gap-1 animate-pulse shrink-0">
                                 <AlertCircle className="h-3 w-3" />
-                                {openMaintenanceCount} Task{openMaintenanceCount > 1 ? 's' : ''} Open
+                                {openMaintenanceCount} Open
                             </Badge>
                         )}
                     </div>
@@ -214,7 +214,7 @@ export default function PropertyDetailPage() {
                     <DropdownMenuItem asChild>
                         <Link href={`/dashboard/properties/${property.id}/edit`}><Edit className="mr-2 h-4 w-4" /> Edit Details</Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setIsDeleting(true)} className="text-destructive focus:text-destructive focus:bg-destructive/5">
+                    <DropdownMenuItem onClick={() => setIsDeleting(true)} className="text-destructive">
                         <Trash2 className="mr-2 h-4 w-4" /> Archive Asset
                     </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -241,7 +241,6 @@ export default function PropertyDetailPage() {
                               className="object-cover group-hover:scale-105 transition-transform duration-700" 
                               priority 
                               unoptimized
-                              data-ai-hint="property exterior"
                             />
                         ) : (
                             <div className="w-full h-full flex items-center justify-center bg-primary/5 text-primary/20">
@@ -257,19 +256,18 @@ export default function PropertyDetailPage() {
                         <div className="space-y-4">
                             <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] px-1">
                                 <Images className="h-3.5 w-3.5 text-primary" />
-                                Portfolio Media Gallery
+                                Asset Media Gallery
                             </div>
                             <ScrollArea className="w-full whitespace-nowrap">
                                 <div className="flex w-max space-x-4 pb-4">
                                     {property.additionalImageUrls.map((url, idx) => (
-                                        <Link key={idx} href={url} target="_blank" className="relative h-24 w-40 rounded-xl overflow-hidden border shadow-sm transition-all hover:scale-[1.03] hover:shadow-lg active:scale-95">
+                                        <Link key={idx} href={url} target="_blank" className="relative h-24 w-40 rounded-xl overflow-hidden border shadow-sm transition-all hover:scale-[1.03] hover:shadow-lg">
                                             <Image 
                                               src={url} 
-                                              alt={`Asset Media ${idx + 1}`} 
+                                              alt={`Media ${idx + 1}`} 
                                               fill 
                                               className="object-cover" 
                                               unoptimized
-                                              data-ai-hint="interior property"
                                             />
                                         </Link>
                                     ))}
@@ -283,22 +281,22 @@ export default function PropertyDetailPage() {
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 px-6 pb-8 border-t pt-8 bg-muted/10">
                       <div className="p-4 rounded-xl bg-background border flex flex-col items-center gap-1 shadow-sm">
                           <Home className="h-5 w-5 text-primary mb-1 opacity-70" />
-                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider text-center">Unit Type</span>
-                          <span className="text-sm font-bold text-center">{property.propertyType}</span>
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Unit Type</span>
+                          <span className="text-sm font-bold">{property.propertyType}</span>
                       </div>
                       <div className="p-4 rounded-xl bg-background border flex flex-col items-center gap-1 shadow-sm">
                           <Bed className="h-5 w-5 text-primary mb-1 opacity-70" />
-                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider text-center">Bedrooms</span>
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Bedrooms</span>
                           <span className="text-sm font-bold">{property.bedrooms}</span>
                       </div>
                       <div className="p-4 rounded-xl bg-background border flex flex-col items-center gap-1 shadow-sm">
                           <Bath className="h-5 w-5 text-primary mb-1 opacity-70" />
-                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider text-center">Bathrooms</span>
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Bathrooms</span>
                           <span className="text-sm font-bold">{property.bathrooms}</span>
                       </div>
                       <div className="p-4 rounded-xl bg-background border flex flex-col items-center gap-1 shadow-sm">
-                          <Badge variant={property.status === 'Occupied' ? 'default' : 'secondary'} className="mb-1 text-[10px] uppercase font-bold px-2 py-0">{property.status}</Badge>
-                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider text-center">Asset Status</span>
+                          <Badge variant={property.status === 'Occupied' ? 'default' : 'secondary'} className="mb-1 text-[10px] uppercase font-bold">{property.status}</Badge>
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">Status</span>
                       </div>
                   </div>
               </CardContent>
@@ -306,37 +304,28 @@ export default function PropertyDetailPage() {
 
             {property.tenancy && (property.tenancy.monthlyRent || property.tenancy.depositAmount) && (
               <Card className="shadow-md border-none overflow-hidden">
-                <CardHeader className="pb-4 bg-primary/[0.02] border-b border-primary/5"><CardTitle className="font-headline text-lg">Financial Identity</CardTitle></CardHeader>
+                <CardHeader className="pb-4 bg-primary/[0.02] border-b border-primary/5"><CardTitle className="font-headline text-lg">Financial Overview</CardTitle></CardHeader>
                 <CardContent className="grid grid-cols-1 md:grid-cols-3 gap-8 pt-8 px-8 pb-8">
                   {property.tenancy.monthlyRent && (
                     <div className="flex items-start gap-4">
                         <div className="p-3 rounded-2xl bg-primary/5 shrink-0"><Banknote className="h-6 w-6 text-primary" /></div>
-                        <div><p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Contract Rent</p><p className="text-xl font-bold text-foreground">£{property.tenancy.monthlyRent.toLocaleString()}<span className='text-xs font-normal text-muted-foreground'>/mo</span></p></div>
+                        <div><p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Monthly Rent</p><p className="text-xl font-bold">£{property.tenancy.monthlyRent.toLocaleString()}</p></div>
                     </div>
                   )}
                   {property.tenancy.depositAmount && (
                     <div className="flex items-start gap-4">
                         <div className="p-3 rounded-2xl bg-primary/5 shrink-0"><Shield className="h-6 w-6 text-primary" /></div>
-                        <div><p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Security Held</p><p className="text-xl font-bold text-foreground">£{property.tenancy.depositAmount.toLocaleString()}</p></div>
+                        <div><p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Deposit Held</p><p className="text-xl font-bold">£{property.tenancy.depositAmount.toLocaleString()}</p></div>
                     </div>
                   )}
                   {property.tenancy.depositScheme && (
                     <div className="flex items-start gap-4 min-w-0">
                         <div className="p-3 rounded-2xl bg-primary/5 shrink-0"><FileText className="h-6 w-6 text-primary" /></div>
-                        <div className="min-w-0"><p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Reg. Scheme</p><p className="font-bold text-foreground break-words truncate">{property.tenancy.depositScheme}</p></div>
+                        <div className="min-w-0"><p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Scheme</p><p className="font-bold truncate">{property.tenancy.depositScheme}</p></div>
                     </div>
                   )}
                 </CardContent>
               </Card>
-            )}
-
-            {property.notes && (
-                <Card className="shadow-sm border-none bg-card/50">
-                    <CardHeader className="pb-4"><CardTitle className="font-headline text-lg">Management Narrative</CardTitle></CardHeader>
-                    <CardContent className="pt-6 border-t">
-                        <p className="text-sm text-muted-foreground whitespace-pre-wrap leading-relaxed italic">"{property.notes}"</p>
-                    </CardContent>
-                </Card>
             )}
           </div>
           
@@ -345,7 +334,7 @@ export default function PropertyDetailPage() {
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-muted/20 border-b">
                 <CardTitle className="font-headline text-lg">Residents</CardTitle>
                 <Button variant="ghost" size="icon" asChild className="h-8 w-8 text-primary hover:bg-primary/5">
-                  <Link href={`/dashboard/tenants/add?propertyId=${propertyId}`} title="Assign New Resident"><PlusCircle className="h-5 w-5" /></Link>
+                  <Link href={`/dashboard/tenants/add?propertyId=${propertyId}`} title="New Tenancy"><PlusCircle className="h-5 w-5" /></Link>
                 </Button>
               </CardHeader>
               <CardContent className="space-y-4 pt-6 bg-muted/5">
@@ -358,60 +347,55 @@ export default function PropertyDetailPage() {
                         <div className="flex items-start justify-between gap-2 mb-3">
                           <div className="flex items-center gap-3">
                             <div className="p-2.5 rounded-full bg-primary/10 text-primary"><User className="h-4 w-4" /></div>
-                            <p className="font-bold text-foreground truncate max-w-[140px]">{tenant.name}</p>
+                            <p className="font-bold truncate max-w-[140px]">{tenant.name}</p>
                           </div>
                           <Button variant="ghost" size="icon" asChild className="h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Link href={`/dashboard/tenants/${tenant.id}?propertyId=${propertyId}`}><ChevronRight className="h-4 w-4" /></Link>
                           </Button>
                         </div>
                         <div className="space-y-2">
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground overflow-hidden font-medium"><Mail className="h-3.5 w-3.5 shrink-0 opacity-50" /><span className="truncate">{tenant.email}</span></div>
-                          <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium"><Phone className="h-3.5 w-3.5 shrink-0 opacity-50" /><span>{tenant.telephone}</span></div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium"><Mail className="h-3.5 w-3.5 shrink-0" /><span className="truncate">{tenant.email}</span></div>
+                          <div className="flex items-center gap-2 text-xs text-muted-foreground font-medium"><Phone className="h-3.5 w-3.5 shrink-0" /><span>{tenant.telephone}</span></div>
                         </div>
                       </div>
                     ))}
-                    <Button variant="outline" className="w-full text-[10px] font-bold uppercase tracking-widest text-primary h-10 border-dashed border-primary/20 bg-transparent hover:bg-primary/5" asChild>
-                        <Link href={`/dashboard/tenants/add?propertyId=${propertyId}`}>
-                            <PlusCircle className="mr-2 h-3 w-3" /> New Tenancy
-                        </Link>
-                    </Button>
                   </div>
                 ) : (
                   <div className="text-center py-8">
                     <p className="text-xs text-muted-foreground mb-6 italic">No active residents recorded.</p>
-                    <Button asChild variant="secondary" className="w-full shadow-sm font-bold text-xs uppercase tracking-widest h-11"><Link href={`/dashboard/tenants/add?propertyId=${propertyId}`}>Assign Asset Resident</Link></Button>
+                    <Button asChild variant="secondary" className="w-full shadow-sm font-bold text-xs uppercase h-11"><Link href={`/dashboard/tenants/add?propertyId=${propertyId}`}>Assign Resident</Link></Button>
                   </div>
                 )}
               </CardContent>
             </Card>
             
             <Card className="shadow-sm border-none overflow-hidden bg-muted/5">
-              <CardHeader className="pb-4"><CardTitle className="font-headline text-lg">Physical Location</CardTitle></CardHeader>
+              <CardHeader className="pb-4"><CardTitle className="font-headline text-lg">Location</CardTitle></CardHeader>
               <CardContent className="p-0 border-t">
                   {property.address && property.address.postcode ? (
-                    <div className="aspect-square w-full shadow-inner grayscale contrast-[1.1] hover:grayscale-0 transition-all duration-1000">
-                        <iframe width="100%" height="100%" style={{ border: 0 }} title="Property Map" loading="lazy" src={`https://maps.google.com/maps?q=${encodeURIComponent([property.address.street, property.address.city, property.address.county, property.address.postcode].filter(Boolean).join(', '))}&output=embed`}></iframe>
+                    <div className="aspect-square w-full grayscale contrast-[1.1] hover:grayscale-0 transition-all duration-1000">
+                        <iframe width="100%" height="100%" style={{ border: 0 }} title="Map" loading="lazy" src={`https://maps.google.com/maps?q=${encodeURIComponent([property.address.street, property.address.city, property.address.postcode].filter(Boolean).join(', '))}&output=embed`}></iframe>
                     </div>
-                  ) : <p className="text-xs text-muted-foreground text-center py-10 italic">Location data incomplete.</p>}
+                  ) : <p className="text-xs text-muted-foreground text-center py-10 italic">Location data missing.</p>}
               </CardContent>
             </Card>
 
             <Card className="shadow-sm border-none overflow-hidden">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-muted/20 border-b">
                   <CardTitle className="font-headline text-lg">Timeline</CardTitle>
-                  <Button variant="ghost" size="sm" asChild className="text-[10px] font-bold uppercase tracking-widest h-8 px-3"><Link href={`/dashboard/maintenance/logged?propertyId=${propertyId}`}>View All</Link></Button>
+                  <Button variant="ghost" size="sm" asChild className="text-[10px] font-bold uppercase h-8"><Link href={`/dashboard/maintenance/logged?propertyId=${propertyId}`}>View All</Link></Button>
               </CardHeader>
               <CardContent className="pt-6 bg-muted/5">
                 {(!activeMaintenance.length && !scheduledInspections.length) ? (
-                  <p className="text-[10px] text-muted-foreground text-center py-6 italic font-medium uppercase tracking-wider">No active events</p>
+                  <p className="text-[10px] text-muted-foreground text-center py-6 italic uppercase tracking-wider">No active events</p>
                 ) : (
                   <div className="space-y-4">
                     {activeMaintenance.slice(0, 3).map(log => (
                       <div key={log.id} className="text-sm border-l-4 border-destructive pl-4 py-2 bg-background rounded-r-xl shadow-sm">
                         <Link href={`/dashboard/maintenance/${log.id}?propertyId=${propertyId}`} className="font-bold hover:text-primary transition-colors line-clamp-1">{log.title}</Link>
                         <div className="flex items-center gap-2 mt-1.5">
-                            <Badge variant="outline" className="text-[9px] h-4 uppercase font-bold border-destructive/20 text-destructive">{log.status}</Badge>
-                            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter">{safeFormatDate(log.reportedDate, 'dd MMM')}</span>
+                            <Badge variant="outline" className="text-[9px] h-4 uppercase font-bold">{log.status}</Badge>
+                            <span className="text-[9px] font-bold text-muted-foreground uppercase">{safeFormatDate(log.reportedDate, 'dd MMM')}</span>
                         </div>
                       </div>
                     ))}
@@ -419,8 +403,8 @@ export default function PropertyDetailPage() {
                       <div key={insp.id} className="text-sm border-l-4 border-primary pl-4 py-2 bg-background rounded-r-xl shadow-sm">
                         <Link href={`/dashboard/inspections/${insp.id}?propertyId=${propertyId}`} className="font-bold hover:text-primary transition-colors line-clamp-1">{insp.type}</Link>
                         <div className="flex items-center gap-2 mt-1.5">
-                            <Badge variant="outline" className="text-[9px] h-4 uppercase font-bold border-primary/20 text-primary">Scheduled</Badge>
-                            <span className="text-[9px] font-bold text-muted-foreground uppercase tracking-tighter">{safeFormatDate(insp.scheduledDate, 'dd MMM')}</span>
+                            <Badge variant="outline" className="text-[9px] h-4 uppercase font-bold">Scheduled</Badge>
+                            <span className="text-[9px] font-bold text-muted-foreground uppercase">{safeFormatDate(insp.scheduledDate, 'dd MMM')}</span>
                         </div>
                       </div>
                     ))}
@@ -435,12 +419,12 @@ export default function PropertyDetailPage() {
       <AlertDialog open={isDeleting} onOpenChange={setIsDeleting}>
         <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
           <AlertDialogHeader>
-              <AlertDialogTitle className="text-xl font-headline">Archive Property Asset?</AlertDialogTitle>
-              <AlertDialogDescription className="text-base font-medium">This will move the property record at <strong className='text-foreground'>{property.address.street}</strong> to your archives. You can restore it if needed.</AlertDialogDescription>
+              <AlertDialogTitle className="text-xl font-headline">Archive Property?</AlertDialogTitle>
+              <AlertDialogDescription className="text-base font-medium">Move record at <strong className='text-foreground'>{property.address.street}</strong> to archives.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="mt-4 gap-3">
-            <AlertDialogCancel className="rounded-xl font-bold uppercase tracking-widest text-xs h-11 border-primary/10">Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold uppercase tracking-widest text-xs h-11 px-8 shadow-lg" onClick={handleDeleteConfirm}>Archive Asset</AlertDialogAction>
+            <AlertDialogCancel className="rounded-xl font-bold uppercase text-xs h-11">Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold uppercase text-xs h-11 px-8" onClick={handleDeleteConfirm}>Archive Asset</AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>

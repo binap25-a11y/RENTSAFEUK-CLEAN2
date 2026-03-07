@@ -162,11 +162,10 @@ export default function EditPropertyPage() {
       let finalIdentityUrl = property?.imageUrl || '';
       if (selectedMainFile) {
           try {
-            const uploadedUrl = await uploadPropertyImage(selectedMainFile, user.uid, propertyId);
-            if (uploadedUrl) finalIdentityUrl = uploadedUrl;
+            finalIdentityUrl = await uploadPropertyImage(selectedMainFile, user.uid, propertyId);
           } catch (uploadErr: any) {
-            console.error('Binary media synchronization failed:', uploadErr);
-            toast({ variant: 'destructive', title: 'Media Failure', description: 'Failed to upload new identity photo.' });
+            console.error('Binary media synchronization failure:', uploadErr);
+            toast({ variant: 'destructive', title: 'Media Error', description: 'Failed to upload new identity photo.' });
           }
       }
 
@@ -180,25 +179,26 @@ export default function EditPropertyPage() {
           }
       }
 
-      // Reconstruct the full asset gallery
-      // Ensure the identity photo is always the first item in the gallery for consistency
+      // Reconstruct gallery
       const combinedGallery = [...existingGallery, ...newGalleryUrls];
+      
+      // Mirror identity photo into gallery if it's new
       if (finalIdentityUrl && !combinedGallery.includes(finalIdentityUrl)) {
           combinedGallery.unshift(finalIdentityUrl);
       }
 
       const updatePayload = {
           ...data,
-          imageUrl: finalIdentityUrl || '',
+          imageUrl: finalIdentityUrl || property?.imageUrl || '',
           additionalImageUrls: combinedGallery,
           ownerId: user.uid
       };
 
       await updateDoc(doc(firestore, 'userProfiles', user.uid, 'properties', propertyId), JSON.parse(JSON.stringify(updatePayload)));
-      toast({ title: "Portfolio Synchronized", description: "Asset data and media storage updated." });
+      toast({ title: "Portfolio Synchronized", description: "Record and media storage updated." });
       router.push(`/dashboard/properties/${propertyId}`);
     } catch (e: any) {
-      console.error("Critical update failure:", e);
+      console.error("Critical sync failure:", e);
       toast({ variant: "destructive", title: "Update Failed", description: e.message || "An unexpected error occurred." });
     } finally {
       setIsSubmitting(false);
