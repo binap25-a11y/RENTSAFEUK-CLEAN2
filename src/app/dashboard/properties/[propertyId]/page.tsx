@@ -236,7 +236,6 @@ export default function PropertyDetailPage() {
                   </div>
               </CardHeader>
               <CardContent className="space-y-6 p-0">
-                  {/* Integrated Image Section */}
                   <div className="px-6 pb-6">
                     <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-sm border bg-muted mb-4">
                         {property.imageUrl ? (
