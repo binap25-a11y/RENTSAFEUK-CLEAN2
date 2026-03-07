@@ -130,7 +130,7 @@ export default function AddPropertyPage() {
           finalIdentityUrl = await uploadPropertyImage(mainFile, user.uid, docRef.id);
         } catch (uploadErr: any) {
           console.error('Identity photo sync failure:', uploadErr);
-          toast({ variant: 'destructive', title: 'Upload Error', description: uploadErr.message });
+          toast({ variant: 'destructive', title: 'Media Error', description: uploadErr.message });
         }
       }
 
