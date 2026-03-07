@@ -11,9 +11,8 @@ export async function POST(req: NextRequest) {
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
 
     if (!supabaseUrl || !supabaseKey) {
-      console.error('Supabase configuration missing on server');
       return NextResponse.json({ 
-        error: "Supabase storage is not configured on the server. Please ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_ANON_KEY (or SUPABASE_SERVICE_ROLE_KEY) are set in your environment variables." 
+        error: "Supabase configuration missing on server. Check environment variables." 
       }, { status: 500 });
     }
 
@@ -27,11 +26,9 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "No file provided" }, { status: 400 });
     }
 
-    // Generate a unique file name with timestamp
+    // Organize storage path for strict isolation
     const fileExt = file.name.split('.').pop();
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-    
-    // Organize storage path by user and property for strict isolation
     const filePath = `${userId || 'system'}/${propertyId || 'misc'}/${fileName}`;
 
     // Perform the binary upload to the 'Images' bucket (Case Sensitive)

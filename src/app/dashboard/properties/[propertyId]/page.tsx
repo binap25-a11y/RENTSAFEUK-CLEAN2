@@ -25,7 +25,9 @@ import {
   FileText,
   User,
   Mail,
-  Phone
+  Phone,
+  Wrench,
+  CalendarCheck
 } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, collection, query, where } from 'firebase/firestore';
@@ -192,6 +194,9 @@ export default function PropertyDetailPage() {
   const propertyAddressTitle = [property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ');
   const propertyAddressSubtitle = [property.address.city, property.address.county, property.address.postcode].filter(Boolean).join(', ');
 
+  const activeMaintenance = maintenanceLogs?.filter(l => l.status === 'Open' || l.status === 'In Progress') || [];
+  const scheduledInspections = inspections?.filter(i => i.status === 'Scheduled') || [];
+
   return (
     <>
       <div className="flex flex-col gap-6">
@@ -226,7 +231,7 @@ export default function PropertyDetailPage() {
         
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
-            <Card className="shadow-sm overflow-hidden">
+            <Card className="shadow-sm overflow-hidden border-none">
               <CardHeader className="pb-4">
                   <div className="flex items-center justify-between">
                     <CardTitle className="font-headline text-lg">Property Overview</CardTitle>
@@ -237,7 +242,14 @@ export default function PropertyDetailPage() {
                   <div className="px-6 pb-6">
                     <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-sm border bg-muted mb-4">
                         {property.imageUrl ? (
-                            <Image src={property.imageUrl} alt="Property Identity" fill className="object-cover" priority />
+                            <Image 
+                              src={property.imageUrl} 
+                              alt="Property Identity" 
+                              fill 
+                              className="object-cover" 
+                              priority 
+                              unoptimized={property.imageUrl.includes('supabase.co')}
+                            />
                         ) : (
                             <div className="w-full h-full flex items-center justify-center bg-primary/5 text-primary/20">
                                 <div className="flex flex-col items-center">
@@ -258,7 +270,13 @@ export default function PropertyDetailPage() {
                                 <div className="flex w-max space-x-3 pb-4">
                                     {property.additionalImageUrls.map((url, idx) => (
                                         <Link key={idx} href={url} target="_blank" className="relative h-20 w-32 rounded-lg overflow-hidden border shadow-sm transition-transform hover:scale-105">
-                                            <Image src={url} alt={`Gallery ${idx + 1}`} fill className="object-cover" />
+                                            <Image 
+                                              src={url} 
+                                              alt={`Gallery ${idx + 1}`} 
+                                              fill 
+                                              className="object-cover" 
+                                              unoptimized={url.includes('supabase.co')}
+                                            />
                                         </Link>
                                     ))}
                                 </div>
@@ -390,12 +408,22 @@ export default function PropertyDetailPage() {
                   <Button variant="ghost" size="sm" asChild className="text-xs font-bold h-8"><Link href={`/dashboard/maintenance/logged?propertyId=${propertyId}`}>History</Link></Button>
               </CardHeader>
               <CardContent className="pt-6 border-t bg-muted/5">
-                {(!maintenanceLogs?.filter(l => l.status === 'Open' || l.status === 'In Progress').length && !inspections?.filter(i => i.status === 'Scheduled').length) ? (
+                {(activeMaintenance.length === 0 && scheduledInspections.length === 0) ? (
                   <p className="text-xs text-muted-foreground text-center py-4 italic">No active maintenance or scheduled inspections.</p>
                 ) : (
                   <div className="space-y-4">
-                    {maintenanceLogs?.filter(l => l.status === 'Open' || l.status === 'In Progress').slice(0, 3).map(log => <div key={log.id} className="text-sm border-l-4 border-destructive pl-3 py-1 bg-background rounded-r shadow-sm"><Link href={`/dashboard/maintenance/${log.id}?propertyId=${propertyId}`} className="font-bold hover:underline">{log.title}</Link><p className="text-[10px] font-bold text-muted-foreground/70 mt-0.5">{log.status} • {safeFormatDate(log.reportedDate, 'dd MMM')}</p></div>)}
-                    {inspections?.filter(i => i.status === 'Scheduled').slice(0, 3).map(insp => <div key={insp.id} className="text-sm border-l-4 border-primary pl-3 py-1 bg-background rounded-r shadow-sm"><Link href={`/dashboard/inspections/${insp.id}?propertyId=${propertyId}`} className="font-bold hover:underline">{insp.type}</Link><p className="text-[10px] font-bold text-muted-foreground/70 mt-0.5">Scheduled • {safeFormatDate(insp.scheduledDate, 'dd MMM')}</p></div>)}
+                    {activeMaintenance.slice(0, 3).map(log => (
+                      <div key={log.id} className="text-sm border-l-4 border-destructive pl-3 py-1 bg-background rounded-r shadow-sm">
+                        <Link href={`/dashboard/maintenance/${log.id}?propertyId=${propertyId}`} className="font-bold hover:underline">{log.title}</Link>
+                        <p className="text-[10px] font-bold text-muted-foreground/70 mt-0.5">{log.status} • {safeFormatDate(log.reportedDate, 'dd MMM')}</p>
+                      </div>
+                    ))}
+                    {scheduledInspections.slice(0, 3).map(insp => (
+                      <div key={insp.id} className="text-sm border-l-4 border-primary pl-3 py-1 bg-background rounded-r shadow-sm">
+                        <Link href={`/dashboard/inspections/${insp.id}?propertyId=${propertyId}`} className="font-bold hover:underline">{insp.type}</Link>
+                        <p className="text-[10px] font-bold text-muted-foreground/70 mt-0.5">Scheduled • {safeFormatDate(insp.scheduledDate, 'dd MMM')}</p>
+                      </div>
+                    ))}
                   </div>
                 )}
               </CardContent>

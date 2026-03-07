@@ -203,24 +203,24 @@ export default function EditPropertyPage() {
                     <CardContent className="space-y-4">
                         <FormField control={form.control} name="address.nameOrNumber" render={({ field }) => (
                           <FormItem>
-                            <FormLabel htmlFor="edit-name-number">Building Name/No</FormLabel>
-                            <FormControl><Input id="edit-name-number" name="nameOrNumber" className="h-11 bg-background" {...field} /></FormControl>
+                            <FormLabel htmlFor="edit-prop-no">Building Name/No</FormLabel>
+                            <FormControl><Input id="edit-prop-no" name="editPropNo" className="h-11 bg-background" {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
                         <FormField control={form.control} name="address.street" render={({ field }) => (
                           <FormItem>
-                            <FormLabel htmlFor="edit-street">Street Address</FormLabel>
-                            <FormControl><Input id="edit-street" name="street" className="h-11 bg-background" {...field} /></FormControl>
+                            <FormLabel htmlFor="edit-prop-street">Street Address</FormLabel>
+                            <FormControl><Input id="edit-prop-street" name="editPropStreet" className="h-11 bg-background" {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
                         <div className="grid grid-cols-2 gap-4">
                             <FormField control={form.control} name="address.city" render={({ field }) => (
-                              <FormItem><FormLabel htmlFor="edit-city">City/Town</FormLabel><FormControl><Input id="edit-city" name="city" className="h-11 bg-background" {...field} /></FormControl><FormMessage /></FormItem>
+                              <FormItem><FormLabel htmlFor="edit-prop-city">City/Town</FormLabel><FormControl><Input id="edit-prop-city" name="editPropCity" className="h-11 bg-background" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                             <FormField control={form.control} name="address.postcode" render={({ field }) => (
-                              <FormItem><FormLabel htmlFor="edit-postcode">Post Code</FormLabel><FormControl><Input id="edit-postcode" name="postcode" className="uppercase h-11 bg-background" {...field} /></FormControl><FormMessage /></FormItem>
+                              <FormItem><FormLabel htmlFor="edit-prop-postcode">Post Code</FormLabel><FormControl><Input id="edit-prop-postcode" name="editPropPostcode" className="uppercase h-11 bg-background" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                         </div>
                     </CardContent>
@@ -235,7 +235,13 @@ export default function EditPropertyPage() {
                     <FormLabel className="font-bold flex items-center gap-2 text-lg"><Home className="h-5 w-5 text-primary" /> Portfolio Identity Photo</FormLabel>
                     {mainPreviewUrl ? (
                         <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-primary shadow-lg group">
-                            <Image src={mainPreviewUrl} alt="Preview" fill className="object-cover" />
+                            <Image 
+                              src={mainPreviewUrl} 
+                              alt="Preview" 
+                              fill 
+                              className="object-cover" 
+                              unoptimized={mainPreviewUrl.includes('supabase.co')}
+                            />
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                 <Button type="button" variant="secondary" size="sm" onClick={() => mainInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Change</Button>
                                 <Button type="button" variant="destructive" size="sm" onClick={() => { setSelectedMainFile(null); setMainPreviewUrl(null); }}><X className="mr-2 h-4 w-4" /> Remove</Button>
@@ -247,7 +253,7 @@ export default function EditPropertyPage() {
                             <p className="text-sm font-bold">Assign Identity Photo</p>
                         </div>
                     )}
-                    <input type="file" ref={mainInputRef} onChange={handleMainFileChange} accept="image/*" className="hidden" id="main-photo-upload" name="mainPhoto" />
+                    <input type="file" ref={mainInputRef} onChange={handleMainFileChange} accept="image/*" className="hidden" id="edit-identity-photo" name="editIdentityPhoto" />
                 </div>
 
                 <div className="space-y-6">
@@ -255,7 +261,13 @@ export default function EditPropertyPage() {
                     <div className="grid grid-cols-3 gap-4">
                         {existingGallery.map((url, idx) => (
                             <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border group">
-                                <Image src={url} alt="Gallery" fill className="object-cover" />
+                                <Image 
+                                  src={url} 
+                                  alt="Gallery" 
+                                  fill 
+                                  className="object-cover" 
+                                  unoptimized={url.includes('supabase.co')}
+                                />
                                 <button type="button" onClick={() => setExistingGallery(p => p.filter(u => u !== url))} className="absolute top-1 right-1 p-1 bg-destructive text-white rounded-full opacity-0 group-hover:opacity-100"><X className="h-3 w-3" /></button>
                             </div>
                         ))}
@@ -266,7 +278,7 @@ export default function EditPropertyPage() {
                     <input type="file" ref={galleryInputRef} multiple onChange={(e) => {
                         const files = Array.from(e.target.files || []);
                         setNewGalleryFiles(p => [...p, ...files]);
-                    }} accept="image/*" className="hidden" id="gallery-upload" name="galleryPhotos" />
+                    }} accept="image/*" className="hidden" id="edit-gallery-photos" name="editGalleryPhotos" />
                 </div>
             </div>
 

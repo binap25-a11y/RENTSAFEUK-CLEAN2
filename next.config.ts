@@ -7,10 +7,13 @@ const nextConfig: NextConfig = {
   eslint: {
     ignoreDuringBuilds: true,
   },
-  // In Next.js 15, this is a top-level property
   serverExternalPackages: ['firebase'],
   images: {
     remotePatterns: [
+      {
+        protocol: 'https',
+        hostname: 'owfjowiiyshhqzhatwqr.supabase.co',
+      },
       {
         protocol: 'https',
         hostname: '*.supabase.co',
