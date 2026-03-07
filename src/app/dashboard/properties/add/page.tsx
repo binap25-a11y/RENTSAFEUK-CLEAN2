@@ -291,7 +291,13 @@ export default function AddPropertyPage() {
                   <FormDescription>This image will represent the property in your portfolio cards and dashboard.</FormDescription>
                   {mainPreview ? (
                     <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-primary group shadow-lg">
-                      <Image src={mainPreview} alt="Main Preview" fill className="object-cover" />
+                      <Image 
+                        src={mainPreview} 
+                        alt="Main Preview" 
+                        fill 
+                        className="object-cover" 
+                        unoptimized={mainPreview.startsWith('blob:')}
+                      />
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                         <Button type="button" variant="secondary" size="sm" onClick={() => mainInputRef.current?.click()}>Change Image</Button>
                         <Button type="button" variant="destructive" size="sm" onClick={() => { setMainPreview(null); setMainFile(null); }}>Remove</Button>
@@ -313,7 +319,13 @@ export default function AddPropertyPage() {
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                         {galleryPreviews.map((url, idx) => (
                             <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border group shadow-sm">
-                                <Image src={url} alt={`Gallery Preview ${idx}`} fill className="object-cover" />
+                                <Image 
+                                  src={url} 
+                                  alt={`Gallery Preview ${idx}`} 
+                                  fill 
+                                  className="object-cover" 
+                                  unoptimized={url.startsWith('blob:')}
+                                />
                                 <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeGalleryImage(idx)}><X className="h-3 w-3" /></Button>
                             </div>
                         ))}

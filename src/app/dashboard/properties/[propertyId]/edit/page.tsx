@@ -204,23 +204,23 @@ export default function EditPropertyPage() {
                         <FormField control={form.control} name="address.nameOrNumber" render={({ field }) => (
                           <FormItem>
                             <FormLabel htmlFor="edit-prop-no">Building Name/No</FormLabel>
-                            <FormControl><Input id="edit-prop-no" name="editPropNo" className="h-11 bg-background" {...field} /></FormControl>
+                            <FormControl><Input id="edit-prop-no" name="nameOrNumber" className="h-11 bg-background" {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
                         <FormField control={form.control} name="address.street" render={({ field }) => (
                           <FormItem>
                             <FormLabel htmlFor="edit-prop-street">Street Address</FormLabel>
-                            <FormControl><Input id="edit-prop-street" name="editPropStreet" className="h-11 bg-background" {...field} /></FormControl>
+                            <FormControl><Input id="edit-prop-street" name="street" className="h-11 bg-background" {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
                         <div className="grid grid-cols-2 gap-4">
                             <FormField control={form.control} name="address.city" render={({ field }) => (
-                              <FormItem><FormLabel htmlFor="edit-prop-city">City/Town</FormLabel><FormControl><Input id="edit-prop-city" name="editPropCity" className="h-11 bg-background" {...field} /></FormControl><FormMessage /></FormItem>
+                              <FormItem><FormLabel htmlFor="edit-prop-city">City/Town</FormLabel><FormControl><Input id="edit-prop-city" name="city" className="h-11 bg-background" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                             <FormField control={form.control} name="address.postcode" render={({ field }) => (
-                              <FormItem><FormLabel htmlFor="edit-prop-postcode">Post Code</FormLabel><FormControl><Input id="edit-prop-postcode" name="editPropPostcode" className="uppercase h-11 bg-background" {...field} /></FormControl><FormMessage /></FormItem>
+                              <FormItem><FormLabel htmlFor="edit-prop-postcode">Post Code</FormLabel><FormControl><Input id="edit-prop-postcode" name="postcode" className="uppercase h-11 bg-background" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                         </div>
                     </CardContent>
@@ -240,7 +240,7 @@ export default function EditPropertyPage() {
                               alt="Preview" 
                               fill 
                               className="object-cover" 
-                              unoptimized={mainPreviewUrl.includes('supabase.co')}
+                              unoptimized={mainPreviewUrl.startsWith('blob:') || mainPreviewUrl.includes('supabase.co')}
                             />
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                 <Button type="button" variant="secondary" size="sm" onClick={() => mainInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Change</Button>
