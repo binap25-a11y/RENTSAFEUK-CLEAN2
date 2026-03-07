@@ -1,36 +1,45 @@
 'use client';
 
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { initializeFirebase } from '@/firebase/init';
+import { supabase } from './supabase';
 
 /**
- * Uploads a property image to Firebase Storage.
- * This is used as a robust alternative to Supabase to bypass RLS policy restrictions 
- * that often block anonymous binary synchronization in development environments.
+ * Uploads a property image to Supabase Storage.
+ * This function uses the client SDK to perform direct binary uploads to the 'Images' bucket.
  */
 export const uploadPropertyImage = async (file: File, userId: string, propertyId: string): Promise<string> => {
-  if (!file) return '';
+  if (!file || !supabase) return '';
 
   try {
-    const { storage } = initializeFirebase();
-    
     // Generate a unique filename to prevent collisions
     const fileExt = file.name.split('.').pop() || 'jpg';
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
     
-    // Use the path defined in your storage.rules: images/{userId}/{allPaths=**}
-    const filePath = `images/${userId}/${propertyId}/${fileName}`;
-    const storageRef = ref(storage, filePath);
-    
-    // Upload the binary file directly
-    const snapshot = await uploadBytes(storageRef, file);
-    
-    // Retrieve the permanent public URL for Firestore persistence
-    const downloadUrl = await getDownloadURL(snapshot.ref);
-    
-    return downloadUrl;
+    // Path: userId/propertyId/filename
+    const filePath = `${userId}/${propertyId}/${fileName}`;
+
+    // Perform the upload to the 'Images' bucket
+    const { data, error } = await supabase.storage
+      .from('Images')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: file.type
+      });
+
+    if (error) {
+      console.error('Supabase upload error:', error.message);
+      // provide a helpful hint for the RLS policy issue
+      throw new Error(`${error.message} (Hint: Ensure your 'Images' bucket RLS policy for INSERT uses CHECK (bucket_id = 'Images') for the 'anon' role)`);
+    }
+
+    // Retrieve the public URL for the uploaded file
+    const { data: { publicUrl } } = supabase.storage
+      .from('Images')
+      .getPublicUrl(filePath);
+
+    return publicUrl;
   } catch (err: any) {
-    console.error('Media synchronization failure:', err.message);
-    throw new Error(`Upload failed: ${err.message}. Ensure your Firebase Storage bucket is initialized.`);
+    console.error('Upload pipeline failure:', err.message);
+    throw err;
   }
 };

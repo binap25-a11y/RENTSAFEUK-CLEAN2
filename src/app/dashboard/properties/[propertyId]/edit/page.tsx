@@ -177,6 +177,8 @@ export default function EditPropertyPage() {
           } catch (uploadErr: any) {
             console.error('Identity media synchronization failure:', uploadErr);
             toast({ variant: 'destructive', title: 'Media Error', description: uploadErr.message || 'Failed to upload new identity photo.' });
+            setIsSubmitting(false);
+            return;
           }
       }
 
