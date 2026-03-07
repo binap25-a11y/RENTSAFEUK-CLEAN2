@@ -176,7 +176,7 @@ export default function EditPropertyPage() {
             finalIdentityUrl = await uploadPropertyImage(selectedMainFile, user.uid, propertyId);
           } catch (uploadErr: any) {
             console.error('Identity media synchronization failure:', uploadErr);
-            toast({ variant: 'destructive', title: 'Media Error', description: 'Failed to upload new identity photo.' });
+            toast({ variant: 'destructive', title: 'Media Error', description: uploadErr.message || 'Failed to upload new identity photo.' });
           }
       }
 

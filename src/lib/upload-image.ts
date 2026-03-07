@@ -1,38 +1,45 @@
 'use client';
 
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { initializeFirebase } from '@/firebase/init';
+import { supabase } from './supabase';
 
 /**
- * Uploads a property image directly to Firebase Storage.
- * This replaces the Supabase pipeline which was hitting RLS policy issues.
- * This method is more reliable as it uses the authenticated Firebase session.
+ * Uploads a property image directly to Supabase Storage.
+ * Ensures the file is stored in the 'Images' bucket under a structured path.
  */
 export const uploadPropertyImage = async (file: File, userId: string, propertyId: string): Promise<string> => {
   if (!file) return '';
 
   try {
-    // Initialize storage via the central Firebase initialization logic
-    const { storage } = initializeFirebase();
-    
     // Generate a unique filename to prevent collisions
     const fileExt = file.name.split('.').pop() || 'jpg';
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
     
-    // Construct the structured path used in storage.rules
-    const filePath = `images/${userId}/${propertyId}/${fileName}`;
+    // Construct the structured path: userId/propertyId/filename
+    const filePath = `${userId}/${propertyId}/${fileName}`;
     
-    const storageRef = ref(storage, filePath);
+    // Upload the binary file directly to Supabase
+    const { data, error } = await supabase.storage
+      .from('Images')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false,
+        contentType: file.type
+      });
+
+    if (error) {
+      console.error('Supabase upload error:', error.message);
+      // Re-throw with a hint about RLS policies which is the common cause of 'new row' errors
+      throw new Error(`${error.message} (Hint: Check your 'Images' bucket RLS policies in Supabase)`);
+    }
+
+    // Retrieve the public URL for Firestore persistence
+    const { data: { publicUrl } } = supabase.storage
+      .from('Images')
+      .getPublicUrl(filePath);
     
-    // Upload the binary file directly from the browser
-    const snapshot = await uploadBytes(storageRef, file);
-    
-    // Retrieve the public download URL for Firestore persistence
-    const downloadURL = await getDownloadURL(snapshot.ref);
-    
-    return downloadURL;
+    return publicUrl;
   } catch (err: any) {
-    console.error('Firebase Storage synchronization failure:', err.message);
-    throw new Error(`Media upload failed: ${err.message}`);
+    console.error('Upload pipeline failure:', err.message);
+    throw err;
   }
 };
