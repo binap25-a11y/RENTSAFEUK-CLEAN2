@@ -6,13 +6,12 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Bed, Bath, Trash2, Loader2, Edit, MoreVertical, Search, LayoutGrid, List, Eye, Home } from 'lucide-react';
+import { PlusCircle, Bed, Bath, Loader2, LayoutGrid, List, Eye, Home, Search } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { useMemo, useState, useEffect } from 'react';
 import { AlertDialog, AlertDialogAction, AlertDialogCancel, AlertDialogContent, AlertDialogDescription, AlertDialogFooter, AlertDialogHeader, AlertDialogTitle } from '@/components/ui/alert-dialog';
-import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { Input } from '@/components/ui/input';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 
@@ -47,7 +46,7 @@ export default function PropertiesPage() {
     return query(collection(firestore, 'userProfiles', user.uid, 'properties'), where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance']));
   }, [firestore, user]);
 
-  const { data: properties, isLoading, error } = useCollection<Property>(propertiesQuery);
+  const { data: properties, isLoading } = useCollection<Property>(propertiesQuery);
 
   useEffect(() => {
     if (!user || !firestore || !properties || properties.length === 0) return;
@@ -106,7 +105,11 @@ export default function PropertiesPage() {
                     {filteredProperties.map((property) => (
                       <Card key={property.id} className="group overflow-hidden flex flex-col hover:shadow-2xl transition-all duration-300 relative">
                           <div className="relative cursor-pointer aspect-[16/10] bg-muted overflow-hidden border-b" onClick={() => router.push(`/dashboard/properties/${property.id}`)}>
-                              {property.imageUrl ? <Image src={property.imageUrl} alt="Property" fill className="object-cover group-hover:scale-110 transition-transform duration-500" priority /> : <div className="w-full h-full flex items-center justify-center bg-primary/5"><Home className="w-16 h-16 text-primary/10" /></div>}
+                              {property.imageUrl ? (
+                                <Image src={property.imageUrl} alt="Property" fill className="object-cover group-hover:scale-110 transition-transform duration-500" priority />
+                              ) : (
+                                <div className="w-full h-full flex items-center justify-center bg-primary/5"><Home className="w-16 h-16 text-primary/10" /></div>
+                              )}
                           </div>
                           <CardHeader className="pb-3">
                               <CardTitle className="text-lg font-bold truncate group-hover:text-primary transition-colors cursor-pointer" onClick={() => router.push(`/dashboard/properties/${property.id}`)}>{[property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ')}</CardTitle>
@@ -136,10 +139,17 @@ export default function PropertiesPage() {
                         <TableBody>
                             {filteredProperties.map((p) => (
                                 <TableRow key={p.id} className="cursor-pointer hover:bg-muted/30" onClick={() => router.push(`/dashboard/properties/${p.id}`)}>
-                                    <TableCell className="font-bold">{[p.address.nameOrNumber, p.address.street].filter(Boolean).join(', ')}<div className="text-[11px] text-muted-foreground font-medium">{p.address.city}, {p.address.postcode}</div></TableCell>
+                                    <TableCell className="font-bold">
+                                        {[p.address.nameOrNumber, p.address.street].filter(Boolean).join(', ')}
+                                        <div className="text-[11px] text-muted-foreground font-medium">{p.address.city}, {p.address.postcode}</div>
+                                    </TableCell>
                                     <TableCell className="text-xs uppercase text-muted-foreground font-bold">{p.propertyType}</TableCell>
                                     <TableCell><Badge variant={p.status === 'Occupied' ? 'default' : 'secondary'}>{p.status}</Badge></TableCell>
-                                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}><Button asChild variant="ghost" size="icon"><Link href={`/dashboard/properties/${p.id}`}><Eye className="h-4 w-4" /></Link></Button></TableCell>
+                                    <TableCell className="text-right" onClick={(e) => e.stopPropagation()}>
+                                        <Button asChild variant="ghost" size="icon">
+                                            <Link href={`/dashboard/properties/${p.id}`}><Eye className="h-4 w-4" /></Link>
+                                        </Button>
+                                    </TableCell>
                                 </TableRow>
                             ))}
                         </TableBody>

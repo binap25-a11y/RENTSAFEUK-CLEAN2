@@ -18,7 +18,6 @@ import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { uploadPropertyImage } from '@/lib/upload-image';
 import { Loader2, MapPin, Home, Upload, X, Images, PlusCircle } from 'lucide-react';
-import { Badge } from '@/components/ui/badge';
 import Image from 'next/image';
 
 const ukPostcodeRegex = /^[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}$/i;
@@ -73,15 +72,6 @@ interface Property {
     };
 }
 
-const propertyTypes = [
-  { value: 'House', label: 'House' },
-  { value: 'Flat', label: 'Flat / Apt' },
-  { value: 'HMO', label: 'HMO' },
-  { value: 'Bungalow', label: 'Bungalow' },
-  { value: 'Maisonette', label: 'Maisonette' },
-  { value: 'Studio', label: 'Studio' },
-];
-
 export default function EditPropertyPage() {
   const router = useRouter();
   const params = useParams();
@@ -96,7 +86,6 @@ export default function EditPropertyPage() {
 
   const [existingGallery, setExistingGallery] = useState<string[]>([]);
   const [newGalleryFiles, setNewGalleryFiles] = useState<File[]>([]);
-  const [newGalleryPreviews, setNewGalleryPreviews] = useState<string[]>([]);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const propertyRef = useMemoFirebase(() => {
@@ -158,7 +147,10 @@ export default function EditPropertyPage() {
     try {
       let finalImageUrl = property?.imageUrl || '';
       if (selectedMainFile) {
-          finalImageUrl = await uploadPropertyImage(selectedMainFile, user.uid, propertyId);
+          const uploadedUrl = await uploadPropertyImage(selectedMainFile, user.uid, propertyId);
+          if (uploadedUrl) {
+              finalImageUrl = uploadedUrl;
+          }
       }
 
       const newGalleryUrls: string[] = [];
@@ -225,7 +217,7 @@ export default function EditPropertyPage() {
                     </CardContent>
                 </Card>
                 <div className="aspect-square rounded-2xl overflow-hidden border-2 bg-muted relative">
-                    {mapUrl ? <iframe src={mapUrl} width="100%" height="100%" style={{ border: 0 }} /> : <div className="flex items-center justify-center h-full text-muted-foreground"><MapPin className="mr-2" /> Awaiting location...</div>}
+                    {mapUrl ? <iframe src={mapUrl} width="100%" height="100%" style={{ border: 0 }} title="Property Map" /> : <div className="flex items-center justify-center h-full text-muted-foreground"><MapPin className="mr-2" /> Awaiting location...</div>}
                 </div>
             </div>
 
@@ -265,7 +257,6 @@ export default function EditPropertyPage() {
                     <input type="file" ref={galleryInputRef} multiple onChange={(e) => {
                         const files = Array.from(e.target.files || []);
                         setNewGalleryFiles(p => [...p, ...files]);
-                        setNewGalleryPreviews(p => [...p, ...files.map(f => URL.createObjectURL(f))]);
                     }} accept="image/*" className="hidden" id="gallery-upload" name="galleryPhotos" />
                 </div>
             </div>
