@@ -92,7 +92,6 @@ export default function AddPropertyPage() {
     const file = e.target.files?.[0];
     if (file) {
       setMainFile(file);
-      // Clean up previous blob if any
       if (mainPreview && mainPreview.startsWith('blob:')) URL.revokeObjectURL(mainPreview);
       setMainPreview(URL.createObjectURL(file));
     }
@@ -121,7 +120,7 @@ export default function AddPropertyPage() {
         createdDate: new Date().toISOString(),
       });
 
-      // Step 2: Upload images to Supabase using the new ID for folder organization
+      // Step 2: Upload images to Supabase
       let finalImageUrl = '';
       if (mainFile) {
         finalImageUrl = await uploadPropertyImage(mainFile, user.uid, docRef.id);
@@ -134,15 +133,18 @@ export default function AddPropertyPage() {
         additionalUrls = uploaded.filter(Boolean);
       }
 
-      // Step 3: Update the record with the final public URLs
-      await updateDoc(docRef, { 
-        imageUrl: finalImageUrl, 
-        additionalImageUrls: additionalUrls 
-      });
+      // Step 3: Conditional update to prevent wiping fields if uploads failed
+      const updates: any = {};
+      if (finalImageUrl) updates.imageUrl = finalImageUrl;
+      if (additionalUrls.length > 0) updates.additionalImageUrls = additionalUrls;
+
+      if (Object.keys(updates).length > 0) {
+        await updateDoc(docRef, updates);
+      }
 
       toast({ 
         title: 'Property Onboarded', 
-        description: 'Asset successfully added to your portfolio with all media synced.' 
+        description: 'Asset successfully added to your portfolio.' 
       });
       
       router.push('/dashboard/properties');
@@ -151,7 +153,7 @@ export default function AddPropertyPage() {
       toast({ 
         variant: 'destructive', 
         title: 'Onboarding Failed', 
-        description: "There was an error synchronizing your property media."
+        description: "There was an error synchronizing your property data."
       });
     } finally {
       setIsSubmitting(false);

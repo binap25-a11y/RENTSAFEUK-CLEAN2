@@ -198,32 +198,33 @@ export default function EditPropertyPage() {
     setIsSubmitting(true);
 
     try {
-      let finalImageUrl = property?.imageUrl || '';
+      let finalImageUrl = '';
       if (selectedMainFile) {
-          const uploadedUrl = await uploadPropertyImage(selectedMainFile, user.uid, propertyId);
-          if (uploadedUrl) {
-              finalImageUrl = uploadedUrl;
-          }
+          finalImageUrl = await uploadPropertyImage(selectedMainFile, user.uid, propertyId);
       }
 
-      const galleryUrls = [...existingGallery];
+      const newGalleryUrls: string[] = [];
       if (newGalleryFiles.length > 0) {
           const uploadPromises = newGalleryFiles.map(async (file) => {
               return uploadPropertyImage(file, user.uid, propertyId);
           });
-          const newUrls = await Promise.all(uploadPromises);
-          galleryUrls.push(...newUrls.filter(Boolean));
+          const uploaded = await Promise.all(uploadPromises);
+          newGalleryUrls.push(...uploaded.filter(Boolean));
       }
 
       const docRef = doc(firestore, 'userProfiles', user.uid, 'properties', propertyId);
       
-      const updateData = {
+      const updateData: any = {
           ...data,
-          imageUrl: finalImageUrl,
-          additionalImageUrls: galleryUrls,
+          additionalImageUrls: [...existingGallery, ...newGalleryUrls],
           ownerId: user.uid
       };
       
+      // Only set imageUrl if it's new, otherwise keep existing
+      if (finalImageUrl) {
+          updateData.imageUrl = finalImageUrl;
+      }
+
       const cleanedData = JSON.parse(JSON.stringify(updateData));
       await updateDoc(docRef, cleanedData);
       
