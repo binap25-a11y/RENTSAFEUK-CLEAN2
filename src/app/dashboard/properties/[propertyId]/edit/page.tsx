@@ -278,7 +278,7 @@ export default function EditPropertyPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 border-t pt-10">
                 <div className="space-y-6">
                     <FormLabel className="font-bold flex items-center gap-2 text-lg"><Home className="h-5 w-5 text-primary" /> Identity Photo</FormLabel>
-                    <FormDescription className="text-xs">The primary image for portfolio views. Automatically added to your Photo Gallery.</FormDescription>
+                    <FormDescription className="text-xs">Primary photo for the grid view. Also added to your gallery.</FormDescription>
                     {mainPreviewUrl ? (
                         <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-primary shadow-lg group">
                             <Image 

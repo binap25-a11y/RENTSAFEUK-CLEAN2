@@ -294,7 +294,7 @@ export default function AddPropertyPage() {
               <CardHeader className="bg-primary/5 border-b"><CardTitle className="flex items-center gap-2 font-headline"><Images className="h-5 w-5" /> Photo Gallery</CardTitle></CardHeader>
               <CardContent className="pt-6 space-y-8">
                 <div className="space-y-4">
-                  <Label className="font-bold text-lg">Primary Identification Photo</Label>
+                  <Label className="font-bold text-lg">Primary Identity Photo</Label>
                   <FormDescription className="text-xs">Select an image for main portfolio views. This photo will be automatically synced to your gallery.</FormDescription>
                   {mainPreview ? (
                     <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-primary group shadow-lg bg-background">
