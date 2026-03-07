@@ -3,7 +3,7 @@ import { createClient } from "@supabase/supabase-js";
 
 /**
  * Server-side binary upload handler for Supabase.
- * Serves as a robust proxy for media synchronization if client-side upload is restricted.
+ * Processes multi-part form data and streams it to the 'Images' bucket.
  */
 export async function POST(req: NextRequest) {
   try {
@@ -16,7 +16,8 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ error: "Missing required identification metadata" }, { status: 400 });
     }
 
-    // Initialize Supabase client with publishable keys
+    console.log(`Processing binary sync for user ${userId}, property ${propertyId}...`);
+
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://owfjowiiyshhqzhatwqr.supabase.co';
     const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY || 'sb_publishable_9RMHLJbKcpjnvH5SuUx7hg_3TuajLPe';
     const supabase = createClient(supabaseUrl, supabaseAnonKey);
@@ -25,7 +26,7 @@ export async function POST(req: NextRequest) {
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
     const filePath = `${userId}/${propertyId}/${fileName}`;
 
-    // Convert to buffer for server-side processing
+    // Convert to buffer for resilient server-side stream processing
     const arrayBuffer = await file.arrayBuffer();
     const buffer = Buffer.from(arrayBuffer);
 
@@ -33,12 +34,17 @@ export async function POST(req: NextRequest) {
       .from('Images')
       .upload(filePath, buffer, {
         contentType: file.type || 'image/jpeg',
+        cacheControl: '3600',
         upsert: false
       });
 
     if (error) {
       console.error('Supabase storage failure:', error.message);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+      // Helpful hint for the user if they haven't set the RLS policy yet
+      const hint = error.message.includes('row-level security') 
+        ? " (Hint: Check your 'Images' bucket RLS policies in Supabase)" 
+        : "";
+      return NextResponse.json({ error: error.message + hint }, { status: 500 });
     }
 
     const { data: { publicUrl } } = supabase.storage
