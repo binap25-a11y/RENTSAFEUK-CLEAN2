@@ -159,16 +159,14 @@ export default function EditPropertyPage() {
     setIsSubmitting(true);
 
     try {
-      let finalImageUrl = property?.imageUrl || '';
+      let finalIdentityUrl = property?.imageUrl || '';
       if (selectedMainFile) {
           try {
             const uploadedUrl = await uploadPropertyImage(selectedMainFile, user.uid, propertyId);
-            if (uploadedUrl) {
-                finalImageUrl = uploadedUrl;
-            }
+            if (uploadedUrl) finalIdentityUrl = uploadedUrl;
           } catch (uploadErr: any) {
-            console.error('Identity photo upload failed:', uploadErr);
-            toast({ variant: 'destructive', title: 'Media Sync Warning', description: 'Photo upload encountered an issue.' });
+            console.error('Binary media synchronization failed:', uploadErr);
+            toast({ variant: 'destructive', title: 'Media Failure', description: 'Failed to upload new identity photo.' });
           }
       }
 
@@ -178,28 +176,29 @@ export default function EditPropertyPage() {
             const uploads = await Promise.all(newGalleryFiles.map(f => uploadPropertyImage(f, user.uid, propertyId)));
             newGalleryUrls.push(...uploads.filter(Boolean));
           } catch (uploadErr: any) {
-            console.error('Gallery upload failed:', uploadErr);
+            console.error('Gallery synchronization issue:', uploadErr);
           }
       }
 
-      // Ensure identity photo is in gallery
-      const gallery = [...existingGallery, ...newGalleryUrls];
-      if (finalImageUrl && !gallery.includes(finalImageUrl)) {
-          gallery.unshift(finalImageUrl);
+      // Reconstruct the full asset gallery
+      // Ensure the identity photo is always the first item in the gallery for consistency
+      const combinedGallery = [...existingGallery, ...newGalleryUrls];
+      if (finalIdentityUrl && !combinedGallery.includes(finalIdentityUrl)) {
+          combinedGallery.unshift(finalIdentityUrl);
       }
 
-      const updateData = {
+      const updatePayload = {
           ...data,
-          imageUrl: finalImageUrl,
-          additionalImageUrls: gallery,
+          imageUrl: finalIdentityUrl || '',
+          additionalImageUrls: combinedGallery,
           ownerId: user.uid
       };
 
-      await updateDoc(doc(firestore, 'userProfiles', user.uid, 'properties', propertyId), JSON.parse(JSON.stringify(updateData)));
-      toast({ title: "Portfolio Updated", description: "Property media and data synchronized." });
+      await updateDoc(doc(firestore, 'userProfiles', user.uid, 'properties', propertyId), JSON.parse(JSON.stringify(updatePayload)));
+      toast({ title: "Portfolio Synchronized", description: "Asset data and media storage updated." });
       router.push(`/dashboard/properties/${propertyId}`);
     } catch (e: any) {
-      console.error("Update failed:", e);
+      console.error("Critical update failure:", e);
       toast({ variant: "destructive", title: "Update Failed", description: e.message || "An unexpected error occurred." });
     } finally {
       setIsSubmitting(false);
@@ -211,8 +210,8 @@ export default function EditPropertyPage() {
   return (
       <Card className="max-w-5xl mx-auto shadow-md border-none">
       <CardHeader className="bg-primary/5 border-b border-primary/10">
-        <CardTitle className="text-2xl font-headline text-primary">Edit Property</CardTitle>
-        <CardDescription>Update asset identity and contract details.</CardDescription>
+        <CardTitle className="text-2xl font-headline text-primary">Edit Property Record</CardTitle>
+        <CardDescription>Update asset identification and contract details.</CardDescription>
       </CardHeader>
       <CardContent className="pt-8">
         <Form {...form}>
@@ -270,14 +269,14 @@ export default function EditPropertyPage() {
                     ) : (
                         <div className="border-2 border-dashed rounded-2xl p-12 text-center bg-muted/5 cursor-pointer" onClick={() => mainInputRef.current?.click()}>
                             <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
-                            <p className="text-sm font-bold">Assign Identity Photo</p>
+                            <p className="text-sm font-bold">Assign Asset Photo</p>
                         </div>
                     )}
                     <input type="file" ref={mainInputRef} onChange={handleMainFileChange} accept="image/*" className="hidden" id="edit-main-photo" name="editMainPhoto" />
                 </div>
 
                 <div className="space-y-6">
-                    <FormLabel className="font-bold flex items-center gap-2 text-lg"><Images className="h-5 w-5 text-primary" /> Gallery</FormLabel>
+                    <FormLabel className="font-bold flex items-center gap-2 text-lg"><Images className="h-5 w-5 text-primary" /> Additional Media</FormLabel>
                     <div className="grid grid-cols-3 gap-4">
                         {existingGallery.map((url, idx) => (
                             <div key={`existing-${idx}`} className="relative aspect-square rounded-xl overflow-hidden border group">
@@ -288,17 +287,17 @@ export default function EditPropertyPage() {
                                   className="object-cover" 
                                   unoptimized
                                 />
-                                <button type="button" onClick={() => setExistingGallery(p => p.filter(u => u !== url))} className="absolute top-1 right-1 p-1 bg-destructive text-white rounded-full opacity-0 group-hover:opacity-100"><X className="h-3 w-3" /></button>
+                                <button type="button" onClick={() => setExistingGallery(p => p.filter(u => u !== url))} className="absolute top-1 right-1 p-1 bg-destructive text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><X className="h-3 w-3" /></button>
                             </div>
                         ))}
                         {newGalleryPreviews.map((url, idx) => (
                             <div key={`new-${idx}`} className="relative aspect-square rounded-xl overflow-hidden border border-primary/50 group">
                                 <Image src={url} alt="New Preview" fill className="object-cover" unoptimized />
-                                <button type="button" onClick={() => removeNewGalleryImage(idx)} className="absolute top-1 right-1 p-1 bg-destructive text-white rounded-full opacity-0 group-hover:opacity-100"><X className="h-3 w-3" /></button>
+                                <button type="button" onClick={() => removeNewGalleryImage(idx)} className="absolute top-1 right-1 p-1 bg-destructive text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity"><X className="h-3 w-3" /></button>
                             </div>
                         ))}
                         <div className="border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 bg-muted/5 cursor-pointer aspect-square" onClick={() => galleryInputRef.current?.click()}>
-                            <PlusCircle className="h-6 w-6 text-muted-foreground" /><span className="text-[10px] font-bold">Add Media</span>
+                            <PlusCircle className="h-6 w-6 text-muted-foreground" /><span className="text-[10px] font-bold">Add Photo</span>
                         </div>
                     </div>
                     <input type="file" ref={galleryInputRef} multiple onChange={handleNewGalleryChange} accept="image/*" className="hidden" id="edit-gallery" name="editGallery" />
@@ -308,7 +307,7 @@ export default function EditPropertyPage() {
             <div className="flex justify-end gap-4 pt-6 border-t">
               <Button type="button" variant="ghost" asChild className="h-11"><Link href={`/dashboard/properties/${propertyId}`}>Cancel</Link></Button>
               <Button type="submit" disabled={isSubmitting} className="h-11 px-10 shadow-lg">
-                {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Syncing...</> : 'Save Changes'}
+                {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Synchronizing...</> : 'Save Record Changes'}
               </Button>
             </div>
           </form>

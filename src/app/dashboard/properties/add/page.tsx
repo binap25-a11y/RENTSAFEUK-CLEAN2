@@ -112,52 +112,55 @@ export default function AddPropertyPage() {
     setIsSubmitting(true);
 
     try {
-      // Step 1: Create the Firestore record first to get an ID
+      // Step 1: Create the record with placeholders to get a stable property ID
       const docRef = await addDoc(collection(firestore, 'userProfiles', user.uid, 'properties'), {
         ...JSON.parse(JSON.stringify(data)),
         ownerId: user.uid,
         createdDate: new Date().toISOString(),
+        imageUrl: '',
+        additionalImageUrls: [],
       });
 
-      // Step 2: Upload images if present
-      let finalImageUrl = '';
+      // Step 2: Upload Identity Photo
+      let finalIdentityUrl = '';
       if (mainFile) {
         try {
           const uploadedUrl = await uploadPropertyImage(mainFile, user.uid, docRef.id);
-          if (uploadedUrl) finalImageUrl = uploadedUrl;
+          if (uploadedUrl) finalIdentityUrl = uploadedUrl;
         } catch (uploadErr: any) {
-          console.error('Main photo upload failed:', uploadErr);
-          toast({ variant: 'destructive', title: 'Media Sync Warning', description: 'Property saved but identity photo upload failed.' });
+          console.error('Identity photo binary sync failed:', uploadErr);
+          toast({ variant: 'destructive', title: 'Media Failure', description: 'Property saved but main photo upload failed.' });
         }
       }
 
-      let additionalUrls: string[] = [];
+      // Step 3: Upload Gallery Photos
+      let galleryUrls: string[] = [];
       if (galleryFiles.length > 0) {
         try {
           const uploads = await Promise.all(galleryFiles.map(f => uploadPropertyImage(f, user.uid, docRef.id)));
-          additionalUrls = uploads.filter(Boolean);
+          galleryUrls = uploads.filter(Boolean);
         } catch (uploadErr: any) {
-          console.error('Gallery upload failed:', uploadErr);
+          console.error('Gallery media sync failed:', uploadErr);
         }
       }
 
-      // Step 3: Update the record with finalized URLs
-      // Identity photo is also added to gallery if provided
-      const gallery = [...additionalUrls];
-      if (finalImageUrl) gallery.unshift(finalImageUrl);
-
-      if (finalImageUrl !== '' || gallery.length > 0) {
-        await updateDoc(docRef, { 
-            imageUrl: finalImageUrl || undefined, 
-            additionalImageUrls: gallery.length > 0 ? gallery : undefined 
-        });
+      // Final Assembly: Ensure identity photo is also in the gallery for visibility
+      const finalGallery = [...galleryUrls];
+      if (finalIdentityUrl && !finalGallery.includes(finalIdentityUrl)) {
+        finalGallery.unshift(finalIdentityUrl);
       }
 
-      toast({ title: 'Property Onboarded', description: 'Asset added successfully to your portfolio.' });
+      // Update the record with finalized absolute URLs from Supabase
+      await updateDoc(docRef, { 
+          imageUrl: finalIdentityUrl || undefined, 
+          additionalImageUrls: finalGallery.length > 0 ? finalGallery : undefined 
+      });
+
+      toast({ title: 'Property Onboarded', description: 'Asset and media synchronized with portfolio.' });
       router.push('/dashboard/properties');
     } catch (err: any) {
-      console.error('Onboarding failed:', err);
-      toast({ variant: 'destructive', title: 'Onboarding Failed', description: err.message || 'Check your configuration and try again.' });
+      console.error('Onboarding pipeline failure:', err);
+      toast({ variant: 'destructive', title: 'Onboarding Failed', description: err.message || 'Check your network and try again.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -292,7 +295,7 @@ export default function AddPropertyPage() {
               <CardContent className="pt-6 space-y-8">
                 <div className="space-y-4">
                   <Label>Primary Identification Photo</Label>
-                  <FormDescription>Visual representation for portfolio cards. Will be added to the gallery.</FormDescription>
+                  <FormDescription>Visual representation for portfolio cards. Will be added to the gallery automatically.</FormDescription>
                   {mainPreview ? (
                     <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-primary group shadow-lg">
                       <Image 
@@ -317,8 +320,8 @@ export default function AddPropertyPage() {
 
                 <div className="space-y-4 pt-6 border-t">
                     <div className="flex items-center justify-between">
-                        <Label>Asset Gallery</Label>
-                        <Button type="button" variant="outline" size="sm" onClick={() => galleryInputRef.current?.click()}><PlusCircle className="mr-2 h-4 w-4" /> Add Photos</Button>
+                        <Label>Additional Asset Photos</Label>
+                        <Button type="button" variant="outline" size="sm" onClick={() => galleryInputRef.current?.click()}><PlusCircle className="mr-2 h-4 w-4" /> Add Media</Button>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                         {galleryPreviews.map((url, idx) => (
@@ -340,7 +343,7 @@ export default function AddPropertyPage() {
               <CardFooter className="justify-between border-t pt-6">
                 <Button type="button" variant="outline" className="h-11" onClick={() => setStep(3)}><ChevronLeft className="mr-2 h-4 w-4" /> Back</Button>
                 <Button type="submit" disabled={isSubmitting} className="h-11 px-10 shadow-lg bg-primary hover:bg-primary/90">
-                  {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Syncing Media...</> : 'Complete Onboarding'}
+                  {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Finalizing Assets...</> : 'Complete Onboarding'}
                 </Button>
               </CardFooter>
             </Card>
