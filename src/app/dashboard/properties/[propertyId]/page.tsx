@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -15,19 +15,17 @@ import {
   MoreVertical, 
   Loader2, 
   Home, 
-  Wrench, 
-  CalendarCheck, 
-  FileText, 
-  Banknote, 
-  Shield, 
-  Phone, 
-  Mail, 
   MapPin, 
   AlertCircle,
   PlusCircle,
   ChevronRight,
   Images,
-  Info
+  Banknote,
+  Shield,
+  FileText,
+  User,
+  Mail,
+  Phone
 } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, collection, query, where } from 'firebase/firestore';
@@ -242,8 +240,10 @@ export default function PropertyDetailPage() {
                             <Image src={property.imageUrl} alt="Property Identity" fill className="object-cover" priority />
                         ) : (
                             <div className="w-full h-full flex items-center justify-center bg-primary/5 text-primary/20">
-                                <Home className="h-16 w-16 mb-2" />
-                                <p className="text-xs font-bold uppercase tracking-widest">No Identity Photo</p>
+                                <div className="flex flex-col items-center">
+                                    <Home className="h-12 w-12 mb-2" />
+                                    <p className="text-[10px] font-bold uppercase tracking-widest">No Identity Photo</p>
+                                </div>
                             </div>
                         )}
                     </div>
