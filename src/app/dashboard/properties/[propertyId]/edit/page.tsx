@@ -182,10 +182,16 @@ export default function EditPropertyPage() {
           }
       }
 
+      // Ensure identity photo is in gallery
+      const gallery = [...existingGallery, ...newGalleryUrls];
+      if (finalImageUrl && !gallery.includes(finalImageUrl)) {
+          gallery.unshift(finalImageUrl);
+      }
+
       const updateData = {
           ...data,
           imageUrl: finalImageUrl,
-          additionalImageUrls: [...existingGallery, ...newGalleryUrls],
+          additionalImageUrls: gallery,
           ownerId: user.uid
       };
 

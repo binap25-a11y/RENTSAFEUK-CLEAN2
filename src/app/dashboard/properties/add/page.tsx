@@ -142,10 +142,14 @@ export default function AddPropertyPage() {
       }
 
       // Step 3: Update the record with finalized URLs
-      if (finalImageUrl !== '' || additionalUrls.length > 0) {
+      // Identity photo is also added to gallery if provided
+      const gallery = [...additionalUrls];
+      if (finalImageUrl) gallery.unshift(finalImageUrl);
+
+      if (finalImageUrl !== '' || gallery.length > 0) {
         await updateDoc(docRef, { 
             imageUrl: finalImageUrl || undefined, 
-            additionalImageUrls: additionalUrls.length > 0 ? additionalUrls : undefined 
+            additionalImageUrls: gallery.length > 0 ? gallery : undefined 
         });
       }
 
@@ -288,7 +292,7 @@ export default function AddPropertyPage() {
               <CardContent className="pt-6 space-y-8">
                 <div className="space-y-4">
                   <Label>Primary Identification Photo</Label>
-                  <FormDescription>Visual representation for portfolio cards.</FormDescription>
+                  <FormDescription>Visual representation for portfolio cards. Will be added to the gallery.</FormDescription>
                   {mainPreview ? (
                     <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-primary group shadow-lg">
                       <Image 
