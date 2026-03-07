@@ -1,55 +1,42 @@
 'use client';
 
-import { supabase } from './supabase';
+import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { initializeFirebase } from '@/firebase/init';
 
 /**
- * Uploads a property image to Supabase Storage.
- * Uses the Supabase Client SDK for direct binary uploads to the 'Images' bucket.
- * 
- * IMPORTANT: To prevent "new row violates row-level security policy" errors,
- * ensure your 'Images' bucket has an INSERT policy for the 'anon' role
- * with the CHECK expression: (bucket_id = 'Images')
+ * Uploads a property image to Firebase Storage.
+ * Uses the project's native storage bucket, which is already configured
+ * with appropriate security rules for the authenticated user.
  */
 export const uploadPropertyImage = async (file: File, userId: string, propertyId: string): Promise<string> => {
-  if (!file || !supabase) {
-    console.warn("Upload execution skipped: Missing file or Supabase client.");
-    return '';
-  }
+  if (!file) return '';
 
   try {
+    // Ensure Firebase is initialized
+    const { storage } = initializeFirebase();
+    
     // Generate a unique, collision-resistant filename
     const fileExt = file.name.split('.').pop() || 'jpg';
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
     
-    // Path structure: userId/propertyId/filename
-    const filePath = `${userId}/${propertyId}/${fileName}`;
+    // Path structure: images/userId/propertyId/filename
+    const storagePath = `images/${userId}/${propertyId}/${fileName}`;
+    const storageRef = ref(storage, storagePath);
 
-    console.log(`Initiating Supabase sync: ${filePath} (${file.type}, ${file.size} bytes)`);
+    console.log(`Initiating Firebase Storage sync: ${storagePath}`);
 
-    // Perform the binary upload to the 'Images' bucket
-    const { data, error } = await supabase.storage
-      .from('Images')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false,
+    // Perform the upload
+    const snapshot = await uploadBytes(storageRef, file, {
         contentType: file.type
-      });
+    });
 
-    if (error) {
-      console.error('Supabase storage layer error:', error.message);
-      // Re-throw with specific guidance for the RLS "new row" violation
-      throw new Error(`${error.message} (Hint: Ensure your 'Images' bucket RLS policy for INSERT uses CHECK (bucket_id = 'Images') for the 'anon' role)`);
-    }
+    // Retrieve the public download URL
+    const downloadUrl = await getDownloadURL(snapshot.ref);
 
-    // Retrieve the public URL for the newly synchronized asset
-    const { data: { publicUrl } } = supabase.storage
-      .from('Images')
-      .getPublicUrl(filePath);
-
-    console.log(`Supabase sync successful. Resource URL: ${publicUrl}`);
-    return publicUrl;
+    console.log(`Media synchronized. Resource URL: ${downloadUrl}`);
+    return downloadUrl;
   } catch (err: any) {
-    console.error('Upload pipeline critical failure:', err.message);
-    throw err;
+    console.error('Firebase Storage critical failure:', err.message);
+    throw new Error(`Upload failed: ${err.message}`);
   }
 };

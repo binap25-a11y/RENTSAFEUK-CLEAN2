@@ -17,7 +17,7 @@ import { toast } from '@/hooks/use-toast';
 import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { uploadPropertyImage } from '@/lib/upload-image';
-import { Loader2, MapPin, Home, Upload, X, Images, PlusCircle } from 'lucide-react';
+import { Loader2, MapPin, Home, Upload, X, Images, PlusCircle, CheckCircle2 } from 'lucide-react';
 import Image from 'next/image';
 
 const ukPostcodeRegex = /^[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}$/i;
@@ -168,13 +168,20 @@ export default function EditPropertyPage() {
       setNewGalleryPreviews(updatedPreviews);
   }
 
+  const promoteToPrimary = (url: string) => {
+      setMainPreviewUrl(url);
+      setSelectedMainFile(null);
+      setIsMainRemoved(false);
+      toast({ title: "Primary Photo Updated", description: "This image will be set as the main asset identity." });
+  };
+
   async function onSubmit(data: PropertyFormValues) {
     if (!firestore || !propertyId || !user) return;
     setIsSubmitting(true);
 
     try {
       // Step 1: Handle Identity Photo Synchronization
-      let finalIdentityUrl = isMainRemoved ? '' : (property?.imageUrl || '');
+      let finalIdentityUrl = isMainRemoved ? '' : (mainPreviewUrl || property?.imageUrl || '');
       
       if (selectedMainFile) {
           try {
@@ -315,7 +322,10 @@ export default function EditPropertyPage() {
                                   className="object-cover" 
                                   unoptimized
                                 />
-                                <button type="button" onClick={() => setExistingGallery(p => p.filter(u => u !== url))} className="absolute top-1.5 right-1.5 p-1 bg-destructive/90 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive shadow-md"><X className="h-3 w-3" /></button>
+                                <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1">
+                                    <button type="button" onClick={() => promoteToPrimary(url)} title="Set as Primary" className="p-1.5 bg-background text-primary rounded-full hover:scale-110 transition-transform"><CheckCircle2 className="h-4 w-4" /></button>
+                                    <button type="button" onClick={() => setExistingGallery(p => p.filter(u => u !== url))} className="p-1.5 bg-destructive text-white rounded-full hover:scale-110 transition-transform"><X className="h-4 w-4" /></button>
+                                </div>
                             </div>
                         ))}
                         {newGalleryPreviews.map((url, idx) => (
