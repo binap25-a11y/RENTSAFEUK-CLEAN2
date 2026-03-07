@@ -256,7 +256,7 @@ export default function PropertyDetailPage() {
                         <div className="space-y-4">
                             <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] px-1">
                                 <Images className="h-3.5 w-3.5 text-primary" />
-                                Asset Media Gallery
+                                Photo Gallery
                             </div>
                             <ScrollArea className="w-full whitespace-nowrap">
                                 <div className="flex w-max space-x-4 pb-4">
@@ -264,7 +264,7 @@ export default function PropertyDetailPage() {
                                         <Link key={idx} href={url} target="_blank" className="relative h-24 w-40 rounded-xl overflow-hidden border shadow-sm transition-all hover:scale-[1.03] hover:shadow-lg">
                                             <Image 
                                               src={url} 
-                                              alt={`Media ${idx + 1}`} 
+                                              alt={`Gallery Item ${idx + 1}`} 
                                               fill 
                                               className="object-cover" 
                                               unoptimized

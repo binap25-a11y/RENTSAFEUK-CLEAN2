@@ -114,7 +114,7 @@ export default function AddPropertyPage() {
     setIsSubmitting(true);
 
     try {
-      // Step 1: Create initial record to obtain propertyId
+      // Step 1: Create the baseline record to obtain propertyId
       const docRef = await addDoc(collection(firestore, 'userProfiles', user.uid, 'properties'), {
         ...JSON.parse(JSON.stringify(data)),
         ownerId: user.uid,
@@ -123,45 +123,45 @@ export default function AddPropertyPage() {
         additionalImageUrls: [],
       });
 
-      // Step 2: Upload Identity Photo
+      // Step 2: Synchronize Asset Identity Photo
       let finalIdentityUrl = '';
       if (mainFile) {
         try {
           finalIdentityUrl = await uploadPropertyImage(mainFile, user.uid, docRef.id);
         } catch (uploadErr: any) {
-          console.error('Identity photo sync failure:', uploadErr);
+          console.error('Identity media sync failure:', uploadErr);
           toast({ variant: 'destructive', title: 'Media Error', description: uploadErr.message });
         }
       }
 
-      // Step 3: Upload Gallery Photos
+      // Step 3: Synchronize Gallery Photos
       let galleryUrls: string[] = [];
       if (galleryFiles.length > 0) {
         try {
           const uploads = await Promise.all(galleryFiles.map(f => uploadPropertyImage(f, user.uid, docRef.id)));
           galleryUrls = uploads.filter(Boolean);
         } catch (uploadErr: any) {
-          console.error('Gallery sync failure:', uploadErr);
+          console.error('Gallery media sync failure:', uploadErr);
         }
       }
 
-      // Mirror identity photo into gallery ensuring it is never missed
+      // Mirror identity photo into the gallery automatically
       const finalGallery = [...galleryUrls];
       if (finalIdentityUrl && !finalGallery.includes(finalIdentityUrl)) {
         finalGallery.unshift(finalIdentityUrl);
       }
 
-      // Step 4: Finalize Firestore Record with absolute URLs
+      // Step 4: Complete the property profile update
       await updateDoc(docRef, { 
           imageUrl: finalIdentityUrl, 
           additionalImageUrls: finalGallery 
       });
 
-      toast({ title: 'Property Onboarded', description: 'Asset data and media synchronized successfully.' });
+      toast({ title: 'Property Onboarded', description: 'Record and media gallery synchronized successfully.' });
       router.push('/dashboard/properties');
     } catch (err: any) {
-      console.error('Critical onboarding failure:', err);
-      toast({ variant: 'destructive', title: 'Onboarding Failed', description: err.message || 'Check your connection and try again.' });
+      console.error('Onboarding failure:', err);
+      toast({ variant: 'destructive', title: 'Onboarding Failed', description: err.message || 'Check your connection.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -183,7 +183,7 @@ export default function AddPropertyPage() {
             <Card className="border-none shadow-xl">
               <CardHeader className="bg-primary/5 border-b">
                 <CardTitle className="flex items-center gap-2 font-headline"><MapPin className="h-5 w-5" /> Location Profile</CardTitle>
-                <CardDescription>Enter the property address to verify location.</CardDescription>
+                <CardDescription>Enter the address to verify geographic placement.</CardDescription>
               </CardHeader>
               <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-4">
@@ -214,7 +214,7 @@ export default function AddPropertyPage() {
             <Card className="border-none shadow-xl">
               <CardHeader className="bg-primary/5 border-b">
                 <CardTitle className="flex items-center gap-2 font-headline"><Home className="h-5 w-5" /> Property Characteristics</CardTitle>
-                <CardDescription>Define the physical attributes of the rental unit.</CardDescription>
+                <CardDescription>Define the physical capacity of the rental unit.</CardDescription>
               </CardHeader>
               <CardContent className="pt-6 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -262,8 +262,8 @@ export default function AddPropertyPage() {
           {step === 3 && (
             <Card className="border-none shadow-xl">
               <CardHeader className="bg-primary/5 border-b">
-                <CardTitle className="flex items-center gap-2 font-headline"><Banknote className="h-5 w-5" /> Financial Setup</CardTitle>
-                <CardDescription>Record expected tenancy financials.</CardDescription>
+                <CardTitle className="flex items-center gap-2 font-headline"><Banknote className="h-5 w-5" /> Financial Profile</CardTitle>
+                <CardDescription>Record tenancy financials for reporting.</CardDescription>
               </CardHeader>
               <CardContent className="pt-6 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -292,29 +292,29 @@ export default function AddPropertyPage() {
 
           {step === 4 && (
             <Card className="border-none shadow-xl">
-              <CardHeader className="bg-primary/5 border-b"><CardTitle className="flex items-center gap-2 font-headline"><Images className="h-5 w-5" /> Media Gallery</CardTitle></CardHeader>
+              <CardHeader className="bg-primary/5 border-b"><CardTitle className="flex items-center gap-2 font-headline"><Images className="h-5 w-5" /> Photo Gallery</CardTitle></CardHeader>
               <CardContent className="pt-6 space-y-8">
                 <div className="space-y-4">
                   <Label className="font-bold text-lg">Primary Identification Photo</Label>
-                  <FormDescription className="text-xs">Select a primary image for grid views. This image will also populate your gallery.</FormDescription>
+                  <FormDescription className="text-xs">Select an image for main portfolio views. This photo will be automatically synced to your gallery.</FormDescription>
                   {mainPreview ? (
                     <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-primary group shadow-lg bg-background">
                       <Image 
                         src={mainPreview} 
-                        alt="Onboarding Preview" 
+                        alt="Identity Preview" 
                         fill 
                         className="object-cover" 
                         unoptimized
                       />
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
-                        <Button type="button" variant="secondary" size="sm" onClick={() => mainInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Change Image</Button>
+                        <Button type="button" variant="secondary" size="sm" onClick={() => mainInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Change</Button>
                         <Button type="button" variant="destructive" size="sm" onClick={() => { setMainPreview(null); setMainFile(null); }}><X className="mr-2 h-4 w-4" /> Remove</Button>
                       </div>
                     </div>
                   ) : (
                     <div className="border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer bg-muted/5 hover:bg-muted/10 transition-colors" onClick={() => mainInputRef.current?.click()}>
                       <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-4" />
-                      <p className="text-sm font-bold uppercase tracking-tight">Assign Asset Identity Photo</p>
+                      <p className="text-sm font-bold">Assign Asset Identity Photo</p>
                     </div>
                   )}
                   <input id="main-photo" name="mainPhoto" type="file" ref={mainInputRef} className="hidden" accept="image/*" onChange={handleMainFileChange} />
@@ -322,8 +322,8 @@ export default function AddPropertyPage() {
 
                 <div className="space-y-4 pt-6 border-t">
                     <div className="flex items-center justify-between">
-                        <Label className="font-bold">Additional Asset Media</Label>
-                        <Button type="button" variant="outline" size="sm" onClick={() => galleryInputRef.current?.click()}><PlusCircle className="mr-2 h-4 w-4" /> Add Photos</Button>
+                        <Label className="font-bold">Additional Property Photos</Label>
+                        <Button type="button" variant="outline" size="sm" onClick={() => galleryInputRef.current?.click()}><PlusCircle className="mr-2 h-4 w-4" /> Add Files</Button>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                         {galleryPreviews.map((url, idx) => (
@@ -345,7 +345,7 @@ export default function AddPropertyPage() {
               <CardFooter className="justify-between border-t pt-6">
                 <Button type="button" variant="outline" className="h-11" onClick={() => setStep(3)}><ChevronLeft className="mr-2 h-4 w-4" /> Back</Button>
                 <Button type="submit" disabled={isSubmitting} className="h-11 px-10 shadow-lg bg-primary hover:bg-primary/90 font-bold uppercase tracking-widest text-xs">
-                  {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Finalizing Assets...</> : 'Complete Onboarding'}
+                  {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Synchronizing Assets...</> : 'Complete Onboarding'}
                 </Button>
               </CardFooter>
             </Card>

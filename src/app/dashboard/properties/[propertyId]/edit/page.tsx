@@ -80,7 +80,7 @@ export default function EditPropertyPage() {
   const firestore = useFirestore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Primary Asset Identity Logic
+  // Primary Identity Logic
   const [selectedMainFile, setSelectedMainFile] = useState<File | null>(null);
   const [mainPreviewUrl, setMainPreviewUrl] = useState<string | null>(null);
   const [isMainRemoved, setIsMainRemoved] = useState(false);
@@ -158,9 +158,14 @@ export default function EditPropertyPage() {
   };
 
   const removeNewGalleryImage = (idx: number) => {
-      setNewGalleryFiles(prev => prev.filter((_, i) => i !== idx));
-      if (newGalleryPreviews[idx].startsWith('blob:')) URL.revokeObjectURL(newGalleryPreviews[idx]);
-      setNewGalleryPreviews(prev => prev.filter((_, i) => i !== idx));
+      const updatedFiles = [...newGalleryFiles];
+      updatedFiles.splice(idx, 1);
+      setNewGalleryFiles(updatedFiles);
+      
+      const updatedPreviews = [...newGalleryPreviews];
+      if (updatedPreviews[idx].startsWith('blob:')) URL.revokeObjectURL(updatedPreviews[idx]);
+      updatedPreviews.splice(idx, 1);
+      setNewGalleryPreviews(updatedPreviews);
   }
 
   async function onSubmit(data: PropertyFormValues) {
@@ -168,7 +173,7 @@ export default function EditPropertyPage() {
     setIsSubmitting(true);
 
     try {
-      // Step 1: Handle Primary Identity Photo Upload
+      // Step 1: Handle Identity Photo Synchronization
       let finalIdentityUrl = isMainRemoved ? '' : (property?.imageUrl || '');
       
       if (selectedMainFile) {
@@ -176,13 +181,13 @@ export default function EditPropertyPage() {
             finalIdentityUrl = await uploadPropertyImage(selectedMainFile, user.uid, propertyId);
           } catch (uploadErr: any) {
             console.error('Identity media synchronization failure:', uploadErr);
-            toast({ variant: 'destructive', title: 'Upload Failed', description: uploadErr.message || 'Failed to upload new identity photo.' });
+            toast({ variant: 'destructive', title: 'Upload Failed', description: uploadErr.message });
             setIsSubmitting(false);
             return;
           }
       }
 
-      // Step 2: Handle Gallery Uploads
+      // Step 2: Handle Gallery Media Synchronization
       const newGalleryUrls: string[] = [];
       if (newGalleryFiles.length > 0) {
           try {
@@ -193,15 +198,15 @@ export default function EditPropertyPage() {
           }
       }
 
-      // Step 3: Reconstruct and Validate Full Gallery
+      // Step 3: Reconstruct Unified Photo Gallery
       let combinedGallery = [...existingGallery, ...newGalleryUrls];
       
-      // Mirror identity photo into gallery if it's new or was changed
+      // Auto-mirror identity photo into the gallery for visual consistency
       if (finalIdentityUrl && !combinedGallery.includes(finalIdentityUrl)) {
           combinedGallery.unshift(finalIdentityUrl);
       }
 
-      // If main was removed and not replaced, clean it from gallery too
+      // Clean up gallery if identity was removed and not replaced
       if (isMainRemoved && !selectedMainFile && property?.imageUrl) {
           combinedGallery = combinedGallery.filter(url => url !== property.imageUrl);
       }
@@ -213,14 +218,13 @@ export default function EditPropertyPage() {
           ownerId: user.uid
       };
 
-      // Sanitize payload for Firestore
-      const sanitizedPayload = JSON.parse(JSON.stringify(updatePayload));
-
-      await updateDoc(doc(firestore, 'userProfiles', user.uid, 'properties', propertyId), sanitizedPayload);
-      toast({ title: "Portfolio Updated", description: "Property records and media storage synchronized." });
+      // Perform the Firestore document update
+      await updateDoc(doc(firestore, 'userProfiles', user.uid, 'properties', propertyId), JSON.parse(JSON.stringify(updatePayload)));
+      
+      toast({ title: "Property Records Updated", description: "All data and media synchronized successfully." });
       router.push(`/dashboard/properties/${propertyId}`);
     } catch (e: any) {
-      console.error("Critical sync failure:", e);
+      console.error("Critical synchronization failure:", e);
       toast({ variant: "destructive", title: "Update Failed", description: e.message || "An unexpected error occurred." });
     } finally {
       setIsSubmitting(false);
@@ -233,14 +237,14 @@ export default function EditPropertyPage() {
       <Card className="max-w-5xl mx-auto shadow-md border-none">
       <CardHeader className="bg-primary/5 border-b border-primary/10">
         <CardTitle className="text-2xl font-headline text-primary">Edit Property Record</CardTitle>
-        <CardDescription>Update asset identification and contract details.</CardDescription>
+        <CardDescription>Update asset identification and management details.</CardDescription>
       </CardHeader>
       <CardContent className="pt-8">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-10">
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10">
                 <Card className="border-none shadow-none bg-muted/20">
-                    <CardHeader><CardTitle className="text-lg font-headline">Verified Address</CardTitle></CardHeader>
+                    <CardHeader><CardTitle className="text-lg font-headline">Location Profile</CardTitle></CardHeader>
                     <CardContent className="space-y-4">
                         <FormField control={form.control} name="address.nameOrNumber" render={({ field }) => (
                           <FormItem>
@@ -267,14 +271,14 @@ export default function EditPropertyPage() {
                     </CardContent>
                 </Card>
                 <div className="aspect-square rounded-2xl overflow-hidden border-2 bg-muted relative">
-                    {mapUrl ? <iframe src={mapUrl} width="100%" height="100%" style={{ border: 0 }} title="Property Map" /> : <div className="flex items-center justify-center h-full text-muted-foreground"><MapPin className="mr-2" /> Awaiting location...</div>}
+                    {mapUrl ? <iframe src={mapUrl} width="100%" height="100%" style={{ border: 0 }} title="Property Map" /> : <div className="flex items-center justify-center h-full text-muted-foreground"><MapPin className="mr-2" /> Resolving location...</div>}
                 </div>
             </div>
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 border-t pt-10">
                 <div className="space-y-6">
                     <FormLabel className="font-bold flex items-center gap-2 text-lg"><Home className="h-5 w-5 text-primary" /> Identity Photo</FormLabel>
-                    <FormDescription className="text-xs">Primary photo for the grid view. Also added to your gallery.</FormDescription>
+                    <FormDescription className="text-xs">The primary image for portfolio views. Automatically added to your Photo Gallery.</FormDescription>
                     {mainPreviewUrl ? (
                         <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-primary shadow-lg group">
                             <Image 
@@ -299,7 +303,8 @@ export default function EditPropertyPage() {
                 </div>
 
                 <div className="space-y-6">
-                    <FormLabel className="font-bold flex items-center gap-2 text-lg"><Images className="h-5 w-5 text-primary" /> Additional Gallery Media</FormLabel>
+                    <FormLabel className="font-bold flex items-center gap-2 text-lg"><Images className="h-5 w-5 text-primary" /> Photo Gallery</FormLabel>
+                    <FormDescription className="text-xs">Manage all photos associated with this property.</FormDescription>
                     <div className="grid grid-cols-3 gap-4">
                         {existingGallery.map((url, idx) => (
                             <div key={`existing-${idx}`} className="relative aspect-square rounded-xl overflow-hidden border group shadow-sm bg-background">
@@ -315,12 +320,12 @@ export default function EditPropertyPage() {
                         ))}
                         {newGalleryPreviews.map((url, idx) => (
                             <div key={`new-${idx}`} className="relative aspect-square rounded-xl overflow-hidden border border-primary/50 group bg-background">
-                                <Image src={url} alt="Pending Upload" fill className="object-cover" unoptimized />
+                                <Image src={url} alt="Pending Sync" fill className="object-cover" unoptimized />
                                 <button type="button" onClick={() => removeNewGalleryImage(idx)} className="absolute top-1.5 right-1.5 p-1 bg-destructive/90 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive shadow-md"><X className="h-3 w-3" /></button>
                             </div>
                         ))}
                         <div className="border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 bg-muted/5 cursor-pointer aspect-square hover:bg-muted/10 transition-colors" onClick={() => galleryInputRef.current?.click()}>
-                            <PlusCircle className="h-6 w-6 text-muted-foreground" /><span className="text-[10px] font-bold uppercase">Add Media</span>
+                            <PlusCircle className="h-6 w-6 text-muted-foreground" /><span className="text-[10px] font-bold uppercase tracking-tighter">Add Photo</span>
                         </div>
                     </div>
                     <input type="file" ref={galleryInputRef} multiple onChange={handleNewGalleryChange} accept="image/*" className="hidden" id="edit-gallery" name="editGallery" />
