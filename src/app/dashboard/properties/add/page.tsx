@@ -11,7 +11,6 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter }
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
@@ -157,7 +156,7 @@ export default function AddPropertyPage() {
           additionalImageUrls: finalGallery 
       });
 
-      toast({ title: 'Property Onboarded', description: 'Record and media gallery synchronized successfully.' });
+      toast({ title: 'Property Onboarded', description: 'Record and Photo Gallery synchronized successfully.' });
       router.push('/dashboard/properties');
     } catch (err: any) {
       console.error('Onboarding failure:', err);
