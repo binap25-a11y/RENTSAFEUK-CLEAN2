@@ -168,7 +168,7 @@ export default function EditPropertyPage() {
             }
           } catch (uploadErr: any) {
             console.error('Identity photo upload failed:', uploadErr);
-            toast({ variant: 'destructive', title: 'Media Upload Failed', description: uploadErr.message });
+            toast({ variant: 'destructive', title: 'Media Sync Warning', description: 'Photo upload encountered an issue.' });
           }
       }
 
@@ -190,7 +190,7 @@ export default function EditPropertyPage() {
       };
 
       await updateDoc(doc(firestore, 'userProfiles', user.uid, 'properties', propertyId), JSON.parse(JSON.stringify(updateData)));
-      toast({ title: "Portfolio Updated", description: "Property details and media synchronized successfully." });
+      toast({ title: "Portfolio Updated", description: "Property media and data synchronized." });
       router.push(`/dashboard/properties/${propertyId}`);
     } catch (e: any) {
       console.error("Update failed:", e);
@@ -205,8 +205,8 @@ export default function EditPropertyPage() {
   return (
       <Card className="max-w-5xl mx-auto shadow-md border-none">
       <CardHeader className="bg-primary/5 border-b border-primary/10">
-        <CardTitle className="text-2xl font-headline text-primary">Edit Portfolio Property</CardTitle>
-        <CardDescription>Update identity and contract details for your asset.</CardDescription>
+        <CardTitle className="text-2xl font-headline text-primary">Edit Property</CardTitle>
+        <CardDescription>Update asset identity and contract details.</CardDescription>
       </CardHeader>
       <CardContent className="pt-8">
         <Form {...form}>
@@ -217,24 +217,24 @@ export default function EditPropertyPage() {
                     <CardContent className="space-y-4">
                         <FormField control={form.control} name="address.nameOrNumber" render={({ field }) => (
                           <FormItem>
-                            <FormLabel htmlFor="edit-prop-no">Building Name/No</FormLabel>
-                            <FormControl><Input id="edit-prop-no" name="nameOrNumber" className="h-11 bg-background" {...field} /></FormControl>
+                            <FormLabel>Building Name/No</FormLabel>
+                            <FormControl><Input id="edit-no" name="nameOrNumber" className="h-11 bg-background" {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
                         <FormField control={form.control} name="address.street" render={({ field }) => (
                           <FormItem>
-                            <FormLabel htmlFor="edit-prop-street">Street Address</FormLabel>
-                            <FormControl><Input id="edit-prop-street" name="street" className="h-11 bg-background" {...field} /></FormControl>
+                            <FormLabel>Street Address</FormLabel>
+                            <FormControl><Input id="edit-street" name="street" className="h-11 bg-background" {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
                         <div className="grid grid-cols-2 gap-4">
                             <FormField control={form.control} name="address.city" render={({ field }) => (
-                              <FormItem><FormLabel htmlFor="edit-prop-city">City/Town</FormLabel><FormControl><Input id="edit-prop-city" name="city" className="h-11 bg-background" {...field} /></FormControl><FormMessage /></FormItem>
+                              <FormItem><FormLabel>City</FormLabel><FormControl><Input id="edit-city" name="city" className="h-11 bg-background" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                             <FormField control={form.control} name="address.postcode" render={({ field }) => (
-                              <FormItem><FormLabel htmlFor="edit-prop-postcode">Post Code</FormLabel><FormControl><Input id="edit-prop-postcode" name="postcode" className="uppercase h-11 bg-background" {...field} /></FormControl><FormMessage /></FormItem>
+                              <FormItem><FormLabel>Postcode</FormLabel><FormControl><Input id="edit-postcode" name="postcode" className="uppercase h-11 bg-background" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                         </div>
                     </CardContent>
@@ -246,7 +246,7 @@ export default function EditPropertyPage() {
 
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 border-t pt-10">
                 <div className="space-y-6">
-                    <FormLabel className="font-bold flex items-center gap-2 text-lg"><Home className="h-5 w-5 text-primary" /> Portfolio Identity Photo</FormLabel>
+                    <FormLabel className="font-bold flex items-center gap-2 text-lg"><Home className="h-5 w-5 text-primary" /> Identity Photo</FormLabel>
                     {mainPreviewUrl ? (
                         <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-primary shadow-lg group">
                             <Image 
@@ -267,11 +267,11 @@ export default function EditPropertyPage() {
                             <p className="text-sm font-bold">Assign Identity Photo</p>
                         </div>
                     )}
-                    <input type="file" ref={mainInputRef} onChange={handleMainFileChange} accept="image/*" className="hidden" id="edit-identity-photo" name="editIdentityPhoto" />
+                    <input type="file" ref={mainInputRef} onChange={handleMainFileChange} accept="image/*" className="hidden" id="edit-main-photo" name="editMainPhoto" />
                 </div>
 
                 <div className="space-y-6">
-                    <FormLabel className="font-bold flex items-center gap-2 text-lg"><Images className="h-5 w-5 text-primary" /> Asset Gallery</FormLabel>
+                    <FormLabel className="font-bold flex items-center gap-2 text-lg"><Images className="h-5 w-5 text-primary" /> Gallery</FormLabel>
                     <div className="grid grid-cols-3 gap-4">
                         {existingGallery.map((url, idx) => (
                             <div key={`existing-${idx}`} className="relative aspect-square rounded-xl overflow-hidden border group">
@@ -295,14 +295,14 @@ export default function EditPropertyPage() {
                             <PlusCircle className="h-6 w-6 text-muted-foreground" /><span className="text-[10px] font-bold">Add Media</span>
                         </div>
                     </div>
-                    <input type="file" ref={galleryInputRef} multiple onChange={handleNewGalleryChange} accept="image/*" className="hidden" id="edit-gallery-photos" name="editGalleryPhotos" />
+                    <input type="file" ref={galleryInputRef} multiple onChange={handleNewGalleryChange} accept="image/*" className="hidden" id="edit-gallery" name="editGallery" />
                 </div>
             </div>
 
             <div className="flex justify-end gap-4 pt-6 border-t">
               <Button type="button" variant="ghost" asChild className="h-11"><Link href={`/dashboard/properties/${propertyId}`}>Cancel</Link></Button>
               <Button type="submit" disabled={isSubmitting} className="h-11 px-10 shadow-lg">
-                {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Syncing...</> : 'Save Portfolio Updates'}
+                {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Syncing...</> : 'Save Changes'}
               </Button>
             </div>
           </form>

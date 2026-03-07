@@ -127,7 +127,7 @@ export default function AddPropertyPage() {
           if (uploadedUrl) finalImageUrl = uploadedUrl;
         } catch (uploadErr: any) {
           console.error('Main photo upload failed:', uploadErr);
-          toast({ variant: 'destructive', title: 'Media Sync Warning', description: 'Property saved but identity photo upload failed. Please try again later.' });
+          toast({ variant: 'destructive', title: 'Media Sync Warning', description: 'Property saved but identity photo upload failed.' });
         }
       }
 
@@ -153,7 +153,7 @@ export default function AddPropertyPage() {
       router.push('/dashboard/properties');
     } catch (err: any) {
       console.error('Onboarding failed:', err);
-      toast({ variant: 'destructive', title: 'Onboarding Failed', description: err.message || 'Check your internet connection and try again.' });
+      toast({ variant: 'destructive', title: 'Onboarding Failed', description: err.message || 'Check your configuration and try again.' });
     } finally {
       setIsSubmitting(false);
     }
@@ -175,22 +175,22 @@ export default function AddPropertyPage() {
             <Card className="border-none shadow-xl">
               <CardHeader className="bg-primary/5 border-b">
                 <CardTitle className="flex items-center gap-2"><MapPin className="h-5 w-5" /> Location Profile</CardTitle>
-                <CardDescription>Enter the property address to verify location and setup the portfolio index.</CardDescription>
+                <CardDescription>Enter the property address to verify location.</CardDescription>
               </CardHeader>
               <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-4">
                   <FormField control={form.control} name="address.nameOrNumber" render={({ field }) => (
-                    <FormItem><FormLabel htmlFor="onboard-name-number">Building Name/No</FormLabel><FormControl><Input id="onboard-name-number" name="nameOrNumber" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Building Name/No</FormLabel><FormControl><Input id="prop-no" name="nameOrNumber" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <FormField control={form.control} name="address.street" render={({ field }) => (
-                    <FormItem><FormLabel htmlFor="onboard-street">Street Address</FormLabel><FormControl><Input id="onboard-street" name="street" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel>Street Address</FormLabel><FormControl><Input id="prop-street" name="street" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
                   )} />
                   <div className="grid grid-cols-2 gap-4">
                     <FormField control={form.control} name="address.city" render={({ field }) => (
-                      <FormItem><FormLabel htmlFor="onboard-city">City</FormLabel><FormControl><Input id="onboard-city" name="city" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
+                      <FormItem><FormLabel>City</FormLabel><FormControl><Input id="prop-city" name="city" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
                     )} />
                     <FormField control={form.control} name="address.postcode" render={({ field }) => (
-                      <FormItem><FormLabel htmlFor="onboard-postcode">Postcode</FormLabel><FormControl><Input id="onboard-postcode" name="postcode" className="uppercase h-11" {...field} /></FormControl><FormMessage /></FormItem>
+                      <FormItem><FormLabel>Postcode</FormLabel><FormControl><Input id="prop-postcode" name="postcode" className="uppercase h-11" {...field} /></FormControl><FormMessage /></FormItem>
                     )} />
                   </div>
                 </div>
@@ -206,15 +206,15 @@ export default function AddPropertyPage() {
             <Card className="border-none shadow-xl">
               <CardHeader className="bg-primary/5 border-b">
                 <CardTitle className="flex items-center gap-2"><Home className="h-5 w-5" /> Property Characteristics</CardTitle>
-                <CardDescription>Define the physical attributes and type of the rental unit.</CardDescription>
+                <CardDescription>Define the physical attributes of the rental unit.</CardDescription>
               </CardHeader>
               <CardContent className="pt-6 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField control={form.control} name="propertyType" render={({ field }) => (
                         <FormItem>
-                            <FormLabel htmlFor="onboard-type">Asset Type</FormLabel>
+                            <FormLabel>Asset Type</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl><SelectTrigger id="onboard-type" name="propertyType" className="h-11"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
+                                <FormControl><SelectTrigger id="prop-type" name="propertyType" className="h-11"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
                                 <SelectContent>
                                     {['House', 'Flat', 'HMO', 'Bungalow', 'Studio'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                                 </SelectContent>
@@ -224,9 +224,9 @@ export default function AddPropertyPage() {
                     )} />
                     <FormField control={form.control} name="status" render={({ field }) => (
                         <FormItem>
-                            <FormLabel htmlFor="onboard-status">Portfolio Status</FormLabel>
+                            <FormLabel>Portfolio Status</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl><SelectTrigger id="onboard-status" name="status" className="h-11"><SelectValue placeholder="Select status" /></SelectTrigger></FormControl>
+                                <FormControl><SelectTrigger id="prop-status" name="status" className="h-11"><SelectValue placeholder="Select status" /></SelectTrigger></FormControl>
                                 <SelectContent>
                                     {['Vacant', 'Occupied', 'Under Maintenance'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                                 </SelectContent>
@@ -237,10 +237,10 @@ export default function AddPropertyPage() {
                 </div>
                 <div className="grid grid-cols-2 gap-6">
                     <FormField control={form.control} name="bedrooms" render={({ field }) => (
-                        <FormItem><FormLabel htmlFor="onboard-beds">Bedrooms</FormLabel><FormControl><Input id="onboard-beds" name="bedrooms" type="number" min="0" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Bedrooms</FormLabel><FormControl><Input id="prop-beds" name="bedrooms" type="number" min="0" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
                     )} />
                     <FormField control={form.control} name="bathrooms" render={({ field }) => (
-                        <FormItem><FormLabel htmlFor="onboard-baths">Bathrooms</FormLabel><FormControl><Input id="onboard-baths" name="bathrooms" type="number" min="0" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Bathrooms</FormLabel><FormControl><Input id="prop-baths" name="bathrooms" type="number" min="0" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
                     )} />
                 </div>
               </CardContent>
@@ -255,23 +255,23 @@ export default function AddPropertyPage() {
             <Card className="border-none shadow-xl">
               <CardHeader className="bg-primary/5 border-b">
                 <CardTitle className="flex items-center gap-2"><Banknote className="h-5 w-5" /> Financial Setup</CardTitle>
-                <CardDescription>Record purchase information and expected tenancy financials for tax audit tracking.</CardDescription>
+                <CardDescription>Record expected tenancy financials.</CardDescription>
               </CardHeader>
               <CardContent className="pt-6 space-y-6">
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField control={form.control} name="purchasePrice" render={({ field }) => (
-                        <FormItem><FormLabel htmlFor="onboard-price">Purchase Price (£)</FormLabel><FormControl><Input id="onboard-price" name="purchasePrice" type="number" step="0.01" className="h-11" {...field} value={field.value ?? ''}/></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Purchase Price (£)</FormLabel><FormControl><Input id="prop-price" name="purchasePrice" type="number" step="0.01" className="h-11" {...field} value={field.value ?? ''}/></FormControl><FormMessage /></FormItem>
                     )} />
                     <FormField control={form.control} name="currentValuation" render={({ field }) => (
-                        <FormItem><FormLabel htmlFor="onboard-val">Current Valuation (£)</FormLabel><FormControl><Input id="onboard-val" name="currentValuation" type="number" step="0.01" className="h-11" {...field} value={field.value ?? ''}/></FormControl></FormItem>
+                        <FormItem><FormLabel>Current Valuation (£)</FormLabel><FormControl><Input id="prop-val" name="currentValuation" type="number" step="0.01" className="h-11" {...field} value={field.value ?? ''}/></FormControl></FormItem>
                     )} />
                 </div>
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
                     <FormField control={form.control} name="tenancy.monthlyRent" render={({ field }) => (
-                        <FormItem><FormLabel htmlFor="onboard-rent">Monthly Rent (£)</FormLabel><FormControl><Input id="onboard-rent" name="monthlyRent" type="number" step="0.01" className="h-11" {...field} value={field.value ?? ''}/></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Monthly Rent (£)</FormLabel><FormControl><Input id="prop-rent" name="monthlyRent" type="number" step="0.01" className="h-11" {...field} value={field.value ?? ''}/></FormControl><FormMessage /></FormItem>
                     )} />
                     <FormField control={form.control} name="tenancy.depositAmount" render={({ field }) => (
-                        <FormItem><FormLabel htmlFor="onboard-deposit">Deposit Held (£)</FormLabel><FormControl><Input id="onboard-deposit" name="depositAmount" type="number" step="0.01" className="h-11" {...field} value={field.value ?? ''}/></FormControl><FormMessage /></FormItem>
+                        <FormItem><FormLabel>Deposit Held (£)</FormLabel><FormControl><Input id="prop-deposit" name="depositAmount" type="number" step="0.01" className="h-11" {...field} value={field.value ?? ''}/></FormControl><FormMessage /></FormItem>
                     )} />
                 </div>
               </CardContent>
@@ -287,8 +287,8 @@ export default function AddPropertyPage() {
               <CardHeader className="bg-primary/5 border-b"><CardTitle className="flex items-center gap-2"><Images className="h-5 w-5" /> Media Gallery</CardTitle></CardHeader>
               <CardContent className="pt-6 space-y-8">
                 <div className="space-y-4">
-                  <Label htmlFor="main-photo-picker" className="font-bold">Primary Identification Photo</Label>
-                  <FormDescription>This image will represent the property in your portfolio cards and dashboard.</FormDescription>
+                  <Label>Primary Identification Photo</Label>
+                  <FormDescription>Visual representation for portfolio cards.</FormDescription>
                   {mainPreview ? (
                     <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-primary group shadow-lg">
                       <Image 
@@ -308,12 +308,12 @@ export default function AddPropertyPage() {
                       <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" /><p className="text-sm font-bold">Assign Identity Photo</p>
                     </div>
                   )}
-                  <input id="main-photo-picker" name="mainPhoto" type="file" ref={mainInputRef} className="hidden" accept="image/*" onChange={handleMainFileChange} />
+                  <input id="main-photo" name="mainPhoto" type="file" ref={mainInputRef} className="hidden" accept="image/*" onChange={handleMainFileChange} />
                 </div>
 
                 <div className="space-y-4 pt-6 border-t">
                     <div className="flex items-center justify-between">
-                        <Label className="font-bold">Property Asset Gallery</Label>
+                        <Label>Asset Gallery</Label>
                         <Button type="button" variant="outline" size="sm" onClick={() => galleryInputRef.current?.click()}><PlusCircle className="mr-2 h-4 w-4" /> Add Photos</Button>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
@@ -330,7 +330,7 @@ export default function AddPropertyPage() {
                             </div>
                         ))}
                     </div>
-                    <input id="gallery-photo-picker" name="galleryPhotos" type="file" ref={galleryInputRef} className="hidden" multiple accept="image/*" onChange={handleGalleryChange} />
+                    <input id="gallery-photos" name="galleryPhotos" type="file" ref={galleryInputRef} className="hidden" multiple accept="image/*" onChange={handleGalleryChange} />
                 </div>
               </CardContent>
               <CardFooter className="justify-between border-t pt-6">

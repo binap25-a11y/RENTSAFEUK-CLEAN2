@@ -8,14 +8,13 @@ import { createClient } from "@supabase/supabase-js";
 export async function POST(req: NextRequest) {
   try {
     const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://owfjowiiyshhqzhatwqr.supabase.co';
-    // Use the publishable key provided by the user if available
     const supabaseKey = process.env.SUPABASE_SERVICE_ROLE_KEY || 
                         process.env.NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY || 
-                        process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
+                        'sb_publishable_9RMHLJbKcpjnvH5SuUx7hg_3TuajLPe';
 
     if (!supabaseUrl || !supabaseKey) {
       return NextResponse.json({ 
-        error: "Supabase configuration missing on server. Ensure NEXT_PUBLIC_SUPABASE_URL and NEXT_PUBLIC_SUPABASE_PUBLISHABLE_DEFAULT_KEY (or ANON_KEY) are set." 
+        error: "Supabase configuration missing on server." 
       }, { status: 500 });
     }
 
