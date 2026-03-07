@@ -1,9 +1,9 @@
 'use client';
 
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
 import { 
@@ -14,8 +14,6 @@ import {
   Trash2, 
   MoreVertical, 
   Loader2, 
-  AlertTriangle, 
-  User, 
   Home, 
   Wrench, 
   CalendarCheck, 
@@ -28,10 +26,11 @@ import {
   AlertCircle,
   PlusCircle,
   ChevronRight,
-  Images
+  Images,
+  Info
 } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc, collection, query, where, limit } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useMemo } from 'react';
 import {
@@ -46,7 +45,7 @@ import {
 } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
-
+import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 
 // Interfaces
 interface Property {
@@ -220,63 +219,79 @@ export default function PropertyDetailPage() {
                     <DropdownMenuItem asChild>
                         <Link href={`/dashboard/properties/${property.id}/edit`}><Edit className="mr-2 h-4 w-4" /> Edit</Link>
                     </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setIsDeleting(true)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
+                    <DropdownMenuItem onClick={() => setIsDeleting(true)} className="text-destructive">
+                        <Trash2 className="mr-2 h-4 w-4" /> Archive
+                    </DropdownMenuItem>
                 </DropdownMenuContent>
             </DropdownMenu>
         </div>
         
-        {property.imageUrl && (
-            <div className="relative w-full aspect-[21/9] rounded-xl overflow-hidden shadow-md border bg-muted">
-                <Image src={property.imageUrl} alt="Property Header" fill className="object-cover" priority />
-            </div>
-        )}
-
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
-            <Card className="shadow-sm">
-              <CardHeader className="pb-4"><CardTitle className="font-headline text-lg">Property Overview</CardTitle></CardHeader>
-              <CardContent className="grid grid-cols-2 md:grid-cols-4 gap-4 pt-6 border-t bg-muted/5">
-                  <div className="p-4 rounded-lg bg-background border flex flex-col items-center gap-1 shadow-sm">
-                      <Home className="h-5 w-5 text-primary mb-1" />
-                      <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider text-center">Type</span>
-                      <span className="text-sm font-semibold text-center">{property.propertyType}</span>
+            <Card className="shadow-sm overflow-hidden">
+              <CardHeader className="pb-4">
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="font-headline text-lg">Property Overview</CardTitle>
+                    <Badge variant="outline" className="bg-primary/5 text-primary border-primary/10">{property.propertyType}</Badge>
                   </div>
-                  <div className="p-4 rounded-lg bg-background border flex flex-col items-center gap-1 shadow-sm">
-                      <Bed className="h-5 w-5 text-primary mb-1" />
-                      <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider text-center">Bedrooms</span>
-                      <span className="text-sm font-semibold">{property.bedrooms}</span>
+              </CardHeader>
+              <CardContent className="space-y-6 p-0">
+                  {/* Integrated Image Section */}
+                  <div className="px-6 pb-6">
+                    <div className="relative w-full aspect-video rounded-xl overflow-hidden shadow-sm border bg-muted mb-4">
+                        {property.imageUrl ? (
+                            <Image src={property.imageUrl} alt="Property Identity" fill className="object-cover" priority />
+                        ) : (
+                            <div className="w-full h-full flex flex-col items-center justify-center bg-primary/5 text-primary/20">
+                                <Home className="h-16 w-16 mb-2" />
+                                <p className="text-xs font-bold uppercase tracking-widest">No Identity Photo</p>
+                            </div>
+                        )}
+                    </div>
+
+                    {property.additionalImageUrls && property.additionalImageUrls.length > 0 && (
+                        <div className="space-y-3">
+                            <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-wider px-1">
+                                <Images className="h-3 w-3" />
+                                Asset Media Gallery
+                            </div>
+                            <ScrollArea className="w-full whitespace-nowrap">
+                                <div className="flex w-max space-x-3 pb-4">
+                                    {property.additionalImageUrls.map((url, idx) => (
+                                        <Link key={idx} href={url} target="_blank" className="relative h-20 w-32 rounded-lg overflow-hidden border shadow-sm transition-transform hover:scale-105">
+                                            <Image src={url} alt={`Gallery ${idx + 1}`} fill className="object-cover" />
+                                        </Link>
+                                    ))}
+                                </div>
+                                <ScrollBar orientation="horizontal" />
+                            </ScrollArea>
+                        </div>
+                    )}
                   </div>
-                  <div className="p-4 rounded-lg bg-background border flex flex-col items-center gap-1 shadow-sm">
-                      <Bath className="h-5 w-5 text-primary mb-1" />
-                      <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider text-center">Bathrooms</span>
-                      <span className="text-sm font-semibold">{property.bathrooms}</span>
-                  </div>
-                  <div className="p-4 rounded-lg bg-background border flex flex-col items-center gap-1 shadow-sm">
-                      <Badge variant="secondary" className="mb-1 text-[10px] uppercase font-bold">{property.status}</Badge>
-                      <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider text-center">Status</span>
+
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 px-6 pb-6 border-t pt-6 bg-muted/5">
+                      <div className="p-4 rounded-lg bg-background border flex flex-col items-center gap-1 shadow-sm">
+                          <Home className="h-5 w-5 text-primary mb-1" />
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider text-center">Type</span>
+                          <span className="text-sm font-semibold text-center">{property.propertyType}</span>
+                      </div>
+                      <div className="p-4 rounded-lg bg-background border flex flex-col items-center gap-1 shadow-sm">
+                          <Bed className="h-5 w-5 text-primary mb-1" />
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider text-center">Bedrooms</span>
+                          <span className="text-sm font-semibold">{property.bedrooms}</span>
+                      </div>
+                      <div className="p-4 rounded-lg bg-background border flex flex-col items-center gap-1 shadow-sm">
+                          <Bath className="h-5 w-5 text-primary mb-1" />
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider text-center">Bathrooms</span>
+                          <span className="text-sm font-semibold">{property.bathrooms}</span>
+                      </div>
+                      <div className="p-4 rounded-lg bg-background border flex flex-col items-center gap-1 shadow-sm">
+                          <Badge variant="secondary" className="mb-1 text-[10px] uppercase font-bold">{property.status}</Badge>
+                          <span className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider text-center">Status</span>
+                      </div>
                   </div>
               </CardContent>
             </Card>
-
-            {property.additionalImageUrls && property.additionalImageUrls.length > 0 && (
-                <Card className="shadow-sm">
-                    <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
-                        <CardTitle className="font-headline text-lg">Property Gallery</CardTitle>
-                        <Images className="h-5 w-5 text-muted-foreground" />
-                    </CardHeader>
-                    <CardContent className="pt-6 border-t bg-muted/5">
-                        <div className="grid grid-cols-2 sm:grid-cols-3 md:grid-cols-4 gap-4">
-                            {property.additionalImageUrls.map((url, idx) => (
-                                <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border shadow-sm cursor-zoom-in hover:scale-[1.02] transition-transform">
-                                    <Link href={url} target="_blank">
-                                        <Image src={url} alt={`Gallery ${idx + 1}`} fill className="object-cover" />
-                                    </Link>
-                                </div>
-                            ))}
-                        </div>
-                    </CardContent>
-                </Card>
-            )}
 
             {property.tenancy && (property.tenancy.monthlyRent || property.tenancy.depositAmount) && (
               <Card className="shadow-sm">

@@ -6,7 +6,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Bed, Bath, Trash2, Loader2, Edit, MoreVertical, Search, LayoutGrid, List, Eye, Home, AlertCircle } from 'lucide-react';
+import { PlusCircle, Bed, Bath, Trash2, Loader2, Edit, MoreVertical, Search, LayoutGrid, List, Eye, Home } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
@@ -125,7 +125,14 @@ export default function PropertiesPage() {
               ) : (
                 <div className="rounded-xl border overflow-hidden">
                     <Table>
-                        <TableHeader className="bg-muted/50"><TableRow><TableHead>Address</TableHead><TableHead>Type</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                        <TableHeader className="bg-muted/50">
+                            <TableRow>
+                                <TableHead>Address</TableHead>
+                                <TableHead>Type</TableHead>
+                                <TableHead>Status</TableHead>
+                                <TableHead className="text-right">Actions</TableHead>
+                            </TableRow>
+                        </TableHeader>
                         <TableBody>
                             {filteredProperties.map((p) => (
                                 <TableRow key={p.id} className="cursor-pointer hover:bg-muted/30" onClick={() => router.push(`/dashboard/properties/${p.id}`)}>

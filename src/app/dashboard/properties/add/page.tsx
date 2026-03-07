@@ -9,7 +9,7 @@ import Image from 'next/image';
 import { uploadPropertyImage } from '@/lib/upload-image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
+import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage, FormDescription } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { Progress } from '@/components/ui/progress';
@@ -17,7 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@/hooks/use-toast';
 import { useUser, useFirestore } from '@/firebase';
 import { collection, addDoc, updateDoc } from 'firebase/firestore';
-import { Loader2, Home, Images, PlusCircle, X, Upload, MapPin, ChevronRight, ChevronLeft } from 'lucide-react';
+import { Loader2, Home, Images, PlusCircle, X, Upload, MapPin, ChevronRight, ChevronLeft, Banknote, ShieldCheck } from 'lucide-react';
 import { Label } from '@/components/ui/label';
 
 const ukPostcodeRegex = /^[A-Z]{1,2}[0-9][A-Z0-9]? ?[0-9][A-Z]{2}$/i;
@@ -70,6 +70,11 @@ export default function AddPropertyPage() {
       propertyType: 'House',
       address: { nameOrNumber: '', street: '', city: '', county: '', postcode: '' },
       notes: '',
+      tenancy: {
+          monthlyRent: undefined,
+          depositAmount: undefined,
+          depositScheme: 'DPS'
+      }
     },
   });
 
@@ -87,6 +92,19 @@ export default function AddPropertyPage() {
       if (mainPreview && mainPreview.startsWith('blob:')) URL.revokeObjectURL(mainPreview);
       setMainPreview(URL.createObjectURL(file));
     }
+  };
+
+  const handleGalleryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(e.target.files || []);
+      setGalleryFiles(prev => [...prev, ...files]);
+      const newPreviews = files.map(file => URL.createObjectURL(file));
+      setGalleryPreviews(prev => [...prev, ...newPreviews]);
+  };
+
+  const removeGalleryImage = (index: number) => {
+      setGalleryFiles(prev => prev.filter((_, i) => i !== index));
+      URL.revokeObjectURL(galleryPreviews[index]);
+      setGalleryPreviews(prev => prev.filter((_, i) => i !== index));
   };
 
   const onSubmit = async (data: PropertyFormValues) => {
@@ -138,6 +156,7 @@ export default function AddPropertyPage() {
             <Card className="border-none shadow-xl">
               <CardHeader className="bg-primary/5 border-b">
                 <CardTitle className="flex items-center gap-2"><MapPin className="h-5 w-5" /> Location Profile</CardTitle>
+                <CardDescription>Enter the property address to verify location and setup the portfolio index.</CardDescription>
               </CardHeader>
               <CardContent className="pt-6 grid grid-cols-1 md:grid-cols-2 gap-8">
                 <div className="space-y-4">
@@ -157,10 +176,90 @@ export default function AddPropertyPage() {
                   </div>
                 </div>
                 <div className="aspect-square rounded-2xl overflow-hidden border-2 bg-muted relative">
-                  {mapUrl ? <iframe src={mapUrl} width="100%" height="100%" style={{ border: 0 }} /> : <div className="flex items-center justify-center h-full"><MapPin className="h-12 w-12 text-muted-foreground/40" /></div>}
+                  {mapUrl ? <iframe src={mapUrl} width="100%" height="100%" style={{ border: 0 }} title="Map Preview" /> : <div className="flex items-center justify-center h-full"><MapPin className="h-12 w-12 text-muted-foreground/40" /></div>}
                 </div>
               </CardContent>
               <CardFooter className="justify-end border-t pt-6"><Button type="button" className="h-11 px-8" onClick={() => setStep(2)}>Next Step <ChevronRight className="ml-2 h-4 w-4" /></Button></CardFooter>
+            </Card>
+          )}
+
+          {step === 2 && (
+            <Card className="border-none shadow-xl">
+              <CardHeader className="bg-primary/5 border-b">
+                <CardTitle className="flex items-center gap-2"><Home className="h-5 w-5" /> Property Characteristics</CardTitle>
+                <CardDescription>Define the physical attributes and type of the rental unit.</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField control={form.control} name="propertyType" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Asset Type</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                    {['House', 'Flat', 'HMO', 'Bungalow', 'Studio'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                    <FormField control={form.control} name="status" render={({ field }) => (
+                        <FormItem>
+                            <FormLabel>Portfolio Status</FormLabel>
+                            <Select onValueChange={field.onChange} value={field.value}>
+                                <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select status" /></SelectTrigger></FormControl>
+                                <SelectContent>
+                                    {['Vacant', 'Occupied', 'Under Maintenance'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
+                                </SelectContent>
+                            </Select>
+                            <FormMessage />
+                        </FormItem>
+                    )} />
+                </div>
+                <div className="grid grid-cols-2 gap-6">
+                    <FormField control={form.control} name="bedrooms" render={({ field }) => (
+                        <FormItem><FormLabel>Bedrooms</FormLabel><FormControl><Input type="number" min="0" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
+                    )} />
+                    <FormField control={form.control} name="bathrooms" render={({ field }) => (
+                        <FormItem><FormLabel>Bathrooms</FormLabel><FormControl><Input type="number" min="0" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
+                    )} />
+                </div>
+              </CardContent>
+              <CardFooter className="justify-between border-t pt-6">
+                  <Button type="button" variant="outline" onClick={() => setStep(1)}><ChevronLeft className="mr-2 h-4 w-4" /> Back</Button>
+                  <Button type="button" onClick={() => setStep(3)}>Next Step <ChevronRight className="ml-2 h-4 w-4" /></Button>
+              </CardFooter>
+            </Card>
+          )}
+
+          {step === 3 && (
+            <Card className="border-none shadow-xl">
+              <CardHeader className="bg-primary/5 border-b">
+                <CardTitle className="flex items-center gap-2"><Banknote className="h-5 w-5" /> Financial Setup</CardTitle>
+                <CardDescription>Record purchase information and expected tenancy financials for tax audit tracking.</CardDescription>
+              </CardHeader>
+              <CardContent className="pt-6 space-y-6">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                    <FormField control={form.control} name="purchasePrice" render={({ field }) => (
+                        <FormItem><FormLabel>Purchase Price (£)</FormLabel><FormControl><Input type="number" step="0.01" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
+                    )} />
+                    <FormField control={form.control} name="currentValuation" render={({ field }) => (
+                        <FormItem><FormLabel>Current Valuation (£)</FormLabel><FormControl><Input type="number" step="0.01" className="h-11" {...field} /></FormItem>
+                    )} />
+                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 pt-4 border-t">
+                    <FormField control={form.control} name="tenancy.monthlyRent" render={({ field }) => (
+                        <FormItem><FormLabel>Monthly Rent (£)</FormLabel><FormControl><Input type="number" step="0.01" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
+                    )} />
+                    <FormField control={form.control} name="tenancy.depositAmount" render={({ field }) => (
+                        <FormItem><FormLabel>Deposit Held (£)</FormLabel><FormControl><Input type="number" step="0.01" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
+                    )} />
+                </div>
+              </CardContent>
+              <CardFooter className="justify-between border-t pt-6">
+                  <Button type="button" variant="outline" onClick={() => setStep(2)}><ChevronLeft className="mr-2 h-4 w-4" /> Back</Button>
+                  <Button type="button" onClick={() => setStep(4)}>Next Step <ChevronRight className="ml-2 h-4 w-4" /></Button>
+              </CardFooter>
             </Card>
           )}
 
@@ -170,31 +269,47 @@ export default function AddPropertyPage() {
               <CardContent className="pt-6 space-y-8">
                 <div className="space-y-4">
                   <Label htmlFor="main-photo-picker" className="font-bold">Primary Identification Photo</Label>
+                  <FormDescription>This image will represent the property in your portfolio cards and dashboard.</FormDescription>
                   {mainPreview ? (
-                    <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-primary group">
-                      <Image src={mainPreview} alt="Main" fill className="object-cover" />
-                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 flex items-center justify-center gap-2">
+                    <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-primary group shadow-lg">
+                      <Image src={mainPreview} alt="Main Preview" fill className="object-cover" />
+                      <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                         <Button type="button" variant="secondary" size="sm" onClick={() => mainInputRef.current?.click()}>Change Image</Button>
                         <Button type="button" variant="destructive" size="sm" onClick={() => { setMainPreview(null); setMainFile(null); }}>Remove</Button>
                       </div>
                     </div>
                   ) : (
-                    <div className="border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer" onClick={() => mainInputRef.current?.click()}>
+                    <div className="border-2 border-dashed rounded-2xl p-12 text-center cursor-pointer bg-muted/5 hover:bg-muted/10 transition-colors" onClick={() => mainInputRef.current?.click()}>
                       <Upload className="h-8 w-8 mx-auto text-muted-foreground mb-2" /><p className="text-sm font-bold">Assign Identity Photo</p>
                     </div>
                   )}
                   <input id="main-photo-picker" name="mainPhoto" type="file" ref={mainInputRef} className="hidden" accept="image/*" onChange={handleMainFileChange} />
                 </div>
+
+                <div className="space-y-4 pt-6 border-t">
+                    <div className="flex items-center justify-between">
+                        <Label className="font-bold">Property Asset Gallery</Label>
+                        <Button type="button" variant="outline" size="sm" onClick={() => galleryInputRef.current?.click()}><PlusCircle className="mr-2 h-4 w-4" /> Add Photos</Button>
+                    </div>
+                    <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
+                        {galleryPreviews.map((url, idx) => (
+                            <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border group shadow-sm">
+                                <Image src={url} alt={`Gallery Preview ${idx}`} fill className="object-cover" />
+                                <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeGalleryImage(idx)}><X className="h-3 w-3" /></Button>
+                            </div>
+                        ))}
+                    </div>
+                    <input id="gallery-photo-picker" name="galleryPhotos" type="file" ref={galleryInputRef} className="hidden" multiple accept="image/*" onChange={handleGalleryChange} />
+                </div>
               </CardContent>
               <CardFooter className="justify-between border-t pt-6">
                 <Button type="button" variant="outline" className="h-11" onClick={() => setStep(3)}><ChevronLeft className="mr-2 h-4 w-4" /> Back</Button>
-                <Button type="submit" disabled={isSubmitting} className="h-11 px-10 shadow-lg">
+                <Button type="submit" disabled={isSubmitting} className="h-11 px-10 shadow-lg bg-primary hover:bg-primary/90">
                   {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Syncing Media...</> : 'Complete Onboarding'}
                 </Button>
               </CardFooter>
             </Card>
           )}
-          {/* Add other steps as needed, mirroring the same id/name logic */}
         </form>
       </Form>
     </div>
