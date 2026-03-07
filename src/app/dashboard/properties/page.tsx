@@ -106,7 +106,7 @@ export default function PropertiesPage() {
                       <Card key={property.id} className="group overflow-hidden flex flex-col hover:shadow-2xl transition-all duration-300 relative">
                           <div className="relative cursor-pointer aspect-[16/10] bg-muted overflow-hidden border-b" onClick={() => router.push(`/dashboard/properties/${property.id}`)}>
                               {property.imageUrl ? (
-                                <Image src={property.imageUrl} alt="Property" fill className="object-cover group-hover:scale-110 transition-transform duration-500" priority />
+                                <Image src={property.imageUrl} alt="Property" fill className="object-cover group-hover:scale-110 transition-transform duration-500" priority unoptimized />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center bg-primary/5"><Home className="w-16 h-16 text-primary/10" /></div>
                               )}
