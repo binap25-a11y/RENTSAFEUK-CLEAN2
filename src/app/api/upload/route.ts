@@ -32,16 +32,16 @@ export async function POST(req: NextRequest) {
     const filePath = `${userId || 'system'}/${propertyId || 'misc'}/${fileName}`;
 
     // Perform the binary upload to the 'Images' bucket (Case Sensitive)
-    const { error } = await supabase.storage
+    const { error: uploadError } = await supabase.storage
       .from("Images")
       .upload(filePath, file, {
         cacheControl: '3600',
         upsert: false
       });
 
-    if (error) {
-      console.error('Supabase storage upload error:', error.message);
-      return NextResponse.json({ error: error.message }, { status: 500 });
+    if (uploadError) {
+      console.error('Supabase storage upload error:', uploadError.message);
+      return NextResponse.json({ error: uploadError.message }, { status: 500 });
     }
 
     // Retrieve the public URL for the newly uploaded asset

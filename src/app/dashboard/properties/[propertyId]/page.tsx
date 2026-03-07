@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -400,7 +400,7 @@ export default function PropertyDetailPage() {
                   <Button variant="ghost" size="sm" asChild className="text-xs font-bold h-8"><Link href={`/dashboard/maintenance/logged?propertyId=${propertyId}`}>History</Link></Button>
               </CardHeader>
               <CardContent className="pt-6 border-t bg-muted/5">
-                {(activeMaintenance.length === 0 && scheduledInspections.length === 0) ? (
+                {(!activeMaintenance.length && !scheduledInspections.length) ? (
                   <p className="text-xs text-muted-foreground text-center py-4 italic">No active maintenance or scheduled inspections.</p>
                 ) : (
                   <div className="space-y-4">
