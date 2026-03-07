@@ -103,7 +103,7 @@ export default function AddPropertyPage() {
 
   const removeGalleryImage = (index: number) => {
       setGalleryFiles(prev => prev.filter((_, i) => i !== index));
-      URL.revokeObjectURL(galleryPreviews[index]);
+      if (galleryPreviews[index].startsWith('blob:')) URL.revokeObjectURL(galleryPreviews[index]);
       setGalleryPreviews(prev => prev.filter((_, i) => i !== index));
   };
 
@@ -296,7 +296,7 @@ export default function AddPropertyPage() {
                         alt="Main Preview" 
                         fill 
                         className="object-cover" 
-                        unoptimized={mainPreview.startsWith('blob:')}
+                        unoptimized
                       />
                       <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                         <Button type="button" variant="secondary" size="sm" onClick={() => mainInputRef.current?.click()}>Change Image</Button>
@@ -324,7 +324,7 @@ export default function AddPropertyPage() {
                                   alt={`Gallery Preview ${idx}`} 
                                   fill 
                                   className="object-cover" 
-                                  unoptimized={url.startsWith('blob:')}
+                                  unoptimized
                                 />
                                 <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeGalleryImage(idx)}><X className="h-3 w-3" /></Button>
                             </div>

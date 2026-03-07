@@ -86,6 +86,7 @@ export default function EditPropertyPage() {
 
   const [existingGallery, setExistingGallery] = useState<string[]>([]);
   const [newGalleryFiles, setNewGalleryFiles] = useState<File[]>([]);
+  const [newGalleryPreviews, setNewGalleryPreviews] = useState<string[]>([]);
   const galleryInputRef = useRef<HTMLInputElement>(null);
 
   const propertyRef = useMemoFirebase(() => {
@@ -139,6 +140,19 @@ export default function EditPropertyPage() {
       setMainPreviewUrl(URL.createObjectURL(file));
     }
   };
+
+  const handleNewGalleryChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+      const files = Array.from(e.target.files || []);
+      setNewGalleryFiles(prev => [...prev, ...files]);
+      const previews = files.map(f => URL.createObjectURL(f));
+      setNewGalleryPreviews(prev => [...prev, ...previews]);
+  };
+
+  const removeNewGalleryImage = (idx: number) => {
+      setNewGalleryFiles(prev => prev.filter((_, i) => i !== idx));
+      if (newGalleryPreviews[idx].startsWith('blob:')) URL.revokeObjectURL(newGalleryPreviews[idx]);
+      setNewGalleryPreviews(prev => prev.filter((_, i) => i !== idx));
+  }
 
   async function onSubmit(data: PropertyFormValues) {
     if (!firestore || !propertyId || !user) return;
@@ -240,7 +254,7 @@ export default function EditPropertyPage() {
                               alt="Preview" 
                               fill 
                               className="object-cover" 
-                              unoptimized={mainPreviewUrl.startsWith('blob:') || mainPreviewUrl.includes('supabase.co')}
+                              unoptimized
                             />
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                 <Button type="button" variant="secondary" size="sm" onClick={() => mainInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Change</Button>
@@ -260,25 +274,28 @@ export default function EditPropertyPage() {
                     <FormLabel className="font-bold flex items-center gap-2 text-lg"><Images className="h-5 w-5 text-primary" /> Asset Gallery</FormLabel>
                     <div className="grid grid-cols-3 gap-4">
                         {existingGallery.map((url, idx) => (
-                            <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border group">
+                            <div key={`existing-${idx}`} className="relative aspect-square rounded-xl overflow-hidden border group">
                                 <Image 
                                   src={url} 
                                   alt="Gallery" 
                                   fill 
                                   className="object-cover" 
-                                  unoptimized={url.includes('supabase.co')}
+                                  unoptimized
                                 />
                                 <button type="button" onClick={() => setExistingGallery(p => p.filter(u => u !== url))} className="absolute top-1 right-1 p-1 bg-destructive text-white rounded-full opacity-0 group-hover:opacity-100"><X className="h-3 w-3" /></button>
+                            </div>
+                        ))}
+                        {newGalleryPreviews.map((url, idx) => (
+                            <div key={`new-${idx}`} className="relative aspect-square rounded-xl overflow-hidden border border-primary/50 group">
+                                <Image src={url} alt="New Preview" fill className="object-cover" unoptimized />
+                                <button type="button" onClick={() => removeNewGalleryImage(idx)} className="absolute top-1 right-1 p-1 bg-destructive text-white rounded-full opacity-0 group-hover:opacity-100"><X className="h-3 w-3" /></button>
                             </div>
                         ))}
                         <div className="border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 bg-muted/5 cursor-pointer aspect-square" onClick={() => galleryInputRef.current?.click()}>
                             <PlusCircle className="h-6 w-6 text-muted-foreground" /><span className="text-[10px] font-bold">Add Media</span>
                         </div>
                     </div>
-                    <input type="file" ref={galleryInputRef} multiple onChange={(e) => {
-                        const files = Array.from(e.target.files || []);
-                        setNewGalleryFiles(p => [...p, ...files]);
-                    }} accept="image/*" className="hidden" id="edit-gallery-photos" name="editGalleryPhotos" />
+                    <input type="file" ref={galleryInputRef} multiple onChange={handleNewGalleryChange} accept="image/*" className="hidden" id="edit-gallery-photos" name="editGalleryPhotos" />
                 </div>
             </div>
 

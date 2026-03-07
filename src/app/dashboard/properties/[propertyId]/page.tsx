@@ -156,7 +156,7 @@ export default function PropertyDetailPage() {
     if (!date) return 'N/A';
     let jsDate: Date;
     if (date instanceof Date) jsDate = date;
-    else if (typeof date === 'object' && date.seconds !== undefined) jsDate = new Date(date.seconds * 1000);
+    else if (typeof date === 'object' && (date as any).seconds !== undefined) jsDate = new Date((date as any).seconds * 1000);
     else jsDate = new Date(date);
     if (isNaN(jsDate.getTime())) return 'Invalid Date';
     try { return format(jsDate, formatStr); } catch (e) { return 'Invalid Date'; }
