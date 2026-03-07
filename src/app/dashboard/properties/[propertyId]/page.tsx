@@ -386,7 +386,7 @@ export default function PropertyDetailPage() {
                   <Button variant="ghost" size="sm" asChild className="text-[10px] font-bold uppercase h-8"><Link href={`/dashboard/maintenance/logged?propertyId=${propertyId}`}>View All</Link></Button>
               </CardHeader>
               <CardContent className="pt-6 bg-muted/5">
-                {(!activeMaintenance.length && !scheduledInspections.length) ? (
+                {(activeMaintenance.length === 0 && scheduledInspections.length === 0) ? (
                   <p className="text-[10px] text-muted-foreground text-center py-6 italic uppercase tracking-wider">No active events</p>
                 ) : (
                   <div className="space-y-4">
