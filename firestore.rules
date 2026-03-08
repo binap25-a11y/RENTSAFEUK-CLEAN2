@@ -35,8 +35,8 @@ service cloud.firestore {
     // Essential for role discovery and cross-portfolio reporting.
 
     match /{path=**}/tenants/{tenantId} {
-      // Allow tenants to discover their own records via email query
-      // Allow landlords to manage their own tenant records
+      // Allow discovery for the "Role Check" and Tenant Portal via email query
+      // Also allow landlords to manage their own tenant records across collection groups
       allow list, get: if isSignedIn() && (
         (resource.data.ownerId == request.auth.uid) ||
         (request.auth.token.email != null && resource.data.email == request.auth.token.email)
@@ -44,8 +44,7 @@ service cloud.firestore {
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      // Allow tenants to view/create logs for properties they reside in
-      // Verification is handled by application logic matching email to active tenant
+      // Tenants can view/create logs for properties they reside in (verification in app logic)
       allow list, get, create: if isSignedIn();
     }
 

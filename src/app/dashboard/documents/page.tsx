@@ -181,24 +181,24 @@ export default function DocumentsPage() {
 
   return (
     <div className="flex flex-col gap-8 max-w-6xl mx-auto">
-      {/* Page Header - Prominent at the top as requested */}
+      {/* Page Header - Prominent at the top */}
       <div className="space-y-2">
         <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Portfolio Audit Trail</h1>
         <p className="text-muted-foreground font-medium text-lg">Manage and track legal compliance documents across your estate.</p>
       </div>
 
-      {/* Action Bar - Below heading as requested */}
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+      {/* Action Bar - Below heading */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-card p-4 rounded-2xl shadow-sm border">
         <div className="relative w-full sm:max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input 
             placeholder="Search document titles..." 
-            className="pl-10 h-12 bg-card border-none shadow-sm rounded-xl focus-visible:ring-primary" 
+            className="pl-10 h-11 bg-background border-muted rounded-xl focus-visible:ring-primary" 
             value={searchTerm} 
             onChange={e => setSearchTerm(e.target.value)} 
           />
         </div>
-        <Button asChild size="lg" className="w-full sm:w-auto font-bold shadow-lg h-12 px-8 rounded-xl shrink-0 transition-all hover:scale-[1.02] active:scale-[0.98]">
+        <Button asChild size="lg" className="w-full sm:w-auto font-bold shadow-md h-11 px-8 rounded-xl shrink-0">
           <Link href="/dashboard/documents/upload">
             <PlusCircle className="mr-2 h-5 w-5" /> Log New Document
           </Link>
