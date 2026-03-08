@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -121,7 +120,7 @@ export default function RemindersPage() {
   const [allInspections, setAllInspections] = useState<Inspection[]>([]);
   const [allTenants, setAllTenants] = useState<Tenant[]>([]);
   const [allRentPayments, setAllRentPayments] = useState<RentPayment[]>([]);
-  const [isAggregating, setIsAggregating] = useState(false);
+  const [isAggregating, setIsAggregates] = useState(false);
 
   useEffect(() => {
     if (!user || !firestore || !properties || properties.length === 0) {
@@ -132,7 +131,7 @@ export default function RemindersPage() {
         return;
     }
 
-    setIsAggregating(true);
+    setIsAggregates(true);
     const unsubs: (() => void)[] = [];
     const docMap: Record<string, Document[]> = {};
     const inspMap: Record<string, Inspection[]> = {};
@@ -144,7 +143,7 @@ export default function RemindersPage() {
         setAllInspections(Object.values(inspMap).flat());
         setAllTenants(Object.values(tenantMap).flat());
         setAllRentPayments(Object.values(paymentMap).flat());
-        setIsAggregating(false);
+        setIsAggregates(false);
     };
 
     properties.forEach(prop => {
@@ -209,12 +208,15 @@ export default function RemindersPage() {
             let dueDate = setDate(startOfMonth(today), tenant.rentDueDay!);
             const status = isPast(dueDate) && dueDate.getDate() !== today.getDate() ? 'Overdue' : 'Upcoming';
 
+            const addr = propertyMap[tenant.propertyId] || 'Property';
+            const amount = tenant.monthlyRent?.toLocaleString() || '0';
+
             return {
                 id: `rent-${tenant.id}`,
                 type: 'Rent',
-                description: `Rent collection: ${tenant.name}`,
+                description: `Rent due for ${addr} - £${amount}`,
                 category: 'Financial',
-                property: propertyMap[tenant.propertyId] || 'Unknown',
+                property: addr,
                 dueDate: dueDate,
                 status: status,
                 href: `/dashboard/expenses`

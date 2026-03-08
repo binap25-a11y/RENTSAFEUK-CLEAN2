@@ -12,10 +12,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Bell, FileWarning, CalendarClock, Loader2 } from 'lucide-react';
+import { Bell, FileWarning, CalendarClock, Loader2, Banknote } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, Timestamp, onSnapshot } from 'firebase/firestore';
-import { format, isBefore, addDays, isFuture } from 'date-fns';
+import { format, isBefore, addDays, isFuture, setDate, startOfMonth, isPast } from 'date-fns';
 
 interface Property {
   id: string;
@@ -41,6 +41,24 @@ interface Inspection {
   type: string;
   status: string;
   scheduledDate: Timestamp | Date | { seconds: number; nanoseconds: number };
+}
+
+interface Tenant {
+    id: string;
+    name: string;
+    email: string;
+    propertyId: string;
+    monthlyRent?: number;
+    rentDueDay?: number;
+    status: string;
+}
+
+interface RentPayment {
+    id: string;
+    propertyId: string;
+    month: string;
+    year: number;
+    status: string;
 }
 
 const toDate = (val: any): Date | null => {
@@ -75,12 +93,16 @@ export function Notifications() {
 
   const [allDocuments, setAllDocuments] = useState<Document[]>([]);
   const [allInspections, setAllInspections] = useState<Inspection[]>([]);
+  const [allTenants, setAllTenants] = useState<Tenant[]>([]);
+  const [allRentPayments, setAllRentPayments] = useState<RentPayment[]>([]);
   const [isLoadingAggregates, setIsLoadingAggregates] = useState(false);
 
   useEffect(() => {
     if (!user || !firestore || !properties || properties.length === 0) {
         setAllDocuments([]);
         setAllInspections([]);
+        setAllTenants([]);
+        setAllRentPayments([]);
         return;
     }
 
@@ -88,10 +110,14 @@ export function Notifications() {
     const unsubs: (() => void)[] = [];
     const docMap: Record<string, Document[]> = {};
     const inspMap: Record<string, Inspection[]> = {};
+    const tenantMap: Record<string, Tenant[]> = {};
+    const paymentMap: Record<string, RentPayment[]> = {};
 
     const updateState = () => {
         setAllDocuments(Object.values(docMap).flat());
         setAllInspections(Object.values(inspMap).flat());
+        setAllTenants(Object.values(tenantMap).flat());
+        setAllRentPayments(Object.values(paymentMap).flat());
         setIsLoadingAggregates(false);
     };
 
@@ -103,6 +129,14 @@ export function Notifications() {
         }));
         unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'inspections'), ownerFilter), (snap) => {
             inspMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Inspection));
+            updateState();
+        }));
+        unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'tenants'), ownerFilter), (snap) => {
+            tenantMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Tenant));
+            updateState();
+        }));
+        unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'rentPayments'), ownerFilter), (snap) => {
+            paymentMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as RentPayment));
             updateState();
         }));
     });
@@ -118,6 +152,8 @@ export function Notifications() {
   }, [properties]);
   
   const allReminders = useMemo(() => {
+    const today = new Date();
+    
     const documentReminders = allDocuments
         .map((doc) => {
           const expiry = toDate(doc.expiryDate);
@@ -152,8 +188,37 @@ export function Notifications() {
           href: `/dashboard/inspections/${insp.id}?propertyId=${insp.propertyId}`
         }));
 
-    return [...documentReminders, ...inspectionReminders].sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
-  }, [allDocuments, allInspections, propertyMap]);
+    const rentReminders = allTenants
+        .filter(t => t.status === 'Active' && t.rentDueDay)
+        .map((tenant) => {
+            const currentMonthName = format(today, 'MMMM');
+            const currentYear = today.getFullYear();
+            const isPaid = allRentPayments.some(p => p.propertyId === tenant.propertyId && p.month === currentMonthName && p.year === currentYear && p.status === 'Paid');
+            
+            if (isPaid) return null;
+
+            let dueDate = setDate(startOfMonth(today), tenant.rentDueDay!);
+            // Show in notifications if overdue or due in next 3 days
+            const daysToDueLimit = addDays(today, 3);
+            if (isFuture(dueDate) && isBefore(daysToDueLimit, dueDate)) return null;
+
+            const addr = propertyMap[tenant.propertyId] || 'Property';
+            const amount = tenant.monthlyRent?.toLocaleString() || '0';
+
+            return {
+                id: `rent-${tenant.id}`,
+                description: `Rent due for ${addr} - £${amount}`,
+                property: addr,
+                dueDate: dueDate,
+                status: isPast(dueDate) && dueDate.getDate() !== today.getDate() ? 'Overdue' : 'Due Soon',
+                icon: Banknote,
+                href: `/dashboard/expenses`
+            };
+        })
+        .filter((r): r is NonNullable<typeof r> => r !== null);
+
+    return [...documentReminders, ...inspectionReminders, ...rentReminders].sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+  }, [allDocuments, allInspections, allTenants, allRentPayments, propertyMap]);
 
   const notificationCount = allReminders.length;
 
@@ -190,9 +255,9 @@ export function Notifications() {
                 <DropdownMenuItem key={reminder.id} asChild className="cursor-pointer focus:bg-accent p-0">
                     <Link href={reminder.href} className="flex flex-col items-start gap-1 p-3 w-full border-b last:border-0">
                         <div className="flex items-center gap-2 w-full">
-                            <reminder.icon className={`h-4 w-4 ${reminder.status === 'Expired' ? 'text-destructive' : 'text-yellow-500'}`}/>
+                            <reminder.icon className={`h-4 w-4 ${reminder.status === 'Expired' || reminder.status === 'Overdue' ? 'text-destructive' : 'text-yellow-500'}`}/>
                             <p className="font-semibold text-sm truncate flex-1">{reminder.description}</p>
-                            <Badge variant={reminder.status === 'Expired' ? 'destructive' : 'secondary'} className="text-[10px] h-5">{reminder.status}</Badge>
+                            <Badge variant={reminder.status === 'Expired' || reminder.status === 'Overdue' ? 'destructive' : 'secondary'} className="text-[10px] h-5">{reminder.status}</Badge>
                         </div>
                         <div className="pl-6 space-y-0.5">
                             <p className="text-[11px] text-muted-foreground font-medium">{reminder.property}</p>
