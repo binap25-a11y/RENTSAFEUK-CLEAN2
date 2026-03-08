@@ -1,11 +1,12 @@
 'use client';
 
-import { getStorage, ref, uploadBytes, getDownloadURL } from 'firebase/storage';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 import { initializeFirebase } from '@/firebase/init';
 
 /**
  * Uploads a property image to Firebase Storage.
  * Leverages the app's native storage rules and authentication.
+ * Resolves Supabase RLS issues by using the integrated Firebase pipeline.
  */
 export const uploadPropertyImage = async (file: File, userId: string, propertyId: string): Promise<string> => {
   if (!file) return '';
