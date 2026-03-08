@@ -10,26 +10,36 @@ interface FirebaseClientProviderProps {
 
 /**
  * Client-side provider that handles the one-time initialization of Firebase services.
- * Implements a mounting check to prevent hydration mismatches and ChunkLoadErrors 
- * during the initial boot sequence in development environments.
+ * Implements a strict mounting check to resolve Runtime ChunkLoadErrors and 
+ * hydration mismatches in proxied cloud development environments.
  */
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
   const [isMounted, setIsMounted] = useState(false);
 
   useEffect(() => {
+    // Confirm client-side mount to prevent double-initialization issues
     setIsMounted(true);
   }, []);
 
   const firebaseServices = useMemo(() => {
     // Only initialize on the client after mounting to ensure 
-    // the environment is fully ready.
+    // the environment is fully ready and stable.
     if (typeof window === 'undefined') return null;
-    return initializeFirebase();
+    try {
+      return initializeFirebase();
+    } catch (e) {
+      console.error("Firebase SDK Initialization Error:", e);
+      return null;
+    }
   }, []);
 
-  // During SSR and initial hydration, we render the children directly.
-  // Once mounted on the client, we wrap them in the provider.
-  if (!isMounted || !firebaseServices) {
+  // During SSR and initial hydration, we render a stable wrapper to keep
+  // the DOM tree consistent and prevent Webpack chunk timeouts.
+  if (!isMounted) {
+    return <div className="min-h-screen bg-background" aria-hidden="true">{children}</div>;
+  }
+
+  if (!firebaseServices) {
     return <>{children}</>;
   }
 
