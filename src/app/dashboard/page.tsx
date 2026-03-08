@@ -132,10 +132,10 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user || !firestore) return;
     
-    // CRITICAL: We must use the exact email from the auth token to match security rules.
     const userEmail = user.email;
     if (!userEmail) return;
 
+    // Discovery query to find if this email exists in any tenant collection
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
