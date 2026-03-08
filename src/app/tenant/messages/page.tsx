@@ -36,17 +36,18 @@ export default function TenantMessagesPage() {
 
   useEffect(() => {
     if (!user || !firestore) return;
+    
+    // Search for tenants linked to this email. Filter for 'Active' in memory.
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', user.email?.toLowerCase()),
-        where('status', '==', 'Active'),
-        limit(1)
+        limit(10)
     );
     const unsub = onSnapshot(q, (snap) => {
-        if (!snap.empty) {
-            const doc = snap.docs[0];
-            const path = doc.ref.path.split('/');
-            setTenantContext({ landlordId: path[1], propertyId: path[3], tenantId: doc.id });
+        const activeTenant = snap.docs.find(d => d.data().status === 'Active');
+        if (activeTenant) {
+            const path = activeTenant.ref.path.split('/');
+            setTenantContext({ landlordId: path[1], propertyId: path[3], tenantId: activeTenant.id });
         }
     }, (error) => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({

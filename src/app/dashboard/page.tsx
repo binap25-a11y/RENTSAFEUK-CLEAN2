@@ -127,17 +127,23 @@ export default function DashboardPage() {
     setMounted(true);
   }, []);
 
-  // Check if current user is also a tenant
+  // Check if current user is also a tenant - Simplified query to avoid index requirements
   useEffect(() => {
     if (!user || !firestore) return;
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', user.email?.toLowerCase()),
-        where('status', '==', 'Active'),
-        limit(1)
+        limit(10)
     );
     const unsub = onSnapshot(q, (snap) => {
-        setIsTenant(!snap.empty);
+        // Filter for ACTIVE status in-memory to avoid composite index requirement
+        const activeTenantRecord = snap.docs.find(doc => doc.data().status === 'Active');
+        setIsTenant(!!activeTenantRecord);
+    }, (error) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'tenants (role-check)',
+            operation: 'list',
+        }));
     });
     return () => unsub();
   }, [user, firestore]);

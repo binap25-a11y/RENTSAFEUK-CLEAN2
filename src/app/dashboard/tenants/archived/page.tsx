@@ -21,9 +21,9 @@ import {
 } from '@/components/ui/table';
 import { ArrowLeft, RefreshCw, Loader2, Mail, Phone, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { query, where, doc, updateDoc, deleteDoc, collectionGroup } from 'firebase/firestore';
-import { useMemo, useState } from 'react';
+import { useUser, useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { collection, query, where, doc, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
+import { useMemo, useState, useEffect } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -62,26 +62,51 @@ export default function ArchivedTenantsPage() {
     const { user } = useUser();
     const firestore = useFirestore();
     const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null);
+    const [portfolioTenants, setPortfolioTenants] = useState<Tenant[]>([]);
+    const [isAggregating, setIsAggregating] = useState(false);
 
-    const tenantsQuery = useMemoFirebase(() => {
-        if (!user || !firestore) return null;
-        return query(
-            collectionGroup(firestore, 'tenants'),
-            where('ownerId', '==', user.uid),
-            where('status', '==', 'Archived')
-        );
-    }, [firestore, user]);
-    const { data: archivedTenants, isLoading: isLoadingTenants, error } = useCollection<Tenant>(tenantsQuery);
-
-     const propertiesQuery = useMemoFirebase(() => {
+    // Fetch properties - strictly hierarchical. Used to aggregate tenants without collectionGroup index requirements.
+    const propertiesQuery = useMemoFirebase(() => {
         if(!user || !firestore) return null;
         return query(
-            collectionGroup(firestore, 'properties'),
-            where('ownerId', '==', user.uid)
+            collection(firestore, 'userProfiles', user.uid, 'properties')
         );
       }, [firestore, user]);
     const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
     
+    // Aggregated Tenants Listener
+    useEffect(() => {
+        if (!user || !firestore || !properties || properties.length === 0) {
+            setPortfolioTenants([]);
+            return;
+        }
+
+        setIsAggregating(true);
+        const unsubs: (() => void)[] = [];
+        const tenantsMap: Record<string, Tenant[]> = {};
+
+        const updateState = () => {
+            setPortfolioTenants(Object.values(tenantsMap).flat().filter(t => t.status === 'Archived'));
+            setIsAggregating(false);
+        };
+
+        properties.forEach(p => {
+            const q = collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'tenants');
+            const unsub = onSnapshot(q, (snap) => {
+                tenantsMap[p.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Tenant));
+                updateState();
+            }, (error) => {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                    path: q.path,
+                    operation: 'list',
+                }));
+            });
+            unsubs.push(unsub);
+        });
+
+        return () => unsubs.forEach(u => u());
+    }, [user, properties, firestore]);
+
     const propertyMap = useMemo(() => {
         if (!properties) return {};
         return properties.reduce((acc, prop) => {
@@ -130,7 +155,7 @@ export default function ArchivedTenantsPage() {
         }
     };
     
-    const isLoading = isLoadingTenants || isLoadingProperties;
+    const isLoading = isLoadingProperties || isAggregating;
 
   return (
     <>
@@ -144,7 +169,7 @@ export default function ArchivedTenantsPage() {
                 <div>
                     <h1 className="text-3xl font-bold">Archived Tenants</h1>
                     <p className="text-muted-foreground">
-                        A list of past tenants.
+                        A list of past tenants across your portfolio.
                     </p>
                 </div>
             </div>
@@ -158,37 +183,35 @@ export default function ArchivedTenantsPage() {
                         <div className="flex justify-center items-center h-64">
                             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                         </div>
-                    ) : error ? (
-                        <div className="text-center py-10 text-destructive">Error: {error.message}</div>
-                    ) : !archivedTenants?.length ? (
-                        <div className="text-center py-10 text-muted-foreground">
+                    ) : !portfolioTenants?.length ? (
+                        <div className="text-center py-10 text-muted-foreground italic">
                             No archived tenants found.
                         </div>
                     ) : (
                     <>
                         {/* Desktop Table View */}
-                        <div className="hidden rounded-md border md:block">
+                        <div className="hidden rounded-md border md:block overflow-hidden">
                             <Table>
-                                <TableHeader>
+                                <TableHeader className="bg-muted/50">
                                     <TableRow>
-                                        <TableHead>Name</TableHead>
-                                        <TableHead>Email</TableHead>
-                                        <TableHead>Last Known Property</TableHead>
-                                        <TableHead className="text-right">Actions</TableHead>
+                                        <TableHead className="font-bold text-[10px] uppercase tracking-wider">Name</TableHead>
+                                        <TableHead className="font-bold text-[10px] uppercase tracking-wider">Email</TableHead>
+                                        <TableHead className="font-bold text-[10px] uppercase tracking-wider">Last Known Property</TableHead>
+                                        <TableHead className="text-right font-bold text-[10px] uppercase tracking-wider pr-6">Actions</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {archivedTenants.map((tenant) => (
-                                    <TableRow key={tenant.id}>
+                                    {portfolioTenants.map((tenant) => (
+                                    <TableRow key={tenant.id} className="hover:bg-muted/30 transition-colors">
                                         <TableCell className="font-medium">{tenant.name}</TableCell>
-                                        <TableCell>{tenant.email}</TableCell>
-                                        <TableCell>{propertyMap[tenant.propertyId] || 'N/A'}</TableCell>
-                                        <TableCell className="text-right space-x-2">
-                                            <Button size="sm" variant="outline" className="w-28 justify-center" onClick={() => handleRestore(tenant.id, tenant.name, tenant.propertyId)}>
-                                                <RefreshCw className="mr-2 h-4 w-4" /> Restore
+                                        <TableCell className="text-xs">{tenant.email}</TableCell>
+                                        <TableCell className="text-xs text-muted-foreground">{propertyMap[tenant.propertyId] || 'N/A'}</TableCell>
+                                        <TableCell className="text-right pr-6 space-x-2">
+                                            <Button size="sm" variant="outline" className="h-8 text-xs px-4" onClick={() => handleRestore(tenant.id, tenant.name, tenant.propertyId)}>
+                                                <RefreshCw className="mr-2 h-3.5 w-3.5" /> Restore
                                             </Button>
-                                            <Button size="sm" variant="destructive" className="w-28 justify-center" onClick={() => setTenantToDelete(tenant)}>
-                                                <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                            <Button size="sm" variant="destructive" className="h-8 text-xs px-4" onClick={() => setTenantToDelete(tenant)}>
+                                                <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
                                             </Button>
                                         </TableCell>
                                     </TableRow>
@@ -199,30 +222,30 @@ export default function ArchivedTenantsPage() {
 
                         {/* Mobile Card View */}
                         <div className="grid gap-4 md:hidden">
-                            {archivedTenants.map((tenant) => (
-                                <Card key={tenant.id}>
-                                    <CardHeader>
-                                        <CardTitle className="text-base">{tenant.name}</CardTitle>
-                                        <CardDescription>{propertyMap[tenant.propertyId] || 'No property assigned'}</CardDescription>
+                            {portfolioTenants.map((tenant) => (
+                                <Card key={tenant.id} className="shadow-none border-muted/60">
+                                    <CardHeader className="pb-3">
+                                        <CardTitle className="text-base font-bold">{tenant.name}</CardTitle>
+                                        <CardDescription className="text-xs font-medium">{propertyMap[tenant.propertyId] || 'No property assigned'}</CardDescription>
                                     </CardHeader>
-                                    <CardContent className="space-y-2 text-sm pt-0">
+                                    <CardContent className="space-y-2 text-xs pt-0 pb-3 border-b border-dashed mb-3">
                                         <div className="flex items-center gap-2">
-                                            <Mail className="h-4 w-4 text-muted-foreground" />
-                                            <a href={`mailto:${tenant.email}`} className='truncate hover:underline'>{tenant.email}</a>
+                                            <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                                            <span className='truncate'>{tenant.email}</span>
                                         </div>
                                         {tenant.telephone && (
                                             <div className="flex items-center gap-2">
-                                                <Phone className="h-4 w-4 text-muted-foreground" />
+                                                <Phone className="h-3.5 w-3.5 text-muted-foreground" />
                                                 <span>{tenant.telephone}</span>
                                             </div>
                                         )}
                                     </CardContent>
-                                    <CardFooter className="grid grid-cols-2 gap-2">
-                                        <Button size="sm" variant="outline" onClick={() => handleRestore(tenant.id, tenant.name, tenant.propertyId)}>
-                                            <RefreshCw className="mr-2 h-4 w-4" /> Restore
+                                    <CardFooter className="grid grid-cols-2 gap-2 pt-0">
+                                        <Button size="sm" variant="outline" className="h-9 font-bold" onClick={() => handleRestore(tenant.id, tenant.name, tenant.propertyId)}>
+                                            <RefreshCw className="mr-2 h-3.5 w-3.5" /> Restore
                                         </Button>
-                                        <Button size="sm" variant="destructive" onClick={() => setTenantToDelete(tenant)}>
-                                            <Trash2 className="mr-2 h-4 w-4" /> Delete
+                                        <Button size="sm" variant="destructive" className="h-9 font-bold" onClick={() => setTenantToDelete(tenant)}>
+                                            <Trash2 className="mr-2 h-3.5 w-3.5" /> Delete
                                         </Button>
                                     </CardFooter>
                                 </Card>
@@ -235,17 +258,17 @@ export default function ArchivedTenantsPage() {
         </div>
         
         <AlertDialog open={!!tenantToDelete} onOpenChange={(open) => !open && setTenantToDelete(null)}>
-            <AlertDialogContent>
+            <AlertDialogContent className="rounded-2xl">
                 <AlertDialogHeader>
-                <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
-                <AlertDialogDescription>
-                    This action is permanent and cannot be undone. This will permanently delete the tenant record for {tenantToDelete?.name}. Associated data like screening reports will not be deleted but may become inaccessible.
+                <AlertDialogTitle className="text-xl">Permanent Deletion</AlertDialogTitle>
+                <AlertDialogDescription className="text-base font-medium">
+                    This action is permanent. This will completely remove the tenant record for <strong className="text-foreground">{tenantToDelete?.name}</strong> from your history.
                 </AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogFooter>
-                <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogFooter className="gap-3 mt-4">
+                <AlertDialogCancel className="rounded-xl font-bold uppercase text-xs h-11">Cancel</AlertDialogCancel>
                 <AlertDialogAction
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold uppercase text-xs h-11 px-8 shadow-lg"
                     onClick={handleDeletePermanently}
                 >
                     Delete Permanently

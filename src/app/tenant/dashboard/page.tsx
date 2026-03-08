@@ -39,28 +39,26 @@ export default function TenantDashboard() {
 
     let propUnsub: (() => void) | null = null;
 
-    // Search for the ACTIVE tenant record linked to this user's email
+    // Search for tenants linked to this email. Filter for 'Active' in memory to avoid composite index requirements.
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', user.email?.toLowerCase()),
-        where('status', '==', 'Active'),
-        limit(1)
+        limit(10)
     );
 
     const unsub = onSnapshot(q, (snap) => {
-        if (propUnsub) propUnsub(); // Clean up existing property listener if tenant record changes
+        if (propUnsub) propUnsub();
 
-        if (!snap.empty) {
-            const tenantDoc = snap.docs[0];
-            const data = tenantDoc.data();
-            const pathSegments = tenantDoc.ref.path.split('/');
+        const activeTenantDoc = snap.docs.find(d => d.data().status === 'Active');
+
+        if (activeTenantDoc) {
+            const data = activeTenantDoc.data();
+            const pathSegments = activeTenantDoc.ref.path.split('/');
             
-            // Expected Path: userProfiles/{landlordId}/properties/{propertyId}/tenants/{tenantId}
             const landlordId = pathSegments[1];
             const propertyId = pathSegments[3];
-            const tenantId = tenantDoc.id;
+            const tenantId = activeTenantDoc.id;
 
-            // Fetch specific property context directly
             const propRef = doc(firestore, 'userProfiles', landlordId, 'properties', propertyId);
             propUnsub = onSnapshot(propRef, (propSnap) => {
                 if (propSnap.exists()) {
