@@ -49,7 +49,7 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "tenantUid": { "type": "string", "description": "The UID of the tenant's auth account." },
+        "tenantUid": { "type": "string" },
         "propertyId": { "type": "string" },
         "ownerId": { "type": "string" },
         "name": { "type": "string" },
@@ -77,15 +77,49 @@
         "photoUrls": { "type": "array", "items": { "type": "string" } }
       }
     },
-    "Message": {
-      "title": "Message",
+    "Inspection": {
+      "title": "Inspection",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "senderId": { "type": "string" },
-        "senderName": { "type": "string" },
-        "content": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" }
+        "propertyId": { "type": "string" },
+        "type": { "type": "string" },
+        "status": { "type": "string" },
+        "scheduledDate": { "type": "string", "format": "date-time" },
+        "inspectorName": { "type": "string" }
+      }
+    },
+    "Contractor": {
+      "title": "Contractor",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "name": { "type": "string" },
+        "trade": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" }
+      }
+    },
+    "Expense": {
+      "title": "Expense",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string", "format": "date" },
+        "expenseType": { "type": "string" }
+      }
+    },
+    "RentPayment": {
+      "title": "RentPayment",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "month": { "type": "string" },
+        "year": { "type": "number" },
+        "status": { "type": "string" }
       }
     }
   },
@@ -97,6 +131,10 @@
       {
         "path": "/userProfiles/{userId}",
         "definition": { "entityName": "UserProfile", "description": "Root user profile." }
+      },
+      {
+        "path": "/userProfiles/{userId}/contractors/{contractorId}",
+        "definition": { "entityName": "Contractor", "description": "Landlord directory of contractors." }
       },
       {
         "path": "/userProfiles/{userId}/properties/{propertyId}",
@@ -111,8 +149,16 @@
         "definition": { "entityName": "MaintenanceLog", "description": "Property maintenance records." }
       },
       {
-        "path": "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/messages/{msgId}",
-        "definition": { "entityName": "Message", "description": "Messages between tenant and landlord." }
+        "path": "/userProfiles/{userId}/properties/{propertyId}/inspections/{inspectionId}",
+        "definition": { "entityName": "Inspection", "description": "Property inspection reports." }
+      },
+      {
+        "path": "/userProfiles/{userId}/properties/{propertyId}/expenses/{expenseId}",
+        "definition": { "entityName": "Expense", "description": "Property financial expenses." }
+      },
+      {
+        "path": "/userProfiles/{userId}/properties/{propertyId}/rentPayments/{paymentId}",
+        "definition": { "entityName": "RentPayment", "description": "Rent collection ledger." }
       }
     ]
   }
