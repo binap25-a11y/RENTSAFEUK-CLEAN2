@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -22,12 +23,29 @@
         "address": {
           "type": "object",
           "properties": {
+            "nameOrNumber": { "type": "string" },
             "street": { "type": "string" },
             "city": { "type": "string" },
+            "county": { "type": "string" },
             "postcode": { "type": "string" }
           }
         },
-        "status": { "type": "string", "enum": ["Vacant", "Occupied", "Under Maintenance", "Deleted"] }
+        "propertyType": { "type": "string", "enum": ["House", "Flat", "HMO", "Bungalow", "Studio"] },
+        "status": { "type": "string", "enum": ["Vacant", "Occupied", "Under Maintenance", "Deleted"] },
+        "bedrooms": { "type": "number" },
+        "bathrooms": { "type": "number" },
+        "imageUrl": { "type": "string" },
+        "additionalImageUrls": { "type": "array", "items": { "type": "string" } },
+        "purchasePrice": { "type": "number" },
+        "currentValuation": { "type": "number" },
+        "tenancy": {
+          "type": "object",
+          "properties": {
+            "monthlyRent": { "type": "number" },
+            "depositAmount": { "type": "number" },
+            "depositScheme": { "type": "string" }
+          }
+        }
       }
     },
     "Tenant": {
@@ -38,9 +56,15 @@
         "id": { "type": "string" },
         "name": { "type": "string" },
         "email": { "type": "string", "format": "email" },
+        "telephone": { "type": "string" },
         "ownerId": { "type": "string" },
         "propertyId": { "type": "string" },
-        "status": { "type": "string", "default": "Active" }
+        "monthlyRent": { "type": "number" },
+        "rentDueDay": { "type": "number" },
+        "tenancyStartDate": { "type": "string", "format": "date-time" },
+        "tenancyEndDate": { "type": "string", "format": "date-time" },
+        "status": { "type": "string", "default": "Active" },
+        "lastReminderSent": { "type": "string", "format": "date-time" }
       }
     },
     "MaintenanceRequest": {
@@ -49,7 +73,17 @@
       "description": "Issue report logged by landlord or tenant.",
       "properties": {
         "title": { "type": "string" },
+        "description": { "type": "string" },
+        "category": { "type": "string" },
+        "priority": { "type": "string", "enum": ["Emergency", "Urgent", "Routine", "Low"] },
         "status": { "type": "string", "enum": ["Open", "In Progress", "Completed", "Cancelled"] },
+        "reportedBy": { "type": "string" },
+        "reportedDate": { "type": "string", "format": "date-time" },
+        "contractorName": { "type": "string" },
+        "contractorPhone": { "type": "string" },
+        "scheduledDate": { "type": "string", "format": "date-time" },
+        "estimatedCost": { "type": "number" },
+        "photoUrls": { "type": "array", "items": { "type": "string" } },
         "ownerId": { "type": "string" },
         "propertyId": { "type": "string" }
       }
@@ -62,6 +96,49 @@
         "amount": { "type": "number" },
         "date": { "type": "string", "format": "date-time" },
         "expenseType": { "type": "string" },
+        "paidBy": { "type": "string" },
+        "notes": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "propertyId": { "type": "string" }
+      }
+    },
+    "Inspection": {
+      "title": "Inspection",
+      "type": "object",
+      "description": "Property condition report.",
+      "properties": {
+        "type": { "type": "string" },
+        "status": { "type": "string" },
+        "scheduledDate": { "type": "string", "format": "date-time" },
+        "inspectorName": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "ownerId": { "type": "string" }
+      }
+    },
+    "Document": {
+      "title": "Document",
+      "type": "object",
+      "description": "Compliance or legal document record.",
+      "properties": {
+        "title": { "type": "string" },
+        "documentType": { "type": "string" },
+        "fileUrl": { "type": "string" },
+        "issueDate": { "type": "string", "format": "date-time" },
+        "expiryDate": { "type": "string", "format": "date-time" },
+        "propertyId": { "type": "string" },
+        "ownerId": { "type": "string" }
+      }
+    },
+    "Contractor": {
+      "title": "Contractor",
+      "type": "object",
+      "description": "Service provider contact details.",
+      "properties": {
+        "name": { "type": "string" },
+        "trade": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "status": { "type": "string" },
         "ownerId": { "type": "string" }
       }
     }
@@ -77,6 +154,14 @@
           "entityName": "UserProfile",
           "schema": { "$ref": "#/backend/entities/UserProfile" },
           "description": "Root landlord profile."
+        }
+      },
+      {
+        "path": "/userProfiles/{userId}/contractors/{contractorId}",
+        "definition": {
+          "entityName": "Contractor",
+          "schema": { "$ref": "#/backend/entities/Contractor" },
+          "description": "Directory of tradespeople."
         }
       },
       {
@@ -108,7 +193,23 @@
         "definition": {
           "entityName": "Expense",
           "schema": { "$ref": "#/backend/entities/Expense" },
-          "description": "Expenditure tracking for tax reporting."
+          "description": "Expenditure tracking."
+        }
+      },
+      {
+        "path": "/userProfiles/{userId}/properties/{propertyId}/inspections/{inspectionId}",
+        "definition": {
+          "entityName": "Inspection",
+          "schema": { "$ref": "#/backend/entities/Inspection" },
+          "description": "Property inspection record."
+        }
+      },
+      {
+        "path": "/userProfiles/{userId}/properties/{propertyId}/documents/{docId}",
+        "definition": {
+          "entityName": "Document",
+          "schema": { "$ref": "#/backend/entities/Document" },
+          "description": "Legal/Compliance file record."
         }
       }
     ]
