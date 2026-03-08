@@ -10,6 +10,7 @@
         "id": { "type": "string" },
         "email": { "type": "string", "format": "email" },
         "displayName": { "type": "string" },
+        "role": { "type": "string", "enum": ["landlord", "tenant"] },
         "idleTimeoutMinutes": { "type": "number" },
         "createdDate": { "type": "string", "format": "date-time" }
       },
@@ -48,6 +49,7 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
+        "tenantUid": { "type": "string", "description": "The UID of the tenant's auth account." },
         "propertyId": { "type": "string" },
         "ownerId": { "type": "string" },
         "name": { "type": "string" },
@@ -55,7 +57,7 @@
         "telephone": { "type": "string" },
         "status": { "type": "string" },
         "monthlyRent": { "type": "number" },
-        "rentDueDay": { "type": "number", "description": "Day of the month rent is due (1-31)" },
+        "rentDueDay": { "type": "number" },
         "lastReminderSent": { "type": "string", "format": "date-time" }
       }
     },
@@ -67,11 +69,23 @@
         "propertyId": { "type": "string" },
         "ownerId": { "type": "string" },
         "title": { "type": "string" },
+        "description": { "type": "string" },
         "category": { "type": "string" },
-        "otherCategoryDetails": { "type": "string" },
-        "status": { "type": "string" },
         "priority": { "type": "string" },
-        "notes": { "type": "string" }
+        "status": { "type": "string" },
+        "reportedBy": { "type": "string" },
+        "photoUrls": { "type": "array", "items": { "type": "string" } }
+      }
+    },
+    "Message": {
+      "title": "Message",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "content": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
       }
     }
   },
@@ -82,31 +96,23 @@
     "structure": [
       {
         "path": "/userProfiles/{userId}",
-        "definition": {
-          "entityName": "UserProfile",
-          "description": "Root user profile."
-        }
+        "definition": { "entityName": "UserProfile", "description": "Root user profile." }
       },
       {
         "path": "/userProfiles/{userId}/properties/{propertyId}",
-        "definition": {
-          "entityName": "Property",
-          "description": "User properties."
-        }
+        "definition": { "entityName": "Property", "description": "User properties." }
       },
       {
         "path": "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}",
-        "definition": {
-          "entityName": "Tenant",
-          "description": "Property tenants."
-        }
+        "definition": { "entityName": "Tenant", "description": "Property tenants." }
       },
       {
         "path": "/userProfiles/{userId}/properties/{propertyId}/maintenanceLogs/{logId}",
-        "definition": {
-          "entityName": "MaintenanceLog",
-          "description": "Property maintenance records."
-        }
+        "definition": { "entityName": "MaintenanceLog", "description": "Property maintenance records." }
+      },
+      {
+        "path": "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/messages/{msgId}",
+        "definition": { "entityName": "Message", "description": "Messages between tenant and landlord." }
       }
     ]
   }
