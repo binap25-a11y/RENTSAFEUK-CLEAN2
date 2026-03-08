@@ -32,11 +32,11 @@ service cloud.firestore {
     }
 
     // --- COLLECTION GROUP RULES ---
-    // Essential for role discovery and cross-portfolio reporting.
+    // Essential for role discovery and cross-portfolio discovery.
 
     match /{path=**}/tenants/{tenantId} {
       // Allow discovery for the "Role Check" and Tenant Portal via email query.
-      // We use the exact email from the auth token.
+      // We explicitly check for owner matching or email matching to support CG queries.
       allow list, get: if isSignedIn() && (
         (resource.data.email == request.auth.token.email) ||
         (resource.data.ownerId == request.auth.uid)
@@ -45,7 +45,6 @@ service cloud.firestore {
 
     match /{path=**}/maintenanceLogs/{logId} {
       // Tenants can view/create logs for properties they reside in.
-      // Landlords are covered by the recursive rule above.
       allow list, get, create: if isSignedIn();
     }
 
