@@ -9,7 +9,7 @@ const nextConfig: NextConfig = {
   },
   serverExternalPackages: ['firebase'],
   images: {
-    // Disable global image optimization for compatibility with Netlify and external storage (Firebase)
+    // Critical for Netlify: Disable global image optimization to allow direct serving from external storage
     unoptimized: true,
     remotePatterns: [
       {

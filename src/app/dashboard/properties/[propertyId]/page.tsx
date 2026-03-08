@@ -49,7 +49,6 @@ import { format } from 'date-fns';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { uploadPropertyImage } from '@/lib/upload-image';
 
-// Interfaces for property domain
 interface Property {
     id: string;
     ownerId: string;
@@ -111,7 +110,6 @@ export default function PropertyDetailPage() {
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const identityInputRef = useRef<HTMLInputElement>(null);
 
-  // Secure Data Fetching
   const propertyRef = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
     return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId);
@@ -144,19 +142,6 @@ export default function PropertyDetailPage() {
     return maintenanceLogs?.filter(log => log.status === 'Open' || log.status === 'In Progress').length || 0;
   }, [maintenanceLogs]);
 
-  const handleDeleteConfirm = async () => {
-    if (!firestore || !user || !property) return;
-    try {
-      const docRef = doc(firestore, 'userProfiles', user.uid, 'properties', propertyId);
-      await updateDoc(docRef, { status: 'Deleted' });
-      toast({ title: 'Property Archived', description: `${property.address.street} moved to archived records.` });
-      router.push('/dashboard/properties');
-    } catch (e) {
-      console.error('Error archiving property:', e);
-      toast({ variant: 'destructive', title: 'Action Failed' });
-    } finally { setIsDeleting(false); }
-  };
-
   const handleMediaAction = async (action: 'upload' | 'delete' | 'promote', url?: string, files?: FileList | null) => {
     if (!user || !property || !propertyRef) return;
     setIsMediaUpdating(true);
@@ -169,8 +154,9 @@ export default function PropertyDetailPage() {
         const fileArray = Array.from(files);
         const uploadPromises = fileArray.map(file => uploadPropertyImage(file, user.uid, property.id));
         const newUrls = await Promise.all(uploadPromises);
-        updatedGallery = [...updatedGallery, ...newUrls.filter(Boolean)];
-        toast({ title: 'Gallery Updated', description: `${newUrls.length} photos added to the gallery.` });
+        const validUrls = newUrls.filter(Boolean);
+        updatedGallery = [...updatedGallery, ...validUrls];
+        toast({ title: 'Gallery Updated', description: `${validUrls.length} photos added successfully.` });
       }
 
       if (action === 'delete' && url) {
@@ -178,46 +164,42 @@ export default function PropertyDetailPage() {
         if (updatedImageUrl === url) {
           updatedImageUrl = updatedGallery[0] || '';
         }
-        toast({ title: 'Photo Removed', description: 'The photo has been removed from your record.' });
+        toast({ title: 'Photo Removed' });
       }
 
       if (action === 'promote' && url) {
         updatedImageUrl = url;
-        toast({ title: 'Primary Photo Set', description: 'This image is now the main property identity.' });
+        // Ensure primary is also in gallery
+        if (!updatedGallery.includes(url)) {
+            updatedGallery = [url, ...updatedGallery];
+        }
+        toast({ title: 'Identity Photo Set', description: 'This image is now the primary property photo.' });
       }
 
       await updateDoc(propertyRef, {
         imageUrl: updatedImageUrl,
-        additionalImageUrls: updatedGallery
+        additionalImageUrls: Array.from(new Set(updatedGallery))
       });
 
     } catch (err: any) {
-      console.error('Media update failed:', err);
+      console.error('Media sync failed:', err);
       toast({ variant: 'destructive', title: 'Update Failed', description: err.message });
     } finally {
       setIsMediaUpdating(false);
     }
   };
 
-  const handleIdentityChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file || !user || !property || !propertyRef) return;
-    setIsMediaUpdating(true);
-
+  const handleDeleteConfirm = async () => {
+    if (!firestore || !user || !property) return;
     try {
-      const newUrl = await uploadPropertyImage(file, user.uid, property.id);
-      const updatedGallery = Array.from(new Set([newUrl, ...(property.additionalImageUrls || [])]));
-      
-      await updateDoc(propertyRef, {
-        imageUrl: newUrl,
-        additionalImageUrls: updatedGallery
-      });
-      toast({ title: 'Identity Photo Updated' });
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Upload Failed', description: err.message });
-    } finally {
-      setIsMediaUpdating(false);
-    }
+      const docRef = doc(firestore, 'userProfiles', user.uid, 'properties', propertyId);
+      await updateDoc(docRef, { status: 'Deleted' });
+      toast({ title: 'Property Archived', description: `${property.address.street} moved to archived records.` });
+      router.push('/dashboard/properties');
+    } catch (e) {
+      console.error('Error archiving property:', e);
+      toast({ variant: 'destructive', title: 'Action Failed' });
+    } finally { setIsDeleting(false); }
   };
   
   const safeFormatDate = (date: any, formatStr: string) => {
@@ -288,15 +270,15 @@ export default function PropertyDetailPage() {
                         <DropdownMenuItem asChild className="sm:hidden">
                             <Link href={`/dashboard/properties/${property.id}/edit`}><Edit className="mr-2 h-4 w-4" /> Edit Details</Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => identityInputRef.current?.click()}>
-                            <Upload className="mr-2 h-4 w-4" /> Change Identity Photo
+                        <DropdownMenuItem onClick={() => identityInputRef.current?.click()} disabled={isMediaUpdating}>
+                            <Upload className="mr-2 h-4 w-4" /> {isMediaUpdating ? 'Processing...' : 'Change Identity Photo'}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setIsDeleting(true)} className="text-destructive">
                             <Trash2 className="mr-2 h-4 w-4" /> Archive Asset
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
-                <input type="file" ref={identityInputRef} className="hidden" accept="image/*" onChange={handleIdentityChange} />
+                <input type="file" ref={identityInputRef} className="hidden" accept="image/*" onChange={(e) => handleMediaAction('promote', undefined, e.target.files)} />
             </div>
         </div>
         
@@ -352,7 +334,7 @@ export default function PropertyDetailPage() {
                         
                         {property.additionalImageUrls && property.additionalImageUrls.length > 0 ? (
                             <ScrollArea className="w-full whitespace-nowrap">
-                                <div className="flex w-max space-x-4 pb-4">
+                                <div className="flex w-max space-x-4 pb-4 px-1">
                                     {property.additionalImageUrls.map((url, idx) => (
                                         <div key={idx} className="relative h-24 w-40 rounded-xl overflow-hidden border shadow-sm group bg-background">
                                             <Image 
