@@ -8,7 +8,14 @@ const nextConfig: NextConfig = {
     ignoreDuringBuilds: true,
   },
   serverExternalPackages: ['firebase'],
+  experimental: {
+    // Suppress cross-origin warnings in the workstation environment
+    allowedDevOrigins: ['*.cloudworkstations.dev'],
+  },
   images: {
+    // Disable Image Optimization globally for compatibility with Netlify deployments
+    // using external storage like Firebase and Supabase.
+    unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',

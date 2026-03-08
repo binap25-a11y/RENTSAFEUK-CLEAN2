@@ -7,6 +7,7 @@ import { initializeFirebase } from '@/firebase/init';
  * Uploads a property image to Firebase Storage.
  * Uses the project's native storage bucket, which is already configured
  * with appropriate security rules for the authenticated user.
+ * This bypasses Supabase RLS issues by leveraging the app's primary backend.
  */
 export const uploadPropertyImage = async (file: File, userId: string, propertyId: string): Promise<string> => {
   if (!file) return '';
