@@ -498,7 +498,7 @@ export default function PropertyDetailPage() {
               <CardContent className="p-0 border-t">
                   {property.address && property.address.postcode ? (
                     <div className="aspect-square w-full rounded-2xl overflow-hidden border shadow-inner bg-muted/20">
-                        <iframe width="100%" height="100%" style={{ border: 0, filter: 'none' }} title="Map" loading="lazy" src={`https://maps.google.com/maps?q=${encodeURIComponent([property.address.street, property.address.city, property.address.postcode].filter(Boolean).join(', '))}&output=embed`}></iframe>
+                        <iframe width="100%" height="100%" style={{ border: 0 }} title="Map" loading="lazy" src={`https://maps.google.com/maps?q=${encodeURIComponent([property.address.street, property.address.city, property.address.postcode].filter(Boolean).join(', '))}&output=embed`}></iframe>
                     </div>
                   ) : <p className="text-xs text-muted-foreground text-center py-10 italic">Location data missing.</p>}
               </CardContent>

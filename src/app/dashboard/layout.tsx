@@ -57,15 +57,15 @@ function DashboardHeader() {
         </Button>
         <GlobalSearchDialog isOpen={isSearchOpen} onOpenChange={setIsSearchOpen} />
       </div>
-      <div className="flex items-center gap-2">
+      <div className="flex items-center gap-1 sm:gap-2">
         <Button 
           variant="ghost" 
           size="icon" 
           onClick={() => setIsShareOpen(true)} 
-          className="text-muted-foreground hover:text-primary flex"
+          className="text-muted-foreground hover:text-primary flex h-8 w-8 sm:h-9 sm:w-9"
           title="Share App"
         >
-          <Share2 className="h-5 w-5" />
+          <Share2 className="h-4 w-4 sm:h-5 sm:w-5" />
           <span className="sr-only">Share App</span>
         </Button>
         <ShareDialog isOpen={isShareOpen} onOpenChange={setIsShareOpen} />
