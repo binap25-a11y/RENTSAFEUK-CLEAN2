@@ -180,38 +180,69 @@ export default function DocumentsPage() {
     };
 
   return (
-    <div className="flex flex-col gap-6 max-w-6xl mx-auto">
-      <div className="grid gap-4 md:grid-cols-3">
-         <Card className="border-none shadow-md overflow-hidden relative"><div className="h-1 bg-destructive w-full absolute top-0" /><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Expired</CardTitle><FileWarning className="h-4 w-4 text-destructive" /></CardHeader><CardContent><div className="text-3xl font-bold text-destructive">{(selectedPropertyId && today) ? expiredCount : '-'}</div><p className="text-[10px] font-bold text-muted-foreground uppercase mt-1">Needs attention</p></CardContent></Card>
-         <Card className="border-none shadow-md overflow-hidden relative"><div className="h-1 bg-yellow-500 w-full absolute top-0" /><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Expiring Soon</CardTitle><Clock className="h-4 w-4 text-yellow-500" /></CardHeader><CardContent><div className="text-3xl font-bold">{(selectedPropertyId && today) ? expiringSoonCount : '-'}</div><p className="text-[10px] font-bold text-muted-foreground uppercase mt-1">Due in 90 days</p></CardContent></Card>
-          <Card className="border-none shadow-md overflow-hidden relative"><div className="h-1 bg-green-500 w-full absolute top-0" /><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Valid</CardTitle><ShieldCheck className="h-4 w-4 text-green-500" /></CardHeader><CardContent><div className="text-3xl font-bold text-green-600">{(selectedPropertyId && today) ? validCount : '-'}</div><p className="text-[10px] font-bold text-muted-foreground uppercase mt-1">Compliant items</p></CardContent></Card>
+    <div className="flex flex-col gap-8 max-w-6xl mx-auto">
+      {/* Page Header */}
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Portfolio Audit Trail</h1>
+        <p className="text-muted-foreground font-medium text-lg">Manage and track legal compliance documents across your estate.</p>
       </div>
 
-      <Card className="border-none shadow-xl overflow-hidden">
-        <CardHeader className="bg-muted/30 border-b pb-6">
-          <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
-            <div>
-                <CardTitle className="text-xl font-headline">Portfolio Audit Trail</CardTitle>
-                <CardDescription>Manage and track legal compliance documents.</CardDescription>
-            </div>
-            <div className="flex items-center gap-3 w-full md:w-auto">
-                <div className="relative flex-1 md:w-64">
-                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                    <Input 
-                        placeholder="Search records..." 
-                        className="pl-8 h-10 bg-background" 
-                        value={searchTerm} 
-                        onChange={e => setSearchTerm(e.target.value)} 
-                    />
-                </div>
-                <Button asChild className="font-bold shadow-lg h-10 px-4 shrink-0">
-                    <Link href="/dashboard/documents/upload">
-                        <PlusCircle className="mr-2 h-4 w-4" /> Log New
-                    </Link>
-                </Button>
-            </div>
-          </div>
-        </CardHeader>
+      {/* Action Bar */}
+      <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
+        <div className="relative w-full sm:max-w-md">
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Input 
+            placeholder="Search document titles..." 
+            className="pl-10 h-12 bg-card border-none shadow-sm rounded-xl focus-visible:ring-primary" 
+            value={searchTerm} 
+            onChange={e => setSearchTerm(e.target.value)} 
+          />
+        </div>
+        <Button asChild size="lg" className="w-full sm:w-auto font-bold shadow-lg h-12 px-8 rounded-xl shrink-0 transition-all hover:scale-[1.02] active:scale-[0.98]">
+          <Link href="/dashboard/documents/upload">
+            <PlusCircle className="mr-2 h-5 w-5" /> Log New Document
+          </Link>
+        </Button>
+      </div>
+
+      {/* Stats row */}
+      <div className="grid gap-4 md:grid-cols-3">
+         <Card className="border-none shadow-md overflow-hidden relative">
+            <div className="h-1 bg-destructive w-full absolute top-0" />
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Expired</CardTitle>
+                <FileWarning className="h-4 w-4 text-destructive" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-3xl font-bold text-destructive">{(selectedPropertyId && today) ? expiredCount : '-'}</div>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1">Needs attention</p>
+            </CardContent>
+         </Card>
+         <Card className="border-none shadow-md overflow-hidden relative">
+            <div className="h-1 bg-yellow-500 w-full absolute top-0" />
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Expiring Soon</CardTitle>
+                <Clock className="h-4 w-4 text-yellow-500" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-3xl font-bold">{(selectedPropertyId && today) ? expiringSoonCount : '-'}</div>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1">Due in 90 days</p>
+            </CardContent>
+         </Card>
+          <Card className="border-none shadow-md overflow-hidden relative">
+            <div className="h-1 bg-green-500 w-full absolute top-0" />
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Valid</CardTitle>
+                <ShieldCheck className="h-4 w-4 text-green-500" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-3xl font-bold text-green-600">{(selectedPropertyId && today) ? validCount : '-'}</div>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1">Compliant items</p>
+            </CardContent>
+          </Card>
+      </div>
+
+      <Card className="border-none shadow-xl overflow-hidden bg-card/50">
         <CardContent className="pt-8 space-y-8">
           <div className="grid gap-4 md:grid-cols-2">
               <div className='space-y-2'>
