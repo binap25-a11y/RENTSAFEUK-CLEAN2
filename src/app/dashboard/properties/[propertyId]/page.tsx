@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -138,9 +138,15 @@ export default function PropertyDetailPage() {
   }, [firestore, propertyId, user]);
   const { data: inspections } = useCollection<Inspection>(inspectionQuery);
 
-  const openMaintenanceCount = useMemo(() => {
-    return maintenanceLogs?.filter(log => log.status === 'Open' || log.status === 'In Progress').length || 0;
+  const activeMaintenance = useMemo(() => {
+    return maintenanceLogs?.filter(log => log.status === 'Open' || log.status === 'In Progress') || [];
   }, [maintenanceLogs]);
+
+  const scheduledInspections = useMemo(() => {
+    return inspections?.filter(insp => insp.status === 'Scheduled') || [];
+  }, [inspections]);
+
+  const openMaintenanceCount = activeMaintenance.length;
 
   const handleMediaAction = async (action: 'upload' | 'delete' | 'promote', url?: string, files?: FileList | null) => {
     if (!user || !property || !propertyRef) return;
