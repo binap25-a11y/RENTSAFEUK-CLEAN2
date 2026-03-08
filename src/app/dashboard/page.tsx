@@ -133,7 +133,6 @@ export default function DashboardPage() {
     if (!user || !firestore) return;
     
     // CRITICAL: We must use the exact email from the auth token to match security rules.
-    // Firestore security rules for collection groups are case-sensitive.
     const userEmail = user.email;
     if (!userEmail) return;
 

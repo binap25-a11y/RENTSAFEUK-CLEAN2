@@ -28,7 +28,8 @@
             "city": { "type": "string" },
             "county": { "type": "string" },
             "postcode": { "type": "string" }
-          }
+          },
+          "required": ["street", "city", "postcode"]
         },
         "propertyType": { "type": "string", "enum": ["House", "Flat", "HMO", "Bungalow", "Studio"] },
         "status": { "type": "string", "enum": ["Vacant", "Occupied", "Under Maintenance", "Deleted"] },
@@ -47,7 +48,8 @@
             "depositScheme": { "type": "string" }
           }
         }
-      }
+      },
+      "required": ["ownerId", "address", "propertyType", "status"]
     },
     "Tenant": {
       "title": "Tenant",
@@ -67,7 +69,8 @@
         "status": { "type": "string", "default": "Active" },
         "lastReminderSent": { "type": "string", "format": "date-time" },
         "notes": { "type": "string" }
-      }
+      },
+      "required": ["name", "email", "ownerId", "propertyId", "tenancyStartDate"]
     },
     "MaintenanceRequest": {
       "title": "MaintenanceRequest",
@@ -91,7 +94,8 @@
         "ownerId": { "type": "string" },
         "propertyId": { "type": "string" },
         "notes": { "type": "string" }
-      }
+      },
+      "required": ["title", "category", "priority", "status", "ownerId", "propertyId"]
     },
     "Expense": {
       "title": "Expense",
@@ -106,7 +110,8 @@
         "notes": { "type": "string" },
         "ownerId": { "type": "string" },
         "propertyId": { "type": "string" }
-      }
+      },
+      "required": ["amount", "date", "expenseType", "ownerId", "propertyId"]
     },
     "Inspection": {
       "title": "Inspection",
@@ -122,7 +127,8 @@
         "propertyId": { "type": "string" },
         "ownerId": { "type": "string" },
         "summary": { "type": "string" }
-      }
+      },
+      "required": ["type", "status", "scheduledDate", "propertyId", "ownerId"]
     },
     "Document": {
       "title": "Document",
@@ -138,7 +144,8 @@
         "propertyId": { "type": "string" },
         "ownerId": { "type": "string" },
         "notes": { "type": "string" }
-      }
+      },
+      "required": ["title", "documentType", "propertyId", "ownerId"]
     },
     "Contractor": {
       "title": "Contractor",
@@ -153,7 +160,8 @@
         "status": { "type": "string" },
         "ownerId": { "type": "string" },
         "notes": { "type": "string" }
-      }
+      },
+      "required": ["name", "trade", "phone", "ownerId"]
     },
     "RentPayment": {
       "title": "RentPayment",
@@ -168,45 +176,8 @@
         "status": { "type": "string", "enum": ["Paid", "Partially Paid", "Unpaid", "Pending"] },
         "amountPaid": { "type": "number" },
         "expectedAmount": { "type": "number" }
-      }
-    },
-    "Checklist": {
-      "title": "Checklist",
-      "type": "object",
-      "description": "Pre-tenancy compliance checklist.",
-      "properties": {
-        "id": { "type": "string" },
-        "propertyId": { "type": "string" },
-        "tenantId": { "type": "string" },
-        "ownerId": { "type": "string" },
-        "completedDate": { "type": "string", "format": "date-time" },
-        "beforeTenancy": { "type": "object" },
-        "deposit": { "type": "object" },
-        "atMoveIn": { "type": "object" },
-        "optional": { "type": "object" }
-      }
-    },
-    "TenantScreening": {
-      "title": "TenantScreening",
-      "type": "object",
-      "description": "Pre-tenancy vetting report.",
-      "properties": {
-        "id": { "type": "string" },
-        "tenantId": { "type": "string" },
-        "propertyId": { "type": "string" },
-        "ownerId": { "type": "string" },
-        "screeningDate": { "type": "string", "format": "date-time" },
-        "monthlyIncome": { "type": "number" },
-        "rightToRent": { "type": "object" },
-        "idVerification": { "type": "object" },
-        "creditCheck": { "type": "object" },
-        "employmentIncome": { "type": "object" },
-        "landlordReference": { "type": "object" },
-        "addressHistory": { "type": "object" },
-        "affordability": { "type": "object" },
-        "guarantor": { "type": "object" },
-        "overallNotes": { "type": "string" }
-      }
+      },
+      "required": ["propertyId", "ownerId", "year", "month", "status"]
     }
   },
   "auth": {
@@ -225,17 +196,9 @@
       "schema": { "$ref": "#/backend/entities/Property" },
       "description": "Rental property document."
     },
-    "/userProfiles/{userId}/properties/{propertyId}/checklists/{checklistId}": {
-      "schema": { "$ref": "#/backend/entities/Checklist" },
-      "description": "Pre-tenancy compliance status."
-    },
     "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}": {
       "schema": { "$ref": "#/backend/entities/Tenant" },
       "description": "Tenant profile nested under property."
-    },
-    "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/screenings/{screeningId}": {
-      "schema": { "$ref": "#/backend/entities/TenantScreening" },
-      "description": "Vetting report for tenant."
     },
     "/userProfiles/{userId}/properties/{propertyId}/maintenanceLogs/{logId}": {
       "schema": { "$ref": "#/backend/entities/MaintenanceRequest" },
