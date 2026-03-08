@@ -1,10 +1,5 @@
 'use client';
 
-<<<<<<< HEAD
-
-
-=======
->>>>>>> 4198aad8742ab8507a170630aec42ef56984a310
 import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Logo, GoogleIcon } from '@/components/icons';
@@ -343,4 +338,3 @@ export default function LoginPage() {
     </div>
   );
 }
-    
