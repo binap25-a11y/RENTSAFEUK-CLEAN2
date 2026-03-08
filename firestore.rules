@@ -36,7 +36,7 @@ service cloud.firestore {
 
     match /{path=**}/tenants/{tenantId} {
       // Allow discovery via email for the "Role Check" and Tenant Portal.
-      // We allow list if the user is searching for their own email or if they are the landlord.
+      // We explicitly check for both landlord ownership and tenant email match.
       allow list: if isSignedIn() && (
         (resource.data.email == request.auth.token.email) ||
         (resource.data.ownerId == request.auth.uid)

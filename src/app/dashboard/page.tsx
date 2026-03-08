@@ -132,7 +132,8 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user || !firestore) return;
     
-    const userEmail = user.email;
+    // Crucial: Use lowercase to match lowercased emails in database, or raw email to match auth token exactly
+    const userEmail = user.email?.toLowerCase();
     if (!userEmail) return;
 
     // Discovery query to find if this email exists in any tenant collection
