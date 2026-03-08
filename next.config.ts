@@ -1,4 +1,3 @@
-
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
@@ -10,17 +9,12 @@ const nextConfig: NextConfig = {
   },
   serverExternalPackages: ['firebase'],
   images: {
-    // Disable Image Optimization globally for compatibility with Netlify deployments
-    // using external storage like Firebase and Supabase.
+    // Disable global image optimization for compatibility with external storage and CI/CD (Netlify)
     unoptimized: true,
     remotePatterns: [
       {
         protocol: 'https',
         hostname: 'firebasestorage.googleapis.com',
-      },
-      {
-        protocol: 'https',
-        hostname: 'owfjowiiyshhqzhatwqr.supabase.co',
       },
       {
         protocol: 'https',

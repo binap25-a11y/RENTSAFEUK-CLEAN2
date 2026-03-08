@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -15,7 +14,14 @@ import { Input } from '@/components/ui/input';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { toast } from '@/hooks/use-toast';
-import { useUser, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
+import { 
+  useUser, 
+  useFirestore, 
+  useDoc, 
+  useMemoFirebase,
+  errorEmitter,
+  FirestorePermissionError
+} from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { uploadPropertyImage } from '@/lib/upload-image';
 import { Loader2, MapPin, Home, Upload, X, Images, PlusCircle, CheckCircle2 } from 'lucide-react';
@@ -81,13 +87,12 @@ export default function EditPropertyPage() {
   const firestore = useFirestore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Primary Identity Logic
+  // Photo Logic
   const [selectedMainFile, setSelectedMainFile] = useState<File | null>(null);
   const [mainPreviewUrl, setMainPreviewUrl] = useState<string | null>(null);
   const [isMainRemoved, setIsMainRemoved] = useState(false);
   const mainInputRef = useRef<HTMLInputElement>(null);
 
-  // Gallery Logic
   const [existingGallery, setExistingGallery] = useState<string[]>([]);
   const [newGalleryFiles, setNewGalleryFiles] = useState<File[]>([]);
   const [newGalleryPreviews, setNewGalleryPreviews] = useState<string[]>([]);
@@ -167,54 +172,36 @@ export default function EditPropertyPage() {
       if (updatedPreviews[idx].startsWith('blob:')) URL.revokeObjectURL(updatedPreviews[idx]);
       updatedPreviews.splice(idx, 1);
       setNewGalleryPreviews(updatedPreviews);
-  }
+  };
 
   const promoteToPrimary = (url: string) => {
       setMainPreviewUrl(url);
       setSelectedMainFile(null);
       setIsMainRemoved(false);
-      toast({ title: "Primary Photo Updated", description: "This image will be set as the main asset identity." });
+      toast({ title: "Primary Photo Updated", description: "This image is now the main property identity." });
   };
 
   async function onSubmit(data: PropertyFormValues) {
-    if (!firestore || !propertyId || !user) return;
+    if (!firestore || !propertyId || !user || !propertyRef) return;
     setIsSubmitting(true);
 
     try {
-      // Step 1: Handle Identity Photo Synchronization
       let finalIdentityUrl = isMainRemoved ? '' : (mainPreviewUrl || property?.imageUrl || '');
       
       if (selectedMainFile) {
-          try {
-            finalIdentityUrl = await uploadPropertyImage(selectedMainFile, user.uid, propertyId);
-          } catch (uploadErr: any) {
-            console.error('Identity media synchronization failure:', uploadErr);
-            toast({ variant: 'destructive', title: 'Upload Failed', description: uploadErr.message });
-            setIsSubmitting(false);
-            return;
-          }
+          finalIdentityUrl = await uploadPropertyImage(selectedMainFile, user.uid, propertyId);
       }
 
-      // Step 2: Handle Gallery Media Synchronization
       const newGalleryUrls: string[] = [];
       if (newGalleryFiles.length > 0) {
-          try {
-            const uploads = await Promise.all(newGalleryFiles.map(f => uploadPropertyImage(f, user.uid, propertyId)));
-            newGalleryUrls.push(...uploads.filter(Boolean));
-          } catch (uploadErr: any) {
-            console.error('Gallery synchronization issue:', uploadErr);
-          }
+          const uploads = await Promise.all(newGalleryFiles.map(f => uploadPropertyImage(f, user.uid, propertyId)));
+          newGalleryUrls.push(...uploads.filter(Boolean));
       }
 
-      // Step 3: Reconstruct Unified Photo Gallery
       let combinedGallery = [...existingGallery, ...newGalleryUrls];
-      
-      // Auto-mirror identity photo into the gallery for visual consistency
       if (finalIdentityUrl && !combinedGallery.includes(finalIdentityUrl)) {
           combinedGallery.unshift(finalIdentityUrl);
       }
-
-      // Clean up gallery if identity was removed and not replaced
       if (isMainRemoved && !selectedMainFile && property?.imageUrl) {
           combinedGallery = combinedGallery.filter(url => url !== property.imageUrl);
       }
@@ -226,15 +213,27 @@ export default function EditPropertyPage() {
           ownerId: user.uid
       };
 
-      // Perform the Firestore document update
-      await updateDoc(doc(firestore, 'userProfiles', user.uid, 'properties', propertyId), JSON.parse(JSON.stringify(updatePayload)));
-      
-      toast({ title: "Property Records Updated", description: "All data and media synchronized successfully." });
-      router.push(`/dashboard/properties/${propertyId}`);
+      const cleanedPayload = JSON.parse(JSON.stringify(updatePayload));
+
+      updateDoc(propertyRef, cleanedPayload)
+        .then(() => {
+            toast({ title: "Asset Updated", description: "All records and media synchronized successfully." });
+            router.push(`/dashboard/properties/${propertyId}`);
+        })
+        .catch(async (serverError) => {
+            const permissionError = new FirestorePermissionError({
+                path: propertyRef.path,
+                operation: 'update',
+                requestResourceData: cleanedPayload,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            toast({ variant: "destructive", title: "Update Failed", description: "Could not save changes to the database." });
+        })
+        .finally(() => setIsSubmitting(false));
+
     } catch (e: any) {
-      console.error("Critical synchronization failure:", e);
-      toast({ variant: "destructive", title: "Update Failed", description: e.message || "An unexpected error occurred." });
-    } finally {
+      console.error("Submission failed:", e);
+      toast({ variant: "destructive", title: "Process Error", description: e.message || "An unexpected error occurred." });
       setIsSubmitting(false);
     }
   }
@@ -286,12 +285,12 @@ export default function EditPropertyPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 border-t pt-10">
                 <div className="space-y-6">
                     <FormLabel className="font-bold flex items-center gap-2 text-lg"><Home className="h-5 w-5 text-primary" /> Identity Photo</FormLabel>
-                    <FormDescription className="text-xs">Primary photo for the grid view. Also added to your gallery.</FormDescription>
+                    <FormDescription className="text-xs">Primary photo for the grid view. Automatically added to your gallery.</FormDescription>
                     {mainPreviewUrl ? (
                         <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-primary shadow-lg group">
                             <Image 
                               src={mainPreviewUrl} 
-                              alt="Primary Asset Identity" 
+                              alt="Asset Identity" 
                               fill 
                               className="object-cover" 
                               unoptimized
@@ -312,20 +311,14 @@ export default function EditPropertyPage() {
 
                 <div className="space-y-6">
                     <FormLabel className="font-bold flex items-center gap-2 text-lg"><Images className="h-5 w-5 text-primary" /> Photo Gallery</FormLabel>
-                    <FormDescription className="text-xs">Manage all photos associated with this property.</FormDescription>
+                    <FormDescription className="text-xs">Manage all photos associated with this record.</FormDescription>
                     <div className="grid grid-cols-3 gap-4">
                         {existingGallery.map((url, idx) => (
                             <div key={`existing-${idx}`} className="relative aspect-square rounded-xl overflow-hidden border group shadow-sm bg-background">
-                                <Image 
-                                  src={url} 
-                                  alt="Gallery Item" 
-                                  fill 
-                                  className="object-cover" 
-                                  unoptimized
-                                />
+                                <Image src={url} alt="Gallery Item" fill className="object-cover" unoptimized />
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1">
-                                    <button type="button" onClick={() => promoteToPrimary(url)} title="Set as Primary" className="p-1.5 bg-background text-primary rounded-full hover:scale-110 transition-transform"><CheckCircle2 className="h-4 w-4" /></button>
-                                    <button type="button" onClick={() => setExistingGallery(p => p.filter(u => u !== url))} className="p-1.5 bg-destructive text-white rounded-full hover:scale-110 transition-transform"><X className="h-4 w-4" /></button>
+                                    <button type="button" onClick={() => promoteToPrimary(url)} title="Set as Primary" className="p-1.5 bg-background text-primary rounded-full hover:scale-110 transition-transform shadow-md"><CheckCircle2 className="h-4 w-4" /></button>
+                                    <button type="button" onClick={() => setExistingGallery(p => p.filter(u => u !== url))} className="p-1.5 bg-destructive text-white rounded-full hover:scale-110 transition-transform shadow-md"><X className="h-4 w-4" /></button>
                                 </div>
                             </div>
                         ))}
@@ -344,8 +337,8 @@ export default function EditPropertyPage() {
             </div>
 
             <div className="flex justify-end gap-4 pt-6 border-t">
-              <Button type="button" variant="ghost" asChild className="h-11"><Link href={`/dashboard/properties/${propertyId}`}>Cancel</Link></Button>
-              <Button type="submit" disabled={isSubmitting} className="h-11 px-10 shadow-lg">
+              <Button type="button" variant="ghost" asChild className="h-11 font-bold uppercase text-xs tracking-widest"><Link href={`/dashboard/properties/${propertyId}`}>Cancel</Link></Button>
+              <Button type="submit" disabled={isSubmitting} className="h-11 px-10 shadow-lg font-bold uppercase text-xs tracking-widest bg-primary hover:bg-primary/90">
                 {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Synchronizing Portfolio...</> : 'Save Record Changes'}
               </Button>
             </div>

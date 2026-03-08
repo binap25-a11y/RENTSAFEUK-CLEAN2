@@ -14,7 +14,7 @@ import { Input } from '@/components/ui/input';
 import { Progress } from '@/components/ui/progress';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { toast } from '@/hooks/use-toast';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collection, addDoc, updateDoc } from 'firebase/firestore';
 import { Loader2, Home, Images, PlusCircle, X, Upload, MapPin, ChevronRight, ChevronLeft, Banknote } from 'lucide-react';
 import { Label } from '@/components/ui/label';
@@ -52,12 +52,10 @@ export default function AddPropertyPage() {
   const [step, setStep] = useState(1);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Identity Photo States
   const [mainFile, setMainFile] = useState<File | null>(null);
   const [mainPreview, setMainPreview] = useState<string | null>(null);
   const mainInputRef = useRef<HTMLInputElement>(null);
 
-  // Gallery States
   const [galleryFiles, setGalleryFiles] = useState<File[]>([]);
   const [galleryPreviews, setGalleryPreviews] = useState<string[]>([]);
   const galleryInputRef = useRef<HTMLInputElement>(null);
@@ -113,8 +111,8 @@ export default function AddPropertyPage() {
     setIsSubmitting(true);
 
     try {
-      // Step 1: Create the baseline record to obtain propertyId
-      const docRef = await addDoc(collection(firestore, 'userProfiles', user.uid, 'properties'), {
+      const propertyCollection = collection(firestore, 'userProfiles', user.uid, 'properties');
+      const docRef = await addDoc(propertyCollection, {
         ...JSON.parse(JSON.stringify(data)),
         ownerId: user.uid,
         createdDate: new Date().toISOString(),
@@ -122,46 +120,43 @@ export default function AddPropertyPage() {
         additionalImageUrls: [],
       });
 
-      // Step 2: Synchronize Asset Identity Photo
       let finalIdentityUrl = '';
       if (mainFile) {
-        try {
           finalIdentityUrl = await uploadPropertyImage(mainFile, user.uid, docRef.id);
-        } catch (uploadErr: any) {
-          console.error('Identity media sync failure:', uploadErr);
-          toast({ variant: 'destructive', title: 'Media Error', description: uploadErr.message });
-        }
       }
 
-      // Step 3: Synchronize Gallery Photos
       let galleryUrls: string[] = [];
       if (galleryFiles.length > 0) {
-        try {
           const uploads = await Promise.all(galleryFiles.map(f => uploadPropertyImage(f, user.uid, docRef.id)));
           galleryUrls = uploads.filter(Boolean);
-        } catch (uploadErr: any) {
-          console.error('Gallery media sync failure:', uploadErr);
-        }
       }
 
-      // Mirror identity photo into the gallery automatically
       const finalGallery = [...galleryUrls];
       if (finalIdentityUrl && !finalGallery.includes(finalIdentityUrl)) {
         finalGallery.unshift(finalIdentityUrl);
       }
 
-      // Step 4: Complete the property profile update
-      await updateDoc(docRef, { 
-          imageUrl: finalIdentityUrl, 
-          additionalImageUrls: finalGallery 
-      });
+      const updateData = { imageUrl: finalIdentityUrl, additionalImageUrls: finalGallery };
+      
+      updateDoc(docRef, updateData)
+        .then(() => {
+            toast({ title: 'Property Onboarded', description: 'Asset record and Photo Gallery synchronized successfully.' });
+            router.push('/dashboard/properties');
+        })
+        .catch(async (serverError) => {
+            const permissionError = new FirestorePermissionError({
+                path: docRef.path,
+                operation: 'update',
+                requestResourceData: updateData,
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            toast({ variant: 'destructive', title: 'Onboarding Failed', description: 'Could not complete the asset sync.' });
+        })
+        .finally(() => setIsSubmitting(false));
 
-      toast({ title: 'Property Onboarded', description: 'Record and Photo Gallery synchronized successfully.' });
-      router.push('/dashboard/properties');
     } catch (err: any) {
-      console.error('Onboarding failure:', err);
+      console.error('Onboarding error:', err);
       toast({ variant: 'destructive', title: 'Onboarding Failed', description: err.message || 'Check your connection.' });
-    } finally {
       setIsSubmitting(false);
     }
   };
@@ -205,7 +200,7 @@ export default function AddPropertyPage() {
                   {mapUrl ? <iframe src={mapUrl} width="100%" height="100%" style={{ border: 0 }} title="Map Preview" /> : <div className="flex items-center justify-center h-full"><MapPin className="h-12 w-12 text-muted-foreground/40" /></div>}
                 </div>
               </CardContent>
-              <CardFooter className="justify-end border-t pt-6"><Button type="button" className="h-11 px-8" onClick={() => setStep(2)}>Next Step <ChevronRight className="ml-2 h-4 w-4" /></Button></CardFooter>
+              <CardFooter className="justify-end border-t pt-6"><Button type="button" className="h-11 px-8 font-bold" onClick={() => setStep(2)}>Next Step <ChevronRight className="ml-2 h-4 w-4" /></Button></CardFooter>
             </Card>
           )}
 
@@ -252,8 +247,8 @@ export default function AddPropertyPage() {
                 </div>
               </CardContent>
               <CardFooter className="justify-between border-t pt-6">
-                  <Button type="button" variant="outline" onClick={() => setStep(1)}><ChevronLeft className="mr-2 h-4 w-4" /> Back</Button>
-                  <Button type="button" onClick={() => setStep(3)}>Next Step <ChevronRight className="ml-2 h-4 w-4" /></Button>
+                  <Button type="button" variant="outline" className="h-11 font-bold" onClick={() => setStep(1)}><ChevronLeft className="mr-2 h-4 w-4" /> Back</Button>
+                  <Button type="button" className="h-11 font-bold" onClick={() => setStep(3)}>Next Step <ChevronRight className="ml-2 h-4 w-4" /></Button>
               </CardFooter>
             </Card>
           )}
@@ -283,8 +278,8 @@ export default function AddPropertyPage() {
                 </div>
               </CardContent>
               <CardFooter className="justify-between border-t pt-6">
-                  <Button type="button" variant="outline" onClick={() => setStep(2)}><ChevronLeft className="mr-2 h-4 w-4" /> Back</Button>
-                  <Button type="button" onClick={() => setStep(4)}>Next Step <ChevronRight className="ml-2 h-4 w-4" /></Button>
+                  <Button type="button" variant="outline" className="h-11 font-bold" onClick={() => setStep(2)}><ChevronLeft className="mr-2 h-4 w-4" /> Back</Button>
+                  <Button type="button" className="h-11 font-bold" onClick={() => setStep(4)}>Next Step <ChevronRight className="ml-2 h-4 w-4" /></Button>
               </CardFooter>
             </Card>
           )}
@@ -295,7 +290,7 @@ export default function AddPropertyPage() {
               <CardContent className="pt-6 space-y-8">
                 <div className="space-y-4">
                   <Label className="font-bold text-lg">Primary Identity Photo</Label>
-                  <FormDescription className="text-xs">Select an image for main portfolio views. This photo will be automatically synced to your gallery.</FormDescription>
+                  <FormDescription className="text-xs">This photo will be used for the property grid and automatically added to the gallery.</FormDescription>
                   {mainPreview ? (
                     <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-primary group shadow-lg bg-background">
                       <Image 
@@ -322,7 +317,7 @@ export default function AddPropertyPage() {
                 <div className="space-y-4 pt-6 border-t">
                     <div className="flex items-center justify-between">
                         <Label className="font-bold">Additional Property Photos</Label>
-                        <Button type="button" variant="outline" size="sm" onClick={() => galleryInputRef.current?.click()}><PlusCircle className="mr-2 h-4 w-4" /> Add Files</Button>
+                        <Button type="button" variant="outline" size="sm" className="font-bold" onClick={() => galleryInputRef.current?.click()}><PlusCircle className="mr-2 h-4 w-4" /> Add Files</Button>
                     </div>
                     <div className="grid grid-cols-2 sm:grid-cols-3 gap-4">
                         {galleryPreviews.map((url, idx) => (
@@ -342,7 +337,7 @@ export default function AddPropertyPage() {
                 </div>
               </CardContent>
               <CardFooter className="justify-between border-t pt-6">
-                <Button type="button" variant="outline" className="h-11" onClick={() => setStep(3)}><ChevronLeft className="mr-2 h-4 w-4" /> Back</Button>
+                <Button type="button" variant="outline" className="h-11 font-bold" onClick={() => setStep(3)}><ChevronLeft className="mr-2 h-4 w-4" /> Back</Button>
                 <Button type="submit" disabled={isSubmitting} className="h-11 px-10 shadow-lg bg-primary hover:bg-primary/90 font-bold uppercase tracking-widest text-xs">
                   {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Synchronizing Assets...</> : 'Complete Onboarding'}
                 </Button>

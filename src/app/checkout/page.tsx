@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useSearchParams, useRouter } from 'next/navigation';
@@ -7,6 +6,11 @@ import { Button } from '@/components/ui/button';
 import { useState, Suspense } from 'react';
 import { Loader2, ShieldCheck } from 'lucide-react';
 import Link from 'next/link';
+
+/**
+ * @fileOverview Checkout processing page.
+ * Uses Suspense to wrap useSearchParams for Next.js 15 build compatibility.
+ */
 
 function CheckoutForm() {
   const router = useRouter();
@@ -20,9 +24,7 @@ function CheckoutForm() {
     e.preventDefault();
     setIsProcessing(true);
 
-    // In a real app, this would redirect to a Stripe Checkout page.
-    // For this prototype, we'll simulate the processing time and then
-    // redirect to the dashboard, as if the payment was successful.
+    // Simulate payment processing
     setTimeout(() => {
       router.push('/dashboard');
     }, 2000);
@@ -46,7 +48,7 @@ function CheckoutForm() {
           </div>
         </CardContent>
         <CardFooter className="flex flex-col gap-4">
-          <Button type="submit" className="w-full" disabled={isProcessing}>
+          <Button type="submit" className="w-full h-11 font-bold" disabled={isProcessing}>
             {isProcessing ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : `Proceed to Payment`}
           </Button>
           <Button variant="outline" className="w-full" asChild>
@@ -61,7 +63,12 @@ function CheckoutForm() {
 export default function CheckoutPage() {
   return (
     <div className="flex items-center justify-center min-h-screen bg-muted/40 p-4">
-      <Suspense fallback={<Card className="w-full max-w-md p-8 flex justify-center"><Loader2 className="h-8 w-8 animate-spin" /></Card>}>
+      <Suspense fallback={
+        <Card className="w-full max-w-md p-8 flex flex-col items-center justify-center gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="text-sm text-muted-foreground animate-pulse">Initializing Checkout...</p>
+        </Card>
+      }>
         <CheckoutForm />
       </Suspense>
     </div>
