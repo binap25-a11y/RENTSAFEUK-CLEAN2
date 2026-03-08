@@ -85,3 +85,8 @@
     @apply bg-background text-foreground;
   }
 }
+
+/* Ensure embedded maps are always in color */
+.color-map {
+  filter: none !important;
+}

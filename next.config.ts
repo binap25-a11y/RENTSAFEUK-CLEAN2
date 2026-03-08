@@ -1,4 +1,3 @@
-
 import type { NextConfig } from 'next';
 
 const nextConfig: NextConfig = {
@@ -27,13 +26,6 @@ const nextConfig: NextConfig = {
       }
     ],
   },
-  // Fix for Cloud Workstations cross-origin issues during preview
-  experimental: {
-    allowedDevOrigins: [
-      '*.cloudworkstations.dev',
-      '*.cluster-ikslh4rdsnbqsvu5nw3v4dqjj2.cloudworkstations.dev'
-    ]
-  }
 };
 
 export default nextConfig;

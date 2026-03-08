@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -46,7 +45,7 @@ function DashboardHeader() {
       <div className="flex-1 min-w-0 flex items-center">
         <Button 
           variant="outline" 
-          className="relative h-9 w-full max-w-[200px] sm:max-w-[260px] justify-start rounded-[0.5rem] bg-background text-sm font-normal text-muted-foreground shadow-none md:w-40 lg:w-64 overflow-hidden" 
+          className="relative h-9 w-full max-w-[140px] sm:max-w-[260px] justify-start rounded-[0.5rem] bg-background text-sm font-normal text-muted-foreground shadow-none md:w-40 lg:w-64 overflow-hidden" 
           onClick={() => setIsSearchOpen(true)}
         >
           <Search className="mr-2 h-4 w-4 shrink-0" />
