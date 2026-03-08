@@ -30,7 +30,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Info } from 'lucide-react';
+import { Loader2, Info, FileUp, X, FileText } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -41,9 +41,10 @@ import {
   errorEmitter,
   FirestorePermissionError,
 } from '@/firebase';
-import { collection, query, where, addDoc, doc, limit } from 'firebase/firestore';
+import { collection, query, where, addDoc, limit } from 'firebase/firestore';
 import { differenceInMonths } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { uploadPropertyDocument } from '@/lib/upload-document';
 
 const documentSchema = z.object({
   title: z.string().min(3, 'Title is too short'),
@@ -75,6 +76,7 @@ export default function UploadDocumentPage() {
   const { user } = useUser();
   const firestore = useFirestore();
   const [isSaving, setIsSaving] = useState(false);
+  const [selectedFile, setSelectedFile] = useState<File | null>(null);
 
   const form = useForm<DocumentFormValues>({
     resolver: zodResolver(documentSchema),
@@ -109,12 +111,18 @@ export default function UploadDocumentPage() {
     );
   }, [firestore, user]);
 
-  const { data: allProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
+  const { data: allProperties } = useCollection<Property>(propertiesQuery);
 
   const activeProperties = useMemo(() => {
     const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
     return allProperties?.filter(p => activeStatuses.includes(p.status)) ?? [];
   }, [allProperties]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (e.target.files && e.target.files[0]) {
+      setSelectedFile(e.target.files[0]);
+    }
+  };
 
   async function onSubmit(data: DocumentFormValues) {
     if (!user || !firestore) {
@@ -123,28 +131,28 @@ export default function UploadDocumentPage() {
     }
     setIsSaving(true);
     
-    // Correct hierarchical path
-    const documentsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', data.propertyId, 'documents');
-    
-    const dataToSave: any = {
-      ...data,
-      ownerId: user.uid,
-    };
-
     try {
+      let fileUrl = '';
+      if (selectedFile) {
+        fileUrl = await uploadPropertyDocument(selectedFile, user.uid, data.propertyId);
+      }
+
+      const documentsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', data.propertyId, 'documents');
+      
+      const dataToSave: any = {
+        ...data,
+        fileUrl,
+        ownerId: user.uid,
+        createdDate: new Date().toISOString()
+      };
+
       await addDoc(documentsCollection, dataToSave);
       
-      toast({ title: 'Document Logged', description: 'The record has been saved successfully.' });
+      toast({ title: 'Document Logged', description: 'The record and file have been saved successfully.' });
       router.push('/dashboard/documents');
     } catch (error) {
         console.error('Failed to save document', error);
-        const permissionError = new FirestorePermissionError({
-          path: documentsCollection.path,
-          operation: 'create',
-          requestResourceData: dataToSave,
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not save document record.' });
+        toast({ variant: 'destructive', title: 'Save Failed', description: 'Could not upload document or save record.' });
     } finally {
         setIsSaving(false);
     }
@@ -155,14 +163,14 @@ export default function UploadDocumentPage() {
   };
 
   return (
-    <Card className="max-w-2xl mx-auto">
-      <CardHeader>
-        <CardTitle>Log Property Document</CardTitle>
+    <Card className="max-w-2xl mx-auto shadow-lg border-none">
+      <CardHeader className="bg-primary/5 border-b">
+        <CardTitle className="font-headline text-2xl text-primary">Log Property Document</CardTitle>
         <CardDescription>
-          Record a new legal or compliance document.
+          Record a new legal or compliance document and upload the associated file.
         </CardDescription>
       </CardHeader>
-      <CardContent>
+      <CardContent className="pt-8">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
              {complianceWarning && (
@@ -178,25 +186,26 @@ export default function UploadDocumentPage() {
                 name="title"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Document Title</FormLabel>
+                    <FormLabel className="font-bold">Document Title</FormLabel>
                     <FormControl>
-                        <Input placeholder="e.g. Gas Safety Cert 2024" {...field} />
+                        <Input placeholder="e.g. Gas Safety Cert 2024" className="h-11" {...field} />
                     </FormControl>
                     <FormMessage />
                     </FormItem>
                 )}
             />
+            
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField
                 control={form.control}
                 name="propertyId"
                 render={({ field }) => (
                     <FormItem>
-                    <FormLabel>Active Property</FormLabel>
+                    <FormLabel className="font-bold">Active Property</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                        <SelectTrigger>
-                            <SelectValue placeholder={isLoadingProperties ? 'Loading...' : "Select a property"} />
+                        <SelectTrigger className="h-11">
+                            <SelectValue placeholder="Select a property" />
                         </SelectTrigger>
                         </FormControl>
                         <SelectContent>
@@ -216,10 +225,10 @@ export default function UploadDocumentPage() {
                     name="documentType"
                     render={({ field }) => (
                     <FormItem>
-                        <FormLabel>Document Type</FormLabel>
+                        <FormLabel className="font-bold">Document Type</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl>
-                            <SelectTrigger>
+                            <SelectTrigger className="h-11">
                             <SelectValue placeholder="Select a type" />
                             </SelectTrigger>
                         </FormControl>
@@ -234,16 +243,18 @@ export default function UploadDocumentPage() {
                     )}
                 />
             </div>
-             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                  <FormField
                     control={form.control}
                     name="issueDate"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Issue Date</FormLabel>
+                            <FormLabel className="font-bold">Issue Date</FormLabel>
                             <FormControl>
                                 <Input
                                     type="date"
+                                    className="h-11"
                                     value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
                                     onChange={(e) => field.onChange(e.target.value)}
                                 />
@@ -257,10 +268,11 @@ export default function UploadDocumentPage() {
                     name="expiryDate"
                     render={({ field }) => (
                         <FormItem>
-                            <FormLabel>Expiry Date</FormLabel>
+                            <FormLabel className="font-bold">Expiry Date</FormLabel>
                             <FormControl>
                                 <Input
                                     type="date"
+                                    className="h-11"
                                     value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
                                     onChange={(e) => field.onChange(e.target.value)}
                                 />
@@ -270,17 +282,44 @@ export default function UploadDocumentPage() {
                     )}
                 />
             </div>
+
+            <div className="space-y-4">
+                <FormLabel className="font-bold">Upload Document File</FormLabel>
+                {selectedFile ? (
+                    <div className="flex items-center justify-between p-4 border rounded-xl bg-primary/5 border-primary/20">
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                                <FileText className="h-5 w-5" />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-sm font-bold truncate">{selectedFile.name}</p>
+                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                            </div>
+                        </div>
+                        <Button type="button" variant="ghost" size="icon" onClick={() => setSelectedFile(null)}>
+                            <X className="h-4 w-4" />
+                        </Button>
+                    </div>
+                ) : (
+                    <div className="border-2 border-dashed rounded-xl p-8 text-center bg-muted/5 cursor-pointer hover:bg-muted/10 transition-colors" onClick={() => document.getElementById('file-upload')?.click()}>
+                        <FileUp className="h-8 w-8 mx-auto text-muted-foreground mb-3 opacity-50" />
+                        <p className="text-sm font-bold">Click to select PDF or Image</p>
+                        <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-widest font-bold">Max size 10MB</p>
+                        <input id="file-upload" type="file" className="hidden" onChange={handleFileChange} accept=".pdf,image/*" />
+                    </div>
+                )}
+            </div>
             
              <FormField
               control={form.control}
               name="notes"
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Notes (Optional)</FormLabel>
+                  <FormLabel className="font-bold">Audit Notes</FormLabel>
                   <FormControl>
                     <Textarea
                       placeholder="Add relevant document notes..."
-                      className="resize-none"
+                      className="resize-none rounded-xl"
                       rows={4}
                       {...field}
                     />
@@ -289,12 +328,12 @@ export default function UploadDocumentPage() {
                 </FormItem>
               )}
             />
-            <div className="flex justify-end gap-2 pt-4">
-                <Button type="button" variant="outline" asChild>
+            <div className="flex justify-end gap-3 pt-4 border-t">
+                <Button type="button" variant="ghost" asChild className="font-bold uppercase tracking-widest text-xs h-11">
                     <Link href="/dashboard/documents">Cancel</Link>
                 </Button>
-                <Button type="submit" disabled={isSaving}>
-                  {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Save Record'}
+                <Button type="submit" disabled={isSaving} className="h-11 px-10 shadow-lg font-bold uppercase tracking-widest text-xs">
+                  {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading...</> : 'Complete Record'}
                 </Button>
             </div>
           </form>
