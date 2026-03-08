@@ -128,7 +128,7 @@ export default function AddPropertyPage() {
       let galleryUrls: string[] = [];
       if (galleryFiles.length > 0) {
           const uploads = await Promise.all(galleryFiles.map(f => uploadPropertyImage(f, user.uid, docRef.id)));
-          galleryUrls = uploads.filter(Boolean);
+          galleryUrls = uploads.filter((u): u is string => !!u);
       }
 
       const finalGallery = [...galleryUrls];

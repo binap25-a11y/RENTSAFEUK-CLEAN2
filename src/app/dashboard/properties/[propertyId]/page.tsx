@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -154,9 +154,9 @@ export default function PropertyDetailPage() {
         const fileArray = Array.from(files);
         const uploadPromises = fileArray.map(file => uploadPropertyImage(file, user.uid, property.id));
         const newUrls = await Promise.all(uploadPromises);
-        const validUrls = newUrls.filter(Boolean);
+        const validUrls = newUrls.filter((u): u is string => !!u);
         updatedGallery = [...updatedGallery, ...validUrls];
-        toast({ title: 'Gallery Updated', description: `${validUrls.length} photos added successfully.` });
+        toast({ title: 'Photo Gallery Updated', description: `${validUrls.length} photos added successfully.` });
       }
 
       if (action === 'delete' && url) {
@@ -169,7 +169,6 @@ export default function PropertyDetailPage() {
 
       if (action === 'promote' && url) {
         updatedImageUrl = url;
-        // Ensure primary is also in gallery
         if (!updatedGallery.includes(url)) {
             updatedGallery = [url, ...updatedGallery];
         }
@@ -236,9 +235,6 @@ export default function PropertyDetailPage() {
   const propertyAddressTitle = [property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ');
   const propertyAddressSubtitle = [property.address.city, property.address.county, property.address.postcode].filter(Boolean).join(', ');
 
-  const activeMaintenance = maintenanceLogs?.filter(l => l.status === 'Open' || l.status === 'In Progress') || [];
-  const scheduledInspections = inspections?.filter(i => i.status === 'Scheduled') || [];
-
   return (
     <>
       <div className="flex flex-col gap-6">
@@ -261,14 +257,20 @@ export default function PropertyDetailPage() {
             <div className="flex items-center gap-2">
                 <Button variant="outline" asChild className="hidden sm:flex">
                     <Link href={`/dashboard/properties/${property.id}/edit`}>
-                        <Edit className="mr-2 h-4 w-4" /> Edit Asset
+                        <Edit className="mr-2 h-4 w-4" /> Edit Property
                     </Link>
                 </Button>
                 <DropdownMenu>
-                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="shrink-0"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                    <DropdownMenuTrigger asChild>
+                        <Button variant="ghost" size="icon" className="shrink-0" title="Manage Property">
+                            <MoreVertical className="h-4 w-4" />
+                        </Button>
+                    </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild className="sm:hidden">
-                            <Link href={`/dashboard/properties/${property.id}/edit`}><Edit className="mr-2 h-4 w-4" /> Edit Details</Link>
+                        <DropdownMenuItem asChild>
+                            <Link href={`/dashboard/properties/${property.id}/edit`}>
+                                <Edit className="mr-2 h-4 w-4" /> Edit Property
+                            </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => identityInputRef.current?.click()} disabled={isMediaUpdating}>
                             <Upload className="mr-2 h-4 w-4" /> {isMediaUpdating ? 'Processing...' : 'Change Identity Photo'}
