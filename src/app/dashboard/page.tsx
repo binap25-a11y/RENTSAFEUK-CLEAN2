@@ -132,7 +132,9 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user || !firestore) return;
     
-    const userEmail = user.email?.toLowerCase();
+    // CRITICAL: We must use the exact email from the auth token to match security rules.
+    // Firestore security rules for collection groups are case-sensitive.
+    const userEmail = user.email;
     if (!userEmail) return;
 
     const q = query(
@@ -142,7 +144,7 @@ export default function DashboardPage() {
     );
 
     const unsub = onSnapshot(q, (snap) => {
-        // Verification of active status happens in-memory to simplify security rules and indexing
+        // Verification of active status happens in-memory to simplify security rules
         const activeTenantRecord = snap.docs.find(doc => doc.data().status === 'Active');
         setIsTenant(!!activeTenantRecord);
     }, (error) => {

@@ -35,8 +35,8 @@ service cloud.firestore {
     // Essential for role discovery and cross-portfolio reporting.
 
     match /{path=**}/tenants/{tenantId} {
-      // Allow discovery for the "Role Check" and Tenant Portal via email query
-      // Also allow landlords to manage their own tenant records across collection groups
+      // Allow discovery for the "Role Check" and Tenant Portal via email query.
+      // We use the exact email from the auth token.
       allow list, get: if isSignedIn() && (
         (resource.data.email == request.auth.token.email) ||
         (resource.data.ownerId == request.auth.uid)
@@ -44,18 +44,18 @@ service cloud.firestore {
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      // Tenants can view/create logs for properties they reside in
-      // Landlords are covered by the recursive rule above
+      // Tenants can view/create logs for properties they reside in.
+      // Landlords are covered by the recursive rule above.
       allow list, get, create: if isSignedIn();
     }
 
     match /{path=**}/documents/{docId} {
-      // Tenants can view shared compliance documents
+      // Tenants can view shared compliance documents.
       allow list, get: if isSignedIn();
     }
 
     match /{path=**}/messages/{messageId} {
-      // Secure messaging for active tenancies
+      // Secure messaging for active tenancies.
       allow list, get, create: if isSignedIn();
     }
 
