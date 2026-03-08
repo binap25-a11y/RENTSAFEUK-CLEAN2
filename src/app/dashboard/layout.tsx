@@ -62,7 +62,7 @@ function DashboardHeader() {
           variant="ghost" 
           size="icon" 
           onClick={() => setIsShareOpen(true)} 
-          className="text-muted-foreground hover:text-primary hidden sm:flex"
+          className="text-muted-foreground hover:text-primary flex"
           title="Share App"
         >
           <Share2 className="h-5 w-5" />
