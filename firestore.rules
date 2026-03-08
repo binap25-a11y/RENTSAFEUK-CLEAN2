@@ -35,19 +35,18 @@ service cloud.firestore {
     // Essential for role discovery and cross-portfolio reporting.
 
     match /{path=**}/tenants/{tenantId} {
-      // Allow tenants to find their own records via email query
+      // Allow tenants to discover their own records via email query
       // Allow landlords to manage their own tenant records
       allow list, get: if isSignedIn() && (
-        (resource != null && resource.data.ownerId == request.auth.uid) ||
-        (resource != null && request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower())
+        (resource.data.ownerId == request.auth.uid) ||
+        (request.auth.token.email != null && resource.data.email == request.auth.token.email)
       );
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      // Allow tenants to view logs for properties they reside in
+      // Allow tenants to view/create logs for properties they reside in
       // Verification is handled by application logic matching email to active tenant
-      allow list, get: if isSignedIn();
-      allow create: if isSignedIn();
+      allow list, get, create: if isSignedIn();
     }
 
     match /{path=**}/documents/{docId} {
@@ -58,6 +57,18 @@ service cloud.firestore {
     match /{path=**}/messages/{messageId} {
       // Secure messaging for active tenancies
       allow list, get, create: if isSignedIn();
+    }
+
+    match /{path=**}/inspections/{id} {
+      allow list, get: if isSignedIn();
+    }
+
+    match /{path=**}/expenses/{id} {
+      allow list, get: if isSignedIn();
+    }
+
+    match /{path=**}/rentPayments/{id} {
+      allow list, get: if isSignedIn();
     }
   }
 }

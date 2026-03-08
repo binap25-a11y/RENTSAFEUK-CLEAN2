@@ -142,6 +142,21 @@
         "status": { "type": "string" },
         "ownerId": { "type": "string" }
       }
+    },
+    "RentPayment": {
+      "title": "RentPayment",
+      "type": "object",
+      "description": "Ledger record for monthly rent collection.",
+      "properties": {
+        "id": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "year": { "type": "number" },
+        "month": { "type": "string" },
+        "status": { "type": "string", "enum": ["Paid", "Partially Paid", "Unpaid", "Pending"] },
+        "amountPaid": { "type": "number" },
+        "expectedAmount": { "type": "number" }
+      }
     }
   },
   "auth": {
@@ -179,6 +194,10 @@
     "/userProfiles/{userId}/properties/{propertyId}/documents/{docId}": {
       "schema": { "$ref": "#/backend/entities/Document" },
       "description": "Legal/Compliance file record."
+    },
+    "/userProfiles/{userId}/properties/{propertyId}/rentPayments/{paymentId}": {
+      "schema": { "$ref": "#/backend/entities/RentPayment" },
+      "description": "Monthly rent collection record."
     }
   }
 }
