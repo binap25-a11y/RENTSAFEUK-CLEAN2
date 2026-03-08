@@ -72,6 +72,7 @@
       "type": "object",
       "description": "Issue report logged by landlord or tenant.",
       "properties": {
+        "id": { "type": "string" },
         "title": { "type": "string" },
         "description": { "type": "string" },
         "category": { "type": "string" },
@@ -147,71 +148,37 @@
     "providers": ["password", "google"]
   },
   "firestore": {
-    "structure": [
-      {
-        "path": "/userProfiles/{userId}",
-        "definition": {
-          "entityName": "UserProfile",
-          "schema": { "$ref": "#/backend/entities/UserProfile" },
-          "description": "Root landlord profile."
-        }
-      },
-      {
-        "path": "/userProfiles/{userId}/contractors/{contractorId}",
-        "definition": {
-          "entityName": "Contractor",
-          "schema": { "$ref": "#/backend/entities/Contractor" },
-          "description": "Directory of tradespeople."
-        }
-      },
-      {
-        "path": "/userProfiles/{userId}/properties/{propertyId}",
-        "definition": {
-          "entityName": "Property",
-          "schema": { "$ref": "#/backend/entities/Property" },
-          "description": "Rental property document."
-        }
-      },
-      {
-        "path": "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}",
-        "definition": {
-          "entityName": "Tenant",
-          "schema": { "$ref": "#/backend/entities/Tenant" },
-          "description": "Tenant profile nested under property."
-        }
-      },
-      {
-        "path": "/userProfiles/{userId}/properties/{propertyId}/maintenanceLogs/{logId}",
-        "definition": {
-          "entityName": "MaintenanceRequest",
-          "schema": { "$ref": "#/backend/entities/MaintenanceRequest" },
-          "description": "Repair tracking for property."
-        }
-      },
-      {
-        "path": "/userProfiles/{userId}/properties/{propertyId}/expenses/{expenseId}",
-        "definition": {
-          "entityName": "Expense",
-          "schema": { "$ref": "#/backend/entities/Expense" },
-          "description": "Expenditure tracking."
-        }
-      },
-      {
-        "path": "/userProfiles/{userId}/properties/{propertyId}/inspections/{inspectionId}",
-        "definition": {
-          "entityName": "Inspection",
-          "schema": { "$ref": "#/backend/entities/Inspection" },
-          "description": "Property inspection record."
-        }
-      },
-      {
-        "path": "/userProfiles/{userId}/properties/{propertyId}/documents/{docId}",
-        "definition": {
-          "entityName": "Document",
-          "schema": { "$ref": "#/backend/entities/Document" },
-          "description": "Legal/Compliance file record."
-        }
-      }
-    ]
+    "/userProfiles/{userId}": {
+      "schema": { "$ref": "#/backend/entities/UserProfile" },
+      "description": "Root landlord profile."
+    },
+    "/userProfiles/{userId}/contractors/{contractorId}": {
+      "schema": { "$ref": "#/backend/entities/Contractor" },
+      "description": "Directory of tradespeople."
+    },
+    "/userProfiles/{userId}/properties/{propertyId}": {
+      "schema": { "$ref": "#/backend/entities/Property" },
+      "description": "Rental property document."
+    },
+    "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}": {
+      "schema": { "$ref": "#/backend/entities/Tenant" },
+      "description": "Tenant profile nested under property."
+    },
+    "/userProfiles/{userId}/properties/{propertyId}/maintenanceLogs/{logId}": {
+      "schema": { "$ref": "#/backend/entities/MaintenanceRequest" },
+      "description": "Repair tracking for property."
+    },
+    "/userProfiles/{userId}/properties/{propertyId}/expenses/{expenseId}": {
+      "schema": { "$ref": "#/backend/entities/Expense" },
+      "description": "Expenditure tracking."
+    },
+    "/userProfiles/{userId}/properties/{propertyId}/inspections/{inspectionId}": {
+      "schema": { "$ref": "#/backend/entities/Inspection" },
+      "description": "Property inspection record."
+    },
+    "/userProfiles/{userId}/properties/{propertyId}/documents/{docId}": {
+      "schema": { "$ref": "#/backend/entities/Document" },
+      "description": "Legal/Compliance file record."
+    }
   }
 }

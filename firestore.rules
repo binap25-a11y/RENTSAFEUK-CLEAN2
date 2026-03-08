@@ -21,10 +21,9 @@ service cloud.firestore {
      * @path /userProfiles/{userId}
      */
     match /userProfiles/{userId} {
-      allow get: if isOwner(userId);
+      allow get, update, delete: if isOwner(userId);
       allow create: if isSignedIn() && request.auth.uid == userId;
-      allow update, delete: if isOwner(userId);
-      allow list: if false; // Prevent listing of profiles for security
+      allow list: if false; // Prevent listing of all profiles
 
       // Recursive rule for all nested portfolio data (properties, tenants, maintenance, etc.)
       match /{allPaths=**} {
@@ -33,29 +32,31 @@ service cloud.firestore {
     }
 
     // --- COLLECTION GROUP RULES ---
-    // Critical for Tenant Portal discovery and multi-property reporting.
+    // Essential for role discovery and cross-portfolio reporting.
 
     match /{path=**}/tenants/{tenantId} {
-      // Allow tenants to find their own active record by email
+      // Allow tenants to find their own records via email query
+      // Allow landlords to manage their own tenant records
       allow list, get: if isSignedIn() && (
-        (resource != null && request.auth.uid == resource.data.ownerId) ||
-        (resource != null && request.auth.token.email.lower() == resource.data.email.lower())
+        (resource != null && resource.data.ownerId == request.auth.uid) ||
+        (resource != null && request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower())
       );
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      // Allow tenants to see/create logs for properties they reside in
-      // Verification logic should be handled by application queries comparing email
-      allow list, get, create: if isSignedIn();
+      // Allow tenants to view logs for properties they reside in
+      // Verification is handled by application logic matching email to active tenant
+      allow list, get: if isSignedIn();
+      allow create: if isSignedIn();
     }
 
     match /{path=**}/documents/{docId} {
-      // Tenants can view shared documents
+      // Tenants can view shared compliance documents
       allow list, get: if isSignedIn();
     }
 
     match /{path=**}/messages/{messageId} {
-      // Secure messaging access
+      // Secure messaging for active tenancies
       allow list, get, create: if isSignedIn();
     }
   }

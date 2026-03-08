@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -127,21 +128,27 @@ export default function DashboardPage() {
     setMounted(true);
   }, []);
 
-  // Check if current user is also a tenant - Simplified query to avoid index requirements
+  // Check if current user is also a tenant - Optimized discovery query
   useEffect(() => {
     if (!user || !firestore) return;
+    
+    const userEmail = user.email?.toLowerCase();
+    if (!userEmail) return;
+
     const q = query(
         collectionGroup(firestore, 'tenants'), 
-        where('email', '==', user.email?.toLowerCase()),
-        limit(10)
+        where('email', '==', userEmail),
+        limit(1)
     );
+
     const unsub = onSnapshot(q, (snap) => {
-        // Filter for ACTIVE status in-memory to avoid composite index requirement
+        // Verification of active status happens in-memory to simplify security rules and indexing
         const activeTenantRecord = snap.docs.find(doc => doc.data().status === 'Active');
         setIsTenant(!!activeTenantRecord);
     }, (error) => {
+        // Contextual error for debugging permission issues in discovery
         errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: 'tenants (role-check)',
+            path: 'tenants (collectionGroup discovery)',
             operation: 'list',
         }));
     });
