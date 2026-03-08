@@ -16,7 +16,7 @@ import {
   AlertCircle,
   ChevronRight
 } from 'lucide-react';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collectionGroup, query, where, limit, onSnapshot, doc } from 'firebase/firestore';
 
 interface TenantContext {
@@ -71,15 +71,21 @@ export default function TenantDashboard() {
                     });
                 }
                 setIsLoading(false);
-            }, (err) => {
-                console.error("Property context fetch failed:", err);
+            }, (error) => {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                    path: propRef.path,
+                    operation: 'get',
+                }));
                 setIsLoading(false);
             });
         } else {
             setIsLoading(false);
         }
-    }, (err) => {
-        console.error("Tenant discovery failed:", err);
+    }, (error) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'tenants (collectionGroup)',
+            operation: 'list',
+        }));
         setIsLoading(false);
     });
 

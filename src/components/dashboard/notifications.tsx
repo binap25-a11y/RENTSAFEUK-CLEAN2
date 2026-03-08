@@ -13,7 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Bell, FileWarning, CalendarClock, Loader2, Banknote } from 'lucide-react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collection, query, where, Timestamp, onSnapshot } from 'firebase/firestore';
 import { format, isBefore, addDays, isFuture, setDate, startOfMonth, isPast } from 'date-fns';
 
@@ -126,18 +126,38 @@ export function Notifications() {
         unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'documents'), ownerFilter), (snap) => {
             docMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Document));
             updateState();
+        }, async (error) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: `userProfiles/${user.uid}/properties/${prop.id}/documents`,
+                operation: 'list',
+            }));
         }));
         unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'inspections'), ownerFilter), (snap) => {
             inspMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Inspection));
             updateState();
+        }, async (error) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: `userProfiles/${user.uid}/properties/${prop.id}/inspections`,
+                operation: 'list',
+            }));
         }));
         unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'tenants'), ownerFilter), (snap) => {
             tenantMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Tenant));
             updateState();
+        }, async (error) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: `userProfiles/${user.uid}/properties/${prop.id}/tenants`,
+                operation: 'list',
+            }));
         }));
         unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'rentPayments'), ownerFilter), (snap) => {
             paymentMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as RentPayment));
             updateState();
+        }, async (error) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: `userProfiles/${user.uid}/properties/${prop.id}/rentPayments`,
+                operation: 'list',
+            }));
         }));
     });
 

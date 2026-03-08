@@ -67,6 +67,8 @@ import {
   useFirestore,
   useCollection,
   useMemoFirebase,
+  errorEmitter,
+  FirestorePermissionError,
 } from '@/firebase';
 import { collection, query, where, doc, updateDoc, deleteDoc, onSnapshot, limit } from 'firebase/firestore';
 
@@ -135,7 +137,12 @@ export default function MaintenanceLoggedPage() {
         const unsub = onSnapshot(q, (snap) => {
             const logs = snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog));
             setPortfolioLogsMap(prev => ({ ...prev, [p.id]: logs }));
-        }, (err) => { console.error(`Listener failed:`, err); });
+        }, async (serverError) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: `userProfiles/${user.uid}/properties/${p.id}/maintenanceLogs`,
+                operation: 'list',
+            }));
+        });
         unsubs.push(unsub);
     });
 

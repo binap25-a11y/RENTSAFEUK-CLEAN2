@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -53,6 +52,8 @@ import {
   useFirestore,
   useCollection,
   useMemoFirebase,
+  errorEmitter,
+  FirestorePermissionError,
 } from '@/firebase';
 import { collection, query, where, doc, setDoc, addDoc, limit, onSnapshot } from 'firebase/firestore';
 import { Label } from '@/components/ui/label';
@@ -179,11 +180,21 @@ export default function FinancialsPage() {
         unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'expenses'), (snap) => {
             expensesMap[p.id] = snap.docs.map(d => ({ id: d.id, ...d.data(), propertyId: p.id } as Expense));
             updateState();
+        }, async (serverError) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: `userProfiles/${user.uid}/properties/${p.id}/expenses`,
+                operation: 'list',
+            }));
         }));
 
         unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'rentPayments'), where('year', '==', selectedYear)), (snap) => {
             rentMap[p.id] = snap.docs.map(d => ({ id: d.id, ...d.data(), propertyId: p.id } as RentPayment));
             updateState();
+        }, async (serverError) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: `userProfiles/${user.uid}/properties/${p.id}/rentPayments`,
+                operation: 'list',
+            }));
         }));
     });
 

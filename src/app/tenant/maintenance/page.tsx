@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -33,7 +32,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Wrench, Upload, X, CheckCircle2 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collectionGroup, query, where, limit, addDoc, collection, onSnapshot } from 'firebase/firestore';
 import { uploadPropertyImage } from '@/lib/upload-image';
 import Image from 'next/image';
@@ -70,6 +69,11 @@ export default function TenantMaintenancePage() {
             const path = doc.ref.path.split('/');
             setTenantContext({ landlordId: path[1], propertyId: path[3], tenantId: doc.id });
         }
+    }, (error) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'tenants (collectionGroup)',
+            operation: 'list',
+        }));
     });
     return () => unsub();
   }, [user, firestore]);

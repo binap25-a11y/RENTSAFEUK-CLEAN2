@@ -40,6 +40,8 @@ import {
   useFirestore,
   useCollection,
   useMemoFirebase,
+  errorEmitter,
+  FirestorePermissionError,
 } from '@/firebase';
 import { collection, query, where, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
@@ -115,10 +117,16 @@ export default function TenantsPage() {
 
     properties.forEach(p => {
         const q = collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'tenants');
-        unsubs.push(onSnapshot(q, (snap) => {
+        const unsub = onSnapshot(q, (snap) => {
             tenantsMap[p.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Tenant));
             updateState();
-        }));
+        }, (error) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: q.path,
+                operation: 'list',
+            }));
+        });
+        unsubs.push(unsub);
     });
 
     return () => unsubs.forEach(u => u());

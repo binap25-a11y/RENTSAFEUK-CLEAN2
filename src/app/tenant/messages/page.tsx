@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -14,7 +13,7 @@ import {
   ShieldCheck,
   MoreVertical
 } from 'lucide-react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collectionGroup, query, where, limit, addDoc, collection, onSnapshot, orderBy, serverTimestamp } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -44,6 +43,11 @@ export default function TenantMessagesPage() {
             const path = doc.ref.path.split('/');
             setTenantContext({ landlordId: path[1], propertyId: path[3], tenantId: doc.id });
         }
+    }, (error) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'tenants (collectionGroup)',
+            operation: 'list',
+        }));
     });
     return () => unsub();
   }, [user, firestore]);

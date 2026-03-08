@@ -26,6 +26,8 @@ import {
   useFirestore,
   useCollection,
   useMemoFirebase,
+  errorEmitter,
+  FirestorePermissionError,
 } from '@/firebase';
 import { collection, query, where, Timestamp, onSnapshot, doc, updateDoc, limit } from 'firebase/firestore';
 import jsPDF from 'jspdf';
@@ -150,18 +152,38 @@ export default function RemindersPage() {
         unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'documents'), (snap) => {
             docMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Document));
             updateState();
+        }, async (error) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: `userProfiles/${user.uid}/properties/${prop.id}/documents`,
+                operation: 'list',
+            }));
         }));
         unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'inspections'), (snap) => {
             inspMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Inspection));
             updateState();
+        }, async (error) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: `userProfiles/${user.uid}/properties/${prop.id}/inspections`,
+                operation: 'list',
+            }));
         }));
         unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'tenants'), (snap) => {
             tenantMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Tenant));
             updateState();
+        }, async (error) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: `userProfiles/${user.uid}/properties/${prop.id}/tenants`,
+                operation: 'list',
+            }));
         }));
         unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'rentPayments'), (snap) => {
             paymentMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as RentPayment));
             updateState();
+        }, async (error) => {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: `userProfiles/${user.uid}/properties/${prop.id}/rentPayments`,
+                operation: 'list',
+            }));
         }));
     });
 

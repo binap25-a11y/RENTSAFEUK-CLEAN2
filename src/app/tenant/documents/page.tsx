@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -16,7 +15,7 @@ import {
   ExternalLink,
   Upload
 } from 'lucide-react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collectionGroup, query, where, limit, onSnapshot, collection } from 'firebase/firestore';
 import { format, isBefore } from 'date-fns';
 
@@ -44,6 +43,12 @@ export default function TenantDocumentsPage() {
             const path = doc.ref.path.split('/');
             setTenantContext({ landlordId: path[1], propertyId: path[3] });
         }
+        setIsLoadingContext(false);
+    }, (error) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'tenants (collectionGroup)',
+            operation: 'list',
+        }));
         setIsLoadingContext(false);
     });
     return () => unsub();
