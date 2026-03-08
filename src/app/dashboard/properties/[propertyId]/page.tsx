@@ -32,9 +32,9 @@ import {
   Wrench
 } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc, collection, query, where } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, onSnapshot } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useMemo, useRef } from 'react';
+import { useState, useMemo, useRef, useEffect } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -311,6 +311,7 @@ export default function PropertyDetailPage() {
                     <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-md border-2 bg-muted mb-6 group">
                         {property.imageUrl ? (
                             <Image 
+                              key={property.imageUrl}
                               src={property.imageUrl} 
                               alt="Asset Identity" 
                               fill 
@@ -325,6 +326,12 @@ export default function PropertyDetailPage() {
                                     <p className="text-[10px] font-bold uppercase tracking-widest opacity-50">Identity Photo Pending</p>
                                 </div>
                             </div>
+                        )}
+                        {isMediaUpdating && (
+                          <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center gap-2 z-10">
+                            <Loader2 className="h-8 w-8 animate-spin text-white" />
+                            <p className="text-white text-[10px] font-bold uppercase tracking-widest">Syncing Identity...</p>
+                          </div>
                         )}
                         <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             <Button variant="secondary" size="sm" className="shadow-lg" onClick={() => identityInputRef.current?.click()} disabled={isMediaUpdating}>

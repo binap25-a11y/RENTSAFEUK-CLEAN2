@@ -55,7 +55,7 @@ import {
 } from '@/firebase';
 import { collection, query, where, doc, setDoc, addDoc, limit, onSnapshot } from 'firebase/firestore';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/tabs';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Link from 'next/link';
@@ -306,7 +306,11 @@ export default function FinancialsPage() {
                 <ExpenseTracker properties={activeProperties || []} selectedPropertyId={selectedPropertyId} />
             </TabsContent>
             <TabsContent value="summary">
-                <div className="flex justify-end gap-2 mb-4 pt-4"><Button onClick={generateHMRCPDF} size="sm" variant="outline" className="font-bold text-xs uppercase tracking-widest h-10 px-6 border-primary/20"><Receipt className="mr-2 h-4 w-4 text-primary" /> HMRC Tax Export (PDF)</Button></div>
+                <div className="flex justify-end gap-2 mb-4 pt-4">
+                  <Button onClick={generateHMRCPDF} size="sm" variant="outline" className="font-bold text-xs uppercase tracking-widest h-10 px-6 border-primary/20">
+                    <PoundSterling className="mr-2 h-4 w-4 text-primary" /> HMRC Tax Export (PDF)
+                  </Button>
+                </div>
                 <AnnualSummary selectedYear={selectedYear || 0} expenses={expenses} isLoadingExpenses={isLoading} />
             </TabsContent>
             <TabsContent value="statement">
