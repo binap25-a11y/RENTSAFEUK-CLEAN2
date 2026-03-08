@@ -41,7 +41,8 @@ import {
   Trash2, 
   MoreVertical,
   Download,
-  FileText
+  FileText,
+  AlertCircle
 } from 'lucide-react';
 import { format, isBefore, addDays } from 'date-fns';
 import {
@@ -239,123 +240,162 @@ export default function DocumentsPage() {
           <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
             <div>
                 <CardTitle className="text-xl font-headline">Portfolio Audit Trail</CardTitle>
-                <CardDescription>Manage and track legal compliance documents.</CardDescription>
+                <CardDescription>Manage and track legal compliance documents across your portfolio.</CardDescription>
             </div>
-            <Button asChild className="font-bold shadow-lg">
+            <Button asChild className="font-bold shadow-lg h-11 px-6">
               <Link href="/dashboard/documents/upload">
-                <PlusCircle className="mr-2 h-4 w-4" /> Log Document
+                <PlusCircle className="mr-2 h-4 w-4" /> Log New Document
               </Link>
             </Button>
           </div>
         </CardHeader>
-        <CardContent className="pt-6 space-y-6">
-          <div className="grid gap-6 md:grid-cols-2">
-            <div className='space-y-2'>
-                <Label htmlFor="property-filter" className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2">
-                    <Filter className="h-3 w-3" /> Property Context
-                </Label>
-                <Select onValueChange={setSelectedPropertyId} value={selectedPropertyId}>
-                    <SelectTrigger id="property-filter" className="h-11 bg-background">
-                        <SelectValue placeholder={isLoadingProperties ? 'Syncing...' : 'Select property to audit'} />
-                    </SelectTrigger>
-                    <SelectContent>
-                        {activeProperties?.map(prop => (
-                            <SelectItem key={prop.id} value={prop.id}>
-                                {[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}
-                            </SelectItem>
-                        ))}
-                    </SelectContent>
-                </Select>
+        <CardContent className="pt-8 space-y-8">
+          {/* SEARCH & FILTERS SECTION */}
+          <div className="space-y-6">
+            <div className="relative w-full">
+                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
+                <Input 
+                    placeholder="Search documents by title (e.g. 'Gas Safety', 'Insurance')..." 
+                    className="pl-12 h-14 text-lg bg-muted/20 border-2 border-transparent focus:border-primary/20 focus:bg-background transition-all shadow-inner rounded-2xl" 
+                    value={searchTerm} 
+                    onChange={e => setSearchTerm(e.target.value)} 
+                />
             </div>
-            
-            <div className="flex flex-col sm:flex-row gap-4 pt-6 md:pt-0">
-                <div className="relative flex-1">
-                  <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-                  <Input placeholder="Search title..." className="pl-10 h-11 bg-background" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
+
+            <div className="grid gap-4 md:grid-cols-2">
+                <div className='space-y-2'>
+                    <Label htmlFor="property-filter" className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2 px-1">
+                        <Filter className="h-3 w-3" /> Filter by Property
+                    </Label>
+                    <Select onValueChange={setSelectedPropertyId} value={selectedPropertyId}>
+                        <SelectTrigger id="property-filter" className="h-12 bg-background rounded-xl border-2 border-muted">
+                            <SelectValue placeholder={isLoadingProperties ? 'Syncing portfolio...' : 'Select a property to view audit trail'} />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                            {activeProperties?.map(prop => (
+                                <SelectItem key={prop.id} value={prop.id}>
+                                    {[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}
+                                </SelectItem>
+                            ))}
+                        </SelectContent>
+                    </Select>
                 </div>
-                <Select onValueChange={setStatusFilter} value={statusFilter}>
-                  <SelectTrigger className="w-full sm:w-[160px] h-11 bg-background font-bold text-xs uppercase">
-                     <SelectValue placeholder="All Status" />
-                  </SelectTrigger>
-                  <SelectContent>
-                     <SelectItem value="All">All Status</SelectItem>
-                     <SelectItem value="Expired">Expired</SelectItem>
-                     <SelectItem value="Expiring Soon">Expiring Soon</SelectItem>
-                     <SelectItem value="Valid">Valid</SelectItem>
-                  </SelectContent>
-               </Select>
+                
+                <div className='space-y-2'>
+                    <Label htmlFor="status-filter" className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2 px-1">
+                        <ShieldCheck className="h-3 w-3" /> Compliance Status
+                    </Label>
+                    <Select onValueChange={setStatusFilter} value={statusFilter}>
+                        <SelectTrigger id="status-filter" className="h-12 bg-background rounded-xl border-2 border-muted font-bold text-xs uppercase">
+                            <SelectValue placeholder="All Status" />
+                        </SelectTrigger>
+                        <SelectContent className="rounded-xl">
+                            <SelectItem value="All">All Status</SelectItem>
+                            <SelectItem value="Expired" className="text-destructive font-bold">Expired</SelectItem>
+                            <SelectItem value="Expiring Soon" className="text-yellow-600 font-bold">Expiring Soon</SelectItem>
+                            <SelectItem value="Valid" className="text-green-600 font-bold">Valid</SelectItem>
+                        </SelectContent>
+                    </Select>
+                </div>
             </div>
           </div>
 
           {isLoadingDocuments ? (
-            <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>
+            <div className="flex flex-col justify-center items-center h-64 gap-4">
+                <Loader2 className="h-10 w-10 animate-spin text-primary opacity-50" />
+                <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Scanning records...</p>
+            </div>
           ) : !selectedPropertyId ? (
-            <div className="text-center py-24 text-muted-foreground border-2 border-dashed rounded-2xl bg-muted/5">
-                <Filter className="h-12 w-12 mx-auto mb-4 opacity-10" />
-                <p className="font-bold text-foreground">Awaiting Property Context</p>
-                <p className="text-xs uppercase tracking-widest mt-1">Select an active property to view its audit history.</p>
+            <div className="text-center py-32 text-muted-foreground border-2 border-dashed rounded-[2rem] bg-muted/5 flex flex-col items-center justify-center gap-4 mx-2">
+                <div className="p-6 rounded-full bg-background shadow-xl">
+                    <Filter className="h-12 w-12 text-primary/20" />
+                </div>
+                <div>
+                    <p className="font-bold text-lg text-foreground">Select a Property</p>
+                    <p className="text-sm max-w-xs mx-auto mt-1">Choose a property from the list above to view its legal audit trail and compliance history.</p>
+                </div>
             </div>
           ) : !filteredDocuments?.length ? (
-            <div className="text-center py-24 text-muted-foreground border-2 border-dashed rounded-2xl bg-muted/5">
-                <FileText className="h-12 w-12 mx-auto mb-4 opacity-10" />
-                <p className="font-bold text-foreground">No Records Found</p>
-                <p className="text-xs uppercase tracking-widest mt-1">No documents match your current filters.</p>
+            <div className="text-center py-32 text-muted-foreground border-2 border-dashed rounded-[2rem] bg-muted/5 flex flex-col items-center justify-center gap-4 mx-2">
+                <div className="p-6 rounded-full bg-background shadow-xl">
+                    <Search className="h-12 w-12 text-primary/20" />
+                </div>
+                <div>
+                    <p className="font-bold text-lg text-foreground">No Records Found</p>
+                    <p className="text-sm max-w-xs mx-auto mt-1">No documents match your current filter criteria. Try adjusting your search or filters.</p>
+                </div>
+                {searchTerm && (
+                    <Button variant="outline" size="sm" onClick={() => setSearchTerm('')} className="mt-2">Clear Search</Button>
+                )}
             </div>
           ) : (
           <>
-            <div className="hidden rounded-xl border md:block overflow-hidden shadow-sm">
+            <div className="hidden rounded-[1.5rem] border-2 border-muted md:block overflow-hidden shadow-sm bg-background">
               <Table>
-                <TableHeader className="bg-muted/50">
+                <TableHeader className="bg-muted/30">
                   <TableRow>
-                    <TableHead className="font-bold text-[10px] uppercase tracking-wider pl-6">Document Title</TableHead>
-                    <TableHead className="font-bold text-[10px] uppercase tracking-wider">Status</TableHead>
+                    <TableHead className="font-bold text-[10px] uppercase tracking-wider pl-8 py-4">Document Title</TableHead>
+                    <TableHead className="font-bold text-[10px] uppercase tracking-wider">Compliance Status</TableHead>
                     <TableHead className="font-bold text-[10px] uppercase tracking-wider">Expiry Date</TableHead>
-                    <TableHead className="text-right font-bold text-[10px] uppercase tracking-wider pr-6">Actions</TableHead>
+                    <TableHead className="text-right font-bold text-[10px] uppercase tracking-wider pr-8">Actions</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
                   {filteredDocuments.map((docItem) => (
-                    <TableRow key={docItem.id} className="hover:bg-muted/30 transition-colors group">
-                      <TableCell className="py-4 pl-6">
-                          <div className="flex items-center gap-3">
-                              <div className="p-2 rounded-lg bg-primary/5 text-primary">
-                                <FileText className="h-4 w-4" />
+                    <TableRow key={docItem.id} className="hover:bg-muted/20 transition-all group">
+                      <TableCell className="py-5 pl-8">
+                          <div className="flex items-center gap-4">
+                              <div className="p-3 rounded-2xl bg-primary/5 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors shadow-sm">
+                                <FileText className="h-5 w-5" />
                               </div>
                               <div>
-                                  <p className="font-bold text-sm">{docItem.title}</p>
-                                  <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tighter">{docItem.documentType}</p>
+                                  <p className="font-bold text-sm text-foreground">{docItem.title}</p>
+                                  <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-0.5">{docItem.documentType}</p>
                               </div>
                           </div>
                       </TableCell>
                       <TableCell>
-                        <Badge variant={getStatusVariant(docItem.status)} className="text-[10px] font-bold uppercase">{docItem.status}</Badge>
+                        <Badge variant={getStatusVariant(docItem.status)} className="text-[10px] font-bold uppercase px-3 py-1 rounded-lg tracking-tighter">
+                            {docItem.status === 'Valid' && <ShieldCheck className="h-3 w-3 mr-1" />}
+                            {docItem.status === 'Expired' && <FileWarning className="h-3 w-3 mr-1" />}
+                            {docItem.status}
+                        </Badge>
                       </TableCell>
-                      <TableCell className="text-xs font-medium tabular-nums">{format(docItem.expiryDateObj, 'dd/MM/yyyy')}</TableCell>
-                      <TableCell className="text-right pr-6">
-                        <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                      <TableCell className="text-xs font-bold tabular-nums text-muted-foreground">
+                          {format(docItem.expiryDateObj, 'dd/MM/yyyy')}
+                      </TableCell>
+                      <TableCell className="text-right pr-8">
+                        <div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
                             {docItem.fileUrl ? (
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-primary" title="View File" asChild>
+                                <Button variant="secondary" size="icon" className="h-9 w-9 rounded-xl shadow-sm hover:scale-110 transition-transform" title="View File" asChild>
                                     <Link href={docItem.fileUrl} target="_blank"><Eye className="h-4 w-4" /></Link>
                                 </Button>
                             ) : (
-                                <Badge variant="outline" className="h-8 px-2 border-dashed text-[9px] opacity-50">No File</Badge>
+                                <Badge variant="outline" className="h-9 px-3 border-dashed text-[9px] font-bold uppercase tracking-widest opacity-40 bg-muted/10">No Attachment</Badge>
                             )}
                             <DropdownMenu>
                                 <DropdownMenuTrigger asChild>
-                                    <Button variant="ghost" size="icon" className="h-8 w-8"><MoreVertical className="h-4 w-4" /></Button>
+                                    <Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-2"><MoreVertical className="h-4 w-4" /></Button>
                                 </DropdownMenuTrigger>
-                                <DropdownMenuContent align="end">
-                                    <DropdownMenuItem asChild>
-                                        <Link href={`/dashboard/documents/${docItem.id}/edit?propertyId=${selectedPropertyId}`}><Edit className="mr-2 h-4 w-4" /> Edit Details</Link>
+                                <DropdownMenuContent align="end" className="rounded-xl p-1 shadow-2xl border-2">
+                                    <DropdownMenuItem asChild className="rounded-lg">
+                                        <Link href={`/dashboard/documents/${docItem.id}/edit?propertyId=${selectedPropertyId}`} className="cursor-pointer">
+                                            <Edit className="mr-2 h-4 w-4" /> Edit Record Details
+                                        </Link>
                                     </DropdownMenuItem>
                                     {docItem.fileUrl && (
-                                        <DropdownMenuItem asChild>
-                                            <a href={docItem.fileUrl} target="_blank" rel="noopener noreferrer"><Download className="mr-2 h-4 w-4" /> Download File</a>
+                                        <DropdownMenuItem asChild className="rounded-lg">
+                                            <a href={docItem.fileUrl} target="_blank" rel="noopener noreferrer" className="cursor-pointer">
+                                                <Download className="mr-2 h-4 w-4" /> Download Attachment
+                                            </a>
                                         </DropdownMenuItem>
                                     )}
                                     <DropdownMenuSeparator />
-                                    <DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10" onClick={() => setDocumentToDelete(docItem)}>
-                                        <Trash2 className="mr-2 h-4 w-4" /> Delete Record
+                                    <DropdownMenuItem 
+                                        className="text-destructive focus:text-destructive focus:bg-destructive/10 rounded-lg cursor-pointer font-bold" 
+                                        onClick={() => setDocumentToDelete(docItem)}
+                                    >
+                                        <Trash2 className="mr-2 h-4 w-4" /> Delete Audit Record
                                     </DropdownMenuItem>
                                 </DropdownMenuContent>
                             </DropdownMenu>
@@ -367,37 +407,47 @@ export default function DocumentsPage() {
               </Table>
             </div>
 
+            {/* MOBILE VIEW */}
             <div className="grid gap-4 md:hidden">
               {filteredDocuments.map((docItem) => (
-                <Card key={docItem.id} className="shadow-sm border-muted/60">
-                  <CardHeader className="pb-2">
+                <Card key={docItem.id} className="shadow-sm border-2 border-muted rounded-2xl overflow-hidden">
+                  <CardHeader className="pb-3 bg-muted/10">
                     <div className="flex justify-between items-start">
                       <div className="flex items-center gap-3">
-                        <div className="p-2 rounded-lg bg-primary/5 text-primary shrink-0"><FileText className="h-4 w-4" /></div>
+                        <div className="p-2.5 rounded-xl bg-primary text-primary-foreground shrink-0 shadow-md">
+                            <FileText className="h-5 w-5" />
+                        </div>
                         <div>
                             <CardTitle className='text-sm font-bold'>{docItem.title}</CardTitle>
-                            <CardDescription className="text-[10px] font-bold uppercase tracking-tighter">{docItem.documentType}</CardDescription>
+                            <CardDescription className="text-[10px] font-bold uppercase tracking-widest mt-0.5">{docItem.documentType}</CardDescription>
                         </div>
                       </div>
                       <DropdownMenu>
                         <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="-mr-2 -mt-2"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                        <DropdownMenuContent align="end">
-                            {docItem.fileUrl && <DropdownMenuItem asChild><Link href={docItem.fileUrl} target="_blank"><Eye className="mr-2 h-4 w-4" /> View File</Link></DropdownMenuItem>}
-                            <DropdownMenuItem asChild><Link href={`/dashboard/documents/${docItem.id}/edit?propertyId=${selectedPropertyId}`}><Edit className="mr-2 h-4 w-4" /> Edit</Link></DropdownMenuItem>
-                            <DropdownMenuItem onClick={() => setDocumentToDelete(docItem)} className="text-destructive">Delete</DropdownMenuItem>
+                        <DropdownMenuContent align="end" className="rounded-xl">
+                            {docItem.fileUrl && <DropdownMenuItem asChild className="rounded-lg"><Link href={docItem.fileUrl} target="_blank"><Eye className="mr-2 h-4 w-4" /> View File</Link></DropdownMenuItem>}
+                            <DropdownMenuItem asChild className="rounded-lg"><Link href={`/dashboard/documents/${docItem.id}/edit?propertyId=${selectedPropertyId}`}><Edit className="mr-2 h-4 w-4" /> Edit Record</Link></DropdownMenuItem>
+                            <DropdownMenuItem onClick={() => setDocumentToDelete(docItem)} className="text-destructive font-bold rounded-lg"><Trash2 className="mr-2 h-4 w-4" /> Delete</DropdownMenuItem>
                         </DropdownMenuContent>
                       </DropdownMenu>
                     </div>
                   </CardHeader>
-                  <CardContent className="space-y-2 text-[11px] pt-0 pb-4 border-b border-dashed">
-                    <div className="flex justify-between items-center mt-2">
-                      <span className="text-muted-foreground uppercase font-bold tracking-widest">Status</span>
-                      <Badge variant={getStatusVariant(docItem.status)} className="h-5 text-[9px] font-bold uppercase">{docItem.status}</Badge>
+                  <CardContent className="space-y-3 text-[11px] pt-4 pb-4 px-5">
+                    <div className="flex justify-between items-center">
+                      <span className="text-muted-foreground uppercase font-bold tracking-widest text-[9px]">Status</span>
+                      <Badge variant={getStatusVariant(docItem.status)} className="h-6 text-[9px] font-bold uppercase px-2 rounded-lg">{docItem.status}</Badge>
                     </div>
                     <div className="flex justify-between items-center">
-                      <span className="text-muted-foreground uppercase font-bold tracking-widest">Expires</span>
-                      <span className='font-bold tabular-nums'>{format(docItem.expiryDateObj, 'dd/MM/yyyy')}</span>
+                      <span className="text-muted-foreground uppercase font-bold tracking-widest text-[9px]">Expiry Date</span>
+                      <span className='font-bold tabular-nums text-foreground'>{format(docItem.expiryDateObj, 'dd/MM/yyyy')}</span>
                     </div>
+                    {docItem.fileUrl && (
+                        <Button variant="secondary" className="w-full mt-2 h-10 font-bold uppercase tracking-widest text-[10px] rounded-xl" asChild>
+                            <Link href={docItem.fileUrl} target="_blank">
+                                <Eye className="mr-2 h-3.5 w-3.5" /> View Attached File
+                            </Link>
+                        </Button>
+                    )}
                   </CardContent>
                 </Card>
               ))}
@@ -408,16 +458,19 @@ export default function DocumentsPage() {
       </Card>
 
       <AlertDialog open={!!documentToDelete} onOpenChange={(open) => !open && setDocumentToDelete(null)}>
-        <AlertDialogContent className="rounded-2xl">
+        <AlertDialogContent className="rounded-[2rem] border-none shadow-2xl">
             <AlertDialogHeader>
-                <AlertDialogTitle className="text-xl">Delete Audit Record?</AlertDialogTitle>
-                <AlertDialogDescription className="text-base font-medium">
-                    This will permanently remove the record for <strong className="text-foreground">{documentToDelete?.title}</strong>. This action cannot be undone.
+                <div className="p-4 rounded-full bg-destructive/10 w-fit mx-auto mb-4">
+                    <AlertCircle className="h-8 w-8 text-destructive" />
+                </div>
+                <AlertDialogTitle className="text-xl text-center">Delete Audit Record?</AlertDialogTitle>
+                <AlertDialogDescription className="text-base font-medium text-center">
+                    This will permanently remove the record for <strong className="text-foreground">{documentToDelete?.title}</strong> and its associated file attachment. This action cannot be undone.
                 </AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter className="gap-3 mt-4">
-                <AlertDialogCancel className="rounded-xl font-bold uppercase tracking-widest text-xs h-11">Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold uppercase tracking-widest text-xs h-11 px-8 shadow-lg">Delete Record</AlertDialogAction>
+            <AlertDialogFooter className="gap-3 mt-6 flex-col-reverse sm:flex-row">
+                <AlertDialogCancel className="rounded-2xl font-bold uppercase tracking-widest text-xs h-12 flex-1 border-2">Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-2xl font-bold uppercase tracking-widest text-xs h-12 flex-1 shadow-lg">Delete Record</AlertDialogAction>
             </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
