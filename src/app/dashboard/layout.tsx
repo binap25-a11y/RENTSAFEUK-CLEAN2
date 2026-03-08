@@ -40,15 +40,15 @@ function DashboardHeader() {
   }, []);
 
   return (
-    <header className="sticky top-0 z-30 flex h-14 items-center gap-4 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 lg:h-[60px] lg:px-6">
-      <SidebarTrigger className="md:hidden" />
-      <div className="w-full flex-1">
+    <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 lg:h-[60px] lg:px-6">
+      <SidebarTrigger className="md:hidden shrink-0" />
+      <div className="flex-1 min-w-0">
         <Button 
           variant="outline" 
-          className="relative h-9 w-full justify-start rounded-[0.5rem] bg-background text-sm font-normal text-muted-foreground shadow-none md:w-40 lg:w-64" 
+          className="relative h-9 w-full max-w-[260px] justify-start rounded-[0.5rem] bg-background text-sm font-normal text-muted-foreground shadow-none md:w-40 lg:w-64 overflow-hidden" 
           onClick={() => setIsSearchOpen(true)}
         >
-          <Search className="mr-2 h-4 w-4" />
+          <Search className="mr-2 h-4 w-4 shrink-0" />
           <span className="hidden lg:inline-flex">Search portfolio...</span>
           <span className="inline-flex lg:hidden">Search...</span>
           <kbd className="pointer-events-none absolute right-1.5 top-1.5 hidden h-6 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
@@ -57,15 +57,15 @@ function DashboardHeader() {
         </Button>
         <GlobalSearchDialog isOpen={isSearchOpen} onOpenChange={setIsSearchOpen} />
       </div>
-      <div className="flex items-center gap-1 sm:gap-2">
+      <div className="flex items-center gap-1 shrink-0">
         <Button 
           variant="ghost" 
           size="icon" 
           onClick={() => setIsShareOpen(true)} 
-          className="text-muted-foreground hover:text-primary flex h-8 w-8 sm:h-9 sm:w-9"
+          className="text-muted-foreground hover:text-primary h-9 w-9"
           title="Share App"
         >
-          <Share2 className="h-4 w-4 sm:h-5 sm:w-5" />
+          <Share2 className="h-4 w-4" />
           <span className="sr-only">Share App</span>
         </Button>
         <ShareDialog isOpen={isShareOpen} onOpenChange={setIsShareOpen} />

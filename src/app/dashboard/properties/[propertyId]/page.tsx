@@ -275,21 +275,21 @@ export default function PropertyDetailPage() {
             <div className="flex items-center gap-2">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="gap-2 shrink-0">
+                        <Button variant="outline" className="gap-2 shrink-0 h-11 px-6 font-bold uppercase tracking-widest text-xs shadow-sm">
                             <MoreVertical className="h-4 w-4" />
                             <span>Edit Property</span>
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem asChild>
+                    <DropdownMenuContent align="end" className="w-56 p-1">
+                        <DropdownMenuItem asChild className="cursor-pointer">
                             <Link href={`/dashboard/properties/${property.id}/edit`}>
-                                <Edit className="mr-2 h-4 w-4" /> Edit Property Details
+                                <Edit className="mr-2 h-4 w-4" /> Edit Details
                             </Link>
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => identityInputRef.current?.click()} disabled={isMediaUpdating}>
+                        <DropdownMenuItem onClick={() => identityInputRef.current?.click()} disabled={isMediaUpdating} className="cursor-pointer">
                             <Upload className="mr-2 h-4 w-4" /> {isMediaUpdating ? 'Processing...' : 'Change Identity Photo'}
                         </DropdownMenuItem>
-                        <DropdownMenuItem onClick={() => setIsDeleting(true)} className="text-destructive">
+                        <DropdownMenuItem onClick={() => setIsDeleting(true)} className="text-destructive cursor-pointer font-bold">
                             <Trash2 className="mr-2 h-4 w-4" /> Archive Asset
                         </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -335,7 +335,7 @@ export default function PropertyDetailPage() {
                           </div>
                         )}
                         <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
-                            <Button variant="secondary" size="sm" className="shadow-lg" onClick={() => identityInputRef.current?.click()} disabled={isMediaUpdating}>
+                            <Button variant="secondary" size="sm" className="shadow-lg font-bold" onClick={() => identityInputRef.current?.click()} disabled={isMediaUpdating}>
                                 {isMediaUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
                                 Change
                             </Button>
@@ -371,7 +371,7 @@ export default function PropertyDetailPage() {
                                                 <Button 
                                                     size="icon" 
                                                     variant="secondary" 
-                                                    className="h-7 w-7 rounded-full" 
+                                                    className="h-7 w-7 rounded-full shadow-lg" 
                                                     title="Set as Primary"
                                                     onClick={() => handleMediaAction('promote', url)}
                                                     disabled={isMediaUpdating || property.imageUrl === url}
@@ -381,7 +381,7 @@ export default function PropertyDetailPage() {
                                                 <Button 
                                                     size="icon" 
                                                     variant="destructive" 
-                                                    className="h-7 w-7 rounded-full" 
+                                                    className="h-7 w-7 rounded-full shadow-lg" 
                                                     title="Delete Photo"
                                                     onClick={() => handleMediaAction('delete', url)}
                                                     disabled={isMediaUpdating}
@@ -498,7 +498,7 @@ export default function PropertyDetailPage() {
               <CardContent className="p-0 border-t">
                   {property.address && property.address.postcode ? (
                     <div className="aspect-square w-full rounded-2xl overflow-hidden border shadow-inner bg-muted/20">
-                        <iframe width="100%" height="100%" style={{ border: 0 }} title="Map" loading="lazy" src={`https://maps.google.com/maps?q=${encodeURIComponent([property.address.street, property.address.city, property.address.postcode].filter(Boolean).join(', '))}&output=embed`}></iframe>
+                        <iframe width="100%" height="100%" style={{ border: 0, filter: 'none' }} title="Map" loading="lazy" src={`https://maps.google.com/maps?q=${encodeURIComponent([property.address.street, property.address.city, property.address.postcode].filter(Boolean).join(', '))}&output=embed`}></iframe>
                     </div>
                   ) : <p className="text-xs text-muted-foreground text-center py-10 italic">Location data missing.</p>}
               </CardContent>
