@@ -18,7 +18,7 @@ export const uploadPropertyImage = async (file: File, userId: string, propertyId
     const fileExt = file.name.split('.').pop() || 'jpg';
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
     
-    // Structure: images/{userId}/{propertyId}/{filename}
+    // Structure: images/${userId}/${propertyId}/${filename}
     // Matches storage.rules for user-isolated access
     const storagePath = `images/${userId}/${propertyId}/${fileName}`;
     const storageRef = ref(storage, storagePath);
