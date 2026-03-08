@@ -2,7 +2,7 @@ import type { NextConfig } from 'next';
 
 /**
  * RentSafeUK Next.js Configuration
- * Optimised for stability and high-performance media synchronization.
+ * Stabilized for Next.js 15 App Router and Firebase SDK integration.
  */
 const nextConfig: NextConfig = {
   typescript: {
