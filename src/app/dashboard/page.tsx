@@ -25,7 +25,8 @@ import {
   ChevronRight,
   PlusCircle,
   ArrowUpRight,
-  CheckCircle2
+  CheckCircle2,
+  UserCircle
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -37,7 +38,7 @@ import {
   errorEmitter,
   FirestorePermissionError,
 } from '@/firebase';
-import { collection, query, where, onSnapshot, Timestamp, limit } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, Timestamp, limit, collectionGroup } from 'firebase/firestore';
 import { useMemo, useState, useEffect } from 'react';
 import { format, isFuture, isBefore, addDays } from 'date-fns';
 import {
@@ -120,10 +121,26 @@ export default function DashboardPage() {
   const { user } = useUser();
   const firestore = useFirestore();
   const [mounted, setMounted] = useState(false);
+  const [isTenant, setIsTenant] = useState(false);
 
   useEffect(() => {
     setMounted(true);
   }, []);
+
+  // Check if current user is also a tenant
+  useEffect(() => {
+    if (!user || !firestore) return;
+    const q = query(
+        collectionGroup(firestore, 'tenants'), 
+        where('email', '==', user.email?.toLowerCase()),
+        where('status', '==', 'Active'),
+        limit(1)
+    );
+    const unsub = onSnapshot(q, (snap) => {
+        setIsTenant(!snap.empty);
+    });
+    return () => unsub();
+  }, [user, firestore]);
 
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -326,6 +343,11 @@ export default function DashboardPage() {
           <p className="text-muted-foreground font-medium">Overview of your estate health and performance.</p>
         </div>
         <div className="flex items-center gap-2">
+          {isTenant && (
+            <Button asChild variant="outline" size="sm" className="shadow-sm border-primary/20 text-primary">
+                <Link href="/tenant/dashboard"><UserCircle className="mr-2 h-4 w-4" /> Go to Tenant Portal</Link>
+            </Button>
+          )}
           <Button asChild variant="outline" size="sm" className="shadow-sm">
             <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Add Property</Link>
           </Button>

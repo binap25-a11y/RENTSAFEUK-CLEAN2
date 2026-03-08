@@ -14,7 +14,8 @@ import {
   Calendar, 
   Banknote,
   AlertCircle,
-  ChevronRight
+  ChevronRight,
+  UserCircle
 } from 'lucide-react';
 import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collectionGroup, query, where, limit, onSnapshot, doc } from 'firebase/firestore';
@@ -38,10 +39,11 @@ export default function TenantDashboard() {
 
     let propUnsub: (() => void) | null = null;
 
-    // Search for the active tenant record linked to this user's email
+    // Search for the ACTIVE tenant record linked to this user's email
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', user.email?.toLowerCase()),
+        where('status', '==', 'Active'),
         limit(1)
     );
 
@@ -117,9 +119,12 @@ export default function TenantDashboard() {
                     Please ask your landlord to verify your portal access email address.
                 </CardDescription>
             </CardHeader>
-            <CardFooter className="pt-6">
+            <CardFooter className="pt-6 flex flex-col gap-3">
                 <Button className="w-full font-bold h-11 shadow-lg" asChild>
-                    <Link href="/dashboard">Return to Personal Dashboard</Link>
+                    <Link href="/dashboard">Return to Landlord Dashboard</Link>
+                </Button>
+                <Button variant="ghost" className="w-full text-xs text-muted-foreground" onClick={() => window.location.reload()}>
+                    Refresh Session
                 </Button>
             </CardFooter>
         </Card>
@@ -138,9 +143,14 @@ export default function TenantDashboard() {
               {context.propertyData?.address?.street}, {context.propertyData?.address?.city}
           </p>
         </div>
-        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-7 px-3 font-bold uppercase tracking-widest text-[10px]">
-            Tenant Portal Active
-        </Badge>
+        <div className="flex items-center gap-2">
+            <Button variant="outline" size="sm" asChild className="h-8 text-[10px] font-bold uppercase tracking-widest border-primary/20 text-primary">
+                <Link href="/dashboard"><UserCircle className="mr-2 h-3.5 w-3.5" /> Landlord Mode</Link>
+            </Button>
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-8 px-3 font-bold uppercase tracking-widest text-[10px]">
+                Portal Active
+            </Badge>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

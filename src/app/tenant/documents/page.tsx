@@ -36,7 +36,12 @@ export default function TenantDocumentsPage() {
 
   useEffect(() => {
     if (!user || !firestore) return;
-    const q = query(collectionGroup(firestore, 'tenants'), where('email', '==', user.email?.toLowerCase()), limit(1));
+    const q = query(
+        collectionGroup(firestore, 'tenants'), 
+        where('email', '==', user.email?.toLowerCase()),
+        where('status', '==', 'Active'),
+        limit(1)
+    );
     const unsub = onSnapshot(q, (snap) => {
         if (!snap.empty) {
             const doc = snap.docs[0];
