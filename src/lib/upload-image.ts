@@ -6,7 +6,7 @@ import { initializeFirebase } from '@/firebase/init';
 /**
  * Uploads a property image to Firebase Storage.
  * Leverages the app's native storage rules and authentication.
- * Resolves Supabase RLS issues by using the integrated Firebase pipeline.
+ * Resolves previous Supabase RLS issues by using the integrated Firebase pipeline.
  */
 export const uploadPropertyImage = async (file: File, userId: string, propertyId: string): Promise<string> => {
   if (!file) return '';
@@ -18,7 +18,7 @@ export const uploadPropertyImage = async (file: File, userId: string, propertyId
     const fileExt = file.name.split('.').pop() || 'jpg';
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
     
-    // Structure: images/${userId}/${propertyId}/${filename}
+    // Path: images/{userId}/{propertyId}/{filename}
     // Matches storage.rules for user-isolated access
     const storagePath = `images/${userId}/${propertyId}/${fileName}`;
     const storageRef = ref(storage, storagePath);
