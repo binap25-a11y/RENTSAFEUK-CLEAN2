@@ -178,6 +178,44 @@
         "expectedAmount": { "type": "number" }
       },
       "required": ["propertyId", "ownerId", "year", "month", "status"]
+    },
+    "ComplianceChecklist": {
+      "title": "ComplianceChecklist",
+      "type": "object",
+      "description": "Detailed pre-tenancy requirements tracker.",
+      "properties": {
+        "id": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "completedDate": { "type": "string", "format": "date-time" },
+        "beforeTenancy": { "type": "object" },
+        "deposit": { "type": "object" },
+        "atMoveIn": { "type": "object" },
+        "optional": { "type": "object" }
+      },
+      "required": ["propertyId", "tenantId", "ownerId"]
+    },
+    "TenantScreening": {
+      "title": "TenantScreening",
+      "type": "object",
+      "description": "Audit record for tenant referencing.",
+      "properties": {
+        "id": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "screeningDate": { "type": "string", "format": "date-time" },
+        "rightToRent": { "type": "object" },
+        "idVerification": { "type": "object" },
+        "creditCheck": { "type": "object" },
+        "employmentIncome": { "type": "object" },
+        "landlordReference": { "type": "object" },
+        "affordability": { "type": "object" },
+        "guarantor": { "type": "object" },
+        "overallNotes": { "type": "string" }
+      },
+      "required": ["tenantId", "propertyId", "ownerId"]
     }
   },
   "auth": {
@@ -200,6 +238,10 @@
       "schema": { "$ref": "#/backend/entities/Tenant" },
       "description": "Tenant profile nested under property."
     },
+    "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/screenings/{id}": {
+      "schema": { "$ref": "#/backend/entities/TenantScreening" },
+      "description": "Tenant screening report."
+    },
     "/userProfiles/{userId}/properties/{propertyId}/maintenanceLogs/{logId}": {
       "schema": { "$ref": "#/backend/entities/MaintenanceRequest" },
       "description": "Repair tracking for property."
@@ -219,6 +261,10 @@
     "/userProfiles/{userId}/properties/{propertyId}/rentPayments/{paymentId}": {
       "schema": { "$ref": "#/backend/entities/RentPayment" },
       "description": "Monthly rent collection record."
+    },
+    "/userProfiles/{userId}/properties/{propertyId}/checklists/{id}": {
+      "schema": { "$ref": "#/backend/entities/ComplianceChecklist" },
+      "description": "Pre-tenancy checklist."
     }
   }
 }

@@ -149,7 +149,7 @@ export default function DashboardPage() {
     }, (error) => {
         // Contextual error for debugging permission issues in discovery
         errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: 'tenants (collectionGroup discovery)',
+            path: 'tenants',
             operation: 'list',
         }));
     });

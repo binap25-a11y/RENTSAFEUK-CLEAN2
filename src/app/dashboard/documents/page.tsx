@@ -181,13 +181,13 @@ export default function DocumentsPage() {
 
   return (
     <div className="flex flex-col gap-8 max-w-6xl mx-auto">
-      {/* Page Header - Prominent at the top */}
+      {/* Page Header - Unified at the top as requested */}
       <div className="space-y-2">
         <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Portfolio Audit Trail</h1>
         <p className="text-muted-foreground font-medium text-lg">Manage and track legal compliance documents across your estate.</p>
       </div>
 
-      {/* Action Bar - Below heading */}
+      {/* Primary Action Bar - Prominent Search and Log button below heading */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-card p-4 rounded-2xl shadow-sm border">
         <div className="relative w-full sm:max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
@@ -205,7 +205,7 @@ export default function DocumentsPage() {
         </Button>
       </div>
 
-      {/* Stats row */}
+      {/* Performance Statistics */}
       <div className="grid gap-4 md:grid-cols-3">
          <Card className="border-none shadow-md overflow-hidden relative">
             <div className="h-1 bg-destructive w-full absolute top-0" />
@@ -215,7 +215,7 @@ export default function DocumentsPage() {
             </CardHeader>
             <CardContent>
                 <div className="text-3xl font-bold text-destructive">{(selectedPropertyId && today) ? expiredCount : '-'}</div>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1">Needs attention</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1">Needs immediate attention</p>
             </CardContent>
          </Card>
          <Card className="border-none shadow-md overflow-hidden relative">
@@ -244,6 +244,7 @@ export default function DocumentsPage() {
 
       <Card className="border-none shadow-xl overflow-hidden bg-card/50">
         <CardContent className="pt-8 space-y-8">
+          {/* Refined Filters Bar */}
           <div className="grid gap-4 md:grid-cols-2">
               <div className='space-y-2'>
                   <Label htmlFor="property-filter" className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2 px-1"><Filter className="h-3 w-3" /> Filter by Property</Label>

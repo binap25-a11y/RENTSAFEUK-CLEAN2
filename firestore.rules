@@ -69,5 +69,13 @@ service cloud.firestore {
     match /{path=**}/rentPayments/{id} {
       allow list, get: if isSignedIn();
     }
+    
+    match /{path=**}/screenings/{id} {
+      allow list, get: if isSignedIn();
+    }
+    
+    match /{path=**}/checklists/{id} {
+      allow list, get: if isSignedIn();
+    }
   }
 }
