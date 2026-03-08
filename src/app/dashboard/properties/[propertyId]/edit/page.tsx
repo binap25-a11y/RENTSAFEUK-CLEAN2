@@ -104,18 +104,6 @@ export default function EditPropertyPage() {
   }, [firestore, user, propertyId]);
   const { data: property, isLoading } = useDoc<Property>(propertyRef);
 
-  const form = useForm<PropertyFormValues>({
-    resolver: zodResolver(propertySchema),
-    defaultValues: {
-      address: { nameOrNumber: '', street: '', city: '', county: '', postcode: '' },
-      propertyType: 'House',
-      bedrooms: 0,
-      bathrooms: 0,
-      status: 'Vacant',
-      notes: '',
-    },
-  });
-
   useEffect(() => {
     if (property) {
       form.reset({
@@ -137,7 +125,19 @@ export default function EditPropertyPage() {
           setExistingGallery(property.additionalImageUrls);
       }
     }
-  }, [property, form]);
+  }, [property]);
+
+  const form = useForm<PropertyFormValues>({
+    resolver: zodResolver(propertySchema),
+    defaultValues: {
+      address: { nameOrNumber: '', street: '', city: '', county: '', postcode: '' },
+      propertyType: 'House',
+      bedrooms: 0,
+      bathrooms: 0,
+      status: 'Vacant',
+      notes: '',
+    },
+  });
 
   const { street, city, county, postcode } = form.watch('address');
   const mapUrl = useMemo(() => {
@@ -195,7 +195,7 @@ export default function EditPropertyPage() {
       const newGalleryUrls: string[] = [];
       if (newGalleryFiles.length > 0) {
           const uploads = await Promise.all(newGalleryFiles.map(f => uploadPropertyImage(f, user.uid, propertyId)));
-          newGalleryUrls.push(...uploads.filter(Boolean));
+          newGalleryUrls.push(...uploads.filter((u): u is string => !!u));
       }
 
       let combinedGallery = [...existingGallery, ...newGalleryUrls];
@@ -209,7 +209,7 @@ export default function EditPropertyPage() {
       const updatePayload = {
           ...data,
           imageUrl: finalIdentityUrl,
-          additionalImageUrls: combinedGallery,
+          additionalImageUrls: Array.from(new Set(combinedGallery)),
           ownerId: user.uid
       };
 

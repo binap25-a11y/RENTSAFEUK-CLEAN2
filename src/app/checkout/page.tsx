@@ -9,8 +9,10 @@ import Link from 'next/link';
 
 /**
  * @fileOverview Checkout processing page.
- * Uses Suspense to wrap useSearchParams for Next.js 15 build compatibility.
+ * Uses force-dynamic and Suspense to prevent build-time bailout when using useSearchParams.
  */
+
+export const dynamic = 'force-dynamic';
 
 function CheckoutForm() {
   const router = useRouter();

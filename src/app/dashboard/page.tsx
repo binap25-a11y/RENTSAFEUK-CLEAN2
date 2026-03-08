@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -35,6 +34,8 @@ import {
   useFirestore,
   useCollection,
   useMemoFirebase,
+  errorEmitter,
+  FirestorePermissionError,
 } from '@/firebase';
 import { collection, query, where, onSnapshot, Timestamp, limit } from 'firebase/firestore';
 import { useMemo, useState, useEffect } from 'react';
@@ -159,22 +160,61 @@ export default function DashboardPage() {
     const unsubs: (() => void)[] = [];
 
     properties.forEach(prop => {
-        unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'maintenanceLogs'), (snap) => {
-            const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog));
-            setMaintenanceMap(prev => ({ ...prev, [prop.id]: data }));
-        }));
-        unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'inspections'), (snap) => {
-            const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Inspection));
-            setInspectionsMap(prev => ({ ...prev, [prop.id]: data }));
-        }));
-        unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'documents'), (snap) => {
-            const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Document));
-            setDocumentsMap(prev => ({ ...prev, [prop.id]: data }));
-        }));
-        unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'rentPayments'), limit(50)), (snap) => {
-            const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as RentPayment));
-            setRentPaymentsMap(prev => ({ ...prev, [prop.id]: data }));
-        }));
+        // Maintenance Listener
+        unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'maintenanceLogs'), 
+            (snap) => {
+                const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog));
+                setMaintenanceMap(prev => ({ ...prev, [prop.id]: data }));
+            },
+            async (serverError) => {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                    path: `userProfiles/${user.uid}/properties/${prop.id}/maintenanceLogs`,
+                    operation: 'list',
+                }));
+            }
+        ));
+
+        // Inspections Listener
+        unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'inspections'), 
+            (snap) => {
+                const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Inspection));
+                setInspectionsMap(prev => ({ ...prev, [prop.id]: data }));
+            },
+            async (serverError) => {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                    path: `userProfiles/${user.uid}/properties/${prop.id}/inspections`,
+                    operation: 'list',
+                }));
+            }
+        ));
+
+        // Documents Listener
+        unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'documents'), 
+            (snap) => {
+                const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Document));
+                setDocumentsMap(prev => ({ ...prev, [prop.id]: data }));
+            },
+            async (serverError) => {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                    path: `userProfiles/${user.uid}/properties/${prop.id}/documents`,
+                    operation: 'list',
+                }));
+            }
+        ));
+
+        // Rent Payments Listener
+        unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'rentPayments'), limit(50)), 
+            (snap) => {
+                const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as RentPayment));
+                setRentPaymentsMap(prev => ({ ...prev, [prop.id]: data }));
+            },
+            async (serverError) => {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                    path: `userProfiles/${user.uid}/properties/${prop.id}/rentPayments`,
+                    operation: 'list',
+                }));
+            }
+        ));
     });
 
     return () => unsubs.forEach(u => u());
