@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useMemo, type ReactNode } from 'react';
+import React, { useMemo, useEffect, useState, type ReactNode } from 'react';
 import { FirebaseProvider } from './provider';
 import { initializeFirebase } from './init';
 
@@ -10,13 +10,28 @@ interface FirebaseClientProviderProps {
 
 /**
  * Client-side provider that handles the one-time initialization of Firebase services.
- * This is separated from the main barrel file to avoid circular dependencies.
+ * Implements a mounting check to prevent hydration mismatches and ChunkLoadErrors 
+ * during the initial boot sequence in development environments.
  */
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
+  const [isMounted, setIsMounted] = useState(false);
+
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   const firebaseServices = useMemo(() => {
-    // Initialize Firebase on the client side, once per component mount.
+    // Only initialize on the client after mounting to ensure 
+    // the environment is fully ready.
+    if (typeof window === 'undefined') return null;
     return initializeFirebase();
-  }, []); // Empty dependency array ensures this runs only once on mount
+  }, []);
+
+  // During SSR and initial hydration, we render the children directly.
+  // Once mounted on the client, we wrap them in the provider.
+  if (!isMounted || !firebaseServices) {
+    return <>{children}</>;
+  }
 
   return (
     <FirebaseProvider
