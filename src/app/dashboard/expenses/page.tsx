@@ -57,7 +57,7 @@ import { collection, query, where, doc, setDoc, addDoc, limit, onSnapshot } from
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 import Link from 'next/link';
 
 const MONTHS = [
@@ -241,7 +241,7 @@ export default function FinancialsPage() {
         ['Residential finance costs (for reference)', formatCurrency(financeCosts)],
     ];
 
-    (doc as any).autoTable({ 
+    autoTable(doc, { 
         startY: 45, 
         head: [['Standard HMRC Category Grouping', 'Total Amount (£)']], 
         body: hmrcCategories, 

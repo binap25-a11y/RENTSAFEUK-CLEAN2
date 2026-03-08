@@ -29,7 +29,7 @@ import {
 } from '@/firebase';
 import { collection, query, where, Timestamp, onSnapshot, limit } from 'firebase/firestore';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
+import autoTable from 'jspdf-autotable';
 
 interface Property {
   id: string;
@@ -167,7 +167,13 @@ export default function RemindersPage() {
     doc.setFontSize(20); doc.text('Portfolio Compliance Health Report', 14, 22);
     doc.setFontSize(10); doc.text(`Generated on: ${format(new Date(), 'PPP')}`, 14, 30);
     const complianceData = allReminders.map(r => [r.property, r.category, r.description, format(r.dueDate, 'dd/MM/yyyy'), r.status]);
-    (doc as any).autoTable({ startY: 40, head: [['Property', 'Compliance Area', 'Details', 'Due Date', 'Status']], body: complianceData, theme: 'grid', headStyles: { fillColor: [38, 102, 114] } });
+    autoTable(doc, { 
+        startY: 40, 
+        head: [['Property', 'Compliance Area', 'Details', 'Due Date', 'Status']], 
+        body: complianceData, 
+        theme: 'grid', 
+        headStyles: { fillColor: [38, 102, 114] } 
+    });
     doc.save('Portfolio-Compliance-Health.pdf');
   };
 

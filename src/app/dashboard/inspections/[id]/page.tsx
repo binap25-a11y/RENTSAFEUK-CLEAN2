@@ -10,14 +10,7 @@ import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-
-// Extend the autoTable interface in jsPDF
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-  }
-}
+import autoTable from 'jspdf-autotable';
 
 interface Property {
     address: {
@@ -150,7 +143,7 @@ export default function ViewInspectionPage() {
     doc.line(14, 32, 200, 32);
 
     // --- SUMMARY TABLE ---
-    doc.autoTable({
+    autoTable(doc, {
         startY: 35,
         head: [['Date', 'Inspector', 'Type', 'Status']],
         body: [[
@@ -190,7 +183,7 @@ export default function ViewInspectionPage() {
             });
 
             if (tableBody.some(row => row[1] !== 'N/A')) {
-                doc.autoTable({
+                autoTable(doc, {
                     startY: finalY,
                     head: [['Checklist Item', 'Status']],
                     body: tableBody.filter(row => row[1] !== 'N/A'),

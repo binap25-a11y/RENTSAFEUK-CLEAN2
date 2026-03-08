@@ -10,14 +10,7 @@ import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import jsPDF from 'jspdf';
-import 'jspdf-autotable';
-
-// Extend the autoTable interface in jsPDF
-declare module 'jspdf' {
-  interface jsPDF {
-    autoTable: (options: any) => jsPDF;
-  }
-}
+import autoTable from 'jspdf-autotable';
 
 // Helper component to display a checklist item
 const ChecklistItemDisplay = ({ label, checked }: { label: string; checked: boolean | undefined }) => (
@@ -151,13 +144,12 @@ export default function ViewScreeningPage() {
         ].filter(Boolean) as string[][];
 
         if (details.length > 0) {
-            doc.autoTable({
+            autoTable(doc, {
                 startY: finalY,
                 body: details,
                 theme: 'plain',
                 styles: { cellPadding: 1, fontSize: 10 },
-                columnStyles: { 0: { fontStyle: 'bold' } },
-                didDrawPage: (d) => { finalY = d.cursor.y; }
+                columnStyles: { 0: { fontStyle: 'bold' } }
             });
             finalY = (doc as any).lastAutoTable.finalY + 2;
         }
@@ -171,7 +163,7 @@ export default function ViewScreeningPage() {
         });
       
       if (tableBody.length > 0) {
-        doc.autoTable({
+        autoTable(doc, {
             startY: finalY,
             head: [['Check', 'Result']],
             body: tableBody,
