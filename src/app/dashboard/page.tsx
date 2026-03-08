@@ -130,10 +130,11 @@ export default function DashboardPage() {
 
   // Check if current user is also a tenant - Optimized discovery query
   useEffect(() => {
-    if (!user || !firestore) return;
+    if (!user || !firestore || !user.email) return;
     
-    const userEmail = user.email?.toLowerCase();
-    if (!userEmail) return;
+    // We use the raw email from the user object to match the token exactly.
+    // This aligns with the resource.data.email == request.auth.token.email rule.
+    const userEmail = user.email;
 
     // Discovery query to find if this email exists in any tenant collection
     const q = query(
@@ -143,11 +144,10 @@ export default function DashboardPage() {
     );
 
     const unsub = onSnapshot(q, (snap) => {
-        // Verification of active status happens in-memory to simplify security rules
         const activeTenantRecord = snap.docs.find(doc => doc.data().status === 'Active');
         setIsTenant(!!activeTenantRecord);
     }, (error) => {
-        // Contextual error for debugging permission issues in discovery
+        // Emit standardized path for the listener component
         errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'tenants',
             operation: 'list',
@@ -635,7 +635,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex flex-wrap justify-center gap-2">
                   <Button asChild size="sm" variant="outline" className="text-[10px] font-bold h-8 border-none bg-muted/50 transition-colors hover:bg-muted"><Link href="/dashboard/inspections/single-let">New Single-Let</Link></Button>
-                  <Button asChild size="sm" variant="outline" className="text-[10px] font-bold h-8 border-none bg-muted/50 transition-colors hover:bg-muted"><Link href="/dashboard/inspections/hmo">New HMO</Link></Button>
+                  <Button asChild size="sm" variant="outline" className="text-[10px) font-bold h-8 border-none bg-muted/50 transition-colors hover:bg-muted"><Link href="/dashboard/inspections/hmo">New HMO</Link></Button>
                 </div>
               </div>
             )}

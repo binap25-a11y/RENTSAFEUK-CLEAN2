@@ -17,26 +17,31 @@ service cloud.firestore {
     // --- COLLECTION RULES ---
 
     /**
-     * @description Landlords have full recursive access to their own profile and all nested portfolio data.
+     * @description Landlords have full access to their own profile and all nested data.
      * @path /userProfiles/{userId}
      */
     match /userProfiles/{userId} {
       allow get, update, delete: if isOwner(userId);
       allow create: if isSignedIn() && request.auth.uid == userId;
-      allow list: if false; // Prevent listing of all profiles
+      allow list: if false; // Prevent listing of all landlord profiles
 
-      // Recursive rule for all nested portfolio data (properties, tenants, maintenance, etc.)
-      match /{allPaths=**} {
+      // Portfolio Collections (Properties, Contractors, etc.)
+      match /{collectionName}/{docId} {
         allow read, write: if isOwner(userId);
+        
+        // Recursive rule for nested resources (tenants, logs, etc.)
+        match /{allPaths=**} {
+          allow read, write: if isOwner(userId);
+        }
       }
     }
 
     // --- COLLECTION GROUP RULES ---
-    // Essential for role discovery and cross-portfolio discovery for tenants.
+    // These are critical for discovery queries (e.g. "Am I a tenant in any portfolio?")
 
     match /{path=**}/tenants/{tenantId} {
       // Allow discovery via email for the "Role Check" and Tenant Portal.
-      // We explicitly check for both landlord ownership and tenant email match.
+      // The query must filter by email to be authorized.
       allow list: if isSignedIn() && (
         (resource.data.email == request.auth.token.email) ||
         (resource.data.ownerId == request.auth.uid)
@@ -49,7 +54,6 @@ service cloud.firestore {
 
     match /{path=**}/maintenanceLogs/{logId} {
       // Tenants can view/create logs for properties they reside in.
-      // Landlords have access via the hierarchical rule above.
       allow list, get, create: if isSignedIn() && (
         (resource.data.ownerId == request.auth.uid) ||
         (exists(/databases/$(database)/documents/userProfiles/$(resource.data.ownerId)/properties/$(resource.data.propertyId)/tenants))

@@ -179,32 +179,6 @@
       },
       "required": ["propertyId", "ownerId", "year", "month", "status"]
     },
-    "Screening": {
-      "title": "Screening",
-      "type": "object",
-      "description": "Pre-tenancy vetting record.",
-      "properties": {
-        "id": { "type": "string" },
-        "tenantId": { "type": "string" },
-        "propertyId": { "type": "string" },
-        "ownerId": { "type": "string" },
-        "screeningDate": { "type": "string", "format": "date-time" },
-        "overallNotes": { "type": "string" }
-      },
-      "required": ["tenantId", "propertyId", "ownerId", "screeningDate"]
-    },
-    "Checklist": {
-      "title": "Checklist",
-      "type": "object",
-      "description": "Compliance checklist record.",
-      "properties": {
-        "id": { "type": "string" },
-        "propertyId": { "type": "string" },
-        "ownerId": { "type": "string" },
-        "completedDate": { "type": "string", "format": "date-time" }
-      },
-      "required": ["propertyId", "ownerId", "completedDate"]
-    },
     "Message": {
       "title": "Message",
       "type": "object",
@@ -235,17 +209,9 @@
       "schema": { "$ref": "#/backend/entities/Property" },
       "description": "Rental property document."
     },
-    "/userProfiles/{userId}/properties/{propertyId}/checklists/{checklistId}": {
-      "schema": { "$ref": "#/backend/entities/Checklist" },
-      "description": "Property compliance record."
-    },
     "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}": {
       "schema": { "$ref": "#/backend/entities/Tenant" },
       "description": "Tenant profile nested under property."
-    },
-    "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/screenings/{screeningId}": {
-      "schema": { "$ref": "#/backend/entities/Screening" },
-      "description": "Vetting record for tenant."
     },
     "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/messages/{messageId}": {
       "schema": { "$ref": "#/backend/entities/Message" },
