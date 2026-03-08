@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -28,7 +28,8 @@ import {
   Phone,
   Upload,
   X,
-  CheckCircle2
+  CheckCircle2,
+  Wrench
 } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, collection, query, where } from 'firebase/firestore';
@@ -173,12 +174,22 @@ export default function PropertyDetailPage() {
         toast({ title: 'Photo Removed' });
       }
 
-      if (action === 'promote' && url) {
-        updatedImageUrl = url;
-        if (!updatedGallery.includes(url)) {
-            updatedGallery = [url, ...updatedGallery];
+      if (action === 'promote') {
+        if (files && files[0]) {
+          const file = files[0];
+          const newUrl = await uploadPropertyImage(file, user.uid, property.id);
+          if (newUrl) {
+            updatedImageUrl = newUrl;
+            updatedGallery = [newUrl, ...updatedGallery];
+            toast({ title: 'Identity Photo Updated' });
+          }
+        } else if (url) {
+          updatedImageUrl = url;
+          if (!updatedGallery.includes(url)) {
+              updatedGallery = [url, ...updatedGallery];
+          }
+          toast({ title: 'Identity Photo Set', description: 'This image is now the primary property photo.' });
         }
-        toast({ title: 'Identity Photo Set', description: 'This image is now the primary property photo.' });
       }
 
       await updateDoc(propertyRef, {
@@ -527,7 +538,7 @@ export default function PropertyDetailPage() {
               <AlertDialogTitle className="text-xl font-headline">Archive Property?</AlertDialogTitle>
               <AlertDialogDescription className="text-base font-medium">Move record at <strong className='text-foreground'>{property.address.street}</strong> to archives.</AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="mt-4 gap-3">
+          <AlertDialogFooter>
             <AlertDialogCancel className="rounded-xl font-bold uppercase text-xs h-11">Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold uppercase text-xs h-11 px-8" onClick={handleDeleteConfirm}>Archive Asset</AlertDialogAction>
           </AlertDialogFooter>
