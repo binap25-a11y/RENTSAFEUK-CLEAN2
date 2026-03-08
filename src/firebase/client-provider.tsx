@@ -11,7 +11,7 @@ interface FirebaseClientProviderProps {
 
 /**
  * Client-side provider that handles the one-time initialization of Firebase services.
- * Resolves context errors by ensuring children are only rendered after the Provider is active.
+ * Ensures that the provider context is established before any children are rendered.
  */
 export function FirebaseClientProvider({ children }: FirebaseClientProviderProps) {
   const [isMounted, setIsMounted] = useState(false);
@@ -30,21 +30,16 @@ export function FirebaseClientProvider({ children }: FirebaseClientProviderProps
     }
   }, []);
 
-  // During initial mount, we show a clean loading state.
-  // We MUST NOT render {children} here because they likely contain hooks 
-  // that depend on the FirebaseContext which is provided below.
-  if (!isMounted) {
+  // During initial mount or if services fail, we show a clean loading state.
+  // CRITICAL: We do NOT render children here if services are missing, 
+  // as children likely contain hooks that depend on the Firebase context.
+  if (!isMounted || !firebaseServices) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary/20" />
+      <div className="min-h-screen bg-background flex flex-col items-center justify-center gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary/40" />
+        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Initializing Services...</p>
       </div>
     );
-  }
-
-  // If initialization fails for some catastrophic reason, we render children 
-  // as a fallback, but the app will likely show its own internal error states.
-  if (!firebaseServices) {
-    return <>{children}</>;
   }
 
   return (

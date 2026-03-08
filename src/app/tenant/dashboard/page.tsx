@@ -36,6 +36,8 @@ export default function TenantDashboard() {
   useEffect(() => {
     if (!user || !firestore) return;
 
+    let propUnsub: (() => void) | null = null;
+
     // Search for the active tenant record linked to this user's email
     const q = query(
         collectionGroup(firestore, 'tenants'), 
@@ -44,6 +46,8 @@ export default function TenantDashboard() {
     );
 
     const unsub = onSnapshot(q, (snap) => {
+        if (propUnsub) propUnsub(); // Clean up existing property listener if tenant record changes
+
         if (!snap.empty) {
             const tenantDoc = snap.docs[0];
             const data = tenantDoc.data();
@@ -56,7 +60,7 @@ export default function TenantDashboard() {
 
             // Fetch specific property context directly
             const propRef = doc(firestore, 'userProfiles', landlordId, 'properties', propertyId);
-            const propUnsub = onSnapshot(propRef, (propSnap) => {
+            propUnsub = onSnapshot(propRef, (propSnap) => {
                 if (propSnap.exists()) {
                     setContext({
                         landlordId,
@@ -67,8 +71,10 @@ export default function TenantDashboard() {
                     });
                 }
                 setIsLoading(false);
+            }, (err) => {
+                console.error("Property context fetch failed:", err);
+                setIsLoading(false);
             });
-            return () => propUnsub();
         } else {
             setIsLoading(false);
         }
@@ -77,7 +83,10 @@ export default function TenantDashboard() {
         setIsLoading(false);
     });
 
-    return () => unsub();
+    return () => {
+        unsub();
+        if (propUnsub) propUnsub();
+    };
   }, [user, firestore]);
 
   if (isLoading) {

@@ -27,7 +27,7 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, Timestamp, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, Timestamp, onSnapshot, doc, updateDoc, limit } from 'firebase/firestore';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { toast } from '@/hooks/use-toast';
@@ -112,7 +112,7 @@ export default function RemindersPage() {
 
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    return query(collection(firestore, 'userProfiles', user.uid, 'properties'), where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance']));
+    return query(collection(firestore, 'userProfiles', user.uid, 'properties'), where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance']), limit(100));
   }, [firestore, user]);
   const { data: properties, isLoading: isLoadingProps } = useCollection<Property>(propertiesQuery);
 
@@ -120,7 +120,7 @@ export default function RemindersPage() {
   const [allInspections, setAllInspections] = useState<Inspection[]>([]);
   const [allTenants, setAllTenants] = useState<Tenant[]>([]);
   const [allRentPayments, setAllRentPayments] = useState<RentPayment[]>([]);
-  const [isAggregating, setIsAggregates] = useState(false);
+  const [isAggregating, setIsAggregating] = useState(false);
 
   useEffect(() => {
     if (!user || !firestore || !properties || properties.length === 0) {
@@ -131,7 +131,7 @@ export default function RemindersPage() {
         return;
     }
 
-    setIsAggregates(true);
+    setIsAggregating(true);
     const unsubs: (() => void)[] = [];
     const docMap: Record<string, Document[]> = {};
     const inspMap: Record<string, Inspection[]> = {};
@@ -143,7 +143,7 @@ export default function RemindersPage() {
         setAllInspections(Object.values(inspMap).flat());
         setAllTenants(Object.values(tenantMap).flat());
         setAllRentPayments(Object.values(paymentMap).flat());
-        setIsAggregates(false);
+        setIsAggregating(false);
     };
 
     properties.forEach(prop => {
@@ -265,18 +265,20 @@ export default function RemindersPage() {
   };
 
   const generateComplianceReport = () => {
-    const doc = new jsPDF();
-    doc.setFontSize(20); doc.text('Portfolio Health Report', 14, 22);
-    doc.setFontSize(10); doc.text(`Generated on: ${format(new Date(), 'PPP')}`, 14, 30);
+    const pdfDoc = new jsPDF();
+    pdfDoc.setFontSize(20); 
+    pdfDoc.text('Portfolio Health Report', 14, 22);
+    pdfDoc.setFontSize(10); 
+    pdfDoc.text(`Generated on: ${format(new Date(), 'PPP')}`, 14, 30);
     const complianceData = allReminders.map(r => [r.property, r.type, r.description, format(r.dueDate, 'dd/MM/yyyy'), r.status]);
-    autoTable(doc, { 
+    autoTable(pdfDoc, { 
         startY: 40, 
         head: [['Property', 'Type', 'Details', 'Due Date', 'Status']], 
         body: complianceData, 
         theme: 'grid', 
         headStyles: { fillColor: [38, 102, 114] } 
     });
-    doc.save('Portfolio-Compliance-Health.pdf');
+    pdfDoc.save('Portfolio-Compliance-Health.pdf');
   };
 
   const urgentCount = useMemo(() => allReminders.filter(r => r.status === 'Expired' || r.status === 'Overdue').length, [allReminders]);
