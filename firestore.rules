@@ -50,7 +50,10 @@ service cloud.firestore {
     match /{path=**}/maintenanceLogs/{logId} {
       // Tenants can view/create logs for properties they reside in.
       // Landlords have access via the hierarchical rule above.
-      allow list, get, create: if isSignedIn();
+      allow list, get, create: if isSignedIn() && (
+        (resource.data.ownerId == request.auth.uid) ||
+        (exists(/databases/$(database)/documents/userProfiles/$(resource.data.ownerId)/properties/$(resource.data.propertyId)/tenants))
+      );
     }
 
     match /{path=**}/documents/{docId} {
