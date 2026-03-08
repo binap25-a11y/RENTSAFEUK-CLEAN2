@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+
+>>>>>>> 4198aad8742ab8507a170630aec42ef56984a310
 'use client';
 
 import Link from 'next/link';
@@ -34,8 +38,11 @@ import {
   useFirestore,
   useCollection,
   useMemoFirebase,
+<<<<<<< HEAD
   errorEmitter,
   FirestorePermissionError,
+=======
+>>>>>>> 4198aad8742ab8507a170630aec42ef56984a310
 } from '@/firebase';
 import { collection, query, where, onSnapshot, Timestamp, limit } from 'firebase/firestore';
 import { useMemo, useState, useEffect } from 'react';
@@ -160,6 +167,7 @@ export default function DashboardPage() {
     const unsubs: (() => void)[] = [];
 
     properties.forEach(prop => {
+<<<<<<< HEAD
         // Maintenance Listener
         unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'maintenanceLogs'), 
             (snap) => {
@@ -215,6 +223,24 @@ export default function DashboardPage() {
                 }));
             }
         ));
+=======
+        unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'maintenanceLogs'), (snap) => {
+            const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog));
+            setMaintenanceMap(prev => ({ ...prev, [prop.id]: data }));
+        }));
+        unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'inspections'), (snap) => {
+            const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Inspection));
+            setInspectionsMap(prev => ({ ...prev, [prop.id]: data }));
+        }));
+        unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'documents'), (snap) => {
+            const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Document));
+            setDocumentsMap(prev => ({ ...prev, [prop.id]: data }));
+        }));
+        unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'rentPayments'), limit(50)), (snap) => {
+            const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as RentPayment));
+            setRentPaymentsMap(prev => ({ ...prev, [prop.id]: data }));
+        }));
+>>>>>>> 4198aad8742ab8507a170630aec42ef56984a310
     });
 
     return () => unsubs.forEach(u => u());

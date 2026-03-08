@@ -294,8 +294,11 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
                                         <FormLabel>Date of Screening</FormLabel>
                                         <FormControl>
                                             <Input
+<<<<<<< HEAD
                                                 id="screening-date-input"
                                                 name="screeningDate"
+=======
+>>>>>>> 4198aad8742ab8507a170630aec42ef56984a310
                                                 type="date"
                                                 value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
                                                 onChange={(e) => field.onChange(e.target.value)}
@@ -323,7 +326,11 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
                                             <FormItem>
                                                 <FormLabel>Tenant Monthly Net Income (£)</FormLabel>
                                                 <FormControl>
+<<<<<<< HEAD
                                                     <Input id="screening-income-input" name="monthlyIncome" type="number" min="0" placeholder="0.00" {...field} />
+=======
+                                                    <Input type="number" min="0" placeholder="0.00" {...field} />
+>>>>>>> 4198aad8742ab8507a170630aec42ef56984a310
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -361,8 +368,11 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
                                                 <FormLabel>Date of Check</FormLabel>
                                                 <FormControl>
                                                     <Input
+<<<<<<< HEAD
                                                         id="right-to-rent-date"
                                                         name="rightToRentDate"
+=======
+>>>>>>> 4198aad8742ab8507a170630aec42ef56984a310
                                                         type="date"
                                                         value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
                                                         onChange={(e) => field.onChange(e.target.value)}
@@ -403,7 +413,11 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
                                             <FormItem>
                                                 <FormLabel>Agency/Service Used</FormLabel>
                                                 <FormControl>
+<<<<<<< HEAD
                                                     <Input id="credit-agency-input" name="creditAgency" placeholder="e.g., OpenRent, Experian" {...field} value={field.value ?? ''} />
+=======
+                                                    <Input placeholder="e.g., OpenRent, Experian" {...field} value={field.value ?? ''} />
+>>>>>>> 4198aad8742ab8507a170630aec42ef56984a310
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
@@ -434,7 +448,11 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
                                                 <FormItem className="mt-4 sm:col-span-2">
                                                     <FormLabel>Notes</FormLabel>
                                                     <FormControl>
+<<<<<<< HEAD
                                                         <Textarea id="employment-notes-area" name="employmentNotes" rows={4} placeholder="Notes on income verification..." {...field} value={field.value ?? ''} />
+=======
+                                                        <Textarea rows={4} placeholder="Notes on income verification..." {...field} value={field.value ?? ''} />
+>>>>>>> 4198aad8742ab8507a170630aec42ef56984a310
                                                     </FormControl>
                                                     <FormMessage />
                                                 </FormItem>
@@ -448,9 +466,15 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
                                 <AccordionTrigger className='text-lg font-semibold'>Previous Landlord Reference</AccordionTrigger>
                                 <AccordionContent className='pt-4 space-y-4'>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+<<<<<<< HEAD
                                         <FormField control={form.control} name="landlordReference.name" render={({ field }) => (<FormItem className="sm:col-span-2"><FormLabel>Landlord Name</FormLabel><FormControl><Input id="prev-landlord-name" name="prevLandlordName" placeholder="e.g., John Smith" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                                         <FormField control={form.control} name="landlordReference.email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input id="prev-landlord-email" name="prevLandlordEmail" type="email" placeholder="john.smith@example.com" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                                         <FormField control={form.control} name="landlordReference.phone" render={({ field }) => (<FormItem><FormLabel>Phone (Optional)</FormLabel><FormControl><Input id="prev-landlord-phone" name="prevLandlordPhone" type="tel" placeholder="07123456789" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+=======
+                                        <FormField control={form.control} name="landlordReference.name" render={({ field }) => (<FormItem className="sm:col-span-2"><FormLabel>Landlord Name</FormLabel><FormControl><Input placeholder="e.g., John Smith" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField control={form.control} name="landlordReference.email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input type="email" placeholder="john.smith@example.com" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField control={form.control} name="landlordReference.phone" render={({ field }) => (<FormItem><FormLabel>Phone (Optional)</FormLabel><FormControl><Input type="tel" placeholder="07123456789" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+>>>>>>> 4198aad8742ab8507a170630aec42ef56984a310
                                     </div>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                         <ChecklistItem form={form} name="landlordReference.rentOnTime" label="Paid rent on time?" />
@@ -466,8 +490,11 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
                                                 <FormLabel>Notes</FormLabel>
                                                 <FormControl>
                                                     <Textarea
+<<<<<<< HEAD
                                                         id="landlord-ref-notes"
                                                         name="landlordRefNotes"
+=======
+>>>>>>> 4198aad8742ab8507a170630aec42ef56984a310
                                                         rows={4}
                                                         placeholder="Notes on landlord reference..."
                                                         {...field}
@@ -504,8 +531,11 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
                                                     <FormLabel>Notes</FormLabel>
                                                     <FormControl>
                                                         <Textarea
+<<<<<<< HEAD
                                                             id="affordability-notes-area"
                                                             name="affordabilityNotes"
+=======
+>>>>>>> 4198aad8742ab8507a170630aec42ef56984a310
                                                             rows={4}
                                                             placeholder="Notes on affordability..."
                                                             {...field}
@@ -536,8 +566,11 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
                                                     <FormLabel>Notes</FormLabel>
                                                     <FormControl>
                                                         <Textarea
+<<<<<<< HEAD
                                                             id="guarantor-notes-area"
                                                             name="guarantorNotes"
+=======
+>>>>>>> 4198aad8742ab8507a170630aec42ef56984a310
                                                             rows={4}
                                                             placeholder="Notes on guarantor checks..."
                                                             {...field}
@@ -560,8 +593,11 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
                                 <FormLabel className='text-lg font-semibold'>Overall Summary &amp; Decision</FormLabel>
                                 <FormControl>
                                     <Textarea
+<<<<<<< HEAD
                                     id="overall-decision-area"
                                     name="overallNotes"
+=======
+>>>>>>> 4198aad8742ab8507a170630aec42ef56984a310
                                     placeholder="Summarize your findings and decision here..."
                                     className="resize-none"
                                     rows={5}

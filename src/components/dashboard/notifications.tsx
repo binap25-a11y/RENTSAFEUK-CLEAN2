@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+
+>>>>>>> 4198aad8742ab8507a170630aec42ef56984a310
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -24,7 +28,10 @@ interface Property {
     street: string;
     city: string;
   };
+<<<<<<< HEAD
   status: string;
+=======
+>>>>>>> 4198aad8742ab8507a170630aec42ef56984a310
 }
 
 interface Document {
@@ -63,6 +70,7 @@ export function Notifications() {
   const { user } = useUser();
   const firestore = useFirestore();
 
+<<<<<<< HEAD
   // Explicitly filter for active properties to ensure notifications clear on deletion
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -70,6 +78,11 @@ export function Notifications() {
       collection(firestore, 'userProfiles', user.uid, 'properties'), 
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
     );
+=======
+  const propertiesQuery = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return query(collection(firestore, 'userProfiles', user.uid, 'properties'), where('ownerId', '==', user.uid));
+>>>>>>> 4198aad8742ab8507a170630aec42ef56984a310
   }, [firestore, user]);
   const { data: properties } = useCollection<Property>(propertiesQuery);
 
