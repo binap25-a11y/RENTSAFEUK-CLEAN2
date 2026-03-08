@@ -29,6 +29,7 @@ import {
   Upload,
   X,
   CheckCircle2,
+  CalendarCheck,
   Wrench
 } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
@@ -282,11 +283,11 @@ export default function PropertyDetailPage() {
                     <DropdownMenuContent align="end">
                         <DropdownMenuItem asChild>
                             <Link href={`/dashboard/properties/${property.id}/edit`}>
-                                <Edit className="mr-2 h-4 w-4" /> Edit Property
+                                <Edit className="mr-2 h-4 w-4" /> Edit Property Details
                             </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => identityInputRef.current?.click()} disabled={isMediaUpdating}>
-                            <Upload className="mr-2 h-4 w-4" /> {isMediaUpdating ? 'Processing...' : 'Update Identity Photo'}
+                            <Upload className="mr-2 h-4 w-4" /> {isMediaUpdating ? 'Processing...' : 'Change Identity Photo'}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setIsDeleting(true)} className="text-destructive">
                             <Trash2 className="mr-2 h-4 w-4" /> Archive Asset
@@ -330,7 +331,7 @@ export default function PropertyDetailPage() {
                         {isMediaUpdating && (
                           <div className="absolute inset-0 bg-black/40 flex flex-col items-center justify-center gap-2 z-10">
                             <Loader2 className="h-8 w-8 animate-spin text-white" />
-                            <p className="text-white text-[10px] font-bold uppercase tracking-widest">Syncing Identity...</p>
+                            <p className="text-white text-[10px] font-bold uppercase tracking-widest">Syncing Portfolio...</p>
                           </div>
                         )}
                         <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">

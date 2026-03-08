@@ -33,9 +33,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { 
   PoundSterling, 
   Loader2, 
-  Receipt, 
   History,
   PlusCircle,
+  Banknote
 } from 'lucide-react';
 import { getYear, isSameYear } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -55,7 +55,7 @@ import {
 } from '@/firebase';
 import { collection, query, where, doc, setDoc, addDoc, limit, onSnapshot } from 'firebase/firestore';
 import { Label } from '@/components/ui/label';
-import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/tabs';
+import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Link from 'next/link';
@@ -533,7 +533,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
     });
   };
 
-  if (!selectedProperty) return <Card className="mt-6 border-dashed bg-muted/5"><CardContent className='py-24 text-center'><div className="bg-background p-4 rounded-full w-fit mx-auto shadow-sm mb-4"><PoundSterling className="h-10 w-10 text-muted-foreground opacity-20" /></div><p className="text-muted-foreground font-medium">Select a specific property to view its rent ledger.</p></CardContent></Card>;
+  if (!selectedProperty) return <Card className="mt-6 border-dashed bg-muted/5"><CardContent className='py-24 text-center'><div className="bg-background p-4 rounded-full w-fit mx-auto shadow-sm mb-4"><Banknote className="h-10 w-10 text-muted-foreground opacity-20" /></div><p className="text-muted-foreground font-medium">Select a specific property to view its rent ledger.</p></CardContent></Card>;
 
   return (
     <Card className="mt-6 border-none shadow-lg overflow-hidden">
