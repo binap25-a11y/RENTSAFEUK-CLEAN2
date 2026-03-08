@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -489,7 +489,7 @@ export default function PropertyDetailPage() {
               <CardHeader className="pb-4"><CardTitle className="font-headline text-lg">Location</CardTitle></CardHeader>
               <CardContent className="p-0 border-t">
                   {property.address && property.address.postcode ? (
-                    <div className="aspect-square w-full grayscale contrast-[1.1] hover:grayscale-0 transition-all duration-1000">
+                    <div className="aspect-square w-full rounded-2xl overflow-hidden border shadow-inner bg-muted/20">
                         <iframe width="100%" height="100%" style={{ border: 0 }} title="Map" loading="lazy" src={`https://maps.google.com/maps?q=${encodeURIComponent([property.address.street, property.address.city, property.address.postcode].filter(Boolean).join(', '))}&output=embed`}></iframe>
                     </div>
                   ) : <p className="text-xs text-muted-foreground text-center py-10 italic">Location data missing.</p>}
