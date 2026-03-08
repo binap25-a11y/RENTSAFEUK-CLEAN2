@@ -217,6 +217,10 @@
       "schema": { "$ref": "#/backend/entities/Message" },
       "description": "Secure messaging thread."
     },
+    "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/screenings/{screeningId}": {
+      "schema": { "type": "object" },
+      "description": "Tenant screening report."
+    },
     "/userProfiles/{userId}/properties/{propertyId}/maintenanceLogs/{logId}": {
       "schema": { "$ref": "#/backend/entities/MaintenanceRequest" },
       "description": "Repair tracking for property."
@@ -236,6 +240,10 @@
     "/userProfiles/{userId}/properties/{propertyId}/rentPayments/{paymentId}": {
       "schema": { "$ref": "#/backend/entities/RentPayment" },
       "description": "Monthly rent collection record."
+    },
+    "/userProfiles/{userId}/properties/{propertyId}/checklists/{checklistId}": {
+      "schema": { "type": "object" },
+      "description": "Pre-tenancy compliance checklist."
     }
   }
 }

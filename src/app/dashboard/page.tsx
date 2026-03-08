@@ -132,9 +132,8 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user || !firestore || !user.email) return;
     
-    // We use the raw email from the user object to match the token exactly.
-    // This aligns with the resource.data.email == request.auth.token.email rule.
-    const userEmail = user.email;
+    // Normalize user email for casing consistency across the query and rules
+    const userEmail = user.email.toLowerCase();
 
     // Discovery query to find if this email exists in any tenant collection
     const q = query(
@@ -144,10 +143,11 @@ export default function DashboardPage() {
     );
 
     const unsub = onSnapshot(q, (snap) => {
+        // We only consider active tenancies for role discovery
         const activeTenantRecord = snap.docs.find(doc => doc.data().status === 'Active');
         setIsTenant(!!activeTenantRecord);
     }, (error) => {
-        // Emit standardized path for the listener component
+        // Contextual error for debugging permission issues in discovery
         errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'tenants',
             operation: 'list',

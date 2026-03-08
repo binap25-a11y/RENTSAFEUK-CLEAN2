@@ -41,53 +41,60 @@ service cloud.firestore {
 
     match /{path=**}/tenants/{tenantId} {
       // Allow discovery via email for the "Role Check" and Tenant Portal.
-      // The query must filter by email to be authorized.
+      // The query MUST filter by email to be authorized for a tenant.
+      // The query MUST filter by ownerId to be authorized for a landlord.
       allow list: if isSignedIn() && (
-        (resource.data.email == request.auth.token.email) ||
+        (request.auth.token.email != null && resource.data.email == request.auth.token.email) ||
         (resource.data.ownerId == request.auth.uid)
       );
       allow get: if isSignedIn() && (
-        (resource.data.email == request.auth.token.email) ||
+        (request.auth.token.email != null && resource.data.email == request.auth.token.email) ||
         (resource.data.ownerId == request.auth.uid)
       );
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      // Tenants can view/create logs for properties they reside in.
-      allow list, get, create: if isSignedIn() && (
+      // Landlords and assigned tenants can view logs.
+      allow list, get: if isSignedIn() && (
         (resource.data.ownerId == request.auth.uid) ||
-        (exists(/databases/$(database)/documents/userProfiles/$(resource.data.ownerId)/properties/$(resource.data.propertyId)/tenants))
+        (request.auth.token.email != null && exists(/databases/$(database)/documents/userProfiles/$(resource.data.ownerId)/properties/$(resource.data.propertyId)/tenants))
       );
+      // Tenants can create logs for their property.
+      allow create: if isSignedIn();
     }
 
     match /{path=**}/documents/{docId} {
-      // Tenants can view shared compliance documents.
-      allow list, get: if isSignedIn();
+      allow list, get: if isSignedIn() && (
+        (resource.data.ownerId == request.auth.uid) ||
+        (request.auth.token.email != null && exists(/databases/$(database)/documents/userProfiles/$(resource.data.ownerId)/properties/$(resource.data.propertyId)/tenants))
+      );
     }
 
     match /{path=**}/messages/{messageId} {
-      // Secure messaging for active tenancies.
       allow list, get, create: if isSignedIn();
     }
 
     match /{path=**}/inspections/{id} {
-      allow list, get: if isSignedIn();
+      allow list, get: if isSignedIn() && (resource.data.ownerId == request.auth.uid);
     }
 
     match /{path=**}/expenses/{id} {
-      allow list, get: if isSignedIn();
+      allow list, get: if isSignedIn() && (resource.data.ownerId == request.auth.uid);
     }
 
     match /{path=**}/rentPayments/{id} {
-      allow list, get: if isSignedIn();
+      allow list, get: if isSignedIn() && (
+        (resource.data.ownerId == request.auth.uid) ||
+        (request.auth.token.email != null && exists(/databases/$(database)/documents/userProfiles/$(resource.data.ownerId)/properties/$(resource.data.propertyId)/tenants))
+      );
     }
     
     match /{path=**}/screenings/{id} {
-      allow list, get: if isSignedIn();
+      allow list, get: if isSignedIn() && (resource.data.ownerId == request.auth.uid);
     }
     
     match /{path=**}/checklists/{id} {
-      allow list, get: if isSignedIn();
+      allow list, get: if isSignedIn() && (resource.data.ownerId == request.auth.uid);
     }
   }
 }
