@@ -38,13 +38,14 @@ service cloud.firestore {
       // Allow discovery for the "Role Check" and Tenant Portal via email query
       // Also allow landlords to manage their own tenant records across collection groups
       allow list, get: if isSignedIn() && (
-        (resource.data.ownerId == request.auth.uid) ||
-        (request.auth.token.email != null && resource.data.email == request.auth.token.email)
+        (resource.data.email == request.auth.token.email) ||
+        (resource.data.ownerId == request.auth.uid)
       );
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      // Tenants can view/create logs for properties they reside in (verification in app logic)
+      // Tenants can view/create logs for properties they reside in
+      // Landlords are covered by the recursive rule above
       allow list, get, create: if isSignedIn();
     }
 

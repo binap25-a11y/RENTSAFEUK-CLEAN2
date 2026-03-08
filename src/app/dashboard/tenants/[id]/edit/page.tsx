@@ -163,7 +163,11 @@ export default function EditTenantPage() {
     
     try {
       const tenantDocRef = doc(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId, 'tenants', tenant.id);
-      const updateData = { ...data, ownerId: user.uid };
+      const updateData = { 
+        ...data, 
+        email: data.email.toLowerCase(), // Ensure lowercase consistency
+        ownerId: user.uid 
+      };
       const cleanedUpdateData = JSON.parse(JSON.stringify(updateData));
 
       await updateDoc(tenantDocRef, cleanedUpdateData);
