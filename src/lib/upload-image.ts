@@ -1,40 +1,43 @@
 'use client';
 
-import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
-import { initializeFirebase } from '@/firebase/init';
+import { supabase } from './supabase';
 
 /**
- * Uploads a property image to Firebase Storage.
- * Leverages the app's native storage rules and authentication.
- * Resolves previous Supabase RLS issues by using the integrated Firebase pipeline.
+ * Uploads a property image to Supabase Storage.
+ * Uses the 'Images' bucket as requested.
+ * Ensure your Supabase 'Images' bucket is PUBLIC or has RLS policies for authenticated uploads.
  */
 export const uploadPropertyImage = async (file: File, userId: string, propertyId: string): Promise<string> => {
   if (!file) return '';
 
   try {
-    const { storage } = initializeFirebase();
-    
-    // Generate a unique, collision-resistant filename
+    // Generate a unique path: {userId}/{propertyId}/{filename}
     const fileExt = file.name.split('.').pop() || 'jpg';
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-    
-    // Path: images/{userId}/{propertyId}/{filename}
-    // Matches storage.rules for user-isolated access
-    const storagePath = `images/${userId}/${propertyId}/${fileName}`;
-    const storageRef = ref(storage, storagePath);
+    const filePath = `${userId}/${propertyId}/${fileName}`;
 
-    console.log(`Initiating media sync to Firebase Storage: ${storagePath}`);
+    console.log(`Initiating media sync to Supabase: ${filePath}`);
 
-    const snapshot = await uploadBytes(storageRef, file, {
-        contentType: file.type
-    });
+    const { data, error } = await supabase.storage
+      .from('Images')
+      .upload(filePath, file, {
+        cacheControl: '3600',
+        upsert: false
+      });
 
-    const downloadUrl = await getDownloadURL(snapshot.ref);
+    if (error) {
+      console.error('Supabase storage error:', error);
+      throw error;
+    }
 
-    console.log(`Media synchronized successfully. URL: ${downloadUrl}`);
-    return downloadUrl;
+    const { data: { publicUrl } } = supabase.storage
+      .from('Images')
+      .getPublicUrl(filePath);
+
+    console.log(`Media synchronized successfully. URL: ${publicUrl}`);
+    return publicUrl;
   } catch (err: any) {
-    console.error('Firebase Storage synchronization failed:', err.message);
+    console.error('Supabase synchronization failed:', err.message);
     throw new Error(`Upload failed: ${err.message}`);
   }
 };

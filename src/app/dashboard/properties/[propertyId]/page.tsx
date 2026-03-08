@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, useRouter } from 'next/navigation';
+import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -261,25 +261,21 @@ export default function PropertyDetailPage() {
                 </div>
             </div>
             <div className="flex items-center gap-2">
-                <Button variant="outline" asChild className="hidden sm:flex">
-                    <Link href={`/dashboard/properties/${property.id}/edit`}>
-                        <Edit className="mr-2 h-4 w-4" /> Edit Property
-                    </Link>
-                </Button>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="shrink-0" title="Manage Property">
+                        <Button variant="outline" className="gap-2 shrink-0">
                             <MoreVertical className="h-4 w-4" />
+                            <span>Edit Property</span>
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end">
                         <DropdownMenuItem asChild>
                             <Link href={`/dashboard/properties/${property.id}/edit`}>
-                                <Edit className="mr-2 h-4 w-4" /> Edit Property
+                                <Edit className="mr-2 h-4 w-4" /> Modify Details
                             </Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => identityInputRef.current?.click()} disabled={isMediaUpdating}>
-                            <Upload className="mr-2 h-4 w-4" /> {isMediaUpdating ? 'Processing...' : 'Change Identity Photo'}
+                            <Upload className="mr-2 h-4 w-4" /> {isMediaUpdating ? 'Processing...' : 'Update Identity Photo'}
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setIsDeleting(true)} className="text-destructive">
                             <Trash2 className="mr-2 h-4 w-4" /> Archive Asset
