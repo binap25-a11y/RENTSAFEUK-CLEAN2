@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -42,22 +43,22 @@ function DashboardHeader() {
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 lg:h-[60px] lg:px-6">
       <SidebarTrigger className="md:hidden shrink-0" />
-      <div className="flex-1 min-w-0">
+      <div className="flex-1 min-w-0 flex items-center">
         <Button 
           variant="outline" 
-          className="relative h-9 w-full max-w-[260px] justify-start rounded-[0.5rem] bg-background text-sm font-normal text-muted-foreground shadow-none md:w-40 lg:w-64 overflow-hidden" 
+          className="relative h-9 w-full max-w-[200px] sm:max-w-[260px] justify-start rounded-[0.5rem] bg-background text-sm font-normal text-muted-foreground shadow-none md:w-40 lg:w-64 overflow-hidden" 
           onClick={() => setIsSearchOpen(true)}
         >
           <Search className="mr-2 h-4 w-4 shrink-0" />
-          <span className="hidden lg:inline-flex">Search portfolio...</span>
-          <span className="inline-flex lg:hidden">Search...</span>
+          <span className="hidden sm:inline-flex">Search portfolio...</span>
+          <span className="inline-flex sm:hidden">Search...</span>
           <kbd className="pointer-events-none absolute right-1.5 top-1.5 hidden h-6 select-none items-center gap-1 rounded border bg-muted px-1.5 font-mono text-[10px] font-medium opacity-100 sm:flex">
             <span className="text-xs">⌘</span>K
           </kbd>
         </Button>
         <GlobalSearchDialog isOpen={isSearchOpen} onOpenChange={setIsSearchOpen} />
       </div>
-      <div className="flex items-center gap-1 shrink-0">
+      <div className="flex items-center gap-1 shrink-0 ml-auto">
         <Button 
           variant="ghost" 
           size="icon" 

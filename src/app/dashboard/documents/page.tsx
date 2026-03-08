@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -193,31 +194,40 @@ export default function DocumentsPage() {
                 <CardTitle className="text-xl font-headline">Portfolio Audit Trail</CardTitle>
                 <CardDescription>Manage and track legal compliance documents.</CardDescription>
             </div>
-            <Button asChild className="font-bold shadow-lg h-11 px-6"><Link href="/dashboard/documents/upload"><PlusCircle className="mr-2 h-4 w-4" /> Log New Document</Link></Button>
+            <div className="flex items-center gap-3 w-full md:w-auto">
+                <div className="relative flex-1 md:w-64">
+                    <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
+                    <Input 
+                        placeholder="Search records..." 
+                        className="pl-8 h-10 bg-background" 
+                        value={searchTerm} 
+                        onChange={e => setSearchTerm(e.target.value)} 
+                    />
+                </div>
+                <Button asChild className="font-bold shadow-lg h-10 px-4 shrink-0">
+                    <Link href="/dashboard/documents/upload">
+                        <PlusCircle className="mr-2 h-4 w-4" /> Log New
+                    </Link>
+                </Button>
+            </div>
           </div>
         </CardHeader>
         <CardContent className="pt-8 space-y-8">
-          <div className="space-y-6">
-            <div className="relative w-full">
-                <Search className="absolute left-4 top-1/2 -translate-y-1/2 h-5 w-5 text-muted-foreground" />
-                <Input placeholder="Search documents by title..." className="pl-12 h-14 text-lg bg-muted/20 border-2 border-transparent focus:border-primary/20 focus:bg-background transition-all shadow-inner rounded-2xl" value={searchTerm} onChange={e => setSearchTerm(e.target.value)} />
-            </div>
-            <div className="grid gap-4 md:grid-cols-2">
-                <div className='space-y-2'>
-                    <Label htmlFor="property-filter" className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2 px-1"><Filter className="h-3 w-3" /> Filter by Property</Label>
-                    <Select onValueChange={setSelectedPropertyId} value={selectedPropertyId}>
-                        <SelectTrigger id="property-filter" className="h-12 bg-background rounded-xl border-2 border-muted"><SelectValue placeholder={isLoadingProperties ? 'Syncing portfolio...' : 'Select a property'} /></SelectTrigger>
-                        <SelectContent className="rounded-xl">{activeProperties?.map(prop => (<SelectItem key={prop.id} value={prop.id}>{[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}</SelectItem>))}</SelectContent>
-                    </Select>
-                </div>
-                <div className='space-y-2'>
-                    <Label htmlFor="status-filter" className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2 px-1"><ShieldCheck className="h-3 w-3" /> Compliance Status</Label>
-                    <Select onValueChange={setStatusFilter} value={statusFilter}>
-                        <SelectTrigger id="status-filter" className="h-12 bg-background rounded-xl border-2 border-muted font-bold text-xs uppercase"><SelectValue placeholder="All Status" /></SelectTrigger>
-                        <SelectContent className="rounded-xl"><SelectItem value="All">All Status</SelectItem><SelectItem value="Expired" className="text-destructive font-bold">Expired</SelectItem><SelectItem value="Expiring Soon" className="text-yellow-600 font-bold">Expiring Soon</SelectItem><SelectItem value="Valid" className="text-green-600 font-bold">Valid</SelectItem></SelectContent>
-                    </Select>
-                </div>
-            </div>
+          <div className="grid gap-4 md:grid-cols-2">
+              <div className='space-y-2'>
+                  <Label htmlFor="property-filter" className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2 px-1"><Filter className="h-3 w-3" /> Filter by Property</Label>
+                  <Select onValueChange={setSelectedPropertyId} value={selectedPropertyId}>
+                      <SelectTrigger id="property-filter" className="h-12 bg-background rounded-xl border-2 border-muted"><SelectValue placeholder={isLoadingProperties ? 'Syncing portfolio...' : 'Select a property'} /></SelectTrigger>
+                      <SelectContent className="rounded-xl">{activeProperties?.map(prop => (<SelectItem key={prop.id} value={prop.id}>{[prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ')}</SelectItem>))}</SelectContent>
+                  </Select>
+              </div>
+              <div className='space-y-2'>
+                  <Label htmlFor="status-filter" className="text-[10px] uppercase font-bold text-muted-foreground flex items-center gap-2 px-1"><ShieldCheck className="h-3 w-3" /> Compliance Status</Label>
+                  <Select onValueChange={setStatusFilter} value={statusFilter}>
+                      <SelectTrigger id="status-filter" className="h-12 bg-background rounded-xl border-2 border-muted font-bold text-xs uppercase"><SelectValue placeholder="All Status" /></SelectTrigger>
+                      <SelectContent className="rounded-xl"><SelectItem value="All">All Status</SelectItem><SelectItem value="Expired" className="text-destructive font-bold">Expired</SelectItem><SelectItem value="Expiring Soon" className="text-yellow-600 font-bold">Expiring Soon</SelectItem><SelectItem value="Valid" className="text-green-600 font-bold">Valid</SelectItem></SelectContent>
+                  </Select>
+              </div>
           </div>
 
           {isLoadingDocuments ? (
