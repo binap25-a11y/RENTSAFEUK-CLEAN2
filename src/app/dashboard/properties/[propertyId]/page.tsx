@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -26,13 +26,14 @@ import {
   User,
   Mail,
   Phone,
-  Wrench,
-  CalendarCheck
+  Upload,
+  X,
+  CheckCircle2
 } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, collection, query, where } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -46,6 +47,7 @@ import {
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 import { format } from 'date-fns';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
+import { uploadPropertyImage } from '@/lib/upload-image';
 
 // Interfaces for property domain
 interface Property {
@@ -105,6 +107,9 @@ export default function PropertyDetailPage() {
   const { toast } = useToast();
   
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isMediaUpdating, setIsMediaUpdating] = useState(false);
+  const galleryInputRef = useRef<HTMLInputElement>(null);
+  const identityInputRef = useRef<HTMLInputElement>(null);
 
   // Secure Data Fetching
   const propertyRef = useMemoFirebase(() => {
@@ -150,6 +155,69 @@ export default function PropertyDetailPage() {
       console.error('Error archiving property:', e);
       toast({ variant: 'destructive', title: 'Action Failed' });
     } finally { setIsDeleting(false); }
+  };
+
+  const handleMediaAction = async (action: 'upload' | 'delete' | 'promote', url?: string, files?: FileList | null) => {
+    if (!user || !property || !propertyRef) return;
+    setIsMediaUpdating(true);
+
+    try {
+      let updatedImageUrl = property.imageUrl || '';
+      let updatedGallery = property.additionalImageUrls || [];
+
+      if (action === 'upload' && files) {
+        const fileArray = Array.from(files);
+        const uploadPromises = fileArray.map(file => uploadPropertyImage(file, user.uid, property.id));
+        const newUrls = await Promise.all(uploadPromises);
+        updatedGallery = [...updatedGallery, ...newUrls.filter(Boolean)];
+        toast({ title: 'Gallery Updated', description: `${newUrls.length} photos added to the gallery.` });
+      }
+
+      if (action === 'delete' && url) {
+        updatedGallery = updatedGallery.filter(u => u !== url);
+        if (updatedImageUrl === url) {
+          updatedImageUrl = updatedGallery[0] || '';
+        }
+        toast({ title: 'Photo Removed', description: 'The photo has been removed from your record.' });
+      }
+
+      if (action === 'promote' && url) {
+        updatedImageUrl = url;
+        toast({ title: 'Primary Photo Set', description: 'This image is now the main property identity.' });
+      }
+
+      await updateDoc(propertyRef, {
+        imageUrl: updatedImageUrl,
+        additionalImageUrls: updatedGallery
+      });
+
+    } catch (err: any) {
+      console.error('Media update failed:', err);
+      toast({ variant: 'destructive', title: 'Update Failed', description: err.message });
+    } finally {
+      setIsMediaUpdating(false);
+    }
+  };
+
+  const handleIdentityChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file || !user || !property || !propertyRef) return;
+    setIsMediaUpdating(true);
+
+    try {
+      const newUrl = await uploadPropertyImage(file, user.uid, property.id);
+      const updatedGallery = Array.from(new Set([newUrl, ...(property.additionalImageUrls || [])]));
+      
+      await updateDoc(propertyRef, {
+        imageUrl: newUrl,
+        additionalImageUrls: updatedGallery
+      });
+      toast({ title: 'Identity Photo Updated' });
+    } catch (err: any) {
+      toast({ variant: 'destructive', title: 'Upload Failed', description: err.message });
+    } finally {
+      setIsMediaUpdating(false);
+    }
   };
   
   const safeFormatDate = (date: any, formatStr: string) => {
@@ -208,17 +276,28 @@ export default function PropertyDetailPage() {
                     </div>
                 </div>
             </div>
-            <DropdownMenu>
-                <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="shrink-0"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
-                <DropdownMenuContent align="end">
-                    <DropdownMenuItem asChild>
-                        <Link href={`/dashboard/properties/${property.id}/edit`}><Edit className="mr-2 h-4 w-4" /> Edit Details</Link>
-                    </DropdownMenuItem>
-                    <DropdownMenuItem onClick={() => setIsDeleting(true)} className="text-destructive">
-                        <Trash2 className="mr-2 h-4 w-4" /> Archive Asset
-                    </DropdownMenuItem>
-                </DropdownMenuContent>
-            </DropdownMenu>
+            <div className="flex items-center gap-2">
+                <Button variant="outline" asChild className="hidden sm:flex">
+                    <Link href={`/dashboard/properties/${property.id}/edit`}>
+                        <Edit className="mr-2 h-4 w-4" /> Edit Asset
+                    </Link>
+                </Button>
+                <DropdownMenu>
+                    <DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="shrink-0"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger>
+                    <DropdownMenuContent align="end">
+                        <DropdownMenuItem asChild className="sm:hidden">
+                            <Link href={`/dashboard/properties/${property.id}/edit`}><Edit className="mr-2 h-4 w-4" /> Edit Details</Link>
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => identityInputRef.current?.click()}>
+                            <Upload className="mr-2 h-4 w-4" /> Change Identity Photo
+                        </DropdownMenuItem>
+                        <DropdownMenuItem onClick={() => setIsDeleting(true)} className="text-destructive">
+                            <Trash2 className="mr-2 h-4 w-4" /> Archive Asset
+                        </DropdownMenuItem>
+                    </DropdownMenuContent>
+                </DropdownMenu>
+                <input type="file" ref={identityInputRef} className="hidden" accept="image/*" onChange={handleIdentityChange} />
+            </div>
         </div>
         
         <div className="grid gap-6 lg:grid-cols-3">
@@ -250,18 +329,32 @@ export default function PropertyDetailPage() {
                                 </div>
                             </div>
                         )}
+                        <div className="absolute top-4 right-4 flex items-center gap-2 opacity-0 group-hover:opacity-100 transition-opacity">
+                            <Button variant="secondary" size="sm" className="shadow-lg" onClick={() => identityInputRef.current?.click()} disabled={isMediaUpdating}>
+                                {isMediaUpdating ? <Loader2 className="h-4 w-4 animate-spin" /> : <Upload className="mr-2 h-4 w-4" />}
+                                Change
+                            </Button>
+                        </div>
                     </div>
 
-                    {property.additionalImageUrls && property.additionalImageUrls.length > 0 && (
-                        <div className="space-y-4">
-                            <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-[0.2em] px-1">
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between px-1">
+                            <div className="flex items-center gap-2 text-xs font-bold text-muted-foreground uppercase tracking-[0.2em]">
                                 <Images className="h-3.5 w-3.5 text-primary" />
                                 Photo Gallery
                             </div>
+                            <Button variant="ghost" size="sm" className="h-8 text-[10px] font-bold uppercase tracking-widest text-primary hover:bg-primary/5" onClick={() => galleryInputRef.current?.click()} disabled={isMediaUpdating}>
+                                {isMediaUpdating ? <Loader2 className="mr-2 h-3 w-3 animate-spin" /> : <PlusCircle className="mr-2 h-3 w-3" />}
+                                Add Photos
+                            </Button>
+                            <input type="file" ref={galleryInputRef} className="hidden" multiple accept="image/*" onChange={(e) => handleMediaAction('upload', undefined, e.target.files)} />
+                        </div>
+                        
+                        {property.additionalImageUrls && property.additionalImageUrls.length > 0 ? (
                             <ScrollArea className="w-full whitespace-nowrap">
                                 <div className="flex w-max space-x-4 pb-4">
                                     {property.additionalImageUrls.map((url, idx) => (
-                                        <Link key={idx} href={url} target="_blank" className="relative h-24 w-40 rounded-xl overflow-hidden border shadow-sm transition-all hover:scale-[1.03] hover:shadow-lg">
+                                        <div key={idx} className="relative h-24 w-40 rounded-xl overflow-hidden border shadow-sm group bg-background">
                                             <Image 
                                               src={url} 
                                               alt={`Gallery Item ${idx + 1}`} 
@@ -269,13 +362,39 @@ export default function PropertyDetailPage() {
                                               className="object-cover" 
                                               unoptimized
                                             />
-                                        </Link>
+                                            <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-1.5">
+                                                <Button 
+                                                    size="icon" 
+                                                    variant="secondary" 
+                                                    className="h-7 w-7 rounded-full" 
+                                                    title="Set as Primary"
+                                                    onClick={() => handleMediaAction('promote', url)}
+                                                    disabled={isMediaUpdating || property.imageUrl === url}
+                                                >
+                                                    <CheckCircle2 className={url === property.imageUrl ? "h-4 w-4 text-green-600" : "h-4 w-4"} />
+                                                </Button>
+                                                <Button 
+                                                    size="icon" 
+                                                    variant="destructive" 
+                                                    className="h-7 w-7 rounded-full" 
+                                                    title="Delete Photo"
+                                                    onClick={() => handleMediaAction('delete', url)}
+                                                    disabled={isMediaUpdating}
+                                                >
+                                                    <X className="h-4 w-4" />
+                                                </Button>
+                                            </div>
+                                        </div>
                                     ))}
                                 </div>
                                 <ScrollBar orientation="horizontal" />
                             </ScrollArea>
-                        </div>
-                    )}
+                        ) : (
+                            <div className="border-2 border-dashed rounded-xl p-8 text-center bg-muted/5">
+                                <p className="text-xs text-muted-foreground font-medium italic">No additional photos uploaded.</p>
+                            </div>
+                        )}
+                    </div>
                   </div>
 
                   <div className="grid grid-cols-2 md:grid-cols-4 gap-4 px-6 pb-8 border-t pt-8 bg-muted/10">
