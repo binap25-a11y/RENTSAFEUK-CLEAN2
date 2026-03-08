@@ -52,8 +52,10 @@
         "ownerId": { "type": "string" },
         "name": { "type": "string" },
         "email": { "type": "string" },
+        "telephone": { "type": "string" },
         "status": { "type": "string" },
-        "monthlyRent": { "type": "number" }
+        "monthlyRent": { "type": "number" },
+        "rentDueDay": { "type": "number", "description": "Day of the month rent is due (1-31)" }
       }
     },
     "MaintenanceLog": {
@@ -103,18 +105,6 @@
         "definition": {
           "entityName": "MaintenanceLog",
           "description": "Property maintenance records."
-        }
-      },
-      {
-        "path": "/userProfiles/{userId}/properties/{propertyId}/inspections/{inspectionId}",
-        "definition": {
-          "description": "Property inspection reports."
-        }
-      },
-      {
-        "path": "/userProfiles/{userId}/properties/{propertyId}/documents/{docId}",
-        "definition": {
-          "description": "Property compliance documents."
         }
       }
     ]

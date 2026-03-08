@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,7 +32,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2 } from 'lucide-react';
+import { Loader2, CalendarDays } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
   useUser,
@@ -42,16 +43,15 @@ import {
 } from '@/firebase';
 import { collection, query, where, doc, updateDoc, collectionGroup } from 'firebase/firestore';
 
-// Standard UK phone regex (Mobile & Landline)
 const ukPhoneRegex = /^(((\+44\s?\d{4}|\(?0\d{4}\)?)\s?\d{3}\s?\d{3})|((\+44\s?\d{3}|\(?0\d{3}\)?)\s?\d{3}\s?\d{4})|((\+44\s?\d{2}|\(?0\d{2}\)?)\s?\d{4}\s?\d{4}))(\s?\#(\d{4}|\d{3}))?$/;
 
-// Zod schema for tenant form validation
 const tenantSchema = z.object({
   name: z.string().min(2, 'Name is too short'),
   email: z.string().email('Please enter a valid email address.'),
   telephone: z.string().regex(ukPhoneRegex, 'Please enter a valid UK phone number.'),
   propertyId: z.string({ required_error: 'Please select a property.' }),
   monthlyRent: z.coerce.number().min(0, 'Rent cannot be negative').optional(),
+  rentDueDay: z.coerce.number().min(1).max(31, 'Select a day between 1 and 31'),
   tenancyStartDate: z.coerce.date({ required_error: 'Please select a start date.' }),
   tenancyEndDate: z.coerce.date().optional(),
   notes: z.string().optional(),
@@ -77,6 +77,7 @@ interface Tenant {
     telephone: string;
     propertyId: string;
     monthlyRent?: number;
+    rentDueDay?: number;
     tenancyStartDate: { seconds: number, nanoseconds: number } | Date;
     tenancyEndDate?: { seconds: number, nanoseconds: number } | Date;
     notes?: string;
@@ -107,14 +108,12 @@ export default function EditTenantPage() {
     resolver: zodResolver(tenantSchema),
   });
   
-  // Direct reference if propertyId is known
   const directTenantRef = useMemoFirebase(() => {
     if (!firestore || !tenantId || !urlPropertyId || !user) return null;
     return doc(firestore, 'userProfiles', user.uid, 'properties', urlPropertyId, 'tenants', tenantId);
   }, [firestore, tenantId, urlPropertyId, user]);
   const { data: directTenant, isLoading: isLoadingDirect } = useDoc<Tenant>(directTenantRef);
 
-  // collectionGroup fallback
   const tenantSearchQuery = useMemoFirebase(() => {
     if (!firestore || !tenantId || !user || urlPropertyId) return null;
     return query(
@@ -128,7 +127,6 @@ export default function EditTenantPage() {
   const tenant = useMemo(() => directTenant || searchResults?.[0] || null, [directTenant, searchResults]);
   const isLoadingTenant = isLoadingDirect || isLoadingSearch;
 
-  // Fetch properties for the dropdown
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
@@ -145,6 +143,7 @@ export default function EditTenantPage() {
             ...tenant,
             notes: tenant.notes ?? '',
             monthlyRent: tenant.monthlyRent,
+            rentDueDay: tenant.rentDueDay || 1,
             tenancyStartDate: tenant.tenancyStartDate instanceof Date ? tenant.tenancyStartDate : new Date((tenant.tenancyStartDate as any).seconds * 1000),
             tenancyEndDate: tenant.tenancyEndDate ? (tenant.tenancyEndDate instanceof Date ? tenant.tenancyEndDate : new Date((tenant.tenancyEndDate as any).seconds * 1000)) : undefined,
         };
@@ -230,6 +229,31 @@ export default function EditTenantPage() {
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t pt-6">
                 <FormField control={form.control} name="monthlyRent" render={({ field }) => (<FormItem><FormLabel className="font-bold">Agreed Rent (£/mo)</FormLabel><FormControl><Input className="h-11" type="number" min="0" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField
+                    control={form.control}
+                    name="rentDueDay"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel className="font-bold flex items-center gap-2">
+                            <CalendarDays className="h-4 w-4 text-primary" />
+                            Rent Due Day
+                        </FormLabel>
+                        <Select onValueChange={field.onChange} value={String(field.value)}>
+                            <FormControl>
+                                <SelectTrigger className="h-11">
+                                    <SelectValue placeholder="Select day" />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                {Array.from({ length: 31 }, (_, i) => (i + 1)).map(day => (
+                                    <SelectItem key={day} value={String(day)}>{day}{[1, 21, 31].includes(day) ? 'st' : [2, 22].includes(day) ? 'nd' : [3, 23].includes(day) ? 'rd' : 'th'} of month</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField control={form.control} name="tenancyStartDate" render={({ field }) => (<FormItem><FormLabel className="font-bold">Contract Start</FormLabel><FormControl><Input className="h-11" type="date" value={formatDateForInput(field.value)} onChange={(e) => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>)} />

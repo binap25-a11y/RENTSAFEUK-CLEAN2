@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
@@ -19,8 +20,8 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Download, Loader2, FileWarning, CalendarClock, Activity } from 'lucide-react';
-import { format, isBefore, addDays, isFuture } from 'date-fns';
+import { Download, Loader2, FileWarning, CalendarClock, Activity, Banknote } from 'lucide-react';
+import { format, isBefore, addDays, isFuture, setDate, isPast, addMonths, startOfMonth } from 'date-fns';
 import {
   useUser,
   useFirestore,
@@ -57,6 +58,23 @@ interface Inspection {
   scheduledDate: Timestamp | Date | { seconds: number; nanoseconds: number };
 }
 
+interface Tenant {
+    id: string;
+    name: string;
+    propertyId: string;
+    monthlyRent?: number;
+    rentDueDay?: number;
+    status: string;
+}
+
+interface RentPayment {
+    id: string;
+    propertyId: string;
+    month: string;
+    year: number;
+    status: string;
+}
+
 const toDate = (val: any): Date | null => {
   if (!val) return null;
   if (val instanceof Date) return val;
@@ -74,8 +92,10 @@ const getDocumentStatus = (expiryDate: Date, today: Date) => {
 
 const getStatusVariant = (status: string): "destructive" | "secondary" | "outline" => {
   switch (status) {
-    case 'Expired': return 'destructive';
+    case 'Expired': 
+    case 'Overdue': return 'destructive';
     case 'Expiring Soon':
+    case 'Upcoming':
     case 'Scheduled': return 'secondary';
     default: return 'outline';
   }
@@ -96,12 +116,16 @@ export default function RemindersPage() {
 
   const [allDocuments, setAllDocuments] = useState<Document[]>([]);
   const [allInspections, setAllInspections] = useState<Inspection[]>([]);
+  const [allTenants, setAllTenants] = useState<Tenant[]>([]);
+  const [allRentPayments, setAllRentPayments] = useState<RentPayment[]>([]);
   const [isAggregating, setIsAggregating] = useState(false);
 
   useEffect(() => {
     if (!user || !firestore || !properties || properties.length === 0) {
         setAllDocuments([]);
         setAllInspections([]);
+        setAllTenants([]);
+        setAllRentPayments([]);
         return;
     }
 
@@ -109,22 +133,32 @@ export default function RemindersPage() {
     const unsubs: (() => void)[] = [];
     const docMap: Record<string, Document[]> = {};
     const inspMap: Record<string, Inspection[]> = {};
+    const tenantMap: Record<string, Tenant[]> = {};
+    const paymentMap: Record<string, RentPayment[]> = {};
 
     const updateState = () => {
         setAllDocuments(Object.values(docMap).flat());
         setAllInspections(Object.values(inspMap).flat());
+        setAllTenants(Object.values(tenantMap).flat());
+        setAllRentPayments(Object.values(paymentMap).flat());
         setIsAggregating(false);
     };
 
     properties.forEach(prop => {
-        // Listen to Documents
         unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'documents'), (snap) => {
             docMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Document));
             updateState();
         }));
-        // Listen to Inspections
         unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'inspections'), (snap) => {
             inspMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Inspection));
+            updateState();
+        }));
+        unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'tenants'), (snap) => {
+            tenantMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Tenant));
+            updateState();
+        }));
+        unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'rentPayments'), (snap) => {
+            paymentMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as RentPayment));
             updateState();
         }));
     });
@@ -141,6 +175,7 @@ export default function RemindersPage() {
 
   const allReminders = useMemo(() => {
     if (!today) return [];
+    
     const documentReminders = allDocuments
         .map((doc) => {
           const expiry = toDate(doc.expiryDate);
@@ -159,17 +194,48 @@ export default function RemindersPage() {
         .filter((insp): insp is NonNullable<typeof insp> => insp !== null && isFuture(insp.scheduledDate))
         .map((insp) => ({ id: `insp-${insp.id}`, type: 'Task', description: insp.inspectionType || insp.type || 'Inspection', category: 'Routine Check', property: propertyMap[insp.propertyId] || 'Unknown', dueDate: insp.scheduledDate, status: 'Scheduled', href: `/dashboard/inspections/${insp.id}?propertyId=${insp.propertyId}` }));
 
-    return [...documentReminders, ...inspectionReminders].sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
-  }, [allDocuments, allInspections, propertyMap, today]);
+    const rentReminders = allTenants
+        .filter(t => t.status === 'Active' && t.rentDueDay)
+        .map((tenant) => {
+            const currentMonthName = format(today, 'MMMM');
+            const currentYear = today.getFullYear();
+            const isPaid = allRentPayments.some(p => p.propertyId === tenant.propertyId && p.month === currentMonthName && p.year === currentYear && p.status === 'Paid');
+            
+            if (isPaid) return null;
+
+            let dueDate = setDate(startOfMonth(today), tenant.rentDueDay!);
+            if (isPast(dueDate) && !isPaid && dueDate.getDate() !== today.getDate()) {
+                // It was due earlier this month and hasn't been paid
+            } else if (isBefore(dueDate, today)) {
+                // Logic for next month if already paid this month (handled above by isPaid)
+            }
+
+            const status = isPast(dueDate) ? 'Overdue' : 'Upcoming';
+
+            return {
+                id: `rent-${tenant.id}`,
+                type: 'Rent',
+                description: `Rent collection: ${tenant.name}`,
+                category: 'Financial',
+                property: propertyMap[tenant.propertyId] || 'Unknown',
+                dueDate: dueDate,
+                status: status,
+                href: `/dashboard/expenses`
+            };
+        })
+        .filter((r): r is NonNullable<typeof r> => r !== null);
+
+    return [...documentReminders, ...inspectionReminders, ...rentReminders].sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
+  }, [allDocuments, allInspections, allTenants, allRentPayments, propertyMap, today]);
   
   const generateComplianceReport = () => {
     const doc = new jsPDF();
-    doc.setFontSize(20); doc.text('Portfolio Compliance Health Report', 14, 22);
+    doc.setFontSize(20); doc.text('Portfolio Health Report', 14, 22);
     doc.setFontSize(10); doc.text(`Generated on: ${format(new Date(), 'PPP')}`, 14, 30);
-    const complianceData = allReminders.map(r => [r.property, r.category, r.description, format(r.dueDate, 'dd/MM/yyyy'), r.status]);
+    const complianceData = allReminders.map(r => [r.property, r.type, r.description, format(r.dueDate, 'dd/MM/yyyy'), r.status]);
     autoTable(doc, { 
         startY: 40, 
-        head: [['Property', 'Compliance Area', 'Details', 'Due Date', 'Status']], 
+        head: [['Property', 'Type', 'Details', 'Due Date', 'Status']], 
         body: complianceData, 
         theme: 'grid', 
         headStyles: { fillColor: [38, 102, 114] } 
@@ -177,24 +243,107 @@ export default function RemindersPage() {
     doc.save('Portfolio-Compliance-Health.pdf');
   };
 
-  const urgentCount = useMemo(() => allReminders.filter(r => r.status === 'Expired').length, [allReminders]);
-  const upcomingCount = useMemo(() => allReminders.filter(r => r.status !== 'Expired').length, [allReminders]);
+  const urgentCount = useMemo(() => allReminders.filter(r => r.status === 'Expired' || r.status === 'Overdue').length, [allReminders]);
+  const upcomingCount = useMemo(() => allReminders.filter(r => r.status === 'Expiring Soon' || r.status === 'Upcoming' || r.status === 'Scheduled').length, [allReminders]);
   const isLoading = isLoadingProps || isAggregating || !today;
+
+  const getTypeIcon = (type: string) => {
+      switch (type) {
+          case 'Rent': return <Banknote className="h-4 w-4 text-emerald-500" />;
+          case 'Compliance': return <FileWarning className="h-4 w-4 text-amber-500" />;
+          default: return <CalendarClock className="h-4 w-4 text-blue-500" />;
+      }
+  };
 
   return (
     <div className="flex flex-col gap-6">
       <div className="grid gap-4 md:grid-cols-2">
-        <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Urgent Compliance</CardTitle><FileWarning className="h-4 w-4 text-destructive" /></CardHeader><CardContent><div className="text-2xl font-bold text-destructive">{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : urgentCount}</div><p className="text-xs text-muted-foreground">Expired documents</p></CardContent></Card>
-        <Card><CardHeader className="flex flex-row items-center justify-between pb-2"><CardTitle className="text-sm font-medium">Upcoming Schedule</CardTitle><CalendarClock className="h-4 w-4 text-yellow-500" /></CardHeader><CardContent><div className="text-2xl font-bold">{isLoading ? <Loader2 className="h-4 w-4 animate-spin" /> : upcomingCount}</div><p className="text-xs text-muted-foreground">Tasks next 90 days</p></CardContent></Card>
+        <Card className="border-none shadow-md overflow-hidden relative">
+            <div className="h-1 bg-destructive w-full absolute top-0" />
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Critical / Overdue</CardTitle>
+                <FileWarning className="h-4 w-4 text-destructive" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-3xl font-bold text-destructive">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : urgentCount}</div>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1">Needs immediate attention</p>
+            </CardContent>
+        </Card>
+        <Card className="border-none shadow-md overflow-hidden relative">
+            <div className="h-1 bg-blue-500 w-full absolute top-0" />
+            <CardHeader className="flex flex-row items-center justify-between pb-2">
+                <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Upcoming Schedule</CardTitle>
+                <CalendarClock className="h-4 w-4 text-blue-500" />
+            </CardHeader>
+            <CardContent>
+                <div className="text-3xl font-bold text-blue-600">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : upcomingCount}</div>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1">Due next 30-90 days</p>
+            </CardContent>
+        </Card>
       </div>
-      <Card>
-        <CardHeader><div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-start"><div><CardTitle>Portfolio Reminders</CardTitle><CardDescription>Upcoming compliance and maintenance tasks.</CardDescription></div><Button onClick={generateComplianceReport} disabled={isLoading} className="w-full sm:w-auto"><Activity className="mr-2 h-4 w-4" /> Compliance Health PDF</Button></div></CardHeader>
-        <CardContent>
-          {isLoading ? ( <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div> ) : allReminders.length === 0 ? ( <div className="h-48 text-center flex flex-col justify-center items-center text-muted-foreground italic border-2 border-dashed rounded-lg"><CalendarClock className="h-10 w-10 opacity-10 mb-2" /><p>You're all caught up!</p></div> ) : (
-            <div className="rounded-md border overflow-hidden">
+
+      <Card className="border-none shadow-xl overflow-hidden">
+        <CardHeader className="bg-muted/30 border-b pb-6">
+            <div className="flex flex-col gap-4 sm:flex-row sm:justify-between sm:items-center">
+                <div>
+                    <CardTitle className="text-xl font-headline">Action Registry</CardTitle>
+                    <CardDescription>Consolidated view of rent due dates, compliance, and tasks.</CardDescription>
+                </div>
+                <Button onClick={generateComplianceReport} disabled={isLoading} className="font-bold shadow-lg h-10 px-6">
+                    <Activity className="mr-2 h-4 w-4" /> Export Health PDF
+                </Button>
+            </div>
+        </CardHeader>
+        <CardContent className="p-0">
+          {isLoading ? ( 
+            <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> 
+          ) : allReminders.length === 0 ? ( 
+            <div className="py-32 text-center flex flex-col justify-center items-center text-muted-foreground italic bg-muted/5">
+                <div className="bg-background p-6 rounded-full shadow-sm mb-4">
+                    <CalendarClock className="h-12 w-12 opacity-10" />
+                </div>
+                <p className="font-bold text-foreground">You're all caught up!</p>
+                <p className="text-sm">No critical compliance or rent tasks found.</p>
+            </div> 
+          ) : (
+            <div className="overflow-x-auto">
                 <Table>
-                    <TableHeader className="bg-muted/50"><TableRow><TableHead>Type</TableHead><TableHead>Description</TableHead><TableHead>Property</TableHead><TableHead>Status</TableHead><TableHead className="text-right">Due Date</TableHead></TableRow></TableHeader>
-                    <TableBody>{allReminders.map((reminder) => (<TableRow key={reminder.id} className="hover:bg-muted/30 transition-colors"><TableCell><Badge variant="outline">{reminder.type}</Badge></TableCell><TableCell className="font-semibold"><Link href={reminder.href} className="hover:underline">{reminder.description}</Link></TableCell><TableCell className="text-sm">{reminder.property}</TableCell><TableCell><Badge variant={getStatusVariant(reminder.status)}>{reminder.status}</Badge></TableCell><TableCell className="text-right font-medium">{format(reminder.dueDate, 'dd/MM/yyyy')}</TableCell></TableRow>))}</TableBody>
+                    <TableHeader className="bg-muted/50">
+                        <TableRow>
+                            <TableHead className="pl-6 font-bold uppercase tracking-wider text-[10px]">Type</TableHead>
+                            <TableHead className="font-bold uppercase tracking-wider text-[10px]">Issue / Task</TableHead>
+                            <TableHead className="font-bold uppercase tracking-wider text-[10px]">Location</TableHead>
+                            <TableHead className="font-bold uppercase tracking-wider text-[10px]">Status</TableHead>
+                            <TableHead className="text-right pr-6 font-bold uppercase tracking-wider text-[10px]">Target Date</TableHead>
+                        </TableRow>
+                    </TableHeader>
+                    <TableBody>
+                        {allReminders.map((reminder) => (
+                            <TableRow key={reminder.id} className="hover:bg-muted/30 transition-colors group">
+                                <TableCell className="pl-6">
+                                    <div className="flex items-center gap-2">
+                                        {getTypeIcon(reminder.type)}
+                                        <span className="text-[10px] font-bold uppercase tracking-tighter text-muted-foreground">{reminder.type}</span>
+                                    </div>
+                                </TableCell>
+                                <TableCell className="font-bold py-4">
+                                    <Link href={reminder.href} className="hover:underline text-primary">{reminder.description}</Link>
+                                    <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest">{reminder.category}</div>
+                                </TableCell>
+                                <TableCell className="text-xs font-medium text-muted-foreground max-w-[200px] truncate">
+                                    {reminder.property}
+                                </TableCell>
+                                <TableCell>
+                                    <Badge variant={getStatusVariant(reminder.status)} className="text-[10px] font-bold uppercase px-3 py-1 rounded-lg">
+                                        {reminder.status}
+                                    </Badge>
+                                </TableCell>
+                                <TableCell className="text-right pr-6 font-bold text-sm tabular-nums">
+                                    {format(reminder.dueDate, 'dd/MM/yyyy')}
+                                </TableCell>
+                            </TableRow>
+                        ))}
+                    </TableBody>
                 </Table>
             </div>
           )}

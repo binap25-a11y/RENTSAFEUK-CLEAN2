@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -24,13 +25,19 @@ import {
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Search, ChevronsUpDown } from 'lucide-react';
+import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from '@/components/ui/select';
+import { Loader2, Search, ChevronsUpDown, CalendarDays } from 'lucide-react';
 import {
   useUser,
   useFirestore,
   useCollection,
   useMemoFirebase,
-  useDoc,
 } from '@/firebase';
 import { collection, query, where, doc, updateDoc, addDoc, limit } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
@@ -38,16 +45,15 @@ import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
 
-// Standard UK phone regex (Mobile & Landline)
 const ukPhoneRegex = /^(((\+44\s?\d{4}|\(?0\d{4}\)?)\s?\d{3}\s?\d{3})|((\+44\s?\d{3}|\(?0\d{3}\)?)\s?\d{3}\s?\d{4})|((\+44\s?\d{2}|\(?0\d{2}\)?)\s?\d{4}\s?\d{4}))(\s?\#(\d{4}|\d{3}))?$/;
 
-// Zod schema for tenant form validation
 const tenantSchema = z.object({
   name: z.string().min(2, 'Name is too short'),
   email: z.string().email('Please enter a valid email address.'),
   telephone: z.string().regex(ukPhoneRegex, 'Please enter a valid UK phone number.'),
   propertyId: z.string({ required_error: 'Please select a property.' }).min(1, 'Please select a property.'),
   monthlyRent: z.coerce.number().min(0, 'Rent cannot be negative').optional(),
+  rentDueDay: z.coerce.number().min(1).max(31, 'Select a day between 1 and 31'),
   tenancyStartDate: z.coerce.date({ required_error: 'Please select a start date.' }),
   tenancyEndDate: z.coerce.date().optional(),
   notes: z.string().optional(),
@@ -63,7 +69,6 @@ const tenantSchema = z.object({
 
 type TenantFormValues = z.infer<typeof tenantSchema>;
 
-// Type for property documents from Firestore
 interface Property {
   id: string;
   address: {
@@ -76,7 +81,6 @@ interface Property {
   status: string;
 }
 
-// Helper to safely format dates for input[type="date"]
 const formatDateForInput = (value: any) => {
   if (!value) return '';
   const date = value instanceof Date ? value : new Date(value);
@@ -107,6 +111,7 @@ export default function AddTenantPage() {
       telephone: '',
       notes: '',
       monthlyRent: undefined,
+      rentDueDay: 1,
     },
   });
 
@@ -116,7 +121,6 @@ export default function AddTenantPage() {
     form.setValue('tenancyStartDate', new Date());
   }, [form]);
 
-  // Fetch properties - strictly hierarchical
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
@@ -154,7 +158,6 @@ export default function AddTenantPage() {
     }
   }, [propertyIdFromUrl, form]);
 
-
   async function onSubmit(data: TenantFormValues) {
     if (!user || !firestore) return;
     setIsSubmitting(true);
@@ -172,7 +175,6 @@ export default function AddTenantPage() {
         const cleanedTenantData = JSON.parse(JSON.stringify(newTenant));
         await addDoc(tenantsCollection, cleanedTenantData);
         
-        // Update property status
         const propertyDocRef = doc(firestore, 'userProfiles', user.uid, 'properties', data.propertyId);
         await updateDoc(propertyDocRef, { status: 'Occupied' });
         
@@ -186,7 +188,7 @@ export default function AddTenantPage() {
         toast({
           variant: 'destructive',
           title: 'Save Failed',
-          description: 'Permission denied or data error. Check property hierarchy.',
+          description: 'Permission denied or data error.',
         });
     } finally {
         setIsSubmitting(false);
@@ -338,6 +340,31 @@ export default function AddTenantPage() {
                         <FormControl>
                             <Input id="tenant-rent" name="monthlyRent" type="number" min="0" placeholder="0.00" className="h-11" {...field} value={field.value ?? ''} />
                         </FormControl>
+                        <FormMessage />
+                    </FormItem>
+                    )}
+                />
+                <FormField
+                    control={form.control}
+                    name="rentDueDay"
+                    render={({ field }) => (
+                    <FormItem>
+                        <FormLabel className="font-bold flex items-center gap-2">
+                            <CalendarDays className="h-4 w-4 text-primary" />
+                            Rent Due Day (Monthly)
+                        </FormLabel>
+                        <Select onValueChange={field.onChange} value={String(field.value)}>
+                            <FormControl>
+                                <SelectTrigger className="h-11">
+                                    <SelectValue placeholder="Select day" />
+                                </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                                {Array.from({ length: 31 }, (_, i) => (i + 1)).map(day => (
+                                    <SelectItem key={day} value={String(day)}>{day}{[1, 21, 31].includes(day) ? 'st' : [2, 22].includes(day) ? 'nd' : [3, 23].includes(day) ? 'rd' : 'th'} of month</SelectItem>
+                                ))}
+                            </SelectContent>
+                        </Select>
                         <FormMessage />
                     </FormItem>
                     )}

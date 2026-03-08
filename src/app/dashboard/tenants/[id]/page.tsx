@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -5,7 +6,25 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, User, Mail, Phone, Edit, Trash2, Home, Loader2, MoreVertical, UserPlus, Eye, FileCheck, MapPin, AlertCircle } from 'lucide-react';
+import { 
+  ArrowLeft, 
+  User, 
+  Mail, 
+  Phone, 
+  Edit, 
+  Trash2, 
+  Home, 
+  Loader2, 
+  MoreVertical, 
+  UserPlus, 
+  Eye, 
+  FileCheck, 
+  MapPin, 
+  AlertCircle,
+  BellRing,
+  CalendarDays,
+  Banknote
+} from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
 import { doc, collection, query, updateDoc, where, collectionGroup } from 'firebase/firestore';
@@ -40,6 +59,7 @@ interface Tenant {
     telephone: string;
     propertyId: string;
     monthlyRent?: number;
+    rentDueDay?: number;
     tenancyStartDate: any;
     tenancyEndDate?: any;
     notes?: string;
@@ -69,7 +89,6 @@ export default function TenantDetailPage() {
   
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
 
-  // Directly fetch using the propertyId if available in URL
   const directTenantRef = useMemoFirebase(() => {
     if (!firestore || !id || !urlPropertyId || !user) return null;
     return doc(firestore, 'userProfiles', user.uid, 'properties', urlPropertyId, 'tenants', id);
@@ -77,7 +96,6 @@ export default function TenantDetailPage() {
   
   const { data: directTenant, isLoading: isLoadingDirect } = useDoc<Tenant>(directTenantRef);
 
-  // Fallback: Search globally across all property sub-collections if propertyId is missing
   const tenantSearchQuery = useMemoFirebase(() => {
     if (!firestore || !id || !user || urlPropertyId) return null;
     return query(
@@ -108,6 +126,16 @@ export default function TenantDetailPage() {
   const { data: screenings } = useCollection<TenantScreening>(screeningsQuery);
   
   const firstScreening = screenings?.[0];
+
+  const handleSendReminder = () => {
+    if (!tenant || !property) return;
+    const propertyAddr = [property.address.street, property.address.city].filter(Boolean).join(', ');
+    const subject = encodeURIComponent(`Rent Reminder: ${propertyAddr}`);
+    const body = encodeURIComponent(`Hi ${tenant.name},\n\nThis is a friendly reminder that rent for ${propertyAddr} is due on the ${tenant.rentDueDay || '1st'} of the month.\n\nMonthly Rent: £${tenant.monthlyRent?.toLocaleString() || '0'}\n\nPlease let us know if you have any questions.\n\nBest regards,\nYour Landlord`);
+    
+    window.location.href = `mailto:${tenant.email}?subject=${subject}&body=${body}`;
+    toast({ title: 'Reminder Composed', description: 'Your default email client has been opened.' });
+  };
 
   const handleDeleteConfirm = async () => {
     if (!firestore || !user || !tenant) return;
@@ -165,7 +193,10 @@ export default function TenantDetailPage() {
                 </div>
             </div>
             <div className="flex items-center gap-2">
-                <Button variant="outline" asChild className="hidden sm:inline-flex">
+                <Button variant="outline" onClick={handleSendReminder} className="gap-2 font-bold uppercase tracking-widest text-[10px] h-10 px-4">
+                    <BellRing className="h-3.5 w-3.5" /> Send Rent Reminder
+                </Button>
+                <Button variant="outline" asChild className="hidden sm:inline-flex h-10 px-4">
                     <Link href={`/dashboard/tenants/${id}/edit?propertyId=${tenant.propertyId}`}>
                         <Edit className="mr-2 h-4 w-4" /> Edit Profile
                     </Link>
@@ -190,87 +221,102 @@ export default function TenantDetailPage() {
             </div>
         </div>
 
-        <div className="flex flex-col gap-6">
+        <div className="grid gap-6 md:grid-cols-2">
             <Card className="shadow-sm">
                 <CardHeader className="pb-4">
                     <CardTitle className="text-lg">Contact Information</CardTitle>
-                    <CardDescription>Primary communication details for this tenant.</CardDescription>
                 </CardHeader>
-                <CardContent className="grid gap-6 md:grid-cols-3 pt-6 border-t bg-muted/5">
-                    <div className="flex items-start gap-4">
-                        <div className="p-2.5 rounded-lg bg-primary/10 shrink-0 mt-1">
-                            <User className="h-5 w-5 text-primary" />
-                        </div>
-                        <div className="min-w-0">
-                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Full Name</p>
-                            <p className="font-semibold text-foreground break-words">{tenant.name}</p>
+                <CardContent className="space-y-4 pt-6 border-t bg-muted/5">
+                    <div className="flex items-center gap-4 p-3 rounded-lg bg-background border shadow-sm">
+                        <div className="p-2 rounded-full bg-primary/10 text-primary shrink-0"><Mail className="h-4 w-4" /></div>
+                        <div className="min-w-0 flex-1">
+                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Email</p>
+                            <a href={`mailto:${tenant.email}`} className="font-semibold text-primary hover:underline break-all block text-sm">{tenant.email}</a>
                         </div>
                     </div>
-                    <div className="flex items-start gap-4">
-                        <div className="p-2.5 rounded-lg bg-primary/10 shrink-0 mt-1">
-                            <Mail className="h-5 w-5 text-primary" />
-                        </div>
-                        <div className="min-w-0 overflow-hidden">
-                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Email</p>
-                            <a href={`mailto:${tenant.email}`} className="font-semibold text-primary hover:underline break-all block">
-                                {tenant.email}
-                            </a>
-                        </div>
-                    </div>
-                    <div className="flex items-start gap-4">
-                        <div className="p-2.5 rounded-lg bg-primary/10 shrink-0 mt-1">
-                            <Phone className="h-5 w-5 text-primary" />
-                        </div>
-                        <div className="min-w-0">
-                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Telephone</p>
-                            <p className="font-semibold text-foreground break-words">{tenant.telephone}</p>
+                    <div className="flex items-center gap-4 p-3 rounded-lg bg-background border shadow-sm">
+                        <div className="p-2 rounded-full bg-primary/10 text-primary shrink-0"><Phone className="h-4 w-4" /></div>
+                        <div className="min-w-0 flex-1">
+                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Telephone</p>
+                            <p className="font-semibold text-sm">{tenant.telephone}</p>
                         </div>
                     </div>
                 </CardContent>
             </Card>
-            
+
             <Card className="shadow-sm">
                 <CardHeader className="pb-4">
-                    <CardTitle className="text-lg">Assigned Property</CardTitle>
-                    <CardDescription>The specific property currently rented by this tenant.</CardDescription>
+                    <CardTitle className="text-lg">Contract Details</CardTitle>
                 </CardHeader>
-                <CardContent className="pt-6 border-t bg-muted/5">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
-                        <div className="flex items-start gap-4 flex-1 min-w-0">
-                            <div className="p-2.5 rounded-lg bg-muted shrink-0 mt-1">
-                                <MapPin className="h-5 w-5 text-muted-foreground" />
-                            </div>
-                            <div className="min-w-0 flex-1">
-                                <Link href={`/dashboard/properties/${tenant.propertyId}`} className="text-lg font-bold text-primary hover:underline leading-tight block whitespace-normal">
-                                    {propertyAddress}
-                                </Link>
-                                <div className="flex items-center flex-wrap gap-2 mt-2">
-                                    <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider">
-                                        Status: {tenant.status || 'Active'}
-                                    </Badge>
-                                    {tenant.monthlyRent && (
-                                        <Badge variant="secondary" className="text-[10px] uppercase font-bold tracking-wider">
-                                            Rent: £{tenant.monthlyRent.toLocaleString()}/mo
-                                        </Badge>
-                                    )}
-                                </div>
+                <CardContent className="space-y-4 pt-6 border-t bg-muted/5">
+                    <div className="grid grid-cols-2 gap-4">
+                        <div className="p-3 rounded-lg bg-background border shadow-sm flex items-start gap-3">
+                            <Banknote className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                            <div>
+                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Monthly Rent</p>
+                                <p className="font-bold text-lg">£{tenant.monthlyRent?.toLocaleString() || '0'}</p>
                             </div>
                         </div>
-                        <Button variant="outline" asChild className="shrink-0 w-full md:w-auto">
-                            <Link href={`/dashboard/properties/${tenant.propertyId}`}>
-                                <Home className="mr-2 h-4 w-4" />
-                                Full Property Profile
-                            </Link>
-                        </Button>
+                        <div className="p-3 rounded-lg bg-background border shadow-sm flex items-start gap-3">
+                            <CalendarDays className="h-4 w-4 text-primary mt-0.5 shrink-0" />
+                            <div>
+                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Rent Due Day</p>
+                                <p className="font-bold text-lg">{tenant.rentDueDay || '1'}{[1, 21, 31].includes(tenant.rentDueDay || 1) ? 'st' : [2, 22].includes(tenant.rentDueDay || 1) ? 'nd' : [3, 23].includes(tenant.rentDueDay || 1) ? 'rd' : 'th'}</p>
+                            </div>
+                        </div>
+                    </div>
+                    <div className="p-3 rounded-lg bg-background border shadow-sm flex flex-col gap-2">
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Tenancy Period</p>
+                        <div className="flex items-center gap-4 text-sm">
+                            <div>
+                                <p className="text-[10px] text-muted-foreground font-bold">START</p>
+                                <p className="font-semibold">{safeCreateDate(tenant.tenancyStartDate) ? format(safeCreateDate(tenant.tenancyStartDate)!, 'dd MMM yyyy') : 'N/A'}</p>
+                            </div>
+                            <div className="h-8 w-px bg-border mx-2" />
+                            <div>
+                                <p className="text-[10px] text-muted-foreground font-bold">END</p>
+                                <p className="font-semibold">{safeCreateDate(tenant.tenancyEndDate) ? format(safeCreateDate(tenant.tenancyEndDate)!, 'dd MMM yyyy') : 'Rolling'}</p>
+                            </div>
+                        </div>
                     </div>
                 </CardContent>
             </Card>
         </div>
+        
+        <Card className="shadow-sm">
+            <CardHeader className="pb-4">
+                <CardTitle className="text-lg">Assigned Property</CardTitle>
+            </CardHeader>
+            <CardContent className="pt-6 border-t bg-muted/5">
+                <div className="flex flex-col md:flex-row md:items-center justify-between gap-6">
+                    <div className="flex items-start gap-4 flex-1 min-w-0">
+                        <div className="p-2.5 rounded-lg bg-muted shrink-0 mt-1">
+                            <MapPin className="h-5 w-5 text-muted-foreground" />
+                        </div>
+                        <div className="min-w-0 flex-1">
+                            <Link href={`/dashboard/properties/${tenant.propertyId}`} className="text-lg font-bold text-primary hover:underline leading-tight block whitespace-normal">
+                                {propertyAddress}
+                            </Link>
+                            <div className="flex items-center flex-wrap gap-2 mt-2">
+                                <Badge variant="outline" className="text-[10px] uppercase font-bold tracking-wider">
+                                    {tenant.status || 'Active'}
+                                </Badge>
+                            </div>
+                        </div>
+                    </div>
+                    <Button variant="outline" asChild className="shrink-0 w-full md:w-auto h-11 px-6 font-bold shadow-sm">
+                        <Link href={`/dashboard/properties/${tenant.propertyId}`}>
+                            <Home className="mr-2 h-4 w-4" />
+                            View Full Property Profile
+                        </Link>
+                    </Button>
+                </div>
+            </CardContent>
+        </Card>
 
         <Card className="shadow-sm">
             <CardHeader className="pb-4">
                 <CardTitle className="text-lg">Onboarding & Compliance</CardTitle>
-                <CardDescription>Track screening reports and legal checks for this tenancy.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-6 pt-6 border-t">
                 <div>
@@ -284,16 +330,16 @@ export default function TenantDetailPage() {
                                 <p className="font-bold text-foreground">Comprehensive Screening Completed</p>
                                 <p className="text-xs text-muted-foreground mt-1 font-medium">Finalized on: {safeCreateDate(firstScreening.screeningDate) ? format(safeCreateDate(firstScreening.screeningDate)!, 'PPP') : 'N/A'}</p>
                             </div>
-                            <Button asChild variant="outline" className="w-full sm:w-auto">
+                            <Button asChild variant="outline" className="w-full sm:w-auto font-bold h-10 px-6">
                                 <Link href={`/dashboard/tenants/${id}/screenings/${firstScreening.id}?propertyId=${tenant.propertyId}`}>
-                                    <Eye className="mr-2 h-4 w-4" /> View Report
+                                    <Eye className="mr-2 h-4 w-4" /> View Full Report
                                 </Link>
                             </Button>
                         </div>
                     ) : (
                         <div className="text-center border-2 border-dashed rounded-xl p-10 bg-muted/5">
                             <p className="text-sm text-muted-foreground mb-6 font-medium">No screening report found for this tenant.</p>
-                            <Button asChild className="shadow-md">
+                            <Button asChild className="shadow-md h-11 px-8 font-bold">
                                 <Link href={`/dashboard/tenants/screening?tenantId=${id}&propertyId=${tenant.propertyId}`}>
                                     <UserPlus className="mr-2 h-4 w-4" /> Create Screening Report
                                 </Link>
