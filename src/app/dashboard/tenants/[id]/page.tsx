@@ -65,6 +65,7 @@ interface Tenant {
     notes?: string;
     status?: string;
     ownerId: string;
+    lastReminderSent?: any;
 }
 
 interface TenantScreening { id: string; screeningDate: any; }
@@ -127,14 +128,20 @@ export default function TenantDetailPage() {
   
   const firstScreening = screenings?.[0];
 
-  const handleSendReminder = () => {
-    if (!tenant || !property) return;
+  const handleSendReminder = async () => {
+    if (!tenant || !property || !user || !firestore) return;
+    
     const propertyAddr = [property.address.street, property.address.city].filter(Boolean).join(', ');
     const subject = encodeURIComponent(`Rent Reminder: ${propertyAddr}`);
     const body = encodeURIComponent(`Hi ${tenant.name},\n\nThis is a friendly reminder that rent for ${propertyAddr} is due on the ${tenant.rentDueDay || '1st'} of the month.\n\nMonthly Rent: £${tenant.monthlyRent?.toLocaleString() || '0'}\n\nPlease let us know if you have any questions.\n\nBest regards,\nYour Landlord`);
     
     window.location.href = `mailto:${tenant.email}?subject=${subject}&body=${body}`;
-    toast({ title: 'Reminder Composed', description: 'Your default email client has been opened.' });
+    
+    // Log the reminder timestamp
+    const tenantRef = doc(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId, 'tenants', tenant.id);
+    await updateDoc(tenantRef, { lastReminderSent: new Date().toISOString() });
+    
+    toast({ title: 'Reminder Composed', description: 'Update logged and email client opened.' });
   };
 
   const handleDeleteConfirm = async () => {

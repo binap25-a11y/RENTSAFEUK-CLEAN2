@@ -55,7 +55,8 @@
         "telephone": { "type": "string" },
         "status": { "type": "string" },
         "monthlyRent": { "type": "number" },
-        "rentDueDay": { "type": "number", "description": "Day of the month rent is due (1-31)" }
+        "rentDueDay": { "type": "number", "description": "Day of the month rent is due (1-31)" },
+        "lastReminderSent": { "type": "string", "format": "date-time" }
       }
     },
     "MaintenanceLog": {

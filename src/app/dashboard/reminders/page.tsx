@@ -20,17 +20,18 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Download, Loader2, FileWarning, CalendarClock, Activity, Banknote } from 'lucide-react';
-import { format, isBefore, addDays, isFuture, setDate, isPast, addMonths, startOfMonth } from 'date-fns';
+import { Download, Loader2, FileWarning, CalendarClock, Activity, Banknote, BellRing, Sparkles } from 'lucide-react';
+import { format, isBefore, addDays, isFuture, setDate, isPast, startOfMonth, differenceInDays } from 'date-fns';
 import {
   useUser,
   useFirestore,
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, Timestamp, onSnapshot, limit } from 'firebase/firestore';
+import { collection, query, where, Timestamp, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import jsPDF from 'jspdf';
 import autoTable from 'jspdf-autotable';
+import { toast } from '@/hooks/use-toast';
 
 interface Property {
   id: string;
@@ -61,10 +62,12 @@ interface Inspection {
 interface Tenant {
     id: string;
     name: string;
+    email: string;
     propertyId: string;
     monthlyRent?: number;
     rentDueDay?: number;
     status: string;
+    lastReminderSent?: any;
 }
 
 interface RentPayment {
@@ -204,13 +207,7 @@ export default function RemindersPage() {
             if (isPaid) return null;
 
             let dueDate = setDate(startOfMonth(today), tenant.rentDueDay!);
-            if (isPast(dueDate) && !isPaid && dueDate.getDate() !== today.getDate()) {
-                // It was due earlier this month and hasn't been paid
-            } else if (isBefore(dueDate, today)) {
-                // Logic for next month if already paid this month (handled above by isPaid)
-            }
-
-            const status = isPast(dueDate) ? 'Overdue' : 'Upcoming';
+            const status = isPast(dueDate) && dueDate.getDate() !== today.getDate() ? 'Overdue' : 'Upcoming';
 
             return {
                 id: `rent-${tenant.id}`,
@@ -227,7 +224,44 @@ export default function RemindersPage() {
 
     return [...documentReminders, ...inspectionReminders, ...rentReminders].sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
   }, [allDocuments, allInspections, allTenants, allRentPayments, propertyMap, today]);
-  
+
+  const automationReady = useMemo(() => {
+    if (!today) return [];
+    return allTenants.filter(tenant => {
+        if (tenant.status !== 'Active' || !tenant.rentDueDay) return false;
+        
+        const currentMonthName = format(today, 'MMMM');
+        const currentYear = today.getFullYear();
+        const isPaid = allRentPayments.some(p => p.propertyId === tenant.propertyId && p.month === currentMonthName && p.year === currentYear && p.status === 'Paid');
+        if (isPaid) return false;
+
+        const dueDate = setDate(startOfMonth(today), tenant.rentDueDay);
+        const daysToDue = differenceInDays(dueDate, today);
+        
+        // Automation triggers if overdue OR due in 3 days, AND not nudged in the last 7 days
+        const lastNudged = toDate(tenant.lastReminderSent);
+        const hasBeenNudgedRecently = lastNudged && differenceInDays(today, lastNudged) < 7;
+
+        return (isPast(dueDate) || daysToDue <= 3) && !hasBeenNudgedRecently;
+    });
+  }, [allTenants, allRentPayments, today]);
+
+  const handleSendReminder = async (tenant: Tenant) => {
+    if (!user || !firestore) return;
+    
+    const propertyAddr = propertyMap[tenant.propertyId] || 'Assigned Property';
+    const subject = encodeURIComponent(`Rent Reminder: ${propertyAddr}`);
+    const body = encodeURIComponent(`Hi ${tenant.name},\n\nThis is an automated reminder regarding the rent for ${propertyAddr}.\n\nMonthly Rent: £${tenant.monthlyRent?.toLocaleString() || '0'}\nDue Day: ${tenant.rentDueDay}${tenant.rentDueDay === 1 ? 'st' : 'th'} of the month.\n\nIf you have already made this payment, please disregard this message.\n\nBest regards,\nRentSafeUK Portfolio Management`);
+    
+    window.location.href = `mailto:${tenant.email}?subject=${subject}&body=${body}`;
+    
+    // Update last reminder date
+    const tenantRef = doc(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId, 'tenants', tenant.id);
+    await updateDoc(tenantRef, { lastReminderSent: new Date().toISOString() });
+    
+    toast({ title: 'Reminder Prepared', description: 'Opening email client for review.' });
+  };
+
   const generateComplianceReport = () => {
     const doc = new jsPDF();
     doc.setFontSize(20); doc.text('Portfolio Health Report', 14, 22);
@@ -246,14 +280,6 @@ export default function RemindersPage() {
   const urgentCount = useMemo(() => allReminders.filter(r => r.status === 'Expired' || r.status === 'Overdue').length, [allReminders]);
   const upcomingCount = useMemo(() => allReminders.filter(r => r.status === 'Expiring Soon' || r.status === 'Upcoming' || r.status === 'Scheduled').length, [allReminders]);
   const isLoading = isLoadingProps || isAggregating || !today;
-
-  const getTypeIcon = (type: string) => {
-      switch (type) {
-          case 'Rent': return <Banknote className="h-4 w-4 text-emerald-500" />;
-          case 'Compliance': return <FileWarning className="h-4 w-4 text-amber-500" />;
-          default: return <CalendarClock className="h-4 w-4 text-blue-500" />;
-      }
-  };
 
   return (
     <div className="flex flex-col gap-6">
@@ -281,6 +307,36 @@ export default function RemindersPage() {
             </CardContent>
         </Card>
       </div>
+
+      {automationReady.length > 0 && (
+        <Card className="border-primary/20 bg-primary/[0.02] shadow-lg overflow-hidden relative">
+            <div className="absolute top-0 right-0 p-4 opacity-10">
+                <Sparkles className="h-12 w-12 text-primary" />
+            </div>
+            <CardHeader>
+                <CardTitle className="text-lg flex items-center gap-2 text-primary">
+                    <BellRing className="h-5 w-5" />
+                    Rent Automation Hub
+                </CardTitle>
+                <CardDescription>System identified {automationReady.length} overdue or upcoming rent nudges ready to send.</CardDescription>
+            </CardHeader>
+            <CardContent>
+                <div className="space-y-3">
+                    {automationReady.map(tenant => (
+                        <div key={tenant.id} className="flex items-center justify-between p-4 bg-background border rounded-xl shadow-sm">
+                            <div className="min-w-0">
+                                <p className="font-bold text-sm truncate">{tenant.name}</p>
+                                <p className="text-[10px] text-muted-foreground uppercase font-medium">{propertyMap[tenant.propertyId]}</p>
+                            </div>
+                            <Button size="sm" onClick={() => handleSendReminder(tenant)} className="font-bold uppercase text-[10px] h-8 px-4 gap-2">
+                                <BellRing className="h-3 w-3" /> Nudge Now
+                            </Button>
+                        </div>
+                    ))}
+                </div>
+            </CardContent>
+        </Card>
+      )}
 
       <Card className="border-none shadow-xl overflow-hidden">
         <CardHeader className="bg-muted/30 border-b pb-6">
@@ -322,7 +378,6 @@ export default function RemindersPage() {
                             <TableRow key={reminder.id} className="hover:bg-muted/30 transition-colors group">
                                 <TableCell className="pl-6">
                                     <div className="flex items-center gap-2">
-                                        {getTypeIcon(reminder.type)}
                                         <span className="text-[10px] font-bold uppercase tracking-tighter text-muted-foreground">{reminder.type}</span>
                                     </div>
                                 </TableCell>
