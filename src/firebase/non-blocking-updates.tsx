@@ -2,7 +2,7 @@
 'use client';
 
 /**
- * REDUNDANT FILE REMOVED.
- * Exporting from .ts source to resolve build ambiguity in Next.js.
+ * REDUNDANT COMPONENT REMOVED.
+ * Logic consolidated into non-blocking-updates.ts to resolve build conflicts.
  */
-export * from './non-blocking-updates';
+export {};

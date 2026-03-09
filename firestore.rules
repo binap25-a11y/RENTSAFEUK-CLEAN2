@@ -48,13 +48,6 @@ service cloud.firestore {
           allow delete: if isExistingOwner(userProfileId);
         }
 
-        match /inspections/{inspectionId} {
-          allow get, list: if isOwner(userProfileId);
-          allow create: if isOwner(userProfileId) && matchesPath(userProfileId);
-          allow update: if isExistingOwner(userProfileId) && remainsImmutable();
-          allow delete: if isExistingOwner(userProfileId);
-        }
-
         match /documents/{documentId} {
           allow get, list: if isOwner(userProfileId);
           allow create: if isOwner(userProfileId) && matchesPath(userProfileId);
@@ -68,17 +61,17 @@ service cloud.firestore {
           allow update: if isExistingOwner(userProfileId) && remainsImmutable();
           allow delete: if isExistingOwner(userProfileId);
 
+          match /messages/{messageId} {
+            allow get, list: if isOwner(userProfileId);
+            allow create: if isOwner(userProfileId);
+            allow update, delete: if isExistingOwner(userProfileId);
+          }
+          
           match /screenings/{screeningId} {
             allow get, list: if isOwner(userProfileId);
             allow create: if isOwner(userProfileId) && matchesPath(userProfileId);
             allow update: if isExistingOwner(userProfileId) && remainsImmutable();
             allow delete: if isExistingOwner(userProfileId);
-          }
-
-          match /messages/{messageId} {
-            allow get, list: if isOwner(userProfileId);
-            allow create: if isOwner(userProfileId);
-            allow update, delete: if isExistingOwner(userProfileId);
           }
         }
 
@@ -88,15 +81,22 @@ service cloud.firestore {
           allow update: if isExistingOwner(userProfileId) && remainsImmutable();
           allow delete: if isExistingOwner(userProfileId);
         }
-        
-        match /expenses/{expenseId} {
+
+        match /checklists/{checklistId} {
           allow get, list: if isOwner(userProfileId);
           allow create: if isOwner(userProfileId) && matchesPath(userProfileId);
           allow update: if isExistingOwner(userProfileId) && remainsImmutable();
           allow delete: if isExistingOwner(userProfileId);
         }
-
-        match /checklists/{checklistId} {
+        
+        match /inspections/{inspectionId} {
+          allow get, list: if isOwner(userProfileId);
+          allow create: if isOwner(userProfileId) && matchesPath(userProfileId);
+          allow update: if isExistingOwner(userProfileId) && remainsImmutable();
+          allow delete: if isExistingOwner(userProfileId);
+        }
+        
+        match /expenses/{expenseId} {
           allow get, list: if isOwner(userProfileId);
           allow create: if isOwner(userProfileId) && matchesPath(userProfileId);
           allow update: if isExistingOwner(userProfileId) && remainsImmutable();
@@ -112,27 +112,25 @@ service cloud.firestore {
       }
     }
 
-    // --- Unified collectionGroup Rules ---
-    // These rules are split into distinct allow blocks to ensure the Firestore 
-    // query analyzer can verify authorization for filtered list operations.
+    // --- Optimized collectionGroup Rules ---
+    // Rules are split to ensure the query analyzer can statically verify authorization.
 
     match /{path=**}/tenants/{tenantId} {
-      allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow get: if isSignedIn() && (resource.data.email == request.auth.token.email || resource.data.userId == request.auth.uid);
+      // Role discovery for residents (email-based)
+      allow list: if isSignedIn() && (resource.data.email == request.auth.token.email.lower());
+      // Portfolio oversight for landlords (UID-based)
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid);
+      
+      allow get: if isSignedIn() && (resource.data.email == request.auth.token.email.lower() || resource.data.userId == request.auth.uid);
     }
 
     match /{path=**}/messages/{messageId} {
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow list: if isSignedIn() && resource.data.senderId == request.auth.uid;
-      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.senderId == request.auth.uid);
+      allow list, get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.senderId == request.auth.uid);
       allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow list: if isSignedIn() && resource.data.reportedBy == request.auth.uid;
-      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.reportedBy == request.auth.uid);
+      allow list, get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.reportedBy == request.auth.uid);
     }
   }
 }

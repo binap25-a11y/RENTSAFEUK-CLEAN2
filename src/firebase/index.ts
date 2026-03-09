@@ -2,55 +2,48 @@
 'use client';
 
 /**
- * @fileOverview Consolidated barrel file for Firebase services and utilities.
- * Resolves build ambiguity by standardizing on stable TypeScript exports.
+ * @fileOverview Standardized barrel file for Firebase services and utilities.
+ * Consolidated to resolve build-time resolution ambiguity and ENOENT errors.
  */
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
+import { getStorage } from 'firebase/storage';
 
 /**
  * Initializes the Firebase Client SDK.
  * Ensures services are only initialized once on the client.
  */
 export function initializeFirebase() {
-  if (!getApps().length) {
-    let firebaseApp;
-    try {
-      firebaseApp = initializeApp(firebaseConfig);
-    } catch (e) {
-      console.warn('Firebase initialization warning:', e);
-      firebaseApp = initializeApp(firebaseConfig);
-    }
-    return getSdks(firebaseApp);
-  }
-  return getSdks(getApp());
+  const firebaseApp: FirebaseApp = getApps().length === 0 
+    ? initializeApp(firebaseConfig) 
+    : getApp();
+
+  return getSdks(firebaseApp);
 }
 
+/**
+ * Returns initialized Firebase client-side services.
+ */
 export function getSdks(firebaseApp: FirebaseApp) {
   return {
     firebaseApp,
     auth: getAuth(firebaseApp),
-    firestore: getFirestore(firebaseApp)
+    firestore: getFirestore(firebaseApp),
+    storage: getStorage(firebaseApp)
   };
 }
 
-// Providers & Components
+// Providers & Hooks
 export * from './provider';
 export * from './client-provider';
-
-// Firestore Hooks
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 
-// Authentication Utilities
+// Normalized Implementation Exports
 export * from './non-blocking-login';
-
-// Data Mutation Utilities
 export * from './non-blocking-updates';
-
-// Global Error Handling
 export * from './errors';
 export * from './error-emitter';

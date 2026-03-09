@@ -19,7 +19,7 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "userId": { "type": "string", "description": "The owning landlord's UID." },
+        "userId": { "type": "string" },
         "address": {
           "type": "object",
           "properties": {
@@ -36,8 +36,6 @@
         "bathrooms": { "type": "number" },
         "imageUrl": { "type": "string" },
         "additionalImageUrls": { "type": "array", "items": { "type": "string" } },
-        "purchasePrice": { "type": "number" },
-        "currentValuation": { "type": "number" },
         "tenancy": {
           "type": "object",
           "properties": {
@@ -51,27 +49,26 @@
     },
     "Tenant": {
       "title": "Tenant",
-      "description": "A resident currently or previously associated with a property.",
+      "description": "A resident associated with a property.",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "userId": { "type": "string", "description": "The managing landlord's UID." },
+        "userId": { "type": "string" },
         "propertyId": { "type": "string" },
         "name": { "type": "string" },
         "email": { "type": "string", "format": "email" },
         "telephone": { "type": "string" },
         "status": { "type": "string", "enum": ["Active", "Archived"] },
-        "monthlyRent": { "type": "number" },
         "rentDueDay": { "type": "number" },
+        "monthlyRent": { "type": "number" },
         "tenancyStartDate": { "type": "string", "format": "date-time" },
-        "tenancyEndDate": { "type": "string", "format": "date-time" },
-        "lastReminderSent": { "type": "string", "format": "date-time" }
+        "tenancyEndDate": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "userId", "propertyId", "name", "email", "status"]
     },
     "MaintenanceLog": {
       "title": "MaintenanceLog",
-      "description": "A recorded repair or maintenance issue.",
+      "description": "Recorded repair or maintenance issue.",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
@@ -80,19 +77,17 @@
         "title": { "type": "string" },
         "description": { "type": "string" },
         "category": { "type": "string" },
-        "otherCategoryDetails": { "type": "string" },
         "priority": { "type": "string", "enum": ["Emergency", "Urgent", "Routine", "Low"] },
         "status": { "type": "string", "enum": ["Open", "In Progress", "Completed", "Cancelled"] },
-        "reportedBy": { "type": "string", "description": "UID of reporter (landlord or tenant)." },
-        "reportedDate": { "type": "string", "format": "date-time" },
+        "photoUrls": { "type": "array", "items": { "type": "string" } },
         "contractorName": { "type": "string" },
-        "photoUrls": { "type": "array", "items": { "type": "string" } }
+        "scheduledDate": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "userId", "propertyId", "title", "status", "priority"]
     },
     "RentPayment": {
       "title": "RentPayment",
-      "description": "Tracking record for monthly rent collection.",
+      "description": "Monthly rent collection tracker.",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
@@ -101,14 +96,41 @@
         "year": { "type": "number" },
         "month": { "type": "string" },
         "status": { "type": "string", "enum": ["Paid", "Partially Paid", "Unpaid", "Pending"] },
-        "expectedAmount": { "type": "number" },
-        "amountPaid": { "type": "number" }
+        "amountPaid": { "type": "number" },
+        "expectedAmount": { "type": "number" }
       },
       "required": ["userId", "propertyId", "year", "month", "status"]
     },
+    "Checklist": {
+      "title": "Checklist",
+      "description": "Pre-tenancy compliance checklist for residents.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "completedDate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "propertyId", "tenantId"]
+    },
+    "Inspection": {
+      "title": "Inspection",
+      "description": "Property condition inspection report.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "type": { "type": "string", "enum": ["Single-Let", "HMO"] },
+        "status": { "type": "string", "enum": ["Scheduled", "Completed", "Cancelled"] },
+        "scheduledDate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "propertyId", "type", "status"]
+    },
     "Contractor": {
       "title": "Contractor",
-      "description": "A tradesperson or company in the landlord's directory.",
+      "description": "Trusted tradesperson directory.",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
@@ -116,45 +138,10 @@
         "name": { "type": "string" },
         "trade": { "type": "string" },
         "phone": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "status": { "type": "string", "enum": ["Active", "Archived"] },
-        "notes": { "type": "string" }
+        "email": { "type": "string" },
+        "status": { "type": "string", "enum": ["Active", "Archived"] }
       },
       "required": ["id", "userId", "name", "trade", "phone", "status"]
-    },
-    "Document": {
-      "title": "Document",
-      "description": "A legal or compliance document (EPC, Gas Safety, Agreement).",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "userId": { "type": "string" },
-        "propertyId": { "type": "string" },
-        "title": { "type": "string" },
-        "documentType": { "type": "string" },
-        "issueDate": { "type": "string", "format": "date-time" },
-        "expiryDate": { "type": "string", "format": "date-time" },
-        "fileUrl": { "type": "string" },
-        "notes": { "type": "string" }
-      },
-      "required": ["id", "userId", "propertyId", "title", "documentType", "issueDate", "expiryDate"]
-    },
-    "Checklist": {
-      "title": "Checklist",
-      "description": "Pre-tenancy legal and practical compliance checklist.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "userId": { "type": "string" },
-        "propertyId": { "type": "string" },
-        "tenantId": { "type": "string" },
-        "completedDate": { "type": "string", "format": "date-time" },
-        "beforeTenancy": { "type": "object" },
-        "deposit": { "type": "object" },
-        "atMoveIn": { "type": "object" },
-        "optional": { "type": "object" }
-      },
-      "required": ["id", "userId", "propertyId", "tenantId"]
     }
   },
   "auth": {
@@ -163,35 +150,35 @@
   "firestore": {
     "/userProfiles/{userId}": {
       "schema": { "$ref": "#/entities/UserProfile" },
-      "description": "Root user profile document."
+      "description": "Landlord profile root."
     },
     "/userProfiles/{userId}/properties/{propertyId}": {
       "schema": { "$ref": "#/entities/Property" },
-      "description": "Hierarchical property records."
+      "description": "Rental units."
     },
     "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}": {
       "schema": { "$ref": "#/entities/Tenant" },
-      "description": "Tenants assigned to a specific property."
+      "description": "Assigned residents."
     },
     "/userProfiles/{userId}/properties/{propertyId}/maintenanceLogs/{logId}": {
       "schema": { "$ref": "#/entities/MaintenanceLog" },
-      "description": "Maintenance history for a property."
+      "description": "Property repairs."
     },
     "/userProfiles/{userId}/properties/{propertyId}/rentPayments/{paymentId}": {
       "schema": { "$ref": "#/entities/RentPayment" },
-      "description": "Rent ledger for a property."
-    },
-    "/userProfiles/{userId}/properties/{propertyId}/documents/{docId}": {
-      "schema": { "$ref": "#/entities/Document" },
-      "description": "Compliance and legal files."
-    },
-    "/userProfiles/{userId}/contractors/{contractorId}": {
-      "schema": { "$ref": "#/entities/Contractor" },
-      "description": "Landlord's contractor directory."
+      "description": "Financial ledger."
     },
     "/userProfiles/{userId}/properties/{propertyId}/checklists/{checklistId}": {
       "schema": { "$ref": "#/entities/Checklist" },
-      "description": "Compliance checklists for a property."
+      "description": "Pre-tenancy checklists."
+    },
+    "/userProfiles/{userId}/properties/{propertyId}/inspections/{inspectionId}": {
+      "schema": { "$ref": "#/entities/Inspection" },
+      "description": "Property inspection reports."
+    },
+    "/userProfiles/{userId}/contractors/{contractorId}": {
+      "schema": { "$ref": "#/entities/Contractor" },
+      "description": "Contractor contacts."
     }
   }
 }
