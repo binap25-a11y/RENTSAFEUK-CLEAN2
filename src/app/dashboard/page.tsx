@@ -129,7 +129,7 @@ export default function DashboardPage() {
     setMounted(true);
   }, []);
 
-  // Role detection: unified discovery logic
+  // Unified discovery logic for role detection
   useEffect(() => {
     if (!user || !firestore || !user.email || isUserLoading) {
       if (!isUserLoading) setIsLoadingPortalCheck(false);
@@ -138,7 +138,7 @@ export default function DashboardPage() {
   
     const userEmail = user.email.toLowerCase().trim();
 
-    // Use normalized path 'tenants' which matches unified rule provability
+    // Query for active tenants by email across the entire portfolio
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
