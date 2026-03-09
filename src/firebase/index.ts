@@ -3,12 +3,13 @@
 
 /**
  * @fileOverview Standardized barrel file for Firebase services and hooks.
+ * Consolidated to resolve ambiguity between .ts and .tsx utility files.
  */
 
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore'
+import { getFirestore } from 'firebase/firestore';
 
 /**
  * Initializes the Firebase Client SDK.
@@ -42,7 +43,7 @@ export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 
-// Utilities
+// Utilities (Strictly .ts sources)
 export * from './non-blocking-updates';
 export * from './non-blocking-login';
 

@@ -129,7 +129,7 @@ export default function DashboardPage() {
     setMounted(true);
   }, []);
 
-  // Role detection: check if user is a resident in any portfolio across the platform
+  // Role detection: unified discovery logic
   useEffect(() => {
     if (!user || !firestore || !user.email || isUserLoading) {
       if (!isUserLoading) setIsLoadingPortalCheck(false);
@@ -138,6 +138,7 @@ export default function DashboardPage() {
   
     const userEmail = user.email.toLowerCase().trim();
 
+    // Use normalized path 'tenants' which matches unified rule provability
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
@@ -149,6 +150,7 @@ export default function DashboardPage() {
         setIsResident(!!activeTenantRecord);
         setIsLoadingPortalCheck(false);
     }, (error) => {
+        // Trigger global error propagation with explicit collection group context
         errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'tenants', 
             operation: 'list',

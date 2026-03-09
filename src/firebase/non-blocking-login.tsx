@@ -2,7 +2,7 @@
 'use client';
 
 /**
- * File removed to resolve ambiguous import errors in Next.js.
- * Functionality is maintained in src/firebase/non-blocking-login.ts.
+ * REDUNDANT FILE REMOVED.
+ * Exporting from .ts source to resolve build ambiguity in Next.js.
  */
 export * from './non-blocking-login';

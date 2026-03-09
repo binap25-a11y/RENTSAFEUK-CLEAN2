@@ -105,29 +105,29 @@ service cloud.firestore {
       }
     }
 
-    // --- collectionGroup Discovery Rules ---
-    // Rules are split to allow the Firestore query engine to statically verify authorization for specific filters.
+    // --- Unified collectionGroup Rules ---
+    // Optimized for static provability in collectionGroup list operations
 
     match /{path=**}/tenants/{tenantId} {
-      // Allows residents to find their record via email filter
-      allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
-      // Allows landlords to oversight via ownerId filter
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      // Standard read for specific document access
-      allow get: if isSignedIn() && (resource.data.email == request.auth.token.email || resource.data.userId == request.auth.uid);
+      allow list, get: if isSignedIn() && (
+        resource.data.email == request.auth.token.email || 
+        resource.data.userId == request.auth.uid
+      );
     }
 
     match /{path=**}/messages/{messageId} {
-      allow list: if isSignedIn() && resource.data.senderId == request.auth.uid;
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.senderId == request.auth.uid);
+      allow list, get: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.senderId == request.auth.uid
+      );
       allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow list: if isSignedIn() && resource.data.reportedBy == request.auth.uid;
-      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.reportedBy == request.auth.uid);
+      allow list, get: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.reportedBy == request.auth.uid
+      );
     }
   }
 }
