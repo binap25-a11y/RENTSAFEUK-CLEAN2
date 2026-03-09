@@ -14,25 +14,37 @@ service cloud.firestore {
 
     // --- Collection Group Rules (Authorized Discovery) ---
     // These rules allow cross-portfolio discovery for residents and landlords.
-    // Query constraints must perfectly match these conditions for authorization.
+    // Separated into distinct allow statements to ensure the Firestore query engine 
+    // can verify query authorization statically.
     
     match /{path=**}/tenants/{tenantId} {
-      // Combined rule for list/get to ensure query optimizer can verify authorization
-      allow read: if isSignedIn() && (
-        resource.data.email == request.auth.token.email.lower() || 
+      // Allow residents to find their own tenancy via email (standardized to lower case)
+      allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
+      // Allow landlords to view their own tenants across the entire portfolio
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      // Get rule for detail view access
+      allow get: if isSignedIn() && (
+        resource.data.email == request.auth.token.email || 
         resource.data.userId == request.auth.uid
       );
     }
 
     match /{path=**}/messages/{messageId} {
-      allow read: if isSignedIn() && (
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.senderId == request.auth.uid;
+      
+      allow get: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
         resource.data.senderId == request.auth.uid
       );
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      allow read: if isSignedIn() && (
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.reportedBy == request.auth.uid;
+      
+      allow get: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
         resource.data.reportedBy == request.auth.uid
       );

@@ -135,8 +135,9 @@ export default function DashboardPage() {
       return;
     }
     
-    // Identity normalization for character-perfect rule matching
-    const userEmail = user.email.toLowerCase().trim();
+    // Normalize identity for strict security rule matching
+    // Security rules match against the email provided in the auth token
+    const userEmail = user.email.trim();
 
     // Discovery query to find if this email exists in any tenant collection across the platform
     // collectionGroup queries require explicit matching rules in firestore.rules
@@ -152,8 +153,9 @@ export default function DashboardPage() {
         setIsLoadingPortalCheck(false);
     }, (error) => {
         // Trigger global error propagation with explicit collection group context
+        // Path matches the collection name in firestore.rules for simpler discovery
         errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: 'tenants', // Generic path for collection group discovery
+            path: 'tenants', 
             operation: 'list',
         }));
         setIsLoadingPortalCheck(false);
