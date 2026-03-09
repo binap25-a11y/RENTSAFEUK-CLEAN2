@@ -83,6 +83,7 @@ export function Notifications() {
   const firestore = useFirestore();
 
   // Explicitly filter for active properties to ensure notifications clear on deletion
+  // Redundant userId filter removed as it is implicit in the root path rule
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(

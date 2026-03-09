@@ -17,10 +17,11 @@ service cloud.firestore {
     // Query constraints must perfectly match these conditions for authorization.
     
     match /{path=**}/tenants/{tenantId} {
-      allow list: if isSignedIn() && (
-        resource.data.email == request.auth.token.email.lower() || 
-        resource.data.userId == request.auth.uid
-      );
+      // Rule for Discovery: Filter by authenticated email
+      allow list: if isSignedIn() && resource.data.email == request.auth.token.email.lower();
+      // Rule for Oversight: Filter by ownership ID
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
       allow get: if isSignedIn() && (
         resource.data.email == request.auth.token.email.lower() || 
         resource.data.userId == request.auth.uid
@@ -28,10 +29,8 @@ service cloud.firestore {
     }
 
     match /{path=**}/messages/{messageId} {
-      allow list: if isSignedIn() && (
-        resource.data.userId == request.auth.uid || 
-        resource.data.senderId == request.auth.uid
-      );
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.senderId == request.auth.uid;
       allow get: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
         resource.data.senderId == request.auth.uid
@@ -39,10 +38,8 @@ service cloud.firestore {
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      allow list: if isSignedIn() && (
-        resource.data.userId == request.auth.uid || 
-        resource.data.reportedBy == request.auth.uid
-      );
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.reportedBy == request.auth.uid;
       allow get: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
         resource.data.reportedBy == request.auth.uid

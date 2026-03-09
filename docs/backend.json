@@ -84,9 +84,16 @@
         "tenantId": { "type": "string" },
         "screeningDate": { "type": "string", "format": "date-time" },
         "monthlyIncome": { "type": "number" },
+        "rightToRent": { "type": "object" },
+        "idVerification": { "type": "object" },
+        "creditCheck": { "type": "object" },
+        "employmentIncome": { "type": "object" },
+        "landlordReference": { "type": "object" },
+        "affordability": { "type": "object" },
+        "guarantor": { "type": "object" },
         "overallNotes": { "type": "string" }
       },
-      "required": ["id", "userId", "tenantId", "screeningDate"]
+      "required": ["id", "userId", "propertyId", "tenantId", "screeningDate"]
     },
     "PreTenancyChecklist": {
       "title": "PreTenancyChecklist",
@@ -97,7 +104,11 @@
         "userId": { "type": "string" },
         "propertyId": { "type": "string" },
         "tenantId": { "type": "string" },
-        "completedDate": { "type": "string", "format": "date-time" }
+        "completedDate": { "type": "string", "format": "date-time" },
+        "beforeTenancy": { "type": "object" },
+        "deposit": { "type": "object" },
+        "atMoveIn": { "type": "object" },
+        "optional": { "type": "object" }
       },
       "required": ["id", "userId", "propertyId", "tenantId"]
     },
@@ -117,7 +128,9 @@
         "reportedDate": { "type": "string", "format": "date-time" },
         "estimatedCost": { "type": "number" },
         "scheduledDate": { "type": "string", "format": "date-time" },
-        "photoUrls": { "type": "array", "items": { "type": "string" } }
+        "photoUrls": { "type": "array", "items": { "type": "string" } },
+        "otherCategoryDetails": { "type": "string" },
+        "notes": { "type": "string" }
       },
       "required": ["id", "userId", "propertyId", "title", "status"]
     },
@@ -132,7 +145,8 @@
         "documentType": { "type": "string" },
         "fileUrl": { "type": "string" },
         "issueDate": { "type": "string", "format": "date-time" },
-        "expiryDate": { "type": "string", "format": "date-time" }
+        "expiryDate": { "type": "string", "format": "date-time" },
+        "notes": { "type": "string" }
       },
       "required": ["id", "userId", "propertyId", "title"]
     },
@@ -161,7 +175,8 @@
         "date": { "type": "string", "format": "date-time" },
         "expenseType": { "type": "string" },
         "amount": { "type": "number" },
-        "paidBy": { "type": "string" }
+        "paidBy": { "type": "string" },
+        "notes": { "type": "string" }
       },
       "required": ["id", "userId", "propertyId", "amount", "date"]
     },
@@ -175,7 +190,13 @@
         "type": { "type": "string" },
         "status": { "type": "string" },
         "scheduledDate": { "type": "string", "format": "date-time" },
-        "inspectorName": { "type": "string" }
+        "inspectorName": { "type": "string" },
+        "safety": { "type": "object" },
+        "interior": { "type": "object" },
+        "fireSafety": { "type": "object" },
+        "communal": { "type": "object" },
+        "tenantResponsibilities": { "type": "object" },
+        "followUp": { "type": "object" }
       },
       "required": ["id", "userId", "propertyId", "type", "status"]
     },
@@ -189,7 +210,8 @@
         "trade": { "type": "string" },
         "phone": { "type": "string" },
         "email": { "type": "string" },
-        "status": { "type": "string" }
+        "status": { "type": "string" },
+        "notes": { "type": "string" }
       },
       "required": ["id", "userId", "name", "trade", "phone"]
     },
@@ -198,7 +220,7 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "userId": { "type": "string" },
+        "userId": { "type": "string", "description": "Owner ID" },
         "senderId": { "type": "string" },
         "senderName": { "type": "string" },
         "content": { "type": "string" },
