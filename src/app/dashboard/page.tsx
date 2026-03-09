@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -122,7 +121,7 @@ export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const [mounted, setMounted] = useState(false);
-  const [isTenant, setIsTenant] = useState(false);
+  const [isResident, setIsResident] = useState(false);
   const [isLoadingPortalCheck, setIsLoadingPortalCheck] = useState(true);
 
   useEffect(() => {
@@ -148,7 +147,7 @@ export default function DashboardPage() {
 
     const unsub = onSnapshot(q, (snap) => {
         const activeTenantRecord = snap.docs.find(doc => doc.data().status === 'Active');
-        setIsTenant(!!activeTenantRecord);
+        setIsResident(!!activeTenantRecord);
         setIsLoadingPortalCheck(false);
     }, (error) => {
         // Trigger global error propagation with explicit collection group context
@@ -360,13 +359,13 @@ export default function DashboardPage() {
           <p className="text-muted-foreground font-medium">Overview of your estate health and performance.</p>
         </div>
         <div className="flex items-center gap-2">
-          {isTenant && (
+          {isResident && (
             <Button asChild variant="outline" size="sm" className="shadow-sm border-primary/20 text-primary">
-                <Link href="/tenant/dashboard"><UserCircle className="mr-2 h-4 w-4" /> Go to Tenant Portal</Link>
+                <Link href="/tenant/dashboard"><UserCircle className="mr-2 h-4 w-4" /> Go to Resident Portal</Link>
             </Button>
           )}
           <Button asChild variant="outline" size="sm" className="shadow-sm">
-            <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Add Property</Link>
+            <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Onboard Property</Link>
           </Button>
         </div>
       </div>
@@ -487,9 +486,9 @@ export default function DashboardPage() {
             <div>
               <CardTitle className="flex items-center gap-2 text-lg font-bold font-headline">
                 <Activity className="h-5 w-5 text-primary" /> 
-                Active Activity Feed
+                Portfolio Events
               </CardTitle>
-              <CardDescription className="text-xs">Latest maintenance and system events across the portfolio.</CardDescription>
+              <CardDescription className="text-xs">Latest maintenance and system events across the estate.</CardDescription>
             </div>
             <Button variant="ghost" size="sm" asChild className="text-primary font-bold text-xs uppercase tracking-widest hover:bg-primary/5">
               <Link href="/dashboard/maintenance/logged">See All <ChevronRight className="ml-1 h-3 w-3" /></Link>
@@ -530,7 +529,7 @@ export default function DashboardPage() {
                   <p className="max-w-xs mx-auto">Your recent activity, maintenance logs, and audit events will be streamed here in real-time.</p>
                 </div>
                 <Button asChild size="sm" variant="outline" className="mt-4 border-primary/20 text-primary hover:bg-primary/5">
-                  <Link href="/dashboard/maintenance">Log New Issue</Link>
+                  <Link href="/dashboard/maintenance">Record Repair</Link>
                 </Button>
               </div>
             )}
@@ -581,7 +580,7 @@ export default function DashboardPage() {
                 <ShieldCheck className="h-12 w-12 text-green-500 opacity-30" />
                 <p className="text-green-700 font-bold uppercase text-xs tracking-widest">All Compliance Items Valid</p>
                 <Button asChild size="sm" variant="ghost" className="text-green-700 hover:bg-green-100">
-                  <Link href="/dashboard/documents/upload">Upload New Doc</Link>
+                  <Link href="/dashboard/documents/upload">Upload Certificate</Link>
                 </Button>
               </div>
             )}
@@ -599,7 +598,7 @@ export default function DashboardPage() {
           <CardHeader className="bg-primary/5 border-b border-primary/10 pb-4">
             <CardTitle className="flex items-center gap-2 text-lg font-bold text-primary font-headline">
               <ListTodo className="h-5 w-5" /> 
-              Portfolio Tasks
+              Upcoming Tasks
             </CardTitle>
             <CardDescription className="text-[11px] text-primary/70 uppercase font-bold tracking-tighter">Scheduled Property Checks</CardDescription>
           </CardHeader>
