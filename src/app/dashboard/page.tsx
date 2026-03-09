@@ -133,7 +133,7 @@ export default function DashboardPage() {
     if (!user || !firestore || !user.email) return;
     
     // Identity discovery relies on exact character matching with security rules.
-    const userEmail = user.email.toLowerCase();
+    const userEmail = user.email;
 
     // Discovery query to find if this email exists in any tenant collection
     const q = query(
