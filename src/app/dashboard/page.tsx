@@ -139,6 +139,7 @@ export default function DashboardPage() {
     const userEmail = user.email.toLowerCase().trim();
 
     // Discovery query to find if this email exists in any tenant collection across the platform
+    // collectionGroup queries require explicit matching rules in firestore.rules
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
@@ -152,7 +153,7 @@ export default function DashboardPage() {
     }, (error) => {
         // Trigger global error propagation with explicit collection group context
         errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: 'tenants',
+            path: 'tenants', // Generic path for collection group discovery
             operation: 'list',
         }));
         setIsLoadingPortalCheck(false);
