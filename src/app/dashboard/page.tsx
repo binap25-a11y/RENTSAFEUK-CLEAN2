@@ -135,14 +135,14 @@ export default function DashboardPage() {
       return;
     }
   
-    // Character-perfect matching for security rules
+    // Normalized comparison for case-insensitive identity matching
     const userEmail = user.email.toLowerCase().trim();
 
     // Discovery query to find if this email exists in any tenant collection across the platform
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
-        limit(5)
+        limit(1)
     );
 
     const unsub = onSnapshot(q, (snap) => {

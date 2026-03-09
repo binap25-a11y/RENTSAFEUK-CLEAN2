@@ -37,7 +37,15 @@
         "imageUrl": { "type": "string" },
         "additionalImageUrls": { "type": "array", "items": { "type": "string" } },
         "purchasePrice": { "type": "number" },
-        "currentValuation": { "type": "number" }
+        "currentValuation": { "type": "number" },
+        "tenancy": {
+          "type": "object",
+          "properties": {
+            "monthlyRent": { "type": "number" },
+            "depositAmount": { "type": "number" },
+            "depositScheme": { "type": "string" }
+          }
+        }
       },
       "required": ["id", "userId", "address", "status"]
     },
@@ -56,9 +64,32 @@
         "rentDueDay": { "type": "number" },
         "tenancyStartDate": { "type": "string", "format": "date" },
         "tenancyEndDate": { "type": "string", "format": "date" },
-        "status": { "type": "string", "enum": ["Active", "Archived"] }
+        "status": { "type": "string", "enum": ["Active", "Archived"] },
+        "lastReminderSent": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "userId", "propertyId", "name", "email"]
+    },
+    "TenantScreening": {
+      "title": "TenantScreening",
+      "description": "Comprehensive pre-tenancy audit trail.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "userId": { "type": "string" },
+        "screeningDate": { "type": "string", "format": "date-time" },
+        "monthlyIncome": { "type": "number" },
+        "overallNotes": { "type": "string" },
+        "rightToRent": { "type": "object" },
+        "idVerification": { "type": "object" },
+        "creditCheck": { "type": "object" },
+        "employmentIncome": { "type": "object" },
+        "landlordReference": { "type": "object" },
+        "affordability": { "type": "object" },
+        "guarantor": { "type": "object" }
+      },
+      "required": ["tenantId", "propertyId", "userId", "screeningDate"]
     },
     "MaintenanceLog": {
       "title": "MaintenanceLog",
@@ -71,11 +102,15 @@
         "title": { "type": "string" },
         "description": { "type": "string" },
         "category": { "type": "string" },
+        "otherCategoryDetails": { "type": "string" },
         "priority": { "type": "string", "enum": ["Emergency", "Urgent", "Routine", "Low"] },
         "status": { "type": "string", "enum": ["Open", "In Progress", "Completed", "Cancelled"] },
         "reportedDate": { "type": "string", "format": "date-time" },
         "estimatedCost": { "type": "number" },
-        "contractorName": { "type": "string" }
+        "contractorName": { "type": "string" },
+        "contractorPhone": { "type": "string" },
+        "photoUrls": { "type": "array", "items": { "type": "string" } },
+        "notes": { "type": "string" }
       },
       "required": ["id", "userId", "propertyId", "title", "status"]
     },
@@ -104,7 +139,7 @@
       { "path": "/userProfiles/{userId}", "definition": { "entityName": "UserProfile" } },
       { "path": "/userProfiles/{userId}/properties/{propertyId}", "definition": { "entityName": "Property" } },
       { "path": "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}", "definition": { "entityName": "Tenant" } },
-      { "path": "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/screenings/{screeningId}", "definition": { "description": "Tenant screening checklist and audit." } },
+      { "path": "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/screenings/{screeningId}", "definition": { "entityName": "TenantScreening" } },
       { "path": "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/messages/{messageId}", "definition": { "description": "Secure tenant-landlord communication." } },
       { "path": "/userProfiles/{userId}/properties/{propertyId}/maintenanceLogs/{logId}", "definition": { "entityName": "MaintenanceLog" } },
       { "path": "/userProfiles/{userId}/properties/{propertyId}/inspections/{inspectionId}", "definition": { "description": "Field inspection report." } },
