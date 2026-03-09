@@ -35,14 +35,14 @@ service cloud.firestore {
 
     match /{path=**}/tenants/{tenantId} {
       // Discovery for the "Role Check" logic during dashboard initialization.
-      // Explicitly check for email equality or ownership to resolve permission errors.
+      // We rely on exact character matching with lowercased email comparison.
       allow list: if isSignedIn() && (
-        (request.auth.token.email != null && resource.data.email == request.auth.token.email) ||
+        (request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower()) ||
         (resource.data.ownerId == request.auth.uid)
       );
       
       allow get: if isSignedIn() && (
-        (request.auth.token.email != null && resource.data.email == request.auth.token.email) ||
+        (request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower()) ||
         (resource.data.ownerId == request.auth.uid)
       );
     }
@@ -80,6 +80,14 @@ service cloud.firestore {
     }
 
     match /{path=**}/rentPayments/{id} {
+      allow list, get: if isSignedIn() && (resource.data.ownerId == request.auth.uid);
+    }
+    
+    match /{path=**}/screenings/{id} {
+      allow list, get: if isSignedIn() && (resource.data.ownerId == request.auth.uid);
+    }
+    
+    match /{path=**}/checklists/{id} {
       allow list, get: if isSignedIn() && (resource.data.ownerId == request.auth.uid);
     }
   }

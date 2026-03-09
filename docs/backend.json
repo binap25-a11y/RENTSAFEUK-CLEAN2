@@ -191,6 +191,46 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["senderId", "content", "timestamp"]
+    },
+    "TenantScreening": {
+      "title": "TenantScreening",
+      "type": "object",
+      "description": "Comprehensive pre-tenancy verification results.",
+      "properties": {
+        "id": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "screeningDate": { "type": "string", "format": "date-time" },
+        "monthlyIncome": { "type": "number" },
+        "rightToRent": { "type": "object" },
+        "idVerification": { "type": "object" },
+        "creditCheck": { "type": "object" },
+        "employmentIncome": { "type": "object" },
+        "landlordReference": { "type": "object" },
+        "addressHistory": { "type": "object" },
+        "affordability": { "type": "object" },
+        "guarantor": { "type": "object" },
+        "overallNotes": { "type": "string" }
+      },
+      "required": ["tenantId", "propertyId", "ownerId", "screeningDate"]
+    },
+    "Checklist": {
+      "title": "Checklist",
+      "type": "object",
+      "description": "Pre-tenancy compliance and practical checks.",
+      "properties": {
+        "id": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "completedDate": { "type": "string", "format": "date-time" },
+        "beforeTenancy": { "type": "object" },
+        "deposit": { "type": "object" },
+        "atMoveIn": { "type": "object" },
+        "optional": { "type": "object" }
+      },
+      "required": ["propertyId", "tenantId", "ownerId", "completedDate"]
     }
   },
   "auth": {
@@ -209,9 +249,17 @@
       "schema": { "$ref": "#/backend/entities/Property" },
       "description": "Rental asset record."
     },
+    "/userProfiles/{userId}/properties/{propertyId}/checklists/{checklistId}": {
+      "schema": { "$ref": "#/backend/entities/Checklist" },
+      "description": "Compliance checklists."
+    },
     "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}": {
       "schema": { "$ref": "#/backend/entities/Tenant" },
       "description": "Resident profile assigned to property."
+    },
+    "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/screenings/{screeningId}": {
+      "schema": { "$ref": "#/backend/entities/TenantScreening" },
+      "description": "Tenant verification reports."
     },
     "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/messages/{messageId}": {
       "schema": { "$ref": "#/backend/entities/Message" },
