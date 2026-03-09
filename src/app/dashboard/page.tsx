@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -132,18 +131,18 @@ export default function DashboardPage() {
   // Secure role-detection: check if user is a resident in any portfolio
   useEffect(() => {
     if (!user || !firestore || !user.email || isUserLoading) {
-      setIsLoadingPortalCheck(false);
+      if (!isUserLoading) setIsLoadingPortalCheck(false);
       return;
     }
   
-    // Normalize identity for character-perfect matching in security rules
+    // Character-perfect matching for security rules
     const userEmail = user.email.toLowerCase().trim();
 
     // Discovery query to find if this email exists in any tenant collection across the platform
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
-        limit(1)
+        limit(5)
     );
 
     const unsub = onSnapshot(q, (snap) => {
