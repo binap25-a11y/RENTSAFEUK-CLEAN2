@@ -18,11 +18,11 @@ service cloud.firestore {
       // Allow residents to find their own record via discovery queries (filtered by email)
       // Allow landlords to view their portfolio tenants (standard path or group query)
       allow list: if isSignedIn() && (
-        resource.data.email == request.auth.token.email || 
+        resource.data.email.lower() == request.auth.token.email.lower() || 
         resource.data.userId == request.auth.uid
       );
       allow get: if isSignedIn() && (
-        resource.data.email == request.auth.token.email || 
+        resource.data.email.lower() == request.auth.token.email.lower() || 
         resource.data.userId == request.auth.uid
       );
     }
