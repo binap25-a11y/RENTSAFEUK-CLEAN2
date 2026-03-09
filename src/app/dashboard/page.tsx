@@ -138,7 +138,7 @@ export default function DashboardPage() {
     }
     
     // Character-perfect match for security rules logic (normalized stored email)
-    const userEmail = user.email.toLowerCase();
+    const userEmail = user.email.toLowerCase().trim();
 
     // Discovery query to find if this email exists in any tenant collection across the platform
     // This query is authorized by the specific collectionGroup rule in firestore.rules
@@ -155,7 +155,7 @@ export default function DashboardPage() {
         setIsLoadingPortalCheck(false);
     }, (error) => {
         // Contextual error for debugging permission issues in discovery
-        // Use a standardized path for the listener component to satisfy rule checks
+        // Use a standardized path for the emitter to satisfy rule checks
         errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'tenants',
             operation: 'list',

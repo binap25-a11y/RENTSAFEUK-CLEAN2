@@ -72,6 +72,33 @@
       },
       "required": ["id", "userId", "propertyId", "name", "email"]
     },
+    "TenantScreening": {
+      "title": "TenantScreening",
+      "type": "object",
+      "description": "Detailed pre-tenancy audit record.",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "screeningDate": { "type": "string", "format": "date-time" },
+        "overallNotes": { "type": "string" }
+      },
+      "required": ["id", "userId", "tenantId", "screeningDate"]
+    },
+    "PreTenancyChecklist": {
+      "title": "PreTenancyChecklist",
+      "type": "object",
+      "description": "Compliance checklist for new lets.",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "completedDate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "propertyId", "tenantId"]
+    },
     "MaintenanceLog": {
       "title": "MaintenanceLog",
       "type": "object",
@@ -156,6 +183,34 @@
         "inspectorName": { "type": "string" }
       },
       "required": ["id", "userId", "propertyId", "type", "status"]
+    },
+    "RentPayment": {
+      "title": "RentPayment",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "year": { "type": "number" },
+        "month": { "type": "string" },
+        "status": { "type": "string" },
+        "expectedAmount": { "type": "number" },
+        "amountPaid": { "type": "number" }
+      },
+      "required": ["id", "userId", "propertyId", "year", "month", "status"]
+    },
+    "Message": {
+      "title": "Message",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string", "description": "Context landlord." },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "content": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "senderId", "content"]
     }
   },
   "auth": {
@@ -174,6 +229,18 @@
       "schema": "#/entities/Tenant",
       "description": "Assigned resident."
     },
+    "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/screenings/{screeningId}": {
+      "schema": "#/entities/TenantScreening",
+      "description": "Compliance audit for tenant."
+    },
+    "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/messages/{messageId}": {
+      "schema": "#/entities/Message",
+      "description": "Secure direct communication channel."
+    },
+    "/userProfiles/{userId}/properties/{propertyId}/checklists/{checklistId}": {
+      "schema": "#/entities/PreTenancyChecklist",
+      "description": "Pre-let compliance check."
+    },
     "/userProfiles/{userId}/properties/{propertyId}/maintenanceLogs/{logId}": {
       "schema": "#/entities/MaintenanceLog",
       "description": "Repair audit."
@@ -181,6 +248,10 @@
     "/userProfiles/{userId}/properties/{propertyId}/expenses/{expenseId}": {
       "schema": "#/entities/Expense",
       "description": "Financial record."
+    },
+    "/userProfiles/{userId}/properties/{propertyId}/rentPayments/{paymentId}": {
+      "schema": "#/entities/RentPayment",
+      "description": "Ledger entry."
     },
     "/userProfiles/{userId}/properties/{propertyId}/documents/{docId}": {
       "schema": "#/entities/Document",

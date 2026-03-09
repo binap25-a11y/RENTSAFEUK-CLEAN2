@@ -20,9 +20,9 @@ service cloud.firestore {
      * the Tenant Portal or the Landlord Dashboard.
      */
     match /{path=**}/tenants/{tenantId} {
-      // Allows residents to find their own identity records via email match (Discovery query)
+      // Allows residents to find their own identity records via character-perfect email match
       allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
-      // Allows landlords to list their own tenants across their portfolio
+      // Allows landlords to list their own tenants across their portfolio via character-perfect userId match
       allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
       // standard get access for both roles
       allow get: if isSignedIn() && (resource.data.email == request.auth.token.email || resource.data.userId == request.auth.uid);

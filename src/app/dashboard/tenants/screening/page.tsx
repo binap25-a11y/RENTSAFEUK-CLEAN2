@@ -121,20 +121,14 @@ interface Tenant {
 }
 
 const ChecklistItem = ({ form, name, label }: { form: any, name: any, label: string }) => (
-    <FormField
-        control={form.control}
-        name={name}
-        render={({ field }) => (
-            <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
-                <FormControl>
-                    <Checkbox checked={!!field.value} onCheckedChange={field.onChange} />
-                </FormControl>
-                <div className="space-y-1 leading-none">
-                    <FormLabel className="font-normal">{label}</FormLabel>
-                </div>
-            </FormItem>
-        )}
-    />
+    <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
+        <FormControl>
+            <Checkbox checked={!!form.watch(name)} onCheckedChange={(val) => form.setValue(name, val)} />
+        </FormControl>
+        <div className="space-y-1 leading-none">
+            <FormLabel className="font-normal">{label}</FormLabel>
+        </div>
+    </FormItem>
 );
 
 const NotesField = ({ form, name, placeholder }: { form: any, name: any, placeholder: string }) => (
@@ -323,7 +317,7 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
                                             <FormItem>
                                                 <FormLabel>Tenant Monthly Net Income (£)</FormLabel>
                                                 <FormControl>
-                                                    <Input id="screening-income-input" name="monthlyIncome" type="number" min="0" placeholder="0.00" {...field} />
+                                                    <Input id="screening-income-input" name="monthlyIncome" type="number" min="0" placeholder="0.00" {...field} value={field.value ?? ''} />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
