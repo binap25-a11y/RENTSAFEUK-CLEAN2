@@ -40,13 +40,14 @@ service cloud.firestore {
     // These are critical for discovery queries (e.g. "Am I a tenant in any portfolio?")
 
     match /{path=**}/tenants/{tenantId} {
-      // Allow discovery via email for the "Role Check" and Tenant Portal.
+      // Rule 1: Allow discovery via email for the "Role Check" and Tenant Portal.
       // The query MUST filter by email to be authorized for a tenant.
-      // The query MUST filter by ownerId to be authorized for a landlord.
-      allow list: if isSignedIn() && (
-        (request.auth.token.email != null && resource.data.email == request.auth.token.email) ||
-        (resource.data.ownerId == request.auth.uid)
-      );
+      allow list: if isSignedIn() && request.auth.token.email != null && resource.data.email == request.auth.token.email;
+      
+      // Rule 2: Allow landlords to discover their own tenants via collection group if needed.
+      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
+
+      // Allow get if user is the tenant or the owner
       allow get: if isSignedIn() && (
         (request.auth.token.email != null && resource.data.email == request.auth.token.email) ||
         (resource.data.ownerId == request.auth.uid)

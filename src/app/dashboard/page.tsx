@@ -148,6 +148,7 @@ export default function DashboardPage() {
         setIsTenant(!!activeTenantRecord);
     }, (error) => {
         // Contextual error for debugging permission issues in discovery
+        // Use a standard path for the emitter to satisfy rule checks
         errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'tenants',
             operation: 'list',
@@ -635,7 +636,7 @@ export default function DashboardPage() {
                 </div>
                 <div className="flex flex-wrap justify-center gap-2">
                   <Button asChild size="sm" variant="outline" className="text-[10px] font-bold h-8 border-none bg-muted/50 transition-colors hover:bg-muted"><Link href="/dashboard/inspections/single-let">New Single-Let</Link></Button>
-                  <Button asChild size="sm" variant="outline" className="text-[10px) font-bold h-8 border-none bg-muted/50 transition-colors hover:bg-muted"><Link href="/dashboard/inspections/hmo">New HMO</Link></Button>
+                  <Button asChild size="sm" variant="outline" className="text-[10px] font-bold h-8 border-none bg-muted/50 transition-colors hover:bg-muted"><Link href="/dashboard/inspections/hmo">New HMO</Link></Button>
                 </div>
               </div>
             )}
