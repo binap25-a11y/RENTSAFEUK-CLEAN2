@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -63,7 +64,7 @@ interface Contractor {
   trade: string;
   phone: string;
   email?: string;
-  ownerId: string;
+  userId: string;
   status?: string;
 }
 

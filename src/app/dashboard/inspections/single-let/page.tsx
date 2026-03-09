@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -231,7 +232,7 @@ export default function SingleLetInspectionPage() {
     if (!user || !firestore) return null;
     return query(
         collection(firestore, 'userProfiles', user.uid, 'properties'),
-        where('ownerId', '==', user.uid),
+        where('userId', '==', user.uid),
         limit(500)
     );
   }, [firestore, user]);
@@ -260,7 +261,7 @@ export default function SingleLetInspectionPage() {
       
       const newInspection = {
         ...inspectionData,
-        ownerId: user.uid,
+        userId: user.uid,
         propertyId: propertyId,
         type: 'Single-Let',
         status: data.status || 'Completed',

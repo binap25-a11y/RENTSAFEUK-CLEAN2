@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -120,7 +121,7 @@ export default function InspectionsPage() {
     if (!user || !firestore) return null;
     return query(
       collection(firestore, 'userProfiles', user.uid, 'properties'),
-      where('ownerId', '==', user.uid),
+      where('userId', '==', user.uid),
       limit(500)
     );
   }, [firestore, user]);
@@ -138,7 +139,7 @@ export default function InspectionsPage() {
     if (!user || !firestore || !selectedPropertyId) return null;
     return query(
       collection(firestore, 'userProfiles', user.uid, 'properties', selectedPropertyId, 'inspections'),
-      where('ownerId', '==', user.uid),
+      where('userId', '==', user.uid),
       limit(500)
     );
   }, [firestore, user, selectedPropertyId]);

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -78,7 +79,7 @@ export default function AddContractorPage() {
             const contractorsCollection = collection(firestore, 'userProfiles', user.uid, 'contractors');
             const phoneCheckQuery = query(
                 contractorsCollection,
-                where('ownerId', '==', user.uid),
+                where('userId', '==', user.uid),
                 where('phone', '==', data.phone),
                 where('status', '==', 'Active'),
                 limit(1)
@@ -97,7 +98,7 @@ export default function AddContractorPage() {
 
             const newContractor = {
                 ...data,
-                ownerId: user.uid,
+                userId: user.uid,
                 status: 'Active'
             };
             

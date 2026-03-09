@@ -132,7 +132,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user || !firestore || !user.email) return;
     
-    // Normalize email for character-perfect matching in security rules
+    // Character-perfect match for security rules logic
     const userEmail = user.email.toLowerCase().trim();
 
     // Discovery query to find if this email exists in any tenant collection across the platform
@@ -147,7 +147,6 @@ export default function DashboardPage() {
         const activeTenantRecord = snap.docs.find(doc => doc.data().status === 'Active');
         setIsTenant(!!activeTenantRecord);
     }, (error) => {
-        // Contextual error for debugging permission issues in discovery
         // Use a standardized path for the emitter to satisfy rule checks
         errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'tenants',

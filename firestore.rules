@@ -20,21 +20,23 @@ service cloud.firestore {
     
     // Required for Role Detection & Portal Authentication
     match /{path=**}/tenants/{tenantId} {
-      // Residents discovery query requires proof-of-identity filter
+      /**
+       * Residents discovery query requires proof-of-identity filter.
+       * Note: We expect emails to be stored in lowercase in the database.
+       */
       allow list: if isSignedIn() && (
-        resource.data.email.lower() == request.auth.token.email.lower() ||
+        resource.data.email == request.auth.token.email ||
         resource.data.userId == request.auth.uid
       );
       
       allow get: if isSignedIn() && (
-        resource.data.email.lower() == request.auth.token.email.lower() || 
+        resource.data.email == request.auth.token.email || 
         resource.data.userId == request.auth.uid
       );
     }
 
     // Secure Messenger discovery
     match /{path=**}/messages/{messageId} {
-      // Limit discovery to authorized participants
       allow list: if isSignedIn() && (
         resource.data.userId == request.auth.uid ||
         resource.data.senderId == request.auth.uid
@@ -43,7 +45,6 @@ service cloud.firestore {
 
     // Maintenance discovery for residents
     match /{path=**}/maintenanceLogs/{logId} {
-      // Landlords can list all logs; Residents can list logs for their specific property context
       allow list: if isSignedIn() && (
         resource.data.userId == request.auth.uid ||
         resource.data.reportedBy == request.auth.token.name ||
@@ -60,7 +61,7 @@ service cloud.firestore {
       allow delete: if false;
 
       /** 
-       * @description Recursive portfolio oversight for Landlords.
+       * Recursive portfolio oversight for Landlords.
        * Grants the property owner full read/write access to all nested data.
        */
       match /{allSubcollections=**} {
@@ -69,16 +70,15 @@ service cloud.firestore {
 
       match /properties/{propertyId} {
         // Limited GET for Tenants to view their own home details
-        // Note: Landlords are covered by the recursive rule above.
         allow get: if isSignedIn() && exists(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(anyId));
 
         match /tenants/{tenantId} {
           // Resident can read their own profile
-          allow get: if isSignedIn() && resource.data.email.lower() == request.auth.token.email.lower();
+          allow get: if isSignedIn() && resource.data.email == request.auth.token.email;
           
           match /messages/{messageId} {
             allow read, write: if isSignedIn() && (
-              get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email.lower() == request.auth.token.email.lower()
+              get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email
             );
           }
         }

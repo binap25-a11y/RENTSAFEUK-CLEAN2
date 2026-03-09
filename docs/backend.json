@@ -141,23 +141,55 @@
       },
       "required": ["id", "userId", "name", "trade", "phone"]
     },
+    "Inspection": {
+      "title": "Inspection",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "type": { "type": "string" },
+        "status": { "type": "string" },
+        "scheduledDate": { "type": "string", "format": "date-time" },
+        "completedDate": { "type": "string", "format": "date-time" },
+        "inspectorName": { "type": "string" }
+      },
+      "required": ["id", "userId", "propertyId", "type", "status"]
+    },
     "TenantScreening": {
       "title": "TenantScreening",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "userId": { "type": "string", "description": "Landlord ID" },
+        "userId": { "type": "string" },
         "tenantId": { "type": "string" },
+        "propertyId": { "type": "string" },
         "screeningDate": { "type": "string", "format": "date-time" },
         "overallNotes": { "type": "string" }
-      }
+      },
+      "required": ["id", "userId", "tenantId", "propertyId", "screeningDate"]
+    },
+    "RentPayment": {
+      "title": "RentPayment",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "year": { "type": "number" },
+        "month": { "type": "string" },
+        "status": { "type": "string", "enum": ["Paid", "Partially Paid", "Unpaid", "Pending"] },
+        "expectedAmount": { "type": "number" },
+        "amountPaid": { "type": "number" }
+      },
+      "required": ["id", "userId", "propertyId", "year", "month", "status"]
     },
     "Message": {
       "title": "Message",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "userId": { "type": "string", "description": "Landlord ID" },
+        "userId": { "type": "string" },
         "propertyId": { "type": "string" },
         "tenantId": { "type": "string" },
         "senderId": { "type": "string" },
@@ -176,11 +208,13 @@
       { "path": "/userProfiles/{userId}", "definition": { "entityName": "UserProfile", "description": "Root user identity." } },
       { "path": "/userProfiles/{userId}/properties/{propertyId}", "definition": { "entityName": "Property", "description": "Owned asset." } },
       { "path": "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}", "definition": { "entityName": "Tenant", "description": "Assigned resident." } },
-      { "path": "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/messages/{messageId}", "definition": { "entityName": "Message", "description": "Secure communication." } },
-      { "path": "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/screenings/{screeningId}", "definition": { "entityName": "TenantScreening", "description": "Pre-tenancy audit." } },
       { "path": "/userProfiles/{userId}/properties/{propertyId}/maintenanceLogs/{logId}", "definition": { "entityName": "MaintenanceLog", "description": "Repair audit." } },
       { "path": "/userProfiles/{userId}/properties/{propertyId}/expenses/{expenseId}", "definition": { "entityName": "Expense", "description": "Financial record." } },
       { "path": "/userProfiles/{userId}/properties/{propertyId}/documents/{docId}", "definition": { "entityName": "Document", "description": "Legal/Safety compliance doc." } },
+      { "path": "/userProfiles/{userId}/properties/{propertyId}/inspections/{inspectionId}", "definition": { "entityName": "Inspection", "description": "Condition report." } },
+      { "path": "/userProfiles/{userId}/properties/{propertyId}/rentPayments/{paymentId}", "definition": { "entityName": "RentPayment", "description": "Rent tracking ledger." } },
+      { "path": "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/messages/{messageId}", "definition": { "entityName": "Message", "description": "Secure communication." } },
+      { "path": "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/screenings/{screeningId}", "definition": { "entityName": "TenantScreening", "description": "Pre-tenancy audit." } },
       { "path": "/userProfiles/{userId}/contractors/{contractorId}", "definition": { "entityName": "Contractor", "description": "Tradesperson directory." } }
     ]
   }

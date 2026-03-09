@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -98,7 +99,7 @@ interface Expense {
   amount: number;
   paidBy: string;
   notes?: string;
-  ownerId: string;
+  userId: string;
 }
 
 const expenseSchema = z.object({
@@ -151,7 +152,7 @@ export default function LoggedExpensesPage() {
     if (!user || !firestore) return null;
     return query(
       collection(firestore, 'userProfiles', user.uid, 'properties'),
-      where('ownerId', '==', user.uid),
+      where('userId', '==', user.uid),
       limit(500)
     );
   }, [firestore, user]);
@@ -167,7 +168,7 @@ export default function LoggedExpensesPage() {
     if (!user || !firestore || !selectedPropertyId) return null;
     return query(
       collection(firestore, 'userProfiles', user.uid, 'properties', selectedPropertyId, 'expenses'),
-      where('ownerId', '==', user.uid)
+      where('userId', '==', user.uid)
     );
   }, [firestore, user, selectedPropertyId]);
   const { data: rawExpenses, isLoading: isLoadingExpenses } = useCollection<Expense>(expensesQuery);
