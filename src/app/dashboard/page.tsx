@@ -135,7 +135,7 @@ export default function DashboardPage() {
       return;
     }
     
-    // Character-perfect matching for normalized stored email
+    // Identity normalization for character-perfect rule matching
     const userEmail = user.email.toLowerCase().trim();
 
     // Discovery query to find if this email exists in any tenant collection across the platform
@@ -150,7 +150,7 @@ export default function DashboardPage() {
         setIsTenant(!!activeTenantRecord);
         setIsLoadingPortalCheck(false);
     }, (error) => {
-        // Log contextual error for rules debugging
+        // Trigger global error propagation with explicit collection group context
         errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'tenants',
             operation: 'list',

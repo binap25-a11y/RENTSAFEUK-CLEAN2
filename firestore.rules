@@ -13,30 +13,40 @@ service cloud.firestore {
     }
 
     // --- Collection Group Rules (Authorized Discovery) ---
+    // These rules allow cross-portfolio discovery for residents and landlords.
+    // Query constraints must perfectly match these conditions for authorization.
     
     match /{path=**}/tenants/{tenantId} {
-      // Allow role-discovery and oversight list operations.
-      // Combined rule helps the query engine authorize collectionGroup searches.
       allow list: if isSignedIn() && (
-        resource.data.email.lower() == request.auth.token.email.lower() || 
+        resource.data.email == request.auth.token.email.lower() || 
         resource.data.userId == request.auth.uid
       );
-      
-      // Individual document access
       allow get: if isSignedIn() && (
-        resource.data.email.lower() == request.auth.token.email.lower() || 
+        resource.data.email == request.auth.token.email.lower() || 
         resource.data.userId == request.auth.uid
       );
     }
 
     match /{path=**}/messages/{messageId} {
-      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.senderId == request.auth.uid);
-      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.senderId == request.auth.uid);
+      allow list: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.senderId == request.auth.uid
+      );
+      allow get: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.senderId == request.auth.uid
+      );
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.reportedBy == request.auth.uid);
-      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.reportedBy == request.auth.uid);
+      allow list: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.reportedBy == request.auth.uid
+      );
+      allow get: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.reportedBy == request.auth.uid
+      );
     }
 
     // --- Hierarchical Rules (Standard Portfolio Access) ---

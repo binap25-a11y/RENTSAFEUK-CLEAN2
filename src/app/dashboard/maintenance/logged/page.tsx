@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -103,6 +104,7 @@ export default function MaintenanceLoggedPage() {
 
   const [portfolioLogsMap, setPortfolioLogsMap] = useState<Record<string, MaintenanceLog[]>>({});
 
+  // Hierarchical query. Path variable {userId} bound via rules.
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(

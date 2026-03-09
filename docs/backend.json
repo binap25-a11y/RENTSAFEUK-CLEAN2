@@ -68,7 +68,8 @@
         "tenancyStartDate": { "type": "string", "format": "date" },
         "tenancyEndDate": { "type": "string", "format": "date" },
         "status": { "type": "string", "enum": ["Active", "Archived"] },
-        "lastReminderSent": { "type": "string", "format": "date-time" }
+        "lastReminderSent": { "type": "string", "format": "date-time" },
+        "notes": { "type": "string" }
       },
       "required": ["id", "userId", "propertyId", "name", "email"]
     },
@@ -82,8 +83,8 @@
         "propertyId": { "type": "string" },
         "tenantId": { "type": "string" },
         "screeningDate": { "type": "string", "format": "date-time" },
-        "overallNotes": { "type": "string" },
-        "monthlyIncome": { "type": "number" }
+        "monthlyIncome": { "type": "number" },
+        "overallNotes": { "type": "string" }
       },
       "required": ["id", "userId", "tenantId", "screeningDate"]
     },
@@ -115,7 +116,8 @@
         "reportedBy": { "type": "string" },
         "reportedDate": { "type": "string", "format": "date-time" },
         "estimatedCost": { "type": "number" },
-        "scheduledDate": { "type": "string", "format": "date-time" }
+        "scheduledDate": { "type": "string", "format": "date-time" },
+        "photoUrls": { "type": "array", "items": { "type": "string" } }
       },
       "required": ["id", "userId", "propertyId", "title", "status"]
     },
@@ -172,7 +174,8 @@
         "propertyId": { "type": "string" },
         "type": { "type": "string" },
         "status": { "type": "string" },
-        "scheduledDate": { "type": "string", "format": "date-time" }
+        "scheduledDate": { "type": "string", "format": "date-time" },
+        "inspectorName": { "type": "string" }
       },
       "required": ["id", "userId", "propertyId", "type", "status"]
     },
@@ -228,6 +231,10 @@
       "schema": "#/entities/TenantScreening",
       "description": "Audit record."
     },
+    "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/messages/{messageId}": {
+      "schema": "#/entities/Message",
+      "description": "Direct communication."
+    },
     "/userProfiles/{userId}/properties/{propertyId}/checklists/{checklistId}": {
       "schema": "#/entities/PreTenancyChecklist",
       "description": "Compliance checklist."
@@ -251,10 +258,6 @@
     "/userProfiles/{userId}/properties/{propertyId}/inspections/{inspectionId}": {
       "schema": "#/entities/Inspection",
       "description": "Condition report."
-    },
-    "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/messages/{messageId}": {
-      "schema": "#/entities/Message",
-      "description": "Direct communication."
     }
   }
 }
