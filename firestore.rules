@@ -12,21 +12,17 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isExistingOwner(userId) {
-      return resource != null && isOwner(userId);
-    }
-
     // --- Collection Group Rules (Cross-Portfolio Discovery) ---
     
     /**
-     * Residents discovery query requires proof-of-identity filter.
-     * Allows tenants to find their own records using a collection group query.
+     * Discovery rules for Tenants and Landlords.
+     * Splitting allow list rules for better query optimization by the engine.
      */
     match /{path=**}/tenants/{tenantId} {
-      allow list: if isSignedIn() && (
-        resource.data.email == request.auth.token.email ||
-        resource.data.userId == request.auth.uid
-      );
+      // Allows residents to find their own identity records
+      allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
+      // Allows landlords to list their own tenants across properties
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
       
       allow get: if isSignedIn() && (
         resource.data.email == request.auth.token.email || 
@@ -34,7 +30,6 @@ service cloud.firestore {
       );
     }
 
-    // Secure Messenger discovery for both participants
     match /{path=**}/messages/{messageId} {
       allow list: if isSignedIn() && (
         resource.data.userId == request.auth.uid ||
@@ -42,7 +37,6 @@ service cloud.firestore {
       );
     }
 
-    // Maintenance discovery for residents and landlords
     match /{path=**}/maintenanceLogs/{logId} {
       allow list: if isSignedIn() && (
         resource.data.userId == request.auth.uid ||
@@ -56,7 +50,7 @@ service cloud.firestore {
     match /userProfiles/{userId} {
       allow get: if isOwner(userId);
       allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
+      allow update: if isOwner(userId) && request.resource.data.id == resource.data.id;
       allow delete: if false;
 
       /** 
@@ -69,7 +63,6 @@ service cloud.firestore {
 
       match /properties/{propertyId} {
         // Tenants can view property metadata if they have an active record here
-        // The collection group rule above handles discovery, this handles the specific asset view.
         allow get: if isSignedIn();
 
         match /tenants/{tenantId} {

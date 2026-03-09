@@ -4,8 +4,8 @@
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
-import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { 
   ArrowLeft, 
   User, 
@@ -64,7 +64,7 @@ interface Tenant {
     tenancyEndDate?: any;
     notes?: string;
     status?: string;
-    ownerId: string;
+    userId: string; // Standardized from ownerId
     lastReminderSent?: any;
 }
 
@@ -101,7 +101,7 @@ export default function TenantDetailPage() {
     if (!firestore || !id || !user || urlPropertyId) return null;
     return query(
       collectionGroup(firestore, 'tenants'),
-      where('ownerId', '==', user.uid)
+      where('userId', '==', user.uid)
     );
   }, [firestore, id, user, urlPropertyId]);
   
@@ -158,7 +158,7 @@ export default function TenantDetailPage() {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-sm text-muted-foreground animate-pulse">Resolving secure path...</p>
+        <p className="text-sm text-muted-foreground animate-pulse font-medium">Resolving secure path...</p>
       </div>
     );
   }

@@ -181,13 +181,13 @@ export default function DocumentsPage() {
 
   return (
     <div className="flex flex-col gap-8 max-w-6xl mx-auto">
-      {/* Page Header - Prominent Branding */}
+      {/* Page Header - Professional Branding at the top */}
       <div className="space-y-2">
         <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Portfolio Audit Trail</h1>
         <p className="text-muted-foreground font-medium text-lg">Manage and track legal compliance documents across your estate.</p>
       </div>
 
-      {/* Primary Action Bar - Prominently Grouped */}
+      {/* Primary Action Bar - Prominently Grouped below header */}
       <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-card p-4 rounded-2xl shadow-sm border">
         <div className="relative w-full sm:max-w-md">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
