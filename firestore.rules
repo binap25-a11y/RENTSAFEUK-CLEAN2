@@ -20,20 +20,21 @@ service cloud.firestore {
     
     /**
      * Residents discovery query requires proof-of-identity filter.
-     * Note: We expect emails to be stored in lowercase in the database.
+     * Allows tenants to find their own records using a collection group query.
      */
     match /{path=**}/tenants/{tenantId} {
-      // Allow tenant to find their own record
-      allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
+      allow list: if isSignedIn() && (
+        resource.data.email == request.auth.token.email ||
+        resource.data.userId == request.auth.uid
+      );
       
-      // Allow get if email matches or landlord owns the record
       allow get: if isSignedIn() && (
         resource.data.email == request.auth.token.email || 
         resource.data.userId == request.auth.uid
       );
     }
 
-    // Secure Messenger discovery
+    // Secure Messenger discovery for both participants
     match /{path=**}/messages/{messageId} {
       allow list: if isSignedIn() && (
         resource.data.userId == request.auth.uid ||
@@ -41,7 +42,7 @@ service cloud.firestore {
       );
     }
 
-    // Maintenance discovery for residents
+    // Maintenance discovery for residents and landlords
     match /{path=**}/maintenanceLogs/{logId} {
       allow list: if isSignedIn() && (
         resource.data.userId == request.auth.uid ||
@@ -68,6 +69,7 @@ service cloud.firestore {
 
       match /properties/{propertyId} {
         // Tenants can view property metadata if they have an active record here
+        // The collection group rule above handles discovery, this handles the specific asset view.
         allow get: if isSignedIn();
 
         match /tenants/{tenantId} {

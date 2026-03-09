@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -43,7 +44,7 @@ import {
   FirestorePermissionError,
   useDoc,
 } from '@/firebase';
-import { collection, query, where, addDoc, doc, collectionGroup } from 'firebase/firestore';
+import { collection, query, where, addDoc, doc } from 'firebase/firestore';
 import { useEffect, useState, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
 
@@ -180,14 +181,12 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
         form.setValue('screeningDate', new Date());
     }, [form]);
 
-    // Reliable hierarchical tenant fetch
     const tenantRef = useMemoFirebase(() => {
         if (!firestore || !user || !tenantIdFromUrl || !propertyIdFromUrl) return null;
         return doc(firestore, 'userProfiles', user.uid, 'properties', propertyIdFromUrl, 'tenants', tenantIdFromUrl);
     }, [firestore, user, tenantIdFromUrl, propertyIdFromUrl]);
     const { data: selectedTenant, isLoading: isLoadingSelectedTenant } = useDoc<Tenant>(tenantRef);
 
-    // If tenantId was provided but selectedTenant is missing, we might need a fallback or check propertyId
     useEffect(() => {
         if (selectedTenant && !form.getValues('propertyId')) {
             form.setValue('propertyId', selectedTenant.propertyId);
@@ -222,14 +221,14 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
 
         const newScreeningRecord = {
             ...screeningData,
-            ownerId: user.uid,
+            userId: user.uid, // Use standardized userId
             tenantId: tenantId,
             propertyId: propertyId,
         };
 
         const screeningsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'tenants', tenantId, 'screenings');
 
-        addDoc(screeningsCollection, newScreeningRecord)
+        addDoc(checklistsCollection, newScreeningRecord)
           .then(() => {
             toast({
                 title: 'Screening Record Saved',

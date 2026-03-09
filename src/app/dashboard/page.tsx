@@ -147,8 +147,7 @@ export default function DashboardPage() {
         const activeTenantRecord = snap.docs.find(doc => doc.data().status === 'Active');
         setIsTenant(!!activeTenantRecord);
     }, (error) => {
-        // Contextual error for debugging permission issues in discovery
-        // Use a standardized path for the emitter to satisfy rule checks
+        // Use a standardized path for the listener component to satisfy rule checks
         errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'tenants',
             operation: 'list',

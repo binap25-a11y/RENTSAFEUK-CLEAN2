@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -188,9 +189,10 @@ export default function ChecklistPage() {
 
     setIsSubmitting(true);
     
+    // Use standardized userId naming for rules compatibility
     const cleanedData = JSON.parse(JSON.stringify({
         ...data,
-        ownerId: user.uid,
+        userId: user.uid,
     }));
 
     const checklistsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', data.propertyId, 'checklists');
