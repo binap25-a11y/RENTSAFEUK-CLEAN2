@@ -21,7 +21,7 @@
       "description": "Represents a rental property managed by a landlord.",
       "properties": {
         "id": { "type": "string" },
-        "userId": { "type": "string", "description": "Owner identifier (Landlord)." },
+        "userId": { "type": "string", "description": "Landlord identifier." },
         "address": {
           "type": "object",
           "properties": {
@@ -77,7 +77,7 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "userId": { "type": "string", "description": "Landlord ID" },
+        "userId": { "type": "string", "description": "Landlord identifier." },
         "propertyId": { "type": "string" },
         "title": { "type": "string" },
         "description": { "type": "string" },
@@ -100,7 +100,7 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "userId": { "type": "string", "description": "Landlord ID" },
+        "userId": { "type": "string", "description": "Landlord identifier." },
         "propertyId": { "type": "string" },
         "date": { "type": "string", "format": "date-time" },
         "expenseType": { "type": "string" },
@@ -115,7 +115,7 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "userId": { "type": "string", "description": "Landlord ID" },
+        "userId": { "type": "string", "description": "Landlord identifier." },
         "propertyId": { "type": "string" },
         "title": { "type": "string" },
         "documentType": { "type": "string" },
@@ -131,7 +131,7 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "userId": { "type": "string", "description": "Landlord ID" },
+        "userId": { "type": "string", "description": "Landlord identifier." },
         "name": { "type": "string" },
         "trade": { "type": "string" },
         "phone": { "type": "string" },
@@ -155,19 +155,6 @@
         "inspectorName": { "type": "string" }
       },
       "required": ["id", "userId", "propertyId", "type", "status"]
-    },
-    "TenantScreening": {
-      "title": "TenantScreening",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "userId": { "type": "string" },
-        "tenantId": { "type": "string" },
-        "propertyId": { "type": "string" },
-        "screeningDate": { "type": "string", "format": "date-time" },
-        "overallNotes": { "type": "string" }
-      },
-      "required": ["id", "userId", "tenantId", "propertyId", "screeningDate"]
     },
     "RentPayment": {
       "title": "RentPayment",
@@ -214,7 +201,6 @@
       { "path": "/userProfiles/{userId}/properties/{propertyId}/inspections/{inspectionId}", "definition": { "entityName": "Inspection", "description": "Condition report." } },
       { "path": "/userProfiles/{userId}/properties/{propertyId}/rentPayments/{paymentId}", "definition": { "entityName": "RentPayment", "description": "Rent tracking ledger." } },
       { "path": "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/messages/{messageId}", "definition": { "entityName": "Message", "description": "Secure communication." } },
-      { "path": "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/screenings/{screeningId}", "definition": { "entityName": "TenantScreening", "description": "Pre-tenancy audit." } },
       { "path": "/userProfiles/{userId}/contractors/{contractorId}", "definition": { "entityName": "Contractor", "description": "Tradesperson directory." } }
     ]
   }

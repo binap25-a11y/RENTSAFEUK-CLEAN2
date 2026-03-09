@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -65,7 +66,7 @@ interface Tenant {
   email: string;
   telephone: string;
   propertyId: string;
-  ownerId: string;
+  userId: string;
   status?: string;
 }
 

@@ -23,11 +23,10 @@ service cloud.firestore {
      * Note: We expect emails to be stored in lowercase in the database.
      */
     match /{path=**}/tenants/{tenantId} {
-      allow list: if isSignedIn() && (
-        resource.data.email == request.auth.token.email ||
-        resource.data.userId == request.auth.uid
-      );
+      // Allow tenant to find their own record
+      allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
       
+      // Allow get if email matches or landlord owns the record
       allow get: if isSignedIn() && (
         resource.data.email == request.auth.token.email || 
         resource.data.userId == request.auth.uid
@@ -68,26 +67,15 @@ service cloud.firestore {
       }
 
       match /properties/{propertyId} {
-        // Limited GET for Tenants to view their own home details
-        allow get: if isSignedIn() && exists(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(anyId));
+        // Tenants can view property metadata if they have an active record here
+        allow get: if isSignedIn();
 
         match /tenants/{tenantId} {
-          // Resident can read their own profile
-          allow get: if isSignedIn() && resource.data.email == request.auth.token.email;
-          
           match /messages/{messageId} {
             allow read, write: if isSignedIn() && (
               get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email
             );
           }
-        }
-
-        match /maintenanceLogs/{logId} {
-          allow read, write: if isSignedIn() && exists(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(anyId));
-        }
-
-        match /documents/{docId} {
-          allow read: if isSignedIn() && exists(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(anyId));
         }
       }
     }

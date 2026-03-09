@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -57,7 +58,7 @@ export default function DeletedPropertiesPage() {
         if (!user || !firestore) return null;
         return query(
             collection(firestore, 'userProfiles', user.uid, 'properties'),
-            where('ownerId', '==', user.uid),
+            where('userId', '==', user.uid),
             where('status', '==', 'Deleted')
         );
     }, [firestore, user]);
