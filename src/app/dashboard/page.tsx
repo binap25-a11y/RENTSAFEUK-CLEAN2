@@ -63,6 +63,7 @@ interface Property {
     postcode: string;
   };
   status: string;
+  userId: string;
 }
 
 interface MaintenanceLog {
@@ -119,10 +120,11 @@ const formatAddress = (address: Property['address']) => {
 }
 
 export default function DashboardPage() {
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const [mounted, setMounted] = useState(false);
   const [isTenant, setIsTenant] = useState(false);
+  const [isLoadingPortalCheck, setIsLoadingPortalCheck] = useState(true);
 
   useEffect(() => {
     setMounted(true);
@@ -130,12 +132,16 @@ export default function DashboardPage() {
 
   // Check if current user is also a tenant - Optimized discovery query
   useEffect(() => {
-    if (!user || !firestore || !user.email) return;
+    if (!user || !firestore || !user.email) {
+      if (!isUserLoading) setIsLoadingPortalCheck(false);
+      return;
+    }
     
     // Character-perfect match for security rules logic (normalized stored email)
     const userEmail = user.email.toLowerCase();
 
     // Discovery query to find if this email exists in any tenant collection across the platform
+    // This query is authorized by the specific collectionGroup rule in firestore.rules
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
@@ -146,15 +152,18 @@ export default function DashboardPage() {
         // We only consider active tenancies for role discovery
         const activeTenantRecord = snap.docs.find(doc => doc.data().status === 'Active');
         setIsTenant(!!activeTenantRecord);
+        setIsLoadingPortalCheck(false);
     }, (error) => {
         // Contextual error for debugging permission issues in discovery
+        // Use a standardized path for the listener component to satisfy rule checks
         errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'tenants',
             operation: 'list',
         }));
+        setIsLoadingPortalCheck(false);
     });
     return () => unsub();
-  }, [user, firestore]);
+  }, [user, firestore, isUserLoading]);
 
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -256,7 +265,7 @@ export default function DashboardPage() {
   const documents = useMemo(() => Object.values(documentsMap).flat(), [documentsMap]);
   const allRentPayments = useMemo(() => Object.values(rentPaymentsMap).flat(), [rentPaymentsMap]);
 
-  const isLoading = isLoadingProperties || !mounted;
+  const isLoading = isLoadingProperties || isLoadingPortalCheck || !mounted;
 
   const propertyMap = useMemo(() => 
     properties?.reduce((map, prop) => {

@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -29,7 +30,7 @@ interface Property {
   bedrooms: number;
   bathrooms: number;
   imageUrl?: string;
-  ownerId: string;
+  userId: string;
 }
 
 export default function PropertiesPage() {

@@ -15,26 +15,31 @@ service cloud.firestore {
     // --- Collection Group Rules (Cross-Portfolio Discovery) ---
     
     /**
-     * Discovery rules for Tenants and sub-collections.
-     * Splitting conditions into separate blocks is a best-practice for 
-     * authorizing collectionGroup list operations.
+     * Discovery rules for Tenants.
+     * Essential for the 'Role Check' logic which determines if a user should see
+     * the Tenant Portal or the Landlord Dashboard.
      */
     match /{path=**}/tenants/{tenantId} {
-      // Allows residents to find their own identity records via email (Discovery)
-      allow list, get: if isSignedIn() && resource.data.email == request.auth.token.email;
-      // Allows landlords to list their own tenants via userId
-      allow list, get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      // Allows residents to find their own identity records via email match (Discovery query)
+      allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
+      // Allows landlords to list their own tenants across their portfolio
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      // standard get access for both roles
+      allow get: if isSignedIn() && (resource.data.email == request.auth.token.email || resource.data.userId == request.auth.uid);
     }
 
     match /{path=**}/messages/{messageId} {
-      allow list, get: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow list, get: if isSignedIn() && resource.data.senderId == request.auth.uid;
+      // Allows both landlords and tenants involved in a conversation to list/read messages
+      allow list, get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.senderId == request.auth.uid);
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      allow list, get: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow list, get: if isSignedIn() && resource.data.reportedBy == request.auth.uid;
-      allow list, get: if isSignedIn() && resource.data.reportedBy == request.auth.token.email;
+      // Allows landlords to list their portfolio logs and tenants to list issues they reported
+      allow list, get: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.reportedBy == request.auth.uid || 
+        resource.data.reportedBy == request.auth.token.email
+      );
     }
 
     // --- Hierarchical Rules (Standard Portfolio Access) ---

@@ -82,6 +82,7 @@
         "title": { "type": "string" },
         "description": { "type": "string" },
         "category": { "type": "string" },
+        "otherCategoryDetails": { "type": "string" },
         "priority": { "type": "string", "enum": ["Emergency", "Urgent", "Routine", "Low"] },
         "status": { "type": "string", "enum": ["Open", "In Progress", "Completed", "Cancelled"] },
         "reportedBy": { "type": "string" },
@@ -155,20 +156,6 @@
         "inspectorName": { "type": "string" }
       },
       "required": ["id", "userId", "propertyId", "type", "status"]
-    },
-    "Checklist": {
-      "title": "Checklist",
-      "type": "object",
-      "description": "Pre-tenancy legal and practical checks.",
-      "properties": {
-        "id": { "type": "string" },
-        "userId": { "type": "string" },
-        "propertyId": { "type": "string" },
-        "tenantId": { "type": "string" },
-        "completedDate": { "type": "string", "format": "date-time" },
-        "status": { "type": "string" }
-      },
-      "required": ["id", "userId", "propertyId", "tenantId"]
     }
   },
   "auth": {
@@ -187,14 +174,6 @@
       "schema": "#/entities/Tenant",
       "description": "Assigned resident."
     },
-    "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/screenings/{screeningId}": {
-      "schema": { "title": "Screening", "type": "object", "properties": { "id": { "type": "string" } } },
-      "description": "Applicant vetting."
-    },
-    "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/messages/{messageId}": {
-      "schema": { "title": "Message", "type": "object", "properties": { "id": { "type": "string" } } },
-      "description": "Secure communication."
-    },
     "/userProfiles/{userId}/properties/{propertyId}/maintenanceLogs/{logId}": {
       "schema": "#/entities/MaintenanceLog",
       "description": "Repair audit."
@@ -210,10 +189,6 @@
     "/userProfiles/{userId}/properties/{propertyId}/inspections/{inspectionId}": {
       "schema": "#/entities/Inspection",
       "description": "Condition report."
-    },
-    "/userProfiles/{userId}/properties/{propertyId}/checklists/{checklistId}": {
-      "schema": "#/entities/Checklist",
-      "description": "Onboarding audit."
     },
     "/userProfiles/{userId}/contractors/{contractorId}": {
       "schema": "#/entities/Contractor",

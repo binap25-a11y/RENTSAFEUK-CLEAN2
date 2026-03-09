@@ -83,7 +83,7 @@ interface Property {
     county?: string;
     postcode: string;
   };
-  ownerId: string;
+  userId: string;
   status: string;
 }
 
