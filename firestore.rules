@@ -113,27 +113,25 @@ service cloud.firestore {
     }
 
     // --- Unified collectionGroup Rules ---
-    // Optimized for static provability in collectionGroup list operations.
-    // resource.data.email matching requires direct equality for the query analyzer to authorize the filter.
+    // These rules are split into distinct allow blocks to ensure the Firestore 
+    // query analyzer can verify authorization for filtered list operations.
 
     match /{path=**}/tenants/{tenantId} {
-      allow list: if isSignedIn() && (resource.data.email == request.auth.token.email.lower());
-      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid);
-      
-      allow get: if isSignedIn() && (
-        resource.data.email == request.auth.token.email.lower() || 
-        resource.data.userId == request.auth.uid
-      );
+      allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get: if isSignedIn() && (resource.data.email == request.auth.token.email || resource.data.userId == request.auth.uid);
     }
 
     match /{path=**}/messages/{messageId} {
-      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.senderId == request.auth.uid);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.senderId == request.auth.uid;
       allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.senderId == request.auth.uid);
       allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.reportedBy == request.auth.uid);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.reportedBy == request.auth.uid;
       allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.reportedBy == request.auth.uid);
     }
   }

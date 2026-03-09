@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -138,19 +139,6 @@
       },
       "required": ["id", "userId", "propertyId", "title", "documentType", "issueDate", "expiryDate"]
     },
-    "TenantScreening": {
-      "title": "TenantScreening",
-      "description": "Comprehensive pre-tenancy audit.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "userId": { "type": "string" },
-        "tenantId": { "type": "string" },
-        "propertyId": { "type": "string" },
-        "screeningDate": { "type": "string", "format": "date-time" },
-        "overallNotes": { "type": "string" }
-      }
-    },
     "Checklist": {
       "title": "Checklist",
       "description": "Pre-tenancy legal and practical compliance checklist.",
@@ -167,21 +155,6 @@
         "optional": { "type": "object" }
       },
       "required": ["id", "userId", "propertyId", "tenantId"]
-    },
-    "Inspection": {
-      "title": "Inspection",
-      "description": "Formal property walkthrough report.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "userId": { "type": "string" },
-        "propertyId": { "type": "string" },
-        "type": { "type": "string", "enum": ["Routine", "Move-In", "Move-Out", "HMO"] },
-        "status": { "type": "string", "enum": ["Scheduled", "Completed", "Cancelled"] },
-        "scheduledDate": { "type": "string", "format": "date-time" },
-        "inspectorName": { "type": "string" }
-      },
-      "required": ["id", "userId", "propertyId", "type", "status", "scheduledDate"]
     }
   },
   "auth": {
@@ -199,10 +172,6 @@
     "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}": {
       "schema": { "$ref": "#/entities/Tenant" },
       "description": "Tenants assigned to a specific property."
-    },
-    "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/screenings/{screeningId}": {
-      "schema": { "$ref": "#/entities/TenantScreening" },
-      "description": "Vetting history for a resident."
     },
     "/userProfiles/{userId}/properties/{propertyId}/maintenanceLogs/{logId}": {
       "schema": { "$ref": "#/entities/MaintenanceLog" },
@@ -223,10 +192,6 @@
     "/userProfiles/{userId}/properties/{propertyId}/checklists/{checklistId}": {
       "schema": { "$ref": "#/entities/Checklist" },
       "description": "Compliance checklists for a property."
-    },
-    "/userProfiles/{userId}/properties/{propertyId}/inspections/{inspectionId}": {
-      "schema": { "$ref": "#/entities/Inspection" },
-      "description": "Formal property inspection records."
     }
   }
 }
