@@ -4,7 +4,7 @@
     "UserProfile": {
       "title": "UserProfile",
       "type": "object",
-      "description": "Landlord profile storing preferences and management defaults.",
+      "description": "Root landlord profile storing configuration and portfolio defaults.",
       "properties": {
         "id": { "type": "string" },
         "email": { "type": "string", "format": "email" },
@@ -54,7 +54,7 @@
     "Tenant": {
       "title": "Tenant",
       "type": "object",
-      "description": "Resident details and tenancy terms.",
+      "description": "A resident assigned to a specific property unit.",
       "properties": {
         "id": { "type": "string" },
         "name": { "type": "string" },
@@ -75,7 +75,7 @@
     "MaintenanceRequest": {
       "title": "MaintenanceRequest",
       "type": "object",
-      "description": "Issue report logged by landlord or tenant.",
+      "description": "An issue report logged for a property.",
       "properties": {
         "id": { "type": "string" },
         "title": { "type": "string" },
@@ -100,7 +100,7 @@
     "Expense": {
       "title": "Expense",
       "type": "object",
-      "description": "Financial outgoing record for property operations.",
+      "description": "Financial outgoing recorded for tax and audit purposes.",
       "properties": {
         "id": { "type": "string" },
         "amount": { "type": "number" },
@@ -116,7 +116,7 @@
     "Inspection": {
       "title": "Inspection",
       "type": "object",
-      "description": "Property condition report.",
+      "description": "A property condition or safety report.",
       "properties": {
         "id": { "type": "string" },
         "type": { "type": "string", "enum": ["Single-Let", "HMO", "Move-in", "Move-out", "Routine Inspection"] },
@@ -133,7 +133,7 @@
     "Document": {
       "title": "Document",
       "type": "object",
-      "description": "Compliance or legal document record.",
+      "description": "A legal or compliance file record.",
       "properties": {
         "id": { "type": "string" },
         "title": { "type": "string" },
@@ -166,7 +166,7 @@
     "RentPayment": {
       "title": "RentPayment",
       "type": "object",
-      "description": "Ledger record for monthly rent collection.",
+      "description": "A record of rent collection status.",
       "properties": {
         "id": { "type": "string" },
         "propertyId": { "type": "string" },
@@ -182,7 +182,7 @@
     "Message": {
       "title": "Message",
       "type": "object",
-      "description": "Secure communication record.",
+      "description": "Secure communication thread record.",
       "properties": {
         "id": { "type": "string" },
         "senderId": { "type": "string" },
@@ -191,45 +191,6 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["senderId", "content", "timestamp"]
-    },
-    "TenantScreening": {
-      "title": "TenantScreening",
-      "type": "object",
-      "description": "Pre-tenancy checklist and result.",
-      "properties": {
-        "id": { "type": "string" },
-        "tenantId": { "type": "string" },
-        "propertyId": { "type": "string" },
-        "ownerId": { "type": "string" },
-        "screeningDate": { "type": "string", "format": "date-time" },
-        "rightToRent": { "type": "object" },
-        "idVerification": { "type": "object" },
-        "creditCheck": { "type": "object" },
-        "employmentIncome": { "type": "object" },
-        "landlordReference": { "type": "object" },
-        "addressHistory": { "type": "object" },
-        "affordability": { "type": "object" },
-        "guarantor": { "type": "object" },
-        "overallNotes": { "type": "string" }
-      },
-      "required": ["tenantId", "propertyId", "ownerId", "screeningDate"]
-    },
-    "Checklist": {
-      "title": "Checklist",
-      "type": "object",
-      "description": "Management checklist for move-in/out or compliance.",
-      "properties": {
-        "id": { "type": "string" },
-        "propertyId": { "type": "string" },
-        "tenantId": { "type": "string" },
-        "ownerId": { "type": "string" },
-        "completedDate": { "type": "string", "format": "date-time" },
-        "beforeTenancy": { "type": "object" },
-        "deposit": { "type": "object" },
-        "atMoveIn": { "type": "object" },
-        "optional": { "type": "object" }
-      },
-      "required": ["propertyId", "tenantId", "ownerId"]
     }
   },
   "auth": {
@@ -246,43 +207,35 @@
     },
     "/userProfiles/{userId}/properties/{propertyId}": {
       "schema": { "$ref": "#/backend/entities/Property" },
-      "description": "Rental property document."
-    },
-    "/userProfiles/{userId}/properties/{propertyId}/checklists/{checklistId}": {
-      "schema": { "$ref": "#/backend/entities/Checklist" },
-      "description": "Compliance checklists."
+      "description": "Rental asset record."
     },
     "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}": {
       "schema": { "$ref": "#/backend/entities/Tenant" },
-      "description": "Tenant profile nested under property."
+      "description": "Resident profile assigned to property."
     },
     "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/messages/{messageId}": {
       "schema": { "$ref": "#/backend/entities/Message" },
-      "description": "Secure messaging thread."
-    },
-    "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/screenings/{screeningId}": {
-      "schema": { "$ref": "#/backend/entities/TenantScreening" },
-      "description": "Tenant vetting reports."
+      "description": "Secure direct messages."
     },
     "/userProfiles/{userId}/properties/{propertyId}/maintenanceLogs/{logId}": {
       "schema": { "$ref": "#/backend/entities/MaintenanceRequest" },
-      "description": "Repair tracking for property."
+      "description": "Repair and maintenance logs."
     },
     "/userProfiles/{userId}/properties/{propertyId}/expenses/{expenseId}": {
       "schema": { "$ref": "#/backend/entities/Expense" },
-      "description": "Expenditure tracking."
+      "description": "Financial outgoings."
     },
     "/userProfiles/{userId}/properties/{propertyId}/inspections/{inspectionId}": {
       "schema": { "$ref": "#/backend/entities/Inspection" },
-      "description": "Property inspection record."
+      "description": "Property condition reports."
     },
     "/userProfiles/{userId}/properties/{propertyId}/documents/{docId}": {
       "schema": { "$ref": "#/backend/entities/Document" },
-      "description": "Legal/Compliance file record."
+      "description": "Compliance and legal files."
     },
     "/userProfiles/{userId}/properties/{propertyId}/rentPayments/{paymentId}": {
       "schema": { "$ref": "#/backend/entities/RentPayment" },
-      "description": "Monthly rent collection record."
+      "description": "Rent ledger records."
     }
   }
 }

@@ -31,12 +31,11 @@ service cloud.firestore {
     }
 
     // --- COLLECTION GROUP RULES ---
-    // Critical for multi-role discovery and portal access.
+    // Optimized for cross-portfolio discovery and portal access.
 
     match /{path=**}/tenants/{tenantId} {
-      // Allow discovery for the "Role Check" and Tenant Portal.
-      // The 'list' operation on a collection group requires that the rule 
-      // guarantees that only permitted documents are accessed.
+      // Discovery for the "Role Check" logic during dashboard initialization.
+      // Explicitly check for email equality or ownership to resolve permission errors.
       allow list: if isSignedIn() && (
         (request.auth.token.email != null && resource.data.email == request.auth.token.email) ||
         (resource.data.ownerId == request.auth.uid)
@@ -54,19 +53,17 @@ service cloud.firestore {
         (resource.data.ownerId == request.auth.uid) ||
         (request.auth.token.email != null && resource.data.reportedBy == request.auth.token.email)
       );
-      // Anyone signed in can create a log (it will be matched to their property context in code).
       allow create: if isSignedIn();
     }
 
     match /{path=**}/documents/{docId} {
       allow list, get: if isSignedIn() && (
         (resource.data.ownerId == request.auth.uid) ||
-        (request.auth.token.email != null) // Access controlled by property visibility
+        (request.auth.token.email != null)
       );
     }
 
     match /{path=**}/messages/{messageId} {
-      // Direct messaging is permitted for involved parties.
       allow list, get: if isSignedIn() && (
         (resource.data.senderId == request.auth.uid) ||
         (request.auth.token.email != null)

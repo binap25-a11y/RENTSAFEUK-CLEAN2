@@ -132,7 +132,7 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user || !firestore || !user.email) return;
     
-    // Normalize user email for identity discovery to prevent case-sensitivity mismatches
+    // Identity discovery relies on exact character matching with security rules.
     const userEmail = user.email.toLowerCase();
 
     // Discovery query to find if this email exists in any tenant collection
@@ -147,7 +147,7 @@ export default function DashboardPage() {
         const activeTenantRecord = snap.docs.find(doc => doc.data().status === 'Active');
         setIsTenant(!!activeTenantRecord);
     }, (error) => {
-        // Contextual error for debugging permission issues in discovery
+        // Use a standardized path for the listener component
         errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'tenants',
             operation: 'list',
