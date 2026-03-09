@@ -41,15 +41,15 @@ service cloud.firestore {
 
     match /{path=**}/tenants/{tenantId} {
       // Rule 1: Allow discovery via email for the "Role Check" and Tenant Portal.
-      // The query MUST filter by email to be authorized for a tenant.
-      allow list: if isSignedIn() && request.auth.token.email != null && resource.data.email == request.auth.token.email;
+      // Use lower() to ensure casing consistency between auth token and query filters.
+      allow list: if isSignedIn() && (
+        (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
+        (resource.data.ownerId == request.auth.uid)
+      );
       
-      // Rule 2: Allow landlords to discover their own tenants via collection group if needed.
-      allow list: if isSignedIn() && resource.data.ownerId == request.auth.uid;
-
       // Allow get if user is the tenant or the owner
       allow get: if isSignedIn() && (
-        (request.auth.token.email != null && resource.data.email == request.auth.token.email) ||
+        (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
         (resource.data.ownerId == request.auth.uid)
       );
     }
