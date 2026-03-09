@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -67,7 +68,7 @@ interface Property {
     street: string;
     city: string;
   };
-  ownerId: string;
+  userId: string;
   status: string;
 }
 
@@ -106,7 +107,6 @@ export default function UploadDocumentPage() {
     if (!user || !firestore) return null;
     return query(
       collection(firestore, 'userProfiles', user.uid, 'properties'),
-      where('ownerId', '==', user.uid),
       limit(500)
     );
   }, [firestore, user]);
@@ -142,7 +142,7 @@ export default function UploadDocumentPage() {
       const dataToSave: any = {
         ...data,
         fileUrl,
-        ownerId: user.uid,
+        userId: user.uid,
         createdDate: new Date().toISOString()
       };
 
@@ -163,182 +163,190 @@ export default function UploadDocumentPage() {
   };
 
   return (
-    <Card className="max-w-2xl mx-auto shadow-lg border-none">
-      <CardHeader className="bg-primary/5 border-b">
-        <CardTitle className="font-headline text-2xl text-primary">Log Property Document</CardTitle>
-        <CardDescription>
-          Record a new legal or compliance document and upload the associated file.
-        </CardDescription>
-      </CardHeader>
-      <CardContent className="pt-8">
-        <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-             {complianceWarning && (
-                <Alert className="bg-amber-50 border-amber-200">
-                    <Info className="h-4 w-4 text-amber-600" />
-                    <AlertTitle className="text-amber-800 text-sm font-bold">Compliance Guidance</AlertTitle>
-                    <AlertDescription className="text-amber-700 text-xs">{complianceWarning}</AlertDescription>
-                </Alert>
-             )}
+    <div className="flex flex-col gap-8 max-w-2xl mx-auto">
+      {/* Page Header - Consistent with Audit Trail Style */}
+      <div className="space-y-2">
+        <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Log Property Document</h1>
+        <p className="text-muted-foreground font-medium text-lg">Record a new legal or compliance document and upload the associated file.</p>
+      </div>
 
-             <FormField
+      <Card className="shadow-lg border-none overflow-hidden">
+        <CardHeader className="bg-primary/5 border-b pb-6">
+          <CardTitle className="text-xl">Upload Record Details</CardTitle>
+          <CardDescription>
+            Detailed metadata ensures robust compliance tracking across your estate.
+          </CardDescription>
+        </CardHeader>
+        <CardContent className="pt-8">
+          <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+               {complianceWarning && (
+                  <Alert className="bg-amber-50 border-amber-200">
+                      <Info className="h-4 w-4 text-amber-600" />
+                      <AlertTitle className="text-amber-800 text-sm font-bold">Compliance Guidance</AlertTitle>
+                      <AlertDescription className="text-amber-700 text-xs">{complianceWarning}</AlertDescription>
+                  </Alert>
+               )}
+
+               <FormField
+                  control={form.control}
+                  name="title"
+                  render={({ field }) => (
+                      <FormItem>
+                      <FormLabel className="font-bold">Document Title</FormLabel>
+                      <FormControl>
+                          <Input placeholder="e.g. Gas Safety Cert 2024" className="h-11" {...field} />
+                      </FormControl>
+                      <FormMessage />
+                      </FormItem>
+                  )}
+              />
+              
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <FormField
+                  control={form.control}
+                  name="propertyId"
+                  render={({ field }) => (
+                      <FormItem>
+                      <FormLabel className="font-bold">Active Property</FormLabel>
+                      <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                          <SelectTrigger className="h-11">
+                              <SelectValue placeholder="Select a property" />
+                          </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                          {activeProperties.map((prop) => (
+                              <SelectItem key={prop.id} value={prop.id}>
+                                  {formatAddress(prop.address)}
+                              </SelectItem>
+                          ))}
+                          </SelectContent>
+                      </Select>
+                      <FormMessage />
+                      </FormItem>
+                  )}
+                  />
+                  <FormField
+                      control={form.control}
+                      name="documentType"
+                      render={({ field }) => (
+                      <FormItem>
+                          <FormLabel className="font-bold">Document Type</FormLabel>
+                          <Select onValueChange={field.onChange} value={field.value}>
+                          <FormControl>
+                              <SelectTrigger className="h-11">
+                              <SelectValue placeholder="Select a type" />
+                              </SelectTrigger>
+                          </FormControl>
+                          <SelectContent>
+                              {[
+                                 'Tenancy Agreement', 'Inventory', 'Gas Safety Certificate', 'Electrical Certificate', 'EPC', 'Insurance', 'Deposit Protection', 'Licence', 'Correspondence', 'Invoice'
+                              ].map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                          </SelectContent>
+                          </Select>
+                          <FormMessage />
+                      </FormItem>
+                      )}
+                  />
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                   <FormField
+                      control={form.control}
+                      name="issueDate"
+                      render={({ field }) => (
+                          <FormItem>
+                              <FormLabel className="font-bold">Issue Date</FormLabel>
+                              <FormControl>
+                                  <Input
+                                      type="date"
+                                      className="h-11"
+                                      value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                                      onChange={(e) => field.onChange(e.target.value)}
+                                  />
+                              </FormControl>
+                              <FormMessage />
+                          </FormItem>
+                      )}
+                   />
+                  <FormField
+                      control={form.control}
+                      name="expiryDate"
+                      render={({ field }) => (
+                          <FormItem>
+                              <FormLabel className="font-bold">Expiry Date</FormLabel>
+                              <FormControl>
+                                  <Input
+                                      type="date"
+                                      className="h-11"
+                                      value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
+                                      onChange={(e) => field.onChange(e.target.value)}
+                                  />
+                              </FormControl>
+                              <FormMessage />
+                          </FormItem>
+                      )}
+                  />
+              </div>
+
+              <div className="space-y-4">
+                  <FormLabel className="font-bold">Upload Document File</FormLabel>
+                  {selectedFile ? (
+                      <div className="flex items-center justify-between p-4 border rounded-xl bg-primary/5 border-primary/20">
+                          <div className="flex items-center gap-3 min-w-0">
+                              <div className="p-2 rounded-lg bg-primary/10 text-primary">
+                                  <FileText className="h-5 w-5" />
+                              </div>
+                              <div className="min-w-0">
+                                  <p className="text-sm font-bold truncate">{selectedFile.name}</p>
+                                  <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
+                              </div>
+                          </div>
+                          <Button type="button" variant="ghost" size="icon" onClick={() => setSelectedFile(null)}>
+                              <X className="h-4 w-4" />
+                          </Button>
+                      </div>
+                  ) : (
+                      <div className="border-2 border-dashed rounded-xl p-8 text-center bg-muted/5 cursor-pointer hover:bg-muted/10 transition-colors" onClick={() => document.getElementById('file-upload')?.click()}>
+                          <FileUp className="h-8 w-8 mx-auto text-muted-foreground mb-3 opacity-50" />
+                          <p className="text-sm font-bold">Click to select PDF or Image</p>
+                          <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-widest font-bold">Max size 10MB</p>
+                          <input id="file-upload" type="file" className="hidden" onChange={handleFileChange} accept=".pdf,image/*" />
+                      </div>
+                  )}
+              </div>
+              
+               <FormField
                 control={form.control}
-                name="title"
+                name="notes"
                 render={({ field }) => (
-                    <FormItem>
-                    <FormLabel className="font-bold">Document Title</FormLabel>
+                  <FormItem>
+                    <FormLabel className="font-bold">Audit Notes</FormLabel>
                     <FormControl>
-                        <Input placeholder="e.g. Gas Safety Cert 2024" className="h-11" {...field} />
+                      <Textarea
+                        placeholder="Add relevant document notes..."
+                        className="resize-none rounded-xl"
+                        rows={4}
+                        {...field}
+                      />
                     </FormControl>
                     <FormMessage />
-                    </FormItem>
+                  </FormItem>
                 )}
-            />
-            
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                <FormField
-                control={form.control}
-                name="propertyId"
-                render={({ field }) => (
-                    <FormItem>
-                    <FormLabel className="font-bold">Active Property</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                        <SelectTrigger className="h-11">
-                            <SelectValue placeholder="Select a property" />
-                        </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                        {activeProperties.map((prop) => (
-                            <SelectItem key={prop.id} value={prop.id}>
-                                {formatAddress(prop.address)}
-                            </SelectItem>
-                        ))}
-                        </SelectContent>
-                    </Select>
-                    <FormMessage />
-                    </FormItem>
-                )}
-                />
-                <FormField
-                    control={form.control}
-                    name="documentType"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel className="font-bold">Document Type</FormLabel>
-                        <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl>
-                            <SelectTrigger className="h-11">
-                            <SelectValue placeholder="Select a type" />
-                            </SelectTrigger>
-                        </FormControl>
-                        <SelectContent>
-                            {[
-                               'Tenancy Agreement', 'Inventory', 'Gas Safety Certificate', 'Electrical Certificate', 'EPC', 'Insurance', 'Deposit Protection', 'Licence', 'Correspondence', 'Invoice'
-                            ].map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
-                        </SelectContent>
-                        </Select>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-            </div>
-
-            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                 <FormField
-                    control={form.control}
-                    name="issueDate"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="font-bold">Issue Date</FormLabel>
-                            <FormControl>
-                                <Input
-                                    type="date"
-                                    className="h-11"
-                                    value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
-                                    onChange={(e) => field.onChange(e.target.value)}
-                                />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                 />
-                <FormField
-                    control={form.control}
-                    name="expiryDate"
-                    render={({ field }) => (
-                        <FormItem>
-                            <FormLabel className="font-bold">Expiry Date</FormLabel>
-                            <FormControl>
-                                <Input
-                                    type="date"
-                                    className="h-11"
-                                    value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
-                                    onChange={(e) => field.onChange(e.target.value)}
-                                />
-                            </FormControl>
-                            <FormMessage />
-                        </FormItem>
-                    )}
-                />
-            </div>
-
-            <div className="space-y-4">
-                <FormLabel className="font-bold">Upload Document File</FormLabel>
-                {selectedFile ? (
-                    <div className="flex items-center justify-between p-4 border rounded-xl bg-primary/5 border-primary/20">
-                        <div className="flex items-center gap-3 min-w-0">
-                            <div className="p-2 rounded-lg bg-primary/10 text-primary">
-                                <FileText className="h-5 w-5" />
-                            </div>
-                            <div className="min-w-0">
-                                <p className="text-sm font-bold truncate">{selectedFile.name}</p>
-                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider">{(selectedFile.size / 1024 / 1024).toFixed(2)} MB</p>
-                            </div>
-                        </div>
-                        <Button type="button" variant="ghost" size="icon" onClick={() => setSelectedFile(null)}>
-                            <X className="h-4 w-4" />
-                        </Button>
-                    </div>
-                ) : (
-                    <div className="border-2 border-dashed rounded-xl p-8 text-center bg-muted/5 cursor-pointer hover:bg-muted/10 transition-colors" onClick={() => document.getElementById('file-upload')?.click()}>
-                        <FileUp className="h-8 w-8 mx-auto text-muted-foreground mb-3 opacity-50" />
-                        <p className="text-sm font-bold">Click to select PDF or Image</p>
-                        <p className="text-[10px] text-muted-foreground mt-1 uppercase tracking-widest font-bold">Max size 10MB</p>
-                        <input id="file-upload" type="file" className="hidden" onChange={handleFileChange} accept=".pdf,image/*" />
-                    </div>
-                )}
-            </div>
-            
-             <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="font-bold">Audit Notes</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      placeholder="Add relevant document notes..."
-                      className="resize-none rounded-xl"
-                      rows={4}
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <div className="flex justify-end gap-3 pt-4 border-t">
-                <Button type="button" variant="ghost" asChild className="font-bold uppercase tracking-widest text-xs h-11">
-                    <Link href="/dashboard/documents">Cancel</Link>
-                </Button>
-                <Button type="submit" disabled={isSaving} className="h-11 px-10 shadow-lg font-bold uppercase tracking-widest text-xs">
-                  {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading...</> : 'Complete Record'}
-                </Button>
-            </div>
-          </form>
-        </Form>
-      </CardContent>
-    </Card>
+              />
+              <div className="flex justify-end gap-3 pt-4 border-t">
+                  <Button type="button" variant="ghost" asChild className="font-bold uppercase tracking-widest text-xs h-11">
+                      <Link href="/dashboard/documents">Cancel</Link>
+                  </Button>
+                  <Button type="submit" disabled={isSaving} className="h-11 px-10 shadow-lg font-bold uppercase tracking-widest text-xs">
+                    {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Uploading...</> : 'Complete Record'}
+                  </Button>
+              </div>
+            </form>
+          </Form>
+        </CardContent>
+      </Card>
+    </div>
   );
 }

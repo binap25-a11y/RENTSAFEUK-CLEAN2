@@ -133,7 +133,8 @@ export default function DashboardPage() {
     if (!user || !firestore || !user.email) return;
     
     // Identity discovery relies on exact identity match for robust security rule verification
-    const userEmail = user.email.toLowerCase();
+    // Use the raw email from the auth object to ensure token matching in rules
+    const userEmail = user.email;
 
     // Discovery query to find if this email exists in any tenant collection across the platform
     const q = query(
@@ -147,7 +148,8 @@ export default function DashboardPage() {
         const activeTenantRecord = snap.docs.find(doc => doc.data().status === 'Active');
         setIsTenant(!!activeTenantRecord);
     }, (error) => {
-        // Emit standardized path for the listener component to satisfy rule checks
+        // Contextual error for debugging permission issues in discovery
+        // Use a standardized path for the emitter to satisfy rule checks
         errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'tenants',
             operation: 'list',

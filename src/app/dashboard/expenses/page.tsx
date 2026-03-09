@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -80,7 +81,7 @@ interface Property {
     monthlyRent: number;
   };
   status: string;
-  ownerId: string;
+  userId: string;
 }
 
 interface Expense {
@@ -91,7 +92,7 @@ interface Expense {
   amount: number;
   paidBy: string;
   notes?: string;
-  ownerId: string;
+  userId: string;
 }
 
 type PaymentStatus = 'Paid' | 'Partially Paid' | 'Unpaid' | 'Pending';
@@ -362,7 +363,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
     if (!user || !firestore) return;
     setIsSubmitting(true);
     const expCol = collection(firestore, 'userProfiles', user.uid, 'properties', data.propertyId, 'expenses');
-    addDoc(expCol, { ...data, ownerId: user.uid })
+    addDoc(expCol, { ...data, userId: user.uid })
       .then(() => {
         toast({ title: 'Expense Logged', description: 'Financial record added to audit trail.' });
         form.reset({ propertyId: selectedPropertyId !== 'all' ? selectedPropertyId : '', expenseType: '', notes: '', date: new Date(), paidBy: 'Landlord', amount: 0 });
@@ -540,7 +541,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
     if (!firestore || !user || !selectedProperty) return;
     const rentPaymentRef = doc(firestore, 'userProfiles', user.uid, 'properties', selectedProperty.id, 'rentPayments', `${selectedYear}-${month}`);
     const expectedAmount = statement.find(s => s.month === month)?.rent ?? 0;
-    setDoc(rentPaymentRef, { ownerId: user.uid, propertyId: selectedProperty.id, year: selectedYear, month, status, expectedAmount, amountPaid: status === 'Paid' ? expectedAmount : 0 }, { merge: true }).then(() => {
+    setDoc(rentPaymentRef, { userId: user.uid, propertyId: selectedProperty.id, year: selectedYear, month, status, expectedAmount, amountPaid: status === 'Paid' ? expectedAmount : 0 }, { merge: true }).then(() => {
         toast({ title: 'Ledger Updated', description: `Rent for ${month} marked as ${status}.` });
     });
   };

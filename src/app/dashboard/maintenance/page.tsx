@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -170,7 +171,7 @@ export default function MaintenancePage() {
     setIsSubmitting(true);
 
     try {
-      const newLog = { ...data, ownerId: user.uid, status: 'Open', createdDate: new Date().toISOString() };
+      const newLog = { ...data, userId: user.uid, status: 'Open', createdDate: new Date().toISOString() };
       const logsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', data.propertyId, 'maintenanceLogs');
       const newDocRef = await addDoc(logsCollection, newLog);
 
@@ -492,6 +493,6 @@ export default function MaintenancePage() {
                 Log Maintenance Request
             </Button>
         </div>
-      </div>
+    </div>
   );
 }

@@ -16,14 +16,6 @@ service cloud.firestore {
       return resource != null && isOwner(userId);
     }
 
-    function isValidOwnership(userId) {
-      return request.resource.data.userId == userId;
-    }
-
-    function isOwnershipImmutable() {
-      return request.resource.data.userId == resource.data.userId;
-    }
-
     // --- Collection Group Rules (Cross-Portfolio Discovery) ---
     
     // Required for Role Detection & Portal Authentication
