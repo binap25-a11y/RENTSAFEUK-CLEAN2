@@ -86,6 +86,19 @@
       },
       "required": ["id", "userId", "tenantId", "screeningDate"]
     },
+    "PreTenancyChecklist": {
+      "title": "PreTenancyChecklist",
+      "type": "object",
+      "description": "Compliance checklist before move-in.",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "completedDate": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "propertyId", "tenantId"]
+    },
     "MaintenanceLog": {
       "title": "MaintenanceLog",
       "type": "object",
@@ -207,6 +220,10 @@
     "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/screenings/{screeningId}": {
       "schema": "#/entities/TenantScreening",
       "description": "Audit record."
+    },
+    "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/checklists/{checklistId}": {
+      "schema": "#/entities/PreTenancyChecklist",
+      "description": "Compliance checklist."
     },
     "/userProfiles/{userId}/properties/{propertyId}/maintenanceLogs/{logId}": {
       "schema": "#/entities/MaintenanceLog",

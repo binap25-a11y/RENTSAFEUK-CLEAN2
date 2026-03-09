@@ -15,8 +15,8 @@ service cloud.firestore {
     // --- Collection Group Rules (Authorized Discovery) ---
     
     match /{path=**}/tenants/{tenantId} {
-      // Allow residents to find their record by email match
-      // Allow landlords to list their tenants by userId match
+      // Allow residents to find their own record via discovery queries (filtered by email)
+      // Allow landlords to view their portfolio tenants (standard path or group query)
       allow list: if isSignedIn() && (
         resource.data.email == request.auth.token.email || 
         resource.data.userId == request.auth.uid
