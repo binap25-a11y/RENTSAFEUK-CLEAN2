@@ -1,65 +1,155 @@
+/**
+ * FIRESTORE SECURITY RULES
+ * 
+ * CORE PHILOSOPHY:
+ * This ruleset enforces a strict user-ownership model using Path-Based Access Modeling.
+ * All data is organized hierarchically to ensure that users can only access and modify 
+ * their own information.
+ * 
+ * DATA STRUCTURE:
+ * All application data is nested under the `/users/{userId}` path. 
+ * - `/users/{userId}`: User profile information.
+ * - `/users/{userId}/properties/{propertyId}`: Properties owned by the user.
+ * - `/users/{userId}/properties/{propertyId}/[subcollection]`: Specialized data 
+ *   (Tenancies, Images, Logs, etc.) belonging to a specific property.
+ * 
+ * KEY SECURITY DECISIONS:
+ * 1. Authorization Independence: Critical ownership fields (like userId and propertyId) 
+ *    are denormalized into documents. This allows for fast, atomic rules that do not 
+ *    require costly `get()` lookups.
+ * 2. Structural Segregation: By nesting all data under the user's UID, we eliminate 
+ *    the risk of cross-user data leakage.
+ * 3. Prototyping Flexibility: These rules strictly enforce "Who" can access data 
+ *    (Authorization) but remain flexible on the "Shape" of the data (Schema) to 
+ *    allow for rapid feature iteration.
+ * 4. Prevention of Unauthorized Listing: The reported error regarding `/tenants` 
+ *    access is resolved by strictly scoping Tenancy data as a subcollection of 
+ *    Properties, ensuring all lists are naturally filtered by user ownership.
+ */
 
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- Helper Functions ---
+    // --- GLOBAL HELPER FUNCTIONS ---
+
+    /** 
+     * @description Checks if the request is from an authenticated user.
+     */
     function isSignedIn() {
       return request.auth != null;
     }
 
+    /** 
+     * @description Checks if the authenticated user matches the provided userId.
+     */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // --- Collection Group Rules (Authorized Discovery) ---
-    // Rules are split into distinct allow blocks to ensure the Firestore query optimizer 
-    // can statically verify authorization against specific query filters (e.g. email or userId).
-    
-    match /{path=**}/tenants/{tenantId} {
-      // Resident discovery: match by authenticated email
-      allow list: if isSignedIn() && resource.data.email == request.auth.token.email.lower();
-      
-      // Landlord oversight: match by authenticated UID
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      
-      // Standard document reads
-      allow get: if isSignedIn() && (
-        resource.data.email == request.auth.token.email.lower() || 
-        resource.data.userId == request.auth.uid
-      );
+    /** 
+     * @description Verifies ownership and ensures the document exists for state changes.
+     */
+    function isExistingOwner(userId) {
+      return resource != null && isOwner(userId);
     }
 
-    match /{path=**}/messages/{messageId} {
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow list: if isSignedIn() && resource.data.senderId == request.auth.uid;
-      
-      allow get: if isSignedIn() && (
-        resource.data.userId == request.auth.uid || 
-        resource.data.senderId == request.auth.uid
-      );
+    /** 
+     * @description Ensures critical relational fields are not changed during updates.
+     */
+    function isImmutable(field) {
+      return request.resource.data[field] == resource.data[field];
     }
 
-    match /{path=**}/maintenanceLogs/{logId} {
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow list: if isSignedIn() && resource.data.reportedBy == request.auth.uid;
-      
-      allow get: if isSignedIn() && (
-        resource.data.userId == request.auth.uid || 
-        resource.data.reportedBy == request.auth.uid
-      );
-    }
+    // --- COLLECTION RULES ---
 
-    // --- Hierarchical Rules (Standard Portfolio Access) ---
-
-    match /userProfiles/{userId} {
-      allow get: if isOwner(userId);
+    /**
+     * @description Rules for the UserProfile entity.
+     * @path /users/{userId}
+     * @allow (create) User 'abc' creates document /users/abc where data.id == 'abc'.
+     * @deny (list) User 'abc' attempts to list all documents in /users.
+     * @principle Self-creation and ownership-based access.
+     */
+    match /users/{userId} {
+      allow get, list: if isOwner(userId);
       allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if false;
+      allow update: if isExistingOwner(userId) && isImmutable('id');
+      allow delete: if isExistingOwner(userId);
 
-      match /{allSubcollections=**} {
-        allow read, write: if isOwner(userId);
+      /**
+       * @description Rules for the Property entity.
+       * @path /users/{userId}/properties/{propertyId}
+       * @allow (list) User 'abc' lists their own properties at /users/abc/properties.
+       * @deny (update) User 'abc' attempts to change the 'userId' field of a property.
+       * @principle Path-based ownership with relational field validation.
+       */
+      match /properties/{propertyId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && request.resource.data.userId == userId;
+        allow update: if isExistingOwner(userId) && isImmutable('userId');
+        allow delete: if isExistingOwner(userId);
+
+        /**
+         * @description Rules for Property Subcollections (Tenancy, Image, Log, Inspection, Document).
+         * These entities use the same authorization logic as they are nested under a specific property.
+         */
+        
+        match /tenancies/{tenancyId} {
+          /**
+           * @description Secures Tenancy records.
+           * @path /users/{userId}/properties/{propertyId}/tenancies/{tenancyId}
+           * @allow (list) User 'abc' lists tenancies for their own property.
+           * @deny (create) User 'abc' tries to create a tenancy for user 'xyz's path.
+           */
+          allow get, list: if isOwner(userId);
+          allow create: if isOwner(userId) && request.resource.data.userId == userId && request.resource.data.propertyId == propertyId;
+          allow update: if isExistingOwner(userId) && isImmutable('userId') && isImmutable('propertyId');
+          allow delete: if isExistingOwner(userId);
+        }
+
+        match /property_images/{imageId} {
+          /**
+           * @description Secures Property Image records.
+           * @path /users/{userId}/properties/{propertyId}/property_images/{imageId}
+           */
+          allow get, list: if isOwner(userId);
+          allow create: if isOwner(userId) && request.resource.data.userId == userId && request.resource.data.propertyId == propertyId;
+          allow update: if isExistingOwner(userId) && isImmutable('userId') && isImmutable('propertyId');
+          allow delete: if isExistingOwner(userId);
+        }
+
+        match /maintenance_logs/{logId} {
+          /**
+           * @description Secures Maintenance Log records.
+           * @path /users/{userId}/properties/{propertyId}/maintenance_logs/{logId}
+           */
+          allow get, list: if isOwner(userId);
+          allow create: if isOwner(userId) && request.resource.data.userId == userId && request.resource.data.propertyId == propertyId;
+          allow update: if isExistingOwner(userId) && isImmutable('userId') && isImmutable('propertyId');
+          allow delete: if isExistingOwner(userId);
+        }
+
+        match /inspections/{inspectionId} {
+          /**
+           * @description Secures Inspection records.
+           * @path /users/{userId}/properties/{propertyId}/inspections/{inspectionId}
+           */
+          allow get, list: if isOwner(userId);
+          allow create: if isOwner(userId) && request.resource.data.userId == userId && request.resource.data.propertyId == propertyId;
+          allow update: if isExistingOwner(userId) && isImmutable('userId') && isImmutable('propertyId');
+          allow delete: if isExistingOwner(userId);
+        }
+
+        match /documents/{documentId} {
+          /**
+           * @description Secures Property Document metadata.
+           * @path /users/{userId}/properties/{propertyId}/documents/{documentId}
+           */
+          allow get, list: if isOwner(userId);
+          allow create: if isOwner(userId) && request.resource.data.userId == userId && request.resource.data.propertyId == propertyId;
+          allow update: if isExistingOwner(userId) && isImmutable('userId') && isImmutable('propertyId');
+          allow delete: if isExistingOwner(userId);
+        }
       }
     }
   }
