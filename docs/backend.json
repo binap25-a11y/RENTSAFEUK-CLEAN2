@@ -151,6 +151,23 @@
         "screeningDate": { "type": "string", "format": "date-time" },
         "overallNotes": { "type": "string" }
       }
+    },
+    "Checklist": {
+      "title": "Checklist",
+      "description": "Pre-tenancy legal and practical compliance checklist.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "completedDate": { "type": "string", "format": "date-time" },
+        "beforeTenancy": { "type": "object" },
+        "deposit": { "type": "object" },
+        "atMoveIn": { "type": "object" },
+        "optional": { "type": "object" }
+      },
+      "required": ["id", "userId", "propertyId", "tenantId"]
     }
   },
   "auth": {
@@ -188,6 +205,10 @@
     "/userProfiles/{userId}/contractors/{contractorId}": {
       "schema": { "$ref": "#/entities/Contractor" },
       "description": "Landlord's contractor directory."
+    },
+    "/userProfiles/{userId}/properties/{propertyId}/checklists/{checklistId}": {
+      "schema": { "$ref": "#/entities/Checklist" },
+      "description": "Compliance checklists for a property."
     }
   }
 }
