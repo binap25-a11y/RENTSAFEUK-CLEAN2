@@ -1,16 +1,3 @@
-/**
- * Firestore Security Rules
- * 
- * Core Philosophy:
- * This ruleset enforces a strict user-ownership model designed for a multi-tenant property 
- * management application. All data is hierarchically organized and secured under a 
- * user's unique profile path.
- *
- * collectionGroup Support:
- * To enable cross-portfolio role discovery (identifying if a user is a resident 
- * in any estate), we provide restricted list access to the 'tenants', 'messages', 
- * and 'maintenanceLogs' collection groups.
- */
 
 rules_version = '2';
 service cloud.firestore {
@@ -75,13 +62,6 @@ service cloud.firestore {
           allow delete: if isExistingOwner(userProfileId);
         }
 
-        match /checklists/{checklistId} {
-          allow get, list: if isOwner(userProfileId);
-          allow create: if isOwner(userProfileId) && matchesPath(userProfileId);
-          allow update: if isExistingOwner(userProfileId) && remainsImmutable();
-          allow delete: if isExistingOwner(userProfileId);
-        }
-
         match /tenants/{tenantId} {
           allow get, list: if isOwner(userProfileId);
           allow create: if isOwner(userProfileId) && matchesPath(userProfileId);
@@ -119,28 +99,25 @@ service cloud.firestore {
     }
 
     // --- collectionGroup Discovery Rules ---
-    // Combined read (get/list) rules for better engine provability during discovery queries.
+    // Rules are split to ensure the Firestore query optimizer can successfully verify list operations.
 
     match /{path=**}/tenants/{tenantId} {
-      allow read: if isSignedIn() && (
-        resource.data.email == request.auth.token.email.lower() || 
-        resource.data.userId == request.auth.uid
-      );
+      allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get: if isSignedIn() && (resource.data.email == request.auth.token.email || resource.data.userId == request.auth.uid);
     }
 
     match /{path=**}/messages/{messageId} {
-      allow read: if isSignedIn() && (
-        resource.data.userId == request.auth.uid || 
-        resource.data.senderId == request.auth.uid
-      );
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.senderId == request.auth.uid;
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.senderId == request.auth.uid);
       allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      allow read: if isSignedIn() && (
-        resource.data.userId == request.auth.uid || 
-        resource.data.reportedBy == request.auth.uid
-      );
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.reportedBy == request.auth.uid;
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.reportedBy == request.auth.uid);
     }
   }
 }
