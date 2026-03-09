@@ -132,9 +132,8 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user || !firestore || !user.email) return;
     
-    // Use the raw user email to match the exact identity token during role discovery.
-    // Security rules are configured to prove safety by matching this exact filter.
-    const userEmail = user.email;
+    // Normalize user email for identity discovery to prevent case-sensitivity mismatches
+    const userEmail = user.email.toLowerCase();
 
     // Discovery query to find if this email exists in any tenant collection
     const q = query(

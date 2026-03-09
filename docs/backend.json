@@ -119,19 +119,14 @@
       "description": "Property condition report.",
       "properties": {
         "id": { "type": "string" },
-        "type": { "type": "string", "enum": ["Single-Let", "HMO", "Move-in", "Move-out"] },
+        "type": { "type": "string", "enum": ["Single-Let", "HMO", "Move-in", "Move-out", "Routine Inspection"] },
         "status": { "type": "string" },
         "scheduledDate": { "type": "string", "format": "date-time" },
         "completedDate": { "type": "string", "format": "date-time" },
         "inspectorName": { "type": "string" },
         "propertyId": { "type": "string" },
         "ownerId": { "type": "string" },
-        "summary": { "type": "string" },
-        "safety": { "type": "object" },
-        "interior": { "type": "object" },
-        "fireSafety": { "type": "object" },
-        "communal": { "type": "object" },
-        "followUp": { "type": "object" }
+        "summary": { "type": "string" }
       },
       "required": ["type", "status", "scheduledDate", "propertyId", "ownerId"]
     },

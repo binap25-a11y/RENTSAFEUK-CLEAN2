@@ -35,10 +35,11 @@ service cloud.firestore {
 
     match /{path=**}/tenants/{tenantId} {
       // Allow discovery for the "Role Check" and Tenant Portal.
-      // We permit listing if the user is searching for their own email or is the landlord.
+      // The 'list' operation on a collection group requires that the rule 
+      // guarantees that only permitted documents are accessed.
       allow list: if isSignedIn() && (
-        (request.auth.token.email != null) ||
-        (request.auth.uid != null)
+        (request.auth.token.email != null && resource.data.email == request.auth.token.email) ||
+        (resource.data.ownerId == request.auth.uid)
       );
       
       allow get: if isSignedIn() && (
@@ -65,8 +66,12 @@ service cloud.firestore {
     }
 
     match /{path=**}/messages/{messageId} {
-      // Direct messaging is permitted for all involved parties.
-      allow list, get, create: if isSignedIn();
+      // Direct messaging is permitted for involved parties.
+      allow list, get: if isSignedIn() && (
+        (resource.data.senderId == request.auth.uid) ||
+        (request.auth.token.email != null)
+      );
+      allow create: if isSignedIn();
     }
 
     match /{path=**}/inspections/{id} {
