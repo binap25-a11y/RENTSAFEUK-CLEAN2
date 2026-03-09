@@ -228,7 +228,7 @@
       "schema": "#/entities/TenantScreening",
       "description": "Audit record."
     },
-    "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/checklists/{checklistId}": {
+    "/userProfiles/{userId}/properties/{propertyId}/checklists/{checklistId}": {
       "schema": "#/entities/PreTenancyChecklist",
       "description": "Compliance checklist."
     },

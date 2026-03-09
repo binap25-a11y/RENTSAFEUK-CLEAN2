@@ -15,16 +15,16 @@ service cloud.firestore {
     // --- Collection Group Rules (Authorized Discovery) ---
     
     match /{path=**}/tenants/{tenantId} {
-      // Allow residents to find their own record via discovery queries (filtered by email)
-      // Splitting list rules helps the Firestore query engine authorize collection group searches
-      allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
-      
-      // Allow landlords to view their portfolio tenants via discovery or group queries
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      // Allow role-discovery and oversight list operations.
+      // Combined rule helps the query engine authorize collectionGroup searches.
+      allow list: if isSignedIn() && (
+        resource.data.email.lower() == request.auth.token.email.lower() || 
+        resource.data.userId == request.auth.uid
+      );
       
       // Individual document access
       allow get: if isSignedIn() && (
-        resource.data.email == request.auth.token.email || 
+        resource.data.email.lower() == request.auth.token.email.lower() || 
         resource.data.userId == request.auth.uid
       );
     }
