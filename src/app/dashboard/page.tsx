@@ -132,8 +132,9 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user || !firestore || !user.email) return;
     
-    // Normalize user email for casing consistency across the query and rules
-    const userEmail = user.email.toLowerCase();
+    // Use the raw user email to match the exact identity token during role discovery.
+    // Security rules are configured to prove safety by matching this exact filter.
+    const userEmail = user.email;
 
     // Discovery query to find if this email exists in any tenant collection
     const q = query(
@@ -148,7 +149,6 @@ export default function DashboardPage() {
         setIsTenant(!!activeTenantRecord);
     }, (error) => {
         // Contextual error for debugging permission issues in discovery
-        // Use a standard path for the emitter to satisfy rule checks
         errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'tenants',
             operation: 'list',

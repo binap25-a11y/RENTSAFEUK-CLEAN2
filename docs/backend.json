@@ -119,14 +119,19 @@
       "description": "Property condition report.",
       "properties": {
         "id": { "type": "string" },
-        "type": { "type": "string" },
+        "type": { "type": "string", "enum": ["Single-Let", "HMO", "Move-in", "Move-out"] },
         "status": { "type": "string" },
         "scheduledDate": { "type": "string", "format": "date-time" },
         "completedDate": { "type": "string", "format": "date-time" },
         "inspectorName": { "type": "string" },
         "propertyId": { "type": "string" },
         "ownerId": { "type": "string" },
-        "summary": { "type": "string" }
+        "summary": { "type": "string" },
+        "safety": { "type": "object" },
+        "interior": { "type": "object" },
+        "fireSafety": { "type": "object" },
+        "communal": { "type": "object" },
+        "followUp": { "type": "object" }
       },
       "required": ["type", "status", "scheduledDate", "propertyId", "ownerId"]
     },
@@ -191,6 +196,45 @@
         "timestamp": { "type": "string", "format": "date-time" }
       },
       "required": ["senderId", "content", "timestamp"]
+    },
+    "TenantScreening": {
+      "title": "TenantScreening",
+      "type": "object",
+      "description": "Pre-tenancy checklist and result.",
+      "properties": {
+        "id": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "screeningDate": { "type": "string", "format": "date-time" },
+        "rightToRent": { "type": "object" },
+        "idVerification": { "type": "object" },
+        "creditCheck": { "type": "object" },
+        "employmentIncome": { "type": "object" },
+        "landlordReference": { "type": "object" },
+        "addressHistory": { "type": "object" },
+        "affordability": { "type": "object" },
+        "guarantor": { "type": "object" },
+        "overallNotes": { "type": "string" }
+      },
+      "required": ["tenantId", "propertyId", "ownerId", "screeningDate"]
+    },
+    "Checklist": {
+      "title": "Checklist",
+      "type": "object",
+      "description": "Management checklist for move-in/out or compliance.",
+      "properties": {
+        "id": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "ownerId": { "type": "string" },
+        "completedDate": { "type": "string", "format": "date-time" },
+        "beforeTenancy": { "type": "object" },
+        "deposit": { "type": "object" },
+        "atMoveIn": { "type": "object" },
+        "optional": { "type": "object" }
+      },
+      "required": ["propertyId", "tenantId", "ownerId"]
     }
   },
   "auth": {
@@ -209,6 +253,10 @@
       "schema": { "$ref": "#/backend/entities/Property" },
       "description": "Rental property document."
     },
+    "/userProfiles/{userId}/properties/{propertyId}/checklists/{checklistId}": {
+      "schema": { "$ref": "#/backend/entities/Checklist" },
+      "description": "Compliance checklists."
+    },
     "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}": {
       "schema": { "$ref": "#/backend/entities/Tenant" },
       "description": "Tenant profile nested under property."
@@ -216,6 +264,10 @@
     "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/messages/{messageId}": {
       "schema": { "$ref": "#/backend/entities/Message" },
       "description": "Secure messaging thread."
+    },
+    "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/screenings/{screeningId}": {
+      "schema": { "$ref": "#/backend/entities/TenantScreening" },
+      "description": "Tenant vetting reports."
     },
     "/userProfiles/{userId}/properties/{propertyId}/maintenanceLogs/{logId}": {
       "schema": { "$ref": "#/backend/entities/MaintenanceRequest" },

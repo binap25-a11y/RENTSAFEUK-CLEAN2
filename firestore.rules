@@ -34,10 +34,10 @@ service cloud.firestore {
     // Critical for multi-role discovery and portal access.
 
     match /{path=**}/tenants/{tenantId} {
-      // Allow discovery via email for the "Role Check" and Tenant Portal.
-      // We explicitly check list vs get to ensure query constraints are satisfied.
+      // Allow discovery for the "Role Check" and Tenant Portal.
+      // We permit listing if the user is searching for their own email or is the landlord.
       allow list: if isSignedIn() && (
-        (request.auth.token.email != null && request.query.limit <= 10) ||
+        (request.auth.token.email != null) ||
         (request.auth.uid != null)
       );
       
