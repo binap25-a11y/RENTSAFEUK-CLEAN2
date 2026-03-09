@@ -106,19 +106,28 @@ service cloud.firestore {
     }
 
     // --- collectionGroup Discovery Rules ---
-    // Rules are unified to ensure the Firestore query optimizer can successfully verify list operations for discovery queries.
+    // Rules are split to allow the Firestore query engine to statically verify authorization for specific filters.
 
     match /{path=**}/tenants/{tenantId} {
-      allow read: if isSignedIn() && (resource.data.email == request.auth.token.email || resource.data.userId == request.auth.uid);
+      // Allows residents to find their record via email filter
+      allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
+      // Allows landlords to oversight via ownerId filter
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      // Standard read for specific document access
+      allow get: if isSignedIn() && (resource.data.email == request.auth.token.email || resource.data.userId == request.auth.uid);
     }
 
     match /{path=**}/messages/{messageId} {
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.senderId == request.auth.uid);
+      allow list: if isSignedIn() && resource.data.senderId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.senderId == request.auth.uid);
       allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.reportedBy == request.auth.uid);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.reportedBy == request.auth.uid;
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.reportedBy == request.auth.uid);
     }
   }
 }

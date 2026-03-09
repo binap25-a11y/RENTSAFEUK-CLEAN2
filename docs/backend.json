@@ -80,6 +80,7 @@
         "title": { "type": "string" },
         "description": { "type": "string" },
         "category": { "type": "string" },
+        "otherCategoryDetails": { "type": "string" },
         "priority": { "type": "string", "enum": ["Emergency", "Urgent", "Routine", "Low"] },
         "status": { "type": "string", "enum": ["Open", "In Progress", "Completed", "Cancelled"] },
         "reportedBy": { "type": "string", "description": "UID of reporter (landlord or tenant)." },
@@ -137,6 +138,19 @@
         "notes": { "type": "string" }
       },
       "required": ["id", "userId", "propertyId", "title", "documentType", "issueDate", "expiryDate"]
+    },
+    "TenantScreening": {
+      "title": "TenantScreening",
+      "description": "Comprehensive pre-tenancy audit.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "screeningDate": { "type": "string", "format": "date-time" },
+        "overallNotes": { "type": "string" }
+      }
     }
   },
   "auth": {
@@ -154,6 +168,10 @@
     "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}": {
       "schema": { "$ref": "#/entities/Tenant" },
       "description": "Tenants assigned to a specific property."
+    },
+    "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/screenings/{screeningId}": {
+      "schema": { "$ref": "#/entities/TenantScreening" },
+      "description": "Vetting history for a resident."
     },
     "/userProfiles/{userId}/properties/{propertyId}/maintenanceLogs/{logId}": {
       "schema": { "$ref": "#/entities/MaintenanceLog" },

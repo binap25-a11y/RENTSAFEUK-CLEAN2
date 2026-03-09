@@ -38,9 +38,9 @@ import {
   errorEmitter,
   FirestorePermissionError,
 } from '@/firebase';
-import { collection, query, where, onSnapshot, Timestamp, limit, collectionGroup } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, Timestamp, limit, collectionGroup, doc } from 'firebase/firestore';
 import { useMemo, useState, useEffect } from 'react';
-import { format, isFuture, isBefore, addDays } from 'date-fns';
+import { format, isFuture, isBefore, addDays, startOfMonth, setDate, isPast } from 'date-fns';
 import {
   ChartContainer,
   ChartTooltip,
@@ -129,7 +129,7 @@ export default function DashboardPage() {
     setMounted(true);
   }, []);
 
-  // Secure role-detection: check if user is a resident in any portfolio across the platform
+  // Role detection: check if user is a resident in any portfolio across the platform
   useEffect(() => {
     if (!user || !firestore || !user.email || isUserLoading) {
       if (!isUserLoading) setIsLoadingPortalCheck(false);
@@ -138,7 +138,6 @@ export default function DashboardPage() {
   
     const userEmail = user.email.toLowerCase().trim();
 
-    // Discovery query to find if this email exists in any tenant collection
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
@@ -150,7 +149,6 @@ export default function DashboardPage() {
         setIsResident(!!activeTenantRecord);
         setIsLoadingPortalCheck(false);
     }, (error) => {
-        // Trigger global error propagation with explicit collection group context
         errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'tenants', 
             operation: 'list',
@@ -174,8 +172,8 @@ export default function DashboardPage() {
   const [documentsMap, setDocumentsMap] = useState<Record<string, Document[]>>({});
   const [rentPaymentsMap, setRentPaymentsMap] = useState<Record<string, RentPayment[]>>({});
   
-  const [currentYear] = useState<number>(new Date().getFullYear());
-  const [currentMonth] = useState<string>(format(new Date(), 'MMMM'));
+  const currentYear = new Date().getFullYear();
+  const currentMonth = format(new Date(), 'MMMM');
 
   const properties = useMemo(() => {
     const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
@@ -201,7 +199,7 @@ export default function DashboardPage() {
                 const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog));
                 setMaintenanceMap(prev => ({ ...prev, [prop.id]: data }));
             },
-            async (serverError) => {
+            async (error) => {
                 errorEmitter.emit('permission-error', new FirestorePermissionError({
                     path: `userProfiles/${user.uid}/properties/${prop.id}/maintenanceLogs`,
                     operation: 'list',
@@ -214,7 +212,7 @@ export default function DashboardPage() {
                 const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Inspection));
                 setInspectionsMap(prev => ({ ...prev, [prop.id]: data }));
             },
-            async (serverError) => {
+            async (error) => {
                 errorEmitter.emit('permission-error', new FirestorePermissionError({
                     path: `userProfiles/${user.uid}/properties/${prop.id}/inspections`,
                     operation: 'list',
@@ -227,7 +225,7 @@ export default function DashboardPage() {
                 const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Document));
                 setDocumentsMap(prev => ({ ...prev, [prop.id]: data }));
             },
-            async (serverError) => {
+            async (error) => {
                 errorEmitter.emit('permission-error', new FirestorePermissionError({
                     path: `userProfiles/${user.uid}/properties/${prop.id}/documents`,
                     operation: 'list',
@@ -240,7 +238,7 @@ export default function DashboardPage() {
                 const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as RentPayment));
                 setRentPaymentsMap(prev => ({ ...prev, [prop.id]: data }));
             },
-            async (serverError) => {
+            async (error) => {
                 errorEmitter.emit('permission-error', new FirestorePermissionError({
                     path: `userProfiles/${user.uid}/properties/${prop.id}/rentPayments`,
                     operation: 'list',
