@@ -18,12 +18,12 @@ service cloud.firestore {
     // can verify query authorization statically.
     
     match /{path=**}/tenants/{tenantId} {
-      // Allow residents to find their own tenancy via email (standardized to lower case)
+      // Allow residents to find their own records via email discovery
       allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
-      // Allow landlords to view their own tenants across the entire portfolio
+      // Allow landlords to find their own tenants across the entire portfolio
       allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
       
-      // Get rule for detail view access
+      // Detail view access
       allow get: if isSignedIn() && (
         resource.data.email == request.auth.token.email || 
         resource.data.userId == request.auth.uid

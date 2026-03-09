@@ -39,9 +39,10 @@ export default function TenantDashboard() {
     if (!user || !firestore || !user.email) return;
 
     let propUnsub: (() => void) | null = null;
-    const userEmail = user.email.toLowerCase();
+    const userEmail = user.email.toLowerCase().trim();
 
     // Discovery query to find if this email exists in any tenant collection across the platform
+    // collectionGroup queries require explicit matching rules in firestore.rules
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
@@ -57,8 +58,10 @@ export default function TenantDashboard() {
             const data = activeTenantDoc.data();
             const pathSegments = activeTenantDoc.ref.path.split('/');
             
-            const landlordId = pathSegments[1];
-            const propertyId = pathSegments[3];
+            // Path: userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}
+            // Segments: [0] "", [1] "userProfiles", [2] "{userId}", [3] "properties", [4] "{propertyId}", [5] "tenants", [6] "{tenantId}"
+            const landlordId = pathSegments[2];
+            const propertyId = pathSegments[4];
             const tenantId = activeTenantDoc.id;
 
             const propRef = doc(firestore, 'userProfiles', landlordId, 'properties', propertyId);
