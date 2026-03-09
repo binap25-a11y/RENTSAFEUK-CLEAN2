@@ -20,33 +20,34 @@ service cloud.firestore {
     
     // Required for Role Detection & Portal Authentication
     match /{path=**}/tenants/{tenantId} {
-      // Allow discovery by email (for residents)
-      allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
-      // Allow discovery by owner ID (for landlords)
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      // Residents discovery query requires proof-of-identity filter
+      allow list: if isSignedIn() && (
+        resource.data.email.lower() == request.auth.token.email.lower() ||
+        resource.data.userId == request.auth.uid
+      );
       
       allow get: if isSignedIn() && (
-        resource.data.email == request.auth.token.email || 
+        resource.data.email.lower() == request.auth.token.email.lower() || 
         resource.data.userId == request.auth.uid
       );
     }
 
     // Secure Messenger discovery
     match /{path=**}/messages/{messageId} {
+      // Limit discovery to authorized participants
       allow list: if isSignedIn() && (
         resource.data.userId == request.auth.uid ||
-        // Check assigned resident email for portal access
-        get(/databases/$(database)/documents/userProfiles/$(resource.data.userId)/properties/$(resource.data.propertyId)/tenants/$(resource.data.tenantId)).data.email == request.auth.token.email
+        resource.data.senderId == request.auth.uid
       );
     }
 
     // Maintenance discovery for residents
     match /{path=**}/maintenanceLogs/{logId} {
+      // Landlords can list all logs; Residents can list logs for their specific property context
       allow list: if isSignedIn() && (
         resource.data.userId == request.auth.uid ||
-        // Residents can see logs for properties where they are registered
-        exists(/databases/$(database)/documents/userProfiles/$(resource.data.userId)/properties/$(resource.data.propertyId)/tenants/$(anyId)) &&
-        get(/databases/$(database)/documents/userProfiles/$(resource.data.userId)/properties/$(resource.data.propertyId)/tenants/$(anyId)).data.email == request.auth.token.email
+        resource.data.reportedBy == request.auth.token.name ||
+        resource.data.reportedBy == request.auth.token.email
       );
     }
 
@@ -68,23 +69,26 @@ service cloud.firestore {
 
       match /properties/{propertyId} {
         // Limited GET for Tenants to view their own home details
-        allow get: if isSignedIn() && exists(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(anyId)) && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(anyId)).data.email == request.auth.token.email;
+        // Note: Landlords are covered by the recursive rule above.
+        allow get: if isSignedIn() && exists(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(anyId));
 
         match /tenants/{tenantId} {
           // Resident can read their own profile
-          allow get: if isSignedIn() && resource.data.email == request.auth.token.email;
+          allow get: if isSignedIn() && resource.data.email.lower() == request.auth.token.email.lower();
           
           match /messages/{messageId} {
-            allow read, write: if isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email;
+            allow read, write: if isSignedIn() && (
+              get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email.lower() == request.auth.token.email.lower()
+            );
           }
         }
 
         match /maintenanceLogs/{logId} {
-          allow read, write: if isSignedIn() && exists(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(anyId)) && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(anyId)).data.email == request.auth.token.email;
+          allow read, write: if isSignedIn() && exists(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(anyId));
         }
 
         match /documents/{docId} {
-          allow read: if isSignedIn() && exists(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(anyId)) && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(anyId)).data.email == request.auth.token.email;
+          allow read: if isSignedIn() && exists(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(anyId));
         }
       }
     }

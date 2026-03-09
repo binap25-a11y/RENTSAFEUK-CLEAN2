@@ -151,6 +151,21 @@
         "screeningDate": { "type": "string", "format": "date-time" },
         "overallNotes": { "type": "string" }
       }
+    },
+    "Message": {
+      "title": "Message",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string", "description": "Landlord ID" },
+        "propertyId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "content": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "userId", "senderId", "content"]
     }
   },
   "auth": {
