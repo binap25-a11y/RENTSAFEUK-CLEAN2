@@ -139,7 +139,6 @@ export default function DashboardPage() {
     const userEmail = user.email.toLowerCase().trim();
 
     // Discovery query to find if this email exists in any tenant collection across the platform
-    // Note: The limit is 1 because we only need to verify if the account is linked to any active tenancy
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
@@ -152,7 +151,6 @@ export default function DashboardPage() {
         setIsLoadingPortalCheck(false);
     }, (error) => {
         // Trigger global error propagation with explicit collection group context
-        // Path matches the collection name in firestore.rules for simpler discovery
         errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'tenants', 
             operation: 'list',

@@ -9,9 +9,7 @@
  * collectionGroup Support:
  * To enable cross-portfolio role discovery (identifying if a user is a resident 
  * in any estate), we provide restricted list access to the 'tenants', 'messages', 
- * and 'maintenanceLogs' collection groups. These rules are split into distinct 
- * allow blocks to ensure the Firestore query engine can authorize requests 
- * that filter by specific identities (email or UID).
+ * and 'maintenanceLogs' collection groups.
  */
 
 rules_version = '2';
@@ -99,16 +97,9 @@ service cloud.firestore {
 
           match /messages/{messageId} {
             allow get, list: if isOwner(userProfileId);
-            allow create: if isOwner(userProfileId); // landlord sending message
+            allow create: if isOwner(userProfileId);
             allow update, delete: if isExistingOwner(userProfileId);
           }
-        }
-
-        match /expenses/{expenseId} {
-          allow get, list: if isOwner(userProfileId);
-          allow create: if isOwner(userProfileId) && matchesPath(userProfileId);
-          allow update: if isExistingOwner(userProfileId) && remainsImmutable();
-          allow delete: if isExistingOwner(userProfileId);
         }
 
         match /rentPayments/{paymentId} {
@@ -128,37 +119,28 @@ service cloud.firestore {
     }
 
     // --- collectionGroup Discovery Rules ---
-    // These are critical for the Resident Portal.
-    // SPLIT RULES: Distinct allow blocks for email discovery vs UID ownership. 
-    // This allows the Firestore query engine to successfully authorize restricted list queries.
+    // Combined read (get/list) rules for better engine provability during discovery queries.
 
     match /{path=**}/tenants/{tenantId} {
-      // 1. Resident Identity Discovery (Must match the specific query filter)
-      allow list: if isSignedIn() && resource.data.email == request.auth.token.email.lower();
-      // 2. Landlord Portfolio Management
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      // 3. Direct document access
-      allow get: if isSignedIn() && (resource.data.email == request.auth.token.email.lower() || resource.data.userId == request.auth.uid);
+      allow read: if isSignedIn() && (
+        resource.data.email == request.auth.token.email.lower() || 
+        resource.data.userId == request.auth.uid
+      );
     }
 
     match /{path=**}/messages/{messageId} {
-      // 1. Resident/Participant access
-      allow list: if isSignedIn() && resource.data.senderId == request.auth.uid;
-      // 2. Landlord oversight
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      // 3. Direct document access
-      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.senderId == request.auth.uid);
-      // 4. Resident replying
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.senderId == request.auth.uid
+      );
       allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      // 1. Resident discovery (if they reported it)
-      allow list: if isSignedIn() && resource.data.reportedBy == request.auth.uid;
-      // 2. Landlord discovery
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      // 3. Direct document access
-      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.reportedBy == request.auth.uid);
+      allow read: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.reportedBy == request.auth.uid
+      );
     }
   }
 }
