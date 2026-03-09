@@ -16,32 +16,29 @@ service cloud.firestore {
     
     /**
      * Discovery rules for Tenants and Landlords.
-     * Normalizes email comparisons to ensure character-perfect matching.
+     * These rules allow the application to identify a user's role across the entire platform.
      */
     match /{path=**}/tenants/{tenantId} {
-      // Allows residents to find their own identity records
-      allow list: if isSignedIn() && resource.data.email == (request.auth.token.get('email', '')).lower();
-      // Allows landlords to list their own tenants across properties
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      
-      allow get: if isSignedIn() && (
-        resource.data.email == (request.auth.token.get('email', '')).lower() || 
+      // Allows residents to find their own identity records via email discovery
+      // Allows landlords to list their own tenants across properties via userId discovery
+      allow list, get: if isSignedIn() && (
+        resource.data.email == request.auth.token.email.lower() || 
         resource.data.userId == request.auth.uid
       );
     }
 
     match /{path=**}/messages/{messageId} {
-      allow list: if isSignedIn() && (
+      allow list, get: if isSignedIn() && (
         resource.data.userId == request.auth.uid ||
         resource.data.senderId == request.auth.uid
       );
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      allow list: if isSignedIn() && (
+      allow list, get: if isSignedIn() && (
         resource.data.userId == request.auth.uid ||
         resource.data.reportedBy == request.auth.token.name ||
-        resource.data.reportedBy == (request.auth.token.get('email', '')).lower()
+        resource.data.reportedBy == request.auth.token.email.lower()
       );
     }
 

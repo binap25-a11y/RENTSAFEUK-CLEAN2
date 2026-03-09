@@ -148,9 +148,9 @@ export default function DashboardPage() {
         setIsTenant(!!activeTenantRecord);
     }, (error) => {
         // Contextual error for debugging permission issues in discovery
-        // Use a standardized path for the emitter to satisfy rule checks
+        // Trigger global error propagation with explicit collection group context
         errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: 'tenants_discovery',
+            path: 'tenants',
             operation: 'list',
         }));
     });
