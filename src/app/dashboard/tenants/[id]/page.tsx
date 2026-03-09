@@ -64,7 +64,7 @@ interface Tenant {
     tenancyEndDate?: any;
     notes?: string;
     status?: string;
-    userId: string; // Standardized from ownerId
+    userId: string;
     lastReminderSent?: any;
 }
 

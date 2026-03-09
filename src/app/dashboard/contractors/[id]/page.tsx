@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -30,7 +31,7 @@ interface Contractor {
     phone: string;
     notes?: string;
     status?: string;
-    ownerId: string;
+    userId: string;
 }
 
 

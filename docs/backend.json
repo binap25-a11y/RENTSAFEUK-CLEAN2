@@ -171,18 +171,6 @@
       },
       "required": ["id", "userId", "propertyId", "year", "month", "status"]
     },
-    "Checklist": {
-      "title": "Checklist",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "userId": { "type": "string" },
-        "propertyId": { "type": "string" },
-        "tenantId": { "type": "string" },
-        "completedDate": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "userId", "propertyId", "tenantId"]
-    },
     "Screening": {
       "title": "Screening",
       "type": "object",
@@ -224,7 +212,6 @@
       { "path": "/userProfiles/{userId}/properties/{propertyId}/documents/{docId}", "definition": { "entityName": "Document", "description": "Legal/Safety compliance doc." } },
       { "path": "/userProfiles/{userId}/properties/{propertyId}/inspections/{inspectionId}", "definition": { "entityName": "Inspection", "description": "Condition report." } },
       { "path": "/userProfiles/{userId}/properties/{propertyId}/rentPayments/{paymentId}", "definition": { "entityName": "RentPayment", "description": "Rent tracking ledger." } },
-      { "path": "/userProfiles/{userId}/properties/{propertyId}/checklists/{checklistId}", "definition": { "entityName": "Checklist", "description": "Pre-tenancy audit." } },
       { "path": "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/screenings/{screeningId}", "definition": { "entityName": "Screening", "description": "Applicant vetting." } },
       { "path": "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/messages/{messageId}", "definition": { "entityName": "Message", "description": "Secure communication." } },
       { "path": "/userProfiles/{userId}/contractors/{contractorId}", "definition": { "entityName": "Contractor", "description": "Tradesperson directory." } }

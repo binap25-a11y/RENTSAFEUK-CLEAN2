@@ -221,14 +221,14 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
 
         const newScreeningRecord = {
             ...screeningData,
-            userId: user.uid, // Use standardized userId
+            userId: user.uid,
             tenantId: tenantId,
             propertyId: propertyId,
         };
 
         const screeningsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'tenants', tenantId, 'screenings');
 
-        addDoc(checklistsCollection, newScreeningRecord)
+        addDoc(screeningsCollection, newScreeningRecord)
           .then(() => {
             toast({
                 title: 'Screening Record Saved',

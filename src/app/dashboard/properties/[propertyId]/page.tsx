@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -53,7 +54,7 @@ import { uploadPropertyImage } from '@/lib/upload-image';
 
 interface Property {
     id: string;
-    ownerId: string;
+    userId: string;
     address: {
       nameOrNumber?: string;
       street: string;
@@ -81,7 +82,7 @@ interface Tenant {
     email: string;
     telephone: string;
     propertyId: string;
-    ownerId: string;
+    userId: string;
     status?: string;
 }
 

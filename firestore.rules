@@ -16,16 +16,16 @@ service cloud.firestore {
     
     /**
      * Discovery rules for Tenants and Landlords.
-     * Splitting allow list rules for better query optimization by the engine.
+     * Normalizes email comparisons to ensure character-perfect matching.
      */
     match /{path=**}/tenants/{tenantId} {
       // Allows residents to find their own identity records
-      allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
+      allow list: if isSignedIn() && resource.data.email == (request.auth.token.get('email', '')).lower();
       // Allows landlords to list their own tenants across properties
       allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
       
       allow get: if isSignedIn() && (
-        resource.data.email == request.auth.token.email || 
+        resource.data.email == (request.auth.token.get('email', '')).lower() || 
         resource.data.userId == request.auth.uid
       );
     }
@@ -41,7 +41,7 @@ service cloud.firestore {
       allow list: if isSignedIn() && (
         resource.data.userId == request.auth.uid ||
         resource.data.reportedBy == request.auth.token.name ||
-        resource.data.reportedBy == request.auth.token.email
+        resource.data.reportedBy == (request.auth.token.get('email', '')).lower()
       );
     }
 
@@ -59,19 +59,6 @@ service cloud.firestore {
        */
       match /{allSubcollections=**} {
         allow read, write: if isOwner(userId);
-      }
-
-      match /properties/{propertyId} {
-        // Tenants can view property metadata if they have an active record here
-        allow get: if isSignedIn();
-
-        match /tenants/{tenantId} {
-          match /messages/{messageId} {
-            allow read, write: if isSignedIn() && (
-              get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email
-            );
-          }
-        }
       }
     }
   }
