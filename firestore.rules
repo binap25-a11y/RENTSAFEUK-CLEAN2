@@ -1,147 +1,182 @@
-
 /**
- * FIRESTORE SECURITY RULES
+ * Firestore Security Rules
  * 
- * CORE PHILOSOPHY:
- * This ruleset enforces a strict user-ownership model using Path-Based Access Modeling.
- * All data is organized hierarchically to ensure that users can only access and modify 
- * their own information.
- * 
- * DATA STRUCTURE:
- * All application data is nested under the `/userProfiles/{userId}` path. 
+ * Core Philosophy:
+ * This ruleset enforces a strict user-ownership model designed for a multi-tenant property 
+ * management application. All data is hierarchically organized and secured under a 
+ * user's unique profile path.
+ *
+ * Data Structure:
+ * All application entities (Properties, Tenants, Tenancies, etc.) are stored as 
+ * subcollections under `/userProfiles/{userProfileId}/`. This creates a natural 
+ * security boundary where a user's UID is the primary key for all data access.
+ *
+ * Key Security Decisions:
+ * 1. Strict Ownership: Access is granted only if the authenticated user's UID 
+ *    matches the `{userProfileId}` in the document path.
+ * 2. Relational Integrity: On creation, documents must include a `userProfileId` 
+ *    field that matches the path, and this field is immutable thereafter.
+ * 3. Prototyping Flexibility: While ownership is strictly enforced, the rules 
+ *    do not validate the specific schema of content fields, allowing for rapid 
+ *    development and iteration of the data model.
+ * 4. Structural Segregation: By nesting data under user-specific paths, we avoid 
+ *    the risks of collection-group queries exposing data across different users.
+ *
+ * Denormalization for Authorization:
+ * The `userProfileId` is denormalized onto every document. This allows rules to 
+ * verify ownership using only the document's own data (`resource.data`) or the 
+ * path parameters, ensuring high performance and low cost by avoiding `get()` calls.
  */
 
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- GLOBAL HELPER FUNCTIONS ---
+    // --- Helper Functions ---
 
+    /**
+     * @description Checks if the request is from an authenticated user.
+     */
     function isSignedIn() {
       return request.auth != null;
     }
 
+    /**
+     * @description Checks if the authenticated user's UID matches the provided userId.
+     */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    /**
+     * @description Verifies ownership and ensures the document exists for update/delete.
+     */
     function isExistingOwner(userId) {
       return resource != null && isOwner(userId);
     }
 
-    function isImmutable(field) {
-      return request.resource.data[field] == resource.data[field];
+    /**
+     * @description Validates that the userProfileId in the data matches the path parameter.
+     * Used during creation to ensure the document is correctly linked to the owner.
+     */
+    function matchesPath(userProfileId) {
+      return request.resource.data.userProfileId == userProfileId;
     }
 
-    // --- COLLECTION RULES ---
+    /**
+     * @description Ensures that the userProfileId field cannot be changed after creation.
+     */
+    function remainsImmutable() {
+      return request.resource.data.userProfileId == resource.data.userProfileId;
+    }
 
-    match /userProfiles/{userId} {
-      allow get, list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && isImmutable('id');
-      allow delete: if isExistingOwner(userId);
+    // --- Collection Rules ---
 
+    /**
+     * @description Rules for UserProfile. Users can only manage their own profile.
+     * @path /userProfiles/{userProfileId}
+     * @allow (create) if auth.uid == "user123" and path is /userProfiles/user123
+     * @deny (list) if auth.uid == "user123" and attempting to list all profiles.
+     * @principle Enforces self-creation and exclusive access to the user's own profile document.
+     */
+    match /userProfiles/{userProfileId} {
+      allow get: if isOwner(userProfileId);
+      allow list: if false; // Users should not be able to list other profiles
+      
+      allow create: if isOwner(userProfileId) && request.resource.data.id == userProfileId;
+      allow update: if isExistingOwner(userProfileId) && request.resource.data.id == resource.data.id;
+      allow delete: if isExistingOwner(userProfileId);
+
+      /**
+       * @description Rules for Property subcollection.
+       * @path /userProfiles/{userProfileId}/properties/{propertyId}
+       * @allow (list) if auth.uid matches the userProfileId in the path.
+       * @deny (create) if the userProfileId in the document body doesn't match the path.
+       * @principle Restricts property management to the owner identified in the path.
+       */
       match /properties/{propertyId} {
-        allow get, list: if isOwner(userId);
-        allow create: if isOwner(userId) && request.resource.data.userId == userId;
-        allow update: if isExistingOwner(userId) && isImmutable('userId');
-        allow delete: if isExistingOwner(userId);
-
-        match /tenants/{tenantId} {
-          allow read, list: if isOwner(userId);
-          allow create: if isOwner(userId) && request.resource.data.userId == userId && request.resource.data.propertyId == propertyId;
-          allow update: if isExistingOwner(userId) && isImmutable('userId') && isImmutable('propertyId');
-          allow delete: if isExistingOwner(userId);
-
-          match /screenings/{screeningId} {
-            allow read, list: if isOwner(userId);
-            allow create: if isOwner(userId) && request.resource.data.userId == userId && request.resource.data.propertyId == propertyId;
-            allow update: if isExistingOwner(userId) && isImmutable('userId') && isImmutable('propertyId');
-            allow delete: if isExistingOwner(userId);
-          }
-
-          match /messages/{messageId} {
-            allow read, list: if isOwner(userId);
-            allow create: if isOwner(userId) && request.resource.data.userId == userId;
-            allow update: if isExistingOwner(userId) && isImmutable('userId');
-            allow delete: if isExistingOwner(userId);
-          }
-        }
-
-        match /maintenanceLogs/{logId} {
-          allow get, list: if isOwner(userId);
-          allow create: if isOwner(userId) && request.resource.data.userId == userId && request.resource.data.propertyId == propertyId;
-          allow update: if isExistingOwner(userId) && isImmutable('userId') && isImmutable('propertyId');
-          allow delete: if isExistingOwner(userId);
-        }
-
-        match /inspections/{inspectionId} {
-          allow get, list: if isOwner(userId);
-          allow create: if isOwner(userId) && request.resource.data.userId == userId && request.resource.data.propertyId == propertyId;
-          allow update: if isExistingOwner(userId) && isImmutable('userId') && isImmutable('propertyId');
-          allow delete: if isExistingOwner(userId);
-        }
-
-        match /documents/{documentId} {
-          allow get, list: if isOwner(userId);
-          allow create: if isOwner(userId) && request.resource.data.userId == userId && request.resource.data.propertyId == propertyId;
-          allow update: if isExistingOwner(userId) && isImmutable('userId') && isImmutable('propertyId');
-          allow delete: if isExistingOwner(userId);
-        }
-
-        match /expenses/{expenseId} {
-          allow get, list: if isOwner(userId);
-          allow create: if isOwner(userId) && request.resource.data.userId == userId;
-          allow update: if isExistingOwner(userId) && isImmutable('userId');
-          allow delete: if isExistingOwner(userId);
-        }
-
-        match /rentPayments/{paymentId} {
-          allow get, list: if isOwner(userId);
-          allow create: if isOwner(userId) && request.resource.data.userId == userId;
-          allow update: if isExistingOwner(userId) && isImmutable('userId');
-          allow delete: if isExistingOwner(userId);
-        }
-
-        match /checklists/{checklistId} {
-          allow get, list: if isOwner(userId);
-          allow create: if isOwner(userId) && request.resource.data.userId == userId;
-          allow update: if isExistingOwner(userId) && isImmutable('userId');
-          allow delete: if isExistingOwner(userId);
-        }
+        allow get, list: if isOwner(userProfileId);
+        allow create: if isOwner(userProfileId) && matchesPath(userProfileId);
+        allow update: if isExistingOwner(userProfileId) && remainsImmutable();
+        allow delete: if isExistingOwner(userProfileId);
       }
 
-      match /contractors/{contractorId} {
-        allow get, list: if isOwner(userId);
-        allow create: if isOwner(userId) && request.resource.data.userId == userId;
-        allow update: if isExistingOwner(userId) && isImmutable('userId');
-        allow delete: if isExistingOwner(userId);
+      /**
+       * @description Rules for Tenant subcollection.
+       * @path /userProfiles/{userProfileId}/tenants/{tenantId}
+       * @allow (get) if auth.uid matches the userProfileId in the path.
+       * @deny (update) if the authenticated user attempts to change the userProfileId field.
+       * @principle Ensures tenant data is only accessible to the managing landlord/user.
+       */
+      match /tenants/{tenantId} {
+        allow get, list: if isOwner(userProfileId);
+        allow create: if isOwner(userProfileId) && matchesPath(userProfileId);
+        allow update: if isExistingOwner(userProfileId) && remainsImmutable();
+        allow delete: if isExistingOwner(userProfileId);
+      }
+
+      /**
+       * @description Rules for Tenancy agreements.
+       * @path /userProfiles/{userProfileId}/tenancies/{tenancyId}
+       * @allow (create) if auth.uid matches the userProfileId and provides correct ownership links.
+       * @deny (delete) if the document does not exist or user is not the owner.
+       * @principle Secures rental agreements within the landlord's private data tree.
+       */
+      match /tenancies/{tenancyId} {
+        allow get, list: if isOwner(userProfileId);
+        allow create: if isOwner(userProfileId) && matchesPath(userProfileId);
+        allow update: if isExistingOwner(userProfileId) && remainsImmutable();
+        allow delete: if isExistingOwner(userProfileId);
+      }
+
+      /**
+       * @description Rules for MaintenanceRequest subcollection.
+       * @path /userProfiles/{userProfileId}/maintenanceRequests/{maintenanceRequestId}
+       * @allow (update) if the owner updates notes while maintaining the original owner ID.
+       * @principle Protects maintenance history and tracking from unauthorized access.
+       */
+      match /maintenanceRequests/{maintenanceRequestId} {
+        allow get, list: if isOwner(userProfileId);
+        allow create: if isOwner(userProfileId) && matchesPath(userProfileId);
+        allow update: if isExistingOwner(userProfileId) && remainsImmutable();
+        allow delete: if isExistingOwner(userProfileId);
+      }
+
+      /**
+       * @description Rules for property Inspections.
+       * @path /userProfiles/{userProfileId}/inspections/{inspectionId}
+       * @allow (list) if the user is viewing their own scheduled inspections.
+       * @principle Validates relational integrity between the inspection record and the user.
+       */
+      match /inspections/{inspectionId} {
+        allow get, list: if isOwner(userProfileId);
+        allow create: if isOwner(userProfileId) && matchesPath(userProfileId);
+        allow update: if isExistingOwner(userProfileId) && remainsImmutable();
+        allow delete: if isExistingOwner(userProfileId);
+      }
+
+      /**
+       * @description Rules for uploaded Documents.
+       * @path /userProfiles/{userProfileId}/documents/{documentId}
+       * @allow (create) if the user is uploading a document to their own document storage.
+       * @principle Restricts document metadata access to the uploader.
+       */
+      match /documents/{documentId} {
+        allow get, list: if isOwner(userProfileId);
+        allow create: if isOwner(userProfileId) && matchesPath(userProfileId);
+        allow update: if isExistingOwner(userProfileId) && remainsImmutable();
+        allow delete: if isExistingOwner(userProfileId);
       }
     }
 
-    // --- COLLECTION GROUP RULES (For Cross-Portfolio Discovery) ---
-    // Rules are split into distinct statements to ensure Firestore query engine 
-    // can statically authorize collectionGroup discovery queries.
-
-    match /{path=**}/tenants/{tenantId} {
-      // Resident Discovery: Match by authenticated session email
-      allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
-      // Landlord Oversight: Match by authenticated session UID
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      // Detailed Read: Combined logic for single-document access
-      allow get: if isSignedIn() && (resource.data.email == request.auth.token.email || resource.data.userId == request.auth.uid);
-    }
-
-    match /{path=**}/messages/{messageId} {
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow list: if isSignedIn() && resource.data.senderId == request.auth.uid;
-      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.senderId == request.auth.uid);
-    }
-
-    match /{path=**}/maintenanceLogs/{logId} {
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow list: if isSignedIn() && resource.data.reportedBy == request.auth.uid;
-      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.reportedBy == request.auth.uid);
+    /**
+     * @description Catch-all rule for the root tenants collection.
+     * The IR specifies tenants are subcollections of userProfiles.
+     * Direct access to the root collection is denied to fix the reported error.
+     */
+    match /tenants/{tenantId} {
+      allow read, write: if false; 
+      // NOTE: The application should query /userProfiles/{uid}/tenants instead.
     }
   }
 }
