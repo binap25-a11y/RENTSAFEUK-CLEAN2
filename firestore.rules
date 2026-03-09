@@ -113,16 +113,15 @@ service cloud.firestore {
     }
 
     // --- Unified collectionGroup Rules ---
-    // Optimized for static provability in collectionGroup list operations
+    // Optimized for static provability in collectionGroup list operations.
+    // resource.data.email matching requires direct equality for the query analyzer to authorize the filter.
 
     match /{path=**}/tenants/{tenantId} {
-      // Split list operations to help the Firestore query analyzer verify identity-based queries
-      allow list: if isSignedIn() && (resource.data.email.lower() == request.auth.token.email.lower());
+      allow list: if isSignedIn() && (resource.data.email == request.auth.token.email.lower());
       allow list: if isSignedIn() && (resource.data.userId == request.auth.uid);
       
-      // General read access
       allow get: if isSignedIn() && (
-        resource.data.email.lower() == request.auth.token.email.lower() || 
+        resource.data.email == request.auth.token.email.lower() || 
         resource.data.userId == request.auth.uid
       );
     }

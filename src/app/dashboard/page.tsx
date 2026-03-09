@@ -152,6 +152,7 @@ export default function DashboardPage() {
         setIsLoadingPortalCheck(false);
     }, (error) => {
         // Trigger global error propagation with explicit collection group context
+        // Path matches the collection name in firestore.rules for simpler discovery
         errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'tenants', 
             operation: 'list',
