@@ -16,31 +16,25 @@ service cloud.firestore {
     
     /**
      * Discovery rules for Tenants and sub-collections.
-     * These rules allow the application to identify a user's role across the entire platform
-     * via character-perfect email or ID matching.
+     * Splitting conditions into separate blocks is a best-practice for 
+     * authorizing collectionGroup list operations.
      */
     match /{path=**}/tenants/{tenantId} {
-      // Allows residents to find their own identity records via email
+      // Allows residents to find their own identity records via email (Discovery)
+      allow list, get: if isSignedIn() && resource.data.email == request.auth.token.email;
       // Allows landlords to list their own tenants via userId
-      allow list, get: if isSignedIn() && (
-        resource.data.email == request.auth.token.email || 
-        resource.data.userId == request.auth.uid
-      );
+      allow list, get: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
     match /{path=**}/messages/{messageId} {
-      allow list, get: if isSignedIn() && (
-        resource.data.userId == request.auth.uid ||
-        resource.data.senderId == request.auth.uid
-      );
+      allow list, get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list, get: if isSignedIn() && resource.data.senderId == request.auth.uid;
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      allow list, get: if isSignedIn() && (
-        resource.data.userId == request.auth.uid ||
-        resource.data.reportedBy == request.auth.uid ||
-        resource.data.reportedBy == request.auth.token.email
-      );
+      allow list, get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list, get: if isSignedIn() && resource.data.reportedBy == request.auth.uid;
+      allow list, get: if isSignedIn() && resource.data.reportedBy == request.auth.token.email;
     }
 
     // --- Hierarchical Rules (Standard Portfolio Access) ---
