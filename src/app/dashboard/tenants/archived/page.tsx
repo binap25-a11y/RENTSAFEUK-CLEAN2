@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -265,7 +266,7 @@ export default function ArchivedTenantsPage() {
                     This action is permanent. This will completely remove the tenant record for <strong className="text-foreground">{tenantToDelete?.name}</strong> from your history.
                 </AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogFooter className="gap-3 mt-4">
+                <AlertDialogFooter>
                 <AlertDialogCancel className="rounded-xl font-bold uppercase text-xs h-11">Cancel</AlertDialogCancel>
                 <AlertDialogAction
                     className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold uppercase text-xs h-11 px-8 shadow-lg"

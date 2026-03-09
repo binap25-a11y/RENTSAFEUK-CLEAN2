@@ -18,12 +18,11 @@ service cloud.firestore {
 
     // --- Collection Group Rules (Cross-Portfolio Discovery) ---
     
-    // Required for Role Detection & Portal Authentication
+    /**
+     * Residents discovery query requires proof-of-identity filter.
+     * Note: We expect emails to be stored in lowercase in the database.
+     */
     match /{path=**}/tenants/{tenantId} {
-      /**
-       * Residents discovery query requires proof-of-identity filter.
-       * Note: We expect emails to be stored in lowercase in the database.
-       */
       allow list: if isSignedIn() && (
         resource.data.email == request.auth.token.email ||
         resource.data.userId == request.auth.uid

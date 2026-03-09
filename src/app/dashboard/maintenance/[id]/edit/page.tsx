@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -114,7 +115,7 @@ export default function EditMaintenancePage() {
 
     const contractorsQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
-        return query(collection(firestore, 'userProfiles', user.uid, 'contractors'), where('ownerId', '==', user.uid));
+        return query(collection(firestore, 'userProfiles', user.uid, 'contractors'), where('userId', '==', user.uid));
     }, [firestore, user]);
     const { data: contractors } = useCollection<Contractor>(contractorsQuery);
 
@@ -122,8 +123,8 @@ export default function EditMaintenancePage() {
         if (maintenanceLog) {
             form.reset({
                 ...maintenanceLog,
-                reportedDate: maintenanceLog.reportedDate instanceof Date ? maintenanceLog.reportedDate : new Date(maintenanceLog.reportedDate.seconds * 1000),
-                scheduledDate: maintenanceLog.scheduledDate ? (maintenanceLog.scheduledDate instanceof Date ? maintenanceLog.scheduledDate : new Date(maintenanceLog.scheduledDate.seconds * 1000)) : undefined,
+                reportedDate: maintenanceLog.reportedDate instanceof Date ? maintenanceLog.reportedDate : new Date((maintenanceLog.reportedDate as any).seconds * 1000),
+                scheduledDate: maintenanceLog.scheduledDate ? (maintenanceLog.scheduledDate instanceof Date ? maintenanceLog.scheduledDate : new Date((maintenanceLog.scheduledDate as any).seconds * 1000)) : undefined,
                 otherCategoryDetails: maintenanceLog.otherCategoryDetails ?? '',
                 notes: maintenanceLog.notes ?? '',
             });
