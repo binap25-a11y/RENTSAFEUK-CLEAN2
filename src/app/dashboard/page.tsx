@@ -150,7 +150,7 @@ export default function DashboardPage() {
         setIsTenant(!!activeTenantRecord);
         setIsLoadingPortalCheck(false);
     }, (error) => {
-        // Log contextual error for rules debugging
+        // Trigger global error propagation with explicit collection group context
         errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'tenants',
             operation: 'list',
