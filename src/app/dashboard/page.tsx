@@ -139,6 +139,7 @@ export default function DashboardPage() {
     const userEmail = user.email.toLowerCase().trim();
 
     // Query for active tenants by email across the entire portfolio
+    // Path matches the collection name in firestore.rules for simpler discovery
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),

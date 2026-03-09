@@ -2,8 +2,8 @@
 'use client';
 
 /**
- * @fileOverview Standardized barrel file for Firebase services and hooks.
- * Consolidated to resolve ambiguity between .ts and .tsx utility files.
+ * @fileOverview Consolidated barrel file for Firebase services and utilities.
+ * Resolves build ambiguity by standardizing on stable TypeScript exports.
  */
 
 import { firebaseConfig } from '@/firebase/config';
@@ -37,16 +37,20 @@ export function getSdks(firebaseApp: FirebaseApp) {
   };
 }
 
-// Hooks & Providers
+// Providers & Components
 export * from './provider';
 export * from './client-provider';
+
+// Firestore Hooks
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 
-// Utilities (Strictly .ts sources)
-export * from './non-blocking-updates';
+// Authentication Utilities
 export * from './non-blocking-login';
 
-// Error Handling
+// Data Mutation Utilities
+export * from './non-blocking-updates';
+
+// Global Error Handling
 export * from './errors';
 export * from './error-emitter';
