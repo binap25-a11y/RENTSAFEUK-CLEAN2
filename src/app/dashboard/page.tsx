@@ -38,7 +38,7 @@ import {
   errorEmitter,
   FirestorePermissionError,
 } from '@/firebase';
-import { collection, query, where, onSnapshot, Timestamp, limit, collectionGroup, doc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, Timestamp, limit, collectionGroup } from 'firebase/firestore';
 import { useMemo, useState, useEffect } from 'react';
 import { format, isFuture, isBefore, addDays, startOfMonth, setDate, isPast } from 'date-fns';
 import {

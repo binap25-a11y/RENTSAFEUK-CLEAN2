@@ -113,24 +113,28 @@ service cloud.firestore {
     }
 
     // --- Unified collectionGroup Rules ---
-    // Rules split for static provability in collectionGroup list operations
+    // Consolidated for static provability in collectionGroup list operations
 
     match /{path=**}/tenants/{tenantId} {
-      // Allow resident discovery query
-      allow list, get: if isSignedIn() && resource.data.email == request.auth.token.email;
-      // Allow landlord portfolio-wide query
-      allow list, get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list, get: if isSignedIn() && (
+        resource.data.email == request.auth.token.email || 
+        resource.data.userId == request.auth.uid
+      );
     }
 
     match /{path=**}/messages/{messageId} {
-      allow list, get: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow list, get: if isSignedIn() && resource.data.senderId == request.auth.uid;
+      allow list, get: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.senderId == request.auth.uid
+      );
       allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      allow list, get: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow list, get: if isSignedIn() && resource.data.reportedBy == request.auth.uid;
+      allow list, get: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.reportedBy == request.auth.uid
+      );
     }
   }
 }
