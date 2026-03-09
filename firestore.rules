@@ -6,16 +6,11 @@
  * management application. All data is hierarchically organized and secured under a 
  * user's unique profile path.
  *
- * Data Structure:
- * All application entities (Properties, Tenants, Tenancies, etc.) are stored as 
- * subcollections under `/userProfiles/{userProfileId}/`. This creates a natural 
- * security boundary where a user's UID is the primary key for all data access.
- *
  * collectionGroup Support:
  * To enable cross-portfolio role discovery (identifying if a user is a resident 
  * in any estate), we provide restricted list access to the 'tenants', 'messages', 
  * and 'maintenanceLogs' collection groups. These rules are split into distinct 
- * allow statements to ensure the Firestore query engine can authorize requests 
+ * allow blocks to ensure the Firestore query engine can authorize requests 
  * that filter by specific identities (email or UID).
  */
 
@@ -82,6 +77,13 @@ service cloud.firestore {
           allow delete: if isExistingOwner(userProfileId);
         }
 
+        match /checklists/{checklistId} {
+          allow get, list: if isOwner(userProfileId);
+          allow create: if isOwner(userProfileId) && matchesPath(userProfileId);
+          allow update: if isExistingOwner(userProfileId) && remainsImmutable();
+          allow delete: if isExistingOwner(userProfileId);
+        }
+
         match /tenants/{tenantId} {
           allow get, list: if isOwner(userProfileId);
           allow create: if isOwner(userProfileId) && matchesPath(userProfileId);
@@ -131,7 +133,7 @@ service cloud.firestore {
     // This allows the Firestore query engine to successfully authorize restricted list queries.
 
     match /{path=**}/tenants/{tenantId} {
-      // 1. Resident Identity Discovery
+      // 1. Resident Identity Discovery (Must match the specific query filter)
       allow list: if isSignedIn() && resource.data.email == request.auth.token.email.lower();
       // 2. Landlord Portfolio Management
       allow list: if isSignedIn() && resource.data.userId == request.auth.uid;

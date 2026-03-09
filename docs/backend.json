@@ -103,6 +103,55 @@
         "amountPaid": { "type": "number" }
       },
       "required": ["userId", "propertyId", "year", "month", "status"]
+    },
+    "Contractor": {
+      "title": "Contractor",
+      "description": "A tradesperson or company in the landlord's directory.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "name": { "type": "string" },
+        "trade": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "status": { "type": "string", "enum": ["Active", "Archived"] },
+        "notes": { "type": "string" }
+      },
+      "required": ["id", "userId", "name", "trade", "phone", "status"]
+    },
+    "Document": {
+      "title": "Document",
+      "description": "A legal or compliance document (EPC, Gas Safety, Agreement).",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "title": { "type": "string" },
+        "documentType": { "type": "string" },
+        "issueDate": { "type": "string", "format": "date-time" },
+        "expiryDate": { "type": "string", "format": "date-time" },
+        "fileUrl": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["id", "userId", "propertyId", "title", "documentType", "issueDate", "expiryDate"]
+    },
+    "Inspection": {
+      "title": "Inspection",
+      "description": "A scheduled or completed property inspection report.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "type": { "type": "string", "enum": ["Single-Let", "HMO"] },
+        "status": { "type": "string", "enum": ["Scheduled", "Completed", "Cancelled"] },
+        "scheduledDate": { "type": "string", "format": "date-time" },
+        "completedDate": { "type": "string", "format": "date-time" },
+        "inspectorName": { "type": "string" }
+      },
+      "required": ["id", "userId", "propertyId", "type", "status", "scheduledDate"]
     }
   },
   "auth": {
@@ -124,6 +173,22 @@
     "/userProfiles/{userId}/properties/{propertyId}/maintenanceLogs/{logId}": {
       "schema": { "$ref": "#/entities/MaintenanceLog" },
       "description": "Maintenance history for a property."
+    },
+    "/userProfiles/{userId}/properties/{propertyId}/rentPayments/{paymentId}": {
+      "schema": { "$ref": "#/entities/RentPayment" },
+      "description": "Rent ledger for a property."
+    },
+    "/userProfiles/{userId}/properties/{propertyId}/documents/{docId}": {
+      "schema": { "$ref": "#/entities/Document" },
+      "description": "Compliance and legal files."
+    },
+    "/userProfiles/{userId}/properties/{propertyId}/inspections/{inspId}": {
+      "schema": { "$ref": "#/entities/Inspection" },
+      "description": "Field report records."
+    },
+    "/userProfiles/{userId}/contractors/{contractorId}": {
+      "schema": { "$ref": "#/entities/Contractor" },
+      "description": "Landlord's contractor directory."
     }
   }
 }

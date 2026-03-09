@@ -135,10 +135,11 @@ export default function DashboardPage() {
       return;
     }
   
-    // Normalized comparison for case-insensitive identity matching
+    // Normalized comparison for character-parity with security rules
     const userEmail = user.email.toLowerCase().trim();
 
     // Discovery query to find if this email exists in any tenant collection across the platform
+    // Note: The limit is 1 because we only need to verify if the account is linked to any active tenancy
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
@@ -613,7 +614,7 @@ export default function DashboardPage() {
                       <div className="min-w-0 flex-1">
                         <p className="font-bold text-sm truncate">{insp.type}</p>
                         <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-tight mt-1">
-                          {propertyMap[insp.propertyId] ? formatAddress(propertyMap[insp.propertyId]) : 'Property Check'}
+                          {propertyMap[insp.propertyId] ? formatAddress(propertyMap[insp.propertyId] as any) : 'Property Check'}
                         </p>
                       </div>
                       <div className="text-right ml-4 shrink-0 flex flex-col items-end gap-1.5">
