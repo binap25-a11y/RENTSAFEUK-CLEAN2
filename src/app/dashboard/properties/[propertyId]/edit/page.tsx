@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -55,7 +56,7 @@ type PropertyFormValues = z.infer<typeof propertySchema>;
 
 interface Property {
     id: string;
-    ownerId: string;
+    userId: string;
     address: {
       nameOrNumber?: string;
       street: string;
@@ -210,7 +211,7 @@ export default function EditPropertyPage() {
           ...data,
           imageUrl: finalIdentityUrl,
           additionalImageUrls: Array.from(new Set(combinedGallery)),
-          ownerId: user.uid
+          userId: user.uid
       };
 
       const cleanedPayload = JSON.parse(JSON.stringify(updatePayload));

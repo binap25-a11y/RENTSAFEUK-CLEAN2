@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -35,14 +36,15 @@ export default function TenantDashboard() {
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
-    if (!user || !firestore) return;
+    if (!user || !firestore || !user.email) return;
 
     let propUnsub: (() => void) | null = null;
+    const userEmail = user.email.toLowerCase();
 
-    // Search for tenants linked to this email. Filter for 'Active' in memory to avoid composite index requirements.
+    // Discovery query to find if this email exists in any tenant collection across the platform
     const q = query(
         collectionGroup(firestore, 'tenants'), 
-        where('email', '==', user.email?.toLowerCase()),
+        where('email', '==', userEmail),
         limit(10)
     );
 
@@ -83,7 +85,7 @@ export default function TenantDashboard() {
         }
     }, (error) => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: 'tenants (collectionGroup)',
+            path: 'tenants',
             operation: 'list',
         }));
         setIsLoading(false);

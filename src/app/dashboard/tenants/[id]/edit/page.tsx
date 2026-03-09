@@ -118,7 +118,7 @@ export default function EditTenantPage() {
     if (!firestore || !tenantId || !user || urlPropertyId) return null;
     return query(
       collectionGroup(firestore, 'tenants'),
-      where('ownerId', '==', user.uid),
+      where('userId', '==', user.uid),
       where('id', '==', tenantId)
     );
   }, [firestore, tenantId, user, urlPropertyId]);
@@ -131,7 +131,7 @@ export default function EditTenantPage() {
     if (!user || !firestore) return null;
     return query(
       collection(firestore, 'userProfiles', user.uid, 'properties'),
-      where('ownerId', '==', user.uid),
+      where('userId', '==', user.uid),
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
     );
   }, [firestore, user]);
@@ -165,8 +165,8 @@ export default function EditTenantPage() {
       const tenantDocRef = doc(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId, 'tenants', tenant.id);
       const updateData = { 
         ...data, 
-        email: data.email.toLowerCase(), // Ensure lowercase consistency
-        ownerId: user.uid 
+        email: data.email.toLowerCase(), 
+        userId: user.uid 
       };
       const cleanedUpdateData = JSON.parse(JSON.stringify(updateData));
 

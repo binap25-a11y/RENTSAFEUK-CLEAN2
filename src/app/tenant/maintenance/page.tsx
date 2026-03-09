@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -30,7 +31,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Wrench, Upload, X, CheckCircle2 } from 'lucide-react';
+import { Loader2, Wrench, Upload, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collectionGroup, query, where, limit, addDoc, collection, onSnapshot } from 'firebase/firestore';
@@ -61,12 +62,14 @@ export default function TenantMaintenancePage() {
   });
 
   useEffect(() => {
-    if (!user || !firestore) return;
+    if (!user || !firestore || !user.email) return;
     
+    const userEmail = user.email.toLowerCase();
+
     // Search for tenants linked to this email. Filter for 'Active' in memory.
     const q = query(
         collectionGroup(firestore, 'tenants'), 
-        where('email', '==', user.email?.toLowerCase()),
+        where('email', '==', userEmail),
         limit(10)
     );
     const unsub = onSnapshot(q, (snap) => {
@@ -77,7 +80,7 @@ export default function TenantMaintenancePage() {
         }
     }, (error) => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: 'tenants (collectionGroup)',
+            path: 'tenants',
             operation: 'list',
         }));
     });
@@ -112,9 +115,9 @@ export default function TenantMaintenancePage() {
       
       await addDoc(logsCollection, {
         ...data,
-        ownerId: tenantContext.landlordId,
+        userId: tenantContext.landlordId,
         propertyId: tenantContext.propertyId,
-        reportedBy: user.displayName || user.email,
+        reportedBy: user.uid,
         reportedDate: new Date().toISOString(),
         status: 'Open',
         photoUrls
@@ -148,14 +151,18 @@ export default function TenantMaintenancePage() {
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField control={form.control} name="category" render={({ field }) => (
                   <FormItem><FormLabel className="font-bold">Category</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
-                    <SelectContent>{['Plumbing', 'Electrical', 'Heating', 'Structural', 'Appliances', 'Garden', 'Other'].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
+                      <SelectContent>{['Plumbing', 'Electrical', 'Heating', 'Structural', 'Appliances', 'Garden', 'Other'].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
+                    </Select>
                   <FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="priority" render={({ field }) => (
                   <FormItem><FormLabel className="font-bold">Urgency</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11"><SelectValue /></SelectTrigger></FormControl>
-                    <SelectContent><SelectItem value="Emergency">Emergency (Immediate Risk)</SelectItem><SelectItem value="Urgent">Urgent (Needs fix today)</SelectItem><SelectItem value="Routine">Routine (General repair)</SelectItem></SelectContent></Select>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                      <FormControl><SelectTrigger className="h-11"><SelectValue /></SelectTrigger></FormControl>
+                      <SelectContent><SelectItem value="Emergency">Emergency (Immediate Risk)</SelectItem><SelectItem value="Urgent">Urgent (Needs fix today)</SelectItem><SelectItem value="Routine">Routine (General repair)</SelectItem></SelectContent>
+                    </Select>
                   <FormMessage /></FormItem>
                 )} />
             </div>

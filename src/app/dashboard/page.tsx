@@ -132,8 +132,8 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user || !firestore || !user.email) return;
     
-    // Character-perfect match for security rules logic (standardized lowercase stored in DB)
-    const userEmail = user.email.toLowerCase().trim();
+    // Character-perfect match for security rules logic (normalized stored email)
+    const userEmail = user.email.toLowerCase();
 
     // Discovery query to find if this email exists in any tenant collection across the platform
     const q = query(
@@ -148,7 +148,6 @@ export default function DashboardPage() {
         setIsTenant(!!activeTenantRecord);
     }, (error) => {
         // Contextual error for debugging permission issues in discovery
-        // Trigger global error propagation with explicit collection group context
         errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'tenants',
             operation: 'list',
