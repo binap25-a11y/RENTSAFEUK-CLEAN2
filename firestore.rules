@@ -1,135 +1,88 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * FIRESTORE SECURITY RULES DOCUMENTATION
-     *
-     * Core Philosophy: 
-     * This ruleset enforces a strict hierarchical user-ownership model. All application data 
-     * is scoped under the `/userProfiles/{userId}` path to ensure data isolation and privacy.
-     *
-     * Data Structure:
-     * - /userProfiles/{userId}: Root user profile.
-     * - /userProfiles/{userId}/properties/{propertyId}: Properties owned by the user.
-     * - /userProfiles/{userId}/properties/{propertyId}/[subcollections]: Data related to a specific property (Tenants, Inspections, etc.).
-     * - /userProfiles/{userId}/activityLogs/{logId}: User-specific audit logs.
-     *
-     * Key Security Decisions:
-     * 1. Authorization Independence via Denormalization: All nested documents (e.g., Tenants) MUST 
-     *    include a `userId` field matching the owner's UID. This allows rules to verify ownership 
-     *    without expensive `get()` calls to parent property documents.
-     * 2. Query-Allowable Patterns (QAPs): By nesting all data under a userId path, list operations 
-     *    are naturally scoped to the authenticated user, preventing cross-user data leakage.
-     * 3. Immutability: Relational fields like `userId` and document `id` are enforced as 
-     *    immutable after creation to maintain data integrity.
-     * 4. Prototyping Flexibility: While authorization is strictly enforced based on ownership, 
-     *    the internal shape of content data is not validated to allow for rapid schema iteration.
-     */
-
     // --- Helper Functions ---
-
-    /** @description Checks if the request is from an authenticated user. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /** @description Checks if the authenticated user matches the provided userId from the path. */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /** @description Verifies ownership and ensures the document exists for state-changing operations. */
     function isExistingOwner(userId) {
       return resource != null && isOwner(userId);
     }
 
-    /** @description Validates that the owner ID in the data matches the owner ID in the path during creation. */
     function isValidOwnership(userId) {
       return request.resource.data.userId == userId;
     }
 
-    /** @description Enforces that the owner ID field cannot be changed during an update. */
     function isOwnershipImmutable() {
       return request.resource.data.userId == resource.data.userId;
     }
 
-    // --- Collection Rules ---
+    // --- Collection Group Rules (Cross-Portfolio Discovery) ---
+    
+    // Required for Role Detection & Portal Authentication
+    match /{path=**}/tenants/{tenantId} {
+      allow list: if isSignedIn() && (
+        resource.data.email == request.auth.token.email || 
+        resource.data.userId == request.auth.uid
+      );
+      allow get: if isSignedIn() && (
+        resource.data.email == request.auth.token.email || 
+        resource.data.userId == request.auth.uid
+      );
+    }
 
-    /**
-     * @description Rules for user profile documents. The document ID must match the user's UID.
-     * @path /userProfiles/{userId}
-     * @allow (create) auth.uid: "user123" if path is /userProfiles/user123 and data.id == "user123"
-     * @deny (list) any user attempting to list all profiles.
-     * @principle Path-based ownership and ID consistency.
-     */
+    // Secure Messenger discovery
+    match /{path=**}/messages/{messageId} {
+      allow list: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        // Check assigned resident email for portal access
+        get(/databases/$(database)/documents/userProfiles/$(resource.data.userId)/properties/$(resource.data.propertyId)/tenants/$(resource.data.tenantId)).data.email == request.auth.token.email
+      );
+    }
+
+    // --- Hierarchical Rules (Standard Portfolio Access) ---
+
     match /userProfiles/{userId} {
       allow get: if isOwner(userId);
-      allow list: if false; // User listing is disallowed for privacy.
       allow create: if isOwner(userId) && request.resource.data.id == userId;
       allow update: if isExistingOwner(userId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(userId);
+      allow delete: if false;
 
-      /**
-       * @description Rules for properties. Nested under the user who owns them.
-       * @path /userProfiles/{userId}/properties/{propertyId}
-       * @allow (list) auth.uid: "user123" listing /userProfiles/user123/properties
-       * @deny (update) changing the userId field to another user.
-       * @principle Relational integrity via denormalized userId.
+      /** 
+       * @description Recursive portfolio oversight for Landlords.
+       * Grants the property owner full read/write access to all nested data.
        */
+      match /{allSubcollections=**} {
+        allow read, write: if isOwner(userId);
+      }
+
       match /properties/{propertyId} {
-        allow get, list: if isOwner(userId);
-        allow create: if isOwner(userId) && isValidOwnership(userId);
-        allow update: if isExistingOwner(userId) && isOwnershipImmutable();
-        allow delete: if isExistingOwner(userId);
+        // Limited GET for Tenants to view their own home details
+        allow get: if isSignedIn() && exists(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(anyId)) && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(anyId)).data.email == request.auth.token.email;
 
-        /**
-         * @description Rules for sub-resources of a property (Tenants, Maintenance, Inspections, Documents).
-         * @path /userProfiles/{userId}/properties/{propertyId}/[subcollection]/{id}
-         * @allow (create) auth.uid: "user123" adding a tenant with userId: "user123".
-         * @deny (get) accessing a tenant document belonging to a different user's property path.
-         * @principle Denormalized ownership for performant authorization.
-         */
         match /tenants/{tenantId} {
-          allow get, list: if isOwner(userId);
-          allow create: if isOwner(userId) && isValidOwnership(userId);
-          allow update: if isExistingOwner(userId) && isOwnershipImmutable();
-          allow delete: if isExistingOwner(userId);
+          // Resident can read their own contract
+          allow get: if isSignedIn() && resource.data.email == request.auth.token.email;
+          
+          match /messages/{messageId} {
+            allow read, write: if isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email;
+          }
         }
 
-        match /maintenanceRequests/{requestId} {
-          allow get, list: if isOwner(userId);
-          allow create: if isOwner(userId) && isValidOwnership(userId);
-          allow update: if isExistingOwner(userId) && isOwnershipImmutable();
-          allow delete: if isExistingOwner(userId);
-        }
-
-        match /inspections/{inspectionId} {
-          allow get, list: if isOwner(userId);
-          allow create: if isOwner(userId) && isValidOwnership(userId);
-          allow update: if isExistingOwner(userId) && isOwnershipImmutable();
-          allow delete: if isExistingOwner(userId);
+        match /maintenanceLogs/{logId} {
+          allow read, write: if isSignedIn() && exists(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(anyId)) && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(anyId)).data.email == request.auth.token.email;
         }
 
         match /documents/{docId} {
-          allow get, list: if isOwner(userId);
-          allow create: if isOwner(userId) && isValidOwnership(userId);
-          allow update: if isExistingOwner(userId) && isOwnershipImmutable();
-          allow delete: if isExistingOwner(userId);
+          allow read: if isSignedIn() && exists(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(anyId)) && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(anyId)).data.email == request.auth.token.email;
         }
-      }
-
-      /**
-       * @description Rules for activity logs generated by the user.
-       * @path /userProfiles/{userId}/activityLogs/{activityLogId}
-       * @allow (list) auth.uid: "user123" viewing their own activity log.
-       * @deny (create) creating a log entry for a different user's path.
-       * @principle Private user-scoped activity tracking.
-       */
-      match /activityLogs/{activityLogId} {
-        allow get, list: if isOwner(userId);
-        allow create: if isOwner(userId) && isValidOwnership(userId);
-        allow update, delete: if false; // Logs are typically append-only and immutable.
       }
     }
   }

@@ -167,7 +167,7 @@ export default function AddTenantPage() {
         const newTenant = {
             ...data,
             email: data.email.toLowerCase(),
-            ownerId: user.uid,
+            userId: user.uid,
             status: 'Active',
             createdDate: new Date().toISOString(),
         };

@@ -132,10 +132,10 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user || !firestore || !user.email) return;
     
-    // Identity discovery relies on lowercase normalization for robust security rule matching
+    // Identity discovery relies on exact identity match for robust security rule verification
     const userEmail = user.email.toLowerCase();
 
-    // Discovery query to find if this email exists in any tenant collection
+    // Discovery query to find if this email exists in any tenant collection across the platform
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
@@ -147,7 +147,7 @@ export default function DashboardPage() {
         const activeTenantRecord = snap.docs.find(doc => doc.data().status === 'Active');
         setIsTenant(!!activeTenantRecord);
     }, (error) => {
-        // Use a standardized path for the listener component to satisfy rule checks
+        // Emit standardized path for the listener component to satisfy rule checks
         errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'tenants',
             operation: 'list',

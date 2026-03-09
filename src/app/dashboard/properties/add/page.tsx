@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -114,7 +115,7 @@ export default function AddPropertyPage() {
       const propertyCollection = collection(firestore, 'userProfiles', user.uid, 'properties');
       const docRef = await addDoc(propertyCollection, {
         ...JSON.parse(JSON.stringify(data)),
-        ownerId: user.uid,
+        userId: user.uid,
         createdDate: new Date().toISOString(),
         imageUrl: '',
         additionalImageUrls: [],
