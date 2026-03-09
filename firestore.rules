@@ -35,14 +35,14 @@ service cloud.firestore {
 
     match /{path=**}/tenants/{tenantId} {
       // Discovery for the "Role Check" logic during dashboard initialization.
-      // We rely on exact character matching with lowercased email comparison.
+      // We rely on exact character matching. The app ensures lowercase email storage.
       allow list: if isSignedIn() && (
-        (request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower()) ||
+        (request.auth.token.email != null && (resource.data.email == request.auth.token.email || resource.data.email == request.auth.token.email.lower())) ||
         (resource.data.ownerId == request.auth.uid)
       );
       
       allow get: if isSignedIn() && (
-        (request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower()) ||
+        (request.auth.token.email != null && (resource.data.email == request.auth.token.email || resource.data.email == request.auth.token.email.lower())) ||
         (resource.data.ownerId == request.auth.uid)
       );
     }
