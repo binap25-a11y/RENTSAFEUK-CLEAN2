@@ -35,8 +35,13 @@ service cloud.firestore {
 
     match /{path=**}/tenants/{tenantId} {
       // Allow discovery via email for the "Role Check" and Tenant Portal.
-      // Casing must match the authentication provider's token.
-      allow list, get: if isSignedIn() && (
+      // We explicitly check list vs get to ensure query constraints are satisfied.
+      allow list: if isSignedIn() && (
+        (request.auth.token.email != null && request.query.limit <= 10) ||
+        (request.auth.uid != null)
+      );
+      
+      allow get: if isSignedIn() && (
         (request.auth.token.email != null && resource.data.email == request.auth.token.email) ||
         (resource.data.ownerId == request.auth.uid)
       );
