@@ -129,17 +129,16 @@ export default function DashboardPage() {
     setMounted(true);
   }, []);
 
-  // Secure role-detection: check if user is a resident in any portfolio
+  // Secure role-detection: check if user is a resident in any portfolio across the platform
   useEffect(() => {
     if (!user || !firestore || !user.email || isUserLoading) {
       if (!isUserLoading) setIsLoadingPortalCheck(false);
       return;
     }
   
-    // Normalized comparison for character-parity with security rules
     const userEmail = user.email.toLowerCase().trim();
 
-    // Discovery query to find if this email exists in any tenant collection across the platform
+    // Discovery query to find if this email exists in any tenant collection
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),

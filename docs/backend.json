@@ -137,22 +137,6 @@
         "notes": { "type": "string" }
       },
       "required": ["id", "userId", "propertyId", "title", "documentType", "issueDate", "expiryDate"]
-    },
-    "Inspection": {
-      "title": "Inspection",
-      "description": "A scheduled or completed property inspection report.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "userId": { "type": "string" },
-        "propertyId": { "type": "string" },
-        "type": { "type": "string", "enum": ["Single-Let", "HMO"] },
-        "status": { "type": "string", "enum": ["Scheduled", "Completed", "Cancelled"] },
-        "scheduledDate": { "type": "string", "format": "date-time" },
-        "completedDate": { "type": "string", "format": "date-time" },
-        "inspectorName": { "type": "string" }
-      },
-      "required": ["id", "userId", "propertyId", "type", "status", "scheduledDate"]
     }
   },
   "auth": {
@@ -182,10 +166,6 @@
     "/userProfiles/{userId}/properties/{propertyId}/documents/{docId}": {
       "schema": { "$ref": "#/entities/Document" },
       "description": "Compliance and legal files."
-    },
-    "/userProfiles/{userId}/properties/{propertyId}/inspections/{inspId}": {
-      "schema": { "$ref": "#/entities/Inspection" },
-      "description": "Field report records."
     },
     "/userProfiles/{userId}/contractors/{contractorId}": {
       "schema": { "$ref": "#/entities/Contractor" },

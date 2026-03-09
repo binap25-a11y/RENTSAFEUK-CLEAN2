@@ -88,6 +88,13 @@ service cloud.firestore {
           allow update: if isExistingOwner(userProfileId) && remainsImmutable();
           allow delete: if isExistingOwner(userProfileId);
         }
+        
+        match /expenses/{expenseId} {
+          allow get, list: if isOwner(userProfileId);
+          allow create: if isOwner(userProfileId) && matchesPath(userProfileId);
+          allow update: if isExistingOwner(userProfileId) && remainsImmutable();
+          allow delete: if isExistingOwner(userProfileId);
+        }
       }
 
       match /contractors/{contractorId} {
@@ -99,25 +106,19 @@ service cloud.firestore {
     }
 
     // --- collectionGroup Discovery Rules ---
-    // Rules are split to ensure the Firestore query optimizer can successfully verify list operations.
+    // Rules are unified to ensure the Firestore query optimizer can successfully verify list operations for discovery queries.
 
     match /{path=**}/tenants/{tenantId} {
-      allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow get: if isSignedIn() && (resource.data.email == request.auth.token.email || resource.data.userId == request.auth.uid);
+      allow read: if isSignedIn() && (resource.data.email == request.auth.token.email || resource.data.userId == request.auth.uid);
     }
 
     match /{path=**}/messages/{messageId} {
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow list: if isSignedIn() && resource.data.senderId == request.auth.uid;
-      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.senderId == request.auth.uid);
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.senderId == request.auth.uid);
       allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow list: if isSignedIn() && resource.data.reportedBy == request.auth.uid;
-      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.reportedBy == request.auth.uid);
+      allow read: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.reportedBy == request.auth.uid);
     }
   }
 }
