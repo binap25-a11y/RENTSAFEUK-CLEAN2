@@ -20,10 +20,11 @@ service cloud.firestore {
     
     // Required for Role Detection & Portal Authentication
     match /{path=**}/tenants/{tenantId} {
-      allow list: if isSignedIn() && (
-        resource.data.email == request.auth.token.email || 
-        resource.data.userId == request.auth.uid
-      );
+      // Allow discovery by email (for residents)
+      allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
+      // Allow discovery by owner ID (for landlords)
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
       allow get: if isSignedIn() && (
         resource.data.email == request.auth.token.email || 
         resource.data.userId == request.auth.uid
@@ -36,6 +37,16 @@ service cloud.firestore {
         resource.data.userId == request.auth.uid ||
         // Check assigned resident email for portal access
         get(/databases/$(database)/documents/userProfiles/$(resource.data.userId)/properties/$(resource.data.propertyId)/tenants/$(resource.data.tenantId)).data.email == request.auth.token.email
+      );
+    }
+
+    // Maintenance discovery for residents
+    match /{path=**}/maintenanceLogs/{logId} {
+      allow list: if isSignedIn() && (
+        resource.data.userId == request.auth.uid ||
+        // Residents can see logs for properties where they are registered
+        exists(/databases/$(database)/documents/userProfiles/$(resource.data.userId)/properties/$(resource.data.propertyId)/tenants/$(anyId)) &&
+        get(/databases/$(database)/documents/userProfiles/$(resource.data.userId)/properties/$(resource.data.propertyId)/tenants/$(anyId)).data.email == request.auth.token.email
       );
     }
 
@@ -60,7 +71,7 @@ service cloud.firestore {
         allow get: if isSignedIn() && exists(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(anyId)) && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(anyId)).data.email == request.auth.token.email;
 
         match /tenants/{tenantId} {
-          // Resident can read their own contract
+          // Resident can read their own profile
           allow get: if isSignedIn() && resource.data.email == request.auth.token.email;
           
           match /messages/{messageId} {

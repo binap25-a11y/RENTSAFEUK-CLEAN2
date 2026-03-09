@@ -132,9 +132,8 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user || !firestore || !user.email) return;
     
-    // Identity discovery relies on exact identity match for robust security rule verification
-    // Use the raw email from the auth object to ensure token matching in rules
-    const userEmail = user.email;
+    // Normalize email for character-perfect matching in security rules
+    const userEmail = user.email.toLowerCase().trim();
 
     // Discovery query to find if this email exists in any tenant collection across the platform
     const q = query(

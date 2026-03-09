@@ -2,7 +2,6 @@
 {
   "entities": {
     "UserProfile": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "UserProfile",
       "type": "object",
       "description": "Represents a user's profile within the application, linked to their authentication ID.",
@@ -14,16 +13,15 @@
         "createdAt": { "type": "string", "format": "date-time" },
         "updatedAt": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "email", "createdAt", "updatedAt"]
+      "required": ["id", "email"]
     },
     "Property": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Property",
       "type": "object",
-      "description": "Represents a rental property managed by a user.",
+      "description": "Represents a rental property managed by a landlord.",
       "properties": {
         "id": { "type": "string" },
-        "userId": { "type": "string", "description": "Owner identifier." },
+        "userId": { "type": "string", "description": "Owner identifier (Landlord)." },
         "address": {
           "type": "object",
           "properties": {
@@ -34,11 +32,11 @@
             "postcode": { "type": "string" }
           }
         },
-        "propertyType": { "type": "string" },
-        "status": { "type": "string" },
+        "propertyType": { "type": "string", "enum": ["House", "Flat", "HMO", "Bungalow", "Studio"] },
+        "status": { "type": "string", "enum": ["Vacant", "Occupied", "Under Maintenance", "Deleted"] },
         "bedrooms": { "type": "number" },
         "bathrooms": { "type": "number" },
-        "imageUrl": { "type": "string", "format": "uri" },
+        "imageUrl": { "type": "string" },
         "additionalImageUrls": { "type": "array", "items": { "type": "string" } },
         "notes": { "type": "string" },
         "purchasePrice": { "type": "number" },
@@ -50,13 +48,11 @@
             "depositAmount": { "type": "number" },
             "depositScheme": { "type": "string" }
           }
-        },
-        "createdAt": { "type": "string", "format": "date-time" }
+        }
       },
       "required": ["id", "userId", "address", "propertyType", "status"]
     },
     "Tenant": {
-      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Tenant",
       "type": "object",
       "description": "Stores details for a resident in a property.",
@@ -71,100 +67,89 @@
         "rentDueDay": { "type": "number" },
         "tenancyStartDate": { "type": "string", "format": "date" },
         "tenancyEndDate": { "type": "string", "format": "date" },
-        "status": { "type": "string" },
+        "status": { "type": "string", "enum": ["Active", "Archived"] },
         "lastReminderSent": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "userId", "propertyId", "name", "email", "tenancyStartDate"]
+      "required": ["id", "userId", "propertyId", "name", "email"]
     },
     "MaintenanceLog": {
       "title": "MaintenanceLog",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "userId": { "type": "string" },
+        "userId": { "type": "string", "description": "Landlord ID" },
         "propertyId": { "type": "string" },
         "title": { "type": "string" },
         "description": { "type": "string" },
         "category": { "type": "string" },
-        "priority": { "type": "string" },
-        "status": { "type": "string" },
+        "priority": { "type": "string", "enum": ["Emergency", "Urgent", "Routine", "Low"] },
+        "status": { "type": "string", "enum": ["Open", "In Progress", "Completed", "Cancelled"] },
         "reportedBy": { "type": "string" },
         "reportedDate": { "type": "string", "format": "date-time" },
         "contractorName": { "type": "string" },
         "contractorPhone": { "type": "string" },
         "scheduledDate": { "type": "string", "format": "date-time" },
         "estimatedCost": { "type": "number" },
-        "notes": { "type": "string" }
-      }
+        "notes": { "type": "string" },
+        "photoUrls": { "type": "array", "items": { "type": "string" } }
+      },
+      "required": ["id", "userId", "propertyId", "title", "category", "priority", "status"]
     },
     "Expense": {
       "title": "Expense",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "userId": { "type": "string" },
+        "userId": { "type": "string", "description": "Landlord ID" },
         "propertyId": { "type": "string" },
         "date": { "type": "string", "format": "date-time" },
         "expenseType": { "type": "string" },
         "amount": { "type": "number" },
         "paidBy": { "type": "string" },
         "notes": { "type": "string" }
-      }
+      },
+      "required": ["id", "userId", "propertyId", "date", "expenseType", "amount"]
     },
     "Document": {
       "title": "Document",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "userId": { "type": "string" },
+        "userId": { "type": "string", "description": "Landlord ID" },
         "propertyId": { "type": "string" },
         "title": { "type": "string" },
         "documentType": { "type": "string" },
         "issueDate": { "type": "string", "format": "date-time" },
         "expiryDate": { "type": "string", "format": "date-time" },
-        "fileUrl": { "type": "string", "format": "uri" },
+        "fileUrl": { "type": "string" },
         "notes": { "type": "string" }
-      }
-    },
-    "Message": {
-      "title": "Message",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "userId": { "type": "string", "description": "Landlord ID" },
-        "propertyId": { "type": "string" },
-        "tenantId": { "type": "string" },
-        "senderId": { "type": "string" },
-        "senderName": { "type": "string" },
-        "content": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" }
-      }
+      },
+      "required": ["id", "userId", "propertyId", "title", "documentType"]
     },
     "Contractor": {
       "title": "Contractor",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "userId": { "type": "string" },
+        "userId": { "type": "string", "description": "Landlord ID" },
         "name": { "type": "string" },
         "trade": { "type": "string" },
         "phone": { "type": "string" },
         "email": { "type": "string", "format": "email" },
         "notes": { "type": "string" },
-        "status": { "type": "string" }
-      }
+        "status": { "type": "string", "enum": ["Active", "Archived"] }
+      },
+      "required": ["id", "userId", "name", "trade", "phone"]
     },
-    "Inspection": {
-      "title": "Inspection",
+    "TenantScreening": {
+      "title": "TenantScreening",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "userId": { "type": "string" },
-        "propertyId": { "type": "string" },
-        "type": { "type": "string" },
-        "status": { "type": "string" },
-        "scheduledDate": { "type": "string", "format": "date-time" },
-        "inspectorName": { "type": "string" }
+        "userId": { "type": "string", "description": "Landlord ID" },
+        "tenantId": { "type": "string" },
+        "screeningDate": { "type": "string", "format": "date-time" },
+        "overallNotes": { "type": "string" }
       }
     }
   },
@@ -181,7 +166,6 @@
       { "path": "/userProfiles/{userId}/properties/{propertyId}/maintenanceLogs/{logId}", "definition": { "entityName": "MaintenanceLog", "description": "Repair audit." } },
       { "path": "/userProfiles/{userId}/properties/{propertyId}/expenses/{expenseId}", "definition": { "entityName": "Expense", "description": "Financial record." } },
       { "path": "/userProfiles/{userId}/properties/{propertyId}/documents/{docId}", "definition": { "entityName": "Document", "description": "Legal/Safety compliance doc." } },
-      { "path": "/userProfiles/{userId}/properties/{propertyId}/inspections/{inspectionId}", "definition": { "entityName": "Inspection", "description": "Condition report." } },
       { "path": "/userProfiles/{userId}/contractors/{contractorId}", "definition": { "entityName": "Contractor", "description": "Tradesperson directory." } }
     ]
   }

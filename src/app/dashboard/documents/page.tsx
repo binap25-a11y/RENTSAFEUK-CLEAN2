@@ -79,7 +79,7 @@ interface Property {
     street: string;
     city: string;
   };
-  ownerId: string;
+  userId: string;
   status: string;
 }
 
