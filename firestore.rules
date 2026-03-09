@@ -14,25 +14,25 @@ service cloud.firestore {
 
     // --- Collection Group Rules (Authorized Discovery) ---
     // These rules allow cross-portfolio discovery for residents and landlords.
-    // Separated into distinct allow statements to ensure the Firestore query engine 
-    // can verify query authorization statically.
+    // Unified into single blocks to ensure the Firestore query engine can verify query authorization statically.
     
     match /{path=**}/tenants/{tenantId} {
-      // Allow residents to find their own records via email discovery
-      allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
-      // Allow landlords to find their own tenants across the entire portfolio
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && (
+        resource.data.email == request.auth.token.email.lower() || 
+        resource.data.userId == request.auth.uid
+      );
       
-      // Detail view access
       allow get: if isSignedIn() && (
-        resource.data.email == request.auth.token.email || 
+        resource.data.email == request.auth.token.email.lower() || 
         resource.data.userId == request.auth.uid
       );
     }
 
     match /{path=**}/messages/{messageId} {
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow list: if isSignedIn() && resource.data.senderId == request.auth.uid;
+      allow list: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.senderId == request.auth.uid
+      );
       
       allow get: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
@@ -41,8 +41,10 @@ service cloud.firestore {
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow list: if isSignedIn() && resource.data.reportedBy == request.auth.uid;
+      allow list: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.reportedBy == request.auth.uid
+      );
       
       allow get: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
