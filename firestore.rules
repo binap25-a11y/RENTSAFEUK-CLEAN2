@@ -1,4 +1,3 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -16,29 +15,38 @@ service cloud.firestore {
     
     /**
      * Discovery rules for Tenants.
-     * Essential for the 'Role Check' logic which determines if a user should see
-     * the Tenant Portal or the Landlord Dashboard.
+     * Required for the dashboard role-check logic.
      */
     match /{path=**}/tenants/{tenantId} {
-      // Allows residents to find their own identity records via character-perfect email match
-      allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
-      // Allows landlords to list their own tenants across their portfolio via character-perfect userId match
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      // standard get access for both roles
-      allow get: if isSignedIn() && (resource.data.email == request.auth.token.email || resource.data.userId == request.auth.uid);
+      // Allows residents to find their own records via character-perfect email match
+      // Allows landlords to list their own tenants via character-perfect userId match
+      allow list: if isSignedIn() && (
+        resource.data.email == request.auth.token.email || 
+        resource.data.userId == request.auth.uid
+      );
+      allow get: if isSignedIn() && (
+        resource.data.email == request.auth.token.email || 
+        resource.data.userId == request.auth.uid
+      );
     }
 
+    /**
+     * Secure direct communication channel.
+     */
     match /{path=**}/messages/{messageId} {
-      // Allows both landlords and tenants involved in a conversation to list/read messages
-      allow list, get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.senderId == request.auth.uid);
-    }
-
-    match /{path=**}/maintenanceLogs/{logId} {
-      // Allows landlords to list their portfolio logs and tenants to list issues they reported
       allow list, get: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
-        resource.data.reportedBy == request.auth.uid || 
-        resource.data.reportedBy == request.auth.token.email
+        resource.data.senderId == request.auth.uid
+      );
+    }
+
+    /**
+     * Repair audit trail discovery.
+     */
+    match /{path=**}/maintenanceLogs/{logId} {
+      allow list, get: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.reportedBy == request.auth.uid
       );
     }
 
@@ -52,7 +60,7 @@ service cloud.firestore {
 
       /** 
        * Recursive portfolio oversight for Landlords.
-       * Grants the property owner full read/write access to all nested data.
+       * Grants the property owner full access to all nested asset data.
        */
       match /{allSubcollections=**} {
         allow read, write: if isOwner(userId);

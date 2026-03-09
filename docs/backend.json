@@ -1,10 +1,9 @@
-
 {
   "entities": {
     "UserProfile": {
       "title": "UserProfile",
       "type": "object",
-      "description": "Represents a user's profile within the application, linked to their authentication ID.",
+      "description": "Root landlord identity.",
       "properties": {
         "id": { "type": "string" },
         "email": { "type": "string", "format": "email" },
@@ -18,7 +17,7 @@
     "Property": {
       "title": "Property",
       "type": "object",
-      "description": "Represents a rental property managed by a landlord.",
+      "description": "Managed rental asset.",
       "properties": {
         "id": { "type": "string" },
         "userId": { "type": "string", "description": "Landlord identifier." },
@@ -55,7 +54,7 @@
     "Tenant": {
       "title": "Tenant",
       "type": "object",
-      "description": "Stores details for a resident in a property.",
+      "description": "Resident profile.",
       "properties": {
         "id": { "type": "string" },
         "userId": { "type": "string", "description": "Landlord identifier." },
@@ -75,7 +74,7 @@
     "TenantScreening": {
       "title": "TenantScreening",
       "type": "object",
-      "description": "Detailed pre-tenancy audit record.",
+      "description": "Pre-tenancy audit record.",
       "properties": {
         "id": { "type": "string" },
         "userId": { "type": "string" },
@@ -85,19 +84,6 @@
         "overallNotes": { "type": "string" }
       },
       "required": ["id", "userId", "tenantId", "screeningDate"]
-    },
-    "PreTenancyChecklist": {
-      "title": "PreTenancyChecklist",
-      "type": "object",
-      "description": "Compliance checklist for new lets.",
-      "properties": {
-        "id": { "type": "string" },
-        "userId": { "type": "string" },
-        "propertyId": { "type": "string" },
-        "tenantId": { "type": "string" },
-        "completedDate": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "userId", "propertyId", "tenantId"]
     },
     "MaintenanceLog": {
       "title": "MaintenanceLog",
@@ -109,80 +95,25 @@
         "title": { "type": "string" },
         "description": { "type": "string" },
         "category": { "type": "string" },
-        "otherCategoryDetails": { "type": "string" },
-        "priority": { "type": "string", "enum": ["Emergency", "Urgent", "Routine", "Low"] },
-        "status": { "type": "string", "enum": ["Open", "In Progress", "Completed", "Cancelled"] },
+        "priority": { "type": "string" },
+        "status": { "type": "string" },
         "reportedBy": { "type": "string" },
-        "reportedDate": { "type": "string", "format": "date-time" },
-        "contractorName": { "type": "string" },
-        "contractorPhone": { "type": "string" },
-        "scheduledDate": { "type": "string", "format": "date-time" },
-        "estimatedCost": { "type": "number" },
-        "notes": { "type": "string" },
-        "photoUrls": { "type": "array", "items": { "type": "string" } }
+        "reportedDate": { "type": "string", "format": "date-time" }
       },
-      "required": ["id", "userId", "propertyId", "title", "category", "priority", "status"]
-    },
-    "Expense": {
-      "title": "Expense",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "userId": { "type": "string", "description": "Landlord identifier." },
-        "propertyId": { "type": "string" },
-        "date": { "type": "string", "format": "date-time" },
-        "expenseType": { "type": "string" },
-        "amount": { "type": "number" },
-        "paidBy": { "type": "string" },
-        "notes": { "type": "string" }
-      },
-      "required": ["id", "userId", "propertyId", "date", "expenseType", "amount"]
+      "required": ["id", "userId", "propertyId", "title", "status"]
     },
     "Document": {
       "title": "Document",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "userId": { "type": "string", "description": "Landlord identifier." },
+        "userId": { "type": "string" },
         "propertyId": { "type": "string" },
         "title": { "type": "string" },
         "documentType": { "type": "string" },
-        "issueDate": { "type": "string", "format": "date-time" },
-        "expiryDate": { "type": "string", "format": "date-time" },
-        "fileUrl": { "type": "string" },
-        "notes": { "type": "string" }
+        "fileUrl": { "type": "string" }
       },
-      "required": ["id", "userId", "propertyId", "title", "documentType"]
-    },
-    "Contractor": {
-      "title": "Contractor",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "userId": { "type": "string", "description": "Landlord identifier." },
-        "name": { "type": "string" },
-        "trade": { "type": "string" },
-        "phone": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "notes": { "type": "string" },
-        "status": { "type": "string", "enum": ["Active", "Archived"] }
-      },
-      "required": ["id", "userId", "name", "trade", "phone"]
-    },
-    "Inspection": {
-      "title": "Inspection",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "userId": { "type": "string" },
-        "propertyId": { "type": "string" },
-        "type": { "type": "string" },
-        "status": { "type": "string" },
-        "scheduledDate": { "type": "string", "format": "date-time" },
-        "completedDate": { "type": "string", "format": "date-time" },
-        "inspectorName": { "type": "string" }
-      },
-      "required": ["id", "userId", "propertyId", "type", "status"]
+      "required": ["id", "userId", "propertyId", "title"]
     },
     "RentPayment": {
       "title": "RentPayment",
@@ -193,9 +124,7 @@
         "propertyId": { "type": "string" },
         "year": { "type": "number" },
         "month": { "type": "string" },
-        "status": { "type": "string" },
-        "expectedAmount": { "type": "number" },
-        "amountPaid": { "type": "number" }
+        "status": { "type": "string" }
       },
       "required": ["id", "userId", "propertyId", "year", "month", "status"]
     },
@@ -204,9 +133,8 @@
       "type": "object",
       "properties": {
         "id": { "type": "string" },
-        "userId": { "type": "string", "description": "Context landlord." },
+        "userId": { "type": "string" },
         "senderId": { "type": "string" },
-        "senderName": { "type": "string" },
         "content": { "type": "string" },
         "timestamp": { "type": "string", "format": "date-time" }
       },
@@ -219,7 +147,7 @@
   "firestore": {
     "/userProfiles/{userId}": {
       "schema": "#/entities/UserProfile",
-      "description": "Root user identity."
+      "description": "Landlord identity."
     },
     "/userProfiles/{userId}/properties/{propertyId}": {
       "schema": "#/entities/Property",
@@ -227,43 +155,27 @@
     },
     "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}": {
       "schema": "#/entities/Tenant",
-      "description": "Assigned resident."
+      "description": "Resident."
     },
     "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/screenings/{screeningId}": {
       "schema": "#/entities/TenantScreening",
-      "description": "Compliance audit for tenant."
-    },
-    "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/messages/{messageId}": {
-      "schema": "#/entities/Message",
-      "description": "Secure direct communication channel."
-    },
-    "/userProfiles/{userId}/properties/{propertyId}/checklists/{checklistId}": {
-      "schema": "#/entities/PreTenancyChecklist",
-      "description": "Pre-let compliance check."
+      "description": "Audit record."
     },
     "/userProfiles/{userId}/properties/{propertyId}/maintenanceLogs/{logId}": {
       "schema": "#/entities/MaintenanceLog",
       "description": "Repair audit."
     },
-    "/userProfiles/{userId}/properties/{propertyId}/expenses/{expenseId}": {
-      "schema": "#/entities/Expense",
-      "description": "Financial record."
+    "/userProfiles/{userId}/properties/{propertyId}/documents/{docId}": {
+      "schema": "#/entities/Document",
+      "description": "Compliance doc."
     },
     "/userProfiles/{userId}/properties/{propertyId}/rentPayments/{paymentId}": {
       "schema": "#/entities/RentPayment",
       "description": "Ledger entry."
     },
-    "/userProfiles/{userId}/properties/{propertyId}/documents/{docId}": {
-      "schema": "#/entities/Document",
-      "description": "Legal/Safety compliance doc."
-    },
-    "/userProfiles/{userId}/properties/{propertyId}/inspections/{inspectionId}": {
-      "schema": "#/entities/Inspection",
-      "description": "Condition report."
-    },
-    "/userProfiles/{userId}/contractors/{contractorId}": {
-      "schema": "#/entities/Contractor",
-      "description": "Tradesperson directory."
+    "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/messages/{messageId}": {
+      "schema": "#/entities/Message",
+      "description": "Direct communication."
     }
   }
 }

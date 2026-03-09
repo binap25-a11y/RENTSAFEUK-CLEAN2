@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -26,7 +25,6 @@ import {
   ChevronRight,
   PlusCircle,
   ArrowUpRight,
-  CheckCircle2,
   UserCircle
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -130,18 +128,17 @@ export default function DashboardPage() {
     setMounted(true);
   }, []);
 
-  // Check if current user is also a tenant - Optimized discovery query
+  // Check if current user is also a tenant - Multi-role discovery
   useEffect(() => {
     if (!user || !firestore || !user.email) {
       if (!isUserLoading) setIsLoadingPortalCheck(false);
       return;
     }
     
-    // Character-perfect match for security rules logic (normalized stored email)
+    // Character-perfect matching for normalized stored email (standardized to lowercase in rules)
     const userEmail = user.email.toLowerCase().trim();
 
-    // Discovery query to find if this email exists in any tenant collection across the platform
-    // This query is authorized by the specific collectionGroup rule in firestore.rules
+    // Authorized collectionGroup query for role-detection
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
@@ -149,13 +146,12 @@ export default function DashboardPage() {
     );
 
     const unsub = onSnapshot(q, (snap) => {
-        // We only consider active tenancies for role discovery
+        // Discovery logic for active resident portal access
         const activeTenantRecord = snap.docs.find(doc => doc.data().status === 'Active');
         setIsTenant(!!activeTenantRecord);
         setIsLoadingPortalCheck(false);
     }, (error) => {
-        // Contextual error for debugging permission issues in discovery
-        // Use a standardized path for the emitter to satisfy rule checks
+        // Contextual error for debugging collection group authorization
         errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'tenants',
             operation: 'list',
@@ -200,7 +196,7 @@ export default function DashboardPage() {
     const unsubs: (() => void)[] = [];
 
     properties.forEach(prop => {
-        // Maintenance Listener
+        // Maintenance Listeners
         unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'maintenanceLogs'), 
             (snap) => {
                 const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as MaintenanceLog));
@@ -214,7 +210,7 @@ export default function DashboardPage() {
             }
         ));
 
-        // Inspections Listener
+        // Inspections Listeners
         unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'inspections'), 
             (snap) => {
                 const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Inspection));
@@ -228,7 +224,7 @@ export default function DashboardPage() {
             }
         ));
 
-        // Documents Listener
+        // Documents Listeners
         unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'documents'), 
             (snap) => {
                 const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as Document));
@@ -242,7 +238,7 @@ export default function DashboardPage() {
             }
         ));
 
-        // Rent Payments Listener
+        // Rent Payments Listeners
         unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'rentPayments'), limit(50)), 
             (snap) => {
                 const data = snap.docs.map(d => ({ id: d.id, ...d.data() } as RentPayment));
