@@ -16,12 +16,13 @@ service cloud.firestore {
     
     match /{path=**}/tenants/{tenantId} {
       // Allow residents to find their own record via discovery queries (filtered by email)
-      // Allow landlords to view their portfolio tenants (standard path or group query)
-      // Query engine requires simple equality for list authorization
-      allow list: if isSignedIn() && (
-        resource.data.email == request.auth.token.email || 
-        resource.data.userId == request.auth.uid
-      );
+      // Splitting list rules helps the Firestore query engine authorize collection group searches
+      allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
+      
+      // Allow landlords to view their portfolio tenants via discovery or group queries
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      // Individual document access
       allow get: if isSignedIn() && (
         resource.data.email == request.auth.token.email || 
         resource.data.userId == request.auth.uid
@@ -29,17 +30,13 @@ service cloud.firestore {
     }
 
     match /{path=**}/messages/{messageId} {
-      allow list, get: if isSignedIn() && (
-        resource.data.userId == request.auth.uid || 
-        resource.data.senderId == request.auth.uid
-      );
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.senderId == request.auth.uid);
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.senderId == request.auth.uid);
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      allow list, get: if isSignedIn() && (
-        resource.data.userId == request.auth.uid || 
-        resource.data.reportedBy == request.auth.uid
-      );
+      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.reportedBy == request.auth.uid);
+      allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.reportedBy == request.auth.uid);
     }
 
     // --- Hierarchical Rules (Standard Portfolio Access) ---

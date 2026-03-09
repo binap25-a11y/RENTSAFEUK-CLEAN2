@@ -181,10 +181,15 @@ export default function DocumentsPage() {
 
   return (
     <div className="flex flex-col gap-8 max-w-6xl mx-auto">
-      {/* Page Header - Professional Branding */}
-      <div className="space-y-2">
-        <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Portfolio Audit Trail</h1>
-        <p className="text-muted-foreground font-medium text-lg">Manage and track legal compliance documents across your estate.</p>
+      {/* Page Header - Professional Branding Grouped */}
+      <div className="flex flex-col gap-2 p-6 rounded-3xl bg-primary/5 border border-primary/10">
+        <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-primary text-primary-foreground">
+                <ShieldCheck className="h-6 w-6" />
+            </div>
+            <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Portfolio Audit Trail</h1>
+        </div>
+        <p className="text-muted-foreground font-medium text-lg ml-1">Manage and track legal compliance documents across your entire estate with full document history.</p>
       </div>
 
       {/* Primary Action Bar */}
@@ -263,7 +268,7 @@ export default function DocumentsPage() {
           </div>
 
           {isLoadingDocuments ? (
-            <div className="flex flex-col justify-center items-center h-64 gap-4"><Loader2 className="h-10 w-10 animate-spin text-primary opacity-50" /><p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Scanning records...</p></div>
+            <div className="flex flex-col justify-center items-center h-64 gap-4"><Loader2 className="h-10 w-10 animate-spin text-primary" /><p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Scanning records...</p></div>
           ) : !selectedPropertyId ? (
             <div className="text-center py-32 text-muted-foreground border-2 border-dashed rounded-[2rem] bg-muted/5 flex flex-col items-center justify-center gap-4 mx-2"><div className="p-6 rounded-full bg-background shadow-xl"><Filter className="h-12 w-12 text-primary/20" /></div><div><p className="font-bold text-lg text-foreground">Select a Property</p><p className="text-sm max-w-xs mx-auto mt-1">Choose a property from the list above to view its legal audit trail.</p></div></div>
           ) : !filteredDocuments?.length ? (

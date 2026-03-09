@@ -82,7 +82,8 @@
         "propertyId": { "type": "string" },
         "tenantId": { "type": "string" },
         "screeningDate": { "type": "string", "format": "date-time" },
-        "overallNotes": { "type": "string" }
+        "overallNotes": { "type": "string" },
+        "monthlyIncome": { "type": "number" }
       },
       "required": ["id", "userId", "tenantId", "screeningDate"]
     },
@@ -112,7 +113,9 @@
         "priority": { "type": "string" },
         "status": { "type": "string" },
         "reportedBy": { "type": "string" },
-        "reportedDate": { "type": "string", "format": "date-time" }
+        "reportedDate": { "type": "string", "format": "date-time" },
+        "estimatedCost": { "type": "number" },
+        "scheduledDate": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "userId", "propertyId", "title", "status"]
     },
@@ -126,6 +129,7 @@
         "title": { "type": "string" },
         "documentType": { "type": "string" },
         "fileUrl": { "type": "string" },
+        "issueDate": { "type": "string", "format": "date-time" },
         "expiryDate": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "userId", "propertyId", "title"]
@@ -139,7 +143,9 @@
         "propertyId": { "type": "string" },
         "year": { "type": "number" },
         "month": { "type": "string" },
-        "status": { "type": "string" }
+        "status": { "type": "string" },
+        "expectedAmount": { "type": "number" },
+        "amountPaid": { "type": "number" }
       },
       "required": ["id", "userId", "propertyId", "year", "month", "status"]
     },
@@ -191,6 +197,7 @@
         "id": { "type": "string" },
         "userId": { "type": "string" },
         "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
         "content": { "type": "string" },
         "timestamp": { "type": "string", "format": "date-time" }
       },

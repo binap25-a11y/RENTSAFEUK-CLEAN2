@@ -138,7 +138,7 @@ export default function DashboardPage() {
     // Character-perfect matching for normalized stored email
     const userEmail = user.email.toLowerCase().trim();
 
-    // CollectionGroup query for role-detection (authorized in firestore.rules)
+    // Discovery query to find if this email exists in any tenant collection across the platform
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
