@@ -1,7 +1,8 @@
+
 'use client';
 
 /**
- * Redundant implementation removed. 
- * Please use src/firebase/non-blocking-updates.ts for all Firestore mutation utilities.
+ * DEPRECATED: This file has been moved to non-blocking-updates.ts 
+ * to ensure unambiguous TypeScript compilation.
  */
 export {};

@@ -1,7 +1,8 @@
+
 'use client';
 
 /**
- * Redundant implementation removed. 
- * Please use src/firebase/non-blocking-login.ts for all auth utilities.
+ * DEPRECATED: This file has been moved to non-blocking-login.ts 
+ * to ensure unambiguous TypeScript compilation.
  */
 export {};

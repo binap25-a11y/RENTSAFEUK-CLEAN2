@@ -1,3 +1,4 @@
+
 /**
  * FIRESTORE SECURITY RULES
  * 
@@ -8,10 +9,6 @@
  * 
  * DATA STRUCTURE:
  * All application data is nested under the `/userProfiles/{userId}` path. 
- * - `/userProfiles/{userId}`: User profile information.
- * - `/userProfiles/{userId}/properties/{propertyId}`: Properties owned by the user.
- * - `/userProfiles/{userId}/properties/{propertyId}/[subcollection]`: Specialized data 
- *   (Tenancies, Images, Logs, etc.) belonging to a specific property.
  */
 
 rules_version = '2';
@@ -123,20 +120,27 @@ service cloud.firestore {
     }
 
     // --- COLLECTION GROUP RULES (For Cross-Portfolio Discovery) ---
+    // Rules are split into distinct statements to ensure Firestore query engine 
+    // can statically authorize collectionGroup discovery queries.
 
     match /{path=**}/tenants/{tenantId} {
-      // Optimized for collectionGroup 'list' queries
-      allow list: if isSignedIn() && (resource.data.email == request.auth.token.email.lower() || resource.data.userId == request.auth.uid);
-      allow get: if isSignedIn() && (resource.data.email == request.auth.token.email.lower() || resource.data.userId == request.auth.uid);
+      // Resident Discovery: Match by authenticated session email
+      allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
+      // Landlord Oversight: Match by authenticated session UID
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      // Detailed Read: Combined logic for single-document access
+      allow get: if isSignedIn() && (resource.data.email == request.auth.token.email || resource.data.userId == request.auth.uid);
     }
 
     match /{path=**}/messages/{messageId} {
-      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.senderId == request.auth.uid);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.senderId == request.auth.uid;
       allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.senderId == request.auth.uid);
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.reportedBy == request.auth.uid);
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.reportedBy == request.auth.uid;
       allow get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.reportedBy == request.auth.uid);
     }
   }
