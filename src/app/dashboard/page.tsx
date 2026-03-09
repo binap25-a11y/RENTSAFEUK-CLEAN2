@@ -129,17 +129,17 @@ export default function DashboardPage() {
     setMounted(true);
   }, []);
 
+  // Secure role-detection: check if user is a resident in any portfolio
   useEffect(() => {
-    if (!user || !firestore || !user.email) {
-      if (!isUserLoading) setIsLoadingPortalCheck(false);
+    if (!user || !firestore || !user.email || isUserLoading) {
+      setIsLoadingPortalCheck(false);
       return;
     }
-    
+  
     // Normalize identity for character-perfect matching in security rules
     const userEmail = user.email.toLowerCase().trim();
 
     // Discovery query to find if this email exists in any tenant collection across the platform
-    // collectionGroup queries require explicit list permissions in firestore.rules
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
@@ -158,6 +158,7 @@ export default function DashboardPage() {
         }));
         setIsLoadingPortalCheck(false);
     });
+
     return () => unsub();
   }, [user, firestore, isUserLoading]);
 
@@ -174,8 +175,8 @@ export default function DashboardPage() {
   const [documentsMap, setDocumentsMap] = useState<Record<string, Document[]>>({});
   const [rentPaymentsMap, setRentPaymentsMap] = useState<Record<string, RentPayment[]>>({});
   
-  const [currentYear, setCurrentYear] = useState<number>(new Date().getFullYear());
-  const [currentMonth, setCurrentMonth] = useState<string>(format(new Date(), 'MMMM'));
+  const [currentYear] = useState<number>(new Date().getFullYear());
+  const [currentMonth] = useState<string>(format(new Date(), 'MMMM'));
 
   const properties = useMemo(() => {
     const activeStatuses = ['Vacant', 'Occupied', 'Under Maintenance'];
@@ -329,7 +330,7 @@ export default function DashboardPage() {
     const occupiedPropertiesCount = properties.filter(p => p.status === 'Occupied').length;
     const monthlyPayments = allRentPayments.filter(p => p.year === currentYear && p.month === currentMonth);
     const statusCounts: Record<'Paid' | 'Partially Paid' | 'Unpaid', number> = { 'Paid': 0, 'Partially Paid': 0, 'Unpaid': 0 };
-    monthlyPayments.forEach(payment => { if (statusCounts[payment.status] !== undefined) statusCounts[payment.status]++; });
+    monthlyPayments.forEach(payment => { if (statusCounts[payment.status as keyof typeof statusCounts] !== undefined) statusCounts[payment.status as keyof typeof statusCounts]++; });
     const nonPendingCount = statusCounts.Paid + statusCounts['Partially Paid'] + statusCounts.Unpaid;
     const pendingCount = Math.max(0, occupiedPropertiesCount - nonPendingCount);
     return [

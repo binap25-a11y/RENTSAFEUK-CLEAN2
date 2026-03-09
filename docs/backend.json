@@ -159,7 +159,7 @@
         "propertyId": { "type": "string" },
         "year": { "type": "number" },
         "month": { "type": "string" },
-        "status": { "type": "string" },
+        "status": { "type": "string", "enum": ["Paid", "Partially Paid", "Unpaid", "Pending"] },
         "expectedAmount": { "type": "number" },
         "amountPaid": { "type": "number" }
       },
