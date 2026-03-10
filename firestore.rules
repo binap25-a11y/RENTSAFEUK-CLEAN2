@@ -9,11 +9,6 @@ service cloud.firestore {
      * This ruleset enforces a strict User-Ownership model. All application data is 
      * nested under a specific user's profile (/userProfiles/{userId}/...), ensuring 
      * that authorization is derived directly from the URL path for landlords.
-     * 
-     * Tenant Discovery:
-     * The application uses collectionGroup queries to allow tenants to find their 
-     * associated property by email. Access is granted based on the email in their 
-     * authentication token.
      */
 
     // --- Helper Functions ---
@@ -31,12 +26,12 @@ service cloud.firestore {
     /**
      * Checks if the user is the tenant associated with the record (by email).
      * Uses direct token matching for static provability in collection group queries.
-     * Logic: email in DB must be saved lowercase for this to work case-insensitively.
+     * Note: App logic ensures emails are saved lowercase for case-insensitive matching.
      */
     function isAuthorizedTenant(data) {
       return isSignedIn() && 
              data.email != null && 
-             data.email == request.auth.token.email.lower();
+             data.email == request.auth.token.email;
     }
 
     // --- Rules ---
@@ -118,12 +113,12 @@ service cloud.firestore {
 
     /**
      * @description Allows tenants to discover their own record via collectionGroup search.
-     * Rules must be top-level and statically provable by query filters.
-     * Data integrity requirement: emails MUST be saved lowercase in Firestore.
+     * Rules must be top-level and statically provable.
+     * Data integrity: emails are normalized lowercase during ingestion.
      */
     match /{path=**}/tenants/{tenantId} {
-      allow list: if isSignedIn() && request.auth.token.email != null && resource.data.email == request.auth.token.email.lower();
-      allow get: if isSignedIn() && request.auth.token.email != null && resource.data.email == request.auth.token.email.lower();
+      allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
+      allow get: if isSignedIn() && resource.data.email == request.auth.token.email;
     }
 
     /**

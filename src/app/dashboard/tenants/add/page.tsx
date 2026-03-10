@@ -216,8 +216,9 @@ export default function AddTenantPage() {
           description: `Portfolio synchronized: ${data.name} is now the active tenant.`,
         });
         
-        // Return to dashboard
+        // Return to dashboard and force a refresh
         router.push('/dashboard');
+        router.refresh();
     } catch (serverError: any) {
         console.error('Tenant assignment failed:', serverError);
         const permissionError = new FirestorePermissionError({

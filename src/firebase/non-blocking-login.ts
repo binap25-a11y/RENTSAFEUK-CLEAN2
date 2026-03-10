@@ -9,7 +9,6 @@ import {
 
 /**
  * @fileOverview Core authentication utilities implemented as non-blocking functions.
- * Consolidated into a singular stable .ts file to resolve module resolution ambiguity.
  */
 
 /**
