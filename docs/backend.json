@@ -1,151 +1,499 @@
-
 {
   "entities": {
-    "UserProfile": {
-      "title": "UserProfile",
-      "description": "Landlord profile root containing session and display settings.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "displayName": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "idleTimeoutMinutes": { "type": "number", "default": 30 }
-      },
-      "required": ["id", "email"]
-    },
     "Property": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Property",
-      "description": "Physical real estate unit managed by a landlord.",
       "type": "object",
+      "description": "Represents a single rental property managed by the user.",
       "properties": {
-        "id": { "type": "string" },
-        "userId": { "type": "string" },
-        "address": {
-          "type": "object",
-          "properties": {
-            "nameOrNumber": { "type": "string" },
-            "street": { "type": "string" },
-            "city": { "type": "string" },
-            "county": { "type": "string" },
-            "postcode": { "type": "string" }
-          }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Property entity."
         },
-        "propertyType": { "type": "string", "enum": ["House", "Flat", "HMO", "Bungalow", "Studio"] },
-        "status": { "type": "string", "enum": ["Vacant", "Occupied", "Under Maintenance", "Deleted"] },
-        "bedrooms": { "type": "number" },
-        "bathrooms": { "type": "number" },
-        "imageUrl": { "type": "string" },
-        "additionalImageUrls": { "type": "array", "items": { "type": "string" } },
-        "purchasePrice": { "type": "number" },
-        "currentValuation": { "type": "number" },
-        "tenancy": {
-          "type": "object",
-          "properties": {
-            "monthlyRent": { "type": "number" },
-            "depositAmount": { "type": "number" },
-            "depositScheme": { "type": "string" }
-          }
+        "address": {
+          "type": "string",
+          "description": "The full postal address of the property."
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of dwelling (e.g., Flat, House, HMO)."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current occupancy or maintenance status of the property."
+        },
+        "numberOfBedrooms": {
+          "type": "number",
+          "description": "The total number of bedrooms in the property."
+        },
+        "numberOfBathrooms": {
+          "type": "number",
+          "description": "The total number of bathrooms in the property."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the property record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the property record was last updated.",
+          "format": "date-time"
         }
       },
-      "required": ["id", "userId", "address", "status"]
+      "required": [
+        "id",
+        "address",
+        "type",
+        "status",
+        "numberOfBedrooms",
+        "numberOfBathrooms",
+        "createdAt"
+      ]
     },
     "Tenant": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Tenant",
-      "description": "A tenant assigned to a property.",
       "type": "object",
+      "description": "Represents an individual tenant who occupies or has occupied a property.",
       "properties": {
-        "id": { "type": "string" },
-        "userId": { "type": "string" },
-        "propertyId": { "type": "string" },
-        "name": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "telephone": { "type": "string" },
-        "status": { "type": "string", "enum": ["Active", "Archived"] },
-        "rentDueDay": { "type": "number" },
-        "monthlyRent": { "type": "number" },
-        "tenancyStartDate": { "type": "string", "format": "date-time" },
-        "tenancyEndDate": { "type": "string", "format": "date-time" },
-        "lastReminderSent": { "type": "string", "format": "date-time" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Tenant entity."
+        },
+        "name": {
+          "type": "string",
+          "description": "The full name of the tenant."
+        },
+        "email": {
+          "type": "string",
+          "description": "The email address of the tenant.",
+          "format": "email"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "The primary contact telephone number for the tenant."
+        },
+        "notes": {
+          "type": "string",
+          "description": "General notes or remarks about the tenant."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the tenant record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the tenant record was last updated.",
+          "format": "date-time"
+        }
       },
-      "required": ["id", "userId", "propertyId", "name", "email", "status"]
+      "required": [
+        "id",
+        "name",
+        "email",
+        "phoneNumber",
+        "createdAt"
+      ]
     },
-    "MaintenanceLog": {
-      "title": "MaintenanceLog",
-      "description": "Recorded repair issue reported by tenant or landlord.",
+    "Tenancy": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Tenancy",
       "type": "object",
+      "description": "Represents an agreement between a tenant(s) and a property for a specific period.",
       "properties": {
-        "id": { "type": "string" },
-        "userId": { "type": "string" },
-        "propertyId": { "type": "string" },
-        "title": { "type": "string" },
-        "description": { "type": "string" },
-        "category": { "type": "string" },
-        "priority": { "type": "string", "enum": ["Emergency", "Urgent", "Routine", "Low"] },
-        "status": { "type": "string", "enum": ["Open", "In Progress", "Completed", "Cancelled"] },
-        "reportedBy": { "type": "string" },
-        "reportedDate": { "type": "string", "format": "date-time" },
-        "photoUrls": { "type": "array", "items": { "type": "string" } },
-        "contractorName": { "type": "string" },
-        "estimatedCost": { "type": "number" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Tenancy entity."
+        },
+        "propertyId": {
+          "type": "string",
+          "description": "Reference to the Property associated with this tenancy. (Relationship: Property 1:N Tenancy)"
+        },
+        "tenantIds": {
+          "type": "array",
+          "description": "References to Tenants associated with this tenancy. (Relationship: Tenancy N:N Tenant)",
+          "items": {
+            "type": "string"
+          }
+        },
+        "startDate": {
+          "type": "string",
+          "description": "The official start date of the tenancy agreement.",
+          "format": "date"
+        },
+        "endDate": {
+          "type": "string",
+          "description": "The official end date of the tenancy agreement.",
+          "format": "date"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Specific notes or conditions related to this tenancy agreement."
+        },
+        "isActive": {
+          "type": "boolean",
+          "description": "Indicates if the tenancy is currently active based on its start and end dates."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the tenancy record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the tenancy record was last updated.",
+          "format": "date-time"
+        }
       },
-      "required": ["id", "userId", "propertyId", "title", "status", "priority"]
+      "required": [
+        "id",
+        "propertyId",
+        "tenantIds",
+        "startDate",
+        "endDate",
+        "createdAt"
+      ]
+    },
+    "MaintenanceRequest": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "MaintenanceRequest",
+      "type": "object",
+      "description": "Represents a request or issue related to property maintenance.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the MaintenanceRequest entity."
+        },
+        "propertyId": {
+          "type": "string",
+          "description": "Reference to the Property where maintenance is required. (Relationship: Property 1:N MaintenanceRequest)"
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the maintenance issue."
+        },
+        "urgency": {
+          "type": "string",
+          "description": "The level of urgency for the maintenance request (e.g., Low, Medium, High)."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the maintenance request (e.g., Open, In Progress, Completed, Cancelled)."
+        },
+        "reportedAt": {
+          "type": "string",
+          "description": "Timestamp when the maintenance request was reported.",
+          "format": "date-time"
+        },
+        "scheduledDate": {
+          "type": "string",
+          "description": "Optional timestamp for when maintenance work is scheduled.",
+          "format": "date-time"
+        },
+        "completedAt": {
+          "type": "string",
+          "description": "Optional timestamp when the maintenance request was completed.",
+          "format": "date-time"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Internal notes regarding the maintenance resolution or progress."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the maintenance request record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the maintenance request record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "propertyId",
+        "description",
+        "urgency",
+        "status",
+        "reportedAt",
+        "createdAt"
+      ]
+    },
+    "Inspection": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Inspection",
+      "type": "object",
+      "description": "Represents a scheduled or completed inspection for a property.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Inspection entity."
+        },
+        "propertyId": {
+          "type": "string",
+          "description": "Reference to the Property for which the inspection is scheduled. (Relationship: Property 1:N Inspection)"
+        },
+        "scheduledDateTime": {
+          "type": "string",
+          "description": "The scheduled date and time for the inspection.",
+          "format": "date-time"
+        },
+        "type": {
+          "type": "string",
+          "description": "The type of inspection (e.g., Move-in, Mid-term, Annual)."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the inspection (e.g., Scheduled, Completed, Cancelled)."
+        },
+        "notes": {
+          "type": "string",
+          "description": "Notes or findings from the inspection."
+        },
+        "completedAt": {
+          "type": "string",
+          "description": "Optional timestamp when the inspection was completed.",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the inspection record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the inspection record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "propertyId",
+        "scheduledDateTime",
+        "type",
+        "status",
+        "createdAt"
+      ]
     },
     "Document": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Document",
-      "description": "Compliance or legal file record.",
       "type": "object",
+      "description": "Represents a digital document or image associated with properties, tenancies, or related activities.",
       "properties": {
-        "id": { "type": "string" },
-        "userId": { "type": "string" },
-        "propertyId": { "type": "string" },
-        "title": { "type": "string" },
-        "documentType": { "type": "string" },
-        "expiryDate": { "type": "string", "format": "date-time" },
-        "fileUrl": { "type": "string" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Document entity."
+        },
+        "propertyId": {
+          "type": "string",
+          "description": "Optional reference to the Property this document is associated with. (Relationship: Property 1:N Document)"
+        },
+        "tenancyId": {
+          "type": "string",
+          "description": "Optional reference to the Tenancy this document is associated with. (Relationship: Tenancy 1:N Document)"
+        },
+        "maintenanceRequestId": {
+          "type": "string",
+          "description": "Optional reference to the MaintenanceRequest this document is associated with (e.g., invoice, quote). (Relationship: MaintenanceRequest 1:N Document)"
+        },
+        "inspectionId": {
+          "type": "string",
+          "description": "Optional reference to the Inspection this document is associated with (e.g., report). (Relationship: Inspection 1:N Document)"
+        },
+        "filename": {
+          "type": "string",
+          "description": "The original filename of the uploaded document."
+        },
+        "fileType": {
+          "type": "string",
+          "description": "The MIME type of the file (e.g., 'image/jpeg', 'application/pdf')."
+        },
+        "fileUrl": {
+          "type": "string",
+          "description": "The URL or path where the document is stored.",
+          "format": "uri"
+        },
+        "description": {
+          "type": "string",
+          "description": "A brief description or context for the document."
+        },
+        "category": {
+          "type": "string",
+          "description": "Categorization of the document's purpose (e.g., PropertyImage, TenancyAgreement, Invoice)."
+        },
+        "uploadedAt": {
+          "type": "string",
+          "description": "Timestamp when the document was uploaded.",
+          "format": "date-time"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the document record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the document record was last updated.",
+          "format": "date-time"
+        }
       },
-      "required": ["id", "userId", "propertyId", "title", "documentType", "expiryDate"]
-    },
-    "Message": {
-      "title": "Message",
-      "description": "Secure communication item in a tenant thread.",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "senderId": { "type": "string" },
-        "senderName": { "type": "string" },
-        "content": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" }
-      },
-      "required": ["id", "senderId", "content", "timestamp"]
+      "required": [
+        "id",
+        "filename",
+        "fileType",
+        "fileUrl",
+        "description",
+        "category",
+        "uploadedAt",
+        "createdAt"
+      ]
     }
   },
   "auth": {
-    "providers": ["password", "google"]
+    "providers": [
+      "password",
+      "anonymous"
+    ]
   },
   "firestore": {
-    "/userProfiles/{userId}": {
-      "schema": { "$ref": "#/entities/UserProfile" },
-      "description": "Profile root."
-    },
-    "/userProfiles/{userId}/properties/{propertyId}": {
-      "schema": { "$ref": "#/entities/Property" },
-      "description": "Rental units."
-    },
-    "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}": {
-      "schema": { "$ref": "#/entities/Tenant" },
-      "description": "Tenant assignment records."
-    },
-    "/userProfiles/{userId}/properties/{propertyId}/maintenanceLogs/{logId}": {
-      "schema": { "$ref": "#/entities/MaintenanceLog" },
-      "description": "Repair logs."
-    },
-    "/userProfiles/{userId}/properties/{propertyId}/documents/{docId}": {
-      "schema": { "$ref": "#/entities/Document" },
-      "description": "Legal docs."
-    },
-    "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/messages/{msgId}": {
-      "schema": { "$ref": "#/entities/Message" },
-      "description": "Messages."
-    }
+    "structure": [
+      {
+        "path": "users/{ownerId}/properties/{propertyId}",
+        "definition": {
+          "entityName": "Property",
+          "schema": {
+            "$ref": "#/backend/entities/Property"
+          },
+          "description": "Stores details for each rental property managed by a specific user (landlord). The `ownerId` in the path ensures authorization independence and path-based ownership.",
+          "params": [
+            {
+              "name": "ownerId",
+              "description": "The unique identifier of the user (landlord) who owns and manages these properties."
+            },
+            {
+              "name": "propertyId",
+              "description": "The unique identifier for a specific property."
+            }
+          ]
+        }
+      },
+      {
+        "path": "users/{ownerId}/tenants/{tenantId}",
+        "definition": {
+          "entityName": "Tenant",
+          "schema": {
+            "$ref": "#/backend/entities/Tenant"
+          },
+          "description": "Stores master records for tenants managed by a specific user. Placed directly under the user's path to enable simple collection queries for all of a user's tenants, resolving collectionGroup query issues. The `ownerId` in the path ensures authorization independence and path-based ownership.",
+          "params": [
+            {
+              "name": "ownerId",
+              "description": "The unique identifier of the user (landlord) who manages these tenants."
+            },
+            {
+              "name": "tenantId",
+              "description": "The unique identifier for a specific tenant."
+            }
+          ]
+        }
+      },
+      {
+        "path": "users/{ownerId}/properties/{propertyId}/tenancies/{tenancyId}",
+        "definition": {
+          "entityName": "Tenancy",
+          "schema": {
+            "$ref": "#/backend/entities/Tenancy"
+          },
+          "description": "Stores details of tenancy agreements, linking specific tenants to a property. Inherits ownership from the `ownerId` and `propertyId` in its hierarchical path, ensuring authorization independence.",
+          "params": [
+            {
+              "name": "ownerId",
+              "description": "The unique identifier of the user (landlord) who owns this tenancy."
+            },
+            {
+              "name": "propertyId",
+              "description": "The unique identifier of the property associated with this tenancy."
+            },
+            {
+              "name": "tenancyId",
+              "description": "The unique identifier for a specific tenancy agreement."
+            }
+          ]
+        }
+      },
+      {
+        "path": "users/{ownerId}/properties/{propertyId}/maintenanceRequests/{maintenanceRequestId}",
+        "definition": {
+          "entityName": "MaintenanceRequest",
+          "schema": {
+            "$ref": "#/backend/entities/MaintenanceRequest"
+          },
+          "description": "Stores maintenance requests specific to a property. Inherits ownership from the `ownerId` and `propertyId` in its hierarchical path, ensuring authorization independence.",
+          "params": [
+            {
+              "name": "ownerId",
+              "description": "The unique identifier of the user (landlord) who owns this maintenance request."
+            },
+            {
+              "name": "propertyId",
+              "description": "The unique identifier of the property to which this maintenance request pertains."
+            },
+            {
+              "name": "maintenanceRequestId",
+              "description": "The unique identifier for a specific maintenance request."
+            }
+          ]
+        }
+      },
+      {
+        "path": "users/{ownerId}/properties/{propertyId}/inspections/{inspectionId}",
+        "definition": {
+          "entityName": "Inspection",
+          "schema": {
+            "$ref": "#/backend/entities/Inspection"
+          },
+          "description": "Stores records of property inspections. Inherits ownership from the `ownerId` and `propertyId` in its hierarchical path, ensuring authorization independence.",
+          "params": [
+            {
+              "name": "ownerId",
+              "description": "The unique identifier of the user (landlord) who owns this inspection record."
+            },
+            {
+              "name": "propertyId",
+              "description": "The unique identifier of the property for which this inspection is scheduled/completed."
+            },
+            {
+              "name": "inspectionId",
+              "description": "The unique identifier for a specific inspection record."
+            }
+          ]
+        }
+      },
+      {
+        "path": "users/{ownerId}/documents/{documentId}",
+        "definition": {
+          "entityName": "Document",
+          "schema": {
+            "$ref": "#/backend/entities/Document"
+          },
+          "description": "Stores all digital documents for a user, such as property images, agreements, etc. Documents contain foreign keys (propertyId, tenancyId, etc.) to link them to related entities. The `ownerId` in the path ensures authorization independence and path-based ownership, enabling easy `list` operations for a user's documents.",
+          "params": [
+            {
+              "name": "ownerId",
+              "description": "The unique identifier of the user (landlord) who owns these documents."
+            },
+            {
+              "name": "documentId",
+              "description": "The unique identifier for a specific document."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The recommended Firestore structure is designed to adhere strictly to the CORE DESIGN PRINCIPLES and DESIGN STRATEGY MANDATES, prioritizing security, scalability, and debuggability for a single-landlord application. The primary strategy employed is **Path-Based Ownership** and **Structural Segregation**.\n\n**Authorization Independence (CRITICAL)** is achieved by rooting all user-specific data under `/users/{ownerId}`. This places the `ownerId` (which corresponds to `request.auth.uid`) directly in the path for every collection and subcollection. Consequently, Firestore Security Rules will not require any `get()` operations to verify ownership, making rules atomic, simple (`if request.auth.uid == ownerId`), and highly performant. For example, a `Property` document at `users/{ownerId}/properties/{propertyId}` is implicitly owned by `ownerId` from the path, removing any dependency on parent document data for authorization.\n\n**QAPs (Rules are not Filters)** are fully supported because the data is organized by ownership. When a user requests a `list` operation on any of their top-level collections (e.g., `/users/{ownerId}/properties`, `/users/{ownerId}/tenants`, `/users/{ownerId}/documents`), the `ownerId` in the path perfectly aligns with `request.auth.uid`. This means the security rules can grant `allow list` access based solely on the path's `ownerId` matching the authenticated user's UID, ensuring that only the requesting user's data is returned, without the rules needing to act as filters.\n\n**Addressing the `tenants (collectionGroup)` error:** The original error indicates an attempt to perform a `list` operation using a collection group query on 'tenants'. This typically happens when 'tenant' subcollections are nested under various parent documents (e.g., `properties/{propertyId}/tenants/{tenantId}`), and the client attempts to query all tenants across all properties. My recommended structure addresses this by creating a dedicated, user-scoped collection for `Tenants` at `users/{ownerId}/tenants/{tenantId}`. This design makes a collection group query on 'tenants' unnecessary for a single landlord's data. Instead, the application should perform a standard collection query (e.g., `firestore.collection('users').doc(auth.uid).collection('tenants').get()`), which is easily secured by the path-based authorization. This resolves the permission error by aligning the data structure with a straightforward collection query that adheres to the user's explicit ownership.\n\n**Structural Segregation** is maintained by ensuring that documents within any given collection (e.g., `properties`, `tenants`, `documents`) all share the same security posture: they are owned by the `ownerId` in the path. Even for `Document` entities, which can be related to multiple other entities, they are placed in a user-scoped collection (`users/{ownerId}/documents`) where their authorization is simply tied to the `ownerId`, rather than attempting to inherit complex, potentially conflicting permissions from multiple possible parent entities. Relationships between entities are managed through explicit foreign key IDs (e.g., `propertyId`, `tenantIds` in `Tenancy`, `propertyId` in `MaintenanceRequest` and `Inspection`, and various `_Id` fields in `Document`), which are used for querying and data integrity, not for authorization checks by security rules."
   }
 }
