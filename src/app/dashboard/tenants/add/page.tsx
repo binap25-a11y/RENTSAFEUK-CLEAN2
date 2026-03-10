@@ -221,7 +221,7 @@ export default function AddTenantPage() {
         toast({
           variant: 'destructive',
           title: 'Sync Error',
-          description: 'Tenant was added but property status update failed. Please update manually.',
+          description: 'Tenant record was saved but property status failed to update.',
         });
     } finally {
         setIsSubmitting(false);
@@ -238,7 +238,7 @@ export default function AddTenantPage() {
       <CardHeader className="bg-primary/5 border-b border-primary/10">
         <CardTitle className="text-2xl font-headline text-primary">Assign New Tenant</CardTitle>
         <CardDescription>
-          Record tenant identity and tenancy terms. Email will be normalized to lowercase for secure portal access.
+          Record tenant identity and tenancy terms. Identity is secured via email normalization.
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-6">
@@ -384,7 +384,7 @@ export default function AddTenantPage() {
                     <FormItem>
                         <FormLabel className="font-bold flex items-center gap-2">
                             <CalendarDays className="h-4 w-4 text-primary" />
-                            Rent Due Day (Monthly)
+                            Rent Due Day
                         </FormLabel>
                         <Select onValueChange={field.onChange} value={String(field.value)}>
                             <FormControl>
@@ -457,7 +457,7 @@ export default function AddTenantPage() {
                     <Textarea
                       id="tenant-notes"
                       name="notes"
-                      placeholder="Special requirements, pets allowed, reference notes..."
+                      placeholder="Special requirements, pets, or reference notes..."
                       className="resize-none min-h-[100px] rounded-xl"
                       {...field}
                     />

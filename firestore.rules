@@ -17,21 +17,17 @@ service cloud.firestore {
     }
 
     // --- COLLECTION GROUP RULES (CRITICAL) ---
-    // These must be defined outside nested paths to allow global identity discovery.
-    // Optimization: Direct field comparisons are statically provable for query optimization.
-
-    /**
-     * @description Allows tenants to discover their own record across any user profile.
-     * Use direct equality for optimized collection group query support.
-     */
+    // Optimization: Direct field comparisons against normalized tokens are statically provable.
+    
     match /{path=**}/tenants/{tenantId} {
-      allow list: if isSignedIn() && request.auth.token.email != null && resource.data.email == request.auth.token.email;
-      allow get: if isSignedIn() && request.auth.token.email != null && (resource.data.email == request.auth.token.email || resource.data.email == request.auth.token.email.lower());
+      /**
+       * @description Allows tenants to discover their own record via email handshake.
+       * The check against .lower() ensures casing differences between auth and DB don't block access.
+       */
+      allow list: if isSignedIn() && request.auth.token.email != null && (resource.data.email == request.auth.token.email.lower() || resource.data.email == request.auth.token.email);
+      allow get: if isSignedIn() && request.auth.token.email != null && (resource.data.email == request.auth.token.email.lower() || resource.data.email == request.auth.token.email);
     }
 
-    /**
-     * @description Shared access for communications and maintenance logs.
-     */
     match /{path=**}/messages/{messageId} {
        allow read, write: if isSignedIn();
     }
@@ -45,7 +41,6 @@ service cloud.firestore {
 
     /**
      * @description Rules for user-specific data under the userProfiles root.
-     * @path /userProfiles/{userId}
      */
     match /userProfiles/{userId} {
       allow get, list, create, update, delete: if isOwner(userId);
@@ -62,7 +57,7 @@ service cloud.firestore {
         match /tenants/{tenantId} {
           allow read, write: if isOwner(userId);
           // Individual document access for the tenant themselves.
-          allow get: if isSignedIn() && (resource.data.email == request.auth.token.email || resource.data.email == request.auth.token.email.lower());
+          allow get: if isSignedIn() && (resource.data.email == request.auth.token.email.lower() || resource.data.email == request.auth.token.email);
 
           match /messages/{messageId} {
              allow read, write: if isOwner(userId) || (isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email.lower());

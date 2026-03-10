@@ -171,17 +171,7 @@ export default function DashboardPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoadingProps, setIsLoadingProps] = useState(true);
 
-  // 1. Heuristic Timeout: Allows landlords to proceed even if tenant discovery is slow or indexing.
-  useEffect(() => {
-    const timer = setTimeout(() => {
-        if (isLoadingPortalCheck || isIndexBuilding) {
-            setHasHeuristicTimeout(true);
-        }
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, [isLoadingPortalCheck, isIndexBuilding]);
-
-  // 2. Discover Tenant Role
+  // Discovery Heuristic: Ensures redirection happens as soon as a tenant record is found.
   useEffect(() => {
     if (!user || !firestore || !user.email) {
       setIsLoadingPortalCheck(false);
@@ -199,7 +189,9 @@ export default function DashboardPage() {
       const activeTenant = snap.docs.find(d => d.data().status === 'Active');
       if (activeTenant) {
           setIsTenant(true);
-          router.push('/tenant/dashboard');
+          router.replace('/tenant/dashboard');
+      } else {
+          setIsTenant(false);
       }
       setIsLoadingPortalCheck(false);
       setIsIndexBuilding(false); 
@@ -214,7 +206,15 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore, router]);
 
-  // 3. Fetch Properties (Landlord Role)
+  // Loading safety timeout
+  useEffect(() => {
+    const timer = setTimeout(() => {
+        setHasHeuristicTimeout(true);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Fetch Properties (Landlord Role)
   useEffect(() => {
     if (!user || !firestore) return;
     
@@ -241,9 +241,14 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
+  // Redirection bypass: If we know it's a tenant, don't wait for landlords checks.
+  useEffect(() => {
+    if (isTenant) {
+        router.replace('/tenant/dashboard');
+    }
+  }, [isTenant, router]);
+
   const isLandlordKnown = properties.length > 0;
-  
-  // Revised Global Loading: Loader disappears if (Auth is done AND (Handshake done OR Timeout triggered)).
   const isGlobalLoading = !isLandlordKnown && !isTenant && (isUserLoading || ((isLoadingPortalCheck || isIndexBuilding) && !hasHeuristicTimeout));
 
   if (isGlobalLoading) {
