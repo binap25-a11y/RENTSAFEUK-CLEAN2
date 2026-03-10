@@ -13,7 +13,6 @@ import { getStorage } from 'firebase/storage';
 
 /**
  * Initializes the Firebase Client SDK.
- * Ensures services are only initialized once on the client.
  */
 export function initializeFirebase() {
   const firebaseApp: FirebaseApp = getApps().length === 0 
@@ -41,7 +40,7 @@ export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 
-// Explicit Utility Exports from .ts files to ensure stable resolution
+// Utility Exports
 export { 
   initiateAnonymousSignIn, 
   createUserNonBlocking, 

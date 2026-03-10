@@ -112,23 +112,25 @@ service cloud.firestore {
     }
 
     // --- Optimized collectionGroup Rules ---
-    // Unified rules optimized for identity-based and ownership-based provability.
+    // Rules optimized for identity-based and ownership-based provability.
 
     match /{path=**}/tenants/{tenantId} {
-      // Split list rules to ensure Firestore analyzer can prove authorization via query filters
-      allow list: if isSignedIn() && resource.data.email == request.auth.token.email.lower();
+      // Allow role-discovery by email (for residents)
+      allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
+      // Allow portfolio oversight (for landlords)
       allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
       
       allow get: if isSignedIn() && (
-        resource.data.email == request.auth.token.email.lower() || 
+        resource.data.email == request.auth.token.email || 
         resource.data.userId == request.auth.uid
       );
     }
 
     match /{path=**}/messages/{messageId} {
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow list: if isSignedIn() && resource.data.senderId == request.auth.uid;
-      
+      allow list: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.senderId == request.auth.uid
+      );
       allow get: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
         resource.data.senderId == request.auth.uid
@@ -137,9 +139,10 @@ service cloud.firestore {
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow list: if isSignedIn() && resource.data.reportedBy == request.auth.uid;
-      
+      allow list: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.reportedBy == request.auth.uid
+      );
       allow get: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
         resource.data.reportedBy == request.auth.uid

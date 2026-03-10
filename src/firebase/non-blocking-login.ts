@@ -44,6 +44,6 @@ export function signInNonBlocking(
   });
 }
 
-// Aliases for compatibility
+// Aliases for compatibility across the application
 export const initiateEmailSignUp = createUserNonBlocking;
 export const initiateEmailSignIn = signInNonBlocking;

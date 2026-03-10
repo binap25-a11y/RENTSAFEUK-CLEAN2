@@ -171,7 +171,7 @@ export default function DashboardPage() {
     }
 
     const email = user.email.toLowerCase().trim();
-    // Discovery query to find if this email exists in any tenant collection
+    // Discovery query to identify resident roles
     const tenantsQuery = query(
       collectionGroup(firestore, 'tenants'),
       where('email', '==', email),
@@ -183,8 +183,7 @@ export default function DashboardPage() {
       setIsTenant(!!activeTenant);
       setIsLoadingPortalCheck(false);
     }, (error) => {
-      console.error("Discovery query failed:", error.message);
-      // Soft fail: default to landlord view if discovery restricted
+      console.error("Role discovery query failed:", error.message);
       setIsTenant(false);
       setIsLoadingPortalCheck(false);
     });
