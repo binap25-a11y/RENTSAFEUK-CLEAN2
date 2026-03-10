@@ -16,25 +16,17 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /**
-     * Helper to get normalized email from token.
-     * Enforces lowercase for consistent security matching.
-     */
-    function getAuthEmail() {
-      return request.auth.token.email.lower();
-    }
-
     // --- COLLECTION GROUP RULES (CRITICAL) ---
     // These must be defined outside nested paths to allow global identity discovery.
     // Optimization: Direct field comparisons are statically provable for query optimization.
 
     /**
      * @description Allows tenants to discover their own record across any user profile.
-     * Rules use direct equality for optimized collection group query support.
+     * Use direct equality for optimized collection group query support.
      */
     match /{path=**}/tenants/{tenantId} {
-      allow list: if isSignedIn() && request.auth.token.email != null && resource.data.email == request.auth.token.email.lower();
-      allow get: if isSignedIn() && request.auth.token.email != null && resource.data.email == request.auth.token.email.lower();
+      allow list: if isSignedIn() && request.auth.token.email != null && resource.data.email == request.auth.token.email;
+      allow get: if isSignedIn() && request.auth.token.email != null && (resource.data.email == request.auth.token.email || resource.data.email == request.auth.token.email.lower());
     }
 
     /**
@@ -70,7 +62,7 @@ service cloud.firestore {
         match /tenants/{tenantId} {
           allow read, write: if isOwner(userId);
           // Individual document access for the tenant themselves.
-          allow get: if isSignedIn() && resource.data.email == request.auth.token.email.lower();
+          allow get: if isSignedIn() && (resource.data.email == request.auth.token.email || resource.data.email == request.auth.token.email.lower());
 
           match /messages/{messageId} {
              allow read, write: if isOwner(userId) || (isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email.lower());

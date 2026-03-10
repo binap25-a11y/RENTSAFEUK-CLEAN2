@@ -171,15 +171,15 @@ export default function DashboardPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoadingProps, setIsLoadingProps] = useState(true);
 
-  // 1. Heuristic Timeout: Reduced to 1.5s for faster role determination
+  // 1. Heuristic Timeout: Allows landlords to proceed even if tenant discovery is slow or indexing.
   useEffect(() => {
     const timer = setTimeout(() => {
-        if (isLoadingPortalCheck) {
+        if (isLoadingPortalCheck || isIndexBuilding) {
             setHasHeuristicTimeout(true);
         }
     }, 1500);
     return () => clearTimeout(timer);
-  }, [isLoadingPortalCheck]);
+  }, [isLoadingPortalCheck, isIndexBuilding]);
 
   // 2. Discover Tenant Role
   useEffect(() => {
@@ -188,12 +188,11 @@ export default function DashboardPage() {
       return;
     }
 
-    // Strict email normalization for identity discovery
     const email = user.email.toLowerCase().trim();
     const tenantsQuery = query(
       collectionGroup(firestore, 'tenants'),
       where('email', '==', email),
-      limit(1) // We only need 1 match to confirm identity
+      limit(1)
     );
 
     const unsub = onSnapshot(tenantsQuery, (snap) => {
@@ -206,12 +205,8 @@ export default function DashboardPage() {
       setIsIndexBuilding(false); 
     }, (error) => {
       const msg = error.message.toLowerCase();
-      // Handle cloud indexing wait state
       if (msg.includes('index') || error.code === 'failed-precondition') {
         setIsIndexBuilding(true);
-      } else {
-        // Log contextual permission error without component crash
-        console.warn("Tenant identity check restricted by security policy.");
       }
       setIsLoadingPortalCheck(false);
     });
@@ -246,11 +241,10 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // "Fast Path": If we have properties, we are a landlord. Don't show the hang screen.
   const isLandlordKnown = properties.length > 0;
   
-  // Show global loading if we're completely blind AND haven't timed out into landlord mode yet.
-  const isGlobalLoading = !isLandlordKnown && !isTenant && (isUserLoading || (isLoadingPortalCheck && !hasHeuristicTimeout) || isIndexBuilding);
+  // Revised Global Loading: Loader disappears if (Auth is done AND (Handshake done OR Timeout triggered)).
+  const isGlobalLoading = !isLandlordKnown && !isTenant && (isUserLoading || ((isLoadingPortalCheck || isIndexBuilding) && !hasHeuristicTimeout));
 
   if (isGlobalLoading) {
     return (
