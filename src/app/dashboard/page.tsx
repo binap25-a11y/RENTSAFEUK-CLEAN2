@@ -1,8 +1,7 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useUser, useAuth, useFirestore } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { collection, query, where, onSnapshot, collectionGroup, limit } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -270,7 +269,7 @@ export default function DashboardPage() {
           </p>
         </div>
         
-        {/* Verification Hub - Integrated into Dashboard */}
+        {/* Tenant Verification Hub - Integrated into Dashboard */}
         {(isTenant || isIndexBuilding) && (
           <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-muted/30 border border-primary/5 shadow-sm">
             <Button 

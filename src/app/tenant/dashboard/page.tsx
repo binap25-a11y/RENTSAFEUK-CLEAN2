@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -89,7 +88,7 @@ export default function TenantDashboard() {
                     setIsLoading(false);
                     setIsIndexBuilding(false);
                 }, (error) => {
-                    console.warn("Property context fetch failed:", error);
+                    console.warn("Property context fetch issue (check rules):", error.message);
                     setIsLoading(false);
                     setIsIndexBuilding(false);
                 });
@@ -98,7 +97,6 @@ export default function TenantDashboard() {
                 setIsIndexBuilding(false);
             }
         } else {
-            // No tenancy found - stop loading but allow user to stay or return
             setIsLoading(false);
             setIsIndexBuilding(false);
         }
@@ -194,11 +192,11 @@ export default function TenantDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" asChild className="h-8 text-[10px] font-bold uppercase tracking-widest border-primary/20 text-primary shadow-sm bg-background rounded-xl">
-                <Link href="/dashboard"><UserCircle className="mr-2 h-3.5 w-3.5" /> Switch Mode</Link>
+            <Button variant="outline" size="sm" asChild className="h-8 text-[10px] font-bold uppercase tracking-widest border-primary/20 text-primary shadow-sm bg-background rounded-xl text-xs px-4">
+                <Link href="/dashboard"><UserCircle className="mr-2 h-3.5 w-3.5" /> Landlord Mode</Link>
             </Button>
             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-8 px-3 font-bold uppercase tracking-widest text-[10px] shadow-sm rounded-xl">
-                Portal Active
+                Tenant Portal Active
             </Badge>
         </div>
       </div>

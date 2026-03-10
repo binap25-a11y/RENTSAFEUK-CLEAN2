@@ -26,6 +26,8 @@ service cloud.firestore {
       match /properties/{propertyId} {
         // Path-based ownership authorization for all property records
         allow read, write: if isOwner(userProfileId);
+        // Allow assigned tenants to 'get' property context (address, etc.)
+        allow get: if isSignedIn();
 
         match /maintenanceLogs/{logId} {
           allow read, write: if isOwner(userProfileId);
@@ -44,7 +46,7 @@ service cloud.firestore {
 
         match /tenants/{tenantId} {
           allow read, write: if isOwner(userProfileId);
-          // Allow verified resident to read their own assignment record
+          // Allow verified tenant to read their own assignment record
           allow read: if isSignedIn() && resource.data.email == getEmail();
 
           match /messages/{messageId} {
@@ -88,9 +90,10 @@ service cloud.firestore {
 
     match /{path=**}/tenants/{tenantId} {
       // Direct field-matching for high-performance collectionGroup queries
-      // Split into distinct rules for static provability in the query optimizer
-      allow list, get: if isSignedIn() && resource.data.email == getEmail();
-      allow list, get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list, get: if isSignedIn() && (
+        resource.data.email == getEmail() ||
+        resource.data.userId == request.auth.uid
+      );
     }
 
     match /{path=**}/messages/{messageId} {

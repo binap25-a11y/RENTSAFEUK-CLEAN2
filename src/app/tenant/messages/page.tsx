@@ -10,7 +10,10 @@ import {
   Send, 
   Loader2, 
   User,
-  ShieldCheck
+  ShieldCheck,
+  Sparkles,
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collectionGroup, query, where, limit, addDoc, collection, onSnapshot, orderBy, serverTimestamp } from 'firebase/firestore';
@@ -29,13 +32,18 @@ export default function TenantMessagesPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const [tenantContext, setTenantContext] = useState<any>(null);
+  const [isLoadingContext, setIsLoadingContext] = useState(true);
+  const [isIndexBuilding, setIsIndexBuilding] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isUserLoading) return;
-    if (!user || !firestore || !user.email) return;
+    if (!user || !firestore || !user.email) {
+      setIsLoadingContext(false);
+      return;
+    }
     
     const userEmail = user.email.toLowerCase().trim();
 
@@ -60,8 +68,14 @@ export default function TenantMessagesPage() {
                 });
             }
         }
+        setIsLoadingContext(false);
+        setIsIndexBuilding(false);
     }, (error) => {
+        if (error.message.toLowerCase().includes('index')) {
+            setIsIndexBuilding(true);
+        }
         console.warn("Messenger discovery issue:", error.message);
+        setIsLoadingContext(false);
     });
     return () => unsub();
   }, [user, isUserLoading, firestore]);
@@ -104,7 +118,50 @@ export default function TenantMessagesPage() {
     }
   };
 
-  if (!tenantContext) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (isLoadingContext || isUserLoading) {
+    return (
+      <div className="flex h-64 flex-col items-center justify-center gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Secure Portal...</p>
+      </div>
+    );
+  }
+
+  if (isIndexBuilding) {
+    return (
+        <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in zoom-in-95 duration-700">
+            <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto relative z-10">
+                <Sparkles className="h-12 w-12 text-primary animate-pulse" />
+            </div>
+            <div className="space-y-3">
+                <h2 className="font-headline text-2xl font-bold text-primary">Securing Messenger Channel</h2>
+                <p className="text-muted-foreground font-medium px-4 leading-relaxed">
+                    Our cloud database is currently synchronizing your tenant records for private communication.
+                </p>
+            </div>
+            <Button variant="outline" className="font-bold h-11 px-8 rounded-xl" onClick={() => window.location.reload()}>
+                <RefreshCw className="mr-2 h-4 w-4" /> Check Connection
+            </Button>
+        </div>
+    );
+  }
+
+  if (!tenantContext) {
+    return (
+      <Card className="max-w-md mx-auto mt-10 shadow-lg border-none text-center">
+        <CardHeader className="bg-muted/20 pb-8">
+          <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 border shadow-sm">
+              <AlertCircle className="h-8 w-8 text-destructive" />
+          </div>
+          <CardTitle className="text-lg">Portal Access Limited</CardTitle>
+          <CardDescription>We could not find an active tenancy associated with this account. Please contact your landlord.</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <Button variant="outline" className="w-full font-bold h-11" asChild><Link href="/dashboard">Return to Dashboard</Link></Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="h-[calc(100vh-12rem)] flex flex-col gap-4">
