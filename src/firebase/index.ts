@@ -19,13 +19,6 @@ export function initializeFirebase() {
     ? initializeApp(firebaseConfig) 
     : getApp();
 
-  return getSdks(firebaseApp);
-}
-
-/**
- * Returns initialized Firebase client-side services.
- */
-export function getSdks(firebaseApp: FirebaseApp) {
   return {
     firebaseApp,
     auth: getAuth(firebaseApp),

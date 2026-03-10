@@ -16,68 +16,63 @@ service cloud.firestore {
 
     match /userProfiles/{userProfileId} {
       // Landlords only access their own profile root
-      allow get: if isOwner(userProfileId);
+      allow get, create, update, delete: if isOwner(userProfileId);
       allow list: if false;
-      
-      allow create: if isOwner(userProfileId);
-      allow update: if isOwner(userProfileId);
-      allow delete: if isOwner(userProfileId);
 
       match /properties/{propertyId} {
-        // Comprehensive ownership-based access for all property-related data
-        allow get, list, create, update, delete: if isOwner(userProfileId);
+        // Path-based ownership authorization for all property records
+        allow read, write: if isOwner(userProfileId);
 
         match /maintenanceLogs/{logId} {
-          allow get, list, create, update, delete: if isOwner(userProfileId);
+          allow read, write: if isOwner(userProfileId);
         }
 
         match /documents/{documentId} {
-          allow get, list, create, update, delete: if isOwner(userProfileId);
+          allow read, write: if isOwner(userProfileId);
         }
 
         match /tenants/{tenantId} {
-          allow get, list, create, update, delete: if isOwner(userProfileId);
+          allow read, write: if isOwner(userProfileId);
 
           match /messages/{messageId} {
-            allow get, list, create, update, delete: if isOwner(userProfileId);
+            allow read, write: if isOwner(userProfileId);
           }
           
           match /screenings/{screeningId} {
-            allow get, list, create, update, delete: if isOwner(userProfileId);
+            allow read, write: if isOwner(userProfileId);
           }
         }
 
         match /rentPayments/{paymentId} {
-          allow get, list, create, update, delete: if isOwner(userProfileId);
+          allow read, write: if isOwner(userProfileId);
         }
 
         match /checklists/{checklistId} {
-          allow get, list, create, update, delete: if isOwner(userProfileId);
+          allow read, write: if isOwner(userProfileId);
         }
         
         match /inspections/{inspectionId} {
-          allow get, list, create, update, delete: if isOwner(userProfileId);
+          allow read, write: if isOwner(userProfileId);
         }
         
         match /expenses/{expenseId} {
-          allow get, list, create, update, delete: if isOwner(userProfileId);
+          allow read, write: if isOwner(userProfileId);
         }
       }
 
       match /contractors/{contractorId} {
-        allow get, list, create, update, delete: if isOwner(userProfileId);
+        allow read, write: if isOwner(userProfileId);
       }
     }
 
-    // --- Optimized collectionGroup Rules for cross-portfolio discovery ---
+    // --- Specialized Collection Group Rules for Discovery ---
 
     match /{path=**}/tenants/{tenantId} {
-      // Identity-based discovery for Residents
+      // Authorization for role-discovery (email-based)
+      // For collectionGroup list operations, the query must filter by the fields used in the rule
       allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
       
-      // Ownership-based oversight for Landlords
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      
+      // Allow read access for both the owner and the tenant
       allow get: if isSignedIn() && (
         resource.data.email == request.auth.token.email || 
         resource.data.userId == request.auth.uid
