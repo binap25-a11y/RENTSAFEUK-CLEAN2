@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { collection, query, where, onSnapshot, collectionGroup, limit, doc, updateDoc, getDocs } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, collectionGroup, limit } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,8 +19,7 @@ import {
   ArrowRight, 
   ShieldCheck, 
   UserCircle, 
-  Sparkles,
-  RefreshCw
+  Sparkles
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -164,7 +163,6 @@ export default function DashboardPage() {
   const [isTenant, setIsTenant] = useState<boolean>(false);
   const [isLoadingPortalCheck, setIsLoadingPortalCheck] = useState(true);
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
-  const [retryCount, setRetryCount] = useState(0);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
@@ -185,12 +183,13 @@ export default function DashboardPage() {
       setProperties(list);
       setIsLoadingProps(false);
     }, (error) => {
+      console.warn("Landlord portfolio fetch restricted or empty.");
       setIsLoadingProps(false);
     });
     return () => unsub();
   }, [user, firestore]);
 
-  // 2. Discover Tenant Role
+  // 2. Discover Tenant Role (Collection Group for portal handshake)
   useEffect(() => {
     if (!user || !firestore || !user.email) {
       setIsLoadingPortalCheck(false);
@@ -214,7 +213,7 @@ export default function DashboardPage() {
       if (msg.includes('index') || error.code === 'failed-precondition') {
         setIsIndexBuilding(true);
       } else {
-        // Standardized contextual permission error
+        // Standardized contextual permission error for collection group
         const permissionError = new FirestorePermissionError({
             path: 'tenants (collectionGroup)',
             operation: 'list',
@@ -226,12 +225,7 @@ export default function DashboardPage() {
     });
 
     return () => unsub();
-  }, [user, firestore, retryCount]);
-
-  const handleRetrySync = useCallback(() => {
-    setIsLoadingPortalCheck(true);
-    setRetryCount(prev => prev + 1);
-  }, []);
+  }, [user, firestore]);
 
   // 3. Auto-Redirect Pure Tenants once verified
   useEffect(() => {
@@ -248,8 +242,10 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  const isPureTenant = !isLoadingProps && properties.length === 0;
-  const pageTitle = isPureTenant ? "Tenant Dashboard" : "Landlord Dashboard";
+  // Refined Role Logic: Only show "Tenant Dashboard" if successfully verified as a tenant AND no landlord properties found.
+  const isVerifiedTenant = !isLoadingPortalCheck && isTenant;
+  const isLandlordRole = properties.length > 0 || (!isVerifiedTenant && !isLoadingPortalCheck);
+  const pageTitle = !isLandlordRole ? "Tenant Dashboard" : "Landlord Dashboard";
 
   if (isUserLoading || (isLoadingProps && isLoadingPortalCheck)) {
     return (
@@ -268,9 +264,11 @@ export default function DashboardPage() {
             {pageTitle}
           </h1>
           <p className="text-muted-foreground font-medium text-lg">
-            {isPureTenant 
-              ? `Welcome home, ${user?.displayName?.split(' ')[0] || 'Tenant'}. Verifying portal access...` 
-              : "Overview of your rental portfolio."}
+            {(isLoadingPortalCheck && properties.length === 0)
+              ? `Welcome home, ${user?.displayName?.split(' ')[0] || 'User'}. Verifying portal access...` 
+              : isVerifiedTenant && properties.length === 0
+                ? "Your active tenancy details."
+                : "Overview of your rental portfolio."}
           </p>
         </div>
         
@@ -289,7 +287,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {isTenant && isPureTenant && (
+      {isVerifiedTenant && properties.length === 0 && (
         <Card className="border-primary/20 bg-primary/[0.02] border-dashed shadow-sm overflow-hidden relative group transition-all hover:bg-primary/[0.04] text-left">
           <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
             <Sparkles className="h-16 w-16 text-primary" />
@@ -311,7 +309,7 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {!isPureTenant ? (
+      {isLandlordRole && (
         <div className="grid gap-6">
           <PropertiesPanel 
             properties={filteredProperties} 
@@ -322,19 +320,6 @@ export default function DashboardPage() {
             setView={setView}
           />
         </div>
-      ) : !isTenant && !isIndexBuilding && (
-          <div className="flex flex-col items-center justify-center py-20 text-center gap-6">
-              <div className="bg-primary/5 p-10 rounded-full">
-                  <Home className="h-16 w-16 text-primary/20" />
-              </div>
-              <div className="space-y-2 px-4">
-                  <h3 className="text-2xl font-bold">Welcome to RentSafeUK</h3>
-                  <p className="text-muted-foreground max-w-md mx-auto">We couldn't find an active tenancy for this email address.</p>
-              </div>
-              <Button asChild size="lg" className="px-10 h-12 font-bold shadow-lg">
-                  <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Onboard First Property</Link>
-              </Button>
-          </div>
       )}
     </div>
   );

@@ -53,7 +53,6 @@ export default function TenantDashboard() {
     const userEmail = user.email.toLowerCase().trim();
 
     // Discovery query using collectionGroup
-    // Rule in firestore.rules: resource.data.email == request.auth.token.email.lower()
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
@@ -97,7 +96,7 @@ export default function TenantDashboard() {
                     setIsLoading(false);
                     setIsIndexBuilding(false);
                 }, (err) => {
-                    // Contextual permission error
+                    // Standardized contextual permission error
                     const permissionError = new FirestorePermissionError({
                         path: propRef.path,
                         operation: 'get',
@@ -189,7 +188,7 @@ export default function TenantDashboard() {
                 </div>
                 <CardTitle className="font-headline text-xl">Verification Failed</CardTitle>
                 <CardDescription className="text-sm font-medium px-4 text-center">
-                    {error || `No active tenancy found for ${user?.email}.`}
+                    {error || `No active tenancy found for ${user?.email}. Ensure your landlord added this specific email address.`}
                 </CardDescription>
             </CardHeader>
             <CardFooter className="pt-6 flex flex-col gap-3 bg-background border-t">
@@ -218,7 +217,7 @@ export default function TenantDashboard() {
         </div>
         <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" asChild className="h-8 text-[9px] font-bold uppercase tracking-widest border-primary/20 text-primary shadow-sm bg-background rounded-xl px-4">
-                <Link href="/dashboard"><UserCircle className="mr-2 h-3.5 w-3.5" /> Dashboard Mode</Link>
+                <Link href="/dashboard"><UserCircle className="mr-2 h-3.5 w-3.5" /> Home Mode</Link>
             </Button>
             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-8 px-3 font-bold uppercase tracking-widest text-[9px] shadow-sm rounded-xl">
                 Secure Portal Active
