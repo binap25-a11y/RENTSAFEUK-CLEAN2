@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -200,7 +201,8 @@ export default function DashboardPage() {
     const email = user.email.toLowerCase().trim();
     const tenantsQuery = query(
       collectionGroup(firestore, 'tenants'),
-      where('email', '==', email)
+      where('email', '==', email),
+      limit(1)
     );
 
     const unsub = onSnapshot(tenantsQuery, (snap) => {
@@ -227,12 +229,14 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore]);
 
-  // 3. Auto-Redirect Pure Tenants once verified
+  // 3. Auto-Redirect Tenants once verified
   useEffect(() => {
-    if (!isLoadingProps && !isLoadingPortalCheck && properties.length === 0 && isTenant) {
+    // If verified as a tenant, redirect immediately to the specialized portal
+    if (!isLoadingPortalCheck && isTenant) {
+      console.log("Tenant verified. Redirecting to portal...");
       router.push('/tenant/dashboard');
     }
-  }, [isLoadingProps, isLoadingPortalCheck, properties.length, isTenant, router]);
+  }, [isLoadingPortalCheck, isTenant, router]);
 
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;
@@ -242,10 +246,12 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // Refined Role Logic: Only show "Tenant Dashboard" if successfully verified as a tenant AND no landlord properties found.
   const isVerifiedTenant = !isLoadingPortalCheck && isTenant;
-  const isLandlordRole = properties.length > 0 || (!isVerifiedTenant && !isLoadingPortalCheck);
-  const pageTitle = !isLandlordRole ? "Tenant Dashboard" : "Landlord Dashboard";
+  
+  // A user is considered a landlord if they have properties OR if they are NOT a verified tenant.
+  // This prevents tenants from seeing the landlord UI while verification is in progress.
+  const isLandlordRole = !isVerifiedTenant && !isIndexBuilding;
+  const pageTitle = isVerifiedTenant ? "Tenant Dashboard" : "Landlord Dashboard";
 
   if (isUserLoading || (isLoadingProps && isLoadingPortalCheck)) {
     return (
@@ -264,9 +270,7 @@ export default function DashboardPage() {
             {pageTitle}
           </h1>
           <p className="text-muted-foreground font-medium text-lg">
-            {(isLoadingPortalCheck && properties.length === 0)
-              ? `Welcome home, ${user?.displayName?.split(' ')[0] || 'User'}. Verifying portal access...` 
-              : isVerifiedTenant && properties.length === 0
+            {isVerifiedTenant 
                 ? "Your active tenancy details."
                 : "Overview of your rental portfolio."}
           </p>
@@ -287,7 +291,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {isVerifiedTenant && properties.length === 0 && (
+      {isVerifiedTenant && (
         <Card className="border-primary/20 bg-primary/[0.02] border-dashed shadow-sm overflow-hidden relative group transition-all hover:bg-primary/[0.04] text-left">
           <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
             <Sparkles className="h-16 w-16 text-primary" />
@@ -299,7 +303,7 @@ export default function DashboardPage() {
                 Tenancy Identity Verified
               </div>
               <p className="text-sm text-muted-foreground font-medium max-lg leading-relaxed">
-                Your account is successfully linked to an active tenancy.
+                Your account is successfully linked to an active tenancy. Proceed to your portal to manage repairs and documents.
               </p>
             </div>
             <Button asChild className="font-bold uppercase tracking-widest text-xs shadow-lg shrink-0 px-10 h-12 rounded-xl group-hover:scale-105 transition-transform bg-primary hover:bg-primary/90">
