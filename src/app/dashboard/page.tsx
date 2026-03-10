@@ -50,6 +50,7 @@ export function PropertiesPanel() {
       setProperties(snap.docs.map(d => ({ id: d.id, ...d.data() } as Property)));
       setIsLoading(false);
     }, (error) => {
+      console.error("Properties fetch failed:", error);
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: `userProfiles/${user.uid}/properties`,
         operation: 'list',
@@ -171,6 +172,7 @@ export default function DashboardPage() {
     }
 
     const email = user.email.toLowerCase().trim();
+    // Discovery query to find if this email exists in any tenant collection
     const tenantsQuery = query(
       collectionGroup(firestore, 'tenants'),
       where('email', '==', email),
@@ -182,10 +184,9 @@ export default function DashboardPage() {
       setIsTenant(!!activeTenant);
       setIsLoadingPortalCheck(false);
     }, (error) => {
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: 'tenants', 
-        operation: 'list',
-      }));
+      console.error("Discovery query failed:", error.message);
+      // Soft fail: default to landlord view if discovery restricted
+      setIsTenant(false);
       setIsLoadingPortalCheck(false);
     });
 
@@ -196,7 +197,7 @@ export default function DashboardPage() {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-sm text-muted-foreground animate-pulse font-medium">Verifying Session Permissions...</p>
+        <p className="text-sm text-muted-foreground animate-pulse font-medium">Verifying Session Security...</p>
       </div>
     );
   }

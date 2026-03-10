@@ -42,8 +42,21 @@ export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 
-// Normalized Implementation Exports
-export * from './non-blocking-login';
-export * from './non-blocking-updates';
+// Explicit Utility Exports to resolve module resolution conflicts
+export { 
+  initiateAnonymousSignIn, 
+  createUserNonBlocking, 
+  signInNonBlocking,
+  initiateEmailSignUp,
+  initiateEmailSignIn 
+} from './non-blocking-login';
+
+export { 
+  setDocumentNonBlocking, 
+  addDocumentNonBlocking, 
+  updateDocumentNonBlocking, 
+  deleteDocumentNonBlocking 
+} from './non-blocking-updates';
+
 export * from './errors';
 export * from './error-emitter';

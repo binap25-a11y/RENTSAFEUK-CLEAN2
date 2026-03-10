@@ -113,17 +113,24 @@ service cloud.firestore {
     }
 
     // --- Optimized collectionGroup Rules ---
-    // Unified rules for better provability by the Firestore query analyzer.
+    // Unified rules optimized for identity-based and ownership-based provability.
 
     match /{path=**}/tenants/{tenantId} {
-      allow list, get: if isSignedIn() && (
+      // Split list rules to ensure Firestore analyzer can prove authorization via query filters
+      allow list: if isSignedIn() && resource.data.email == request.auth.token.email.lower();
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      
+      allow get: if isSignedIn() && (
         resource.data.email == request.auth.token.email.lower() || 
         resource.data.userId == request.auth.uid
       );
     }
 
     match /{path=**}/messages/{messageId} {
-      allow list, get: if isSignedIn() && (
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.senderId == request.auth.uid;
+      
+      allow get: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
         resource.data.senderId == request.auth.uid
       );
@@ -131,7 +138,10 @@ service cloud.firestore {
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      allow list, get: if isSignedIn() && (
+      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && resource.data.reportedBy == request.auth.uid;
+      
+      allow get: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
         resource.data.reportedBy == request.auth.uid
       );
