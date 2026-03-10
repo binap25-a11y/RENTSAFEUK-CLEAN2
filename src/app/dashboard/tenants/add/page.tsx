@@ -83,13 +83,25 @@ interface Property {
 }
 
 /**
- * Robust data sanitization utility to prevent Firestore "undefined field" errors.
+ * Recursive utility to strictly strip 'undefined' values from objects before Firestore writes.
+ * Prevents "Unsupported field value: undefined" runtime errors.
  */
 const prepareForFirestore = (obj: any): any => {
-    return JSON.parse(JSON.stringify(obj, (key, value) => {
-        if (value === undefined) return null;
-        return value;
-    }));
+  if (obj === undefined) return null;
+  if (obj === null || typeof obj !== 'object') return obj;
+  if (obj instanceof Date) return obj;
+  if (Array.isArray(obj)) return obj.map(prepareForFirestore);
+  
+  const result: any = {};
+  for (const key in obj) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      const val = obj[key];
+      if (val !== undefined) {
+        result[key] = prepareForFirestore(val);
+      }
+    }
+  }
+  return result;
 };
 
 const formatDateForInput = (value: any) => {
@@ -191,34 +203,33 @@ export default function AddTenantPage() {
 
     const cleanedTenantData = prepareForFirestore(newTenant);
     
+    // Sequential execution to ensure property status update completes before dashboard redirect
     addDoc(tenantsCollection, cleanedTenantData)
-      .then((tenantDoc) => {
-        // AUTOMATIC STATUS UPDATE: Set property to 'Occupied'
+      .then(() => {
         const propertyDocRef = doc(firestore, 'userProfiles', user.uid, 'properties', data.propertyId);
-        updateDoc(propertyDocRef, { status: 'Occupied' })
-          .then(() => {
-            toast({
-              title: 'Tenant Assigned',
-              description: `${data.name} has been assigned and property status updated to Occupied.`,
-            });
-            router.push('/dashboard');
-          })
-          .catch(async (serverError) => {
-            const permissionError = new FirestorePermissionError({
-              path: propertyDocRef.path,
-              operation: 'update',
-              requestResourceData: { status: 'Occupied' },
-            });
-            errorEmitter.emit('permission-error', permissionError);
-          });
+        return updateDoc(propertyDocRef, { status: 'Occupied' });
+      })
+      .then(() => {
+        toast({
+          title: 'Tenant Assigned',
+          description: `${data.name} has been assigned and property status updated to Occupied.`,
+        });
+        router.push('/dashboard');
       })
       .catch(async (serverError) => {
+        console.error('Tenant assignment failed:', serverError);
         const permissionError = new FirestorePermissionError({
-          path: tenantsCollection.path,
-          operation: 'create',
-          requestResourceData: cleanedTenantData,
+          path: `userProfiles/${user.uid}/properties/${data.propertyId}`,
+          operation: 'update',
+          requestResourceData: { status: 'Occupied' },
         });
         errorEmitter.emit('permission-error', permissionError);
+        
+        toast({
+          variant: 'destructive',
+          title: 'Sync Error',
+          description: 'Tenant was added but property status update failed. Please update manually.',
+        });
       })
       .finally(() => {
         setIsSubmitting(false);

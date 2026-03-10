@@ -118,13 +118,25 @@ interface Tenant {
 }
 
 /**
- * Robust data sanitization utility to prevent Firestore "undefined field" errors.
+ * Recursive utility to strictly strip 'undefined' values from objects before Firestore writes.
+ * Prevents "Unsupported field value: undefined" runtime errors.
  */
 const prepareForFirestore = (obj: any): any => {
-    return JSON.parse(JSON.stringify(obj, (key, value) => {
-        if (value === undefined) return null;
-        return value;
-    }));
+  if (obj === undefined) return null;
+  if (obj === null || typeof obj !== 'object') return obj;
+  if (obj instanceof Date) return obj;
+  if (Array.isArray(obj)) return obj.map(prepareForFirestore);
+  
+  const result: any = {};
+  for (const key in obj) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      const val = obj[key];
+      if (val !== undefined) {
+        result[key] = prepareForFirestore(val);
+      }
+    }
+  }
+  return result;
 };
 
 const ChecklistItem = ({ form, name, label }: { form: any, name: any, label: string }) => (

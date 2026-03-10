@@ -100,6 +100,28 @@ const screeningEditSchema = z.object({
 
 type ScreeningEditFormValues = z.infer<typeof screeningEditSchema>;
 
+/**
+ * Recursive utility to strictly strip 'undefined' values from objects before Firestore writes.
+ * Prevents "Unsupported field value: undefined" runtime errors.
+ */
+const prepareForFirestore = (obj: any): any => {
+  if (obj === undefined) return null;
+  if (obj === null || typeof obj !== 'object') return obj;
+  if (obj instanceof Date) return obj;
+  if (Array.isArray(obj)) return obj.map(prepareForFirestore);
+  
+  const result: any = {};
+  for (const key in obj) {
+    if (Object.prototype.hasOwnProperty.call(obj, key)) {
+      const val = obj[key];
+      if (val !== undefined) {
+        result[key] = prepareForFirestore(val);
+      }
+    }
+  }
+  return result;
+};
+
 const ChecklistItem = ({ form, name, label }: { form: any, name: any, label: string }) => (
     <FormField
         control={form.control}
@@ -165,7 +187,6 @@ export default function EditTenantScreeningPage() {
 
     const screeningRef = useMemoFirebase(() => {
         if (!firestore || !user || !tenantId || !screeningId || !propertyId) return null;
-        // Strictly hierarchical path fix
         return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'tenants', tenantId, 'screenings', screeningId);
     }, [firestore, user, tenantId, screeningId, propertyId]);
     const { data: screening, isLoading: isLoadingScreening, error: screeningError } = useDoc(screeningRef);
@@ -197,7 +218,7 @@ export default function EditTenantScreeningPage() {
     async function onSubmit(data: ScreeningEditFormValues) {
         if (!screeningRef) return;
 
-        const cleanedData = JSON.parse(JSON.stringify(data));
+        const cleanedData = prepareForFirestore(data);
 
         updateDoc(screeningRef, cleanedData)
           .then(() => {
