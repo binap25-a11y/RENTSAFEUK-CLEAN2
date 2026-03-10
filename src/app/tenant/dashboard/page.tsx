@@ -66,6 +66,7 @@ export default function TenantDashboard() {
             const data = activeTenantDoc.data();
             const pathSegments = activeTenantDoc.ref.path.split('/');
             
+            // Robust segment matching for tenant hierarchy
             const landlordIdx = pathSegments.indexOf('userProfiles');
             const propertyIdx = pathSegments.indexOf('properties');
             
@@ -97,6 +98,7 @@ export default function TenantDashboard() {
                 setIsIndexBuilding(false);
             }
         } else {
+            // No tenancy found - stop loading but allow user to stay or return
             setIsLoading(false);
             setIsIndexBuilding(false);
         }

@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useAuth, useFirestore } from '@/firebase';
 import { collection, query, where, onSnapshot, collectionGroup, limit } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -189,7 +189,7 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore]);
 
-  // 2. Discover Tenant Role with instant resolution
+  // 2. Discover Tenant Role with high-performance query
   useEffect(() => {
     if (!user || !firestore || !user.email) {
       setIsLoadingPortalCheck(false);
@@ -210,6 +210,7 @@ export default function DashboardPage() {
       setIsIndexBuilding(false); 
     }, (error) => {
       const msg = error.message.toLowerCase();
+      // Handle index building specifically to inform user rather than fail
       if (msg.includes('index') || msg.includes('failed-precondition')) {
         setIsIndexBuilding(true);
       } else {
@@ -227,7 +228,7 @@ export default function DashboardPage() {
     setRetryCount(prev => prev + 1);
   }, []);
 
-  // 3. Auto-Redirect Pure Tenants
+  // 3. Auto-Redirect Pure Tenants once verified
   useEffect(() => {
     if (!isLoadingProps && !isLoadingPortalCheck && properties.length === 0 && isTenant) {
       router.push('/tenant/dashboard');
@@ -242,15 +243,15 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // Dynamic Heading Logic
-  const isLikelyPureTenant = !isLoadingProps && properties.length === 0 && (isTenant || isIndexBuilding || isLoadingPortalCheck);
+  // Heading Logic: Users with 0 properties are greeted as tenants while background sync occurs
+  const isLikelyPureTenant = !isLoadingProps && properties.length === 0;
   const pageTitle = isLikelyPureTenant ? "Tenant Dashboard" : "Landlord Dashboard";
 
   if (isUserLoading || (isLoadingProps && isLoadingPortalCheck)) {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse font-medium text-center">Verifying Secure Access...</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse font-medium text-center">Establishing Secure Session...</p>
       </div>
     );
   }
@@ -269,7 +270,7 @@ export default function DashboardPage() {
           </p>
         </div>
         
-        {/* Verification Hub */}
+        {/* Verification Hub - Integrated into Dashboard */}
         {(isTenant || isIndexBuilding) && (
           <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-muted/30 border border-primary/5 shadow-sm">
             <Button 
@@ -290,13 +291,14 @@ export default function DashboardPage() {
             </Button>
             {isIndexBuilding && (
               <div className="px-3 animate-pulse">
-                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 uppercase text-[9px] font-bold">Cloud Syncing</Badge>
+                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 uppercase text-[9px] font-bold">Cloud Sync Active</Badge>
               </div>
             )}
           </div>
         )}
       </div>
 
+      {/* Feature Highlight for Tenants */}
       {(isTenant || isIndexBuilding) && (
         <Card className="border-primary/20 bg-primary/[0.02] border-dashed shadow-sm overflow-hidden relative group transition-all hover:bg-primary/[0.04]">
           <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
