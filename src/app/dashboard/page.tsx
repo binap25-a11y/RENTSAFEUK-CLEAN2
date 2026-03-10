@@ -172,7 +172,41 @@ export default function DashboardPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoadingProps, setIsLoadingProps] = useState(true);
 
-  // Discovery Heuristic: Ensures redirection happens as soon as a tenant record is found.
+  // Loading safety timeout - faster resolution for Landlords
+  useEffect(() => {
+    const timer = setTimeout(() => {
+        setHasHeuristicTimeout(true);
+    }, 1500);
+    return () => clearTimeout(timer);
+  }, []);
+
+  // Fetch Properties (Landlord Role) - Fast Path
+  useEffect(() => {
+    if (!user || !firestore) return;
+    
+    const propertiesQuery = query(
+      collection(firestore, 'userProfiles', user.uid, 'properties'), 
+      where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
+    );
+
+    const unsub = onSnapshot(propertiesQuery, (snap) => {
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Property));
+      setProperties(list);
+      setIsLoadingProps(false);
+      
+      // OPTIMIZATION: If the user has properties, they are definitively a landlord.
+      // We can stop the portal discovery loader immediately.
+      if (list.length > 0) {
+          setIsTenant(false);
+          setIsLoadingPortalCheck(false);
+      }
+    }, () => {
+      setIsLoadingProps(false);
+    });
+    return () => unsub();
+  }, [user, firestore]);
+
+  // Discovery Handshake: Redirect verified tenants to their portal
   useEffect(() => {
     if (!user || !firestore || !user.email) {
       setIsLoadingPortalCheck(false);
@@ -189,11 +223,14 @@ export default function DashboardPage() {
     const unsub = onSnapshot(tenantsQuery, (snap) => {
       const activeTenant = snap.docs.find(d => d.data().status === 'Active');
       if (activeTenant) {
-          console.log("Tenant identity verified. Redirecting to portal...");
+          console.log("Tenant verified. Directing to secure portal...");
           setIsTenant(true);
           router.replace('/tenant/dashboard');
       } else {
-          setIsTenant(false);
+          // Only mark as definitively not a tenant if the snapshot is authoritative (not empty because of index building)
+          if (!isIndexBuilding) {
+            setIsTenant(false);
+          }
       }
       setIsLoadingPortalCheck(false);
       setIsIndexBuilding(false); 
@@ -202,40 +239,13 @@ export default function DashboardPage() {
       if (msg.includes('index') || error.code === 'failed-precondition') {
         setIsIndexBuilding(true);
       } else {
-        console.warn("Tenant discovery error:", error.message);
+        console.warn("Tenant discovery limited:", error.message);
         setIsLoadingPortalCheck(false);
       }
     });
 
     return () => unsub();
-  }, [user, firestore, router]);
-
-  // Loading safety timeout - unblocks UI if cloud discovery hangs
-  useEffect(() => {
-    const timer = setTimeout(() => {
-        setHasHeuristicTimeout(true);
-    }, 2000);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Fetch Properties (Landlord Role)
-  useEffect(() => {
-    if (!user || !firestore) return;
-    
-    const propertiesQuery = query(
-      collection(firestore, 'userProfiles', user.uid, 'properties'), 
-      where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
-    );
-
-    const unsub = onSnapshot(propertiesQuery, (snap) => {
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Property));
-      setProperties(list);
-      setIsLoadingProps(false);
-    }, () => {
-      setIsLoadingProps(false);
-    });
-    return () => unsub();
-  }, [user, firestore]);
+  }, [user, firestore, router, isIndexBuilding]);
 
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;
@@ -245,25 +255,19 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // Redirection bypass: If we know it's a tenant, stop everything and go to portal.
+  // Immediate Redirection
   if (isTenant === true) {
       return (
         <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-background">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Entering Secure Portal...</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Entering Secure Portal...</p>
         </div>
       );
   }
 
-  /**
-   * Refined Loading State:
-   * We show the loader if:
-   * 1. Auth is still loading
-   * 2. We haven't confirmed user IS NOT a tenant AND we haven't timed out.
-   */
   const isGlobalLoading = isUserLoading || 
     (isLoadingPortalCheck && isTenant === null && !hasHeuristicTimeout) ||
-    isIndexBuilding;
+    (isIndexBuilding && properties.length === 0);
 
   if (isGlobalLoading) {
     return (
@@ -278,30 +282,21 @@ export default function DashboardPage() {
           
           <div className="space-y-2">
             <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground animate-pulse">
-                {isIndexBuilding ? "Database Synchronization" : "Identity Handshake"}
+                {isIndexBuilding ? "Database Syncing" : "Identity Handshake"}
             </p>
             <h2 className="text-xl font-bold font-headline">Securing Connection</h2>
             <p className="text-xs text-muted-foreground leading-relaxed">
                 {isIndexBuilding 
-                    ? "Our cloud database is currently indexing your records for private portal access. This typically takes 5-10 minutes for new accounts." 
+                    ? "Our cloud database is mapping your identity. Access will be restored automatically in a few minutes." 
                     : "Establishing a secure connection to your property records..."}
             </p>
           </div>
 
           <div className="flex flex-col gap-3 w-full pt-4">
-            {isIndexBuilding && (
-                <Button 
-                    variant="outline" 
-                    className="font-bold text-[10px] uppercase tracking-widest h-11 rounded-xl"
-                    onClick={() => window.location.reload()}
-                >
-                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Refresh Status
-                </Button>
-            )}
             <Button 
                 variant="ghost" 
                 className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 hover:text-primary transition-all group"
-                onClick={() => setHasHeuristicTimeout(true)}
+                onClick={() => { setHasHeuristicTimeout(true); setIsLoadingPortalCheck(false); }}
             >
                 Continue as Landlord <ArrowRight className="ml-2 h-3 w-3 group-hover:translate-x-1 transition-transform" />
             </Button>

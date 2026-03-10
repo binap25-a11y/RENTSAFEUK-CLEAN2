@@ -49,7 +49,7 @@ export default function TenantDashboard() {
     setError(null);
     setIsIndexBuilding(false);
     
-    // Normalize user email for secure discovery query
+    // Strict normalization for secure discovery
     const userEmail = user.email.toLowerCase().trim();
 
     // Discovery query using collectionGroup
@@ -72,10 +72,11 @@ export default function TenantDashboard() {
             
             // Expected hierarchical path: userProfiles/{landlordId}/properties/{propertyId}/tenants/{tenantId}
             const segments = path.split('/');
+            const landlordIdx = segments.indexOf('userProfiles');
+            const propertyIdx = segments.indexOf('properties');
             
-            // Indices: 0: userProfiles, 1: landlordId, 2: properties, 3: propertyId
-            const landlordId = segments[1];
-            const propertyId = segments[3];
+            const landlordId = landlordIdx !== -1 ? segments[landlordIdx + 1] : null;
+            const propertyId = propertyIdx !== -1 ? segments[propertyIdx + 1] : null;
             const tenantId = activeTenantDoc.id;
 
             if (landlordId && propertyId) {
@@ -90,7 +91,7 @@ export default function TenantDashboard() {
                             propertyData: propSnap.data()
                         });
                     } else {
-                        setError("Property record unavailable.");
+                        setError("Property details currently unavailable.");
                     }
                     setIsLoading(false);
                     setIsIndexBuilding(false);
@@ -103,7 +104,7 @@ export default function TenantDashboard() {
                     setIsLoading(false);
                 });
             } else {
-                setError("Unable to resolve secure tenancy context.");
+                setError("Tenancy structure could not be resolved.");
                 setIsLoading(false);
             }
         } else {
@@ -115,8 +116,8 @@ export default function TenantDashboard() {
         if (msg.includes('index') || err.code === 'failed-precondition') {
             setIsIndexBuilding(true);
         } else {
-            console.warn("Tenant portal discovery error:", err.message);
-            setError("Identity handshake failed.");
+            console.warn("Tenant portal handshake failed:", err.message);
+            setError("Identification Failed.");
         }
         setIsLoading(false);
     });
@@ -137,14 +138,14 @@ export default function TenantDashboard() {
     return (
         <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-background">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Synchronizing Portal Context...</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Syncing Resident Portal...</p>
         </div>
     );
   }
 
   if (isIndexBuilding) {
     return (
-        <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in zoom-in-95 duration-700 text-left">
+        <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in zoom-in-95 duration-700">
             <div className="relative">
                 <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto relative z-10">
                     <Sparkles className="h-12 w-12 text-primary animate-pulse" />
@@ -152,9 +153,9 @@ export default function TenantDashboard() {
                 <div className="absolute inset-0 bg-primary/5 blur-3xl rounded-full scale-150" />
             </div>
             <div className="space-y-3 px-4">
-                <h2 className="font-headline text-2xl font-bold text-primary">Identity Sync in Progress</h2>
-                <p className="text-muted-foreground font-medium leading-relaxed">
-                    Our cloud database is currently mapping your tenant records for private access. This typically takes 5-10 minutes for newly created accounts.
+                <h2 className="font-headline text-2xl font-bold text-primary text-center">Syncing Portal Records</h2>
+                <p className="text-muted-foreground font-medium leading-relaxed text-center">
+                    The cloud database is currently mapping your tenant identity. This process typically takes a few minutes for new residents.
                 </p>
             </div>
             <div className="flex flex-col items-center gap-4">
@@ -173,9 +174,9 @@ export default function TenantDashboard() {
                 <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 shadow-sm border">
                     <AlertCircle className="h-10 w-10 text-destructive" />
                 </div>
-                <CardTitle className="font-headline text-xl">Verification Failed</CardTitle>
+                <CardTitle className="font-headline text-xl">Resident Identity Not Found</CardTitle>
                 <CardDescription className="text-sm font-medium px-4 text-center">
-                    {error || `We could not find an active tenancy for ${user?.email}. Ensure your landlord has added you to the portal using this exact email address.`}
+                    {error || `We could not find an active tenancy for ${user?.email}. Please confirm with your landlord that they have added you using this exact email address.`}
                 </CardDescription>
             </CardHeader>
             <CardFooter className="pt-6 flex flex-col gap-3 bg-background border-t">
@@ -238,7 +239,7 @@ export default function TenantDashboard() {
                         ? format(new Date(context.tenantData.tenancyStartDate.seconds * 1000), 'dd MMM yyyy') 
                         : 'Active Agreement'}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1 font-medium italic">Handshake successful</p>
+                <p className="text-xs text-muted-foreground mt-1 font-medium italic">Identification verified</p>
             </CardContent>
         </Card>
 
