@@ -127,7 +127,7 @@ export default function LoginPage() {
   return (
     <div className="w-full">
       <div className="flex items-center justify-center py-12 min-h-screen bg-muted/30">
-        <Card className="mx-auto w-full max-w-sm shadow-xl border-none">
+        <Card className="mx-auto w-full max-sm shadow-xl border-none">
           <CardHeader className="text-center space-y-4 pb-2">
             <div className="flex justify-center">
               <Logo className="w-16 h-16 text-primary" />
@@ -137,7 +137,7 @@ export default function LoginPage() {
                 RentSafeUK
               </CardTitle>
               <CardDescription className="text-sm font-medium">
-                {mode === 'login' ? 'Access your landlord or resident portal' : 'Join the RentSafeUK platform'}
+                {mode === 'login' ? 'Access your landlord or tenant portal' : 'Join the RentSafeUK platform'}
               </CardDescription>
             </div>
           </CardHeader>

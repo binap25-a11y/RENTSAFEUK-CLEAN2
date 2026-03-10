@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -178,7 +179,7 @@ export default function TenantMaintenancePage() {
             <div className="space-y-3">
                 <h2 className="font-headline text-2xl font-bold text-primary">Securing Your Connection</h2>
                 <p className="text-muted-foreground font-medium px-4 leading-relaxed">
-                    Our cloud database is currently synchronizing your resident records. This typically takes a few minutes for new accounts.
+                    Our cloud database is currently synchronizing your tenant records. This typically takes a few minutes for new accounts.
                 </p>
             </div>
             <Button variant="outline" className="font-bold h-11 px-8 rounded-xl" onClick={() => window.location.reload()}>

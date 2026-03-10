@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -113,7 +114,7 @@ export default function TenantDocumentsPage() {
             <div className="space-y-3">
                 <h2 className="font-headline text-2xl font-bold text-primary">Scanning Document Vault</h2>
                 <p className="text-muted-foreground font-medium px-4 leading-relaxed">
-                    Our secure system is currently mapping your shared tenancy files. Your documents will appear here automatically.
+                    Our secure system is currently mapping your tenant records. Your documents will appear here automatically.
                 </p>
             </div>
             <Button variant="outline" className="font-bold h-11 px-8 rounded-xl" onClick={() => window.location.reload()}>

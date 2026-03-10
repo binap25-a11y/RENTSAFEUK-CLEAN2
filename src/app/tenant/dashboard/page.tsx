@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -114,7 +115,7 @@ export default function TenantDashboard() {
     return (
         <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Authenticating Resident Portal...</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Authenticating Tenant Portal...</p>
         </div>
     );
   }
@@ -129,9 +130,9 @@ export default function TenantDashboard() {
                 <div className="absolute inset-0 bg-primary/5 blur-3xl rounded-full scale-150" />
             </div>
             <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Setting Up Your Home</h2>
+                <h2 className="font-headline text-2xl font-bold text-primary">Setting Up Your Tenancy</h2>
                 <p className="text-muted-foreground font-medium px-4 leading-relaxed">
-                    Our cloud system is synchronizing your resident records for the first time. This high-speed indexing ensures your data remains private and secure.
+                    Our cloud system is synchronizing your tenant records for the first time. This high-speed indexing ensures your data remains private and secure.
                 </p>
             </div>
             <div className="flex flex-col items-center gap-4">
@@ -181,7 +182,7 @@ export default function TenantDashboard() {
           </h1>
           <p className="text-muted-foreground font-medium flex items-center gap-2 mt-1">
               <Home className="h-4 w-4 text-primary/40" />
-              Welcome home, {user?.displayName?.split(' ')[0] || 'Resident'} — {context.propertyData?.address?.street}, {context.propertyData?.address?.city}
+              Welcome home, {user?.displayName?.split(' ')[0] || 'Tenant'} — {context.propertyData?.address?.street}, {context.propertyData?.address?.city}
           </p>
         </div>
         <div className="flex items-center gap-2">

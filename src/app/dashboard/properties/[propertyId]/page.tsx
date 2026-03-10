@@ -457,7 +457,7 @@ export default function PropertyDetailPage() {
           <div className="space-y-6">
             <Card className="shadow-md border-none overflow-hidden">
               <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4 bg-muted/20 border-b">
-                <CardTitle className="font-headline text-lg">Residents</CardTitle>
+                <CardTitle className="font-headline text-lg">Tenants</CardTitle>
                 <Button variant="ghost" size="icon" asChild className="h-8 w-8 text-primary hover:bg-primary/5">
                   <Link href={`/dashboard/tenants/add?propertyId=${propertyId}`} title="New Tenancy"><PlusCircle className="h-5 w-5" /></Link>
                 </Button>
@@ -487,8 +487,8 @@ export default function PropertyDetailPage() {
                   </div>
                 ) : (
                   <div className="text-center py-8">
-                    <p className="text-xs text-muted-foreground mb-6 italic">No active residents recorded.</p>
-                    <Button asChild variant="secondary" className="w-full shadow-sm font-bold text-xs uppercase h-11"><Link href={`/dashboard/tenants/add?propertyId=${propertyId}`}>Assign Resident</Link></Button>
+                    <p className="text-xs text-muted-foreground mb-6 italic">No active tenants recorded.</p>
+                    <Button asChild variant="secondary" className="w-full shadow-sm font-bold text-xs uppercase h-11"><Link href={`/dashboard/tenants/add?propertyId=${propertyId}`}>Assign Tenant</Link></Button>
                   </div>
                 )}
               </CardContent>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -100,7 +101,7 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-background/95 backdrop-blur px-4 lg:px-6">
           <div className="flex items-center gap-4">
             <SidebarTrigger className="md:hidden" />
-            <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground hidden sm:block">Resident Mode Active</h2>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground hidden sm:block">Tenant Mode Active</h2>
           </div>
           <UserNav />
         </header>

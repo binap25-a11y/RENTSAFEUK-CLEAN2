@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -188,7 +189,7 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore]);
 
-  // 2. Discover Resident Role
+  // 2. Discover Tenant Role
   useEffect(() => {
     if (!user || !firestore || !user.email) {
       setIsLoadingPortalCheck(false);
@@ -218,7 +219,7 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore]);
 
-  // Smoother Heading Logic
+  // Dynamic Heading Logic
   const isLikelyPureTenant = !isLoadingProps && properties.length === 0 && (isTenant || isIndexBuilding || isLoadingPortalCheck);
   
   // 3. Auto-Redirect Pure Tenants (Confirmed Only)
@@ -256,7 +257,7 @@ export default function DashboardPage() {
           </h1>
           <p className="text-muted-foreground font-medium text-lg">
             {isLikelyPureTenant 
-              ? `Welcome home, ${user?.displayName?.split(' ')[0] || 'Resident'}. Access your tenancy tools below.` 
+              ? `Welcome home, ${user?.displayName?.split(' ')[0] || 'Tenant'}. Access your tenancy tools below.` 
               : "Overview of your rental portfolio and active management tasks."}
           </p>
         </div>
@@ -295,17 +296,17 @@ export default function DashboardPage() {
             <div className="space-y-2 text-center sm:text-left relative z-10">
               <div className="flex items-center justify-center sm:justify-start gap-2 text-primary font-bold">
                 <ShieldCheck className="h-4 w-4" />
-                {isIndexBuilding ? "Secure Tenancy Verification In Progress" : "Active Tenancy Verified"}
+                {isIndexBuilding ? "Secure Tenant Verification In Progress" : "Active Tenancy Verified"}
               </div>
               <p className="text-sm text-muted-foreground font-medium max-w-lg leading-relaxed">
                 {isIndexBuilding 
-                  ? "Our cloud system is currently mapping your resident records. Your secure features, documents, and messaging will be available momentarily." 
+                  ? "Our cloud system is currently mapping your tenant records. Your secure features, documents, and messaging will be available momentarily." 
                   : "Your account is linked to an active tenancy. You can now securely manage repairs, view safety certificates, and message your landlord directly."}
               </p>
             </div>
             {!isIndexBuilding && (
               <Button asChild className="font-bold shadow-lg shrink-0 px-10 h-12 rounded-xl group-hover:scale-105 transition-transform">
-                <Link href="/tenant/dashboard">Enter My Home Portal <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                <Link href="/tenant/dashboard">Enter Tenant Portal <ArrowRight className="ml-2 h-4 w-4" /></Link>
               </Button>
             )}
           </CardContent>
