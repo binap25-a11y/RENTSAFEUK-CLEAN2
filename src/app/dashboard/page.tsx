@@ -55,12 +55,12 @@ export function PropertiesPanel({ properties, isLoading, searchTerm, setSearchTe
 
   return (
     <Card className="shadow-lg border-none">
-      <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4">
+      <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 text-left">
         <div className="space-y-1">
           <CardTitle className="text-lg font-bold">My Properties</CardTitle>
           <CardDescription>Manage and view your property portfolio.</CardDescription>
         </div>
-        <Button asChild><Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Add Property</Link></Button>
+        <Button asChild className="font-bold uppercase tracking-widest text-[10px] h-10 px-6 shadow-md"><Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Add Property</Link></Button>
       </CardHeader>
       <CardContent>
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-4">
@@ -87,33 +87,33 @@ export function PropertiesPanel({ properties, isLoading, searchTerm, setSearchTe
           view === 'grid' ? (
             <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
               {properties.map(p => (
-                <Card key={p.id} className="group overflow-hidden flex flex-col hover:shadow-2xl transition-all duration-300 cursor-pointer" onClick={() => router.push(`/dashboard/properties/${p.id}`)}>
+                <Card key={p.id} className="group overflow-hidden flex flex-col hover:shadow-2xl transition-all duration-300 cursor-pointer border-none shadow-md bg-card text-left" onClick={() => router.push(`/dashboard/properties/${p.id}`)}>
                   <div className="relative aspect-[16/10] bg-muted overflow-hidden border-b">
                     {p.imageUrl ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img src={p.imageUrl} alt="Property" className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-500" />
                     ) : <div className="flex justify-center items-center w-full h-full bg-primary/5"><Home className="h-16 w-16 text-primary/10" /></div>}
                   </div>
-                  <CardHeader className="pb-3">
+                  <CardHeader className="pb-3 px-4">
                     <CardTitle className="text-lg font-bold truncate">{[p.address.nameOrNumber, p.address.street].filter(Boolean).join(', ')}</CardTitle>
                     <CardDescription>{p.address.city}, {p.address.postcode}</CardDescription>
                   </CardHeader>
-                  <CardContent className="flex justify-between items-center mt-auto pt-4 border-t">
-                    <div className="flex items-center gap-4 text-xs font-bold text-muted-foreground uppercase">
+                  <CardContent className="flex justify-between items-center mt-auto pt-4 px-4 border-t">
+                    <div className="flex items-center gap-4 text-[10px] font-bold text-muted-foreground uppercase">
                       <span className="flex items-center gap-1"><Bed className="h-3.5 w-3.5" /> {p.bedrooms}</span>
                       <span className="flex items-center gap-1"><Bath className="h-3.5 w-3.5" /> {p.bathrooms}</span>
                     </div>
-                    <Badge variant={p.status === 'Occupied' ? 'default' : 'secondary'} className="text-[10px] uppercase font-bold">{p.status}</Badge>
+                    <Badge variant={p.status === 'Occupied' ? 'default' : 'secondary'} className="text-[9px] uppercase font-bold px-2 py-0">{p.status}</Badge>
                   </CardContent>
                 </Card>
               ))}
             </div>
           ) : (
-            <div className="rounded-md border overflow-hidden">
+            <div className="rounded-xl border overflow-hidden shadow-sm">
               <Table>
                 <TableHeader className="bg-muted/50">
                   <TableRow>
-                    <TableHead className="font-bold text-[10px] uppercase tracking-wider">Address</TableHead>
+                    <TableHead className="font-bold text-[10px] uppercase tracking-wider pl-6">Address</TableHead>
                     <TableHead className="font-bold text-[10px] uppercase tracking-wider">Type</TableHead>
                     <TableHead className="font-bold text-[10px] uppercase tracking-wider">Status</TableHead>
                     <TableHead className="text-right font-bold text-[10px] uppercase tracking-wider pr-6">Actions</TableHead>
@@ -121,15 +121,15 @@ export function PropertiesPanel({ properties, isLoading, searchTerm, setSearchTe
                 </TableHeader>
                 <TableBody>
                   {properties.map(p => (
-                    <TableRow key={p.id} className="cursor-pointer hover:bg-muted/30" onClick={() => router.push(`/dashboard/properties/${p.id}`)}>
-                      <TableCell className="font-bold text-sm">
+                    <TableRow key={p.id} className="cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => router.push(`/dashboard/properties/${p.id}`)}>
+                      <TableCell className="font-bold text-sm pl-6 py-4">
                         {[p.address.nameOrNumber, p.address.street].filter(Boolean).join(', ')}
                         <div className="text-[11px] text-muted-foreground font-medium">{p.address.city}, {p.address.postcode}</div>
                       </TableCell>
-                      <TableCell className="text-[10px] uppercase text-muted-foreground font-bold">{p.propertyType}</TableCell>
-                      <TableCell><Badge variant={p.status === 'Occupied' ? 'default' : 'secondary'} className="text-[10px] uppercase font-bold">{p.status}</Badge></TableCell>
+                      <TableCell className="text-[10px] uppercase text-muted-foreground font-bold tracking-widest">{p.propertyType}</TableCell>
+                      <TableCell><Badge variant={p.status === 'Occupied' ? 'default' : 'secondary'} className="text-[9px] uppercase font-bold px-2 py-0">{p.status}</Badge></TableCell>
                       <TableCell className="text-right pr-6" onClick={(e) => e.stopPropagation()}>
-                        <Button asChild variant="ghost" size="icon" className="h-8 w-8">
+                        <Button asChild variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 text-primary">
                           <Link href={`/dashboard/properties/${p.id}`}><Eye className="h-4 w-4" /></Link>
                         </Button>
                       </TableCell>
@@ -140,13 +140,15 @@ export function PropertiesPanel({ properties, isLoading, searchTerm, setSearchTe
             </div>
           )
         ) : (
-          <div className="text-center py-20 border-2 border-dashed rounded-2xl bg-muted/5 flex flex-col items-center gap-4">
-            <Home className="h-12 w-12 text-muted-foreground opacity-20" />
-            <div>
-              <p className="font-bold text-muted-foreground">No properties found in portfolio.</p>
-              <p className="text-xs text-muted-foreground mt-1">Start by adding your first rental unit.</p>
+          <div className="text-center py-20 border-2 border-dashed rounded-3xl bg-muted/5 flex flex-col items-center gap-4 mx-2">
+            <div className="p-6 rounded-full bg-background shadow-sm">
+                <Home className="h-12 w-12 text-primary/20" />
             </div>
-            <Button asChild variant="outline" size="sm"><Link href="/dashboard/properties/add">Add First Property</Link></Button>
+            <div>
+              <p className="font-bold text-lg">Your portfolio is empty</p>
+              <p className="text-sm text-muted-foreground mt-1 max-w-xs mx-auto">Start by adding your first rental property to access management tools.</p>
+            </div>
+            <Button asChild variant="outline" size="sm" className="font-bold uppercase tracking-widest text-[10px] h-10 px-8 border-primary/20 hover:bg-primary/5 mt-2"><Link href="/dashboard/properties/add">Add First Property</Link></Button>
           </div>
         )}
       </CardContent>
@@ -256,7 +258,7 @@ export default function DashboardPage() {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500 text-left">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
           <h1 className="text-3xl font-bold font-headline text-primary tracking-tight transition-all duration-500">
@@ -284,7 +286,7 @@ export default function DashboardPage() {
                 </span>
               ) : (
                 <Link href="/tenant/dashboard">
-                  <span className="flex items-center gap-2"><UserCircle className="h-4 w-4" /> Open Tenant Portal</span>
+                  <span className="flex items-center gap-2 text-primary"><UserCircle className="h-4 w-4" /> Open Tenant Portal</span>
                 </Link>
               )}
             </Button>
@@ -299,7 +301,7 @@ export default function DashboardPage() {
 
       {/* Feature Highlight for Tenants */}
       {(isTenant || isIndexBuilding) && (
-        <Card className="border-primary/20 bg-primary/[0.02] border-dashed shadow-sm overflow-hidden relative group transition-all hover:bg-primary/[0.04]">
+        <Card className="border-primary/20 bg-primary/[0.02] border-dashed shadow-sm overflow-hidden relative group transition-all hover:bg-primary/[0.04] text-left">
           <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
             <Sparkles className="h-16 w-16 text-primary" />
           </div>
@@ -311,12 +313,12 @@ export default function DashboardPage() {
               </div>
               <p className="text-sm text-muted-foreground font-medium max-w-lg leading-relaxed">
                 {isIndexBuilding 
-                  ? "Our system is currently mapping your tenant records. This ensures your tenancy data remains private and secure. Your portal will be ready instantly." 
+                  ? "Our system is currently mapping your tenancy records. This ensures your data remains private and secure. Your portal will be ready instantly." 
                   : "Your account is linked to an active tenancy. You can now securely manage repairs, view safety certificates, and message your landlord directly."}
               </p>
             </div>
             {!isIndexBuilding && (
-              <Button asChild className="font-bold shadow-lg shrink-0 px-10 h-12 rounded-xl group-hover:scale-105 transition-transform">
+              <Button asChild className="font-bold uppercase tracking-widest text-xs shadow-lg shrink-0 px-10 h-12 rounded-xl group-hover:scale-105 transition-transform bg-primary hover:bg-primary/90">
                 <Link href="/tenant/dashboard">Enter Tenant Portal <ArrowRight className="ml-2 h-4 w-4" /></Link>
               </Button>
             )}

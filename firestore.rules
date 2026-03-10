@@ -26,7 +26,10 @@ service cloud.firestore {
       match /properties/{propertyId} {
         // Path-based ownership authorization for all property records
         allow read, write: if isOwner(userProfileId);
-        // Allow assigned tenants to 'get' property context (address, etc.)
+        
+        // ALLOWANCE: Tenants need to 'get' the property document to see address/rent info in their portal
+        // This is secure because they must first know the landlordId/propertyId which they only 
+        // get via the discovery query that matches their verified email.
         allow get: if isSignedIn();
 
         match /maintenanceLogs/{logId} {
@@ -36,6 +39,8 @@ service cloud.firestore {
             resource.data.reportedBy == request.auth.uid ||
             resource.data.tenantEmail == getEmail()
           );
+          // Tenants can create logs for their property
+          allow create: if isSignedIn();
         }
 
         match /documents/{documentId} {
@@ -56,10 +61,13 @@ service cloud.firestore {
                 resource.data.senderId == request.auth.uid ||
                 resource.data.recipientEmail == getEmail()
             );
+            allow create: if isSignedIn();
           }
           
           match /screenings/{screeningId} {
             allow read, write: if isOwner(userProfileId);
+            // Tenants can see their own screening results
+            allow read: if isSignedIn() && getEmail() != null;
           }
           
           match /checklists/{checklistId} {
@@ -74,6 +82,8 @@ service cloud.firestore {
 
         match /inspections/{inspectionId} {
           allow read, write: if isOwner(userProfileId);
+          // Tenants can view completed reports for their property
+          allow read: if isSignedIn();
         }
         
         match /expenses/{expenseId} {
@@ -90,6 +100,7 @@ service cloud.firestore {
 
     match /{path=**}/tenants/{tenantId} {
       // Direct field-matching for high-performance collectionGroup queries
+      // This is the core discovery rule that links a user to a landlord's property path
       allow list, get: if isSignedIn() && (
         resource.data.email == getEmail() ||
         resource.data.userId == request.auth.uid

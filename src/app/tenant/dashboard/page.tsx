@@ -135,10 +135,10 @@ export default function TenantDashboard() {
                 </div>
                 <div className="absolute inset-0 bg-primary/5 blur-3xl rounded-full scale-150" />
             </div>
-            <div className="space-y-3">
+            <div className="space-y-3 px-4">
                 <h2 className="font-headline text-2xl font-bold text-primary">Setting Up Your Tenancy</h2>
-                <p className="text-muted-foreground font-medium px-4 leading-relaxed">
-                    Our cloud system is synchronizing your tenant records for the first time. This high-speed indexing ensures your data remains private and secure.
+                <p className="text-muted-foreground font-medium leading-relaxed">
+                    Our cloud system is synchronizing your tenancy records for the first time. This high-speed indexing ensures your data remains private and secure.
                 </p>
             </div>
             <div className="flex flex-col items-center gap-4">
@@ -146,7 +146,7 @@ export default function TenantDashboard() {
                     <Loader2 className="h-3 w-3 animate-spin" />
                     Live Sync Active
                 </div>
-                <Button variant="outline" className="font-bold h-11 px-8 rounded-xl border-primary/20 hover:bg-primary/5" onClick={() => window.location.reload()}>
+                <Button variant="outline" className="font-bold h-11 px-10 rounded-xl border-primary/20 hover:bg-primary/5 uppercase tracking-widest text-[10px]" onClick={() => window.location.reload()}>
                     <RefreshCw className="mr-2 h-4 w-4" /> Refresh Portal
                 </Button>
             </div>
@@ -156,7 +156,7 @@ export default function TenantDashboard() {
 
   if (!context) {
     return (
-        <Card className="max-w-md mx-auto mt-20 shadow-2xl border-none">
+        <Card className="max-w-md mx-auto mt-20 shadow-2xl border-none text-left">
             <CardHeader className="text-center bg-muted/20 pb-8">
                 <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 shadow-sm border">
                     <AlertCircle className="h-10 w-10 text-destructive" />
@@ -168,10 +168,10 @@ export default function TenantDashboard() {
                 </CardDescription>
             </CardHeader>
             <CardFooter className="pt-6 flex flex-col gap-3">
-                <Button className="w-full font-bold h-11 shadow-lg" asChild>
+                <Button className="w-full font-bold h-11 shadow-lg uppercase tracking-widest text-xs" asChild>
                     <Link href="/dashboard">Return to Main Dashboard</Link>
                 </Button>
-                <Button variant="ghost" className="w-full text-xs text-muted-foreground" onClick={() => window.location.reload()}>
+                <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={() => window.location.reload()}>
                     Refresh Session
                 </Button>
             </CardFooter>
@@ -180,7 +180,7 @@ export default function TenantDashboard() {
   }
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-500">
+    <div className="space-y-8 animate-in fade-in duration-500 text-left">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">
@@ -192,23 +192,23 @@ export default function TenantDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" asChild className="h-8 text-[10px] font-bold uppercase tracking-widest border-primary/20 text-primary shadow-sm bg-background rounded-xl text-xs px-4">
+            <Button variant="outline" size="sm" asChild className="h-8 text-[9px] font-bold uppercase tracking-widest border-primary/20 text-primary shadow-sm bg-background rounded-xl px-4">
                 <Link href="/dashboard"><UserCircle className="mr-2 h-3.5 w-3.5" /> Landlord Mode</Link>
             </Button>
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-8 px-3 font-bold uppercase tracking-widest text-[10px] shadow-sm rounded-xl">
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-8 px-3 font-bold uppercase tracking-widest text-[9px] shadow-sm rounded-xl">
                 Tenant Portal Active
             </Badge>
         </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="shadow-lg border-none hover:bg-muted/5 transition-all hover:translate-y-[-2px]">
-            <CardHeader className="pb-2">
+        <Card className="shadow-lg border-none hover:bg-muted/5 transition-all hover:translate-y-[-2px] text-left">
+            <CardHeader className="pb-2 px-6">
                 <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
                     <Banknote className="h-3.5 w-3.5 text-primary" /> Rent Schedule
                 </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-6 pb-6">
                 <div className="text-3xl font-bold">£{context.tenantData.monthlyRent?.toLocaleString() || '0'}</div>
                 <p className="text-xs text-muted-foreground mt-1 font-semibold">
                     Due on the {context.tenantData.rentDueDay || '1st'} of each month
@@ -216,27 +216,27 @@ export default function TenantDashboard() {
             </CardContent>
         </Card>
 
-        <Card className="shadow-lg border-none hover:bg-muted/5 transition-all hover:translate-y-[-2px]">
-            <CardHeader className="pb-2">
+        <Card className="shadow-lg border-none hover:bg-muted/5 transition-all hover:translate-y-[-2px] text-left">
+            <CardHeader className="pb-2 px-6">
                 <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
                     <Calendar className="h-3.5 w-3.5 text-primary" /> Tenancy Period
                 </CardTitle>
             </CardHeader>
-            <CardContent>
+            <CardContent className="px-6 pb-6">
                 <div className="text-xl font-bold">Rolling Contract</div>
                 <p className="text-xs text-muted-foreground mt-1 font-medium italic">Managed via RentSafeUK Secure Portal</p>
             </CardContent>
         </Card>
 
-        <Card className="shadow-xl border-none bg-primary text-primary-foreground transition-all hover:translate-y-[-2px]">
-            <CardHeader className="pb-2">
+        <Card className="shadow-xl border-none bg-primary text-primary-foreground transition-all hover:translate-y-[-2px] text-left">
+            <CardHeader className="pb-2 px-6">
                 <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-80 flex items-center gap-2">
                     <MessageSquare className="h-3.5 w-3.5" /> Direct Contact
                 </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
+            <CardContent className="space-y-4 px-6 pb-6">
                 <p className="text-xs font-medium leading-relaxed">Communicate securely with your landlord regarding your tenancy.</p>
-                <Button variant="secondary" size="sm" className="w-full font-bold h-9 shadow-md rounded-xl" asChild>
+                <Button variant="secondary" size="sm" className="w-full font-bold h-9 shadow-md rounded-xl uppercase tracking-widest text-[10px]" asChild>
                     <Link href="/tenant/messages">Open Secure Messenger <ChevronRight className="ml-1 h-3 w-3"/></Link>
                 </Button>
             </CardContent>
@@ -244,35 +244,35 @@ export default function TenantDashboard() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2 mt-8">
-        <Card className="border-none shadow-md overflow-hidden group">
-            <CardHeader className="bg-muted/30 border-b group-hover:bg-muted/50 transition-colors">
-                <CardTitle className="text-lg flex items-center gap-2"><Wrench className="h-5 w-5 text-primary" /> Maintenance Hub</CardTitle>
+        <Card className="border-none shadow-md overflow-hidden group text-left">
+            <CardHeader className="bg-muted/30 border-b group-hover:bg-muted/50 transition-colors px-6">
+                <CardTitle className="text-lg flex items-center gap-2 font-headline"><Wrench className="h-5 w-5 text-primary" /> Maintenance Hub</CardTitle>
             </CardHeader>
-            <CardContent className="pt-6">
+            <CardContent className="pt-6 px-6 pb-6">
                 <div className="space-y-4">
                     <div className="flex items-center justify-between p-5 rounded-2xl bg-muted/20 border border-transparent group-hover:border-primary/10 transition-all">
                         <div className="space-y-1">
                             <p className="text-sm font-bold">Found an issue?</p>
                             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Report repairs with photos instantly</p>
                         </div>
-                        <Button size="sm" className="h-10 font-bold px-8 shadow-md rounded-xl" asChild><Link href="/tenant/maintenance">Log Issue</Link></Button>
+                        <Button size="sm" className="h-10 font-bold px-8 shadow-md rounded-xl uppercase tracking-widest text-[9px] bg-primary hover:bg-primary/90" asChild><Link href="/tenant/maintenance">Log Issue</Link></Button>
                     </div>
                 </div>
             </CardContent>
         </Card>
 
-        <Card className="border-none shadow-md overflow-hidden group">
-            <CardHeader className="bg-muted/30 border-b group-hover:bg-muted/50 transition-colors">
-                <CardTitle className="text-lg flex items-center gap-2"><FileText className="h-5 w-5 text-primary" /> Tenancy Documents</CardTitle>
+        <Card className="border-none shadow-md overflow-hidden group text-left">
+            <CardHeader className="bg-muted/30 border-b group-hover:bg-muted/50 transition-colors px-6">
+                <CardTitle className="text-lg flex items-center gap-2 font-headline"><FileText className="h-5 w-5 text-primary" /> Tenancy Documents</CardTitle>
             </CardHeader>
-            <CardContent className="pt-6">
+            <CardContent className="pt-6 px-6 pb-6">
                 <div className="space-y-4">
                     <div className="flex items-center justify-between p-5 rounded-2xl bg-muted/20 border border-transparent group-hover:border-primary/10 transition-all">
                         <div className="space-y-1">
                             <p className="text-sm font-bold">Legal Compliance</p>
                             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Access safety certs and agreements</p>
                         </div>
-                        <Button variant="outline" size="sm" className="h-10 font-bold px-8 border-primary/20 hover:bg-primary/5 shadow-sm rounded-xl" asChild><Link href="/tenant/documents">Browse Files</Link></Button>
+                        <Button variant="outline" size="sm" className="h-10 font-bold px-8 border-primary/20 hover:bg-primary/5 shadow-sm rounded-xl uppercase tracking-widest text-[9px]" asChild><Link href="/tenant/documents">Browse Files</Link></Button>
                     </div>
                 </div>
             </CardContent>

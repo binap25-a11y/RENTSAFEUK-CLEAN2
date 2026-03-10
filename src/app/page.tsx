@@ -126,7 +126,7 @@ export default function LoginPage() {
   return (
     <div className="w-full">
       <div className="flex items-center justify-center py-12 min-h-screen bg-muted/30">
-        <Card className="mx-auto w-full max-sm shadow-xl border-none">
+        <Card className="mx-auto w-full max-sm shadow-xl border-none text-left">
           <CardHeader className="text-center space-y-4 pb-2">
             <div className="flex justify-center">
               <Logo className="w-16 h-16 text-primary" />
@@ -149,7 +149,7 @@ export default function LoginPage() {
               </Alert>
             )}
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleAuthAction)} className="space-y-4">
+              <form onSubmit={form.handleSubmit(handleAuthAction)} className="space-y-4 text-left">
                 <FormField
                   control={form.control}
                   name="email"
