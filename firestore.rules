@@ -26,15 +26,15 @@ service cloud.firestore {
 
     // --- COLLECTION GROUP RULES (CRITICAL) ---
     // These must be defined outside nested paths to allow global identity discovery.
+    // Optimization: Direct field comparisons are statically provable for query optimization.
 
     /**
      * @description Allows tenants to discover their own record across any user profile.
-     * Rules are simplified to be statically provable for collection group queries.
-     * Data is expected to be saved lowercase in the DB.
+     * Rules use direct equality for optimized collection group query support.
      */
     match /{path=**}/tenants/{tenantId} {
-      allow list: if isSignedIn() && request.auth.token.email != null && resource.data.email == getAuthEmail();
-      allow get: if isSignedIn() && request.auth.token.email != null && resource.data.email == getAuthEmail();
+      allow list: if isSignedIn() && request.auth.token.email != null && resource.data.email == request.auth.token.email.lower();
+      allow get: if isSignedIn() && request.auth.token.email != null && resource.data.email == request.auth.token.email.lower();
     }
 
     /**
@@ -70,20 +70,20 @@ service cloud.firestore {
         match /tenants/{tenantId} {
           allow read, write: if isOwner(userId);
           // Individual document access for the tenant themselves.
-          allow get: if isSignedIn() && resource.data.email == getAuthEmail();
+          allow get: if isSignedIn() && resource.data.email == request.auth.token.email.lower();
 
           match /messages/{messageId} {
-             allow read, write: if isOwner(userId) || (isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == getAuthEmail());
+             allow read, write: if isOwner(userId) || (isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email.lower());
           }
 
           match /screenings/{screeningId} {
              allow read, write: if isOwner(userId);
-             allow get: if isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == getAuthEmail();
+             allow get: if isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email.lower();
           }
           
           match /checklists/{checklistId} {
              allow read, write: if isOwner(userId);
-             allow get: if isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == getAuthEmail();
+             allow get: if isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email.lower();
           }
         }
 

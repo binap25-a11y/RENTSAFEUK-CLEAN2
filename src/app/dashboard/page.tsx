@@ -19,7 +19,8 @@ import {
   Bath, 
   ShieldCheck, 
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  ArrowRight
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -163,13 +164,25 @@ export default function DashboardPage() {
   const [isTenant, setIsTenant] = useState<boolean>(false);
   const [isLoadingPortalCheck, setIsLoadingPortalCheck] = useState(true);
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
+  const [hasHeuristicTimeout, setHasHeuristicTimeout] = useState(false);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoadingProps, setIsLoadingProps] = useState(true);
 
-  // 1. Discover Tenant Role (Collection Group for portal handshake)
+  // 1. Heuristic Timeout: If portal check hangs, assume landlord after 2.5s
+  useEffect(() => {
+    const timer = setTimeout(() => {
+        if (isLoadingPortalCheck) {
+            console.log("Portal handshake timed out. Heuristically assuming landlord role.");
+            setHasHeuristicTimeout(true);
+        }
+    }, 2500);
+    return () => clearTimeout(timer);
+  }, [isLoadingPortalCheck]);
+
+  // 2. Discover Tenant Role
   useEffect(() => {
     if (!user || !firestore || !user.email) {
       setIsLoadingPortalCheck(false);
@@ -188,17 +201,10 @@ export default function DashboardPage() {
       setIsTenant(!!activeTenant);
       setIsLoadingPortalCheck(false);
       setIsIndexBuilding(false); 
-    }, async (error) => {
+    }, (error) => {
       const msg = error.message.toLowerCase();
-      // If index is building, we don't treat it as a hard permission error yet
       if (msg.includes('index') || error.code === 'failed-precondition') {
         setIsIndexBuilding(true);
-      } else {
-        const permissionError = new FirestorePermissionError({
-            path: 'tenants (collectionGroup)',
-            operation: 'list',
-        });
-        errorEmitter.emit('permission-error', permissionError);
       }
       setIsLoadingPortalCheck(false);
     });
@@ -206,7 +212,7 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore]);
 
-  // 2. Fetch Properties (Landlord Role)
+  // 3. Fetch Properties (Landlord Role)
   useEffect(() => {
     if (!user || !firestore) return;
     
@@ -219,14 +225,13 @@ export default function DashboardPage() {
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Property));
       setProperties(list);
       setIsLoadingProps(false);
-    }, (error) => {
-      console.warn("Landlord portfolio fetch restricted or still loading.");
+    }, () => {
       setIsLoadingProps(false);
     });
     return () => unsub();
   }, [user, firestore]);
 
-  // 3. Auto-Redirect verified tenants
+  // 4. Auto-Redirect verified tenants
   useEffect(() => {
     if (!isLoadingPortalCheck && isTenant) {
       router.push('/tenant/dashboard');
@@ -243,30 +248,51 @@ export default function DashboardPage() {
 
   // FAST PATH: If we have properties, we are a landlord. Don't show the hang screen.
   const isLandlordKnown = properties.length > 0;
-  const isVerifiedTenant = !isLoadingPortalCheck && isTenant;
   
-  // Only show the global loading screen if we are totally blind to who the user is
-  // and we are waiting on a critical verification step.
-  const isGlobalLoading = !isLandlordKnown && !isVerifiedTenant && (isUserLoading || isLoadingPortalCheck || isIndexBuilding);
+  // Show global loading if we're completely blind AND haven't timed out into landlord mode yet.
+  const isGlobalLoading = !isLandlordKnown && !isTenant && (isUserLoading || (isLoadingPortalCheck && !hasHeuristicTimeout) || isIndexBuilding);
 
   if (isGlobalLoading) {
     return (
-      <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse font-medium">
-            {isIndexBuilding ? "Establishing Secure Connection..." : "Verifying Identity Path..."}
-          </p>
-          {isIndexBuilding && (
-            <div className="max-w-xs text-center space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-500">
-                <p className="text-xs text-muted-foreground leading-relaxed">
-                    The cloud database is currently synchronizing your portal access. This usually takes 5-10 minutes for new accounts.
-                </p>
-                <Button variant="ghost" size="sm" className="text-[10px] font-bold uppercase tracking-widest" onClick={() => window.location.reload()}>
-                    <RefreshCw className="mr-2 h-3 w-3" /> Refresh Status
-                </Button>
+      <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-background px-6">
+        <div className="flex flex-col items-center gap-6 max-w-sm w-full text-center">
+          <div className="relative">
+            <Loader2 className="h-12 w-12 animate-spin text-primary" />
+            <div className="absolute inset-0 flex items-center justify-center">
+                <ShieldCheck className="h-4 w-4 text-primary opacity-20" />
             </div>
-          )}
+          </div>
+          
+          <div className="space-y-2">
+            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground animate-pulse">
+                {isIndexBuilding ? "Database Synchronization" : "Identity Handshake"}
+            </p>
+            <h2 className="text-xl font-bold font-headline">Securing Connection</h2>
+            <p className="text-xs text-muted-foreground leading-relaxed">
+                {isIndexBuilding 
+                    ? "Our cloud database is currently indexing your records for private portal access. This typically takes a few minutes for new accounts." 
+                    : "Establishing a secure connection to your property records..."}
+            </p>
+          </div>
+
+          <div className="flex flex-col gap-3 w-full pt-4">
+            {isIndexBuilding && (
+                <Button 
+                    variant="outline" 
+                    className="font-bold text-[10px] uppercase tracking-widest h-11 rounded-xl"
+                    onClick={() => window.location.reload()}
+                >
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Refresh Status
+                </Button>
+            )}
+            <Button 
+                variant="ghost" 
+                className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 hover:text-primary transition-all group"
+                onClick={() => setHasHeuristicTimeout(true)}
+            >
+                Continue as Landlord <ArrowRight className="ml-2 h-3 w-3 group-hover:translate-x-1 transition-transform" />
+            </Button>
+          </div>
         </div>
       </div>
     );
