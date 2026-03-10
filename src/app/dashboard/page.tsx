@@ -172,6 +172,7 @@ export default function DashboardPage() {
 
     const email = user.email.toLowerCase().trim();
     // Discovery query to identify resident roles
+    // Path matches the collection name in firestore.rules for simpler discovery
     const tenantsQuery = query(
       collectionGroup(firestore, 'tenants'),
       where('email', '==', email),
@@ -184,6 +185,11 @@ export default function DashboardPage() {
       setIsLoadingPortalCheck(false);
     }, (error) => {
       console.error("Role discovery query failed:", error.message);
+      // Trigger global error propagation with explicit collection group context
+      errorEmitter.emit('permission-error', new FirestorePermissionError({
+        path: 'tenants', 
+        operation: 'list',
+      }));
       setIsTenant(false);
       setIsLoadingPortalCheck(false);
     });

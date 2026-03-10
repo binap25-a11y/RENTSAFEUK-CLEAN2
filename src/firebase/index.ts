@@ -40,21 +40,9 @@ export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 
-// Utility Exports - Explicitly from .ts implementation files
-export { 
-  initiateAnonymousSignIn, 
-  createUserNonBlocking, 
-  signInNonBlocking,
-  initiateEmailSignUp,
-  initiateEmailSignIn 
-} from './non-blocking-login';
-
-export { 
-  setDocumentNonBlocking, 
-  addDocumentNonBlocking, 
-  updateDocumentNonBlocking, 
-  deleteDocumentNonBlocking 
-} from './non-blocking-updates';
+// Utility Exports
+export * from './non-blocking-login';
+export * from './non-blocking-updates';
 
 export * from './errors';
 export * from './error-emitter';

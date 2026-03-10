@@ -1,6 +1,6 @@
 'use client';
 
 /**
- * @fileOverview Passthrough to resolve module resolution ambiguity.
+ * @fileOverview Standardized passthrough to resolve module resolution ambiguity between .ts and .tsx.
  */
 export * from './non-blocking-updates';

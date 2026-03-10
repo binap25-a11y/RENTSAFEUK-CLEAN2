@@ -112,13 +112,13 @@ service cloud.firestore {
     }
 
     // --- Optimized collectionGroup Rules ---
-    // Optimized for identity-based and ownership-based provability.
+    // Specifically split to satisfy the Firestore query analyzer's provability requirements.
 
     match /{path=**}/tenants/{tenantId} {
-      // Rule 1: Resident discovery (email must match EXACTLY)
+      // Identity-based discovery for Residents
       allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
       
-      // Rule 2: Landlord oversight (userId must match EXACTLY)
+      // Ownership-based oversight for Landlords
       allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
       
       allow get: if isSignedIn() && (
