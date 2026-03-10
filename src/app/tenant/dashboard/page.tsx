@@ -62,8 +62,8 @@ export default function TenantDashboard() {
             const pathSegments = activeTenantDoc.ref.path.split('/');
             
             // Path: userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}
-            const landlordId = pathSegments[2];
-            const propertyId = pathSegments[4];
+            const landlordId = pathSegments[1]; // Corrected segment index
+            const propertyId = pathSegments[3]; // Corrected segment index
             const tenantId = activeTenantDoc.id;
 
             const propRef = doc(firestore, 'userProfiles', landlordId, 'properties', propertyId);

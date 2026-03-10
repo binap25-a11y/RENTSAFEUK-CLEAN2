@@ -25,7 +25,7 @@ service cloud.firestore {
 
         match /maintenanceLogs/{logId} {
           allow read, write: if isOwner(userProfileId);
-          // Allow assigned tenant access
+          // Allow assigned tenant access via email match
           allow read: if isSignedIn() && (
             resource.data.reportedBy == request.auth.uid ||
             resource.data.tenantEmail == request.auth.token.email
@@ -34,13 +34,13 @@ service cloud.firestore {
 
         match /documents/{documentId} {
           allow read, write: if isOwner(userProfileId);
-          // Allow assigned tenant access
+          // Allow assigned tenant access via email match
           allow read: if isSignedIn() && resource.data.tenantEmail == request.auth.token.email;
         }
 
         match /tenants/{tenantId} {
           allow read, write: if isOwner(userProfileId);
-          // Allow verified resident to read their own assignment
+          // Allow verified resident to read their own assignment record
           allow read: if isSignedIn() && resource.data.email == request.auth.token.email;
 
           match /messages/{messageId} {
@@ -80,18 +80,17 @@ service cloud.firestore {
       }
     }
 
-    // --- Specialized Collection Group Rules for Discovery & Multi-Role Access ---
+    // --- Specialized Collection Group Rules for Discovery ---
 
     match /{path=**}/tenants/{tenantId} {
-      // Unified discovery rule for both Landlords and Tenants
+      // Simplified discovery rule to ensure query analyzer can prove authorization
       allow list, get: if isSignedIn() && (
-        (request.auth.token.email != null && resource.data.email == request.auth.token.email) ||
-        (resource.data.userId == request.auth.uid)
+        resource.data.email == request.auth.token.email ||
+        resource.data.userId == request.auth.uid
       );
     }
 
     match /{path=**}/messages/{messageId} {
-      // Identity-based access for secure messaging channels
       allow list, get: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
         resource.data.senderId == request.auth.uid ||
@@ -101,7 +100,6 @@ service cloud.firestore {
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      // Access for reporter, landlord, or property resident
       allow list, get: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
         resource.data.reportedBy == request.auth.uid ||
