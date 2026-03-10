@@ -194,14 +194,12 @@ export default function DashboardPage() {
   /**
    * REAL-TIME OCCUPANCY AUDITOR (Self-Healing Logic)
    * This process ensures the "Vacant" vs "Occupied" status accurately reflects the actual tenant registry.
-   * If a property is "Vacant" but has active tenants, it auto-repairs to "Occupied".
    */
   useEffect(() => {
     if (!user || !firestore || properties.length === 0 || isLoadingProps) return;
 
     const auditPortfolio = async () => {
         for (const property of properties) {
-            // Only re-evaluate if Vacant or Occupied
             if (['Vacant', 'Occupied'].includes(property.status)) {
                 const tenantsQuery = query(
                     collection(firestore, 'userProfiles', user.uid, 'properties', property.id, 'tenants'),
@@ -213,7 +211,6 @@ export default function DashboardPage() {
                 const expectedStatus = hasActiveTenants ? 'Occupied' : 'Vacant';
 
                 if (property.status !== expectedStatus) {
-                    console.log(`Auditor: Repairing ${property.id} status to ${expectedStatus}`);
                     const propertyRef = doc(firestore, 'userProfiles', user.uid, 'properties', property.id);
                     await updateDoc(propertyRef, { status: expectedStatus });
                 }
@@ -221,7 +218,7 @@ export default function DashboardPage() {
         }
     };
 
-    auditPortfolio().catch(err => console.error("Occupancy auditor failed:", err));
+    auditPortfolio().catch(err => console.error("Auditor sync error:", err));
   }, [user, firestore, properties, isLoadingProps]);
 
   // 2. Discover Tenant Role - Simplified and optimized
@@ -247,7 +244,7 @@ export default function DashboardPage() {
       if (msg.includes('index') || error.code === 'failed-precondition') {
         setIsIndexBuilding(true);
       } else {
-        console.warn("Tenant verification handshake issue:", error.message);
+        console.warn("Verification Handshake Restricted:", error.message);
         setIsIndexBuilding(false);
       }
       setIsLoadingPortalCheck(false);
@@ -283,7 +280,7 @@ export default function DashboardPage() {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-4 text-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse font-medium">Synchronizing Secure Session...</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse font-medium">Synchronizing Identity...</p>
       </div>
     );
   }
@@ -297,12 +294,11 @@ export default function DashboardPage() {
           </h1>
           <p className="text-muted-foreground font-medium text-lg">
             {isPureTenant 
-              ? `Welcome home, ${user?.displayName?.split(' ')[0] || 'Tenant'}. Verifying your active tenancy portal...` 
-              : "Overview of your rental portfolio and active management tasks."}
+              ? `Welcome home, ${user?.displayName?.split(' ')[0] || 'Tenant'}. Verifying portal access...` 
+              : "Overview of your rental portfolio."}
           </p>
         </div>
         
-        {/* Only show verification hub for users without active landlord properties to reduce clutter */}
         {(properties.length === 0 && (isTenant || isIndexBuilding)) && (
           <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-muted/30 border border-primary/5 shadow-sm">
             <Button 
@@ -313,7 +309,7 @@ export default function DashboardPage() {
             >
               {isIndexBuilding ? (
                 <span className="flex items-center gap-2 text-muted-foreground">
-                  <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Tenant Verification...
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Verification Handshake...
                 </span>
               ) : (
                 <Link href="/tenant/dashboard">
@@ -321,11 +317,6 @@ export default function DashboardPage() {
                 </Link>
               )}
             </Button>
-            {isIndexBuilding && (
-              <div className="px-3">
-                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 uppercase text-[9px] font-bold animate-pulse">Index Building</Badge>
-              </div>
-            )}
           </div>
         )}
       </div>
@@ -339,17 +330,17 @@ export default function DashboardPage() {
             <div className="space-y-2 text-center sm:text-left relative z-10">
               <div className="flex items-center justify-center sm:justify-start gap-2 text-primary font-bold">
                 {isIndexBuilding ? <RefreshCw className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-                {isIndexBuilding ? "Setting Up Your Tenancy" : "Active Tenancy Identity Verified"}
+                {isIndexBuilding ? "Resolving Tenancy" : "Tenancy Identity Verified"}
               </div>
               <p className="text-sm text-muted-foreground font-medium max-lg leading-relaxed">
                 {isIndexBuilding 
-                  ? "Our cloud system is synchronizing your tenant records for the first time. This high-speed indexing ensures your data remains private and secure. Live Sync Active." 
-                  : "Your account is successfully linked to an active tenancy. You can now securely manage repairs, access safety certificates, and message your landlord."}
+                  ? "Our system is resolving your tenancy connection. Please refresh if this takes more than a moment." 
+                  : "Your account is successfully linked to an active tenancy."}
               </p>
             </div>
             {!isIndexBuilding ? (
               <Button asChild className="font-bold uppercase tracking-widest text-xs shadow-lg shrink-0 px-10 h-12 rounded-xl group-hover:scale-105 transition-transform bg-primary hover:bg-primary/90">
-                <Link href="/tenant/dashboard">Enter Secure Portal <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                <Link href="/tenant/dashboard">Enter Portal <ArrowRight className="ml-2 h-4 w-4" /></Link>
               </Button>
             ) : (
                 <Button onClick={handleRetrySync} variant="outline" className="font-bold uppercase tracking-widest text-xs shrink-0 px-10 h-12 rounded-xl border-2">
@@ -378,7 +369,7 @@ export default function DashboardPage() {
               </div>
               <div className="space-y-2 px-4">
                   <h3 className="text-2xl font-bold">Welcome to RentSafeUK</h3>
-                  <p className="text-muted-foreground max-w-md mx-auto">We couldn't find an active tenancy for this email address. If you've been invited by a landlord, please ask them to verify the portal email on your record.</p>
+                  <p className="text-muted-foreground max-w-md mx-auto">We couldn't find an active tenancy for this email address.</p>
               </div>
               <Button asChild size="lg" className="px-10 h-12 font-bold shadow-lg">
                   <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Onboard First Property</Link>

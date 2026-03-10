@@ -48,10 +48,10 @@ export default function TenantDashboard() {
     setIsLoading(true);
     setError(null);
     
-    // Strict normalization to match optimized security rules
+    // Normalize user email for secure discovery
     const userEmail = user.email.toLowerCase().trim();
 
-    // High-performance discovery query
+    // High-performance discovery query using collectionGroup
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
@@ -63,6 +63,7 @@ export default function TenantDashboard() {
     const unsub = onSnapshot(q, (snap) => {
         if (propUnsub) propUnsub();
 
+        // Find the first active tenancy doc for this email
         const activeTenantDoc = snap.docs.find(d => d.data().status === 'Active');
 
         if (activeTenantDoc) {
@@ -70,7 +71,7 @@ export default function TenantDashboard() {
             const path = activeTenantDoc.ref.path;
             const segments = path.split('/');
             
-            // Expected Path structure: userProfiles/{landlordId}/properties/{propertyId}/tenants/{tenantId}
+            // Reconstruct landlord and property IDs from the document path
             const landlordId = segments[segments.indexOf('userProfiles') + 1];
             const propertyId = segments[segments.indexOf('properties') + 1];
             const tenantId = activeTenantDoc.id;
@@ -87,23 +88,23 @@ export default function TenantDashboard() {
                             propertyData: propSnap.data()
                         });
                     } else {
-                        console.warn("Discovered property doc does not exist at path:", propRef.path);
+                        console.warn("Linked property not found:", propRef.path);
+                        setError("Property details could not be resolved.");
                     }
                     setIsLoading(false);
                     setIsIndexBuilding(false);
                 }, (err) => {
-                    console.error("Property context fetch restricted:", err.message);
-                    setError("Unable to read property details. Please contact your landlord.");
+                    console.error("Property fetch restricted:", err.message);
+                    setError("Portal access restricted by security policies.");
                     setIsLoading(false);
                     setIsIndexBuilding(false);
                 });
             } else {
-                console.warn("Invalid path segments extracted from tenant doc:", path);
                 setIsLoading(false);
                 setIsIndexBuilding(false);
             }
         } else {
-            // No active tenancy found for this email
+            // Discovery returned no active records
             setIsLoading(false);
             setIsIndexBuilding(false);
             setContext(null);
@@ -112,12 +113,9 @@ export default function TenantDashboard() {
         const msg = err.message.toLowerCase();
         if (msg.includes('index') || err.code === 'failed-precondition') {
             setIsIndexBuilding(true);
-        } else if (msg.includes('permission')) {
-            console.error("Discovery query failed due to security rules.");
-            setError("Portal access restricted by security policies.");
         } else {
-            console.warn("Tenant portal discovery error:", err.message);
-            setError(err.message);
+            console.error("Tenant discovery error:", err.message);
+            setError("Connection Error: Portal access restricted by security policies.");
         }
         setIsLoading(false);
     });
@@ -138,7 +136,7 @@ export default function TenantDashboard() {
     return (
         <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Establishing Secure Identity...</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Verifying Tenant Identity...</p>
         </div>
     );
   }
@@ -153,18 +151,14 @@ export default function TenantDashboard() {
                 <div className="absolute inset-0 bg-primary/5 blur-3xl rounded-full scale-150" />
             </div>
             <div className="space-y-3 px-4">
-                <h2 className="font-headline text-2xl font-bold text-primary">Setting Up Your Tenancy</h2>
+                <h2 className="font-headline text-2xl font-bold text-primary">Establishing Connection</h2>
                 <p className="text-muted-foreground font-medium leading-relaxed">
-                    Our cloud system is synchronizing your tenant records for the first time. This high-speed indexing ensures your data remains private and secure. Live Sync Active.
+                    Our cloud system is synchronizing your tenant records for private access. This process ensures your data remains secure.
                 </p>
             </div>
             <div className="flex flex-col items-center gap-4">
-                <div className="flex items-center gap-2 text-xs font-bold text-primary/60 uppercase tracking-widest">
-                    <Loader2 className="h-3 w-3 animate-spin" />
-                    Cloud Index Syncing
-                </div>
                 <Button variant="outline" className="font-bold h-11 px-10 rounded-xl border-primary/20 hover:bg-primary/5 uppercase tracking-widest text-[10px]" onClick={() => window.location.reload()}>
-                    <RefreshCw className="mr-2 h-4 w-4" /> Refresh Status
+                    <RefreshCw className="mr-2 h-4 w-4" /> Refresh Portal Status
                 </Button>
             </div>
         </div>
@@ -180,7 +174,7 @@ export default function TenantDashboard() {
                 </div>
                 <CardTitle className="font-headline text-xl">Verification Failed</CardTitle>
                 <CardDescription className="text-sm font-medium px-4">
-                    {error ? `Connection Error: ${error}` : `We couldn't find an active tenancy linked to ${user?.email}. Please verify with your landlord that your portal access email is correct.`}
+                    {error || `We couldn't find an active tenancy linked to ${user?.email}. Please verify with your landlord that your portal email is correct.`}
                 </CardDescription>
             </CardHeader>
             <CardFooter className="pt-6 flex flex-col gap-3 bg-background border-t">
@@ -204,7 +198,7 @@ export default function TenantDashboard() {
           </h1>
           <p className="text-muted-foreground font-medium flex items-center gap-2 mt-1">
               <Home className="h-4 w-4 text-primary/40" />
-              Welcome home, {user?.displayName?.split(' ')[0] || 'Tenant'} — {context.propertyData?.address?.street}, {context.propertyData?.address?.city}
+              {context.propertyData?.address?.street}, {context.propertyData?.address?.city}
           </p>
         </div>
         <div className="flex items-center gap-2">

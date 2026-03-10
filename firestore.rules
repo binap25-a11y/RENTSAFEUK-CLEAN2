@@ -96,14 +96,11 @@ service cloud.firestore {
     }
 
     // --- Optimized Collection Group Rules for Discovery ---
-    // These rules allow the application to find user-specific records across the entire database
-    // using strictly provable field matches (essential for collectionGroup queries).
+    // High-performance discovery matching using raw token data for static provability.
 
     match /{path=**}/tenants/{tenantId} {
-      // High-performance discovery matching. 
-      // Mandatory: Resource data email must be stored in lowercase for this to match getEmail().
       allow list, get: if isSignedIn() && (
-        resource.data.email == getEmail() ||
+        resource.data.email == request.auth.token.email.toLower() ||
         resource.data.userId == request.auth.uid
       );
     }
@@ -112,7 +109,7 @@ service cloud.firestore {
       allow list, get: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
         resource.data.senderId == request.auth.uid ||
-        resource.data.recipientEmail == getEmail()
+        resource.data.recipientEmail == request.auth.token.email.toLower()
       );
       allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
     }
@@ -121,7 +118,7 @@ service cloud.firestore {
       allow list, get: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
         resource.data.reportedBy == request.auth.uid ||
-        resource.data.tenantEmail == getEmail()
+        resource.data.tenantEmail == request.auth.token.email.toLower()
       );
     }
   }
