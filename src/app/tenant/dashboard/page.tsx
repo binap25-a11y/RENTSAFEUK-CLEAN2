@@ -52,6 +52,7 @@ export default function TenantDashboard() {
     const userEmail = user.email.toLowerCase().trim();
 
     // High-performance discovery query using collectionGroup
+    // Scoped strictly by email to ensure rule matching
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
@@ -124,14 +125,14 @@ export default function TenantDashboard() {
         if (msg.includes('index') || err.code === 'failed-precondition') {
             setIsIndexBuilding(true);
         } else {
-            // Standard Firestore permission error handling for collection group
+            // Log contextual permission error without component crash
             const permissionError = new FirestorePermissionError({
                 path: 'tenants (collectionGroup)',
                 operation: 'list',
             });
             errorEmitter.emit('permission-error', permissionError);
             
-            setError("Identity Check Failed: Access restricted by security rules.");
+            setError("Identity Verification Failed: Access restricted by security rules.");
         }
         setIsLoading(false);
     });

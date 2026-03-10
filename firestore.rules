@@ -18,11 +18,17 @@ service cloud.firestore {
     }
 
     // --- Optimized Collection Group Rules for Discovery (Top Level) ---
-    // These must remain at the top level to allow global collectionGroup queries 
-    // to succeed across all user profile branches.
+    // These rules allow global discovery queries to succeed across all user branches.
+    // Scoped strictly to identity matching for maximum security.
 
     match /{path=**}/tenants/{tenantId} {
-      allow list, get: if isSignedIn() && (
+      // List permission optimized for statically provable email-based discovery
+      allow list: if isSignedIn() && (
+        resource.data.email == getEmail() ||
+        resource.data.userId == request.auth.uid
+      );
+      // Get permission allows reading the specific record once discovered
+      allow get: if isSignedIn() && (
         resource.data.email == getEmail() ||
         resource.data.userId == request.auth.uid
       );
