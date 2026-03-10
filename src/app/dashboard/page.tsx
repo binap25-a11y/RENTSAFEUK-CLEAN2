@@ -6,7 +6,23 @@ import { collection, query, where, onSnapshot, collectionGroup, limit } from 'fi
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Home, Loader2, Search, LayoutGrid, List, Eye, Bed, Bath, ArrowRight, ShieldCheck, UserCircle, Info, Sparkles } from 'lucide-react';
+import { 
+  PlusCircle, 
+  Home, 
+  Loader2, 
+  Search, 
+  LayoutGrid, 
+  List, 
+  Eye, 
+  Bed, 
+  Bath, 
+  ArrowRight, 
+  ShieldCheck, 
+  UserCircle, 
+  Sparkles,
+  RefreshCw,
+  Info
+} from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -202,7 +218,7 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore]);
 
-  // Smoother Heading Logic: If properties are 0 and tenant query is checking/indexing, assume Tenant Dashboard
+  // Smoother Heading Logic
   const isLikelyPureTenant = !isLoadingProps && properties.length === 0 && (isTenant || isIndexBuilding || isLoadingPortalCheck);
   
   // 3. Auto-Redirect Pure Tenants (Confirmed Only)
@@ -226,15 +242,15 @@ export default function DashboardPage() {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse font-medium">Verifying Secure Access...</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse font-medium text-center">Verifying Secure Access...</p>
       </div>
     );
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div>
+        <div className="space-y-1">
           <h1 className="text-3xl font-bold font-headline text-primary tracking-tight transition-all duration-500">
             {pageTitle}
           </h1>
@@ -244,36 +260,52 @@ export default function DashboardPage() {
               : "Overview of your rental portfolio and active management tasks."}
           </p>
         </div>
+        
+        {/* Verification & Switch Hub */}
         {(isTenant || isIndexBuilding) && (
-          <Button variant="outline" asChild className="border-primary/20 bg-primary/5 hover:bg-primary/10 shadow-sm h-11 px-6 font-bold uppercase text-[10px] tracking-widest">
-            <Link href="/tenant/dashboard">
-              {isIndexBuilding ? (
-                <span className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" /> Portal Syncing...</span>
-              ) : (
-                <span className="flex items-center gap-2"><UserCircle className="h-4 w-4" /> Open Tenant Portal</span>
-              )}
-            </Link>
-          </Button>
+          <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-muted/30 border border-primary/5 shadow-sm">
+            <Button 
+              variant="outline" 
+              asChild 
+              className="border-primary/20 bg-background hover:bg-primary/5 shadow-sm h-10 px-6 font-bold uppercase text-[10px] tracking-widest rounded-xl transition-all"
+            >
+              <Link href="/tenant/dashboard">
+                {isIndexBuilding ? (
+                  <span className="flex items-center gap-2 text-muted-foreground"><RefreshCw className="h-3.5 w-3.5 animate-spin" /> Portals Connecting...</span>
+                ) : (
+                  <span className="flex items-center gap-2"><UserCircle className="h-4 w-4" /> Open Tenant Portal</span>
+                )}
+              </Link>
+            </Button>
+            {isIndexBuilding && (
+              <div className="px-3 animate-pulse">
+                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 uppercase text-[9px] font-bold">Syncing</Badge>
+              </div>
+            )}
+          </div>
         )}
       </div>
 
       {(isTenant || isIndexBuilding) && (
-        <Card className="border-primary/20 bg-primary/5 border-dashed shadow-sm">
-          <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
-            <div className="space-y-1 text-center sm:text-left">
+        <Card className="border-primary/20 bg-primary/[0.02] border-dashed shadow-sm overflow-hidden relative group transition-all hover:bg-primary/[0.04]">
+          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
+            <Sparkles className="h-16 w-16 text-primary" />
+          </div>
+          <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-between gap-6">
+            <div className="space-y-2 text-center sm:text-left relative z-10">
               <div className="flex items-center justify-center sm:justify-start gap-2 text-primary font-bold">
                 <ShieldCheck className="h-4 w-4" />
                 {isIndexBuilding ? "Secure Tenancy Verification In Progress" : "Active Tenancy Verified"}
               </div>
-              <p className="text-sm text-muted-foreground font-medium">
+              <p className="text-sm text-muted-foreground font-medium max-w-lg leading-relaxed">
                 {isIndexBuilding 
-                  ? "Our system is currently mapping your resident records. Your secure features will be available momentarily." 
-                  : "Your account is linked to an active tenancy. Manage repairs and view safety certs in your portal."}
+                  ? "Our cloud system is currently mapping your resident records. Your secure features, documents, and messaging will be available momentarily." 
+                  : "Your account is linked to an active tenancy. You can now securely manage repairs, view safety certificates, and message your landlord directly."}
               </p>
             </div>
             {!isIndexBuilding && (
-              <Button asChild className="font-bold shadow-lg shrink-0 px-8">
-                <Link href="/tenant/dashboard">Go to My Home <ArrowRight className="ml-2 h-4 w-4" /></Link>
+              <Button asChild className="font-bold shadow-lg shrink-0 px-10 h-12 rounded-xl group-hover:scale-105 transition-transform">
+                <Link href="/tenant/dashboard">Enter My Home Portal <ArrowRight className="ml-2 h-4 w-4" /></Link>
               </Button>
             )}
           </CardContent>

@@ -173,7 +173,7 @@ export default function TenantDashboard() {
   }
 
   return (
-    <div className="space-y-8">
+    <div className="space-y-8 animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">
@@ -185,17 +185,17 @@ export default function TenantDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" asChild className="h-8 text-[10px] font-bold uppercase tracking-widest border-primary/20 text-primary shadow-sm bg-background">
+            <Button variant="outline" size="sm" asChild className="h-8 text-[10px] font-bold uppercase tracking-widest border-primary/20 text-primary shadow-sm bg-background rounded-xl">
                 <Link href="/dashboard"><UserCircle className="mr-2 h-3.5 w-3.5" /> Switch Mode</Link>
             </Button>
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-8 px-3 font-bold uppercase tracking-widest text-[10px] shadow-sm">
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-8 px-3 font-bold uppercase tracking-widest text-[10px] shadow-sm rounded-xl">
                 Portal Active
             </Badge>
         </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="shadow-lg border-none hover:bg-muted/5 transition-colors">
+        <Card className="shadow-lg border-none hover:bg-muted/5 transition-all hover:translate-y-[-2px]">
             <CardHeader className="pb-2">
                 <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
                     <Banknote className="h-3.5 w-3.5 text-primary" /> Rent Schedule
@@ -209,7 +209,7 @@ export default function TenantDashboard() {
             </CardContent>
         </Card>
 
-        <Card className="shadow-lg border-none hover:bg-muted/5 transition-colors">
+        <Card className="shadow-lg border-none hover:bg-muted/5 transition-all hover:translate-y-[-2px]">
             <CardHeader className="pb-2">
                 <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
                     <Calendar className="h-3.5 w-3.5 text-primary" /> Tenancy Period
@@ -221,7 +221,7 @@ export default function TenantDashboard() {
             </CardContent>
         </Card>
 
-        <Card className="shadow-xl border-none bg-primary text-primary-foreground">
+        <Card className="shadow-xl border-none bg-primary text-primary-foreground transition-all hover:translate-y-[-2px]">
             <CardHeader className="pb-2">
                 <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-80 flex items-center gap-2">
                     <MessageSquare className="h-3.5 w-3.5" /> Direct Contact
@@ -229,7 +229,7 @@ export default function TenantDashboard() {
             </CardHeader>
             <CardContent className="space-y-4">
                 <p className="text-xs font-medium leading-relaxed">Communicate securely with your landlord regarding your tenancy.</p>
-                <Button variant="secondary" size="sm" className="w-full font-bold h-9 shadow-md" asChild>
+                <Button variant="secondary" size="sm" className="w-full font-bold h-9 shadow-md rounded-xl" asChild>
                     <Link href="/tenant/messages">Open Secure Messenger <ChevronRight className="ml-1 h-3 w-3"/></Link>
                 </Button>
             </CardContent>
@@ -248,7 +248,7 @@ export default function TenantDashboard() {
                             <p className="text-sm font-bold">Found an issue?</p>
                             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Report repairs with photos instantly</p>
                         </div>
-                        <Button size="sm" className="h-10 font-bold px-8 shadow-md" asChild><Link href="/tenant/maintenance">Log Issue</Link></Button>
+                        <Button size="sm" className="h-10 font-bold px-8 shadow-md rounded-xl" asChild><Link href="/tenant/maintenance">Log Issue</Link></Button>
                     </div>
                 </div>
             </CardContent>
@@ -265,7 +265,7 @@ export default function TenantDashboard() {
                             <p className="text-sm font-bold">Legal Compliance</p>
                             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Access safety certs and agreements</p>
                         </div>
-                        <Button variant="outline" size="sm" className="h-10 font-bold px-8 border-primary/20 hover:bg-primary/5 shadow-sm" asChild><Link href="/tenant/documents">Browse Files</Link></Button>
+                        <Button variant="outline" size="sm" className="h-10 font-bold px-8 border-primary/20 hover:bg-primary/5 shadow-sm rounded-xl" asChild><Link href="/tenant/documents">Browse Files</Link></Button>
                     </div>
                 </div>
             </CardContent>
