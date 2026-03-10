@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -26,12 +26,14 @@ interface DocumentRecord {
 }
 
 export default function TenantDocumentsPage() {
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const [tenantContext, setTenantContext] = useState<any>(null);
   const [isLoadingContext, setIsLoadingContext] = useState(true);
 
   useEffect(() => {
+    if (isUserLoading) return;
+
     if (!user || !firestore || !user.email) {
       setIsLoadingContext(false);
       return;
@@ -39,19 +41,26 @@ export default function TenantDocumentsPage() {
     
     const userEmail = user.email.toLowerCase().trim();
 
-    // Search for tenants linked to this email.
+    // Forced lowercase matching for security and robustness
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
-        limit(10)
+        limit(5)
     );
 
     const unsub = onSnapshot(q, (snap) => {
         const activeTenant = snap.docs.find(d => d.data().status === 'Active');
         if (activeTenant) {
-            const path = activeTenant.ref.path.split('/');
-            // Path: userProfiles/{landlordId}/properties/{propertyId}/tenants/{tenantId}
-            setTenantContext({ landlordId: path[1], propertyId: path[3] });
+            const pathSegments = activeTenant.ref.path.split('/');
+            const landlordIdx = pathSegments.indexOf('userProfiles');
+            const propertyIdx = pathSegments.indexOf('properties');
+            
+            if (landlordIdx !== -1 && propertyIdx !== -1) {
+                setTenantContext({ 
+                    landlordId: pathSegments[landlordIdx + 1], 
+                    propertyId: pathSegments[propertyIdx + 1] 
+                });
+            }
         }
         setIsLoadingContext(false);
     }, (error) => {
@@ -60,7 +69,7 @@ export default function TenantDocumentsPage() {
     });
 
     return () => unsub();
-  }, [user, firestore]);
+  }, [user, isUserLoading, firestore]);
 
   const docsQuery = useMemoFirebase(() => {
     if (!tenantContext || !user || !firestore) return null;
@@ -78,7 +87,7 @@ export default function TenantDocumentsPage() {
     return isBefore(date, new Date()) ? 'Expired' : 'Valid';
   };
 
-  if (isLoadingContext) {
+  if (isLoadingContext || isUserLoading) {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

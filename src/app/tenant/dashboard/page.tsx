@@ -18,7 +18,7 @@ import {
   UserCircle,
   ShieldCheck
 } from 'lucide-react';
-import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { collectionGroup, query, where, limit, onSnapshot, doc } from 'firebase/firestore';
 
 interface TenantContext {
@@ -30,13 +30,15 @@ interface TenantContext {
 }
 
 export default function TenantDashboard() {
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const [context, setContext] = useState<TenantContext | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
 
   useEffect(() => {
+    if (isUserLoading) return;
+    
     if (!user || !firestore || !user.email) {
       setIsLoading(false);
       return;
@@ -46,10 +48,11 @@ export default function TenantDashboard() {
     const userEmail = user.email.toLowerCase().trim();
 
     // Discovery query to find if this email exists in any tenant collection across the platform
+    // Forced lowercase normalization for reliable matching
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
-        limit(10)
+        limit(5)
     );
 
     const unsub = onSnapshot(q, (snap) => {
@@ -61,28 +64,35 @@ export default function TenantDashboard() {
             const data = activeTenantDoc.data();
             const pathSegments = activeTenantDoc.ref.path.split('/');
             
-            // Path: userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}
-            const landlordId = pathSegments[1]; // Corrected segment index
-            const propertyId = pathSegments[3]; // Corrected segment index
-            const tenantId = activeTenantDoc.id;
+            // Robust path resolution searching for keywords to avoid index errors
+            const landlordIdx = pathSegments.indexOf('userProfiles');
+            const propertyIdx = pathSegments.indexOf('properties');
+            
+            if (landlordIdx !== -1 && propertyIdx !== -1) {
+                const landlordId = pathSegments[landlordIdx + 1];
+                const propertyId = pathSegments[propertyIdx + 1];
+                const tenantId = activeTenantDoc.id;
 
-            const propRef = doc(firestore, 'userProfiles', landlordId, 'properties', propertyId);
-            propUnsub = onSnapshot(propRef, (propSnap) => {
-                if (propSnap.exists()) {
-                    setContext({
-                        landlordId,
-                        propertyId,
-                        tenantId,
-                        tenantData: data,
-                        propertyData: propSnap.data()
-                    });
-                }
+                const propRef = doc(firestore, 'userProfiles', landlordId, 'properties', propertyId);
+                propUnsub = onSnapshot(propRef, (propSnap) => {
+                    if (propSnap.exists()) {
+                        setContext({
+                            landlordId,
+                            propertyId,
+                            tenantId,
+                            tenantData: data,
+                            propertyData: propSnap.data()
+                        });
+                    }
+                    setIsLoading(false);
+                    setIsIndexBuilding(false);
+                }, (error) => {
+                    console.warn("Property context fetch failed:", error);
+                    setIsLoading(false);
+                });
+            } else {
                 setIsLoading(false);
-                setIsIndexBuilding(false);
-            }, (error) => {
-                console.error("Property context fetch failed:", error);
-                setIsLoading(false);
-            });
+            }
         } else {
             setIsLoading(false);
         }
@@ -98,9 +108,9 @@ export default function TenantDashboard() {
         unsub();
         if (propUnsub) propUnsub();
     };
-  }, [user, firestore]);
+  }, [user, isUserLoading, firestore]);
 
-  if (isLoading) {
+  if (isLoading || isUserLoading) {
     return (
         <div className="flex h-64 flex-col items-center justify-center gap-4">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />

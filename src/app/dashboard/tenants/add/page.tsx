@@ -173,6 +173,7 @@ export default function AddTenantPage() {
     const tenantsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', data.propertyId, 'tenants');
     const newTenant = {
         ...data,
+        email: data.email.toLowerCase().trim(), // Force normalization for discovery
         userId: user.uid,
         status: 'Active',
         createdDate: new Date().toISOString(),

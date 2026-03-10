@@ -10,10 +10,9 @@ import {
   Send, 
   Loader2, 
   User,
-  ShieldCheck,
-  MoreVertical
+  ShieldCheck
 } from 'lucide-react';
-import { useUser, useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collectionGroup, query, where, limit, addDoc, collection, onSnapshot, orderBy, serverTimestamp } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
@@ -27,7 +26,7 @@ interface Message {
 }
 
 export default function TenantMessagesPage() {
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const [tenantContext, setTenantContext] = useState<any>(null);
   const [newMessage, setNewMessage] = useState('');
@@ -35,28 +34,37 @@ export default function TenantMessagesPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (!user || !firestore) return;
+    if (isUserLoading) return;
+    if (!user || !firestore || !user.email) return;
     
-    // Search for tenants linked to this email. Filter for 'Active' in memory.
+    const userEmail = user.email.toLowerCase().trim();
+
+    // Search for tenants linked to this email. Forced normalization.
     const q = query(
         collectionGroup(firestore, 'tenants'), 
-        where('email', '==', user.email?.toLowerCase()),
-        limit(10)
+        where('email', '==', userEmail),
+        limit(5)
     );
     const unsub = onSnapshot(q, (snap) => {
         const activeTenant = snap.docs.find(d => d.data().status === 'Active');
         if (activeTenant) {
-            const path = activeTenant.ref.path.split('/');
-            setTenantContext({ landlordId: path[1], propertyId: path[3], tenantId: activeTenant.id });
+            const pathSegments = activeTenant.ref.path.split('/');
+            const landlordIdx = pathSegments.indexOf('userProfiles');
+            const propertyIdx = pathSegments.indexOf('properties');
+            
+            if (landlordIdx !== -1 && propertyIdx !== -1) {
+                setTenantContext({ 
+                    landlordId: pathSegments[landlordIdx + 1], 
+                    propertyId: pathSegments[propertyIdx + 1], 
+                    tenantId: activeTenant.id 
+                });
+            }
         }
     }, (error) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: 'tenants (collectionGroup)',
-            operation: 'list',
-        }));
+        console.warn("Messenger discovery issue:", error.message);
     });
     return () => unsub();
-  }, [user, firestore]);
+  }, [user, isUserLoading, firestore]);
 
   const messagesQuery = useMemoFirebase(() => {
     if (!tenantContext || !user || !firestore) return null;
