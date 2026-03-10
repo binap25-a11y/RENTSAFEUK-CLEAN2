@@ -2,7 +2,6 @@
 
 /**
  * @fileOverview Standardized barrel file for Firebase services and utilities.
- * Consolidated to resolve build-time resolution ambiguity and export errors.
  */
 
 import { firebaseConfig } from '@/firebase/config';
@@ -33,9 +32,21 @@ export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 
-// Utility Exports
-export * from './non-blocking-login';
-export * from './non-blocking-updates';
+// Utility Exports (Imported from .ts files to ensure unambiguous resolution)
+export {
+  initiateAnonymousSignIn,
+  createUserNonBlocking,
+  signInNonBlocking,
+  initiateEmailSignUp,
+  initiateEmailSignIn,
+} from './non-blocking-login';
+
+export {
+  setDocumentNonBlocking,
+  addDocumentNonBlocking,
+  updateDocumentNonBlocking,
+  deleteDocumentNonBlocking,
+} from './non-blocking-updates';
 
 export * from './errors';
 export * from './error-emitter';
