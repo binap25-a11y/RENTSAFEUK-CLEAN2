@@ -202,14 +202,15 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore]);
 
-  const isPureTenant = isTenant && properties.length === 0;
+  // Dynamic role determination: prioritize Tenant Dashboard if no property portfolio exists
+  const isPureTenant = properties.length === 0 && (isTenant || isIndexBuilding);
   
   // 3. Auto-Redirect Pure Tenants
   useEffect(() => {
-    if (!isLoadingProps && !isLoadingPortalCheck && isPureTenant) {
+    if (!isLoadingProps && !isLoadingPortalCheck && isPureTenant && isTenant) {
       router.push('/tenant/dashboard');
     }
-  }, [isLoadingProps, isLoadingPortalCheck, isPureTenant, router]);
+  }, [isLoadingProps, isLoadingPortalCheck, isPureTenant, isTenant, router]);
 
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;
