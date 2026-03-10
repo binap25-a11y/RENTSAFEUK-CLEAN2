@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -38,6 +37,8 @@ import {
   useFirestore,
   useCollection,
   useMemoFirebase,
+  errorEmitter,
+  FirestorePermissionError,
 } from '@/firebase';
 import { collection, query, where, doc, updateDoc, addDoc, limit } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
@@ -158,41 +159,61 @@ export default function AddTenantPage() {
     }
   }, [propertyIdFromUrl, form]);
 
-  async function onSubmit(data: TenantFormValues) {
-    if (!user || !firestore) return;
-    setIsSubmitting(true);
-
-    try {
-        const tenantsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', data.propertyId, 'tenants');
-        const newTenant = {
-            ...data,
-            email: data.email.toLowerCase(),
-            userId: user.uid,
-            status: 'Active',
-            createdDate: new Date().toISOString(),
-        };
-
-        const cleanedTenantData = JSON.parse(JSON.stringify(newTenant));
-        await addDoc(tenantsCollection, cleanedTenantData);
-        
-        const propertyDocRef = doc(firestore, 'userProfiles', user.uid, 'properties', data.propertyId);
-        await updateDoc(propertyDocRef, { status: 'Occupied' });
-        
-        toast({
-          title: 'Tenant Assigned',
-          description: `${data.name} has been assigned successfully.`,
-        });
-        router.push(`/dashboard/properties/${data.propertyId}`);
-    } catch (error: any) {
-        console.error("Save failed:", error);
+  function onSubmit(data: TenantFormValues) {
+    if (!user || !firestore) {
         toast({
           variant: 'destructive',
-          title: 'Save Failed',
-          description: 'Permission denied or data error.',
+          title: 'Authentication Error',
+          description: 'You must be logged in to assign a tenant.',
         });
-    } finally {
-        setIsSubmitting(false);
+        return;
     }
+    setIsSubmitting(true);
+
+    const tenantsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', data.propertyId, 'tenants');
+    const newTenant = {
+        ...data,
+        email: data.email.toLowerCase(),
+        userId: user.uid,
+        status: 'Active',
+        createdDate: new Date().toISOString(),
+    };
+
+    const cleanedTenantData = JSON.parse(JSON.stringify(newTenant));
+    
+    // Initiate Tenant creation (Non-blocking)
+    addDoc(tenantsCollection, cleanedTenantData)
+      .then((tenantDoc) => {
+        // Initiate Property status update (Non-blocking)
+        const propertyDocRef = doc(firestore, 'userProfiles', user.uid, 'properties', data.propertyId);
+        updateDoc(propertyDocRef, { status: 'Occupied' })
+          .then(() => {
+            toast({
+              title: 'Tenant Assigned',
+              description: `${data.name} has been assigned successfully.`,
+            });
+            router.push(`/dashboard/properties/${data.propertyId}`);
+          })
+          .catch(async (serverError) => {
+            const permissionError = new FirestorePermissionError({
+              path: propertyDocRef.path,
+              operation: 'update',
+              requestResourceData: { status: 'Occupied' },
+            });
+            errorEmitter.emit('permission-error', permissionError);
+          });
+      })
+      .catch(async (serverError) => {
+        const permissionError = new FirestorePermissionError({
+          path: tenantsCollection.path,
+          operation: 'create',
+          requestResourceData: cleanedTenantData,
+        });
+        errorEmitter.emit('permission-error', permissionError);
+      })
+      .finally(() => {
+        setIsSubmitting(false);
+      });
   }
 
   const formatAddress = (address: Property['address']) => {

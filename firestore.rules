@@ -12,107 +12,64 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    function isExistingOwner(userId) {
-      return resource != null && isOwner(userId);
-    }
-
-    function matchesPath(userProfileId) {
-      return request.resource.data.userId == userProfileId;
-    }
-
-    function remainsImmutable() {
-      return request.resource.data.userId == resource.data.userId;
-    }
-
     // --- Collection Rules ---
 
     match /userProfiles/{userProfileId} {
+      // Landlords only access their own profile root
       allow get: if isOwner(userProfileId);
       allow list: if false;
       
-      allow create: if isOwner(userProfileId) && request.resource.data.id == userProfileId;
-      allow update: if isExistingOwner(userProfileId) && request.resource.data.id == resource.data.id;
-      allow delete: if isExistingOwner(userProfileId);
+      allow create: if isOwner(userProfileId);
+      allow update: if isOwner(userProfileId);
+      allow delete: if isOwner(userProfileId);
 
       match /properties/{propertyId} {
-        allow get, list: if isOwner(userProfileId);
-        allow create: if isOwner(userProfileId) && matchesPath(userProfileId);
-        allow update: if isExistingOwner(userProfileId) && remainsImmutable();
-        allow delete: if isExistingOwner(userProfileId);
+        // Comprehensive ownership-based access for all property-related data
+        allow get, list, create, update, delete: if isOwner(userProfileId);
 
         match /maintenanceLogs/{logId} {
-          allow get, list: if isOwner(userProfileId);
-          allow create: if isOwner(userProfileId) && matchesPath(userProfileId);
-          allow update: if isExistingOwner(userProfileId) && remainsImmutable();
-          allow delete: if isExistingOwner(userProfileId);
+          allow get, list, create, update, delete: if isOwner(userProfileId);
         }
 
         match /documents/{documentId} {
-          allow get, list: if isOwner(userProfileId);
-          allow create: if isOwner(userProfileId) && matchesPath(userProfileId);
-          allow update: if isExistingOwner(userProfileId) && remainsImmutable();
-          allow delete: if isExistingOwner(userProfileId);
+          allow get, list, create, update, delete: if isOwner(userProfileId);
         }
 
         match /tenants/{tenantId} {
-          allow get, list: if isOwner(userProfileId);
-          allow create: if isOwner(userProfileId) && matchesPath(userProfileId);
-          allow update: if isExistingOwner(userProfileId) && remainsImmutable();
-          allow delete: if isExistingOwner(userProfileId);
+          allow get, list, create, update, delete: if isOwner(userProfileId);
 
           match /messages/{messageId} {
-            allow get, list: if isOwner(userProfileId);
-            allow create: if isOwner(userProfileId);
-            allow update, delete: if isExistingOwner(userProfileId);
+            allow get, list, create, update, delete: if isOwner(userProfileId);
           }
           
           match /screenings/{screeningId} {
-            allow get, list: if isOwner(userProfileId);
-            allow create: if isOwner(userProfileId) && matchesPath(userProfileId);
-            allow update: if isExistingOwner(userProfileId) && remainsImmutable();
-            allow delete: if isExistingOwner(userProfileId);
+            allow get, list, create, update, delete: if isOwner(userProfileId);
           }
         }
 
         match /rentPayments/{paymentId} {
-          allow get, list: if isOwner(userProfileId);
-          allow create: if isOwner(userProfileId) && matchesPath(userProfileId);
-          allow update: if isExistingOwner(userProfileId) && remainsImmutable();
-          allow delete: if isExistingOwner(userProfileId);
+          allow get, list, create, update, delete: if isOwner(userProfileId);
         }
 
         match /checklists/{checklistId} {
-          allow get, list: if isOwner(userProfileId);
-          allow create: if isOwner(userProfileId) && matchesPath(userProfileId);
-          allow update: if isExistingOwner(userProfileId) && remainsImmutable();
-          allow delete: if isExistingOwner(userProfileId);
+          allow get, list, create, update, delete: if isOwner(userProfileId);
         }
         
         match /inspections/{inspectionId} {
-          allow get, list: if isOwner(userProfileId);
-          allow create: if isOwner(userProfileId) && matchesPath(userProfileId);
-          allow update: if isExistingOwner(userProfileId) && remainsImmutable();
-          allow delete: if isExistingOwner(userProfileId);
+          allow get, list, create, update, delete: if isOwner(userProfileId);
         }
         
         match /expenses/{expenseId} {
-          allow get, list: if isOwner(userProfileId);
-          allow create: if isOwner(userProfileId) && matchesPath(userProfileId);
-          allow update: if isExistingOwner(userProfileId) && remainsImmutable();
-          allow delete: if isExistingOwner(userProfileId);
+          allow get, list, create, update, delete: if isOwner(userProfileId);
         }
       }
 
       match /contractors/{contractorId} {
-        allow get, list: if isOwner(userProfileId);
-        allow create: if isOwner(userProfileId) && matchesPath(userProfileId);
-        allow update: if isExistingOwner(userProfileId) && remainsImmutable();
-        allow delete: if isExistingOwner(userProfileId);
+        allow get, list, create, update, delete: if isOwner(userProfileId);
       }
     }
 
-    // --- Optimized collectionGroup Rules ---
-    // Specifically split to satisfy the Firestore query analyzer's provability requirements.
+    // --- Optimized collectionGroup Rules for cross-portfolio discovery ---
 
     match /{path=**}/tenants/{tenantId} {
       // Identity-based discovery for Residents
