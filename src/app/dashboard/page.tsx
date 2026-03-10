@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -188,7 +189,7 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore]);
 
-  // 2. Discover Tenant Role with enhanced stability
+  // 2. Discover Tenant Role with instant resolution
   useEffect(() => {
     if (!user || !firestore || !user.email) {
       setIsLoadingPortalCheck(false);
@@ -202,18 +203,17 @@ export default function DashboardPage() {
       limit(5)
     );
 
-    // Using a more defensive listener to handle "stuck" sync states
     const unsub = onSnapshot(tenantsQuery, (snap) => {
       const activeTenant = snap.docs.find(d => d.data().status === 'Active');
       setIsTenant(!!activeTenant);
       setIsLoadingPortalCheck(false);
-      setIsIndexBuilding(false); // Clear indexing state on any valid response
+      setIsIndexBuilding(false); 
     }, (error) => {
       const msg = error.message.toLowerCase();
       if (msg.includes('index') || msg.includes('failed-precondition')) {
         setIsIndexBuilding(true);
       } else {
-        console.warn("Portal discovery issue:", error.message);
+        console.warn("Tenant discovery issue:", error.message);
         setIsIndexBuilding(false);
       }
       setIsLoadingPortalCheck(false);
@@ -227,7 +227,7 @@ export default function DashboardPage() {
     setRetryCount(prev => prev + 1);
   }, []);
 
-  // 3. Auto-Redirect Pure Tenants (Confirmed Only)
+  // 3. Auto-Redirect Pure Tenants
   useEffect(() => {
     if (!isLoadingProps && !isLoadingPortalCheck && properties.length === 0 && isTenant) {
       router.push('/tenant/dashboard');
@@ -242,7 +242,7 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // Dynamic Heading Logic - Prioritize Tenant branding if portfolio is empty
+  // Dynamic Heading Logic
   const isLikelyPureTenant = !isLoadingProps && properties.length === 0 && (isTenant || isIndexBuilding || isLoadingPortalCheck);
   const pageTitle = isLikelyPureTenant ? "Tenant Dashboard" : "Landlord Dashboard";
 
@@ -269,7 +269,7 @@ export default function DashboardPage() {
           </p>
         </div>
         
-        {/* Verification & Switch Hub */}
+        {/* Verification Hub */}
         {(isTenant || isIndexBuilding) && (
           <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-muted/30 border border-primary/5 shadow-sm">
             <Button 
@@ -280,7 +280,7 @@ export default function DashboardPage() {
             >
               {isIndexBuilding ? (
                 <span className="flex items-center gap-2 text-muted-foreground">
-                  <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Portals Connecting...
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Tenant Verification...
                 </span>
               ) : (
                 <Link href="/tenant/dashboard">
@@ -290,7 +290,7 @@ export default function DashboardPage() {
             </Button>
             {isIndexBuilding && (
               <div className="px-3 animate-pulse">
-                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 uppercase text-[9px] font-bold">Synchronizing Records</Badge>
+                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 uppercase text-[9px] font-bold">Cloud Syncing</Badge>
               </div>
             )}
           </div>
@@ -306,11 +306,11 @@ export default function DashboardPage() {
             <div className="space-y-2 text-center sm:text-left relative z-10">
               <div className="flex items-center justify-center sm:justify-start gap-2 text-primary font-bold">
                 <ShieldCheck className="h-4 w-4" />
-                {isIndexBuilding ? "Secure Tenant Verification In Progress" : "Active Tenancy Verified"}
+                {isIndexBuilding ? "Secure Tenant Sync In Progress" : "Active Tenancy Verified"}
               </div>
               <p className="text-sm text-muted-foreground font-medium max-w-lg leading-relaxed">
                 {isIndexBuilding 
-                  ? "Our cloud system is currently mapping your tenant records. This high-speed indexing ensures your data remains private and secure. Click the status button above to re-check." 
+                  ? "Our system is currently mapping your tenant records. This ensures your tenancy data remains private and secure. Your portal will be ready instantly." 
                   : "Your account is linked to an active tenancy. You can now securely manage repairs, view safety certificates, and message your landlord directly."}
               </p>
             </div>

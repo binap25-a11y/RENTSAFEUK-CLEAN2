@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -100,10 +101,11 @@ export default function TenantDashboard() {
             setIsIndexBuilding(false);
         }
     }, (error) => {
-        if (error.message.toLowerCase().includes('index') || error.code === 'failed-precondition') {
+        const msg = error.message.toLowerCase();
+        if (msg.includes('index') || error.code === 'failed-precondition') {
             setIsIndexBuilding(true);
         } else {
-            console.warn("Portal discovery issue:", error.message);
+            console.warn("Tenant portal discovery issue:", error.message);
             setIsIndexBuilding(false);
         }
         setIsLoading(false);
