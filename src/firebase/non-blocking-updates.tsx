@@ -1,7 +1,6 @@
-
 'use client';
 
 /**
- * DEPRECATED: Implementation consolidated into non-blocking-updates.ts.
+ * @fileOverview Re-exporting from .ts to resolve module resolution ambiguity.
  */
-export {};
+export * from './non-blocking-updates';

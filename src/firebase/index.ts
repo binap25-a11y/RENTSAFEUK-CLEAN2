@@ -1,9 +1,8 @@
-
 'use client';
 
 /**
  * @fileOverview Standardized barrel file for Firebase services and utilities.
- * Consolidated to resolve build-time resolution ambiguity and ENOENT errors.
+ * Consolidated to resolve build-time resolution ambiguity and export errors.
  */
 
 import { firebaseConfig } from '@/firebase/config';
@@ -42,7 +41,7 @@ export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 
-// Explicit Utility Exports to resolve module resolution conflicts
+// Explicit Utility Exports from .ts files to ensure stable resolution
 export { 
   initiateAnonymousSignIn, 
   createUserNonBlocking, 

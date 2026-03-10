@@ -1,8 +1,6 @@
-
 'use client';
 
 /**
- * DEPRECATED: Implementation consolidated into non-blocking-login.ts.
- * This file is maintained as a shell to resolve potential module resolution artifacts.
+ * @fileOverview Re-exporting from .ts to resolve module resolution ambiguity.
  */
-export {};
+export * from './non-blocking-login';
