@@ -190,7 +190,7 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore]);
 
-  // 2. Discover Tenant Role with robust handshake
+  // 2. Discover Tenant Role - Simplified and optimized
   useEffect(() => {
     if (!user || !firestore || !user.email) {
       setIsLoadingPortalCheck(false);
@@ -213,7 +213,7 @@ export default function DashboardPage() {
       if (msg.includes('index') || error.code === 'failed-precondition') {
         setIsIndexBuilding(true);
       } else {
-        console.warn("Tenant verification handbook issue:", error.message);
+        console.warn("Tenant verification handshake issue:", error.message);
         setIsIndexBuilding(false);
       }
       setIsLoadingPortalCheck(false);
@@ -268,7 +268,8 @@ export default function DashboardPage() {
           </p>
         </div>
         
-        {(isTenant || isIndexBuilding) && (
+        {/* Only show verification hub for users without active landlord properties to reduce clutter */}
+        {(properties.length === 0 && (isTenant || isIndexBuilding)) && (
           <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-muted/30 border border-primary/5 shadow-sm">
             <Button 
               variant={isIndexBuilding ? "ghost" : "outline"}

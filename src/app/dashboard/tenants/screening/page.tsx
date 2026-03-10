@@ -118,8 +118,7 @@ interface Tenant {
 }
 
 /**
- * Recursive utility to strictly strip 'undefined' values from objects before Firestore writes.
- * Prevents "Unsupported field value: undefined" runtime errors.
+ * Robust recursive sanitization utility to ensure no 'undefined' values reach Firestore.
  */
 const prepareForFirestore = (obj: any): any => {
   if (obj === undefined) return null;

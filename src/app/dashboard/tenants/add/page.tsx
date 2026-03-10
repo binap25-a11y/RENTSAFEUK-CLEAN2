@@ -83,8 +83,7 @@ interface Property {
 }
 
 /**
- * Recursive utility to strictly strip 'undefined' values from objects before Firestore writes.
- * Prevents "Unsupported field value: undefined" runtime errors.
+ * Robust data sanitization utility to prevent Firestore "undefined field" errors.
  */
 const prepareForFirestore = (obj: any): any => {
   if (obj === undefined) return null;
@@ -181,7 +180,7 @@ export default function AddTenantPage() {
     }
   }, [propertyIdFromUrl, form]);
 
-  function onSubmit(data: TenantFormValues) {
+  async function onSubmit(data: TenantFormValues) {
     if (!user || !firestore) {
         toast({
           variant: 'destructive',
@@ -203,20 +202,23 @@ export default function AddTenantPage() {
 
     const cleanedTenantData = prepareForFirestore(newTenant);
     
-    // Sequential execution to ensure property status update completes before dashboard redirect
-    addDoc(tenantsCollection, cleanedTenantData)
-      .then(() => {
+    // SEQUENTIAL PROCESS: Ensure property status update is confirmed before dashboard redirect
+    try {
+        // 1. Add the tenant record
+        await addDoc(tenantsCollection, cleanedTenantData);
+        
+        // 2. Update the property status to Occupied
         const propertyDocRef = doc(firestore, 'userProfiles', user.uid, 'properties', data.propertyId);
-        return updateDoc(propertyDocRef, { status: 'Occupied' });
-      })
-      .then(() => {
+        await updateDoc(propertyDocRef, { status: 'Occupied' });
+
         toast({
           title: 'Tenant Assigned',
           description: `${data.name} has been assigned and property status updated to Occupied.`,
         });
+        
+        // Final redirection after all data changes are confirmed
         router.push('/dashboard');
-      })
-      .catch(async (serverError) => {
+    } catch (serverError: any) {
         console.error('Tenant assignment failed:', serverError);
         const permissionError = new FirestorePermissionError({
           path: `userProfiles/${user.uid}/properties/${data.propertyId}`,
@@ -230,10 +232,9 @@ export default function AddTenantPage() {
           title: 'Sync Error',
           description: 'Tenant was added but property status update failed. Please update manually.',
         });
-      })
-      .finally(() => {
+    } finally {
         setIsSubmitting(false);
-      });
+    }
   }
 
   const formatAddress = (address: Property['address']) => {
