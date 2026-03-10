@@ -171,27 +171,6 @@ export default function DashboardPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoadingProps, setIsLoadingProps] = useState(true);
 
-  /**
-   * SILENT AUDITOR: Repairs property status in the background if active tenants exist.
-   * Ensures the Landlord Dashboard always matches the true state of the portfolio.
-   */
-  const performOccupancyAudit = useCallback(async (landlordId: string, propertyList: Property[]) => {
-    if (!firestore) return;
-    
-    propertyList.forEach(async (prop) => {
-        if (prop.status === 'Vacant') {
-            const tenantsCol = collection(firestore, 'userProfiles', landlordId, 'properties', prop.id, 'tenants');
-            const activeTenantsSnap = await getDocs(query(tenantsCol, where('status', '==', 'Active'), limit(1)));
-            
-            if (!activeTenantsSnap.empty) {
-                console.log(`Auditor: Repairing status for ${prop.id} to Occupied.`);
-                const propRef = doc(firestore, 'userProfiles', landlordId, 'properties', prop.id);
-                updateDoc(propRef, { status: 'Occupied' });
-            }
-        }
-    });
-  }, [firestore]);
-
   // 1. Fetch Properties (Landlord Role)
   useEffect(() => {
     if (!user || !firestore) return;
@@ -205,14 +184,11 @@ export default function DashboardPage() {
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Property));
       setProperties(list);
       setIsLoadingProps(false);
-      
-      // Run the occupancy repair audit silently
-      performOccupancyAudit(user.uid, list);
     }, (error) => {
       setIsLoadingProps(false);
     });
     return () => unsub();
-  }, [user, firestore, performOccupancyAudit]);
+  }, [user, firestore]);
 
   // 2. Discover Tenant Role
   useEffect(() => {
@@ -238,7 +214,7 @@ export default function DashboardPage() {
       if (msg.includes('index') || error.code === 'failed-precondition') {
         setIsIndexBuilding(true);
       } else {
-        // Log contextual permission error for collection group
+        // Standardized contextual permission error
         const permissionError = new FirestorePermissionError({
             path: 'tenants (collectionGroup)',
             operation: 'list',
@@ -298,29 +274,22 @@ export default function DashboardPage() {
           </p>
         </div>
         
-        {(properties.length === 0 && (isTenant || isIndexBuilding)) && (
+        {isTenant && (
           <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-muted/30 border border-primary/5 shadow-sm">
             <Button 
-              variant={isIndexBuilding ? "ghost" : "outline"}
-              asChild={!isIndexBuilding}
-              onClick={isIndexBuilding ? handleRetrySync : undefined}
+              asChild
               className="border-primary/20 bg-background hover:bg-primary/5 shadow-sm h-10 px-6 font-bold uppercase text-[10px] tracking-widest rounded-xl transition-all"
+              variant="outline"
             >
-              {isIndexBuilding ? (
-                <span className="flex items-center gap-2 text-muted-foreground">
-                  <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Verification Handshake...
-                </span>
-              ) : (
                 <Link href="/tenant/dashboard">
                   <span className="flex items-center gap-2 text-primary"><UserCircle className="h-4 w-4" /> Open Tenant Portal</span>
                 </Link>
-              )}
             </Button>
           </div>
         )}
       </div>
 
-      {(isTenant || isIndexBuilding) && isPureTenant && (
+      {isTenant && isPureTenant && (
         <Card className="border-primary/20 bg-primary/[0.02] border-dashed shadow-sm overflow-hidden relative group transition-all hover:bg-primary/[0.04] text-left">
           <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
             <Sparkles className="h-16 w-16 text-primary" />
@@ -328,24 +297,16 @@ export default function DashboardPage() {
           <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-between gap-6">
             <div className="space-y-2 text-center sm:text-left relative z-10">
               <div className="flex items-center justify-center sm:justify-start gap-2 text-primary font-bold">
-                {isIndexBuilding ? <RefreshCw className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-                {isIndexBuilding ? "Resolving Tenancy" : "Tenancy Identity Verified"}
+                <ShieldCheck className="h-4 w-4" />
+                Tenancy Identity Verified
               </div>
               <p className="text-sm text-muted-foreground font-medium max-lg leading-relaxed">
-                {isIndexBuilding 
-                  ? "Our system is resolving your tenancy connection. Please refresh if this takes more than a moment." 
-                  : "Your account is successfully linked to an active tenancy."}
+                Your account is successfully linked to an active tenancy.
               </p>
             </div>
-            {!isIndexBuilding ? (
-              <Button asChild className="font-bold uppercase tracking-widest text-xs shadow-lg shrink-0 px-10 h-12 rounded-xl group-hover:scale-105 transition-transform bg-primary hover:bg-primary/90">
-                <Link href="/tenant/dashboard">Enter Portal <ArrowRight className="ml-2 h-4 w-4" /></Link>
-              </Button>
-            ) : (
-                <Button onClick={handleRetrySync} variant="outline" className="font-bold uppercase tracking-widest text-xs shrink-0 px-10 h-12 rounded-xl border-2">
-                    <RefreshCw className="mr-2 h-4 w-4" /> Refresh Sync
-                </Button>
-            )}
+            <Button asChild className="font-bold uppercase tracking-widest text-xs shadow-lg shrink-0 px-10 h-12 rounded-xl group-hover:scale-105 transition-transform bg-primary hover:bg-primary/90">
+              <Link href="/tenant/dashboard">Enter Portal <ArrowRight className="ml-2 h-4 w-4" /></Link>
+            </Button>
           </CardContent>
         </Card>
       )}

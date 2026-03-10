@@ -31,11 +31,12 @@ service cloud.firestore {
     /**
      * Checks if the user is the tenant associated with the record (by email).
      * Uses direct token matching for static provability in collection group queries.
+     * Logic: email in DB must be saved lowercase for this to work case-insensitively.
      */
     function isAuthorizedTenant(data) {
       return isSignedIn() && 
              data.email != null && 
-             data.email.lower() == request.auth.token.email.lower();
+             data.email == request.auth.token.email.lower();
     }
 
     // --- Rules ---
@@ -118,10 +119,11 @@ service cloud.firestore {
     /**
      * @description Allows tenants to discover their own record via collectionGroup search.
      * Rules must be top-level and statically provable by query filters.
+     * Data integrity requirement: emails MUST be saved lowercase in Firestore.
      */
     match /{path=**}/tenants/{tenantId} {
-      allow list: if isSignedIn() && request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower();
-      allow get: if isSignedIn() && request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower();
+      allow list: if isSignedIn() && request.auth.token.email != null && resource.data.email == request.auth.token.email.lower();
+      allow get: if isSignedIn() && request.auth.token.email != null && resource.data.email == request.auth.token.email.lower();
     }
 
     /**

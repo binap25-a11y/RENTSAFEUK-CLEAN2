@@ -53,6 +53,7 @@ export default function TenantDashboard() {
     const userEmail = user.email.toLowerCase().trim();
 
     // Discovery query using collectionGroup
+    // Rule in firestore.rules: resource.data.email == request.auth.token.email.lower()
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
@@ -71,7 +72,6 @@ export default function TenantDashboard() {
             const path = activeTenantDoc.ref.path;
             const segments = path.split('/');
             
-            // Reconstruct landlord and property IDs from the document path
             // Expected path: userProfiles/{landlordId}/properties/{propertyId}/tenants/{tenantId}
             const userProfilesIdx = segments.indexOf('userProfiles');
             const propertiesIdx = segments.indexOf('properties');
@@ -92,24 +92,24 @@ export default function TenantDashboard() {
                             propertyData: propSnap.data()
                         });
                     } else {
-                        setError("Property details could not be resolved.");
+                        setError("Tenancy property record not found.");
                     }
                     setIsLoading(false);
                     setIsIndexBuilding(false);
-                }, async (err) => {
-                    // Log contextual permission error for property access
+                }, (err) => {
+                    // Contextual permission error
                     const permissionError = new FirestorePermissionError({
                         path: propRef.path,
                         operation: 'get',
                     });
                     errorEmitter.emit('permission-error', permissionError);
                     
-                    setError("Portal access restricted by security policies.");
+                    setError("Security Policy Restricted Access.");
                     setIsLoading(false);
                     setIsIndexBuilding(false);
                 });
             } else {
-                setError("Tenancy structure is invalid.");
+                setError("Tenancy structure is misconfigured.");
                 setIsLoading(false);
                 setIsIndexBuilding(false);
             }
@@ -118,19 +118,19 @@ export default function TenantDashboard() {
             setIsIndexBuilding(false);
             setContext(null);
         }
-    }, async (err) => {
+    }, (err) => {
         const msg = err.message.toLowerCase();
         if (msg.includes('index') || err.code === 'failed-precondition') {
             setIsIndexBuilding(true);
         } else {
-            // Standard Firestore permission error handling for collection group
+            // Standardized contextual permission error
             const permissionError = new FirestorePermissionError({
                 path: 'tenants (collectionGroup)',
                 operation: 'list',
             });
             errorEmitter.emit('permission-error', permissionError);
             
-            setError("Identity Verification Failed: Access restricted by security rules.");
+            setError("Verification Handshake Failed.");
         }
         setIsLoading(false);
     });
@@ -151,7 +151,7 @@ export default function TenantDashboard() {
     return (
         <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Verifying Identity...</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Synchronizing Identity...</p>
         </div>
     );
   }
@@ -168,7 +168,7 @@ export default function TenantDashboard() {
             <div className="space-y-3 px-4">
                 <h2 className="font-headline text-2xl font-bold text-primary">Establishing Connection</h2>
                 <p className="text-muted-foreground font-medium leading-relaxed">
-                    Our cloud system is synchronizing your tenant records for private access. This ensures your data remains secure.
+                    Our system is resolving your tenancy connection. This ensures your data remains secure.
                 </p>
             </div>
             <div className="flex flex-col items-center gap-4">
@@ -189,7 +189,7 @@ export default function TenantDashboard() {
                 </div>
                 <CardTitle className="font-headline text-xl">Verification Failed</CardTitle>
                 <CardDescription className="text-sm font-medium px-4 text-center">
-                    {error || `We couldn't find an active tenancy linked to ${user?.email}. Please verify with your landlord that your portal email is correct.`}
+                    {error || `No active tenancy found for ${user?.email}.`}
                 </CardDescription>
             </CardHeader>
             <CardFooter className="pt-6 flex flex-col gap-3 bg-background border-t">
@@ -197,7 +197,7 @@ export default function TenantDashboard() {
                     <Link href="/dashboard">Return to Dashboard</Link>
                 </Button>
                 <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={performDiscovery}>
-                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Verification
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Handshake
                 </Button>
             </CardFooter>
         </Card>
@@ -218,7 +218,7 @@ export default function TenantDashboard() {
         </div>
         <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" asChild className="h-8 text-[9px] font-bold uppercase tracking-widest border-primary/20 text-primary shadow-sm bg-background rounded-xl px-4">
-                <Link href="/dashboard"><UserCircle className="mr-2 h-3.5 w-3.5" /> Landlord Mode</Link>
+                <Link href="/dashboard"><UserCircle className="mr-2 h-3.5 w-3.5" /> Dashboard Mode</Link>
             </Button>
             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-8 px-3 font-bold uppercase tracking-widest text-[9px] shadow-sm rounded-xl">
                 Secure Portal Active
