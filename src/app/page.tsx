@@ -9,7 +9,6 @@ import { useRouter } from 'next/navigation';
 import {
   signInWithRedirect,
   GoogleAuthProvider,
-  sendPasswordResetEmail,
 } from 'firebase/auth';
 import { useUser, useAuth, createUserNonBlocking, signInNonBlocking } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
@@ -33,7 +32,7 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Loader2, Eye, EyeOff, AlertCircle } from 'lucide-react';
+import { Loader2, Eye, EyeOff, AlertCircle, ShieldCheck } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 
 const formSchema = z.object({
@@ -138,7 +137,7 @@ export default function LoginPage() {
                 RentSafeUK
               </CardTitle>
               <CardDescription className="text-sm font-medium">
-                {mode === 'login' ? 'Sign in to your portfolio' : 'Create your account'}
+                {mode === 'login' ? 'Access your landlord or resident portal' : 'Join the RentSafeUK platform'}
               </CardDescription>
             </div>
           </CardHeader>
@@ -146,7 +145,7 @@ export default function LoginPage() {
             {authError && (
               <Alert variant="destructive" className="mb-4">
                 <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Authentication Failed</AlertTitle>
+                <AlertTitle>Access Denied</AlertTitle>
                 <AlertDescription>{authError}</AlertDescription>
               </Alert>
             )}
@@ -157,7 +156,7 @@ export default function LoginPage() {
                   name="email"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Email</FormLabel>
+                      <FormLabel>Email Address</FormLabel>
                       <FormControl>
                         <Input placeholder="name@example.com" {...field} className="h-11" />
                       </FormControl>
@@ -196,7 +195,7 @@ export default function LoginPage() {
                 />
                 <Button type="submit" className="w-full h-11 font-bold text-base shadow-md" disabled={isProcessing}>
                   {isProcessing && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
-                  {mode === 'login' ? 'Login' : 'Get Started'}
+                  {mode === 'login' ? 'Log In' : 'Create Account'}
                 </Button>
               </form>
             </Form>
@@ -205,16 +204,20 @@ export default function LoginPage() {
               <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-widest"><span className="bg-card px-3 text-muted-foreground">Or continue with</span></div>
             </div>
             <Button variant="outline" className="w-full h-11 border-muted-foreground/20" onClick={handleGoogleSignIn} disabled={isProcessing}>
-              <GoogleIcon className="mr-2 h-4 w-4" /> Google
+              <GoogleIcon className="mr-2 h-4 w-4" /> Sign in with Google
             </Button>
           </CardContent>
           <CardFooter className="flex flex-col gap-4 pt-2">
             <div className="text-center text-sm">
               {mode === 'login' ? (
-                <><span className="text-muted-foreground">Don&apos;t have an account?</span>{' '}<Button variant="link" className="p-0 h-auto font-bold" onClick={() => toggleMode('signup')}>Sign up</Button></>
+                <><span className="text-muted-foreground">New to RentSafeUK?</span>{' '}<Button variant="link" className="p-0 h-auto font-bold" onClick={() => toggleMode('signup')}>Sign up</Button></>
               ) : (
-                <><span className="text-muted-foreground">Already have an account?</span>{' '}<Button variant="link" className="p-0 h-auto font-bold" onClick={() => toggleMode('login')}>Login</Button></>
+                <><span className="text-muted-foreground">Already have an account?</span>{' '}<Button variant="link" className="p-0 h-auto font-bold" onClick={() => toggleMode('login')}>Log in</Button></>
               )}
+            </div>
+            <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
+                <ShieldCheck className="h-3 w-3" />
+                Secure UK Property Cloud
             </div>
           </CardFooter>
         </Card>
