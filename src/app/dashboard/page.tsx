@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -58,8 +57,8 @@ export function PropertiesPanel({ properties, isLoading, searchTerm, setSearchTe
     <Card className="shadow-lg border-none">
       <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4 pb-4 text-left">
         <div className="space-y-1">
-          <CardTitle className="text-lg font-bold">My Properties</CardTitle>
-          <CardDescription>Manage and view your property portfolio.</CardDescription>
+          <CardTitle className="text-lg font-bold">My Portfolio</CardTitle>
+          <CardDescription>Manage and view your property records.</CardDescription>
         </div>
         <Button asChild className="font-bold uppercase tracking-widest text-[10px] h-10 px-6 shadow-md"><Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Add Property</Link></Button>
       </CardHeader>
@@ -97,7 +96,7 @@ export function PropertiesPanel({ properties, isLoading, searchTerm, setSearchTe
                   </div>
                   <CardHeader className="pb-3 px-4">
                     <CardTitle className="text-lg font-bold truncate">{[p.address.nameOrNumber, p.address.street].filter(Boolean).join(', ')}</CardTitle>
-                    <CardDescription>{p.address.city}, {p.address.postcode}</CardDescription>
+                    <CardDescription className="truncate">{p.address.city}, {p.address.postcode}</CardDescription>
                   </CardHeader>
                   <CardContent className="flex justify-between items-center mt-auto pt-4 px-4 border-t">
                     <div className="flex items-center gap-4 text-[10px] font-bold text-muted-foreground uppercase">
@@ -123,12 +122,12 @@ export function PropertiesPanel({ properties, isLoading, searchTerm, setSearchTe
                 <TableBody>
                   {properties.map(p => (
                     <TableRow key={p.id} className="cursor-pointer hover:bg-muted/30 transition-colors" onClick={() => router.push(`/dashboard/properties/${p.id}`)}>
-                      <TableCell className="font-bold text-sm pl-6 py-4">
+                      <TableCell className="font-bold text-sm pl-6 py-4 text-left">
                         {[p.address.nameOrNumber, p.address.street].filter(Boolean).join(', ')}
                         <div className="text-[11px] text-muted-foreground font-medium">{p.address.city}, {p.address.postcode}</div>
                       </TableCell>
-                      <TableCell className="text-[10px] uppercase text-muted-foreground font-bold tracking-widest">{p.propertyType}</TableCell>
-                      <TableCell><Badge variant={p.status === 'Occupied' ? 'default' : 'secondary'} className="text-[9px] uppercase font-bold px-2 py-0">{p.status}</Badge></TableCell>
+                      <TableCell className="text-[10px] uppercase text-muted-foreground font-bold tracking-widest text-left">{p.propertyType}</TableCell>
+                      <TableCell className="text-left"><Badge variant={p.status === 'Occupied' ? 'default' : 'secondary'} className="text-[9px] uppercase font-bold px-2 py-0">{p.status}</Badge></TableCell>
                       <TableCell className="text-right pr-6" onClick={(e) => e.stopPropagation()}>
                         <Button asChild variant="ghost" size="icon" className="h-8 w-8 hover:bg-primary/10 text-primary">
                           <Link href={`/dashboard/properties/${p.id}`}><Eye className="h-4 w-4" /></Link>
@@ -147,7 +146,7 @@ export function PropertiesPanel({ properties, isLoading, searchTerm, setSearchTe
             </div>
             <div>
               <p className="font-bold text-lg">Your portfolio is empty</p>
-              <p className="text-sm text-muted-foreground mt-1 max-w-xs mx-auto">Start by adding your first rental property to access management tools.</p>
+              <p className="text-sm text-muted-foreground mt-1 max-w-xs mx-auto">Start by onboarding your first rental property to access the audit trail.</p>
             </div>
             <Button asChild variant="outline" size="sm" className="font-bold uppercase tracking-widest text-[10px] h-10 px-8 border-primary/20 hover:bg-primary/5 mt-2"><Link href="/dashboard/properties/add">Add First Property</Link></Button>
           </div>
@@ -191,19 +190,17 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore]);
 
-  // 2. Discover Tenant Role with robust handling for cloud syncing delays
+  // 2. Discover Tenant Role with robust handshake
   useEffect(() => {
     if (!user || !firestore || !user.email) {
       setIsLoadingPortalCheck(false);
       return;
     }
 
-    // Normalized matching for security and high performance
     const email = user.email.toLowerCase().trim();
     const tenantsQuery = query(
       collectionGroup(firestore, 'tenants'),
-      where('email', '==', email),
-      limit(5)
+      where('email', '==', email)
     );
 
     const unsub = onSnapshot(tenantsQuery, (snap) => {
@@ -213,11 +210,10 @@ export default function DashboardPage() {
       setIsIndexBuilding(false); 
     }, (error) => {
       const msg = error.message.toLowerCase();
-      // Handle cloud indexing states specifically to avoid showing a broken UI
       if (msg.includes('index') || error.code === 'failed-precondition') {
         setIsIndexBuilding(true);
       } else {
-        console.warn("Tenant discovery handshake failure:", error.message);
+        console.warn("Tenant verification handbook issue:", error.message);
         setIsIndexBuilding(false);
       }
       setIsLoadingPortalCheck(false);
@@ -231,7 +227,7 @@ export default function DashboardPage() {
     setRetryCount(prev => prev + 1);
   }, []);
 
-  // 3. Auto-Redirect Pure Tenants once verified to their specific dashboard
+  // 3. Auto-Redirect Pure Tenants once verified
   useEffect(() => {
     if (!isLoadingProps && !isLoadingPortalCheck && properties.length === 0 && isTenant) {
       router.push('/tenant/dashboard');
@@ -253,7 +249,7 @@ export default function DashboardPage() {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-4 text-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse font-medium">Establishing Secure Session...</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse font-medium">Synchronizing Secure Session...</p>
       </div>
     );
   }
@@ -267,12 +263,11 @@ export default function DashboardPage() {
           </h1>
           <p className="text-muted-foreground font-medium text-lg">
             {isLikelyPureTenant 
-              ? `Welcome home, ${user?.displayName?.split(' ')[0] || 'Tenant'}. Access your tenancy tools below.` 
+              ? `Welcome home, ${user?.displayName?.split(' ')[0] || 'Tenant'}. Verifying your active tenancy portal...` 
               : "Overview of your rental portfolio and active management tasks."}
           </p>
         </div>
         
-        {/* Tenant Verification Hub - Provides a manual refresh path during cloud indexing */}
         {(isTenant || isIndexBuilding) && (
           <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-muted/30 border border-primary/5 shadow-sm">
             <Button 
@@ -293,14 +288,13 @@ export default function DashboardPage() {
             </Button>
             {isIndexBuilding && (
               <div className="px-3">
-                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 uppercase text-[9px] font-bold animate-pulse">Cloud Sync Active</Badge>
+                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 uppercase text-[9px] font-bold animate-pulse">Index Building</Badge>
               </div>
             )}
           </div>
         )}
       </div>
 
-      {/* Verification Progress Alert for Tenants */}
       {(isTenant || isIndexBuilding) && isLikelyPureTenant && (
         <Card className="border-primary/20 bg-primary/[0.02] border-dashed shadow-sm overflow-hidden relative group transition-all hover:bg-primary/[0.04] text-left">
           <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
@@ -310,28 +304,27 @@ export default function DashboardPage() {
             <div className="space-y-2 text-center sm:text-left relative z-10">
               <div className="flex items-center justify-center sm:justify-start gap-2 text-primary font-bold">
                 {isIndexBuilding ? <RefreshCw className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-                {isIndexBuilding ? "Secure Tenant Sync In Progress" : "Active Tenancy Verified"}
+                {isIndexBuilding ? "Establishing Secure Identity Link" : "Active Tenancy Identity Verified"}
               </div>
               <p className="text-sm text-muted-foreground font-medium max-lg leading-relaxed">
                 {isIndexBuilding 
-                  ? "Our system is currently mapping your tenancy records across the cloud. This ensures your data remains private and secure. Your portal will be ready instantly." 
-                  : "Your account is linked to an active tenancy. You can now securely manage repairs, view safety certificates, and message your landlord directly."}
+                  ? "We are currently mapping your tenant records across the cloud. This one-time synchronization ensures your private data is accurately indexed for the portal." 
+                  : "Your account is successfully linked to an active tenancy. You can now securely manage repairs, access safety certificates, and message your landlord."}
               </p>
             </div>
             {!isIndexBuilding ? (
               <Button asChild className="font-bold uppercase tracking-widest text-xs shadow-lg shrink-0 px-10 h-12 rounded-xl group-hover:scale-105 transition-transform bg-primary hover:bg-primary/90">
-                <Link href="/tenant/dashboard">Enter Tenant Portal <ArrowRight className="ml-2 h-4 w-4" /></Link>
+                <Link href="/tenant/dashboard">Enter Secure Portal <ArrowRight className="ml-2 h-4 w-4" /></Link>
               </Button>
             ) : (
                 <Button onClick={handleRetrySync} variant="outline" className="font-bold uppercase tracking-widest text-xs shrink-0 px-10 h-12 rounded-xl border-2">
-                    <RefreshCw className="mr-2 h-4 w-4" /> Refresh Portal
+                    <RefreshCw className="mr-2 h-4 w-4" /> Refresh Sync
                 </Button>
             )}
           </CardContent>
         </Card>
       )}
 
-      {/* No Content Message for Landlords with 0 properties */}
       {!isLikelyPureTenant ? (
         <div className="grid gap-6">
           <PropertiesPanel 
@@ -348,9 +341,9 @@ export default function DashboardPage() {
               <div className="bg-primary/5 p-10 rounded-full">
                   <Home className="h-16 w-16 text-primary/20" />
               </div>
-              <div className="space-y-2">
+              <div className="space-y-2 px-4">
                   <h3 className="text-2xl font-bold">Welcome to RentSafeUK</h3>
-                  <p className="text-muted-foreground max-w-md mx-auto">You don't have any properties yet. Start building your portfolio or wait for a tenant verification to complete if you've been invited.</p>
+                  <p className="text-muted-foreground max-w-md mx-auto">We couldn't find an active tenancy for this email address. If you've been invited by a landlord, please ask them to verify the portal email on your record.</p>
               </div>
               <Button asChild size="lg" className="px-10 h-12 font-bold shadow-lg">
                   <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-5 w-5" /> Onboard First Property</Link>

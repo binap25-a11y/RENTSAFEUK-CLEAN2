@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -118,6 +117,14 @@ interface Tenant {
   propertyId: string;
 }
 
+// Utility to clean undefined values before Firestore writes
+const prepareForFirestore = (obj: any): any => {
+    return JSON.parse(JSON.stringify(obj, (key, value) => {
+        if (value === undefined) return null;
+        return value;
+    }));
+};
+
 const ChecklistItem = ({ form, name, label }: { form: any, name: any, label: string }) => (
     <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-md border p-4">
         <FormControl>
@@ -211,21 +218,20 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
 
         const { tenantId, propertyId, ...screeningData } = data;
 
-        // Sanitize data to remove undefined values which Firestore doesn't support
-        const cleanedSubmission = JSON.parse(JSON.stringify({
+        const cleanedSubmission = prepareForFirestore({
             ...screeningData,
             userId: user.uid,
             tenantId: tenantId,
             propertyId: propertyId,
-        }));
+        });
 
         const screeningsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'tenants', tenantId, 'screenings');
 
         addDoc(screeningsCollection, cleanedSubmission)
           .then(() => {
             toast({
-                title: 'Screening Record Saved',
-                description: 'The tenant screening checklist has been successfully saved.',
+                title: 'Screening Audit Saved',
+                description: 'The tenant vetting checklist has been successfully recorded.',
             });
             router.push(`/dashboard/tenants/${tenantId}?propertyId=${propertyId}`);
           })
@@ -256,9 +262,9 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
     return (
         <Card className="max-w-4xl mx-auto">
             <CardHeader>
-                <CardTitle>Tenant Screening Checklist</CardTitle>
+                <CardTitle>Tenant Vetting Checklist</CardTitle>
                 <CardDescription>
-                    Complete and record pre-tenancy checks for a prospective tenant.
+                    Complete and record pre-tenancy audit checks for a prospective tenant.
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -271,9 +277,9 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
                                     {isLoadingSelectedTenant ? (
                                         <Loader2 className="h-4 w-4 animate-spin" />
                                     ) : (
-                                        <div className="flex flex-col">
-                                            <p className="font-medium text-sm">{selectedTenant ? selectedTenant.name : 'Tenant not found'}</p>
-                                            {selectedTenant?.monthlyRent && <p className="text-[10px] text-muted-foreground uppercase font-bold">Rent: £{selectedTenant.monthlyRent}/mo</p>}
+                                        <div className="flex flex-col text-left">
+                                            <p className="font-bold text-sm">{selectedTenant ? selectedTenant.name : 'Tenant not found'}</p>
+                                            {selectedTenant?.monthlyRent && <p className="text-[10px] text-muted-foreground uppercase font-bold">Base Rent: £{selectedTenant.monthlyRent}/mo</p>}
                                         </div>
                                     )}
                                 </div>
@@ -283,7 +289,7 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
                                 name="screeningDate"
                                 render={({ field }) => (
                                     <FormItem>
-                                        <FormLabel>Date of Screening</FormLabel>
+                                        <FormLabel>Date of Audit</FormLabel>
                                         <FormControl>
                                             <Input
                                                 id="screening-date-input"
@@ -301,10 +307,10 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
                         </div>
 
                         <Card className="bg-muted/30 border-dashed">
-                            <CardHeader className="pb-3">
+                            <CardHeader className="pb-3 text-left">
                                 <CardTitle className="text-sm flex items-center gap-2">
                                     <Calculator className="h-4 w-4 text-primary" />
-                                    Income & Affordability Check
+                                    Affordability Analysis
                                 </CardTitle>
                             </CardHeader>
                             <CardContent className="space-y-4">
@@ -313,8 +319,8 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
                                         control={form.control}
                                         name="monthlyIncome"
                                         render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Tenant Monthly Net Income (£)</FormLabel>
+                                            <FormItem className="text-left">
+                                                <FormLabel>Tenant Net Monthly Income (£)</FormLabel>
                                                 <FormControl>
                                                     <Input id="screening-income-input" name="monthlyIncome" type="number" min="0" placeholder="0.00" {...field} value={field.value ?? ''} />
                                                 </FormControl>
@@ -323,18 +329,18 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
                                         )}
                                     />
                                     {affordabilityMetrics && (
-                                        <div className="p-4 rounded-lg bg-background border flex flex-col justify-center">
+                                        <div className="p-4 rounded-lg bg-background border flex flex-col justify-center text-left">
                                             <div className="flex items-center justify-between mb-1">
-                                                <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Rent-to-Income Ratio</span>
+                                                <span className="text-xs text-muted-foreground uppercase font-bold tracking-wider">Rent Coverage</span>
                                                 {affordabilityMetrics.isRisky ? (
-                                                    <Badge variant="destructive" className="gap-1"><AlertTriangle className="h-3 w-3" /> Risk</Badge>
+                                                    <Badge variant="destructive" className="gap-1 font-bold"><AlertTriangle className="h-3 w-3" /> Financial Risk</Badge>
                                                 ) : (
-                                                    <Badge variant="default" className="bg-green-100 text-green-800 border-green-200 gap-1"><CheckCircle2 className="h-3 w-3" /> Clear</Badge>
+                                                    <Badge variant="default" className="bg-green-100 text-green-800 border-green-200 gap-1 font-bold"><CheckCircle2 className="h-3 w-3" /> Within Bounds</Badge>
                                                 )}
                                             </div>
                                             <p className="text-2xl font-bold">{affordabilityMetrics.ratio}%</p>
                                             <p className="text-[10px] text-muted-foreground mt-1">
-                                                {affordabilityMetrics.isRisky ? "Rent is over 40% of income. Guarantor recommended." : "Rent is within affordable bounds (under 40%)."}
+                                                {affordabilityMetrics.isRisky ? "Rent exceeds 40% of income. Guarantor is highly recommended." : "Rent is within professional affordability bounds."}
                                             </p>
                                         </div>
                                     )}
@@ -344,14 +350,14 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
 
                         <Accordion type="multiple" className="w-full space-y-4" defaultValue={['right-to-rent']}>
                             <AccordionItem value="right-to-rent" className='border rounded-lg px-4'>
-                                <AccordionTrigger className='text-lg font-semibold'>Right to Rent Check (UK Legal Requirement)</AccordionTrigger>
-                                <AccordionContent className='pt-4 space-y-4'>
+                                <AccordionTrigger className='text-lg font-semibold'>Right to Rent Check (Legal)</AccordionTrigger>
+                                <AccordionContent className='pt-4 space-y-4 text-left'>
                                      <FormField
                                         control={form.control}
                                         name="rightToRent.checkDate"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Date of Check</FormLabel>
+                                                <FormLabel>Date of Manual Verification</FormLabel>
                                                 <FormControl>
                                                     <Input
                                                         id="right-to-rent-date"
@@ -366,35 +372,35 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
                                         )}
                                     />
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <ChecklistItem form={form} name="rightToRent.ukPassport" label="Checked valid UK Passport" />
-                                        <ChecklistItem form={form} name="rightToRent.shareCode" label="Used Home Office online check (share code)" />
-                                        <ChecklistItem form={form} name="rightToRent.visaPermit" label="Checked valid Visa / Residence Permit" />
+                                        <ChecklistItem form={form} name="rightToRent.ukPassport" label="Verified valid UK Passport" />
+                                        <ChecklistItem form={form} name="rightToRent.shareCode" label="Verified via Home Office online check" />
+                                        <ChecklistItem form={form} name="rightToRent.visaPermit" label="Verified valid Visa / BRP" />
                                     </div>
-                                    <NotesField form={form} name="rightToRent.notes" placeholder="Notes on Right to Rent check..." />
+                                    <NotesField form={form} name="rightToRent.notes" placeholder="Notes on Right to Rent audit..." />
                                 </AccordionContent>
                             </AccordionItem>
 
                             <AccordionItem value="id-verification" className='border rounded-lg px-4'>
                                 <AccordionTrigger className='text-lg font-semibold'>ID Verification</AccordionTrigger>
-                                <AccordionContent className='pt-4 space-y-4'>
+                                <AccordionContent className='pt-4 space-y-4 text-left'>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <ChecklistItem form={form} name="idVerification.photoMatch" label="Photo on ID matches applicant" />
-                                        <ChecklistItem form={form} name="idVerification.nameMatch" label="Name matches on all documents" />
-                                        <ChecklistItem form={form} name="idVerification.dobConsistent" label="Date of Birth is consistent" />
+                                        <ChecklistItem form={form} name="idVerification.photoMatch" label="Photo ID matches applicant" />
+                                        <ChecklistItem form={form} name="idVerification.nameMatch" label="Name matches legal documents" />
+                                        <ChecklistItem form={form} name="idVerification.dobConsistent" label="DOB consistent across records" />
                                     </div>
-                                    <NotesField form={form} name="idVerification.notes" placeholder="Notes on ID verification..." />
+                                    <NotesField form={form} name="idVerification.notes" placeholder="Notes on ID audit..." />
                                 </AccordionContent>
                             </AccordionItem>
                             
                             <AccordionItem value="credit-check" className='border rounded-lg px-4'>
-                                <AccordionTrigger className='text-lg font-semibold'>Credit Check</AccordionTrigger>
-                                <AccordionContent className='pt-4 space-y-4'>
+                                <AccordionTrigger className='text-lg font-semibold'>Credit History Audit</AccordionTrigger>
+                                <AccordionContent className='pt-4 space-y-4 text-left'>
                                     <FormField
                                         control={form.control}
                                         name="creditCheck.agencyUsed"
                                         render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Agency/Service Used</FormLabel>
+                                                <FormLabel>Agency / Service Used</FormLabel>
                                                 <FormControl>
                                                     <Input id="credit-agency-input" name="creditAgency" placeholder="e.g., OpenRent, Experian" {...field} value={field.value ?? ''} />
                                                 </FormControl>
@@ -403,160 +409,44 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
                                         )}
                                     />
                                     <div className="space-y-4">
-                                        <ChecklistItem form={form} name="creditCheck.reportReceived" label="Report Received" />
-                                        <ChecklistItem form={form} name="creditCheck.passed" label="Passed" />
+                                        <ChecklistItem form={form} name="creditCheck.reportReceived" label="Full report received" />
+                                        <ChecklistItem form={form} name="creditCheck.passed" label="Satisfactory credit score" />
                                     </div>
-                                    <NotesField form={form} name="creditCheck.notes" placeholder="Notes on credit check..." />
+                                    <NotesField form={form} name="creditCheck.notes" placeholder="Notes on credit history..." />
                                 </AccordionContent>
                             </AccordionItem>
 
-                            <AccordionItem value="employment-income" className='border rounded-lg px-4'>
-                                <AccordionTrigger className='text-lg font-semibold'>Employment &amp; Income Check</AccordionTrigger>
-                                <AccordionContent className='pt-4'>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <ChecklistItem form={form} name="employmentIncome.bankStatements" label="3 months' bank statements" />
-                                        <ChecklistItem form={form} name="employmentIncome.payslips" label="3 months' payslips" />
-                                        <ChecklistItem form={form} name="employmentIncome.employmentContract" label="Employment contract" />
-                                        <ChecklistItem form={form} name="employmentIncome.employerReference" label="Employer reference" />
-                                        <ChecklistItem form={form} name="employmentIncome.sa302" label="SA302 / Tax returns (if self-employed)" />
-                                        <ChecklistItem form={form} name="employmentIncome.accountantReference" label="Accountant reference (if self-employed)" />
-                                        <FormField
-                                            control={form.control}
-                                            name="employmentIncome.notes"
-                                            render={({ field }) => (
-                                                <FormItem className="mt-4 sm:col-span-2">
-                                                    <FormLabel>Notes</FormLabel>
-                                                    <FormControl>
-                                                        <Textarea id="employment-notes-area" name="employmentNotes" rows={4} placeholder="Notes on income verification..." {...field} value={field.value ?? ''} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
-                                </AccordionContent>
-                            </AccordionItem>
-                            
-                             <AccordionItem value="landlord-reference" className='border rounded-lg px-4'>
+                            <AccordionItem value="landlord-reference" className='border rounded-lg px-4'>
                                 <AccordionTrigger className='text-lg font-semibold'>Previous Landlord Reference</AccordionTrigger>
-                                <AccordionContent className='pt-4 space-y-4'>
+                                <AccordionContent className='pt-4 space-y-4 text-left'>
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <FormField control={form.control} name="landlordReference.name" render={({ field }) => (<FormItem className="sm:col-span-2"><FormLabel>Landlord Name</FormLabel><FormControl><Input id="prev-landlord-name" name="prevLandlordName" placeholder="e.g., John Smith" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField control={form.control} name="landlordReference.name" render={({ field }) => (<FormItem className="sm:col-span-2"><FormLabel>Landlord/Agent Name</FormLabel><FormControl><Input id="prev-landlord-name" name="prevLandlordName" placeholder="e.g., John Smith" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                                         <FormField control={form.control} name="landlordReference.email" render={({ field }) => (<FormItem><FormLabel>Email</FormLabel><FormControl><Input id="prev-landlord-email" name="prevLandlordEmail" type="email" placeholder="john.smith@example.com" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                                         <FormField control={form.control} name="landlordReference.phone" render={({ field }) => (<FormItem><FormLabel>Phone (Optional)</FormLabel><FormControl><Input id="prev-landlord-phone" name="prevLandlordPhone" type="tel" placeholder="07123456789" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                                     </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <ChecklistItem form={form} name="landlordReference.rentOnTime" label="Paid rent on time?" />
-                                        <ChecklistItem form={form} name="landlordReference.anyArrears" label="Any arrears?" />
-                                        <ChecklistItem form={form} name="landlordReference.propertyConditionGood" label="Property kept in good condition?" />
-                                        <ChecklistItem form={form} name="landlordReference.wouldRentAgain" label="Would they rent to them again?" />
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 pt-4">
+                                        <ChecklistItem form={form} name="landlordReference.rentOnTime" label="Paid rent on time" />
+                                        <ChecklistItem form={form} name="landlordReference.anyArrears" label="No history of arrears" />
+                                        <ChecklistItem form={form} name="landlordReference.propertyConditionGood" label="Property maintained well" />
+                                        <ChecklistItem form={form} name="landlordReference.wouldRentAgain" label="Would rent to them again" />
                                     </div>
-                                    <FormField
-                                        control={form.control}
-                                        name="landlordReference.notes"
-                                        render={({ field }) => (
-                                            <FormItem className="mt-4">
-                                                <FormLabel>Notes</FormLabel>
-                                                <FormControl>
-                                                    <Textarea
-                                                        id="landlord-ref-notes"
-                                                        name="landlordRefNotes"
-                                                        rows={4}
-                                                        placeholder="Notes on landlord reference..."
-                                                        {...field}
-                                                        value={field.value ?? ''}
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )}
-                                    />
-                                </AccordionContent>
-                            </AccordionItem>
-
-                            <AccordionItem value="address-history" className='border rounded-lg px-4'>
-                                <AccordionTrigger className='text-lg font-semibold'>Address History (3-5 years)</AccordionTrigger>
-                                <AccordionContent className='pt-4 space-y-4'>
-                                    <ChecklistItem form={form} name="addressHistory.verified" label="Address history verified" />
-                                    <NotesField form={form} name="addressHistory.notes" placeholder="Notes on address history..." />
-                                </AccordionContent>
-                            </AccordionItem>
-
-                            <AccordionItem value="affordability" className='border rounded-lg px-4'>
-                                <AccordionTrigger className='text-lg font-semibold'>Affordability Stress Test</AccordionTrigger>
-                                <AccordionContent className='pt-4'>
-                                    <p className="text-sm text-muted-foreground mb-4">Could the tenant still pay rent if interest rates rise, their job changes, or benefits are delayed?</p>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <ChecklistItem form={form} name="affordability.passed" label="Passes affordability test" />
-                                        <ChecklistItem form={form} name="affordability.guarantorConsidered" label="Guarantor considered/required" />
-                                        <FormField
-                                            control={form.control}
-                                            name="affordability.notes"
-                                            render={({ field }) => (
-                                                <FormItem className="mt-4 sm:col-span-2">
-                                                    <FormLabel>Notes</FormLabel>
-                                                    <FormControl>
-                                                        <Textarea
-                                                            id="affordability-notes-area"
-                                                            name="affordabilityNotes"
-                                                            rows={4}
-                                                            placeholder="Notes on affordability..."
-                                                            {...field}
-                                                            value={field.value ?? ''}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
-                                </AccordionContent>
-                            </AccordionItem>
-                            
-                            <AccordionItem value="guarantor" className='border rounded-lg px-4'>
-                                <AccordionTrigger className='text-lg font-semibold'>Guarantor Checks (If Needed)</AccordionTrigger>
-                                <AccordionContent className='pt-4'>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <ChecklistItem form={form} name="guarantor.required" label="Guarantor was required" />
-                                        <ChecklistItem form={form} name="guarantor.idCheck" label="Guarantor ID check complete" />
-                                        <ChecklistItem form={form} name="guarantor.creditCheck" label="Guarantor credit check complete" />
-                                        <ChecklistItem form={form} name="guarantor.incomeVerified" label="Guarantor income verified" />
-                                        <FormField
-                                            control={form.control}
-                                            name="guarantor.notes"
-                                            render={({ field }) => (
-                                                <FormItem className="sm:col-span-2">
-                                                    <FormLabel>Notes</FormLabel>
-                                                    <FormControl>
-                                                        <Textarea
-                                                            id="guarantor-notes-area"
-                                                            name="guarantorNotes"
-                                                            rows={4}
-                                                            placeholder="Notes on guarantor checks..."
-                                                            {...field}
-                                                            value={field.value ?? ''}
-                                                        />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )}
-                                        />
-                                    </div>
+                                    <NotesField form={form} name="landlordReference.notes" placeholder="Notes on reference check..." />
                                 </AccordionContent>
                             </AccordionItem>
                         </Accordion>
+
                          <FormField
                             control={form.control}
                             name="overallNotes"
                             render={({ field }) => (
-                                <FormItem>
-                                <FormLabel className='text-lg font-semibold'>Overall Summary &amp; Decision</FormLabel>
+                                <FormItem className="text-left">
+                                <FormLabel className='text-lg font-bold text-primary'>Final Vetting Summary & Decision</FormLabel>
                                 <FormControl>
                                     <Textarea
                                     id="overall-decision-area"
                                     name="overallNotes"
-                                    placeholder="Summarize your findings and decision here..."
-                                    className="resize-none"
+                                    placeholder="Summarize your final decision and findings for the audit trail..."
+                                    className="resize-none rounded-2xl min-h-[150px]"
                                     rows={5}
                                     {...field}
                                     value={field.value ?? ''}
@@ -566,11 +456,13 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
                                 </FormItem>
                             )}
                         />
-                        <div className="flex justify-end gap-2 pt-4">
-                            <Button type="button" variant="outline" asChild>
-                                <Link href={`/dashboard/tenants/${tenantIdFromUrl}?propertyId=${propertyIdFromUrl}`}>Cancel</Link>
+                        <div className="flex justify-end gap-3 pt-4 border-t">
+                            <Button type="button" variant="ghost" className="font-bold uppercase tracking-widest text-[10px] h-11" asChild>
+                                <Link href={`/dashboard/tenants/${tenantIdFromUrl}?propertyId=${propertyIdFromUrl}`}>Cancel Audit</Link>
                             </Button>
-                            <Button type="submit">Save Screening Record</Button>
+                            <Button type="submit" className="font-bold uppercase tracking-widest text-[10px] h-11 px-10 shadow-lg">
+                                Save Vetting Audit
+                            </Button>
                         </div>
                     </form>
                 </Form>
