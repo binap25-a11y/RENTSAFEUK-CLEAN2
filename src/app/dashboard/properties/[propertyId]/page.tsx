@@ -129,6 +129,26 @@ export default function PropertyDetailPage() {
 
   const { data: activeTenants, isLoading: isLoadingTenants } = useCollection<Tenant>(tenantsForPropertyQuery);
 
+  /**
+   * SELF-HEALING LOGIC: Automatically synchronizes property status based on active tenant count.
+   * Resolves issues where property remains 'Vacant' despite having assigned tenants.
+   */
+  useEffect(() => {
+    if (!isLoadingProperty && !isLoadingTenants && property && activeTenants !== null && propertyRef) {
+      const hasActiveTenants = activeTenants.length > 0;
+      const expectedStatus = hasActiveTenants ? 'Occupied' : 'Vacant';
+      
+      // We only auto-adjust if the current status is Vacant or Occupied
+      // We don't touch 'Under Maintenance' or 'Deleted' as those are manual states
+      if (['Vacant', 'Occupied'].includes(property.status) && property.status !== expectedStatus) {
+        console.log(`Auto-repairing property status to ${expectedStatus} based on tenant registry.`);
+        updateDoc(propertyRef, { status: expectedStatus }).catch(err => {
+            console.error("Status auto-repair failed:", err);
+        });
+      }
+    }
+  }, [property, activeTenants, isLoadingProperty, isLoadingTenants, propertyRef]);
+
   const maintenanceQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
     return collection(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'maintenanceLogs');

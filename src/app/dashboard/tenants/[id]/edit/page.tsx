@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -5,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useRouter, useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import { useEffect, useMemo } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import {
   Card,
   CardContent,
@@ -102,6 +103,7 @@ export default function EditTenantPage() {
 
   const { user } = useUser();
   const firestore = useFirestore();
+  const [isSaving, setIsSaving] = useState(false);
 
   const form = useForm<TenantFormValues>({
     resolver: zodResolver(tenantSchema),
@@ -159,8 +161,10 @@ export default function EditTenantPage() {
       });
       return;
     }
+    setIsSaving(true);
     
     try {
+      // 1. Update the tenant record
       const tenantDocRef = doc(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId, 'tenants', tenant.id);
       const updateData = { 
         ...data, 
@@ -171,14 +175,21 @@ export default function EditTenantPage() {
 
       await updateDoc(tenantDocRef, cleanedUpdateData);
 
+      // 2. Ensure property is marked as Occupied
+      // If the property changed, we update the new one.
+      const propertyDocRef = doc(firestore, 'userProfiles', user.uid, 'properties', data.propertyId);
+      await updateDoc(propertyDocRef, { status: 'Occupied' });
+
       toast({
-        title: 'Tenant Updated',
-        description: `${data.name}'s details have been successfully updated.`,
+        title: 'Tenant Profile Updated',
+        description: `${data.name}'s records and unit status have been synchronized.`,
       });
       router.push(`/dashboard/tenants/${tenant.id}?propertyId=${tenant.propertyId}`);
     } catch (error) {
       console.error('Failed to update tenant:', error);
       toast({ variant: 'destructive', title: 'Update Failed' });
+    } finally {
+      setIsSaving(false);
     }
   }
   
@@ -265,7 +276,9 @@ export default function EditTenantPage() {
             <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel className="font-bold">Management Notes</FormLabel><FormControl><Textarea className="min-h-[100px] resize-none rounded-xl" rows={4} {...field} /></FormControl><FormMessage /></FormItem>)} />
             <div className="flex items-center justify-end gap-3 pt-4 border-t">
                 <Button type="button" variant="ghost" asChild className="font-bold uppercase tracking-widest text-xs h-11"><Link href={`/dashboard/tenants/${tenantId}?propertyId=${tenant?.propertyId}`}>Cancel</Link></Button>
-                <Button type="submit" className="font-bold uppercase tracking-widest text-xs h-11 px-10 shadow-lg">Save Profile Changes</Button>
+                <Button type="submit" disabled={isSaving} className="font-bold uppercase tracking-widest text-xs h-11 px-10 shadow-lg">
+                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Save Profile Changes'}
+                </Button>
             </div>
           </form>
         </Form>

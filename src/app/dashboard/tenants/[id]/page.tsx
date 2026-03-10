@@ -27,7 +27,7 @@ import {
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
-import { doc, collection, query, updateDoc, where, collectionGroup } from 'firebase/firestore';
+import { doc, collection, query, updateDoc, where, collectionGroup, getDocs, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useMemo } from 'react';
 import {
@@ -89,6 +89,7 @@ export default function TenantDetailPage() {
   const { user } = useUser();
   
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false);
 
   const directTenantRef = useMemoFirebase(() => {
     if (!firestore || !id || !urlPropertyId || !user) return null;
@@ -137,21 +138,44 @@ export default function TenantDetailPage() {
     
     window.location.href = `mailto:${tenant.email}?subject=${subject}&body=${body}`;
     
-    // Log the reminder timestamp
-    const tenantRef = doc(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId, 'tenants', tenant.id);
-    updateDoc(tenantRef, { lastReminderSent: new Date().toISOString() });
+    const tRef = doc(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId, 'tenants', tenant.id);
+    updateDoc(tRef, { lastReminderSent: new Date().toISOString() });
     
     toast({ title: 'Reminder Composed', description: 'Update logged and email client opened.' });
   };
 
   const handleDeleteConfirm = async () => {
-    if (!firestore || !user || !tenant) return;
-    const ref = doc(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId, 'tenants', tenant.id);
-    updateDoc(ref, { status: 'Archived' })
-      .then(() => {
-        toast({ title: 'Tenant Archived' });
+    if (!firestore || !user || !tenant || !propertyRef) return;
+    setIsArchiving(true);
+
+    try {
+        const ref = doc(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId, 'tenants', tenant.id);
+        
+        // 1. Mark tenant as archived
+        await updateDoc(ref, { status: 'Archived' });
+
+        // 2. Check if any other active tenants exist for this property
+        const activeTenantsQuery = query(
+            collection(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId, 'tenants'),
+            where('status', '==', 'Active'),
+            limit(2)
+        );
+        const activeTenantsSnap = await getDocs(activeTenantsQuery);
+        
+        // 3. If no other active tenants, set property to Vacant
+        if (activeTenantsSnap.empty) {
+            await updateDoc(propertyRef, { status: 'Vacant' });
+        }
+
+        toast({ title: 'Tenant Archived', description: 'Unit status has been updated.' });
         router.push('/dashboard/tenants');
-      });
+    } catch (e) {
+        console.error("Archive failed:", e);
+        toast({ variant: 'destructive', title: 'Action Failed' });
+    } finally {
+        setIsArchiving(false);
+        setIsDeleteDialogOpen(false);
+    }
   };
 
   if (isLoadingTenant) {
@@ -199,7 +223,6 @@ export default function TenantDetailPage() {
                     <p className="text-sm text-muted-foreground font-medium">Tenant Profile</p>
                 </div>
             </div>
-            {/* Action buttons positioned below the header text */}
             <div className="flex flex-wrap items-center gap-3">
                 <Button variant="outline" onClick={handleSendReminder} className="gap-2 font-bold uppercase tracking-widest text-[10px] h-10 px-6 shadow-sm border-primary/20 hover:bg-primary/5">
                     <BellRing className="h-3.5 w-3.5 text-primary" /> Send Rent Nudge
@@ -225,7 +248,6 @@ export default function TenantDetailPage() {
         </div>
 
         <div className="flex flex-col gap-6">
-            {/* Contact Information card */}
             <Card className="shadow-lg border-none">
                 <CardHeader className="pb-4 bg-muted/20 border-b">
                     <CardTitle className="text-lg font-headline">Contact Information</CardTitle>
@@ -250,7 +272,6 @@ export default function TenantDetailPage() {
                 </CardContent>
             </Card>
 
-            {/* Contract Details card positioned below Contact Information */}
             <Card className="shadow-lg border-none">
                 <CardHeader className="pb-4 bg-muted/20 border-b">
                     <CardTitle className="text-lg font-headline">Tenancy Agreement Details</CardTitle>
@@ -368,12 +389,13 @@ export default function TenantDetailPage() {
                     </div>
                     <AlertDialogTitle className="text-xl font-headline text-center">Archive tenant record?</AlertDialogTitle>
                     <AlertDialogDescription className="text-base font-medium text-center">
-                        This will move <strong className="text-foreground">{tenant.name}</strong> to your archives. This action is usually performed at the end of a tenancy.
+                        This will move <strong className="text-foreground">{tenant.name}</strong> to your archives. If this is the last active tenant, the property status will revert to Vacant.
                     </AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter className="gap-3 mt-6">
                     <AlertDialogCancel className="rounded-2xl font-bold uppercase text-[10px] tracking-widest h-12 flex-1">Cancel</AlertDialogCancel>
-                    <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-2xl font-bold uppercase text-[10px] tracking-widest h-12 flex-1 shadow-lg">
+                    <AlertDialogAction onClick={handleDeleteConfirm} disabled={isArchiving} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-2xl font-bold uppercase text-[10px] tracking-widest h-12 flex-1 shadow-lg">
+                        {isArchiving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null}
                         Archive Tenant
                     </AlertDialogAction>
                 </AlertDialogFooter>
