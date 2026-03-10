@@ -161,7 +161,7 @@ export default function DashboardPage() {
   const firestore = useFirestore();
   const router = useRouter();
   
-  const [isTenant, setIsTenant] = useState<boolean>(false);
+  const [isTenant, setIsTenant] = useState<boolean | null>(null);
   const [isLoadingPortalCheck, setIsLoadingPortalCheck] = useState(true);
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
   const [hasHeuristicTimeout, setHasHeuristicTimeout] = useState(false);
@@ -199,18 +199,19 @@ export default function DashboardPage() {
       const msg = error.message.toLowerCase();
       if (msg.includes('index') || error.code === 'failed-precondition') {
         setIsIndexBuilding(true);
+      } else {
+        setIsLoadingPortalCheck(false);
       }
-      setIsLoadingPortalCheck(false);
     });
 
     return () => unsub();
   }, [user, firestore, router]);
 
-  // Loading safety timeout
+  // Loading safety timeout - adjusted for better UX
   useEffect(() => {
     const timer = setTimeout(() => {
         setHasHeuristicTimeout(true);
-    }, 1500);
+    }, 2500);
     return () => clearTimeout(timer);
   }, []);
 
@@ -243,13 +244,22 @@ export default function DashboardPage() {
 
   // Redirection bypass: If we know it's a tenant, don't wait for landlords checks.
   useEffect(() => {
-    if (isTenant) {
+    if (isTenant === true) {
         router.replace('/tenant/dashboard');
     }
   }, [isTenant, router]);
 
   const isLandlordKnown = properties.length > 0;
-  const isGlobalLoading = !isLandlordKnown && !isTenant && (isUserLoading || ((isLoadingPortalCheck || isIndexBuilding) && !hasHeuristicTimeout));
+  
+  /**
+   * Refined Loading State:
+   * We show the loader if:
+   * 1. Auth is still loading
+   * 2. We haven't found properties AND we haven't confirmed user isn't a tenant AND we haven't timed out.
+   */
+  const isGlobalLoading = isUserLoading || 
+    (isLoadingPortalCheck && isTenant === null && !isLandlordKnown && !hasHeuristicTimeout) ||
+    isIndexBuilding;
 
   if (isGlobalLoading) {
     return (

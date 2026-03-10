@@ -21,6 +21,7 @@ import {
 } from 'lucide-react';
 import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collectionGroup, query, where, limit, onSnapshot, doc } from 'firebase/firestore';
+import { format } from 'date-fns';
 
 interface TenantContext {
     landlordId: string;
@@ -90,7 +91,7 @@ export default function TenantDashboard() {
                             propertyData: propSnap.data()
                         });
                     } else {
-                        setError("Property context unavailable.");
+                        setError("Property record unavailable.");
                     }
                     setIsLoading(false);
                     setIsIndexBuilding(false);
@@ -99,11 +100,11 @@ export default function TenantDashboard() {
                         path: propRef.path,
                         operation: 'get',
                     }));
-                    setError("Security Policy Restricted Access.");
+                    setError("Restricted Access to Property Profile.");
                     setIsLoading(false);
                 });
             } else {
-                setError("Unable to resolve tenancy context.");
+                setError("Unable to resolve secure tenancy context.");
                 setIsLoading(false);
             }
         } else {
@@ -119,7 +120,7 @@ export default function TenantDashboard() {
                 path: 'tenants (collectionGroup)',
                 operation: 'list',
             }));
-            setError("Handshake verification failed.");
+            setError("Identity handshake failed.");
         }
         setIsLoading(false);
     });
@@ -140,21 +141,21 @@ export default function TenantDashboard() {
     return (
         <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-background">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Synchronizing Portal...</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Synchronizing Portal Context...</p>
         </div>
     );
   }
 
   if (isIndexBuilding) {
     return (
-        <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in zoom-in-95 duration-700">
+        <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in zoom-in-95 duration-700 text-left">
             <div className="relative">
                 <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto relative z-10">
                     <Sparkles className="h-12 w-12 text-primary animate-pulse" />
                 </div>
                 <div className="absolute inset-0 bg-primary/5 blur-3xl rounded-full scale-150" />
             </div>
-            <div className="space-y-3 px-4 text-left">
+            <div className="space-y-3 px-4">
                 <h2 className="font-headline text-2xl font-bold text-primary">Identity Sync in Progress</h2>
                 <p className="text-muted-foreground font-medium leading-relaxed">
                     Our cloud database is currently mapping your tenant records for private access. This typically takes 5-10 minutes for newly created accounts.
@@ -162,7 +163,7 @@ export default function TenantDashboard() {
             </div>
             <div className="flex flex-col items-center gap-4">
                 <Button variant="outline" className="font-bold h-11 px-10 rounded-xl border-primary/20 hover:bg-primary/5 uppercase tracking-widest text-[10px]" onClick={() => window.location.reload()}>
-                    <RefreshCw className="mr-2 h-4 w-4" /> Check Status
+                    <RefreshCw className="mr-2 h-4 w-4" /> Check Sync Status
                 </Button>
             </div>
         </div>
@@ -176,14 +177,14 @@ export default function TenantDashboard() {
                 <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 shadow-sm border">
                     <AlertCircle className="h-10 w-10 text-destructive" />
                 </div>
-                <CardTitle className="font-headline text-xl">Access Verification Failed</CardTitle>
+                <CardTitle className="font-headline text-xl">Verification Failed</CardTitle>
                 <CardDescription className="text-sm font-medium px-4 text-center">
-                    {error || `We could not find an active tenancy for ${user?.email}. Ensure your landlord has registered you with this exact email.`}
+                    {error || `We could not find an active tenancy for ${user?.email}. Ensure your landlord has added you to the portal using this exact email address.`}
                 </CardDescription>
             </CardHeader>
             <CardFooter className="pt-6 flex flex-col gap-3 bg-background border-t">
                 <Button className="w-full font-bold h-11 shadow-lg uppercase tracking-widest text-xs" asChild>
-                    <Link href="/dashboard">Continue to Main View</Link>
+                    <Link href="/dashboard">Return to Main View</Link>
                 </Button>
                 <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={performDiscovery}>
                     <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Handshake

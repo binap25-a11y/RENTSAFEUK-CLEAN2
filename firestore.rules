@@ -17,15 +17,16 @@ service cloud.firestore {
     }
 
     // --- COLLECTION GROUP RULES (CRITICAL) ---
-    // Optimization: Direct field comparisons against normalized tokens are statically provable.
+    // These must be at the top level to be correctly applied to collectionGroup queries.
+    // They must be statically provable (direct equality matches).
     
     match /{path=**}/tenants/{tenantId} {
       /**
        * @description Allows tenants to discover their own record via email handshake.
-       * The check against .lower() ensures casing differences between auth and DB don't block access.
+       * We normalize to lowercase in the app and check against the auth token email.
        */
-      allow list: if isSignedIn() && request.auth.token.email != null && (resource.data.email == request.auth.token.email.lower() || resource.data.email == request.auth.token.email);
-      allow get: if isSignedIn() && request.auth.token.email != null && (resource.data.email == request.auth.token.email.lower() || resource.data.email == request.auth.token.email);
+      allow list: if isSignedIn() && request.auth.token.email != null && resource.data.email == request.auth.token.email.lower();
+      allow get: if isSignedIn() && request.auth.token.email != null && resource.data.email == request.auth.token.email.lower();
     }
 
     match /{path=**}/messages/{messageId} {
@@ -57,7 +58,7 @@ service cloud.firestore {
         match /tenants/{tenantId} {
           allow read, write: if isOwner(userId);
           // Individual document access for the tenant themselves.
-          allow get: if isSignedIn() && (resource.data.email == request.auth.token.email.lower() || resource.data.email == request.auth.token.email);
+          allow get: if isSignedIn() && resource.data.email == request.auth.token.email.lower();
 
           match /messages/{messageId} {
              allow read, write: if isOwner(userId) || (isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email.lower());
