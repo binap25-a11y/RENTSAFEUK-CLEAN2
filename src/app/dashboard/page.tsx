@@ -6,7 +6,7 @@ import { collection, query, where, onSnapshot, collectionGroup, limit } from 'fi
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Home, Loader2, Search, LayoutGrid, List, Eye, Bed, Bath, ArrowRight, ShieldCheck, UserCircle, Info } from 'lucide-react';
+import { PlusCircle, Home, Loader2, Search, LayoutGrid, List, Eye, Bed, Bath, ArrowRight, ShieldCheck, UserCircle, Info, Sparkles } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -167,7 +167,7 @@ export default function DashboardPage() {
       setProperties(snap.docs.map(d => ({ id: d.id, ...d.data() } as Property)));
       setIsLoadingProps(false);
     }, (error) => {
-      console.error("Properties fetch failed:", error);
+      console.warn("Properties fetch restricted:", error.message);
       setIsLoadingProps(false);
     });
     return () => unsub();
@@ -196,7 +196,7 @@ export default function DashboardPage() {
       if (error.message.toLowerCase().includes('index')) {
         setIsIndexBuilding(true);
       }
-      console.warn("Portal discovery restricted or indexing in progress:", error.message);
+      console.warn("Portal discovery issue:", error.message);
       setIsLoadingPortalCheck(false);
     });
 
@@ -227,7 +227,7 @@ export default function DashboardPage() {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse font-medium">Verifying Session Mode...</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse font-medium">Verifying Session Security...</p>
       </div>
     );
   }
@@ -241,7 +241,7 @@ export default function DashboardPage() {
           </h1>
           <p className="text-muted-foreground font-medium text-lg">
             {isLikelyPureTenant 
-              ? "Access your tenancy documents and home maintenance tools." 
+              ? `Welcome home, ${user?.displayName?.split(' ')[0] || 'Resident'}. Access your tenancy tools below.` 
               : "Overview of your rental portfolio and active management tasks."}
           </p>
         </div>
@@ -249,7 +249,7 @@ export default function DashboardPage() {
           <Button variant="outline" asChild className="border-primary/20 bg-primary/5 hover:bg-primary/10 shadow-sm h-11 px-6 font-bold uppercase text-[10px] tracking-widest">
             <Link href="/tenant/dashboard">
               {isIndexBuilding ? (
-                <span className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" /> Synchronizing Access...</span>
+                <span className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" /> Resident Sync...</span>
               ) : (
                 <span className="flex items-center gap-2"><UserCircle className="h-4 w-4" /> Open Tenant Portal</span>
               )}
@@ -266,7 +266,7 @@ export default function DashboardPage() {
                 <ShieldCheck className="h-4 w-4" />
                 Active Tenancy Verified
               </div>
-              <p className="text-sm text-muted-foreground font-medium">Your email is linked to an active tenancy. You can manage repairs and view safety certs in the resident portal.</p>
+              <p className="text-sm text-muted-foreground font-medium">Your account is linked to an active tenancy. Manage repairs and view safety certs in your portal.</p>
             </div>
             <Button asChild className="font-bold shadow-lg shrink-0 px-8">
               <Link href="/tenant/dashboard">Go to My Home <ArrowRight className="ml-2 h-4 w-4" /></Link>
@@ -276,15 +276,15 @@ export default function DashboardPage() {
       )}
 
       {isIndexBuilding && (
-        <div className="flex items-center justify-between p-3 px-4 rounded-xl border border-amber-200 bg-amber-50/50 text-amber-800 text-xs font-medium shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
+        <div className="flex items-center justify-between p-3 px-4 rounded-xl border border-primary/10 bg-primary/5 text-primary text-[10px] font-bold uppercase tracking-widest shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
           <div className="flex items-center gap-3">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 shrink-0">
-              <Loader2 className="h-3 w-3 animate-spin text-amber-600" />
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 shrink-0">
+              <Sparkles className="h-3 w-3 animate-pulse" />
             </div>
-            <span>Resident Portal Sync in progress. Your tenancy features will be available shortly.</span>
+            <span>Resident Portal Sync in progress. Your secure features will be available momentarily.</span>
           </div>
-          <Button variant="ghost" size="icon" className="h-6 w-6 text-amber-600 hover:bg-amber-100" title="The cloud database is currently indexing your records for high-performance discovery.">
-            <Info className="h-3.5 w-3.5" />
+          <Button variant="ghost" size="icon" className="h-6 w-6 text-primary/60 hover:bg-primary/10" title="Our cloud database is indexing your resident records for high-performance discovery.">
+            <Info className="h-3 w-3" />
           </Button>
         </div>
       )}

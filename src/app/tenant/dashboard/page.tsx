@@ -17,7 +17,8 @@ import {
   ChevronRight,
   UserCircle,
   ShieldCheck,
-  Sparkles
+  Sparkles,
+  RefreshCw
 } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
 import { collectionGroup, query, where, limit, onSnapshot, doc } from 'firebase/firestore';
@@ -139,7 +140,7 @@ export default function TenantDashboard() {
                     Live Sync Active
                 </div>
                 <Button variant="outline" className="font-bold h-11 px-8 rounded-xl border-primary/20 hover:bg-primary/5" onClick={() => window.location.reload()}>
-                    Refresh Portal
+                    <RefreshCw className="mr-2 h-4 w-4" /> Refresh Portal
                 </Button>
             </div>
         </div>
