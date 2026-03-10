@@ -17,7 +17,35 @@ service cloud.firestore {
       return (isSignedIn() && request.auth.token.email != null) ? request.auth.token.email.toLower() : "";
     }
 
-    // --- Collection Rules ---
+    // --- Optimized Collection Group Rules for Discovery (Top Level) ---
+    // These must remain at the top level to allow global collectionGroup queries 
+    // to succeed across all user profile branches.
+
+    match /{path=**}/tenants/{tenantId} {
+      allow list, get: if isSignedIn() && (
+        resource.data.email == getEmail() ||
+        resource.data.userId == request.auth.uid
+      );
+    }
+
+    match /{path=**}/messages/{messageId} {
+      allow list, get: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.senderId == request.auth.uid ||
+        resource.data.recipientEmail == getEmail()
+      );
+      allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
+    }
+
+    match /{path=**}/maintenanceLogs/{logId} {
+      allow list, get: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.reportedBy == request.auth.uid ||
+        resource.data.tenantEmail == getEmail()
+      );
+    }
+
+    // --- User Profile Hierarchy ---
 
     match /userProfiles/{userProfileId} {
       // Landlords only access their own profile root
@@ -93,33 +121,6 @@ service cloud.firestore {
       match /contractors/{contractorId} {
         allow read, write: if isOwner(userProfileId);
       }
-    }
-
-    // --- Optimized Collection Group Rules for Discovery ---
-    // High-performance discovery matching using raw token data for static provability.
-
-    match /{path=**}/tenants/{tenantId} {
-      allow list, get: if isSignedIn() && (
-        resource.data.email == getEmail() ||
-        resource.data.userId == request.auth.uid
-      );
-    }
-
-    match /{path=**}/messages/{messageId} {
-      allow list, get: if isSignedIn() && (
-        resource.data.userId == request.auth.uid || 
-        resource.data.senderId == request.auth.uid ||
-        resource.data.recipientEmail == getEmail()
-      );
-      allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
-    }
-
-    match /{path=**}/maintenanceLogs/{logId} {
-      allow list, get: if isSignedIn() && (
-        resource.data.userId == request.auth.uid || 
-        resource.data.reportedBy == request.auth.uid ||
-        resource.data.tenantEmail == getEmail()
-      );
     }
   }
 }

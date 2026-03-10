@@ -72,8 +72,12 @@ export default function TenantDashboard() {
             const segments = path.split('/');
             
             // Reconstruct landlord and property IDs from the document path
-            const landlordId = segments[segments.indexOf('userProfiles') + 1];
-            const propertyId = segments[segments.indexOf('properties') + 1];
+            // userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}
+            const userProfilesIdx = segments.indexOf('userProfiles');
+            const propertiesIdx = segments.indexOf('properties');
+            
+            const landlordId = userProfilesIdx !== -1 ? segments[userProfilesIdx + 1] : null;
+            const propertyId = propertiesIdx !== -1 ? segments[propertiesIdx + 1] : null;
             const tenantId = activeTenantDoc.id;
 
             if (landlordId && propertyId) {
@@ -105,6 +109,7 @@ export default function TenantDashboard() {
                     setIsIndexBuilding(false);
                 });
             } else {
+                setError("Tenancy structure is invalid.");
                 setIsLoading(false);
                 setIsIndexBuilding(false);
             }
@@ -126,7 +131,7 @@ export default function TenantDashboard() {
             });
             errorEmitter.emit('permission-error', permissionError);
             
-            setError("Connection Error: Portal access restricted by security policies.");
+            setError("Identity Check Failed: Access restricted by security rules.");
         }
         setIsLoading(false);
     });
@@ -147,7 +152,7 @@ export default function TenantDashboard() {
     return (
         <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Verifying Tenant Identity...</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Verifying Identity...</p>
         </div>
     );
   }
@@ -164,7 +169,7 @@ export default function TenantDashboard() {
             <div className="space-y-3 px-4">
                 <h2 className="font-headline text-2xl font-bold text-primary">Establishing Connection</h2>
                 <p className="text-muted-foreground font-medium leading-relaxed">
-                    Our cloud system is synchronizing your tenant records for private access. This process ensures your data remains secure.
+                    Our cloud system is synchronizing your tenant records for private access. This ensures your data remains secure.
                 </p>
             </div>
             <div className="flex flex-col items-center gap-4">
