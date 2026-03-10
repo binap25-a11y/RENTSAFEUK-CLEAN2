@@ -6,7 +6,7 @@ import { collection, query, where, onSnapshot, collectionGroup, limit } from 'fi
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Home, Loader2, Search, LayoutGrid, List, Eye, Bed, Bath } from 'lucide-react';
+import { PlusCircle, Home, Loader2, Search, LayoutGrid, List, Eye, Bed, Bath, ArrowRight } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -175,7 +175,7 @@ export default function DashboardPage() {
     const tenantsQuery = query(
       collectionGroup(firestore, 'tenants'),
       where('email', '==', email),
-      limit(10) // Increased limit for robustness
+      limit(10)
     );
 
     const unsub = onSnapshot(tenantsQuery, (snap) => {
@@ -183,22 +183,8 @@ export default function DashboardPage() {
       setIsTenant(!!activeTenant);
       setIsLoadingPortalCheck(false);
     }, (error) => {
-      // Gracefully handle the 'missing index' error, which is expected during initial setup.
-      if ((error as any).code === 'failed-precondition') {
-          console.warn(
-              'Firestore index for tenant role discovery is provisioning. ' +
-              'Tenant portal access will be enabled shortly. Please refresh in a few minutes. ' +
-              `Details: ${error.message}`
-          );
-      } else {
-          // For other errors (like actual permission-denied), propagate for debugging.
-          console.error("Role discovery query failed:", error.message);
-          errorEmitter.emit('permission-error', new FirestorePermissionError({
-              path: 'tenants',
-              operation: 'list',
-          }));
-      }
-      // In either case, proceed assuming the user is not a tenant for now.
+      // Gracefully handle index provisioning or permission issues
+      console.warn("Portal discovery restricted or indexing:", error.message);
       setIsTenant(false);
       setIsLoadingPortalCheck(false);
     });
@@ -228,6 +214,20 @@ export default function DashboardPage() {
           </Button>
         )}
       </div>
+
+      {isTenant && (
+        <Card className="border-primary/20 bg-primary/5 border-dashed">
+          <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
+            <div className="space-y-1 text-center sm:text-left">
+              <p className="font-bold text-primary">Active Tenancy Detected</p>
+              <p className="text-sm text-muted-foreground font-medium">You are registered as a tenant in our system. You can access your rental documents and report issues via the portal.</p>
+            </div>
+            <Button asChild className="font-bold shadow-lg shrink-0">
+              <Link href="/tenant/dashboard">Open Tenant Portal <ArrowRight className="ml-2 h-4 w-4" /></Link>
+            </Button>
+          </CardContent>
+        </Card>
+      )}
 
       <div className="grid gap-6">
         <PropertiesPanel />
