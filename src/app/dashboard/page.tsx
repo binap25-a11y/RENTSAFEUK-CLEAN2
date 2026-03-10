@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, query, where, onSnapshot, collectionGroup, limit } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, collectionGroup, limit, doc, updateDoc, getDocs } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,7 +20,8 @@ import {
   ShieldCheck, 
   UserCircle, 
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -190,6 +191,39 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore]);
 
+  /**
+   * REAL-TIME OCCUPANCY AUDITOR (Self-Healing Logic)
+   * This process ensures the "Vacant" vs "Occupied" status accurately reflects the actual tenant registry.
+   * If a property is "Vacant" but has active tenants, it auto-repairs to "Occupied".
+   */
+  useEffect(() => {
+    if (!user || !firestore || properties.length === 0 || isLoadingProps) return;
+
+    const auditPortfolio = async () => {
+        for (const property of properties) {
+            // Only re-evaluate if Vacant or Occupied
+            if (['Vacant', 'Occupied'].includes(property.status)) {
+                const tenantsQuery = query(
+                    collection(firestore, 'userProfiles', user.uid, 'properties', property.id, 'tenants'),
+                    where('status', '==', 'Active'),
+                    limit(1)
+                );
+                const tenantsSnap = await getDocs(tenantsQuery);
+                const hasActiveTenants = !tenantsSnap.empty;
+                const expectedStatus = hasActiveTenants ? 'Occupied' : 'Vacant';
+
+                if (property.status !== expectedStatus) {
+                    console.log(`Auditor: Repairing ${property.id} status to ${expectedStatus}`);
+                    const propertyRef = doc(firestore, 'userProfiles', user.uid, 'properties', property.id);
+                    await updateDoc(propertyRef, { status: expectedStatus });
+                }
+            }
+        }
+    };
+
+    auditPortfolio().catch(err => console.error("Occupancy auditor failed:", err));
+  }, [user, firestore, properties, isLoadingProps]);
+
   // 2. Discover Tenant Role - Simplified and optimized
   useEffect(() => {
     if (!user || !firestore || !user.email) {
@@ -347,7 +381,7 @@ export default function DashboardPage() {
                   <p className="text-muted-foreground max-w-md mx-auto">We couldn't find an active tenancy for this email address. If you've been invited by a landlord, please ask them to verify the portal email on your record.</p>
               </div>
               <Button asChild size="lg" className="px-10 h-12 font-bold shadow-lg">
-                  <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-5 w-5" /> Onboard First Property</Link>
+                  <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Onboard First Property</Link>
               </Button>
           </div>
       )}

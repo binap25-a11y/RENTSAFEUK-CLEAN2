@@ -212,11 +212,12 @@ export default function AddTenantPage() {
         await updateDoc(propertyDocRef, { status: 'Occupied' });
 
         toast({
-          title: 'Tenant Assigned',
-          description: `${data.name} has been assigned and property status updated to Occupied.`,
+          title: 'Tenant Assigned Successfully',
+          description: `Portfolio synchronized: ${data.name} is now the active tenant.`,
         });
         
-        // Final redirection after all data changes are confirmed
+        // Use router.refresh() to force dashboard snapshot re-eval
+        router.refresh();
         router.push('/dashboard');
     } catch (serverError: any) {
         console.error('Tenant assignment failed:', serverError);
