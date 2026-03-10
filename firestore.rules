@@ -70,6 +70,7 @@ service cloud.firestore {
 
     match /{path=**}/tenants/{tenantId} {
       // Allow tenant role discovery based on email (provable query filter)
+      // We use simple equality check to ensure query analysis passes.
       allow list: if isSignedIn() && request.auth.token.email != null && resource.data.email == request.auth.token.email;
       
       // Allow read access for the verified resident

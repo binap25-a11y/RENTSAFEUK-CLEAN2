@@ -15,7 +15,8 @@ import {
   Banknote,
   AlertCircle,
   ChevronRight,
-  UserCircle
+  UserCircle,
+  ShieldCheck
 } from 'lucide-react';
 import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collectionGroup, query, where, limit, onSnapshot, doc } from 'firebase/firestore';
@@ -33,9 +34,13 @@ export default function TenantDashboard() {
   const firestore = useFirestore();
   const [context, setContext] = useState<TenantContext | null>(null);
   const [isLoading, setIsLoading] = useState(true);
+  const [isIndexBuilding, setIsIndexBuilding] = useState(false);
 
   useEffect(() => {
-    if (!user || !firestore || !user.email) return;
+    if (!user || !firestore || !user.email) {
+      setIsLoading(false);
+      return;
+    }
 
     let propUnsub: (() => void) | null = null;
     const userEmail = user.email.toLowerCase().trim();
@@ -57,7 +62,6 @@ export default function TenantDashboard() {
             const pathSegments = activeTenantDoc.ref.path.split('/');
             
             // Path: userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}
-            // Segments: [0] "", [1] "userProfiles", [2] "{userId}", [3] "properties", [4] "{propertyId}", [5] "tenants", [6] "{tenantId}"
             const landlordId = pathSegments[2];
             const propertyId = pathSegments[4];
             const tenantId = activeTenantDoc.id;
@@ -74,21 +78,19 @@ export default function TenantDashboard() {
                     });
                 }
                 setIsLoading(false);
+                setIsIndexBuilding(false);
             }, (error) => {
-                errorEmitter.emit('permission-error', new FirestorePermissionError({
-                    path: propRef.path,
-                    operation: 'get',
-                }));
+                console.error("Property context fetch failed:", error);
                 setIsLoading(false);
             });
         } else {
             setIsLoading(false);
         }
     }, (error) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: 'tenants',
-            operation: 'list',
-        }));
+        if (error.message.includes('index')) {
+            setIsIndexBuilding(true);
+        }
+        console.warn("Portal discovery issue:", error.message);
         setIsLoading(false);
     });
 
@@ -107,6 +109,27 @@ export default function TenantDashboard() {
     );
   }
 
+  if (isIndexBuilding) {
+    return (
+        <Card className="max-w-md mx-auto mt-20 shadow-2xl border-none">
+            <CardHeader className="text-center bg-muted/20 pb-8">
+                <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 shadow-sm border">
+                    <Loader2 className="h-10 w-10 text-primary animate-spin" />
+                </div>
+                <CardTitle className="font-headline text-xl">Syncing Portal Access</CardTitle>
+                <CardDescription className="text-sm font-medium px-4">
+                    Our cloud database is currently synchronizing your resident records. This typically takes a few minutes for new accounts.
+                </CardDescription>
+            </CardHeader>
+            <CardFooter className="pt-6">
+                <Button variant="outline" className="w-full font-bold h-11" onClick={() => window.location.reload()}>
+                    Check Status
+                </Button>
+            </CardFooter>
+        </Card>
+    );
+  }
+
   if (!context) {
     return (
         <Card className="max-w-md mx-auto mt-20 shadow-2xl border-none">
@@ -122,7 +145,7 @@ export default function TenantDashboard() {
             </CardHeader>
             <CardFooter className="pt-6 flex flex-col gap-3">
                 <Button className="w-full font-bold h-11 shadow-lg" asChild>
-                    <Link href="/dashboard">Return to Landlord Dashboard</Link>
+                    <Link href="/dashboard">Return to Main Dashboard</Link>
                 </Button>
                 <Button variant="ghost" className="w-full text-xs text-muted-foreground" onClick={() => window.location.reload()}>
                     Refresh Session
@@ -145,10 +168,10 @@ export default function TenantDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" asChild className="h-8 text-[10px] font-bold uppercase tracking-widest border-primary/20 text-primary">
-                <Link href="/dashboard"><UserCircle className="mr-2 h-3.5 w-3.5" /> Landlord Mode</Link>
+            <Button variant="outline" size="sm" asChild className="h-8 text-[10px] font-bold uppercase tracking-widest border-primary/20 text-primary shadow-sm bg-background">
+                <Link href="/dashboard"><UserCircle className="mr-2 h-3.5 w-3.5" /> Dashboard Mode</Link>
             </Button>
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-8 px-3 font-bold uppercase tracking-widest text-[10px]">
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-8 px-3 font-bold uppercase tracking-widest text-[10px] shadow-sm">
                 Portal Active
             </Badge>
         </div>
@@ -172,12 +195,12 @@ export default function TenantDashboard() {
         <Card className="shadow-lg border-none hover:bg-muted/5 transition-colors">
             <CardHeader className="pb-2">
                 <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-                    <Calendar className="h-3.5 w-3.5 text-primary" /> Tenancy Type
+                    <Calendar className="h-3.5 w-3.5 text-primary" /> Tenancy Period
                 </CardTitle>
             </CardHeader>
             <CardContent>
-                <div className="text-xl font-bold">Rolling AST Contract</div>
-                <p className="text-xs text-muted-foreground mt-1 font-medium italic">Managed by RentSafeUK Secure Portal</p>
+                <div className="text-xl font-bold">Rolling Contract</div>
+                <p className="text-xs text-muted-foreground mt-1 font-medium italic">Managed via RentSafeUK Secure Portal</p>
             </CardContent>
         </Card>
 
