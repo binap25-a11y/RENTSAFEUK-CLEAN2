@@ -8,7 +8,12 @@ import {
 } from 'firebase/auth';
 
 /**
+ * @fileOverview Core authentication utilities implemented as non-blocking functions.
+ */
+
+/**
  * Initiate anonymous sign-in (non-blocking).
+ * @param auth The Firebase Auth instance.
  */
 export function initiateAnonymousSignIn(auth: Auth): void {
   signInAnonymously(auth).catch((error) => {
@@ -18,6 +23,10 @@ export function initiateAnonymousSignIn(auth: Auth): void {
 
 /**
  * Initiate email/password sign-up (non-blocking).
+ * @param auth The Firebase Auth instance.
+ * @param email The user's email address.
+ * @param password The user's password.
+ * @param onError Optional callback for error handling.
  */
 export function createUserNonBlocking(
   auth: Auth,
@@ -32,6 +41,10 @@ export function createUserNonBlocking(
 
 /**
  * Initiate email/password sign-in (non-blocking).
+ * @param auth The Firebase Auth instance.
+ * @param email The user's email address.
+ * @param password The user's password.
+ * @param onError Optional callback for error handling.
  */
 export function signInNonBlocking(
   auth: Auth,
@@ -44,6 +57,6 @@ export function signInNonBlocking(
   });
 }
 
-// Aliases for compatibility across the application
+// Aliases for broad compatibility
 export const initiateEmailSignUp = createUserNonBlocking;
 export const initiateEmailSignIn = signInNonBlocking;

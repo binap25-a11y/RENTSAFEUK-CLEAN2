@@ -1,6 +1,8 @@
 'use client';
 
 /**
- * @fileOverview Standardized passthrough to resolve module resolution ambiguity between .ts and .tsx.
+ * @fileOverview Proxy module to resolve resolution conflicts.
+ * Logic is consolidated in the .ts version of this file.
  */
+
 export * from './non-blocking-login';

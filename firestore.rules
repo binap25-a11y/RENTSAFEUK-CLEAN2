@@ -41,6 +41,10 @@ service cloud.firestore {
           match /screenings/{screeningId} {
             allow read, write: if isOwner(userProfileId);
           }
+          
+          match /checklists/{checklistId} {
+            allow read, write: if isOwner(userProfileId);
+          }
         }
 
         match /rentPayments/{paymentId} {
@@ -68,11 +72,11 @@ service cloud.firestore {
     // --- Specialized Collection Group Rules for Discovery ---
 
     match /{path=**}/tenants/{tenantId} {
-      // Authorization for role-discovery (email-based)
-      // For collectionGroup list operations, the query must filter by the fields used in the rule
+      // Allow tenant role discovery based on email.
+      // Must be statically provable for collectionGroup queries.
       allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
       
-      // Allow read access for both the owner and the tenant
+      // Allow read access for the tenant (by email) or the owner (by UID context)
       allow get: if isSignedIn() && (
         resource.data.email == request.auth.token.email || 
         resource.data.userId == request.auth.uid

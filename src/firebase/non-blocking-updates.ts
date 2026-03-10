@@ -13,7 +13,11 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
 /**
- * Initiates a setDoc operation for a document reference.
+ * @fileOverview Firestore mutation utilities implemented as non-blocking functions with contextual error emission.
+ */
+
+/**
+ * Initiates a setDoc operation.
  */
 export function setDocumentNonBlocking(docRef: DocumentReference, data: any, options?: SetOptions) {
   const promise = options ? setDoc(docRef, data, options) : setDoc(docRef, data);
@@ -30,7 +34,7 @@ export function setDocumentNonBlocking(docRef: DocumentReference, data: any, opt
 }
 
 /**
- * Initiates an addDoc operation for a collection reference.
+ * Initiates an addDoc operation.
  */
 export function addDocumentNonBlocking(colRef: CollectionReference, data: any) {
   return addDoc(colRef, data).catch(error => {
@@ -46,7 +50,7 @@ export function addDocumentNonBlocking(colRef: CollectionReference, data: any) {
 }
 
 /**
- * Initiates an updateDoc operation for a document reference.
+ * Initiates an updateDoc operation.
  */
 export function updateDocumentNonBlocking(docRef: DocumentReference, data: any) {
   updateDoc(docRef, data).catch(error => {
@@ -62,7 +66,7 @@ export function updateDocumentNonBlocking(docRef: DocumentReference, data: any) 
 }
 
 /**
- * Initiates a deleteDoc operation for a document reference.
+ * Initiates a deleteDoc operation.
  */
 export function deleteDocumentNonBlocking(docRef: DocumentReference) {
   deleteDoc(docRef).catch(error => {

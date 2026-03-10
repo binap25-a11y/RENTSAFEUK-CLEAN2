@@ -32,7 +32,7 @@ export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 
-// Utility Exports (Imported from .ts files to ensure unambiguous resolution)
+// Explicitly export from the base .ts implementations to ensure clarity
 export {
   initiateAnonymousSignIn,
   createUserNonBlocking,
