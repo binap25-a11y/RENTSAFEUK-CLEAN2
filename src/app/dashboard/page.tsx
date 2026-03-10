@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -20,8 +21,7 @@ import {
   ShieldCheck, 
   UserCircle, 
   Sparkles,
-  RefreshCw,
-  AlertCircle
+  RefreshCw
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -214,7 +214,7 @@ export default function DashboardPage() {
     }, (error) => {
       const msg = error.message.toLowerCase();
       // Handle cloud indexing states specifically to avoid showing a broken UI
-      if (msg.includes('index') || error.code === 'failed-precondition' || error.code === 'permission-denied') {
+      if (msg.includes('index') || error.code === 'failed-precondition') {
         setIsIndexBuilding(true);
       } else {
         console.warn("Tenant discovery handshake failure:", error.message);

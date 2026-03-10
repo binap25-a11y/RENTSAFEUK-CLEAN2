@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -65,7 +66,6 @@ export default function TenantDashboard() {
             const data = activeTenantDoc.data();
             const pathSegments = activeTenantDoc.ref.path.split('/');
             
-            // Robust segment matching for tenant hierarchy
             const landlordIdx = pathSegments.indexOf('userProfiles');
             const propertyIdx = pathSegments.indexOf('properties');
             
@@ -88,7 +88,7 @@ export default function TenantDashboard() {
                     setIsLoading(false);
                     setIsIndexBuilding(false);
                 }, (error) => {
-                    console.warn("Property context fetch restricted (check rules):", error.message);
+                    console.warn("Property context fetch restricted:", error.message);
                     setIsLoading(false);
                     setIsIndexBuilding(false);
                 });

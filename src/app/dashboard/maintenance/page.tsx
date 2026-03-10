@@ -170,8 +170,15 @@ export default function MaintenancePage() {
     if (!user || !firestore) return;
     setIsSubmitting(true);
 
+    // Sanitize data to remove undefined values
+    const newLog = JSON.parse(JSON.stringify({ 
+        ...data, 
+        userId: user.uid, 
+        status: 'Open', 
+        createdDate: new Date().toISOString() 
+    }));
+
     try {
-      const newLog = { ...data, userId: user.uid, status: 'Open', createdDate: new Date().toISOString() };
       const logsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', data.propertyId, 'maintenanceLogs');
       const newDocRef = await addDoc(logsCollection, newLog);
 

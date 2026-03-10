@@ -138,14 +138,17 @@ export default function EditMaintenancePage() {
         }
         setIsSaving(true);
 
+        // Sanitize data to remove undefined values
+        const cleanedData = JSON.parse(JSON.stringify(data));
+
         try {
-            await updateDoc(maintenanceLogRef, { ...data });
+            await updateDoc(maintenanceLogRef, cleanedData);
 
             toast({ title: 'Maintenance Log Updated', description: 'The changes have been saved.' });
             router.push(`/dashboard/maintenance/${logId}?propertyId=${propertyId}`);
         } catch (error) {
             console.error('Failed to update maintenance log', error);
-             const permissionError = new FirestorePermissionError({ path: maintenanceLogRef.path, operation: 'update', requestResourceData: data });
+             const permissionError = new FirestorePermissionError({ path: maintenanceLogRef.path, operation: 'update', requestResourceData: cleanedData });
              errorEmitter.emit('permission-error', permissionError);
             toast({ variant: 'destructive', title: 'Update Failed', description: (error as Error).message || 'There was an error updating the log.' });
         } finally {
@@ -168,7 +171,7 @@ export default function EditMaintenancePage() {
                     <Link href={`/dashboard/maintenance/${logId}?propertyId=${propertyId}`}><ArrowLeft className="h-4 w-4" /></Link>
                 </Button>
                 <div>
-                    <h1 className="text-2xl font-bold font-headline">Edit maintenance</h1>
+                    <h1 className="text-2xl font-bold font-headline">Edit Maintenance</h1>
                 </div>
             </div>
             

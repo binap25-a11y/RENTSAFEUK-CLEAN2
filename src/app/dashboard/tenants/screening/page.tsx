@@ -38,16 +38,14 @@ import { Checkbox } from '@/components/ui/checkbox';
 import {
   useUser,
   useFirestore,
-  useCollection,
   useMemoFirebase,
   errorEmitter,
   FirestorePermissionError,
   useDoc,
 } from '@/firebase';
-import { collection, query, where, addDoc, doc } from 'firebase/firestore';
+import { collection, addDoc, doc } from 'firebase/firestore';
 import { useEffect, useState, useMemo } from 'react';
 import { Badge } from '@/components/ui/badge';
-
 
 const screeningSchema = z.object({
   tenantId: z.string({ required_error: 'Please select a tenant.' }).min(1, "Please select a tenant."),
@@ -213,16 +211,17 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
 
         const { tenantId, propertyId, ...screeningData } = data;
 
-        const newScreeningRecord = {
+        // Sanitize data to remove undefined values which Firestore doesn't support
+        const cleanedSubmission = JSON.parse(JSON.stringify({
             ...screeningData,
             userId: user.uid,
             tenantId: tenantId,
             propertyId: propertyId,
-        };
+        }));
 
         const screeningsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'tenants', tenantId, 'screenings');
 
-        addDoc(screeningsCollection, newScreeningRecord)
+        addDoc(screeningsCollection, cleanedSubmission)
           .then(() => {
             toast({
                 title: 'Screening Record Saved',
@@ -234,7 +233,7 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
              const permissionError = new FirestorePermissionError({
                 path: screeningsCollection.path,
                 operation: 'create',
-                requestResourceData: newScreeningRecord,
+                requestResourceData: cleanedSubmission,
             });
             errorEmitter.emit('permission-error', permissionError);
             toast({
