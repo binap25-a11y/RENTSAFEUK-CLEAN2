@@ -98,7 +98,6 @@ export default function TenantDashboard() {
                     setIsLoading(false);
                     setIsIndexBuilding(false);
                 }, async (err) => {
-                    // Standard Firestore permission error handling
                     const permissionError = new FirestorePermissionError({
                         path: propRef.path,
                         operation: 'get',
@@ -125,7 +124,7 @@ export default function TenantDashboard() {
         if (msg.includes('index') || err.code === 'failed-precondition') {
             setIsIndexBuilding(true);
         } else {
-            // Log contextual permission error without component crash
+            // Standard Firestore permission error handling for collection group
             const permissionError = new FirestorePermissionError({
                 path: 'tenants (collectionGroup)',
                 operation: 'list',

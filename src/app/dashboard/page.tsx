@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { collection, query, where, onSnapshot, collectionGroup, limit, doc, updateDoc, getDocs } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, collectionGroup, limit } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -20,8 +20,7 @@ import {
   ShieldCheck, 
   UserCircle, 
   Sparkles,
-  RefreshCw,
-  AlertCircle
+  RefreshCw
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -189,35 +188,6 @@ export default function DashboardPage() {
     });
     return () => unsub();
   }, [user, firestore]);
-
-  /**
-   * REAL-TIME OCCUPANCY AUDITOR (Self-Healing Logic)
-   */
-  useEffect(() => {
-    if (!user || !firestore || properties.length === 0 || isLoadingProps) return;
-
-    const auditPortfolio = async () => {
-        for (const property of properties) {
-            if (['Vacant', 'Occupied'].includes(property.status)) {
-                const tenantsQuery = query(
-                    collection(firestore, 'userProfiles', user.uid, 'properties', property.id, 'tenants'),
-                    where('status', '==', 'Active'),
-                    limit(1)
-                );
-                const tenantsSnap = await getDocs(tenantsQuery);
-                const hasActiveTenants = !tenantsSnap.empty;
-                const expectedStatus = hasActiveTenants ? 'Occupied' : 'Vacant';
-
-                if (property.status !== expectedStatus) {
-                    const propertyRef = doc(firestore, 'userProfiles', user.uid, 'properties', property.id);
-                    await updateDoc(propertyRef, { status: expectedStatus });
-                }
-            }
-        }
-    };
-
-    auditPortfolio().catch(err => console.error("Auditor sync error:", err));
-  }, [user, firestore, properties, isLoadingProps]);
 
   // 2. Discover Tenant Role
   useEffect(() => {
