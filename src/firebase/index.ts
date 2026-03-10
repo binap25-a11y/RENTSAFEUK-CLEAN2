@@ -1,8 +1,8 @@
+
 'use client';
 
 /**
  * @fileOverview Standardized barrel file for Firebase services and utilities.
- * Stabilized exports to ensure unambiguous module resolution in Next.js builds.
  */
 
 import { firebaseConfig } from '@/firebase/config';
@@ -33,22 +33,22 @@ export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 
-// Stable Authentication Utilities (Explicit extension mapping)
+// Explicitly re-exporting authentication utilities from the stable .ts file
 export {
   initiateAnonymousSignIn,
   createUserNonBlocking,
   signInNonBlocking,
   initiateEmailSignUp,
   initiateEmailSignIn,
-} from './non-blocking-login.ts';
+} from './non-blocking-login';
 
-// Stable Data Mutation Utilities
+// Explicitly re-exporting mutation utilities from the stable .ts file
 export {
   setDocumentNonBlocking,
   addDocumentNonBlocking,
   updateDocumentNonBlocking,
   deleteDocumentNonBlocking,
-} from './non-blocking-updates.ts';
+} from './non-blocking-updates';
 
 export * from './errors';
 export * from './error-emitter';

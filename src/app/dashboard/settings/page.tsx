@@ -29,12 +29,23 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
 import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/firebase';
-import { updateProfile } from 'firebase/auth';
-import { doc, setDoc } from 'firebase/firestore';
+import { updateProfile, deleteUser } from 'firebase/auth';
+import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { Loader2, ShieldCheck, Clock, Lock, Key } from 'lucide-react';
+import { Loader2, ShieldCheck, Clock, Lock, Key, AlertTriangle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 
@@ -123,6 +134,43 @@ export default function SettingsPage() {
       setIsUpdating(false);
     }
   }
+
+  const handleDeleteAccount = async () => {
+    if (!auth || !auth.currentUser || !firestore || !user) return;
+    
+    setIsUpdating(true);
+    try {
+      // 1. Delete Firestore Profile
+      await deleteDoc(doc(firestore, 'userProfiles', user.uid));
+      
+      // 2. Delete Auth User
+      await deleteUser(auth.currentUser);
+      
+      toast({
+        title: 'Account Deleted',
+        description: 'Your account has been successfully removed from RentSafeUK.',
+      });
+      
+      router.push('/');
+    } catch (error: any) {
+      console.error('Failed to delete account:', error);
+      if (error.code === 'auth/requires-recent-login') {
+        toast({
+          variant: 'destructive',
+          title: 'Security Requirement',
+          description: 'Please log out and log back in before deleting your account for security validation.',
+        });
+      } else {
+        toast({
+          variant: 'destructive',
+          title: 'Deletion Failed',
+          description: error.message || 'An error occurred. Please try again.',
+        });
+      }
+    } finally {
+      setIsUpdating(false);
+    }
+  };
 
   const isLoading = isUserLoading || isProfileLoading;
 
@@ -264,6 +312,47 @@ export default function SettingsPage() {
                 </div>
                 <p className="text-xs text-muted-foreground italic">Managed by your Google Account</p>
             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="shadow-sm border-destructive/20 mt-4 bg-destructive/[0.02]">
+          <CardHeader className="border-b bg-destructive/5">
+            <div className="flex items-center gap-2 text-destructive">
+              <AlertTriangle className="h-5 w-5" />
+              <CardTitle className="text-lg">Danger Zone</CardTitle>
+            </div>
+            <CardDescription>
+              Permanently delete your account and all associated management data.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <p className="text-sm text-muted-foreground mb-6">
+              Deleting your account is permanent and cannot be undone. All your property records, tenant contacts, maintenance logs, and financial history will be inaccessible.
+            </p>
+            <AlertDialog>
+              <AlertDialogTrigger asChild>
+                <Button variant="destructive" className="font-bold">Delete Account & Data</Button>
+              </AlertDialogTrigger>
+              <AlertDialogContent>
+                <AlertDialogHeader>
+                  <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
+                  <AlertDialogDescription>
+                    This action is irreversible. It will permanently delete your account, 
+                    associated profile data, and all access keys.
+                  </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter>
+                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                  <AlertDialogAction 
+                    onClick={handleDeleteAccount} 
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                  >
+                    {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
+                    Confirm Permanent Deletion
+                  </AlertDialogAction>
+                </AlertDialogFooter>
+              </AlertDialogContent>
+            </AlertDialog>
           </CardContent>
         </Card>
       </div>

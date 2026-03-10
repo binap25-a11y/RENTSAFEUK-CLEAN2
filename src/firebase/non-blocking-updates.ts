@@ -1,3 +1,4 @@
+
 'use client';
     
 import {
@@ -14,7 +15,6 @@ import { FirestorePermissionError } from '@/firebase/errors';
 
 /**
  * @fileOverview Firestore mutation utilities implemented as non-blocking functions.
- * Includes contextual error emission for rapid developer diagnostic loops.
  */
 
 /**
@@ -35,7 +35,7 @@ export function setDocumentNonBlocking(docRef: DocumentReference, data: any, opt
 }
 
 /**
- * Initiates an addDoc operation with optimistic concurrency.
+ * Initiates an addDoc operation.
  */
 export function addDocumentNonBlocking(colRef: CollectionReference, data: any) {
   return addDoc(colRef, data).catch(error => {
