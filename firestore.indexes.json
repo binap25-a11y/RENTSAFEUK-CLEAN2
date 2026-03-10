@@ -1,0 +1,14 @@
+{
+  "indexes": [
+    {
+      "collectionGroup": "tenants",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        {
+          "fieldPath": "email",
+          "order": "ASCENDING"
+        }
+      ]
+    }
+  ]
+}

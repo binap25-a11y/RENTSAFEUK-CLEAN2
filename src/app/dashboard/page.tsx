@@ -176,7 +176,7 @@ export default function DashboardPage() {
     const tenantsQuery = query(
       collectionGroup(firestore, 'tenants'),
       where('email', '==', email),
-      limit(1)
+      limit(10) // Increased limit for robustness
     );
 
     const unsub = onSnapshot(tenantsQuery, (snap) => {
