@@ -113,24 +113,28 @@ service cloud.firestore {
     }
 
     // --- Optimized collectionGroup Rules ---
-    // Rules are split to ensure the query analyzer can statically verify authorization.
+    // Unified rules for better provability by the Firestore query analyzer.
 
     match /{path=**}/tenants/{tenantId} {
-      // Role discovery for residents (email-based)
-      allow list: if isSignedIn() && (resource.data.email == request.auth.token.email.lower());
-      // Portfolio oversight for landlords (UID-based)
-      allow list: if isSignedIn() && (resource.data.userId == request.auth.uid);
-      
-      allow get: if isSignedIn() && (resource.data.email == request.auth.token.email.lower() || resource.data.userId == request.auth.uid);
+      allow list, get: if isSignedIn() && (
+        resource.data.email == request.auth.token.email.lower() || 
+        resource.data.userId == request.auth.uid
+      );
     }
 
     match /{path=**}/messages/{messageId} {
-      allow list, get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.senderId == request.auth.uid);
+      allow list, get: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.senderId == request.auth.uid
+      );
       allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      allow list, get: if isSignedIn() && (resource.data.userId == request.auth.uid || resource.data.reportedBy == request.auth.uid);
+      allow list, get: if isSignedIn() && (
+        resource.data.userId == request.auth.uid || 
+        resource.data.reportedBy == request.auth.uid
+      );
     }
   }
 }

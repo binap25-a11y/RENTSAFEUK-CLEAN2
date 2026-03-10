@@ -2,7 +2,7 @@
 'use client';
 
 /**
- * REDUNDANT COMPONENT REMOVED.
- * Logic consolidated into non-blocking-updates.ts to resolve build conflicts.
+ * DEPRECATED: Implementation consolidated into non-blocking-updates.ts.
+ * This file is maintained as a shell to resolve module resolution artifacts.
  */
 export {};

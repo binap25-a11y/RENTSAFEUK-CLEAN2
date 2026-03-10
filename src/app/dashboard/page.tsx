@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collection, query, where, onSnapshot, collectionGroup, limit } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -41,7 +41,6 @@ export function PropertiesPanel() {
   useEffect(() => {
     if (!user || !firestore) return;
     
-    // Scoped to landlord's own property collection - strictly hierarchical
     const propertiesQuery = query(
       collection(firestore, 'userProfiles', user.uid, 'properties'), 
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
@@ -60,9 +59,13 @@ export function PropertiesPanel() {
     return () => unsub();
   }, [user, firestore]);
 
-  const filteredProperties = properties.filter(p => 
-    Object.values(p.address).some(val => val?.toLowerCase().includes(searchTerm.toLowerCase()))
-  );
+  const filteredProperties = useMemo(() => {
+    if (!searchTerm) return properties;
+    const term = searchTerm.toLowerCase();
+    return properties.filter(p => 
+      Object.values(p.address).some(val => val?.toLowerCase().includes(term))
+    );
+  }, [properties, searchTerm]);
 
   return (
     <Card className="shadow-lg border-none">
@@ -168,7 +171,6 @@ export default function DashboardPage() {
     }
 
     const email = user.email.toLowerCase().trim();
-    // Discovery query to check for active tenancies across the platform
     const tenantsQuery = query(
       collectionGroup(firestore, 'tenants'),
       where('email', '==', email),
@@ -180,8 +182,6 @@ export default function DashboardPage() {
       setIsTenant(!!activeTenant);
       setIsLoadingPortalCheck(false);
     }, (error) => {
-      // Trigger global error propagation with explicit collection group context
-      // Path matches the collection name in firestore.rules for simpler rule authorization
       errorEmitter.emit('permission-error', new FirestorePermissionError({
         path: 'tenants', 
         operation: 'list',

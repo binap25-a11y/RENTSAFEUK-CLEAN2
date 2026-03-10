@@ -36,6 +36,8 @@
         "bathrooms": { "type": "number" },
         "imageUrl": { "type": "string" },
         "additionalImageUrls": { "type": "array", "items": { "type": "string" } },
+        "purchasePrice": { "type": "number" },
+        "currentValuation": { "type": "number" },
         "tenancy": {
           "type": "object",
           "properties": {
@@ -62,7 +64,9 @@
         "rentDueDay": { "type": "number" },
         "monthlyRent": { "type": "number" },
         "tenancyStartDate": { "type": "string", "format": "date-time" },
-        "tenancyEndDate": { "type": "string", "format": "date-time" }
+        "tenancyEndDate": { "type": "string", "format": "date-time" },
+        "lastReminderSent": { "type": "string", "format": "date-time" },
+        "notes": { "type": "string" }
       },
       "required": ["id", "userId", "propertyId", "name", "email", "status"]
     },
@@ -77,11 +81,17 @@
         "title": { "type": "string" },
         "description": { "type": "string" },
         "category": { "type": "string" },
+        "otherCategoryDetails": { "type": "string" },
         "priority": { "type": "string", "enum": ["Emergency", "Urgent", "Routine", "Low"] },
         "status": { "type": "string", "enum": ["Open", "In Progress", "Completed", "Cancelled"] },
         "photoUrls": { "type": "array", "items": { "type": "string" } },
+        "reportedBy": { "type": "string" },
+        "reportedDate": { "type": "string", "format": "date-time" },
         "contractorName": { "type": "string" },
-        "scheduledDate": { "type": "string", "format": "date-time" }
+        "contractorPhone": { "type": "string" },
+        "scheduledDate": { "type": "string", "format": "date-time" },
+        "estimatedCost": { "type": "number" },
+        "notes": { "type": "string" }
       },
       "required": ["id", "userId", "propertyId", "title", "status", "priority"]
     },
@@ -110,7 +120,11 @@
         "userId": { "type": "string" },
         "propertyId": { "type": "string" },
         "tenantId": { "type": "string" },
-        "completedDate": { "type": "string", "format": "date-time" }
+        "completedDate": { "type": "string", "format": "date-time" },
+        "beforeTenancy": { "type": "object" },
+        "deposit": { "type": "object" },
+        "atMoveIn": { "type": "object" },
+        "optional": { "type": "object" }
       },
       "required": ["id", "userId", "propertyId", "tenantId"]
     },
@@ -124,7 +138,11 @@
         "propertyId": { "type": "string" },
         "type": { "type": "string", "enum": ["Single-Let", "HMO"] },
         "status": { "type": "string", "enum": ["Scheduled", "Completed", "Cancelled"] },
-        "scheduledDate": { "type": "string", "format": "date-time" }
+        "scheduledDate": { "type": "string", "format": "date-time" },
+        "inspectorName": { "type": "string" },
+        "safety": { "type": "object" },
+        "interior": { "type": "object" },
+        "followUp": { "type": "object" }
       },
       "required": ["id", "userId", "propertyId", "type", "status"]
     },
@@ -139,9 +157,56 @@
         "trade": { "type": "string" },
         "phone": { "type": "string" },
         "email": { "type": "string" },
-        "status": { "type": "string", "enum": ["Active", "Archived"] }
+        "status": { "type": "string", "enum": ["Active", "Archived"] },
+        "notes": { "type": "string" }
       },
       "required": ["id", "userId", "name", "trade", "phone", "status"]
+    },
+    "Document": {
+      "title": "Document",
+      "description": "Legal or compliance file record.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "title": { "type": "string" },
+        "documentType": { "type": "string" },
+        "issueDate": { "type": "string", "format": "date-time" },
+        "expiryDate": { "type": "string", "format": "date-time" },
+        "fileUrl": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["id", "userId", "propertyId", "title", "documentType"]
+    },
+    "Expense": {
+      "title": "Expense",
+      "description": "Financial outgoing record for tax auditing.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "userId": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "date": { "type": "string", "format": "date-time" },
+        "expenseType": { "type": "string" },
+        "amount": { "type": "number" },
+        "paidBy": { "type": "string" },
+        "notes": { "type": "string" }
+      },
+      "required": ["id", "userId", "propertyId", "date", "expenseType", "amount"]
+    },
+    "Message": {
+      "title": "Message",
+      "description": "Secure communication between landlord and resident.",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
+        "content": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
+      },
+      "required": ["id", "senderId", "content", "timestamp"]
     }
   },
   "auth": {
@@ -175,6 +240,18 @@
     "/userProfiles/{userId}/properties/{propertyId}/inspections/{inspectionId}": {
       "schema": { "$ref": "#/entities/Inspection" },
       "description": "Property inspection reports."
+    },
+    "/userProfiles/{userId}/properties/{propertyId}/documents/{documentId}": {
+      "schema": { "$ref": "#/entities/Document" },
+      "description": "Compliance documents."
+    },
+    "/userProfiles/{userId}/properties/{propertyId}/expenses/{expenseId}": {
+      "schema": { "$ref": "#/entities/Expense" },
+      "description": "Property expenses."
+    },
+    "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}/messages/{messageId}": {
+      "schema": { "$ref": "#/entities/Message" },
+      "description": "Secure messages."
     },
     "/userProfiles/{userId}/contractors/{contractorId}": {
       "schema": { "$ref": "#/entities/Contractor" },
