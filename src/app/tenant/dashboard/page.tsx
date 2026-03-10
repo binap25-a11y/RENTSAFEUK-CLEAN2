@@ -48,7 +48,6 @@ export default function TenantDashboard() {
     const userEmail = user.email.toLowerCase().trim();
 
     // Discovery query to find if this email exists in any tenant collection across the platform
-    // Forced lowercase normalization for reliable matching
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
@@ -64,7 +63,6 @@ export default function TenantDashboard() {
             const data = activeTenantDoc.data();
             const pathSegments = activeTenantDoc.ref.path.split('/');
             
-            // Robust path resolution searching for keywords to avoid index errors
             const landlordIdx = pathSegments.indexOf('userProfiles');
             const propertyIdx = pathSegments.indexOf('properties');
             
@@ -97,7 +95,7 @@ export default function TenantDashboard() {
             setIsLoading(false);
         }
     }, (error) => {
-        if (error.message.includes('index')) {
+        if (error.message.toLowerCase().includes('index')) {
             setIsIndexBuilding(true);
         }
         console.warn("Portal discovery issue:", error.message);
@@ -170,16 +168,16 @@ export default function TenantDashboard() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">
-            Welcome Home, {user?.displayName?.split(' ')[0] || 'Tenant'}
+            Tenant Dashboard
           </h1>
-          <p className="text-muted-foreground font-medium flex items-center gap-2">
+          <p className="text-muted-foreground font-medium flex items-center gap-2 mt-1">
               <Home className="h-4 w-4 text-primary/40" />
-              {context.propertyData?.address?.street}, {context.propertyData?.address?.city}
+              Welcome home, {user?.displayName?.split(' ')[0] || 'Resident'} — {context.propertyData?.address?.street}, {context.propertyData?.address?.city}
           </p>
         </div>
         <div className="flex items-center gap-2">
             <Button variant="outline" size="sm" asChild className="h-8 text-[10px] font-bold uppercase tracking-widest border-primary/20 text-primary shadow-sm bg-background">
-                <Link href="/dashboard"><UserCircle className="mr-2 h-3.5 w-3.5" /> Dashboard Mode</Link>
+                <Link href="/dashboard"><UserCircle className="mr-2 h-3.5 w-3.5" /> Switch Mode</Link>
             </Button>
             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-8 px-3 font-bold uppercase tracking-widest text-[10px] shadow-sm">
                 Portal Active

@@ -75,6 +75,7 @@ export function PropertiesPanel({ properties, isLoading, searchTerm, setSearchTe
                 <Card key={p.id} className="group overflow-hidden flex flex-col hover:shadow-2xl transition-all duration-300 cursor-pointer" onClick={() => router.push(`/dashboard/properties/${p.id}`)}>
                   <div className="relative aspect-[16/10] bg-muted overflow-hidden border-b">
                     {p.imageUrl ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
                       <img src={p.imageUrl} alt="Property" className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-500" />
                     ) : <div className="flex justify-center items-center w-full h-full bg-primary/5"><Home className="h-16 w-16 text-primary/10" /></div>}
                   </div>
@@ -142,7 +143,7 @@ export default function DashboardPage() {
   const { user } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
-  const [isTenant, setIsTenant] = useState<boolean | null>(null);
+  const [isTenant, setIsTenant] = useState<boolean>(false);
   const [isLoadingPortalCheck, setIsLoadingPortalCheck] = useState(true);
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
   
@@ -190,24 +191,25 @@ export default function DashboardPage() {
       setIsLoadingPortalCheck(false);
       setIsIndexBuilding(false);
     }, (error) => {
-      if (error.message.includes('index')) {
+      // If it's just an index issue, don't block the UI permanently
+      if (error.message.toLowerCase().includes('index')) {
         setIsIndexBuilding(true);
       }
       console.warn("Portal discovery restricted or indexing in progress:", error.message);
-      setIsTenant(false);
       setIsLoadingPortalCheck(false);
     });
 
     return () => unsub();
   }, [user, firestore]);
 
+  const isPureTenant = isTenant && properties.length === 0;
+  
   // 3. Auto-Redirect Pure Tenants
   useEffect(() => {
-    if (!isLoadingProps && !isLoadingPortalCheck && isTenant && properties.length === 0) {
-      // Auto-redirect if they ONLY have a tenant role and no properties
+    if (!isLoadingProps && !isLoadingPortalCheck && isPureTenant) {
       router.push('/tenant/dashboard');
     }
-  }, [isLoadingProps, isLoadingPortalCheck, isTenant, properties.length, router]);
+  }, [isLoadingProps, isLoadingPortalCheck, isPureTenant, router]);
 
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;
@@ -217,10 +219,9 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  const isPureTenant = isTenant && properties.length === 0;
   const pageTitle = isPureTenant ? "Tenant Dashboard" : "Landlord Dashboard";
 
-  if (isLoadingPortalCheck && isLoadingProps) {
+  if (isLoadingPortalCheck || isLoadingProps) {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -281,16 +282,18 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      <div className="grid gap-6">
-        <PropertiesPanel 
-          properties={filteredProperties} 
-          isLoading={isLoadingProps}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          view={view}
-          setView={setView}
-        />
-      </div>
+      {!isPureTenant && (
+        <div className="grid gap-6">
+          <PropertiesPanel 
+            properties={filteredProperties} 
+            isLoading={isLoadingProps}
+            searchTerm={searchTerm}
+            setSearchTerm={setSearchTerm}
+            view={view}
+            setView={setView}
+          />
+        </div>
+      )}
     </div>
   );
 }
