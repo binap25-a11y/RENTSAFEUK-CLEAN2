@@ -2,7 +2,7 @@
 
 /**
  * @fileOverview Explicit proxy to the stable .ts implementation.
- * Resolves Next.js module resolution ambiguity between extensions.
+ * Ensures that regardless of extension preference, the bundler resolves the correct logic.
  */
 
 export * from './non-blocking-login.ts';

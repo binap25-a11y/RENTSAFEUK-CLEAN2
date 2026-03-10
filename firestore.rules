@@ -51,10 +51,6 @@ service cloud.firestore {
           allow read, write: if isOwner(userProfileId);
         }
 
-        match /checklists/{checklistId} {
-          allow read, write: if isOwner(userProfileId);
-        }
-        
         match /inspections/{inspectionId} {
           allow read, write: if isOwner(userProfileId);
         }
@@ -70,17 +66,17 @@ service cloud.firestore {
     }
 
     // --- Specialized Collection Group Rules for Discovery ---
-    // Rules are split into distinct, provable statements for high performance.
+    // Rule provability is critical for high-performance role discovery.
 
     match /{path=**}/tenants/{tenantId} {
-      // Allow tenant role discovery based on email (for portal detection)
+      // Allow tenant role discovery based on email (provable query filter)
       allow list: if isSignedIn() && request.auth.token.email != null && resource.data.email == request.auth.token.email;
       
-      // Allow read access for the tenant (by email verification)
+      // Allow read access for the verified resident
       allow get: if isSignedIn() && request.auth.token.email != null && resource.data.email == request.auth.token.email;
       
-      // Allow access for the asset owner (via context field)
-      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+      // Allow access for the asset owner (landlord)
+      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
     match /{path=**}/messages/{messageId} {
