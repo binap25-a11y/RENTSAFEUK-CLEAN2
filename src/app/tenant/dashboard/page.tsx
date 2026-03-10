@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -148,9 +149,9 @@ export default function TenantDashboard() {
 
   if (isUserLoading || (isLoading && !isIndexBuilding)) {
     return (
-        <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
+        <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-background">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Synchronizing Identity...</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Syncing Portal Identity...</p>
         </div>
     );
   }
@@ -193,7 +194,7 @@ export default function TenantDashboard() {
             </CardHeader>
             <CardFooter className="pt-6 flex flex-col gap-3 bg-background border-t">
                 <Button className="w-full font-bold h-11 shadow-lg uppercase tracking-widest text-xs" asChild>
-                    <Link href="/dashboard">Return to Dashboard</Link>
+                    <Link href="/dashboard">Return to Main Entry</Link>
                 </Button>
                 <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={performDiscovery}>
                     <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Handshake
@@ -216,9 +217,6 @@ export default function TenantDashboard() {
           </p>
         </div>
         <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" asChild className="h-8 text-[9px] font-bold uppercase tracking-widest border-primary/20 text-primary shadow-sm bg-background rounded-xl px-4">
-                <Link href="/dashboard"><UserCircle className="mr-2 h-3.5 w-3.5" /> Home Mode</Link>
-            </Button>
             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-8 px-3 font-bold uppercase tracking-widest text-[9px] shadow-sm rounded-xl">
                 Secure Portal Active
             </Badge>

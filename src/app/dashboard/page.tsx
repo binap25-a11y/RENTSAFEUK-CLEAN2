@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collection, query, where, onSnapshot, collectionGroup, limit } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -170,27 +170,8 @@ export default function DashboardPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoadingProps, setIsLoadingProps] = useState(true);
 
-  // 1. Fetch Properties (Landlord Role)
-  useEffect(() => {
-    if (!user || !firestore) return;
-    
-    const propertiesQuery = query(
-      collection(firestore, 'userProfiles', user.uid, 'properties'), 
-      where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
-    );
-
-    const unsub = onSnapshot(propertiesQuery, (snap) => {
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Property));
-      setProperties(list);
-      setIsLoadingProps(false);
-    }, (error) => {
-      console.warn("Landlord portfolio fetch restricted or empty.");
-      setIsLoadingProps(false);
-    });
-    return () => unsub();
-  }, [user, firestore]);
-
-  // 2. Discover Tenant Role (Collection Group for portal handshake)
+  // 1. Discover Tenant Role (Collection Group for portal handshake)
+  // This must be the first and most critical check.
   useEffect(() => {
     if (!user || !firestore || !user.email) {
       setIsLoadingPortalCheck(false);
@@ -202,7 +183,7 @@ export default function DashboardPage() {
     const tenantsQuery = query(
       collectionGroup(firestore, 'tenants'),
       where('email', '==', email),
-      limit(1)
+      limit(5)
     );
 
     const unsub = onSnapshot(tenantsQuery, (snap) => {
@@ -229,9 +210,31 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore]);
 
+  // 2. Fetch Properties (Landlord Role)
+  useEffect(() => {
+    if (!user || !firestore) return;
+    
+    // Only proceed with property fetch if we're reasonably sure the user is a landlord
+    // or we are still checking roles.
+    const propertiesQuery = query(
+      collection(firestore, 'userProfiles', user.uid, 'properties'), 
+      where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
+    );
+
+    const unsub = onSnapshot(propertiesQuery, (snap) => {
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Property));
+      setProperties(list);
+      setIsLoadingProps(false);
+    }, (error) => {
+      // It's normal for a tenant to not have access to a landlord-style profile path
+      console.warn("Portfolio fetch restricted. User may be a tenant.");
+      setIsLoadingProps(false);
+    });
+    return () => unsub();
+  }, [user, firestore]);
+
   // 3. Auto-Redirect Tenants once verified
   useEffect(() => {
-    // If verified as a tenant, redirect immediately to the specialized portal
     if (!isLoadingPortalCheck && isTenant) {
       console.log("Tenant verified. Redirecting to portal...");
       router.push('/tenant/dashboard');
@@ -248,16 +251,19 @@ export default function DashboardPage() {
 
   const isVerifiedTenant = !isLoadingPortalCheck && isTenant;
   
-  // A user is considered a landlord if they have properties OR if they are NOT a verified tenant.
-  // This prevents tenants from seeing the landlord UI while verification is in progress.
-  const isLandlordRole = !isVerifiedTenant && !isIndexBuilding;
-  const pageTitle = isVerifiedTenant ? "Tenant Dashboard" : "Landlord Dashboard";
+  // A user is only shown the landlord role if the portal check is FINISHED and they are NOT a tenant.
+  const isLandlordRole = !isLoadingPortalCheck && !isTenant && !isIndexBuilding;
 
-  if (isUserLoading || (isLoadingProps && isLoadingPortalCheck)) {
+  // Show a master loading state during role resolution
+  if (isUserLoading || isLoadingPortalCheck || isVerifiedTenant || isIndexBuilding) {
     return (
-      <div className="flex h-64 flex-col items-center justify-center gap-4 text-center">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse font-medium">Synchronizing Identity...</p>
+      <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-background">
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse font-medium">
+            {isIndexBuilding ? "Establishing Secure Connection..." : "Verifying Identity Path..."}
+          </p>
+        </div>
       </div>
     );
   }
@@ -266,52 +272,14 @@ export default function DashboardPage() {
     <div className="space-y-8 animate-in fade-in duration-500 text-left">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold font-headline text-primary tracking-tight transition-all duration-500">
-            {pageTitle}
+          <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">
+            Landlord Dashboard
           </h1>
           <p className="text-muted-foreground font-medium text-lg">
-            {isVerifiedTenant 
-                ? "Your active tenancy details."
-                : "Overview of your rental portfolio."}
+            Overview of your rental portfolio.
           </p>
         </div>
-        
-        {isTenant && (
-          <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-muted/30 border border-primary/5 shadow-sm">
-            <Button 
-              asChild
-              className="border-primary/20 bg-background hover:bg-primary/5 shadow-sm h-10 px-6 font-bold uppercase text-[10px] tracking-widest rounded-xl transition-all"
-              variant="outline"
-            >
-                <Link href="/tenant/dashboard">
-                  <span className="flex items-center gap-2 text-primary"><UserCircle className="h-4 w-4" /> Open Tenant Portal</span>
-                </Link>
-            </Button>
-          </div>
-        )}
       </div>
-
-      {isVerifiedTenant && (
-        <Card className="border-primary/20 bg-primary/[0.02] border-dashed shadow-sm overflow-hidden relative group transition-all hover:bg-primary/[0.04] text-left">
-          <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
-            <Sparkles className="h-16 w-16 text-primary" />
-          </div>
-          <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-between gap-6">
-            <div className="space-y-2 text-center sm:text-left relative z-10">
-              <div className="flex items-center justify-center sm:justify-start gap-2 text-primary font-bold">
-                <ShieldCheck className="h-4 w-4" />
-                Tenancy Identity Verified
-              </div>
-              <p className="text-sm text-muted-foreground font-medium max-lg leading-relaxed">
-                Your account is successfully linked to an active tenancy. Proceed to your portal to manage repairs and documents.
-              </p>
-            </div>
-            <Button asChild className="font-bold uppercase tracking-widest text-xs shadow-lg shrink-0 px-10 h-12 rounded-xl group-hover:scale-105 transition-transform bg-primary hover:bg-primary/90">
-              <Link href="/tenant/dashboard">Enter Portal <ArrowRight className="ml-2 h-4 w-4" /></Link>
-            </Button>
-          </CardContent>
-        </Card>
-      )}
 
       {isLandlordRole && (
         <div className="grid gap-6">

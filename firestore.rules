@@ -4,17 +4,9 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * LANDLORD PROPERTY MANAGEMENT SECURITY MODEL
-     * 
-     * Core Philosophy:
-     * This ruleset enforces a strict User-Ownership model. All application data is 
-     * nested under a specific user's profile (/userProfiles/{userId}/...), ensuring 
-     * that authorization is derived directly from the URL path for landlords.
+     * GLOBAL SECURITY HELPERS
      */
 
-    // --- Helper Functions ---
-
-    /** Checks if the request is from an authenticated user. */
     function isSignedIn() {
       return request.auth != null;
     }
@@ -25,88 +17,77 @@ service cloud.firestore {
     }
 
     /**
-     * Helper to get normalized email from token for statically provable rules.
+     * Helper to get normalized email from token.
+     * Enforces lowercase for consistent security matching.
      */
-    function getTokenEmail() {
-      return request.auth.token.email;
+    function getAuthEmail() {
+      return request.auth.token.email.lower();
     }
 
-    /**
-     * Checks if the user is the tenant associated with the record (by email).
-     * Uses direct token matching for static provability in collection group queries.
-     */
-    function isAuthorizedTenant(data) {
-      return isSignedIn() && 
-             data.email != null && 
-             data.email == getTokenEmail();
-    }
-
-    // --- Collection Group Rules (CRITICAL for Portal discovery) ---
-    // These must be top-level to allow cross-profile discovery.
+    // --- COLLECTION GROUP RULES (CRITICAL) ---
+    // These must be defined outside nested paths to allow global identity discovery.
 
     /**
-     * @description Allows tenants to discover their own record via collectionGroup search.
+     * @description Allows tenants to discover their own record across any user profile.
+     * Requires the query to be filtered by email matching the user's token.
      */
     match /{path=**}/tenants/{tenantId} {
-      allow list: if isSignedIn() && getTokenEmail() != null && resource.data.email == getTokenEmail();
-      allow get: if isSignedIn() && getTokenEmail() != null && resource.data.email == getTokenEmail();
+      allow list: if isSignedIn() && request.auth.token.email != null && resource.data.email.lower() == getAuthEmail();
+      allow get: if isSignedIn() && request.auth.token.email != null && resource.data.email.lower() == getAuthEmail();
     }
 
     /**
-     * @description Allows tenants to communicate and view logs for their assigned property.
+     * @description Shared access for communications and maintenance logs.
      */
     match /{path=**}/messages/{messageId} {
        allow read, write: if isSignedIn();
     }
     
     match /{path=**}/maintenanceLogs/{logId} {
-       allow list: if isSignedIn();
+       allow list, get: if isSignedIn();
+       allow create: if isSignedIn();
     }
 
-    // --- Core Data Rules ---
+    // --- CORE DATA HIERARCHY ---
 
     /**
-     * @description Rules for the user's root profile and subcollections.
+     * @description Rules for user-specific data under the userProfiles root.
      * @path /userProfiles/{userId}
      */
     match /userProfiles/{userId} {
       allow get, list, create, update, delete: if isOwner(userId);
 
       /**
-       * @description Rules for rental properties managed by a landlord.
+       * @description Property management rules.
        */
       match /properties/{propertyId} {
         allow read, write: if isOwner(userId);
         
-        // Allow tenants assigned to this property to read basic details for portal context
+        // Tenants can read their assigned property details for portal context.
         allow get: if isSignedIn();
 
-        /**
-         * @description Nested subcollections under properties.
-         */
         match /tenants/{tenantId} {
           allow read, write: if isOwner(userId);
-          // Redundant but safe check for direct access
-          allow get: if isAuthorizedTenant(resource.data);
+          // Individual document access for the tenant themselves.
+          allow get: if isSignedIn() && resource.data.email.lower() == getAuthEmail();
 
           match /messages/{messageId} {
-             allow read, write: if isOwner(userId) || isAuthorizedTenant(get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data);
+             allow read, write: if isOwner(userId) || (isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email.lower() == getAuthEmail());
           }
 
           match /screenings/{screeningId} {
              allow read, write: if isOwner(userId);
-             allow get: if isAuthorizedTenant(get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data);
+             allow get: if isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email.lower() == getAuthEmail();
           }
           
           match /checklists/{checklistId} {
              allow read, write: if isOwner(userId);
-             allow get: if isAuthorizedTenant(get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data);
+             allow get: if isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email.lower() == getAuthEmail();
           }
         }
 
         match /maintenanceLogs/{logId} {
           allow read, write: if isOwner(userId);
-          // Tenants can report issues and view logs for their property
           allow create: if isSignedIn();
           allow get, list: if isSignedIn();
         }
@@ -130,9 +111,6 @@ service cloud.firestore {
         }
       }
 
-      /**
-       * @description Master directory for contractors.
-       */
       match /contractors/{contractorId} {
         allow read, write: if isOwner(userId);
       }
