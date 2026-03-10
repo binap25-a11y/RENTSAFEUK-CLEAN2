@@ -117,7 +117,10 @@ interface Tenant {
   propertyId: string;
 }
 
-// Utility to clean undefined values before Firestore writes
+/**
+ * Robust data sanitization utility to prevent Firestore "undefined field" errors.
+ * Recursively removes any keys with undefined values.
+ */
 const prepareForFirestore = (obj: any): any => {
     return JSON.parse(JSON.stringify(obj, (key, value) => {
         if (value === undefined) return null;
@@ -164,6 +167,7 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
     const router = useRouter();
     const { user } = useUser();
     const firestore = useFirestore();
+    const [isSubmitting, setIsSubmitting] = useState(false);
 
     const form = useForm<ScreeningFormValues>({
         resolver: zodResolver(screeningSchema),
@@ -215,6 +219,7 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
             });
             return;
         }
+        setIsSubmitting(true);
 
         const { tenantId, propertyId, ...screeningData } = data;
 
@@ -247,7 +252,8 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
                 title: "Save Failed",
                 description: serverError.message || "An error occurred while saving the screening record.",
             });
-          });
+          })
+          .finally(() => setIsSubmitting(false));
     }
 
     if (!tenantIdFromUrl || !propertyIdFromUrl) {
@@ -460,8 +466,8 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
                             <Button type="button" variant="ghost" className="font-bold uppercase tracking-widest text-[10px] h-11" asChild>
                                 <Link href={`/dashboard/tenants/${tenantIdFromUrl}?propertyId=${propertyIdFromUrl}`}>Cancel Audit</Link>
                             </Button>
-                            <Button type="submit" className="font-bold uppercase tracking-widest text-[10px] h-11 px-10 shadow-lg">
-                                Save Vetting Audit
+                            <Button type="submit" disabled={isSubmitting} className="font-bold uppercase tracking-widest text-[10px] h-11 px-10 shadow-lg bg-primary hover:bg-primary/90">
+                                {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : 'Save Vetting Audit'}
                             </Button>
                         </div>
                     </form>
