@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -113,13 +114,12 @@ export default function TenantDashboard() {
         if (msg.includes('index') || err.code === 'failed-precondition') {
             setIsIndexBuilding(true);
         } else if (msg.includes('permission')) {
-            console.error("Discovery query failed due to security rules. Check firestore.rules index proving.");
+            console.error("Discovery query failed due to security rules.");
             setError("Portal access restricted by security policies.");
         } else {
             console.warn("Tenant portal discovery error:", err.message);
             setError(err.message);
         }
-        setIsIndexBuilding(false);
         setIsLoading(false);
     });
 
@@ -156,7 +156,7 @@ export default function TenantDashboard() {
             <div className="space-y-3 px-4">
                 <h2 className="font-headline text-2xl font-bold text-primary">Tenancy Verification</h2>
                 <p className="text-muted-foreground font-medium leading-relaxed">
-                    Our secure system is currently synchronizing your tenancy records across the cloud. This one-time setup ensures your data remains private and protected.
+                    Our secure system is currently synchronizing your tenant records across the cloud. This one-time setup ensures your data remains private and protected.
                 </p>
             </div>
             <div className="flex flex-col items-center gap-4">

@@ -94,6 +94,16 @@ interface Contractor {
     trade: string;
 }
 
+/**
+ * Robust data sanitization utility to prevent Firestore "undefined field" errors.
+ */
+const prepareForFirestore = (obj: any): any => {
+    return JSON.parse(JSON.stringify(obj, (key, value) => {
+        if (value === undefined) return null;
+        return value;
+    }));
+};
+
 export default function MaintenancePage() {
   const { user } = useUser();
   const firestore = useFirestore();
@@ -171,12 +181,12 @@ export default function MaintenancePage() {
     setIsSubmitting(true);
 
     // Sanitize data to remove undefined values
-    const newLog = JSON.parse(JSON.stringify({ 
+    const newLog = prepareForFirestore({ 
         ...data, 
         userId: user.uid, 
         status: 'Open', 
         createdDate: new Date().toISOString() 
-    }));
+    });
 
     try {
       const logsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', data.propertyId, 'maintenanceLogs');

@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -50,7 +51,7 @@
     },
     "Tenant": {
       "title": "Tenant",
-      "description": "A resident assigned to a property.",
+      "description": "A tenant assigned to a property.",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
@@ -132,7 +133,7 @@
     },
     "/userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}": {
       "schema": { "$ref": "#/entities/Tenant" },
-      "description": "Residents."
+      "description": "Tenant assignment records."
     },
     "/userProfiles/{userId}/properties/{propertyId}/maintenanceLogs/{logId}": {
       "schema": { "$ref": "#/entities/MaintenanceLog" },

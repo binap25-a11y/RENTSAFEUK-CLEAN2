@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -223,6 +224,7 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
 
         const { tenantId, propertyId, ...screeningData } = data;
 
+        // SANITIZE DATA: Remove undefined values before Firestore write
         const cleanedSubmission = prepareForFirestore({
             ...screeningData,
             userId: user.uid,
