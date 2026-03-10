@@ -89,18 +89,23 @@ export default function TenantDashboard() {
                 }, (error) => {
                     console.warn("Property context fetch failed:", error);
                     setIsLoading(false);
+                    setIsIndexBuilding(false);
                 });
             } else {
                 setIsLoading(false);
+                setIsIndexBuilding(false);
             }
         } else {
             setIsLoading(false);
+            setIsIndexBuilding(false);
         }
     }, (error) => {
-        if (error.message.toLowerCase().includes('index')) {
+        if (error.message.toLowerCase().includes('index') || error.code === 'failed-precondition') {
             setIsIndexBuilding(true);
+        } else {
+            console.warn("Portal discovery issue:", error.message);
+            setIsIndexBuilding(false);
         }
-        console.warn("Portal discovery issue:", error.message);
         setIsLoading(false);
     });
 

@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useUser, useFirestore } from '@/firebase';
 import { collection, query, where, onSnapshot, collectionGroup, limit } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -162,6 +162,7 @@ export default function DashboardPage() {
   const [isTenant, setIsTenant] = useState<boolean>(false);
   const [isLoadingPortalCheck, setIsLoadingPortalCheck] = useState(true);
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
+  const [retryCount, setRetryCount] = useState(0);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
@@ -187,7 +188,7 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore]);
 
-  // 2. Discover Tenant Role
+  // 2. Discover Tenant Role with enhanced stability
   useEffect(() => {
     if (!user || !firestore || !user.email) {
       setIsLoadingPortalCheck(false);
@@ -201,25 +202,31 @@ export default function DashboardPage() {
       limit(5)
     );
 
+    // Using a more defensive listener to handle "stuck" sync states
     const unsub = onSnapshot(tenantsQuery, (snap) => {
       const activeTenant = snap.docs.find(d => d.data().status === 'Active');
       setIsTenant(!!activeTenant);
       setIsLoadingPortalCheck(false);
-      setIsIndexBuilding(false);
+      setIsIndexBuilding(false); // Clear indexing state on any valid response
     }, (error) => {
-      if (error.message.toLowerCase().includes('index')) {
+      const msg = error.message.toLowerCase();
+      if (msg.includes('index') || msg.includes('failed-precondition')) {
         setIsIndexBuilding(true);
+      } else {
+        console.warn("Portal discovery issue:", error.message);
+        setIsIndexBuilding(false);
       }
-      console.warn("Portal discovery issue:", error.message);
       setIsLoadingPortalCheck(false);
     });
 
     return () => unsub();
-  }, [user, firestore]);
+  }, [user, firestore, retryCount]);
 
-  // Dynamic Heading Logic
-  const isLikelyPureTenant = !isLoadingProps && properties.length === 0 && (isTenant || isIndexBuilding || isLoadingPortalCheck);
-  
+  const handleRetrySync = useCallback(() => {
+    setIsLoadingPortalCheck(true);
+    setRetryCount(prev => prev + 1);
+  }, []);
+
   // 3. Auto-Redirect Pure Tenants (Confirmed Only)
   useEffect(() => {
     if (!isLoadingProps && !isLoadingPortalCheck && properties.length === 0 && isTenant) {
@@ -235,6 +242,8 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
+  // Dynamic Heading Logic - Prioritize Tenant branding if portfolio is empty
+  const isLikelyPureTenant = !isLoadingProps && properties.length === 0 && (isTenant || isIndexBuilding || isLoadingPortalCheck);
   const pageTitle = isLikelyPureTenant ? "Tenant Dashboard" : "Landlord Dashboard";
 
   if (isUserLoading || (isLoadingProps && isLoadingPortalCheck)) {
@@ -265,20 +274,23 @@ export default function DashboardPage() {
           <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-muted/30 border border-primary/5 shadow-sm">
             <Button 
               variant="outline" 
-              asChild 
+              asChild={!isIndexBuilding}
+              onClick={isIndexBuilding ? handleRetrySync : undefined}
               className="border-primary/20 bg-background hover:bg-primary/5 shadow-sm h-10 px-6 font-bold uppercase text-[10px] tracking-widest rounded-xl transition-all"
             >
-              <Link href="/tenant/dashboard">
-                {isIndexBuilding ? (
-                  <span className="flex items-center gap-2 text-muted-foreground"><RefreshCw className="h-3.5 w-3.5 animate-spin" /> Portals Connecting...</span>
-                ) : (
+              {isIndexBuilding ? (
+                <span className="flex items-center gap-2 text-muted-foreground">
+                  <RefreshCw className="h-3.5 w-3.5 animate-spin" /> Portals Connecting...
+                </span>
+              ) : (
+                <Link href="/tenant/dashboard">
                   <span className="flex items-center gap-2"><UserCircle className="h-4 w-4" /> Open Tenant Portal</span>
-                )}
-              </Link>
+                </Link>
+              )}
             </Button>
             {isIndexBuilding && (
               <div className="px-3 animate-pulse">
-                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 uppercase text-[9px] font-bold">Syncing</Badge>
+                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 uppercase text-[9px] font-bold">Synchronizing Records</Badge>
               </div>
             )}
           </div>
@@ -298,7 +310,7 @@ export default function DashboardPage() {
               </div>
               <p className="text-sm text-muted-foreground font-medium max-w-lg leading-relaxed">
                 {isIndexBuilding 
-                  ? "Our cloud system is currently mapping your tenant records. Your secure features, documents, and messaging will be available momentarily." 
+                  ? "Our cloud system is currently mapping your tenant records. This high-speed indexing ensures your data remains private and secure. Click the status button above to re-check." 
                   : "Your account is linked to an active tenancy. You can now securely manage repairs, view safety certificates, and message your landlord directly."}
               </p>
             </div>
