@@ -69,12 +69,11 @@ export default function TenantDashboard() {
         if (activeTenantDoc) {
             const data = activeTenantDoc.data();
             const path = activeTenantDoc.ref.path;
+            
+            // Expected hierarchical path: userProfiles/{landlordId}/properties/{propertyId}/tenants/{tenantId}
             const segments = path.split('/');
             
-            /**
-             * Expected hierarchical path:
-             * userProfiles/{landlordId}/properties/{propertyId}/tenants/{tenantId}
-             */
+            // Indices: 0: userProfiles, 1: landlordId, 2: properties, 3: propertyId
             const landlordId = segments[1];
             const propertyId = segments[3];
             const tenantId = activeTenantDoc.id;
@@ -116,10 +115,7 @@ export default function TenantDashboard() {
         if (msg.includes('index') || err.code === 'failed-precondition') {
             setIsIndexBuilding(true);
         } else {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: 'tenants (collectionGroup)',
-                operation: 'list',
-            }));
+            console.warn("Tenant portal discovery error:", err.message);
             setError("Identity handshake failed.");
         }
         setIsLoading(false);

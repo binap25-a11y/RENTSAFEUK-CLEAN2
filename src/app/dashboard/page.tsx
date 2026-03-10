@@ -20,7 +20,8 @@ import {
   ShieldCheck, 
   Sparkles,
   RefreshCw,
-  ArrowRight
+  ArrowRight,
+  AlertCircle
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -188,6 +189,7 @@ export default function DashboardPage() {
     const unsub = onSnapshot(tenantsQuery, (snap) => {
       const activeTenant = snap.docs.find(d => d.data().status === 'Active');
       if (activeTenant) {
+          console.log("Tenant identity verified. Redirecting to portal...");
           setIsTenant(true);
           router.replace('/tenant/dashboard');
       } else {
@@ -200,6 +202,7 @@ export default function DashboardPage() {
       if (msg.includes('index') || error.code === 'failed-precondition') {
         setIsIndexBuilding(true);
       } else {
+        console.warn("Tenant discovery error:", error.message);
         setIsLoadingPortalCheck(false);
       }
     });
@@ -207,11 +210,11 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore, router]);
 
-  // Loading safety timeout - adjusted for better UX
+  // Loading safety timeout - unblocks UI if cloud discovery hangs
   useEffect(() => {
     const timer = setTimeout(() => {
         setHasHeuristicTimeout(true);
-    }, 2500);
+    }, 2000);
     return () => clearTimeout(timer);
   }, []);
 
@@ -242,23 +245,24 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // Redirection bypass: If we know it's a tenant, don't wait for landlords checks.
-  useEffect(() => {
-    if (isTenant === true) {
-        router.replace('/tenant/dashboard');
-    }
-  }, [isTenant, router]);
+  // Redirection bypass: If we know it's a tenant, stop everything and go to portal.
+  if (isTenant === true) {
+      return (
+        <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-background">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <p className="text-sm font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Entering Secure Portal...</p>
+        </div>
+      );
+  }
 
-  const isLandlordKnown = properties.length > 0;
-  
   /**
    * Refined Loading State:
    * We show the loader if:
    * 1. Auth is still loading
-   * 2. We haven't found properties AND we haven't confirmed user isn't a tenant AND we haven't timed out.
+   * 2. We haven't confirmed user IS NOT a tenant AND we haven't timed out.
    */
   const isGlobalLoading = isUserLoading || 
-    (isLoadingPortalCheck && isTenant === null && !isLandlordKnown && !hasHeuristicTimeout) ||
+    (isLoadingPortalCheck && isTenant === null && !hasHeuristicTimeout) ||
     isIndexBuilding;
 
   if (isGlobalLoading) {

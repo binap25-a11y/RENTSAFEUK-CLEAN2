@@ -16,14 +16,13 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // --- COLLECTION GROUP RULES (CRITICAL) ---
-    // These must be at the top level to be correctly applied to collectionGroup queries.
-    // They must be statically provable (direct equality matches).
+    // --- COLLECTION GROUP RULES (MUST BE AT TOP LEVEL) ---
     
     match /{path=**}/tenants/{tenantId} {
       /**
-       * @description Allows tenants to discover their own record via email handshake.
-       * We normalize to lowercase in the app and check against the auth token email.
+       * @description Crucial rule for global identity discovery.
+       * Allows tenants to find their property link across any landlord profile.
+       * Must be statically provable (direct equality check).
        */
       allow list: if isSignedIn() && request.auth.token.email != null && resource.data.email == request.auth.token.email.lower();
       allow get: if isSignedIn() && request.auth.token.email != null && resource.data.email == request.auth.token.email.lower();
@@ -38,17 +37,11 @@ service cloud.firestore {
        allow create: if isSignedIn();
     }
 
-    // --- CORE DATA HIERARCHY ---
+    // --- CORE HIERARCHICAL DATA ---
 
-    /**
-     * @description Rules for user-specific data under the userProfiles root.
-     */
     match /userProfiles/{userId} {
       allow get, list, create, update, delete: if isOwner(userId);
 
-      /**
-       * @description Property management rules.
-       */
       match /properties/{propertyId} {
         allow read, write: if isOwner(userId);
         
