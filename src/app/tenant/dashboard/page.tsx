@@ -16,7 +16,8 @@ import {
   AlertCircle,
   ChevronRight,
   UserCircle,
-  ShieldCheck
+  ShieldCheck,
+  Sparkles
 } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
 import { collectionGroup, query, where, limit, onSnapshot, doc } from 'firebase/firestore';
@@ -110,31 +111,38 @@ export default function TenantDashboard() {
 
   if (isLoading || isUserLoading) {
     return (
-        <div className="flex h-64 flex-col items-center justify-center gap-4">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Authenticating Portal Access...</p>
+        <div className="flex h-[60vh] flex-col items-center justify-center gap-4">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Authenticating Resident Portal...</p>
         </div>
     );
   }
 
   if (isIndexBuilding) {
     return (
-        <Card className="max-w-md mx-auto mt-20 shadow-2xl border-none">
-            <CardHeader className="text-center bg-muted/20 pb-8">
-                <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 shadow-sm border">
-                    <Loader2 className="h-10 w-10 text-primary animate-spin" />
+        <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in zoom-in-95 duration-700">
+            <div className="relative">
+                <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto relative z-10">
+                    <Sparkles className="h-12 w-12 text-primary animate-pulse" />
                 </div>
-                <CardTitle className="font-headline text-xl">Syncing Portal Access</CardTitle>
-                <CardDescription className="text-sm font-medium px-4">
-                    Our cloud database is currently synchronizing your resident records. This typically takes a few minutes for new accounts.
-                </CardDescription>
-            </CardHeader>
-            <CardFooter className="pt-6">
-                <Button variant="outline" className="w-full font-bold h-11" onClick={() => window.location.reload()}>
-                    Check Status
+                <div className="absolute inset-0 bg-primary/5 blur-3xl rounded-full scale-150" />
+            </div>
+            <div className="space-y-3">
+                <h2 className="font-headline text-2xl font-bold text-primary">Setting Up Your Home</h2>
+                <p className="text-muted-foreground font-medium px-4 leading-relaxed">
+                    Our cloud system is synchronizing your resident records for the first time. This high-speed indexing ensures your data remains private and secure.
+                </p>
+            </div>
+            <div className="flex flex-col items-center gap-4">
+                <div className="flex items-center gap-2 text-xs font-bold text-primary/60 uppercase tracking-widest">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Live Sync Active
+                </div>
+                <Button variant="outline" className="font-bold h-11 px-8 rounded-xl border-primary/20 hover:bg-primary/5" onClick={() => window.location.reload()}>
+                    Refresh Portal
                 </Button>
-            </CardFooter>
-        </Card>
+            </div>
+        </div>
     );
   }
 

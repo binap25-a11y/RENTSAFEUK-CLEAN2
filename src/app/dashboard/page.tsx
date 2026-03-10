@@ -1,16 +1,17 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { collection, query, where, onSnapshot, collectionGroup, limit } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { PlusCircle, Home, Loader2, Search, LayoutGrid, List, Eye, Bed, Bath, ArrowRight, ShieldCheck, UserCircle } from 'lucide-react';
+import { PlusCircle, Home, Loader2, Search, LayoutGrid, List, Eye, Bed, Bath, ArrowRight, ShieldCheck, UserCircle, Info } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 
 interface Property {
   id: string;
@@ -140,9 +141,10 @@ export function PropertiesPanel({ properties, isLoading, searchTerm, setSearchTe
 }
 
 export default function DashboardPage() {
-  const { user } = useUser();
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
+  
   const [isTenant, setIsTenant] = useState<boolean>(false);
   const [isLoadingPortalCheck, setIsLoadingPortalCheck] = useState(true);
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
@@ -191,7 +193,6 @@ export default function DashboardPage() {
       setIsLoadingPortalCheck(false);
       setIsIndexBuilding(false);
     }, (error) => {
-      // If it's just an index issue, don't block the UI permanently
       if (error.message.toLowerCase().includes('index')) {
         setIsIndexBuilding(true);
       }
@@ -202,15 +203,15 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore]);
 
-  // Dynamic role determination: prioritize Tenant Dashboard if no property portfolio exists
-  const isPureTenant = properties.length === 0 && (isTenant || isIndexBuilding);
+  // Smoother Heading Logic: If properties are 0 and tenant query is checking/indexing, assume Tenant Dashboard
+  const isLikelyPureTenant = !isLoadingProps && properties.length === 0 && (isTenant || isIndexBuilding);
   
-  // 3. Auto-Redirect Pure Tenants
+  // 3. Auto-Redirect Pure Tenants (Confirmed Only)
   useEffect(() => {
-    if (!isLoadingProps && !isLoadingPortalCheck && isPureTenant && isTenant) {
+    if (!isLoadingProps && !isLoadingPortalCheck && isLikelyPureTenant && isTenant) {
       router.push('/tenant/dashboard');
     }
-  }, [isLoadingProps, isLoadingPortalCheck, isPureTenant, isTenant, router]);
+  }, [isLoadingProps, isLoadingPortalCheck, isLikelyPureTenant, isTenant, router]);
 
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;
@@ -220,13 +221,13 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  const pageTitle = isPureTenant ? "Tenant Dashboard" : "Landlord Dashboard";
+  const pageTitle = isLikelyPureTenant ? "Tenant Dashboard" : "Landlord Dashboard";
 
-  if (isLoadingPortalCheck || isLoadingProps) {
+  if (isUserLoading || (isLoadingProps && isLoadingPortalCheck)) {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-sm text-muted-foreground animate-pulse font-medium">Verifying Session Security...</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse font-medium">Verifying Session Mode...</p>
       </div>
     );
   }
@@ -235,10 +236,12 @@ export default function DashboardPage() {
     <div className="space-y-8">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
         <div>
-          <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">{pageTitle}</h1>
+          <h1 className="text-3xl font-bold font-headline text-primary tracking-tight transition-all duration-500">
+            {pageTitle}
+          </h1>
           <p className="text-muted-foreground font-medium text-lg">
-            {isPureTenant 
-              ? "Access your tenancy documents and repair tools." 
+            {isLikelyPureTenant 
+              ? "Access your tenancy documents and home maintenance tools." 
               : "Overview of your rental portfolio and active management tasks."}
           </p>
         </div>
@@ -246,7 +249,7 @@ export default function DashboardPage() {
           <Button variant="outline" asChild className="border-primary/20 bg-primary/5 hover:bg-primary/10 shadow-sm h-11 px-6 font-bold uppercase text-[10px] tracking-widest">
             <Link href="/tenant/dashboard">
               {isIndexBuilding ? (
-                <span className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" /> Syncing Portal...</span>
+                <span className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" /> Synchronizing Access...</span>
               ) : (
                 <span className="flex items-center gap-2"><UserCircle className="h-4 w-4" /> Open Tenant Portal</span>
               )}
@@ -273,17 +276,20 @@ export default function DashboardPage() {
       )}
 
       {isIndexBuilding && (
-        <Card className="border-amber-200 bg-amber-50 dark:bg-amber-950/20 border-dashed">
-          <CardContent className="p-4 flex items-center gap-3">
-            <Loader2 className="h-4 w-4 animate-spin text-amber-600" />
-            <p className="text-xs font-medium text-amber-800 dark:text-amber-200">
-              Resident portal synchronization is in progress. Tenant features will be fully available shortly.
-            </p>
-          </CardContent>
-        </Card>
+        <div className="flex items-center justify-between p-3 px-4 rounded-xl border border-amber-200 bg-amber-50/50 text-amber-800 text-xs font-medium shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
+          <div className="flex items-center gap-3">
+            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-amber-100 shrink-0">
+              <Loader2 className="h-3 w-3 animate-spin text-amber-600" />
+            </div>
+            <span>Resident Portal Sync in progress. Your tenancy features will be available shortly.</span>
+          </div>
+          <Button variant="ghost" size="icon" className="h-6 w-6 text-amber-600 hover:bg-amber-100" title="The cloud database is currently indexing your records for high-performance discovery.">
+            <Info className="h-3.5 w-3.5" />
+          </Button>
+        </div>
       )}
 
-      {!isPureTenant && (
+      {!isLikelyPureTenant && (
         <div className="grid gap-6">
           <PropertiesPanel 
             properties={filteredProperties} 

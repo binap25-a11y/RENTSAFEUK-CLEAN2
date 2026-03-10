@@ -40,7 +40,7 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
     setIsMounted(true); 
   }, []);
 
-  // Fix: Move navigation side-effects to useEffect to avoid render-phase updates
+  // Secure Navigation: Moved to useEffect to comply with React rendering standards
   useEffect(() => {
     if (isMounted && !isUserLoading && !user) {
       router.push('/');
