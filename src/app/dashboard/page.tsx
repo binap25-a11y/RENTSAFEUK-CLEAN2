@@ -172,7 +172,6 @@ export default function DashboardPage() {
 
     const email = user.email.toLowerCase().trim();
     // Discovery query to identify resident roles
-    // Path matches the collection name in firestore.rules for simpler discovery
     const tenantsQuery = query(
       collectionGroup(firestore, 'tenants'),
       where('email', '==', email),
@@ -184,12 +183,22 @@ export default function DashboardPage() {
       setIsTenant(!!activeTenant);
       setIsLoadingPortalCheck(false);
     }, (error) => {
-      console.error("Role discovery query failed:", error.message);
-      // Trigger global error propagation with explicit collection group context
-      errorEmitter.emit('permission-error', new FirestorePermissionError({
-        path: 'tenants', 
-        operation: 'list',
-      }));
+      // Gracefully handle the 'missing index' error, which is expected during initial setup.
+      if ((error as any).code === 'failed-precondition') {
+          console.warn(
+              'Firestore index for tenant role discovery is provisioning. ' +
+              'Tenant portal access will be enabled shortly. Please refresh in a few minutes. ' +
+              `Details: ${error.message}`
+          );
+      } else {
+          // For other errors (like actual permission-denied), propagate for debugging.
+          console.error("Role discovery query failed:", error.message);
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+              path: 'tenants',
+              operation: 'list',
+          }));
+      }
+      // In either case, proceed assuming the user is not a tenant for now.
       setIsTenant(false);
       setIsLoadingPortalCheck(false);
     });
