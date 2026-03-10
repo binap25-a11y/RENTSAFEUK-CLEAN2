@@ -29,11 +29,12 @@ service cloud.firestore {
 
     /**
      * @description Allows tenants to discover their own record across any user profile.
-     * Requires the query to be filtered by email matching the user's token.
+     * Rules are simplified to be statically provable for collection group queries.
+     * Data is expected to be saved lowercase in the DB.
      */
     match /{path=**}/tenants/{tenantId} {
-      allow list: if isSignedIn() && request.auth.token.email != null && resource.data.email.lower() == getAuthEmail();
-      allow get: if isSignedIn() && request.auth.token.email != null && resource.data.email.lower() == getAuthEmail();
+      allow list: if isSignedIn() && request.auth.token.email != null && resource.data.email == getAuthEmail();
+      allow get: if isSignedIn() && request.auth.token.email != null && resource.data.email == getAuthEmail();
     }
 
     /**
@@ -69,20 +70,20 @@ service cloud.firestore {
         match /tenants/{tenantId} {
           allow read, write: if isOwner(userId);
           // Individual document access for the tenant themselves.
-          allow get: if isSignedIn() && resource.data.email.lower() == getAuthEmail();
+          allow get: if isSignedIn() && resource.data.email == getAuthEmail();
 
           match /messages/{messageId} {
-             allow read, write: if isOwner(userId) || (isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email.lower() == getAuthEmail());
+             allow read, write: if isOwner(userId) || (isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == getAuthEmail());
           }
 
           match /screenings/{screeningId} {
              allow read, write: if isOwner(userId);
-             allow get: if isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email.lower() == getAuthEmail();
+             allow get: if isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == getAuthEmail();
           }
           
           match /checklists/{checklistId} {
              allow read, write: if isOwner(userId);
-             allow get: if isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email.lower() == getAuthEmail();
+             allow get: if isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == getAuthEmail();
           }
         }
 

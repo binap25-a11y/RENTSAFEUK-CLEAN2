@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -202,12 +203,9 @@ export default function AddTenantPage() {
 
     const cleanedTenantData = prepareForFirestore(newTenant);
     
-    // SEQUENTIAL PROCESS: Ensure property status update is confirmed before dashboard redirect
     try {
-        // 1. Add the tenant record
         await addDoc(tenantsCollection, cleanedTenantData);
         
-        // 2. Update the property status to Occupied
         const propertyDocRef = doc(firestore, 'userProfiles', user.uid, 'properties', data.propertyId);
         await updateDoc(propertyDocRef, { status: 'Occupied' });
 
@@ -216,18 +214,10 @@ export default function AddTenantPage() {
           description: `Portfolio synchronized: ${data.name} is now the active tenant.`,
         });
         
-        // Return to dashboard and force a refresh
         router.push('/dashboard');
         router.refresh();
     } catch (serverError: any) {
         console.error('Tenant assignment failed:', serverError);
-        const permissionError = new FirestorePermissionError({
-          path: `userProfiles/${user.uid}/properties/${data.propertyId}`,
-          operation: 'update',
-          requestResourceData: { status: 'Occupied' },
-        });
-        errorEmitter.emit('permission-error', permissionError);
-        
         toast({
           variant: 'destructive',
           title: 'Sync Error',
@@ -248,7 +238,7 @@ export default function AddTenantPage() {
       <CardHeader className="bg-primary/5 border-b border-primary/10">
         <CardTitle className="text-2xl font-headline text-primary">Assign New Tenant</CardTitle>
         <CardDescription>
-          Record tenant identity and tenancy terms. Property status will be updated to Occupied automatically.
+          Record tenant identity and tenancy terms. Email will be normalized to lowercase for secure portal access.
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-6">

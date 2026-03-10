@@ -17,10 +17,9 @@ import {
   Eye, 
   Bed, 
   Bath, 
-  ArrowRight, 
   ShieldCheck, 
-  UserCircle, 
-  Sparkles
+  Sparkles,
+  RefreshCw
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -171,14 +170,12 @@ export default function DashboardPage() {
   const [isLoadingProps, setIsLoadingProps] = useState(true);
 
   // 1. Discover Tenant Role (Collection Group for portal handshake)
-  // This must be the first and most critical check.
   useEffect(() => {
     if (!user || !firestore || !user.email) {
       setIsLoadingPortalCheck(false);
       return;
     }
 
-    // Normalize email for secure discovery matching firestore.rules
     const email = user.email.toLowerCase().trim();
     const tenantsQuery = query(
       collectionGroup(firestore, 'tenants'),
@@ -193,16 +190,15 @@ export default function DashboardPage() {
       setIsIndexBuilding(false); 
     }, async (error) => {
       const msg = error.message.toLowerCase();
+      // If index is building, we don't treat it as a hard permission error yet
       if (msg.includes('index') || error.code === 'failed-precondition') {
         setIsIndexBuilding(true);
       } else {
-        // Standardized contextual permission error for collection group
         const permissionError = new FirestorePermissionError({
             path: 'tenants (collectionGroup)',
             operation: 'list',
         });
         errorEmitter.emit('permission-error', permissionError);
-        setIsIndexBuilding(false);
       }
       setIsLoadingPortalCheck(false);
     });
@@ -214,8 +210,6 @@ export default function DashboardPage() {
   useEffect(() => {
     if (!user || !firestore) return;
     
-    // Only proceed with property fetch if we're reasonably sure the user is a landlord
-    // or we are still checking roles.
     const propertiesQuery = query(
       collection(firestore, 'userProfiles', user.uid, 'properties'), 
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
@@ -226,17 +220,15 @@ export default function DashboardPage() {
       setProperties(list);
       setIsLoadingProps(false);
     }, (error) => {
-      // It's normal for a tenant to not have access to a landlord-style profile path
-      console.warn("Portfolio fetch restricted. User may be a tenant.");
+      console.warn("Landlord portfolio fetch restricted or still loading.");
       setIsLoadingProps(false);
     });
     return () => unsub();
   }, [user, firestore]);
 
-  // 3. Auto-Redirect Tenants once verified
+  // 3. Auto-Redirect verified tenants
   useEffect(() => {
     if (!isLoadingPortalCheck && isTenant) {
-      console.log("Tenant verified. Redirecting to portal...");
       router.push('/tenant/dashboard');
     }
   }, [isLoadingPortalCheck, isTenant, router]);
@@ -249,13 +241,15 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
+  // FAST PATH: If we have properties, we are a landlord. Don't show the hang screen.
+  const isLandlordKnown = properties.length > 0;
   const isVerifiedTenant = !isLoadingPortalCheck && isTenant;
   
-  // A user is only shown the landlord role if the portal check is FINISHED and they are NOT a tenant.
-  const isLandlordRole = !isLoadingPortalCheck && !isTenant && !isIndexBuilding;
+  // Only show the global loading screen if we are totally blind to who the user is
+  // and we are waiting on a critical verification step.
+  const isGlobalLoading = !isLandlordKnown && !isVerifiedTenant && (isUserLoading || isLoadingPortalCheck || isIndexBuilding);
 
-  // Show a master loading state during role resolution
-  if (isUserLoading || isLoadingPortalCheck || isVerifiedTenant || isIndexBuilding) {
+  if (isGlobalLoading) {
     return (
       <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-background">
         <div className="flex flex-col items-center gap-4">
@@ -263,6 +257,16 @@ export default function DashboardPage() {
           <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse font-medium">
             {isIndexBuilding ? "Establishing Secure Connection..." : "Verifying Identity Path..."}
           </p>
+          {isIndexBuilding && (
+            <div className="max-w-xs text-center space-y-4 animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-500">
+                <p className="text-xs text-muted-foreground leading-relaxed">
+                    The cloud database is currently synchronizing your portal access. This usually takes 5-10 minutes for new accounts.
+                </p>
+                <Button variant="ghost" size="sm" className="text-[10px] font-bold uppercase tracking-widest" onClick={() => window.location.reload()}>
+                    <RefreshCw className="mr-2 h-3 w-3" /> Refresh Status
+                </Button>
+            </div>
+          )}
         </div>
       </div>
     );
@@ -270,29 +274,27 @@ export default function DashboardPage() {
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 text-left">
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="space-y-1">
           <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">
-            Landlord Dashboard
+            Portfolio Manager
           </h1>
           <p className="text-muted-foreground font-medium text-lg">
-            Overview of your rental portfolio.
+            Landlord control center for estate management.
           </p>
         </div>
       </div>
 
-      {isLandlordRole && (
-        <div className="grid gap-6">
-          <PropertiesPanel 
-            properties={filteredProperties} 
-            isLoading={isLoadingProps}
-            searchTerm={searchTerm}
-            setSearchTerm={setSearchTerm}
-            view={view}
-            setView={setView}
-          />
-        </div>
-      )}
+      <div className="grid gap-6">
+        <PropertiesPanel 
+          properties={filteredProperties} 
+          isLoading={isLoadingProps}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          view={view}
+          setView={setView}
+        />
+      </div>
     </div>
   );
 }

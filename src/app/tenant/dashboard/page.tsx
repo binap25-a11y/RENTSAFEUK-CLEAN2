@@ -16,8 +16,6 @@ import {
   Banknote,
   AlertCircle,
   ChevronRight,
-  UserCircle,
-  ShieldCheck,
   Sparkles,
   RefreshCw
 } from 'lucide-react';
@@ -50,7 +48,7 @@ export default function TenantDashboard() {
     setError(null);
     setIsIndexBuilding(false);
     
-    // Normalize user email for secure discovery matching firestore.rules
+    // Normalize user email for secure discovery
     const userEmail = user.email.toLowerCase().trim();
 
     // Discovery query using collectionGroup
@@ -73,11 +71,8 @@ export default function TenantDashboard() {
             const segments = path.split('/');
             
             // Expected path: userProfiles/{landlordId}/properties/{propertyId}/tenants/{tenantId}
-            const userProfilesIdx = segments.indexOf('userProfiles');
-            const propertiesIdx = segments.indexOf('properties');
-            
-            const landlordId = userProfilesIdx !== -1 ? segments[userProfilesIdx + 1] : null;
-            const propertyId = propertiesIdx !== -1 ? segments[propertiesIdx + 1] : null;
+            const landlordId = segments[1];
+            const propertyId = segments[3];
             const tenantId = activeTenantDoc.id;
 
             if (landlordId && propertyId) {
@@ -97,25 +92,20 @@ export default function TenantDashboard() {
                     setIsLoading(false);
                     setIsIndexBuilding(false);
                 }, (err) => {
-                    // Standardized contextual permission error
                     const permissionError = new FirestorePermissionError({
                         path: propRef.path,
                         operation: 'get',
                     });
                     errorEmitter.emit('permission-error', permissionError);
-                    
                     setError("Security Policy Restricted Access.");
                     setIsLoading(false);
-                    setIsIndexBuilding(false);
                 });
             } else {
-                setError("Tenancy structure is misconfigured.");
+                setError("Tenancy structure parsing failed.");
                 setIsLoading(false);
-                setIsIndexBuilding(false);
             }
         } else {
             setIsLoading(false);
-            setIsIndexBuilding(false);
             setContext(null);
         }
     }, (err) => {
@@ -123,14 +113,12 @@ export default function TenantDashboard() {
         if (msg.includes('index') || err.code === 'failed-precondition') {
             setIsIndexBuilding(true);
         } else {
-            // Standardized contextual permission error
             const permissionError = new FirestorePermissionError({
                 path: 'tenants (collectionGroup)',
                 operation: 'list',
             });
             errorEmitter.emit('permission-error', permissionError);
-            
-            setError("Verification Handshake Failed.");
+            setError("Identity Handshake Failed.");
         }
         setIsLoading(false);
     });
@@ -165,10 +153,10 @@ export default function TenantDashboard() {
                 </div>
                 <div className="absolute inset-0 bg-primary/5 blur-3xl rounded-full scale-150" />
             </div>
-            <div className="space-y-3 px-4">
-                <h2 className="font-headline text-2xl font-bold text-primary">Establishing Connection</h2>
+            <div className="space-y-3 px-4 text-left">
+                <h2 className="font-headline text-2xl font-bold text-primary">Establishing Secure Connection</h2>
                 <p className="text-muted-foreground font-medium leading-relaxed">
-                    Our system is resolving your tenancy connection. This ensures your data remains secure.
+                    Our cloud database is currently synchronizing your portal access. This specialized identity handshake takes 5-10 minutes for new accounts.
                 </p>
             </div>
             <div className="flex flex-col items-center gap-4">
@@ -187,17 +175,17 @@ export default function TenantDashboard() {
                 <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 shadow-sm border">
                     <AlertCircle className="h-10 w-10 text-destructive" />
                 </div>
-                <CardTitle className="font-headline text-xl">Verification Failed</CardTitle>
+                <CardTitle className="font-headline text-xl">Verification Pending</CardTitle>
                 <CardDescription className="text-sm font-medium px-4 text-center">
-                    {error || `No active tenancy found for ${user?.email}. Ensure your landlord added this specific email address.`}
+                    {error || `We could not find an active tenancy for ${user?.email}. Please ensure your landlord has invited you using this exact email address.`}
                 </CardDescription>
             </CardHeader>
             <CardFooter className="pt-6 flex flex-col gap-3 bg-background border-t">
                 <Button className="w-full font-bold h-11 shadow-lg uppercase tracking-widest text-xs" asChild>
-                    <Link href="/dashboard">Return to Main Entry</Link>
+                    <Link href="/dashboard">Return to Main View</Link>
                 </Button>
                 <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={performDiscovery}>
-                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Handshake
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Verification
                 </Button>
             </CardFooter>
         </Card>
@@ -218,7 +206,7 @@ export default function TenantDashboard() {
         </div>
         <div className="flex items-center gap-2">
             <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-8 px-3 font-bold uppercase tracking-widest text-[9px] shadow-sm rounded-xl">
-                Secure Portal Active
+                Verified Resident Access
             </Badge>
         </div>
       </div>
@@ -227,13 +215,13 @@ export default function TenantDashboard() {
         <Card className="shadow-lg border-none hover:bg-muted/5 transition-all hover:translate-y-[-2px] text-left">
             <CardHeader className="pb-2 px-6">
                 <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-                    <Banknote className="h-3.5 w-3.5 text-primary" /> Rent Schedule
+                    <Banknote className="h-3.5 w-3.5 text-primary" /> Monthly Rent
                 </CardTitle>
             </CardHeader>
             <CardContent className="px-6 pb-6">
                 <div className="text-3xl font-bold">£{context.tenantData.monthlyRent?.toLocaleString() || '0'}</div>
                 <p className="text-xs text-muted-foreground mt-1 font-semibold">
-                    Due on the {context.tenantData.rentDueDay || '1st'} of each month
+                    Payable on the {context.tenantData.rentDueDay || '1st'}
                 </p>
             </CardContent>
         </Card>
@@ -241,23 +229,23 @@ export default function TenantDashboard() {
         <Card className="shadow-lg border-none hover:bg-muted/5 transition-all hover:translate-y-[-2px] text-left">
             <CardHeader className="pb-2 px-6">
                 <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
-                    <Calendar className="h-3.5 w-3.5 text-primary" /> Tenancy Period
+                    <Calendar className="h-3.5 w-3.5 text-primary" /> Tenancy Status
                 </CardTitle>
             </CardHeader>
             <CardContent className="px-6 pb-6">
                 <div className="text-xl font-bold">Active Agreement</div>
-                <p className="text-xs text-muted-foreground mt-1 font-medium italic">Verified secure tenancy</p>
+                <p className="text-xs text-muted-foreground mt-1 font-medium italic">Handshake successful</p>
             </CardContent>
         </Card>
 
         <Card className="shadow-xl border-none bg-primary text-primary-foreground transition-all hover:translate-y-[-2px] text-left">
             <CardHeader className="pb-2 px-6">
                 <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-80 flex items-center gap-2">
-                    <MessageSquare className="h-3.5 w-3.5" /> Secure Messenger
+                    <MessageSquare className="h-3.5 w-3.5" /> Messenger
                 </CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 px-6 pb-6">
-                <p className="text-xs font-medium leading-relaxed">Communicate directly with your landlord regarding repairs or contract questions.</p>
+                <p className="text-xs font-medium leading-relaxed">Secure channel active for property queries.</p>
                 <Button variant="secondary" size="sm" className="w-full font-bold h-9 shadow-md rounded-xl uppercase tracking-widest text-[10px]" asChild>
                     <Link href="/tenant/messages">Open Inbox <ChevronRight className="ml-1 h-3 w-3"/></Link>
                 </Button>
@@ -274,10 +262,10 @@ export default function TenantDashboard() {
                 <div className="space-y-4">
                     <div className="flex items-center justify-between p-5 rounded-2xl bg-muted/20 border border-transparent group-hover:border-primary/10 transition-all">
                         <div className="space-y-1">
-                            <p className="text-sm font-bold">Found an issue?</p>
-                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Report maintenance with photos</p>
+                            <p className="text-sm font-bold">Log a maintenance issue</p>
+                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Report issues with photos</p>
                         </div>
-                        <Button size="sm" className="h-10 font-bold px-8 shadow-md rounded-xl uppercase tracking-widest text-[9px] bg-primary hover:bg-primary/90" asChild><Link href="/tenant/maintenance">Log Issue</Link></Button>
+                        <Button size="sm" className="h-10 font-bold px-8 shadow-md rounded-xl uppercase tracking-widest text-[9px] bg-primary hover:bg-primary/90" asChild><Link href="/tenant/maintenance">Log Repair</Link></Button>
                     </div>
                 </div>
             </CardContent>
@@ -285,16 +273,16 @@ export default function TenantDashboard() {
 
         <Card className="border-none shadow-md overflow-hidden group text-left">
             <CardHeader className="bg-muted/30 border-b group-hover:bg-muted/50 transition-colors px-6">
-                <CardTitle className="text-lg flex items-center gap-2 font-headline"><FileText className="h-5 w-5 text-primary" /> Legal Documents</CardTitle>
+                <CardTitle className="text-lg flex items-center gap-2 font-headline"><FileText className="h-5 w-5 text-primary" /> Documents</CardTitle>
             </CardHeader>
             <CardContent className="pt-6 px-6 pb-6">
                 <div className="space-y-4">
                     <div className="flex items-center justify-between p-5 rounded-2xl bg-muted/20 border border-transparent group-hover:border-primary/10 transition-all">
                         <div className="space-y-1">
-                            <p className="text-sm font-bold">Compliance Records</p>
-                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Access safety certs and agreements</p>
+                            <p className="text-sm font-bold">Safety & Compliance</p>
+                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Access shared property records</p>
                         </div>
-                        <Button variant="outline" size="sm" className="h-10 font-bold px-8 border-primary/20 hover:bg-primary/5 shadow-sm rounded-xl uppercase tracking-widest text-[9px]" asChild><Link href="/tenant/documents">Browse Vault</Link></Button>
+                        <Button variant="outline" size="sm" className="h-10 font-bold px-8 border-primary/20 hover:bg-primary/5 shadow-sm rounded-xl uppercase tracking-widest text-[9px]" asChild><Link href="/tenant/documents">Browse Files</Link></Button>
                     </div>
                 </div>
             </CardContent>
