@@ -212,7 +212,7 @@ export default function DashboardPage() {
     }, (error) => {
       const msg = error.message.toLowerCase();
       // Handle index building specifically to inform user rather than fail
-      if (msg.includes('index') || msg.includes('failed-precondition')) {
+      if (msg.includes('index') || error.code === 'failed-precondition') {
         setIsIndexBuilding(true);
       } else {
         console.warn("Tenant discovery issue:", error.message);
@@ -244,7 +244,7 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // Heading Logic: Users with 0 properties are greeted as tenants while background sync occurs
+  // Heading Logic: Users with 0 properties are greeted as tenants immediately
   const isLikelyPureTenant = !isLoadingProps && properties.length === 0;
   const pageTitle = isLikelyPureTenant ? "Tenant Dashboard" : "Landlord Dashboard";
 
@@ -271,8 +271,8 @@ export default function DashboardPage() {
           </p>
         </div>
         
-        {/* Tenant Verification Hub - Integrated into Dashboard */}
-        {(isTenant || isIndexBuilding) && (
+        {/* Tenant Verification Hub - Simplified for landlords, active for prospective tenants */}
+        {(isTenant || (isIndexBuilding && properties.length === 0)) && (
           <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-muted/30 border border-primary/5 shadow-sm">
             <Button 
               variant="outline" 
@@ -300,7 +300,7 @@ export default function DashboardPage() {
       </div>
 
       {/* Feature Highlight for Tenants */}
-      {(isTenant || isIndexBuilding) && (
+      {(isTenant || (isIndexBuilding && properties.length === 0)) && (
         <Card className="border-primary/20 bg-primary/[0.02] border-dashed shadow-sm overflow-hidden relative group transition-all hover:bg-primary/[0.04] text-left">
           <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
             <Sparkles className="h-16 w-16 text-primary" />
@@ -311,7 +311,7 @@ export default function DashboardPage() {
                 <ShieldCheck className="h-4 w-4" />
                 {isIndexBuilding ? "Secure Tenant Sync In Progress" : "Active Tenancy Verified"}
               </div>
-              <p className="text-sm text-muted-foreground font-medium max-w-lg leading-relaxed">
+              <p className="text-sm text-muted-foreground font-medium max-lg leading-relaxed">
                 {isIndexBuilding 
                   ? "Our system is currently mapping your tenancy records. This ensures your data remains private and secure. Your portal will be ready instantly." 
                   : "Your account is linked to an active tenancy. You can now securely manage repairs, view safety certificates, and message your landlord directly."}

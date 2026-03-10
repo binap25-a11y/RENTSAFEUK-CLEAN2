@@ -88,7 +88,7 @@ export default function TenantDashboard() {
                     setIsLoading(false);
                     setIsIndexBuilding(false);
                 }, (error) => {
-                    console.warn("Property context fetch issue (check rules):", error.message);
+                    console.warn("Property context fetch restricted (check rules):", error.message);
                     setIsLoading(false);
                     setIsIndexBuilding(false);
                 });
@@ -138,7 +138,7 @@ export default function TenantDashboard() {
             <div className="space-y-3 px-4">
                 <h2 className="font-headline text-2xl font-bold text-primary">Setting Up Your Tenancy</h2>
                 <p className="text-muted-foreground font-medium leading-relaxed">
-                    Our cloud system is synchronizing your tenancy records for the first time. This high-speed indexing ensures your data remains private and secure.
+                    Our cloud system is synchronizing your tenant records for the first time. This high-speed indexing ensures your data remains private and secure.
                 </p>
             </div>
             <div className="flex flex-col items-center gap-4">
