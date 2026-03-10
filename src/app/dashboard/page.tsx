@@ -171,11 +171,11 @@ export default function DashboardPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoadingProps, setIsLoadingProps] = useState(true);
 
-  // Accelerated Loading Safety - 1.5s window for handshake to succeed
+  // Accelerated Loading Safety - 2.5s window for handshake to succeed
   useEffect(() => {
     const timer = setTimeout(() => {
         setHasHeuristicTimeout(true);
-    }, 1500);
+    }, 2500);
     return () => clearTimeout(timer);
   }, []);
 
@@ -193,11 +193,8 @@ export default function DashboardPage() {
       setProperties(list);
       setIsLoadingProps(false);
       
-      // OPTIMIZATION: If we find properties, the user is definitively a landlord.
-      if (list.length > 0) {
-          setIsTenant(false);
-          setIsLoadingPortalCheck(false);
-      }
+      // If we find properties, the user is likely a landlord. 
+      // But we DON'T set isTenant(false) yet, to give the collectionGroup check a chance.
     }, (error) => {
       console.warn("Property fetch issue:", error.message);
       setIsLoadingProps(false);
@@ -226,6 +223,7 @@ export default function DashboardPage() {
           setIsTenant(true);
           router.replace('/tenant/dashboard');
       } else {
+          // Explicitly NOT a tenant if no docs found and no indexing issues
           if (!isIndexBuilding) {
             setIsTenant(false);
           }
@@ -238,6 +236,7 @@ export default function DashboardPage() {
         setIsIndexBuilding(true);
       } else {
         console.warn("Handshake issue:", error.message);
+        setIsTenant(false); // Safety fallback
         setIsLoadingPortalCheck(false);
       }
     });
@@ -253,18 +252,27 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // Priority Redirection for Tenants
+  /**
+   * CRITICAL REDIRECTION LOGIC:
+   * We wait for:
+   * 1. Auth check
+   * 2. Tenant verification (unless timed out and we have landlord properties)
+   */
+  const isGlobalLoading = isUserLoading || (
+      isLoadingPortalCheck && 
+      isTenant === null && 
+      (properties.length === 0 || !hasHeuristicTimeout)
+  );
+
+  // If identified as a tenant, show portal loader while router redirects
   if (isTenant === true) {
       return (
         <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-background">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Entering Secure Portal...</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Entering Secure Tenant Portal...</p>
         </div>
       );
   }
-
-  // Loading Logic: Wait for auth, or wait for portal check (with timeout safety)
-  const isGlobalLoading = isUserLoading || (isLoadingPortalCheck && isTenant === null && !hasHeuristicTimeout);
 
   if (isGlobalLoading) {
     return (
@@ -279,25 +287,28 @@ export default function DashboardPage() {
           
           <div className="space-y-2">
             <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground animate-pulse">
-                {isIndexBuilding ? "Cloud Database Sync" : "Role Verification"}
+                {isIndexBuilding ? "Database Synchronization" : "Verifying Access Rights"}
             </p>
             <h2 className="text-xl font-bold font-headline">Securing Connection</h2>
             <p className="text-xs text-muted-foreground leading-relaxed">
                 {isIndexBuilding 
-                    ? "The platform is currently mapping your resident identity. Access will be restored automatically." 
+                    ? "The platform is currently mapping your resident identity. This typically occurs immediately after landlord onboarding." 
                     : "Establishing a secure connection to your property records..."}
             </p>
           </div>
 
-          <div className="flex flex-col gap-3 w-full pt-4">
-            <Button 
-                variant="ghost" 
-                className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/60 hover:text-primary transition-all group"
-                onClick={() => { setHasHeuristicTimeout(true); setIsLoadingPortalCheck(false); }}
-            >
-                Continue as Landlord <ArrowRight className="ml-2 h-3 w-3 group-hover:translate-x-1 transition-transform" />
-            </Button>
-          </div>
+          {(hasHeuristicTimeout && properties.length === 0) && (
+            <div className="flex flex-col gap-3 w-full pt-4">
+                <Button 
+                    variant="outline" 
+                    className="font-bold text-[10px] uppercase tracking-widest h-11 rounded-xl"
+                    onClick={() => { setHasHeuristicTimeout(true); setIsLoadingPortalCheck(false); setIsTenant(false); }}
+                >
+                    Continue to Landlord Dashboard <ArrowRight className="ml-2 h-3 w-3" />
+                </Button>
+                <p className="text-[9px] text-muted-foreground italic">Verification taking longer than expected.</p>
+            </div>
+          )}
         </div>
       </div>
     );

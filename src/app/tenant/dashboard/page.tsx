@@ -50,7 +50,7 @@ export default function TenantDashboard() {
     
     const userEmail = user.email.toLowerCase().trim();
 
-    // Accelerated discovery via optimized rules
+    // Forced lowercase matching for security and indexing
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
@@ -68,13 +68,13 @@ export default function TenantDashboard() {
             const data = activeTenantDoc.data();
             const path = activeTenantDoc.ref.path;
             
-            // Reconstruct hierarchy from segments
-            const segments = path.split('/');
-            const landlordIdx = segments.indexOf('userProfiles');
-            const propertyIdx = segments.indexOf('properties');
+            // Robust path parsing: userProfiles/{uid}/properties/{pid}/tenants/{tid}
+            const pathSegments = path.split('/');
+            const landlordIdx = pathSegments.indexOf('userProfiles');
+            const propertyIdx = pathSegments.indexOf('properties');
             
-            const landlordId = landlordIdx !== -1 ? segments[landlordIdx + 1] : null;
-            const propertyId = propertyIdx !== -1 ? segments[propertyIdx + 1] : null;
+            const landlordId = landlordIdx !== -1 ? pathSegments[landlordIdx + 1] : null;
+            const propertyId = propertyIdx !== -1 ? pathSegments[propertyIdx + 1] : null;
             const tenantId = activeTenantDoc.id;
 
             if (landlordId && propertyId) {
@@ -153,12 +153,12 @@ export default function TenantDashboard() {
             <div className="space-y-3">
                 <h2 className="font-headline text-2xl font-bold text-primary">Identity Synchronization</h2>
                 <p className="text-muted-foreground font-medium leading-relaxed">
-                    The platform is currently mapping your resident identity. This typically occurs immediately after onboarding.
+                    The platform is currently mapping your resident identity. Access will be restored automatically once the cloud database synchronizes.
                 </p>
             </div>
             <div className="flex flex-col items-center gap-4">
                 <Button variant="outline" className="font-bold h-11 px-10 rounded-xl border-primary/20 hover:bg-primary/5 uppercase tracking-widest text-[10px]" onClick={() => window.location.reload()}>
-                    <RefreshCw className="mr-2 h-4 w-4" /> Check Status
+                    <RefreshCw className="mr-2 h-4 w-4" /> Check Sync Status
                 </Button>
             </div>
         </div>
@@ -196,7 +196,7 @@ export default function TenantDashboard() {
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div>
           <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">
-            Tenant Dashboard
+            Resident Hub
           </h1>
           <p className="text-muted-foreground font-medium flex items-center gap-2 mt-1">
               <Home className="h-4 w-4 text-primary/40" />

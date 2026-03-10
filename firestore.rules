@@ -21,6 +21,7 @@ service cloud.firestore {
       /**
        * @description Authorized global identity handshake.
        * Uses direct comparison for static provability.
+       * The client must ensure emails are normalized to lowercase.
        */
       allow list: if isSignedIn() && request.auth.token.email.lower() == resource.data.email;
       allow get: if isSignedIn() && (
