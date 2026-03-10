@@ -1,6 +1,6 @@
 'use client';
 
 /**
- * @fileOverview Standardized implementation to resolve module resolution ambiguity.
+ * @fileOverview Passthrough to resolve module resolution ambiguity.
  */
 export * from './non-blocking-updates';
