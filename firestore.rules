@@ -28,21 +28,14 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /** 
-     * Verifies ownership and existence for destructive operations (update/delete).
-     */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
-    }
-
     /**
      * Checks if the user is the tenant associated with the record (by email).
-     * Handles case-insensitive matching for robustness.
+     * Uses direct token matching for static provability in collection group queries.
      */
     function isAuthorizedTenant(data) {
       return isSignedIn() && 
              data.email != null && 
-             (data.email == request.auth.token.email || data.email == request.auth.token.email.lower());
+             data.email.lower() == request.auth.token.email.lower();
     }
 
     // --- Rules ---
@@ -124,12 +117,11 @@ service cloud.firestore {
 
     /**
      * @description Allows tenants to discover their own record via collectionGroup search.
-     * This is what unblocks the "Verification Failed" error in the Tenant Portal.
-     * The rules must be statically provable by the query filter.
+     * Rules must be top-level and statically provable by query filters.
      */
     match /{path=**}/tenants/{tenantId} {
-      allow list: if isSignedIn() && (resource.data.email == request.auth.token.email || resource.data.email == request.auth.token.email.lower());
-      allow get: if isSignedIn() && (resource.data.email == request.auth.token.email || resource.data.email == request.auth.token.email.lower());
+      allow list: if isSignedIn() && request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower();
+      allow get: if isSignedIn() && request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower();
     }
 
     /**

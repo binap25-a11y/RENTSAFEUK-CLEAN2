@@ -47,6 +47,7 @@ export default function TenantDashboard() {
 
     setIsLoading(true);
     setError(null);
+    setIsIndexBuilding(false);
     
     // Normalize user email for secure discovery matching firestore.rules
     const userEmail = user.email.toLowerCase().trim();
@@ -71,6 +72,7 @@ export default function TenantDashboard() {
             const segments = path.split('/');
             
             // Reconstruct landlord and property IDs from the document path
+            // Expected path: userProfiles/{landlordId}/properties/{propertyId}/tenants/{tenantId}
             const userProfilesIdx = segments.indexOf('userProfiles');
             const propertiesIdx = segments.indexOf('properties');
             
@@ -121,7 +123,7 @@ export default function TenantDashboard() {
         if (msg.includes('index') || err.code === 'failed-precondition') {
             setIsIndexBuilding(true);
         } else {
-            // Log contextual permission error for collection group discovery
+            // Standard Firestore permission error handling for collection group
             const permissionError = new FirestorePermissionError({
                 path: 'tenants (collectionGroup)',
                 operation: 'list',
@@ -186,7 +188,7 @@ export default function TenantDashboard() {
                     <AlertCircle className="h-10 w-10 text-destructive" />
                 </div>
                 <CardTitle className="font-headline text-xl">Verification Failed</CardTitle>
-                <CardDescription className="text-sm font-medium px-4">
+                <CardDescription className="text-sm font-medium px-4 text-center">
                     {error || `We couldn't find an active tenancy linked to ${user?.email}. Please verify with your landlord that your portal email is correct.`}
                 </CardDescription>
             </CardHeader>
@@ -195,7 +197,7 @@ export default function TenantDashboard() {
                     <Link href="/dashboard">Return to Dashboard</Link>
                 </Button>
                 <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={performDiscovery}>
-                    <RefreshCw className="mr-2 h-3 w-3" /> Retry Verification
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Verification
                 </Button>
             </CardFooter>
         </Card>
