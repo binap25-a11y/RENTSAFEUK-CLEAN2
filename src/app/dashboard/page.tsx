@@ -171,15 +171,15 @@ export default function DashboardPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoadingProps, setIsLoadingProps] = useState(true);
 
-  // Accelerated Loading Safety - 1.5s is the sweet spot for a professional handshake feel
+  // Accelerated Loading Safety - 2.5s window for handshake to succeed
   useEffect(() => {
     const timer = setTimeout(() => {
         setHasHeuristicTimeout(true);
-    }, 1500);
+    }, 2500);
     return () => clearTimeout(timer);
   }, []);
 
-  // Fetch Properties (Landlord Role) - Fast Path
+  // Fetch Properties (Landlord Role)
   useEffect(() => {
     if (!user || !firestore) return;
     
@@ -194,13 +194,12 @@ export default function DashboardPage() {
       setIsLoadingProps(false);
       
       // OPTIMIZATION: If we find properties, the user is definitively a landlord.
-      // We can stop the portal discovery handshake immediately.
       if (list.length > 0) {
           setIsTenant(false);
           setIsLoadingPortalCheck(false);
       }
     }, (error) => {
-      console.warn("Property fetch error:", error.message);
+      console.warn("Property fetch issue:", error.message);
       setIsLoadingProps(false);
     });
     return () => unsub();
@@ -227,7 +226,6 @@ export default function DashboardPage() {
           setIsTenant(true);
           router.replace('/tenant/dashboard');
       } else {
-          // authoritative negative match only if not currently indexing
           if (!isIndexBuilding) {
             setIsTenant(false);
           }
@@ -239,7 +237,7 @@ export default function DashboardPage() {
       if (msg.includes('index') || error.code === 'failed-precondition') {
         setIsIndexBuilding(true);
       } else {
-        console.warn("Handshake error:", error.message);
+        console.warn("Handshake issue:", error.message);
         setIsLoadingPortalCheck(false);
       }
     });
@@ -255,7 +253,7 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // If already confirmed as tenant, keep the secure redirect view
+  // Priority Redirection for Tenants
   if (isTenant === true) {
       return (
         <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-background">
@@ -265,7 +263,7 @@ export default function DashboardPage() {
       );
   }
 
-  // Blocking logic: Wait for auth, OR wait for tenant check unless we timed out or found properties
+  // Loading Logic: Wait for auth, or wait for portal check (with timeout safety)
   const isGlobalLoading = isUserLoading || (isLoadingPortalCheck && isTenant === null && !hasHeuristicTimeout);
 
   if (isGlobalLoading) {
@@ -281,12 +279,12 @@ export default function DashboardPage() {
           
           <div className="space-y-2">
             <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground animate-pulse">
-                {isIndexBuilding ? "Database Syncing" : "Identity Handshake"}
+                {isIndexBuilding ? "Cloud Database Sync" : "Role Verification"}
             </p>
             <h2 className="text-xl font-bold font-headline">Securing Connection</h2>
             <p className="text-xs text-muted-foreground leading-relaxed">
                 {isIndexBuilding 
-                    ? "Our cloud database is mapping your identity. Access will be restored automatically." 
+                    ? "The platform is currently mapping your resident identity. Access will be restored automatically." 
                     : "Establishing a secure connection to your property records..."}
             </p>
           </div>
@@ -313,7 +311,7 @@ export default function DashboardPage() {
             Portfolio Manager
           </h1>
           <p className="text-muted-foreground font-medium text-lg">
-            Landlord control center for estate management.
+            Control center for your rental estate.
           </p>
         </div>
       </div>
