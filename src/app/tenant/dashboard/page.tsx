@@ -48,12 +48,14 @@ export default function TenantDashboard() {
     setIsLoading(true);
     setError(null);
     
+    // Strict normalization to match optimized security rules
     const userEmail = user.email.toLowerCase().trim();
 
     // High-performance discovery query
     const q = query(
         collectionGroup(firestore, 'tenants'), 
-        where('email', '==', userEmail)
+        where('email', '==', userEmail),
+        limit(10)
     );
 
     let propUnsub: (() => void) | null = null;
@@ -65,11 +67,12 @@ export default function TenantDashboard() {
 
         if (activeTenantDoc) {
             const data = activeTenantDoc.data();
-            const segments = activeTenantDoc.ref.path.split('/');
+            const path = activeTenantDoc.ref.path;
+            const segments = path.split('/');
             
-            // Path structure: userProfiles/{landlordId}/properties/{propertyId}/tenants/{tenantId}
-            const landlordId = segments[1];
-            const propertyId = segments[3];
+            // Expected Path structure: userProfiles/{landlordId}/properties/{propertyId}/tenants/{tenantId}
+            const landlordId = segments[segments.indexOf('userProfiles') + 1];
+            const propertyId = segments[segments.indexOf('properties') + 1];
             const tenantId = activeTenantDoc.id;
 
             if (landlordId && propertyId) {
@@ -83,19 +86,24 @@ export default function TenantDashboard() {
                             tenantData: data,
                             propertyData: propSnap.data()
                         });
+                    } else {
+                        console.warn("Discovered property doc does not exist at path:", propRef.path);
                     }
                     setIsLoading(false);
                     setIsIndexBuilding(false);
                 }, (err) => {
                     console.error("Property context fetch restricted:", err.message);
+                    setError("Unable to read property details. Please contact your landlord.");
                     setIsLoading(false);
                     setIsIndexBuilding(false);
                 });
             } else {
+                console.warn("Invalid path segments extracted from tenant doc:", path);
                 setIsLoading(false);
                 setIsIndexBuilding(false);
             }
         } else {
+            // No active tenancy found for this email
             setIsLoading(false);
             setIsIndexBuilding(false);
             setContext(null);
@@ -104,11 +112,14 @@ export default function TenantDashboard() {
         const msg = err.message.toLowerCase();
         if (msg.includes('index') || err.code === 'failed-precondition') {
             setIsIndexBuilding(true);
+        } else if (msg.includes('permission')) {
+            console.error("Discovery query failed due to security rules. Check firestore.rules index proving.");
+            setError("Portal access restricted by security policies.");
         } else {
             console.warn("Tenant portal discovery error:", err.message);
             setError(err.message);
-            setIsIndexBuilding(false);
         }
+        setIsIndexBuilding(false);
         setIsLoading(false);
     });
 
@@ -161,9 +172,9 @@ export default function TenantDashboard() {
     );
   }
 
-  if (!context) {
+  if (error || !context) {
     return (
-        <Card className="max-w-md mx-auto mt-20 shadow-2xl border-none text-left">
+        <Card className="max-w-md mx-auto mt-20 shadow-2xl border-none text-left overflow-hidden">
             <CardHeader className="text-center bg-muted/20 pb-8">
                 <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 shadow-sm border">
                     <AlertCircle className="h-10 w-10 text-destructive" />
@@ -173,7 +184,7 @@ export default function TenantDashboard() {
                     {error ? `Connection Error: ${error}` : `We couldn't find an active tenancy linked to ${user?.email}. Please verify with your landlord that your portal access email is correct.`}
                 </CardDescription>
             </CardHeader>
-            <CardFooter className="pt-6 flex flex-col gap-3">
+            <CardFooter className="pt-6 flex flex-col gap-3 bg-background border-t">
                 <Button className="w-full font-bold h-11 shadow-lg uppercase tracking-widest text-xs" asChild>
                     <Link href="/dashboard">Return to Dashboard</Link>
                 </Button>
@@ -229,7 +240,7 @@ export default function TenantDashboard() {
                 </CardTitle>
             </CardHeader>
             <CardContent className="px-6 pb-6">
-                <div className="text-xl font-bold">Rolling Contract</div>
+                <div className="text-xl font-bold">Active Agreement</div>
                 <p className="text-xs text-muted-foreground mt-1 font-medium italic">Verified secure tenancy</p>
             </CardContent>
         </Card>

@@ -12,8 +12,9 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    // Safely retrieves the lowercased email from the authentication token
     function getEmail() {
-      return request.auth.token.email.toLower();
+      return (isSignedIn() && request.auth.token.email != null) ? request.auth.token.email.toLower() : "";
     }
 
     // --- Collection Rules ---
@@ -28,6 +29,7 @@ service cloud.firestore {
         allow read, write: if isOwner(userProfileId);
         
         // ALLOWANCE: Tenants need to 'get' the property document to see address/rent info in their portal
+        // once they have discovered the property path via the tenants collection group.
         allow get: if isSignedIn();
 
         match /maintenanceLogs/{logId} {
@@ -35,7 +37,7 @@ service cloud.firestore {
           // Allow assigned tenant access via email match or reporter ID
           allow read: if isSignedIn() && (
             resource.data.reportedBy == request.auth.uid ||
-            resource.data.tenantEmail.toLower() == getEmail()
+            resource.data.tenantEmail == getEmail()
           );
           // Tenants can create logs for their property
           allow create: if isSignedIn();
@@ -44,20 +46,20 @@ service cloud.firestore {
         match /documents/{documentId} {
           allow read, write: if isOwner(userProfileId);
           // Allow assigned tenant access via email match
-          allow read: if isSignedIn() && resource.data.tenantEmail.toLower() == getEmail();
+          allow read: if isSignedIn() && resource.data.tenantEmail == getEmail();
         }
 
         match /tenants/{tenantId} {
           allow read, write: if isOwner(userProfileId);
           // Allow verified tenant to read their own assignment record
-          allow read: if isSignedIn() && resource.data.email.toLower() == getEmail();
+          allow read: if isSignedIn() && resource.data.email == getEmail();
 
           match /messages/{messageId} {
             allow read, write: if isOwner(userProfileId);
             // Access for parties involved in the thread
             allow read: if isSignedIn() && (
                 resource.data.senderId == request.auth.uid ||
-                resource.data.recipientEmail.toLower() == getEmail()
+                resource.data.recipientEmail == getEmail()
             );
             allow create: if isSignedIn();
           }
@@ -75,7 +77,7 @@ service cloud.firestore {
 
         match /rentPayments/{paymentId} {
           allow read, write: if isOwner(userProfileId);
-          allow read: if isSignedIn() && resource.data.tenantEmail.toLower() == getEmail();
+          allow read: if isSignedIn() && resource.data.tenantEmail == getEmail();
         }
 
         match /inspections/{inspectionId} {
@@ -94,11 +96,14 @@ service cloud.firestore {
     }
 
     // --- Optimized Collection Group Rules for Discovery ---
+    // These rules allow the application to find user-specific records across the entire database
+    // using strictly provable field matches (essential for collectionGroup queries).
 
     match /{path=**}/tenants/{tenantId} {
-      // High-performance discovery matching. Resource data is compared against normalized token email.
+      // High-performance discovery matching. 
+      // Mandatory: Resource data email must be stored in lowercase for this to match getEmail().
       allow list, get: if isSignedIn() && (
-        resource.data.email.toLower() == getEmail() ||
+        resource.data.email == getEmail() ||
         resource.data.userId == request.auth.uid
       );
     }
@@ -107,7 +112,7 @@ service cloud.firestore {
       allow list, get: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
         resource.data.senderId == request.auth.uid ||
-        resource.data.recipientEmail.toLower() == getEmail()
+        resource.data.recipientEmail == getEmail()
       );
       allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
     }
@@ -116,7 +121,7 @@ service cloud.firestore {
       allow list, get: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
         resource.data.reportedBy == request.auth.uid ||
-        resource.data.tenantEmail.toLower() == getEmail()
+        resource.data.tenantEmail == getEmail()
       );
     }
   }
