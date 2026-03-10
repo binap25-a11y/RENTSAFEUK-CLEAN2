@@ -1,4 +1,3 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -20,9 +19,8 @@ service cloud.firestore {
     
     match /{path=**}/tenants/{tenantId} {
       /**
-       * @description Crucial rule for global identity discovery.
-       * Allows tenants to find their property link across any landlord profile.
-       * Must use direct equality for static provability in collection group queries.
+       * @description Top-level rule for global identity discovery.
+       * Uses direct token matching for instant static provability by Firestore.
        */
       allow list: if isSignedIn() && request.auth.token.email != null && resource.data.email == request.auth.token.email;
       allow get: if isSignedIn() && request.auth.token.email != null && resource.data.email == request.auth.token.email;

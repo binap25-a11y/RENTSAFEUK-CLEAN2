@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -172,7 +171,7 @@ export default function DashboardPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoadingProps, setIsLoadingProps] = useState(true);
 
-  // Loading safety timeout - faster resolution for Landlords
+  // Accelerated Loading Safety - 1.5s is the sweet spot for a professional handshake feel
   useEffect(() => {
     const timer = setTimeout(() => {
         setHasHeuristicTimeout(true);
@@ -194,19 +193,20 @@ export default function DashboardPage() {
       setProperties(list);
       setIsLoadingProps(false);
       
-      // OPTIMIZATION: If the user has properties, they are definitively a landlord.
-      // We can stop the portal discovery loader immediately.
+      // OPTIMIZATION: If we find properties, the user is definitively a landlord.
+      // We can stop the portal discovery handshake immediately.
       if (list.length > 0) {
           setIsTenant(false);
           setIsLoadingPortalCheck(false);
       }
-    }, () => {
+    }, (error) => {
+      console.warn("Property fetch error:", error.message);
       setIsLoadingProps(false);
     });
     return () => unsub();
   }, [user, firestore]);
 
-  // Discovery Handshake: Redirect verified tenants to their portal
+  // Tenant Discovery Handshake - Global Search
   useEffect(() => {
     if (!user || !firestore || !user.email) {
       setIsLoadingPortalCheck(false);
@@ -223,11 +223,11 @@ export default function DashboardPage() {
     const unsub = onSnapshot(tenantsQuery, (snap) => {
       const activeTenant = snap.docs.find(d => d.data().status === 'Active');
       if (activeTenant) {
-          console.log("Tenant verified. Directing to secure portal...");
+          console.log("Tenant verified. Directing to portal...");
           setIsTenant(true);
           router.replace('/tenant/dashboard');
       } else {
-          // Only mark as definitively not a tenant if the snapshot is authoritative (not empty because of index building)
+          // authoritative negative match only if not currently indexing
           if (!isIndexBuilding) {
             setIsTenant(false);
           }
@@ -239,7 +239,7 @@ export default function DashboardPage() {
       if (msg.includes('index') || error.code === 'failed-precondition') {
         setIsIndexBuilding(true);
       } else {
-        console.warn("Tenant discovery limited:", error.message);
+        console.warn("Handshake error:", error.message);
         setIsLoadingPortalCheck(false);
       }
     });
@@ -255,7 +255,7 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // Immediate Redirection
+  // If already confirmed as tenant, keep the secure redirect view
   if (isTenant === true) {
       return (
         <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-background">
@@ -265,9 +265,8 @@ export default function DashboardPage() {
       );
   }
 
-  const isGlobalLoading = isUserLoading || 
-    (isLoadingPortalCheck && isTenant === null && !hasHeuristicTimeout) ||
-    (isIndexBuilding && properties.length === 0);
+  // Blocking logic: Wait for auth, OR wait for tenant check unless we timed out or found properties
+  const isGlobalLoading = isUserLoading || (isLoadingPortalCheck && isTenant === null && !hasHeuristicTimeout);
 
   if (isGlobalLoading) {
     return (
@@ -287,7 +286,7 @@ export default function DashboardPage() {
             <h2 className="text-xl font-bold font-headline">Securing Connection</h2>
             <p className="text-xs text-muted-foreground leading-relaxed">
                 {isIndexBuilding 
-                    ? "Our cloud database is mapping your identity. Access will be restored automatically in a few minutes." 
+                    ? "Our cloud database is mapping your identity. Access will be restored automatically." 
                     : "Establishing a secure connection to your property records..."}
             </p>
           </div>
