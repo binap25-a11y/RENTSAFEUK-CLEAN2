@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -21,8 +20,7 @@ import {
   ShieldCheck, 
   UserCircle, 
   Sparkles,
-  RefreshCw,
-  Info
+  RefreshCw
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
