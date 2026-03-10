@@ -12,6 +12,10 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    function getEmail() {
+      return request.auth.token.email;
+    }
+
     // --- Collection Rules ---
 
     match /userProfiles/{userProfileId} {
@@ -28,27 +32,27 @@ service cloud.firestore {
           // Allow assigned tenant access via email match or reporter ID
           allow read: if isSignedIn() && (
             resource.data.reportedBy == request.auth.uid ||
-            resource.data.tenantEmail == request.auth.token.email
+            resource.data.tenantEmail == getEmail()
           );
         }
 
         match /documents/{documentId} {
           allow read, write: if isOwner(userProfileId);
           // Allow assigned tenant access via email match
-          allow read: if isSignedIn() && resource.data.tenantEmail == request.auth.token.email;
+          allow read: if isSignedIn() && resource.data.tenantEmail == getEmail();
         }
 
         match /tenants/{tenantId} {
           allow read, write: if isOwner(userProfileId);
           // Allow verified resident to read their own assignment record
-          allow read: if isSignedIn() && resource.data.email == request.auth.token.email;
+          allow read: if isSignedIn() && resource.data.email == getEmail();
 
           match /messages/{messageId} {
             allow read, write: if isOwner(userProfileId);
             // Access for parties involved in the thread
             allow read: if isSignedIn() && (
                 resource.data.senderId == request.auth.uid ||
-                resource.data.recipientEmail == request.auth.token.email
+                resource.data.recipientEmail == getEmail()
             );
           }
           
@@ -63,7 +67,7 @@ service cloud.firestore {
 
         match /rentPayments/{paymentId} {
           allow read, write: if isOwner(userProfileId);
-          allow read: if isSignedIn() && resource.data.tenantEmail == request.auth.token.email;
+          allow read: if isSignedIn() && resource.data.tenantEmail == getEmail();
         }
 
         match /inspections/{inspectionId} {
@@ -84,17 +88,16 @@ service cloud.firestore {
 
     match /{path=**}/tenants/{tenantId} {
       // Direct field-matching for high-performance collectionGroup queries
-      allow list, get: if isSignedIn() && (
-        resource.data.email == request.auth.token.email ||
-        resource.data.userId == request.auth.uid
-      );
+      // Split into distinct rules for static provability in the query optimizer
+      allow list, get: if isSignedIn() && resource.data.email == getEmail();
+      allow list, get: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
     match /{path=**}/messages/{messageId} {
       allow list, get: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
         resource.data.senderId == request.auth.uid ||
-        resource.data.recipientEmail == request.auth.token.email
+        resource.data.recipientEmail == getEmail()
       );
       allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
     }
@@ -103,7 +106,7 @@ service cloud.firestore {
       allow list, get: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
         resource.data.reportedBy == request.auth.uid ||
-        resource.data.tenantEmail == request.auth.token.email
+        resource.data.tenantEmail == getEmail()
       );
     }
   }

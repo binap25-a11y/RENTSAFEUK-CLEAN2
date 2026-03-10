@@ -226,7 +226,7 @@ export default function DashboardPage() {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse font-medium">Verifying Session Security...</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse font-medium">Verifying Secure Access...</p>
       </div>
     );
   }
@@ -248,7 +248,7 @@ export default function DashboardPage() {
           <Button variant="outline" asChild className="border-primary/20 bg-primary/5 hover:bg-primary/10 shadow-sm h-11 px-6 font-bold uppercase text-[10px] tracking-widest">
             <Link href="/tenant/dashboard">
               {isIndexBuilding ? (
-                <span className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" /> Resident Sync...</span>
+                <span className="flex items-center gap-2"><Loader2 className="h-3 w-3 animate-spin" /> Portal Syncing...</span>
               ) : (
                 <span className="flex items-center gap-2"><UserCircle className="h-4 w-4" /> Open Tenant Portal</span>
               )}
@@ -257,35 +257,27 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {isTenant && (
+      {(isTenant || isIndexBuilding) && (
         <Card className="border-primary/20 bg-primary/5 border-dashed shadow-sm">
           <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="space-y-1 text-center sm:text-left">
               <div className="flex items-center justify-center sm:justify-start gap-2 text-primary font-bold">
                 <ShieldCheck className="h-4 w-4" />
-                Active Tenancy Verified
+                {isIndexBuilding ? "Secure Tenancy Verification In Progress" : "Active Tenancy Verified"}
               </div>
-              <p className="text-sm text-muted-foreground font-medium">Your account is linked to an active tenancy. Manage repairs and view safety certs in your portal.</p>
+              <p className="text-sm text-muted-foreground font-medium">
+                {isIndexBuilding 
+                  ? "Our system is currently mapping your resident records. Your secure features will be available momentarily." 
+                  : "Your account is linked to an active tenancy. Manage repairs and view safety certs in your portal."}
+              </p>
             </div>
-            <Button asChild className="font-bold shadow-lg shrink-0 px-8">
-              <Link href="/tenant/dashboard">Go to My Home <ArrowRight className="ml-2 h-4 w-4" /></Link>
-            </Button>
+            {!isIndexBuilding && (
+              <Button asChild className="font-bold shadow-lg shrink-0 px-8">
+                <Link href="/tenant/dashboard">Go to My Home <ArrowRight className="ml-2 h-4 w-4" /></Link>
+              </Button>
+            )}
           </CardContent>
         </Card>
-      )}
-
-      {isIndexBuilding && (
-        <div className="flex items-center justify-between p-3 px-4 rounded-xl border border-primary/10 bg-primary/5 text-primary text-[10px] font-bold uppercase tracking-widest shadow-sm animate-in fade-in slide-in-from-top-4 duration-500">
-          <div className="flex items-center gap-3">
-            <div className="flex h-6 w-6 items-center justify-center rounded-full bg-primary/10 shrink-0">
-              <Sparkles className="h-3 w-3 animate-pulse" />
-            </div>
-            <span>Resident Portal Sync in progress. Your secure features will be available momentarily.</span>
-          </div>
-          <Button variant="ghost" size="icon" className="h-6 w-6 text-primary/60 hover:bg-primary/10" title="Our cloud database is indexing your resident records for high-performance discovery.">
-            <Info className="h-3 w-3" />
-          </Button>
-        </div>
       )}
 
       {!isLikelyPureTenant && (

@@ -1,39 +1,15 @@
-
 'use client';
 
 /**
  * @fileOverview Standardized barrel file for Firebase services and utilities.
  */
 
-import { firebaseConfig } from '@/firebase/config';
-import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
-import { getAuth } from 'firebase/auth';
-import { getFirestore } from 'firebase/firestore';
-import { getStorage } from 'firebase/storage';
-
-/**
- * Initializes the Firebase Client SDK.
- */
-export function initializeFirebase() {
-  const firebaseApp: FirebaseApp = getApps().length === 0 
-    ? initializeApp(firebaseConfig) 
-    : getApp();
-
-  return {
-    firebaseApp,
-    auth: getAuth(firebaseApp),
-    firestore: getFirestore(firebaseApp),
-    storage: getStorage(firebaseApp)
-  };
-}
-
-// Providers & Real-time Hooks
+export * from './init';
 export * from './provider';
 export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 
-// Explicitly re-exporting authentication utilities from the stable .ts file
 export {
   initiateAnonymousSignIn,
   createUserNonBlocking,
@@ -42,7 +18,6 @@ export {
   initiateEmailSignIn,
 } from './non-blocking-login';
 
-// Explicitly re-exporting mutation utilities from the stable .ts file
 export {
   setDocumentNonBlocking,
   addDocumentNonBlocking,
