@@ -20,7 +20,8 @@ import {
   ShieldCheck, 
   UserCircle, 
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -190,13 +191,14 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore]);
 
-  // 2. Discover Tenant Role with high-performance query
+  // 2. Discover Tenant Role with robust handling for cloud syncing delays
   useEffect(() => {
     if (!user || !firestore || !user.email) {
       setIsLoadingPortalCheck(false);
       return;
     }
 
+    // Normalized matching for security and high performance
     const email = user.email.toLowerCase().trim();
     const tenantsQuery = query(
       collectionGroup(firestore, 'tenants'),
@@ -211,11 +213,11 @@ export default function DashboardPage() {
       setIsIndexBuilding(false); 
     }, (error) => {
       const msg = error.message.toLowerCase();
-      // Handle index building specifically to inform user rather than fail
-      if (msg.includes('index') || error.code === 'failed-precondition') {
+      // Handle cloud indexing states specifically to avoid showing a broken UI
+      if (msg.includes('index') || error.code === 'failed-precondition' || error.code === 'permission-denied') {
         setIsIndexBuilding(true);
       } else {
-        console.warn("Tenant discovery issue:", error.message);
+        console.warn("Tenant discovery handshake failure:", error.message);
         setIsIndexBuilding(false);
       }
       setIsLoadingPortalCheck(false);
@@ -229,7 +231,7 @@ export default function DashboardPage() {
     setRetryCount(prev => prev + 1);
   }, []);
 
-  // 3. Auto-Redirect Pure Tenants once verified
+  // 3. Auto-Redirect Pure Tenants once verified to their specific dashboard
   useEffect(() => {
     if (!isLoadingProps && !isLoadingPortalCheck && properties.length === 0 && isTenant) {
       router.push('/tenant/dashboard');
@@ -244,15 +246,14 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // Heading Logic: Users with 0 properties are greeted as tenants immediately
   const isLikelyPureTenant = !isLoadingProps && properties.length === 0;
   const pageTitle = isLikelyPureTenant ? "Tenant Dashboard" : "Landlord Dashboard";
 
   if (isUserLoading || (isLoadingProps && isLoadingPortalCheck)) {
     return (
-      <div className="flex h-64 flex-col items-center justify-center gap-4">
+      <div className="flex h-64 flex-col items-center justify-center gap-4 text-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse font-medium text-center">Establishing Secure Session...</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse font-medium">Establishing Secure Session...</p>
       </div>
     );
   }
@@ -271,11 +272,11 @@ export default function DashboardPage() {
           </p>
         </div>
         
-        {/* Tenant Verification Hub - Simplified for landlords, active for prospective tenants */}
-        {(isTenant || (isIndexBuilding && properties.length === 0)) && (
+        {/* Tenant Verification Hub - Provides a manual refresh path during cloud indexing */}
+        {(isTenant || isIndexBuilding) && (
           <div className="flex items-center gap-2 p-1.5 rounded-2xl bg-muted/30 border border-primary/5 shadow-sm">
             <Button 
-              variant="outline" 
+              variant={isIndexBuilding ? "ghost" : "outline"}
               asChild={!isIndexBuilding}
               onClick={isIndexBuilding ? handleRetrySync : undefined}
               className="border-primary/20 bg-background hover:bg-primary/5 shadow-sm h-10 px-6 font-bold uppercase text-[10px] tracking-widest rounded-xl transition-all"
@@ -291,16 +292,16 @@ export default function DashboardPage() {
               )}
             </Button>
             {isIndexBuilding && (
-              <div className="px-3 animate-pulse">
-                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 uppercase text-[9px] font-bold">Cloud Sync Active</Badge>
+              <div className="px-3">
+                <Badge variant="outline" className="bg-amber-50 text-amber-700 border-amber-200 uppercase text-[9px] font-bold animate-pulse">Cloud Sync Active</Badge>
               </div>
             )}
           </div>
         )}
       </div>
 
-      {/* Feature Highlight for Tenants */}
-      {(isTenant || (isIndexBuilding && properties.length === 0)) && (
+      {/* Verification Progress Alert for Tenants */}
+      {(isTenant || isIndexBuilding) && isLikelyPureTenant && (
         <Card className="border-primary/20 bg-primary/[0.02] border-dashed shadow-sm overflow-hidden relative group transition-all hover:bg-primary/[0.04] text-left">
           <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
             <Sparkles className="h-16 w-16 text-primary" />
@@ -308,25 +309,30 @@ export default function DashboardPage() {
           <CardContent className="p-6 flex flex-col sm:flex-row items-center justify-between gap-6">
             <div className="space-y-2 text-center sm:text-left relative z-10">
               <div className="flex items-center justify-center sm:justify-start gap-2 text-primary font-bold">
-                <ShieldCheck className="h-4 w-4" />
+                {isIndexBuilding ? <RefreshCw className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
                 {isIndexBuilding ? "Secure Tenant Sync In Progress" : "Active Tenancy Verified"}
               </div>
               <p className="text-sm text-muted-foreground font-medium max-lg leading-relaxed">
                 {isIndexBuilding 
-                  ? "Our system is currently mapping your tenancy records. This ensures your data remains private and secure. Your portal will be ready instantly." 
+                  ? "Our system is currently mapping your tenancy records across the cloud. This ensures your data remains private and secure. Your portal will be ready instantly." 
                   : "Your account is linked to an active tenancy. You can now securely manage repairs, view safety certificates, and message your landlord directly."}
               </p>
             </div>
-            {!isIndexBuilding && (
+            {!isIndexBuilding ? (
               <Button asChild className="font-bold uppercase tracking-widest text-xs shadow-lg shrink-0 px-10 h-12 rounded-xl group-hover:scale-105 transition-transform bg-primary hover:bg-primary/90">
                 <Link href="/tenant/dashboard">Enter Tenant Portal <ArrowRight className="ml-2 h-4 w-4" /></Link>
               </Button>
+            ) : (
+                <Button onClick={handleRetrySync} variant="outline" className="font-bold uppercase tracking-widest text-xs shrink-0 px-10 h-12 rounded-xl border-2">
+                    <RefreshCw className="mr-2 h-4 w-4" /> Refresh Portal
+                </Button>
             )}
           </CardContent>
         </Card>
       )}
 
-      {!isLikelyPureTenant && (
+      {/* No Content Message for Landlords with 0 properties */}
+      {!isLikelyPureTenant ? (
         <div className="grid gap-6">
           <PropertiesPanel 
             properties={filteredProperties} 
@@ -337,6 +343,19 @@ export default function DashboardPage() {
             setView={setView}
           />
         </div>
+      ) : !isTenant && !isIndexBuilding && (
+          <div className="flex flex-col items-center justify-center py-20 text-center gap-6">
+              <div className="bg-primary/5 p-10 rounded-full">
+                  <Home className="h-16 w-16 text-primary/20" />
+              </div>
+              <div className="space-y-2">
+                  <h3 className="text-2xl font-bold">Welcome to RentSafeUK</h3>
+                  <p className="text-muted-foreground max-w-md mx-auto">You don't have any properties yet. Start building your portfolio or wait for a tenant verification to complete if you've been invited.</p>
+              </div>
+              <Button asChild size="lg" className="px-10 h-12 font-bold shadow-lg">
+                  <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-5 w-5" /> Onboard First Property</Link>
+              </Button>
+          </div>
       )}
     </div>
   );
