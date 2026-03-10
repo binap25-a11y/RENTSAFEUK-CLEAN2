@@ -48,15 +48,14 @@ export default function TenantDashboard() {
     setIsLoading(true);
     setError(null);
     
-    // Normalize user email for secure discovery
+    // Normalize user email for secure discovery matching firestore.rules
     const userEmail = user.email.toLowerCase().trim();
 
-    // High-performance discovery query using collectionGroup
-    // Scoped strictly by email to ensure rule matching
+    // Discovery query using collectionGroup
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
-        limit(10)
+        limit(5)
     );
 
     let propUnsub: (() => void) | null = null;
@@ -64,7 +63,6 @@ export default function TenantDashboard() {
     const unsub = onSnapshot(q, (snap) => {
         if (propUnsub) propUnsub();
 
-        // Find the first active tenancy doc for this email
         const activeTenantDoc = snap.docs.find(d => d.data().status === 'Active');
 
         if (activeTenantDoc) {
@@ -73,7 +71,6 @@ export default function TenantDashboard() {
             const segments = path.split('/');
             
             // Reconstruct landlord and property IDs from the document path
-            // userProfiles/{userId}/properties/{propertyId}/tenants/{tenantId}
             const userProfilesIdx = segments.indexOf('userProfiles');
             const propertiesIdx = segments.indexOf('properties');
             
@@ -98,6 +95,7 @@ export default function TenantDashboard() {
                     setIsLoading(false);
                     setIsIndexBuilding(false);
                 }, async (err) => {
+                    // Log contextual permission error for property access
                     const permissionError = new FirestorePermissionError({
                         path: propRef.path,
                         operation: 'get',
@@ -114,7 +112,6 @@ export default function TenantDashboard() {
                 setIsIndexBuilding(false);
             }
         } else {
-            // Discovery returned no active records
             setIsLoading(false);
             setIsIndexBuilding(false);
             setContext(null);
@@ -124,7 +121,7 @@ export default function TenantDashboard() {
         if (msg.includes('index') || err.code === 'failed-precondition') {
             setIsIndexBuilding(true);
         } else {
-            // Standard Firestore permission error handling for collection group
+            // Log contextual permission error for collection group discovery
             const permissionError = new FirestorePermissionError({
                 path: 'tenants (collectionGroup)',
                 operation: 'list',

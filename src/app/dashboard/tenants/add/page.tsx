@@ -216,8 +216,7 @@ export default function AddTenantPage() {
           description: `Portfolio synchronized: ${data.name} is now the active tenant.`,
         });
         
-        // Use router.refresh() to force dashboard snapshot re-eval
-        router.refresh();
+        // Return to dashboard
         router.push('/dashboard');
     } catch (serverError: any) {
         console.error('Tenant assignment failed:', serverError);

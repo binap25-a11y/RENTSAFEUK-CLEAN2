@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { collection, query, where, onSnapshot, collectionGroup, limit } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, collectionGroup, limit, doc, updateDoc, getDocs } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -171,6 +171,27 @@ export default function DashboardPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoadingProps, setIsLoadingProps] = useState(true);
 
+  /**
+   * SILENT AUDITOR: Repairs property status in the background if active tenants exist.
+   * Ensures the Landlord Dashboard always matches the true state of the portfolio.
+   */
+  const performOccupancyAudit = useCallback(async (landlordId: string, propertyList: Property[]) => {
+    if (!firestore) return;
+    
+    propertyList.forEach(async (prop) => {
+        if (prop.status === 'Vacant') {
+            const tenantsCol = collection(firestore, 'userProfiles', landlordId, 'properties', prop.id, 'tenants');
+            const activeTenantsSnap = await getDocs(query(tenantsCol, where('status', '==', 'Active'), limit(1)));
+            
+            if (!activeTenantsSnap.empty) {
+                console.log(`Auditor: Repairing status for ${prop.id} to Occupied.`);
+                const propRef = doc(firestore, 'userProfiles', landlordId, 'properties', prop.id);
+                updateDoc(propRef, { status: 'Occupied' });
+            }
+        }
+    });
+  }, [firestore]);
+
   // 1. Fetch Properties (Landlord Role)
   useEffect(() => {
     if (!user || !firestore) return;
@@ -181,13 +202,17 @@ export default function DashboardPage() {
     );
 
     const unsub = onSnapshot(propertiesQuery, (snap) => {
-      setProperties(snap.docs.map(d => ({ id: d.id, ...d.data() } as Property)));
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Property));
+      setProperties(list);
       setIsLoadingProps(false);
+      
+      // Run the occupancy repair audit silently
+      performOccupancyAudit(user.uid, list);
     }, (error) => {
       setIsLoadingProps(false);
     });
     return () => unsub();
-  }, [user, firestore]);
+  }, [user, firestore, performOccupancyAudit]);
 
   // 2. Discover Tenant Role
   useEffect(() => {
@@ -196,6 +221,7 @@ export default function DashboardPage() {
       return;
     }
 
+    // Normalize email for secure discovery matching firestore.rules
     const email = user.email.toLowerCase().trim();
     const tenantsQuery = query(
       collectionGroup(firestore, 'tenants'),
@@ -212,7 +238,7 @@ export default function DashboardPage() {
       if (msg.includes('index') || error.code === 'failed-precondition') {
         setIsIndexBuilding(true);
       } else {
-        // Standard Firestore permission error handling
+        // Log contextual permission error for collection group
         const permissionError = new FirestorePermissionError({
             path: 'tenants (collectionGroup)',
             operation: 'list',
