@@ -171,11 +171,11 @@ export default function DashboardPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoadingProps, setIsLoadingProps] = useState(true);
 
-  // Accelerated Loading Safety - 2.5s window for handshake to succeed
+  // Accelerated Loading Safety - 1.5s window for handshake to succeed
   useEffect(() => {
     const timer = setTimeout(() => {
         setHasHeuristicTimeout(true);
-    }, 2500);
+    }, 1500);
     return () => clearTimeout(timer);
   }, []);
 
