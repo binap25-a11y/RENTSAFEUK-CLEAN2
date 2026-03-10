@@ -119,11 +119,10 @@ interface Tenant {
 
 /**
  * Robust data sanitization utility to prevent Firestore "undefined field" errors.
- * Recursively removes any keys with undefined values by using JSON.stringify replacer.
  */
 const prepareForFirestore = (obj: any): any => {
     return JSON.parse(JSON.stringify(obj, (key, value) => {
-        if (value === undefined) return undefined;
+        if (value === undefined) return null;
         return value;
     }));
 };
@@ -223,7 +222,6 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
 
         const { tenantId, propertyId, ...screeningData } = data;
 
-        // SANITIZE DATA: Remove undefined values before Firestore write
         const cleanedSubmission = prepareForFirestore({
             ...screeningData,
             userId: user.uid,
@@ -271,7 +269,7 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
             <CardHeader>
                 <CardTitle>Tenant Vetting Checklist</CardTitle>
                 <CardDescription>
-                    Complete and record pre-tenancy audit checks for a prospective tenant.
+                    Complete and record pre-tenancy audit checks.
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -347,7 +345,7 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
                                             </div>
                                             <p className="text-2xl font-bold">{affordabilityMetrics.ratio}%</p>
                                             <p className="text-[10px] text-muted-foreground mt-1">
-                                                {affordabilityMetrics.isRisky ? "Rent exceeds 40% of income. Guarantor is highly recommended." : "Rent is within professional affordability bounds."}
+                                                {affordabilityMetrics.isRisky ? "Rent exceeds 40% of income. Guarantor recommended." : "Rent is within professional affordability bounds."}
                                             </p>
                                         </div>
                                     )}
@@ -452,7 +450,7 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
                                     <Textarea
                                     id="overall-decision-area"
                                     name="overallNotes"
-                                    placeholder="Summarize your final decision and findings for the audit trail..."
+                                    placeholder="Summarize your final decision and findings..."
                                     className="resize-none rounded-2xl min-h-[150px]"
                                     rows={5}
                                     {...field}

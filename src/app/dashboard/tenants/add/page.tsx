@@ -84,11 +84,10 @@ interface Property {
 
 /**
  * Robust data sanitization utility to prevent Firestore "undefined field" errors.
- * Recursively removes any keys with undefined values.
  */
 const prepareForFirestore = (obj: any): any => {
     return JSON.parse(JSON.stringify(obj, (key, value) => {
-        if (value === undefined) return undefined;
+        if (value === undefined) return null;
         return value;
     }));
 };
@@ -184,16 +183,14 @@ export default function AddTenantPage() {
     const tenantsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', data.propertyId, 'tenants');
     const newTenant = {
         ...data,
-        email: data.email.toLowerCase().trim(), // Force normalization for discovery
+        email: data.email.toLowerCase().trim(),
         userId: user.uid,
         status: 'Active',
         createdDate: new Date().toISOString(),
     };
 
-    // Sanitize data to remove undefined values, which Firestore doesn't allow
     const cleanedTenantData = prepareForFirestore(newTenant);
     
-    // Initiate Tenant creation (Non-blocking)
     addDoc(tenantsCollection, cleanedTenantData)
       .then((tenantDoc) => {
         // AUTOMATIC STATUS UPDATE: Set property to 'Occupied'
@@ -238,7 +235,7 @@ export default function AddTenantPage() {
       <CardHeader className="bg-primary/5 border-b border-primary/10">
         <CardTitle className="text-2xl font-headline text-primary">Assign New Tenant</CardTitle>
         <CardDescription>
-          Record tenant identity and tenancy terms for your property records. Property status will be updated to Occupied automatically.
+          Record tenant identity and tenancy terms. Property status will be updated to Occupied automatically.
         </CardDescription>
       </CardHeader>
       <CardContent className="pt-6">
