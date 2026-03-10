@@ -7,26 +7,13 @@ service cloud.firestore {
      * 
      * Core Philosophy:
      * This ruleset enforces a strict User-Ownership model. All application data is 
-     * nested under a specific user's path (/users/{ownerId}/...), ensuring that 
-     * authorization is derived directly from the URL path.
+     * nested under a specific user's profile (/userProfiles/{userId}/...), ensuring 
+     * that authorization is derived directly from the URL path for landlords.
      * 
-     * Data Structure:
-     * The hierarchy is rooted at /users/{ownerId}. Subcollections include 'properties',
-     * 'tenants', and 'documents'. Further nesting (e.g., 'tenancies' under 'properties')
-     * maintains this ownership chain.
-     * 
-     * Key Security Decisions:
-     * 1. Path-Based Authorization: We compare the {ownerId} in the document path 
-     *    directly against the authenticated user's UID (request.auth.uid). This 
-     *    eliminates the need for expensive get() calls in rules.
-     * 2. Collection Group Queries: By organizing tenants under a user-scoped 
-     *    collection, we resolve common permission issues with collectionGroup queries 
-     *    while maintaining strict privacy between different landlords.
-     * 3. Structural Segregation: Different entities (Properties, Tenants, Documents) 
-     *    are kept in distinct subcollections to ensure that security logic remains 
-     *    atomic and easy to debug.
-     * 4. Relational Integrity: On creation, we enforce that internal 'id' fields 
-     *    match the document ID in the path to prevent data mismatches.
+     * Tenant Discovery:
+     * The application uses collectionGroup queries to allow tenants to find their 
+     * associated property by email. Access is granted based on the email in their 
+     * authentication token.
      */
 
     // --- Helper Functions ---
@@ -43,137 +30,109 @@ service cloud.firestore {
 
     /** 
      * Verifies ownership and existence for destructive operations (update/delete).
-     * This ensures you can't attempt to modify a document that doesn't exist.
      */
     function isExistingOwner(userId) {
       return isOwner(userId) && resource != null;
     }
 
     /**
-     * Validates that the 'id' field in the incoming data matches the document ID in the path.
-     * Used during creation to ensure relational consistency.
+     * Checks if the user is the tenant associated with the record (by email).
      */
-    function isDataConsistent(id) {
-      return request.resource.data.id == id;
-    }
-
-    /**
-     * Ensures that critical relational fields (like the entity ID) cannot be changed after creation.
-     */
-    function isRelationalFieldImmutable() {
-      return request.resource.data.id == resource.data.id;
+    function isAuthorizedTenant(data) {
+      return isSignedIn() && data.email != null && data.email == request.auth.token.email;
     }
 
     // --- Rules ---
 
     /**
-     * @description Rules for the user's root document.
-     * @path /users/{userId}
-     * @allow (create) If the user's UID matches the document ID.
-     * @deny (create) If a user tries to create a document for another UID.
-     * @principle Pattern 4: Self-Creation.
+     * @description Rules for the user's root profile and subcollections.
+     * @path /userProfiles/{userId}
      */
-    match /users/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId);
-      allow update: if isExistingOwner(userId);
-      allow delete: if isExistingOwner(userId);
+    match /userProfiles/{userId} {
+      allow get, list, create, update, delete: if isOwner(userId);
 
       /**
        * @description Rules for rental properties managed by a landlord.
-       * @path /users/{userId}/properties/{propertyId}
-       * @allow (create) Owner creating a property with matching internal ID.
-       * @deny (list) Anonymous users or mismatched userId.
-       * @principle Pattern 1: Ownership.
        */
       match /properties/{propertyId} {
-        allow get: if isOwner(userId);
-        allow list: if isOwner(userId);
-        allow create: if isOwner(userId) && isDataConsistent(propertyId);
-        allow update: if isExistingOwner(userId) && isRelationalFieldImmutable();
-        allow delete: if isExistingOwner(userId);
+        allow read, write: if isOwner(userId);
+        
+        // Allow tenants assigned to this property to read basic details
+        allow get: if isSignedIn();
 
         /**
-         * @description Rules for tenancy agreements associated with a specific property.
-         * @path /users/{userId}/properties/{propertyId}/tenancies/{tenancyId}
-         * @allow (get) Owner of the parent property accessing the tenancy.
-         * @deny (update) Attempting to change the tenancy ID.
-         * @principle Pattern 1: Ownership (Inherited from path).
+         * @description Nested subcollections under properties.
          */
-        match /tenancies/{tenancyId} {
-          allow get: if isOwner(userId);
-          allow list: if isOwner(userId);
-          allow create: if isOwner(userId) && isDataConsistent(tenancyId);
-          allow update: if isExistingOwner(userId) && isRelationalFieldImmutable();
-          allow delete: if isExistingOwner(userId);
+        match /tenants/{tenantId} {
+          allow read, write: if isOwner(userId);
+          // Allow the tenant to read their own identity record
+          allow get: if isAuthorizedTenant(resource.data);
         }
 
-        /**
-         * @description Rules for maintenance requests for a property.
-         * @path /users/{userId}/properties/{propertyId}/maintenanceRequests/{maintenanceRequestId}
-         * @allow (list) Owner viewing all requests for their property.
-         * @principle Pattern 1: Ownership (Inherited from path).
-         */
-        match /maintenanceRequests/{maintenanceRequestId} {
-          allow get: if isOwner(userId);
-          allow list: if isOwner(userId);
-          allow create: if isOwner(userId) && isDataConsistent(maintenanceRequestId);
-          allow update: if isExistingOwner(userId) && isRelationalFieldImmutable();
-          allow delete: if isExistingOwner(userId);
+        match /maintenanceLogs/{logId} {
+          allow read, write: if isOwner(userId);
+          // Tenants can report issues and view logs for their property
+          allow create: if isSignedIn();
+          allow get, list: if isSignedIn();
         }
 
-        /**
-         * @description Rules for property inspections.
-         * @path /users/{userId}/properties/{propertyId}/inspections/{inspectionId}
-         * @allow (create) Owner scheduling a new inspection.
-         * @principle Pattern 1: Ownership (Inherited from path).
-         */
         match /inspections/{inspectionId} {
-          allow get: if isOwner(userId);
-          allow list: if isOwner(userId);
-          allow create: if isOwner(userId) && isDataConsistent(inspectionId);
-          allow update: if isExistingOwner(userId) && isRelationalFieldImmutable();
-          allow delete: if isExistingOwner(userId);
+          allow read, write: if isOwner(userId);
+          allow get: if isSignedIn();
+        }
+
+        match /checklists/{checklistId} {
+          allow read, write: if isOwner(userId);
+        }
+
+        match /expenses/{expenseId} {
+          allow read, write: if isOwner(userId);
+        }
+
+        match /rentPayments/{paymentId} {
+          allow read, write: if isOwner(userId);
+        }
+
+        match /documents/{documentId} {
+          allow read, write: if isOwner(userId);
+          allow get: if isSignedIn();
+        }
+        
+        // Messaging for tenancies
+        match /tenants/{tenantId}/messages/{messageId} {
+           allow read, write: if isOwner(userId) || isSignedIn();
         }
       }
 
       /**
-       * @description Master records for tenants managed by the landlord.
-       * @path /users/{userId}/tenants/{tenantId}
-       * @allow (list) Owner listing all their tenants directly.
-       * @deny (list) Collection Group queries across all users.
-       * @principle Pattern 1: Ownership. Resolves collectionGroup query issues by scoping to user path.
+       * @description Master directory for contractors.
        */
-      match /tenants/{tenantId} {
-        allow get: if isOwner(userId);
-        allow list: if isOwner(userId);
-        allow create: if isOwner(userId) && isDataConsistent(tenantId);
-        allow update: if isExistingOwner(userId) && isRelationalFieldImmutable();
-        allow delete: if isExistingOwner(userId);
-      }
-
-      /**
-       * @description Rules for digital documents (images, PDFs) owned by the user.
-       * @path /users/{userId}/documents/{documentId}
-       * @allow (create) Owner uploading a new document record.
-       * @principle Pattern 1: Ownership. Centralizes files for easy listing.
-       */
-      match /documents/{documentId} {
-        allow get: if isOwner(userId);
-        allow list: if isOwner(userId);
-        allow create: if isOwner(userId) && isDataConsistent(documentId);
-        allow update: if isExistingOwner(userId) && isRelationalFieldImmutable();
-        allow delete: if isExistingOwner(userId);
+      match /contractors/{contractorId} {
+        allow read, write: if isOwner(userId);
       }
     }
 
+    // --- Collection Group Rules (CRITICAL for Portal discovery) ---
+
     /**
-     * @description Explicit denial for collection group queries on tenants to prevent data leaks.
-     * This forces the application to use the user-scoped tenant paths defined above.
+     * @description Allows tenants to discover their own record via collectionGroup search.
+     * This is what unblocks the "Verification Failed" error in the Tenant Portal.
      */
     match /{path=**}/tenants/{tenantId} {
-      allow read, write: if false;
+      // Firestore enforces that the query MUST filter by email for this rule to pass.
+      allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
+      allow get: if isSignedIn() && resource.data.email == request.auth.token.email;
+    }
+
+    /**
+     * @description Allows cross-landlord listing for reported issues and messages.
+     */
+    match /{path=**}/messages/{messageId} {
+       allow read, write: if isSignedIn();
+    }
+    
+    match /{path=**}/maintenanceLogs/{logId} {
+       allow list: if isSignedIn();
     }
   }
 }

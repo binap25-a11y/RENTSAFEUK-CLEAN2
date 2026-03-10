@@ -356,23 +356,23 @@
   "auth": {
     "providers": [
       "password",
-      "anonymous"
+      "google.com"
     ]
   },
   "firestore": {
     "structure": [
       {
-        "path": "users/{ownerId}/properties/{propertyId}",
+        "path": "userProfiles/{ownerId}/properties/{propertyId}",
         "definition": {
           "entityName": "Property",
           "schema": {
             "$ref": "#/backend/entities/Property"
           },
-          "description": "Stores details for each rental property managed by a specific user (landlord). The `ownerId` in the path ensures authorization independence and path-based ownership.",
+          "description": "Stores details for each rental property managed by a specific user (landlord).",
           "params": [
             {
               "name": "ownerId",
-              "description": "The unique identifier of the user (landlord) who owns and manages these properties."
+              "description": "The unique identifier of the user (landlord)."
             },
             {
               "name": "propertyId",
@@ -382,17 +382,21 @@
         }
       },
       {
-        "path": "users/{ownerId}/tenants/{tenantId}",
+        "path": "userProfiles/{ownerId}/properties/{propertyId}/tenants/{tenantId}",
         "definition": {
           "entityName": "Tenant",
           "schema": {
             "$ref": "#/backend/entities/Tenant"
           },
-          "description": "Stores master records for tenants managed by a specific user. Placed directly under the user's path to enable simple collection queries for all of a user's tenants, resolving collectionGroup query issues. The `ownerId` in the path ensures authorization independence and path-based ownership.",
+          "description": "Stores tenant records associated with a specific property.",
           "params": [
             {
               "name": "ownerId",
-              "description": "The unique identifier of the user (landlord) who manages these tenants."
+              "description": "The unique identifier of the user (landlord)."
+            },
+            {
+              "name": "propertyId",
+              "description": "The unique identifier for the property."
             },
             {
               "name": "tenantId",
@@ -400,100 +404,8 @@
             }
           ]
         }
-      },
-      {
-        "path": "users/{ownerId}/properties/{propertyId}/tenancies/{tenancyId}",
-        "definition": {
-          "entityName": "Tenancy",
-          "schema": {
-            "$ref": "#/backend/entities/Tenancy"
-          },
-          "description": "Stores details of tenancy agreements, linking specific tenants to a property. Inherits ownership from the `ownerId` and `propertyId` in its hierarchical path, ensuring authorization independence.",
-          "params": [
-            {
-              "name": "ownerId",
-              "description": "The unique identifier of the user (landlord) who owns this tenancy."
-            },
-            {
-              "name": "propertyId",
-              "description": "The unique identifier of the property associated with this tenancy."
-            },
-            {
-              "name": "tenancyId",
-              "description": "The unique identifier for a specific tenancy agreement."
-            }
-          ]
-        }
-      },
-      {
-        "path": "users/{ownerId}/properties/{propertyId}/maintenanceRequests/{maintenanceRequestId}",
-        "definition": {
-          "entityName": "MaintenanceRequest",
-          "schema": {
-            "$ref": "#/backend/entities/MaintenanceRequest"
-          },
-          "description": "Stores maintenance requests specific to a property. Inherits ownership from the `ownerId` and `propertyId` in its hierarchical path, ensuring authorization independence.",
-          "params": [
-            {
-              "name": "ownerId",
-              "description": "The unique identifier of the user (landlord) who owns this maintenance request."
-            },
-            {
-              "name": "propertyId",
-              "description": "The unique identifier of the property to which this maintenance request pertains."
-            },
-            {
-              "name": "maintenanceRequestId",
-              "description": "The unique identifier for a specific maintenance request."
-            }
-          ]
-        }
-      },
-      {
-        "path": "users/{ownerId}/properties/{propertyId}/inspections/{inspectionId}",
-        "definition": {
-          "entityName": "Inspection",
-          "schema": {
-            "$ref": "#/backend/entities/Inspection"
-          },
-          "description": "Stores records of property inspections. Inherits ownership from the `ownerId` and `propertyId` in its hierarchical path, ensuring authorization independence.",
-          "params": [
-            {
-              "name": "ownerId",
-              "description": "The unique identifier of the user (landlord) who owns this inspection record."
-            },
-            {
-              "name": "propertyId",
-              "description": "The unique identifier of the property for which this inspection is scheduled/completed."
-            },
-            {
-              "name": "inspectionId",
-              "description": "The unique identifier for a specific inspection record."
-            }
-          ]
-        }
-      },
-      {
-        "path": "users/{ownerId}/documents/{documentId}",
-        "definition": {
-          "entityName": "Document",
-          "schema": {
-            "$ref": "#/backend/entities/Document"
-          },
-          "description": "Stores all digital documents for a user, such as property images, agreements, etc. Documents contain foreign keys (propertyId, tenancyId, etc.) to link them to related entities. The `ownerId` in the path ensures authorization independence and path-based ownership, enabling easy `list` operations for a user's documents.",
-          "params": [
-            {
-              "name": "ownerId",
-              "description": "The unique identifier of the user (landlord) who owns these documents."
-            },
-            {
-              "name": "documentId",
-              "description": "The unique identifier for a specific document."
-            }
-          ]
-        }
       }
     ],
-    "reasoning": "The recommended Firestore structure is designed to adhere strictly to the CORE DESIGN PRINCIPLES and DESIGN STRATEGY MANDATES, prioritizing security, scalability, and debuggability for a single-landlord application. The primary strategy employed is **Path-Based Ownership** and **Structural Segregation**.\n\n**Authorization Independence (CRITICAL)** is achieved by rooting all user-specific data under `/users/{ownerId}`. This places the `ownerId` (which corresponds to `request.auth.uid`) directly in the path for every collection and subcollection. Consequently, Firestore Security Rules will not require any `get()` operations to verify ownership, making rules atomic, simple (`if request.auth.uid == ownerId`), and highly performant. For example, a `Property` document at `users/{ownerId}/properties/{propertyId}` is implicitly owned by `ownerId` from the path, removing any dependency on parent document data for authorization.\n\n**QAPs (Rules are not Filters)** are fully supported because the data is organized by ownership. When a user requests a `list` operation on any of their top-level collections (e.g., `/users/{ownerId}/properties`, `/users/{ownerId}/tenants`, `/users/{ownerId}/documents`), the `ownerId` in the path perfectly aligns with `request.auth.uid`. This means the security rules can grant `allow list` access based solely on the path's `ownerId` matching the authenticated user's UID, ensuring that only the requesting user's data is returned, without the rules needing to act as filters.\n\n**Addressing the `tenants (collectionGroup)` error:** The original error indicates an attempt to perform a `list` operation using a collection group query on 'tenants'. This typically happens when 'tenant' subcollections are nested under various parent documents (e.g., `properties/{propertyId}/tenants/{tenantId}`), and the client attempts to query all tenants across all properties. My recommended structure addresses this by creating a dedicated, user-scoped collection for `Tenants` at `users/{ownerId}/tenants/{tenantId}`. This design makes a collection group query on 'tenants' unnecessary for a single landlord's data. Instead, the application should perform a standard collection query (e.g., `firestore.collection('users').doc(auth.uid).collection('tenants').get()`), which is easily secured by the path-based authorization. This resolves the permission error by aligning the data structure with a straightforward collection query that adheres to the user's explicit ownership.\n\n**Structural Segregation** is maintained by ensuring that documents within any given collection (e.g., `properties`, `tenants`, `documents`) all share the same security posture: they are owned by the `ownerId` in the path. Even for `Document` entities, which can be related to multiple other entities, they are placed in a user-scoped collection (`users/{ownerId}/documents`) where their authorization is simply tied to the `ownerId`, rather than attempting to inherit complex, potentially conflicting permissions from multiple possible parent entities. Relationships between entities are managed through explicit foreign key IDs (e.g., `propertyId`, `tenantIds` in `Tenancy`, `propertyId` in `MaintenanceRequest` and `Inspection`, and various `_Id` fields in `Document`), which are used for querying and data integrity, not for authorization checks by security rules."
+    "reasoning": "Standardized on 'userProfiles' root to match application implementation and optimized collection group queries for secure identity discovery."
   }
 }
