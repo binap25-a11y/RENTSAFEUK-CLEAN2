@@ -25,7 +25,7 @@ service cloud.firestore {
 
         match /maintenanceLogs/{logId} {
           allow read, write: if isOwner(userProfileId);
-          // Allow assigned tenant access via email match
+          // Allow assigned tenant access via email match or reporter ID
           allow read: if isSignedIn() && (
             resource.data.reportedBy == request.auth.uid ||
             resource.data.tenantEmail == request.auth.token.email
@@ -80,10 +80,10 @@ service cloud.firestore {
       }
     }
 
-    // --- Specialized Collection Group Rules for Discovery ---
+    // --- Optimized Collection Group Rules for Discovery ---
 
     match /{path=**}/tenants/{tenantId} {
-      // Simplified discovery rule to ensure query analyzer can prove authorization
+      // Direct field-matching for high-performance collectionGroup queries
       allow list, get: if isSignedIn() && (
         resource.data.email == request.auth.token.email ||
         resource.data.userId == request.auth.uid

@@ -10,7 +10,10 @@ import {
   Download, 
   Loader2, 
   ShieldCheck, 
-  Upload
+  Upload,
+  Sparkles,
+  RefreshCw,
+  AlertCircle
 } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collectionGroup, query, where, limit, onSnapshot, collection } from 'firebase/firestore';
@@ -30,6 +33,7 @@ export default function TenantDocumentsPage() {
   const firestore = useFirestore();
   const [tenantContext, setTenantContext] = useState<any>(null);
   const [isLoadingContext, setIsLoadingContext] = useState(true);
+  const [isIndexBuilding, setIsIndexBuilding] = useState(false);
 
   useEffect(() => {
     if (isUserLoading) return;
@@ -63,7 +67,11 @@ export default function TenantDocumentsPage() {
             }
         }
         setIsLoadingContext(false);
+        setIsIndexBuilding(false);
     }, (error) => {
+        if (error.message.toLowerCase().includes('index')) {
+            setIsIndexBuilding(true);
+        }
         console.warn("Tenant documents portal discovery issue:", error.message);
         setIsLoadingContext(false);
     });
@@ -96,15 +104,37 @@ export default function TenantDocumentsPage() {
     );
   }
 
+  if (isIndexBuilding) {
+    return (
+        <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in zoom-in-95 duration-700">
+            <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto relative z-10">
+                <Sparkles className="h-12 w-12 text-primary animate-pulse" />
+            </div>
+            <div className="space-y-3">
+                <h2 className="font-headline text-2xl font-bold text-primary">Scanning Document Vault</h2>
+                <p className="text-muted-foreground font-medium px-4 leading-relaxed">
+                    Our secure system is currently mapping your shared tenancy files. Your documents will appear here automatically.
+                </p>
+            </div>
+            <Button variant="outline" className="font-bold h-11 px-8 rounded-xl" onClick={() => window.location.reload()}>
+                <RefreshCw className="mr-2 h-4 w-4" /> Refresh Vault
+            </Button>
+        </div>
+    );
+  }
+
   if (!tenantContext) {
     return (
       <Card className="max-w-md mx-auto mt-10 shadow-lg border-none text-center">
-        <CardHeader className="bg-muted/20">
+        <CardHeader className="bg-muted/20 pb-8">
+          <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 border shadow-sm">
+              <AlertCircle className="h-8 w-8 text-destructive" />
+          </div>
           <CardTitle className="text-lg">Portal Access Restricted</CardTitle>
           <CardDescription>We could not find an active tenancy associated with this account. Please contact your landlord.</CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
-          <Button variant="outline" className="w-full" asChild><Link href="/dashboard">Return to Dashboard</Link></Button>
+          <Button variant="outline" className="w-full font-bold h-11" asChild><Link href="/dashboard">Return to Dashboard</Link></Button>
         </CardContent>
       </Card>
     );

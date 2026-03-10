@@ -11,7 +11,6 @@ import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
-import { cn } from '@/lib/utils';
 
 interface Property {
   id: string;
@@ -204,14 +203,14 @@ export default function DashboardPage() {
   }, [user, firestore]);
 
   // Smoother Heading Logic: If properties are 0 and tenant query is checking/indexing, assume Tenant Dashboard
-  const isLikelyPureTenant = !isLoadingProps && properties.length === 0 && (isTenant || isIndexBuilding);
+  const isLikelyPureTenant = !isLoadingProps && properties.length === 0 && (isTenant || isIndexBuilding || isLoadingPortalCheck);
   
   // 3. Auto-Redirect Pure Tenants (Confirmed Only)
   useEffect(() => {
-    if (!isLoadingProps && !isLoadingPortalCheck && isLikelyPureTenant && isTenant) {
+    if (!isLoadingProps && !isLoadingPortalCheck && properties.length === 0 && isTenant) {
       router.push('/tenant/dashboard');
     }
-  }, [isLoadingProps, isLoadingPortalCheck, isLikelyPureTenant, isTenant, router]);
+  }, [isLoadingProps, isLoadingPortalCheck, properties.length, isTenant, router]);
 
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;

@@ -30,7 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Wrench, Upload, X } from 'lucide-react';
+import { Loader2, Wrench, Upload, X, Sparkles, RefreshCw } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useUser, useFirestore } from '@/firebase';
 import { collectionGroup, query, where, limit, addDoc, collection, onSnapshot } from 'firebase/firestore';
@@ -53,6 +53,7 @@ export default function TenantMaintenancePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tenantContext, setTenantContext] = useState<any>(null);
   const [isLoadingContext, setIsLoadingContext] = useState(true);
+  const [isIndexBuilding, setIsIndexBuilding] = useState(false);
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
 
@@ -71,7 +72,7 @@ export default function TenantMaintenancePage() {
     
     const userEmail = user.email.toLowerCase().trim();
 
-    // Search for tenants linked to this email.
+    // Search for tenants linked to this email. Normalized discovery.
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
@@ -97,8 +98,12 @@ export default function TenantMaintenancePage() {
             }
         }
         setIsLoadingContext(false);
+        setIsIndexBuilding(false);
     }, (error) => {
-        console.warn("Tenant maintenance portal discovery problem:", error.message);
+        if (error.message.toLowerCase().includes('index')) {
+            setIsIndexBuilding(true);
+        }
+        console.warn("Tenant maintenance portal discovery issue:", error.message);
         setIsLoadingContext(false);
     });
 
@@ -164,15 +169,37 @@ export default function TenantMaintenancePage() {
     );
   }
 
+  if (isIndexBuilding) {
+    return (
+        <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in zoom-in-95 duration-700">
+            <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto relative z-10">
+                <Sparkles className="h-12 w-12 text-primary animate-pulse" />
+            </div>
+            <div className="space-y-3">
+                <h2 className="font-headline text-2xl font-bold text-primary">Securing Your Connection</h2>
+                <p className="text-muted-foreground font-medium px-4 leading-relaxed">
+                    Our cloud database is currently synchronizing your resident records. This typically takes a few minutes for new accounts.
+                </p>
+            </div>
+            <Button variant="outline" className="font-bold h-11 px-8 rounded-xl" onClick={() => window.location.reload()}>
+                <RefreshCw className="mr-2 h-4 w-4" /> Check Status
+            </Button>
+        </div>
+    );
+  }
+
   if (!tenantContext) {
     return (
       <Card className="max-w-md mx-auto mt-10 shadow-lg border-none text-center">
-        <CardHeader className="bg-muted/20">
+        <CardHeader className="bg-muted/20 pb-8">
+          <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 border shadow-sm">
+              <AlertCircle className="h-8 w-8 text-destructive" />
+          </div>
           <CardTitle className="text-lg">Portal Access Limited</CardTitle>
           <CardDescription>We could not verify your active tenancy. Please contact your landlord to verify your portal email.</CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
-          <Button variant="outline" className="w-full" onClick={() => router.push('/dashboard')}>Return to Dashboard</Button>
+          <Button variant="outline" className="w-full font-bold h-11" onClick={() => router.push('/dashboard')}>Return to Dashboard</Button>
         </CardContent>
       </Card>
     );
