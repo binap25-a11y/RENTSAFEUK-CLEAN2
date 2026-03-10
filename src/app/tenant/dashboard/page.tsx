@@ -20,7 +20,7 @@ import {
   Sparkles,
   RefreshCw
 } from 'lucide-react';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collectionGroup, query, where, limit, onSnapshot, doc } from 'firebase/firestore';
 
 interface TenantContext {
@@ -88,13 +88,18 @@ export default function TenantDashboard() {
                             propertyData: propSnap.data()
                         });
                     } else {
-                        console.warn("Linked property not found:", propRef.path);
                         setError("Property details could not be resolved.");
                     }
                     setIsLoading(false);
                     setIsIndexBuilding(false);
-                }, (err) => {
-                    console.error("Property fetch restricted:", err.message);
+                }, async (err) => {
+                    // Standard Firestore permission error handling
+                    const permissionError = new FirestorePermissionError({
+                        path: propRef.path,
+                        operation: 'get',
+                    });
+                    errorEmitter.emit('permission-error', permissionError);
+                    
                     setError("Portal access restricted by security policies.");
                     setIsLoading(false);
                     setIsIndexBuilding(false);
@@ -109,12 +114,18 @@ export default function TenantDashboard() {
             setIsIndexBuilding(false);
             setContext(null);
         }
-    }, (err) => {
+    }, async (err) => {
         const msg = err.message.toLowerCase();
         if (msg.includes('index') || err.code === 'failed-precondition') {
             setIsIndexBuilding(true);
         } else {
-            console.error("Tenant discovery error:", err.message);
+            // Standard Firestore permission error handling for collection group
+            const permissionError = new FirestorePermissionError({
+                path: 'tenants (collectionGroup)',
+                operation: 'list',
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            
             setError("Connection Error: Portal access restricted by security policies.");
         }
         setIsLoading(false);

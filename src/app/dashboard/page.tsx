@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collection, query, where, onSnapshot, collectionGroup, limit, doc, updateDoc, getDocs } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -93,7 +93,7 @@ export function PropertiesPanel({ properties, isLoading, searchTerm, setSearchTe
                     {p.imageUrl ? (
                       /* eslint-disable-next-line @next/next/no-img-element */
                       <img src={p.imageUrl} alt="Property" className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-500" />
-                    ) : <div className="flex justify-center items-center w-full h-full bg-primary/5"><Home className="h-16 w-16 text-primary/10" /></div>}
+                    ) : <div className="flex items-center justify-center w-full h-full bg-primary/5"><Home className="h-16 w-16 text-primary/10" /></div>}
                   </div>
                   <CardHeader className="pb-3 px-4">
                     <CardTitle className="text-lg font-bold truncate">{[p.address.nameOrNumber, p.address.street].filter(Boolean).join(', ')}</CardTitle>
@@ -185,7 +185,6 @@ export default function DashboardPage() {
       setProperties(snap.docs.map(d => ({ id: d.id, ...d.data() } as Property)));
       setIsLoadingProps(false);
     }, (error) => {
-      console.warn("Properties fetch restricted:", error.message);
       setIsLoadingProps(false);
     });
     return () => unsub();
@@ -193,7 +192,6 @@ export default function DashboardPage() {
 
   /**
    * REAL-TIME OCCUPANCY AUDITOR (Self-Healing Logic)
-   * This process ensures the "Vacant" vs "Occupied" status accurately reflects the actual tenant registry.
    */
   useEffect(() => {
     if (!user || !firestore || properties.length === 0 || isLoadingProps) return;
@@ -221,7 +219,7 @@ export default function DashboardPage() {
     auditPortfolio().catch(err => console.error("Auditor sync error:", err));
   }, [user, firestore, properties, isLoadingProps]);
 
-  // 2. Discover Tenant Role - Simplified and optimized
+  // 2. Discover Tenant Role
   useEffect(() => {
     if (!user || !firestore || !user.email) {
       setIsLoadingPortalCheck(false);
@@ -239,12 +237,17 @@ export default function DashboardPage() {
       setIsTenant(!!activeTenant);
       setIsLoadingPortalCheck(false);
       setIsIndexBuilding(false); 
-    }, (error) => {
+    }, async (error) => {
       const msg = error.message.toLowerCase();
       if (msg.includes('index') || error.code === 'failed-precondition') {
         setIsIndexBuilding(true);
       } else {
-        console.warn("Verification Handshake Restricted:", error.message);
+        // Standard Firestore permission error handling
+        const permissionError = new FirestorePermissionError({
+            path: 'tenants (collectionGroup)',
+            operation: 'list',
+        });
+        errorEmitter.emit('permission-error', permissionError);
         setIsIndexBuilding(false);
       }
       setIsLoadingPortalCheck(false);
