@@ -48,7 +48,7 @@ export default function TenantDashboard() {
     setError(null);
     setIsIndexBuilding(false);
     
-    // Normalize user email for secure discovery
+    // Normalize user email for secure discovery query
     const userEmail = user.email.toLowerCase().trim();
 
     // Discovery query using collectionGroup
@@ -92,6 +92,7 @@ export default function TenantDashboard() {
                     setIsLoading(false);
                     setIsIndexBuilding(false);
                 }, (err) => {
+                    // Standard Firestore permission error handling
                     const permissionError = new FirestorePermissionError({
                         path: propRef.path,
                         operation: 'get',
@@ -113,6 +114,7 @@ export default function TenantDashboard() {
         if (msg.includes('index') || err.code === 'failed-precondition') {
             setIsIndexBuilding(true);
         } else {
+            // Log permission error specifically for the collection group query
             const permissionError = new FirestorePermissionError({
                 path: 'tenants (collectionGroup)',
                 operation: 'list',

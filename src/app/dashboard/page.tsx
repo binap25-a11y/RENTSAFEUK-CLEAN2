@@ -171,14 +171,13 @@ export default function DashboardPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoadingProps, setIsLoadingProps] = useState(true);
 
-  // 1. Heuristic Timeout: If portal check hangs, assume landlord after 2.5s
+  // 1. Heuristic Timeout: Reduced to 1.5s for faster role determination
   useEffect(() => {
     const timer = setTimeout(() => {
         if (isLoadingPortalCheck) {
-            console.log("Portal handshake timed out. Heuristically assuming landlord role.");
             setHasHeuristicTimeout(true);
         }
-    }, 2500);
+    }, 1500);
     return () => clearTimeout(timer);
   }, [isLoadingPortalCheck]);
 
@@ -189,28 +188,36 @@ export default function DashboardPage() {
       return;
     }
 
+    // Strict email normalization for identity discovery
     const email = user.email.toLowerCase().trim();
     const tenantsQuery = query(
       collectionGroup(firestore, 'tenants'),
       where('email', '==', email),
-      limit(5)
+      limit(1) // We only need 1 match to confirm identity
     );
 
     const unsub = onSnapshot(tenantsQuery, (snap) => {
       const activeTenant = snap.docs.find(d => d.data().status === 'Active');
-      setIsTenant(!!activeTenant);
+      if (activeTenant) {
+          setIsTenant(true);
+          router.push('/tenant/dashboard');
+      }
       setIsLoadingPortalCheck(false);
       setIsIndexBuilding(false); 
     }, (error) => {
       const msg = error.message.toLowerCase();
+      // Handle cloud indexing wait state
       if (msg.includes('index') || error.code === 'failed-precondition') {
         setIsIndexBuilding(true);
+      } else {
+        // Log contextual permission error without component crash
+        console.warn("Tenant identity check restricted by security policy.");
       }
       setIsLoadingPortalCheck(false);
     });
 
     return () => unsub();
-  }, [user, firestore]);
+  }, [user, firestore, router]);
 
   // 3. Fetch Properties (Landlord Role)
   useEffect(() => {
@@ -231,13 +238,6 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore]);
 
-  // 4. Auto-Redirect verified tenants
-  useEffect(() => {
-    if (!isLoadingPortalCheck && isTenant) {
-      router.push('/tenant/dashboard');
-    }
-  }, [isLoadingPortalCheck, isTenant, router]);
-
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;
     const term = searchTerm.toLowerCase();
@@ -246,7 +246,7 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // FAST PATH: If we have properties, we are a landlord. Don't show the hang screen.
+  // "Fast Path": If we have properties, we are a landlord. Don't show the hang screen.
   const isLandlordKnown = properties.length > 0;
   
   // Show global loading if we're completely blind AND haven't timed out into landlord mode yet.
@@ -270,7 +270,7 @@ export default function DashboardPage() {
             <h2 className="text-xl font-bold font-headline">Securing Connection</h2>
             <p className="text-xs text-muted-foreground leading-relaxed">
                 {isIndexBuilding 
-                    ? "Our cloud database is currently indexing your records for private portal access. This typically takes a few minutes for new accounts." 
+                    ? "Our cloud database is currently indexing your records for private portal access. This typically takes 5-10 minutes for new accounts." 
                     : "Establishing a secure connection to your property records..."}
             </p>
           </div>
