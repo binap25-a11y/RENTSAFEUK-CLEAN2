@@ -1,8 +1,7 @@
 'use client';
 
 /**
- * @fileOverview Proxy module to resolve resolution conflicts.
- * Logic is consolidated in the .ts version of this file.
+ * @fileOverview Explicit proxy to the stable .ts implementation.
  */
 
-export * from './non-blocking-updates';
+export * from './non-blocking-updates.ts';

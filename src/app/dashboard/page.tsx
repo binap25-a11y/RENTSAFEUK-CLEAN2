@@ -175,7 +175,7 @@ export default function DashboardPage() {
     const tenantsQuery = query(
       collectionGroup(firestore, 'tenants'),
       where('email', '==', email),
-      limit(10)
+      limit(5)
     );
 
     const unsub = onSnapshot(tenantsQuery, (snap) => {
@@ -183,8 +183,8 @@ export default function DashboardPage() {
       setIsTenant(!!activeTenant);
       setIsLoadingPortalCheck(false);
     }, (error) => {
-      // Gracefully handle index provisioning or permission issues
-      console.warn("Portal discovery restricted or indexing:", error.message);
+      // Gracefully handle index provisioning or permission delays
+      console.warn("Portal discovery restricted or indexing in progress:", error.message);
       setIsTenant(false);
       setIsLoadingPortalCheck(false);
     });

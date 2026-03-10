@@ -2,6 +2,7 @@
 
 /**
  * @fileOverview Standardized barrel file for Firebase services and utilities.
+ * Stabilized exports to ensure unambiguous module resolution in Next.js builds.
  */
 
 import { firebaseConfig } from '@/firebase/config';
@@ -26,27 +27,28 @@ export function initializeFirebase() {
   };
 }
 
-// Providers & Hooks
+// Providers & Real-time Hooks
 export * from './provider';
 export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 
-// Explicitly export from the base .ts implementations to ensure clarity
+// Stable Authentication Utilities (Explicit extension mapping)
 export {
   initiateAnonymousSignIn,
   createUserNonBlocking,
   signInNonBlocking,
   initiateEmailSignUp,
   initiateEmailSignIn,
-} from './non-blocking-login';
+} from './non-blocking-login.ts';
 
+// Stable Data Mutation Utilities
 export {
   setDocumentNonBlocking,
   addDocumentNonBlocking,
   updateDocumentNonBlocking,
   deleteDocumentNonBlocking,
-} from './non-blocking-updates';
+} from './non-blocking-updates.ts';
 
 export * from './errors';
 export * from './error-emitter';

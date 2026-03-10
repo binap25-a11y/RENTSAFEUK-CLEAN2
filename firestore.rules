@@ -70,25 +70,22 @@ service cloud.firestore {
     }
 
     // --- Specialized Collection Group Rules for Discovery ---
+    // Rules are split into distinct, provable statements for high performance.
 
     match /{path=**}/tenants/{tenantId} {
-      // Allow tenant role discovery based on email.
-      // Must be statically provable for collectionGroup queries.
-      allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
+      // Allow tenant role discovery based on email (for portal detection)
+      allow list: if isSignedIn() && request.auth.token.email != null && resource.data.email == request.auth.token.email;
       
-      // Allow read access for the tenant (by email) or the owner (by UID context)
-      allow get: if isSignedIn() && (
-        resource.data.email == request.auth.token.email || 
-        resource.data.userId == request.auth.uid
-      );
+      // Allow read access for the tenant (by email verification)
+      allow get: if isSignedIn() && request.auth.token.email != null && resource.data.email == request.auth.token.email;
+      
+      // Allow access for the asset owner (via context field)
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
     }
 
     match /{path=**}/messages/{messageId} {
-      allow list: if isSignedIn() && (
-        resource.data.userId == request.auth.uid || 
-        resource.data.senderId == request.auth.uid
-      );
-      allow get: if isSignedIn() && (
+      // Access for parties involved in the secure channel
+      allow list, get: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
         resource.data.senderId == request.auth.uid
       );
@@ -96,11 +93,8 @@ service cloud.firestore {
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      allow list: if isSignedIn() && (
-        resource.data.userId == request.auth.uid || 
-        resource.data.reportedBy == request.auth.uid
-      );
-      allow get: if isSignedIn() && (
+      // Access for reporter (tenant) or owner (landlord)
+      allow list, get: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
         resource.data.reportedBy == request.auth.uid
       );

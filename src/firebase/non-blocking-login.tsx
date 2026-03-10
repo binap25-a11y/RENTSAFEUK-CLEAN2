@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * @fileOverview Proxy module to resolve resolution conflicts.
- * Logic is consolidated in the .ts version of this file.
+ * @fileOverview Explicit proxy to the stable .ts implementation.
+ * Resolves Next.js module resolution ambiguity between extensions.
  */
 
-export * from './non-blocking-login';
+export * from './non-blocking-login.ts';
