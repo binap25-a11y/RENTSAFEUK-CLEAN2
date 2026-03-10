@@ -8,16 +8,13 @@ import { Badge } from '@/components/ui/badge';
 import { 
   FileText, 
   Download, 
-  Eye, 
   Loader2, 
   ShieldCheck, 
-  Clock,
-  ExternalLink,
   Upload
 } from 'lucide-react';
-import { useUser, useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collectionGroup, query, where, limit, onSnapshot, collection } from 'firebase/firestore';
-import { format, isBefore } from 'date-fns';
+import { isBefore } from 'date-fns';
 
 interface DocumentRecord {
     id: string;
@@ -35,28 +32,33 @@ export default function TenantDocumentsPage() {
   const [isLoadingContext, setIsLoadingContext] = useState(true);
 
   useEffect(() => {
-    if (!user || !firestore) return;
+    if (!user || !firestore || !user.email) {
+      setIsLoadingContext(false);
+      return;
+    }
     
-    // Search for tenants linked to this email. Filter for 'Active' in memory.
+    const userEmail = user.email.toLowerCase().trim();
+
+    // Search for tenants linked to this email.
     const q = query(
         collectionGroup(firestore, 'tenants'), 
-        where('email', '==', user.email?.toLowerCase()),
+        where('email', '==', userEmail),
         limit(10)
     );
+
     const unsub = onSnapshot(q, (snap) => {
         const activeTenant = snap.docs.find(d => d.data().status === 'Active');
         if (activeTenant) {
             const path = activeTenant.ref.path.split('/');
+            // Path: userProfiles/{landlordId}/properties/{propertyId}/tenants/{tenantId}
             setTenantContext({ landlordId: path[1], propertyId: path[3] });
         }
         setIsLoadingContext(false);
     }, (error) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: 'tenants (collectionGroup)',
-            operation: 'list',
-        }));
+        console.warn("Tenant documents portal discovery issue:", error.message);
         setIsLoadingContext(false);
     });
+
     return () => unsub();
   }, [user, firestore]);
 
@@ -76,13 +78,34 @@ export default function TenantDocumentsPage() {
     return isBefore(date, new Date()) ? 'Expired' : 'Valid';
   };
 
-  if (isLoadingContext) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (isLoadingContext) {
+    return (
+      <div className="flex h-64 flex-col items-center justify-center gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Portal Files...</p>
+      </div>
+    );
+  }
+
+  if (!tenantContext) {
+    return (
+      <Card className="max-w-md mx-auto mt-10 shadow-lg border-none text-center">
+        <CardHeader className="bg-muted/20">
+          <CardTitle className="text-lg">Portal Access Restricted</CardTitle>
+          <CardDescription>We could not find an active tenancy associated with this account. Please contact your landlord.</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <Button variant="outline" className="w-full" asChild><Link href="/dashboard">Return to Dashboard</Link></Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <div className="space-y-8">
       <div>
         <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Compliance & Documents</h1>
-        <p className="text-muted-foreground font-medium">Access your signed agreements, gas safety certs, and EPC reports.</p>
+        <p className="text-muted-foreground font-medium">Access your signed agreements, safety certificates, and property reports.</p>
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -102,7 +125,7 @@ export default function TenantDocumentsPage() {
                             <Badge variant={getStatus(doc.expiryDate) === 'Valid' ? 'default' : 'destructive'} className="text-[9px] uppercase font-bold px-2 py-0">
                                 {getStatus(doc.expiryDate)}
                             </Badge>
-                            <FileText className="h-4 w-4 text-primary opacity-40" />
+                            <ShieldCheck className="h-4 w-4 text-primary opacity-40" />
                         </div>
                         <CardTitle className="text-base font-bold leading-tight line-clamp-2">{doc.title}</CardTitle>
                         <CardDescription className="text-[10px] uppercase font-bold tracking-widest">{doc.documentType}</CardDescription>
@@ -115,7 +138,7 @@ export default function TenantDocumentsPage() {
                                 </a>
                             </Button>
                         ) : (
-                            <Badge variant="outline" className="w-full justify-center h-10 border-dashed opacity-50">Archive Record Only</Badge>
+                            <Badge variant="outline" className="w-full justify-center h-10 border-dashed opacity-50">Record Only</Badge>
                         )}
                     </CardContent>
                 </Card>
@@ -126,10 +149,10 @@ export default function TenantDocumentsPage() {
       <Card className="bg-muted/20 border-dashed border-2">
         <CardContent className="p-10 text-center">
             <Upload className="h-10 w-10 text-primary/20 mx-auto mb-4" />
-            <h3 className="font-bold text-lg mb-2">Upload Evidence</h3>
-            <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-6">Need to send your landlord proof of payment, insurance, or a signed notice? Upload it securely to your folder.</p>
+            <h3 className="font-bold text-lg mb-2">Upload Shared Evidence</h3>
+            <p className="text-sm text-muted-foreground max-w-sm mx-auto mb-6">Need to send your landlord proof of payment or a signed notice? Use your main dashboard upload tool or contact your landlord via secure messages.</p>
             <Button variant="outline" className="font-bold h-11 px-8 border-primary/20 hover:bg-primary/5" asChild>
-                <Link href="/tenant/documents/upload">Start Secure Upload</Link>
+                <Link href="/dashboard">Go to Dashboard</Link>
             </Button>
         </CardContent>
       </Card>

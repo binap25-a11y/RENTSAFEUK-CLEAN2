@@ -25,17 +25,31 @@ service cloud.firestore {
 
         match /maintenanceLogs/{logId} {
           allow read, write: if isOwner(userProfileId);
+          // Allow assigned tenant access
+          allow read: if isSignedIn() && (
+            resource.data.reportedBy == request.auth.uid ||
+            resource.data.tenantEmail == request.auth.token.email
+          );
         }
 
         match /documents/{documentId} {
           allow read, write: if isOwner(userProfileId);
+          // Allow assigned tenant access
+          allow read: if isSignedIn() && resource.data.tenantEmail == request.auth.token.email;
         }
 
         match /tenants/{tenantId} {
           allow read, write: if isOwner(userProfileId);
+          // Allow verified resident to read their own assignment
+          allow read: if isSignedIn() && resource.data.email == request.auth.token.email;
 
           match /messages/{messageId} {
             allow read, write: if isOwner(userProfileId);
+            // Access for parties involved in the thread
+            allow read: if isSignedIn() && (
+                resource.data.senderId == request.auth.uid ||
+                resource.data.recipientEmail == request.auth.token.email
+            );
           }
           
           match /screenings/{screeningId} {
@@ -49,6 +63,7 @@ service cloud.firestore {
 
         match /rentPayments/{paymentId} {
           allow read, write: if isOwner(userProfileId);
+          allow read: if isSignedIn() && resource.data.tenantEmail == request.auth.token.email;
         }
 
         match /inspections/{inspectionId} {
@@ -65,35 +80,32 @@ service cloud.firestore {
       }
     }
 
-    // --- Specialized Collection Group Rules for Discovery ---
-    // Rule provability is critical for high-performance role discovery.
+    // --- Specialized Collection Group Rules for Discovery & Multi-Role Access ---
 
     match /{path=**}/tenants/{tenantId} {
-      // Allow tenant role discovery based on email (provable query filter)
-      // We use simple equality check to ensure query analysis passes.
-      allow list: if isSignedIn() && request.auth.token.email != null && resource.data.email == request.auth.token.email;
-      
-      // Allow read access for the verified resident
-      allow get: if isSignedIn() && request.auth.token.email != null && resource.data.email == request.auth.token.email;
-      
-      // Allow access for the asset owner (landlord)
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
+      // Unified discovery rule for both Landlords and Tenants
+      allow list, get: if isSignedIn() && (
+        (request.auth.token.email != null && resource.data.email == request.auth.token.email) ||
+        (resource.data.userId == request.auth.uid)
+      );
     }
 
     match /{path=**}/messages/{messageId} {
-      // Access for parties involved in the secure channel
+      // Identity-based access for secure messaging channels
       allow list, get: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
-        resource.data.senderId == request.auth.uid
+        resource.data.senderId == request.auth.uid ||
+        resource.data.recipientEmail == request.auth.token.email
       );
       allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
     }
 
     match /{path=**}/maintenanceLogs/{logId} {
-      // Access for reporter (tenant) or owner (landlord)
+      // Access for reporter, landlord, or property resident
       allow list, get: if isSignedIn() && (
         resource.data.userId == request.auth.uid || 
-        resource.data.reportedBy == request.auth.uid
+        resource.data.reportedBy == request.auth.uid ||
+        resource.data.tenantEmail == request.auth.token.email
       );
     }
   }

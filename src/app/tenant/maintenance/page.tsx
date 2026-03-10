@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -33,7 +32,7 @@ import {
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Wrench, Upload, X } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { collectionGroup, query, where, limit, addDoc, collection, onSnapshot } from 'firebase/firestore';
 import { uploadPropertyImage } from '@/lib/upload-image';
 import Image from 'next/image';
@@ -53,6 +52,7 @@ export default function TenantMaintenancePage() {
   const firestore = useFirestore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tenantContext, setTenantContext] = useState<any>(null);
+  const [isLoadingContext, setIsLoadingContext] = useState(true);
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
 
@@ -62,28 +62,39 @@ export default function TenantMaintenancePage() {
   });
 
   useEffect(() => {
-    if (!user || !firestore || !user.email) return;
+    if (!user || !firestore || !user.email) {
+      setIsLoadingContext(false);
+      return;
+    }
     
-    const userEmail = user.email.toLowerCase();
+    const userEmail = user.email.toLowerCase().trim();
 
-    // Search for tenants linked to this email. Filter for 'Active' in memory.
+    // Search for tenants linked to this email.
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
         limit(10)
     );
+
     const unsub = onSnapshot(q, (snap) => {
         const activeTenant = snap.docs.find(d => d.data().status === 'Active');
         if (activeTenant) {
+            const data = activeTenant.data();
             const path = activeTenant.ref.path.split('/');
-            setTenantContext({ landlordId: path[1], propertyId: path[3], tenantId: activeTenant.id });
+            // Path: userProfiles/{landlordId}/properties/{propertyId}/tenants/{tenantId}
+            setTenantContext({ 
+                landlordId: path[1], 
+                propertyId: path[3], 
+                tenantId: activeTenant.id,
+                email: data.email 
+            });
         }
+        setIsLoadingContext(false);
     }, (error) => {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-            path: 'tenants',
-            operation: 'list',
-        }));
+        console.warn("Tenant portal discovery inhibited:", error.message);
+        setIsLoadingContext(false);
     });
+
     return () => unsub();
   }, [user, firestore]);
 
@@ -96,12 +107,15 @@ export default function TenantMaintenancePage() {
 
   const removePhoto = (idx: number) => {
     setPhotoFiles(prev => prev.filter((_, i) => i !== idx));
-    URL.revokeObjectURL(photoPreviews[idx]);
+    if (photoPreviews[idx].startsWith('blob:')) URL.revokeObjectURL(photoPreviews[idx]);
     setPhotoPreviews(prev => prev.filter((_, i) => i !== idx));
   };
 
   async function onSubmit(data: MaintenanceFormValues) {
-    if (!tenantContext || !user) return;
+    if (!tenantContext || !user) {
+      toast({ variant: 'destructive', title: 'Portal Sync Error', description: 'Could not resolve your tenancy record.' });
+      return;
+    }
     setIsSubmitting(true);
 
     try {
@@ -118,6 +132,7 @@ export default function TenantMaintenancePage() {
         userId: tenantContext.landlordId,
         propertyId: tenantContext.propertyId,
         reportedBy: user.uid,
+        tenantEmail: tenantContext.email || user.email?.toLowerCase(),
         reportedDate: new Date().toISOString(),
         status: 'Open',
         photoUrls
@@ -133,7 +148,28 @@ export default function TenantMaintenancePage() {
     }
   }
 
-  if (!tenantContext) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (isLoadingContext) {
+    return (
+      <div className="flex h-64 flex-col items-center justify-center gap-4">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Portal Access...</p>
+      </div>
+    );
+  }
+
+  if (!tenantContext) {
+    return (
+      <Card className="max-w-md mx-auto mt-10 shadow-lg border-none text-center">
+        <CardHeader className="bg-muted/20">
+          <CardTitle className="text-lg">Portal Access Limited</CardTitle>
+          <CardDescription>We could not verify your active tenancy. Please contact your landlord to verify your portal email.</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-6">
+          <Button variant="outline" className="w-full" onClick={() => router.push('/dashboard')}>Return to Dashboard</Button>
+        </CardContent>
+      </Card>
+    );
+  }
 
   return (
     <Card className="max-w-2xl mx-auto shadow-xl border-none">
@@ -168,7 +204,7 @@ export default function TenantMaintenancePage() {
             </div>
 
             <FormField control={form.control} name="description" render={({ field }) => (
-              <FormItem><FormLabel className="font-bold">Describe the problem</FormLabel><FormControl><Textarea rows={4} placeholder="Please provide as much detail as possible..." className="resize-none rounded-xl" {...field} /></FormControl><FormMessage /></FormItem>
+              <FormItem><FormLabel className="font-bold">Describe the problem</FormLabel><FormControl><Textarea rows={4} placeholder="Please provide as much detail as possible for the landlord and contractor..." className="resize-none rounded-xl" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
 
             <div className="space-y-4">

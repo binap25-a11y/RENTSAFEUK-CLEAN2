@@ -50,7 +50,7 @@ const ukPhoneRegex = /^(((\+44\s?\d{4}|\(?0\d{4}\)?)\s?\d{3}\s?\d{3})|((\+44\s?\
 
 const tenantSchema = z.object({
   name: z.string().min(2, 'Name is too short'),
-  email: z.string().email('Please enter a valid email address.'),
+  email: z.string().email('Please enter a valid email address.').trim().toLowerCase(),
   telephone: z.string().regex(ukPhoneRegex, 'Please enter a valid UK phone number.'),
   propertyId: z.string({ required_error: 'Please select a property.' }).min(1, 'Please select a property.'),
   monthlyRent: z.coerce.number().min(0, 'Rent cannot be negative').optional(),
@@ -173,7 +173,6 @@ export default function AddTenantPage() {
     const tenantsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', data.propertyId, 'tenants');
     const newTenant = {
         ...data,
-        email: data.email.toLowerCase(),
         userId: user.uid,
         status: 'Active',
         createdDate: new Date().toISOString(),
