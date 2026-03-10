@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -89,7 +88,7 @@ interface Property {
  */
 const prepareForFirestore = (obj: any): any => {
     return JSON.parse(JSON.stringify(obj, (key, value) => {
-        if (value === undefined) return null;
+        if (value === undefined) return undefined;
         return value;
     }));
 };
@@ -205,7 +204,7 @@ export default function AddTenantPage() {
               title: 'Tenant Assigned',
               description: `${data.name} has been assigned and property status updated to Occupied.`,
             });
-            router.push(`/dashboard/properties/${data.propertyId}`);
+            router.push('/dashboard');
           })
           .catch(async (serverError) => {
             const permissionError = new FirestorePermissionError({

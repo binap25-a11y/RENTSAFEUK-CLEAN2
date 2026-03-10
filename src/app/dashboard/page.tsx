@@ -242,8 +242,8 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  const isLikelyPureTenant = !isLoadingProps && properties.length === 0;
-  const pageTitle = isLikelyPureTenant ? "Tenant Dashboard" : "Landlord Dashboard";
+  const isPureTenant = !isLoadingProps && properties.length === 0;
+  const pageTitle = isPureTenant ? "Tenant Dashboard" : "Landlord Dashboard";
 
   if (isUserLoading || (isLoadingProps && isLoadingPortalCheck)) {
     return (
@@ -262,7 +262,7 @@ export default function DashboardPage() {
             {pageTitle}
           </h1>
           <p className="text-muted-foreground font-medium text-lg">
-            {isLikelyPureTenant 
+            {isPureTenant 
               ? `Welcome home, ${user?.displayName?.split(' ')[0] || 'Tenant'}. Verifying your active tenancy portal...` 
               : "Overview of your rental portfolio and active management tasks."}
           </p>
@@ -295,7 +295,7 @@ export default function DashboardPage() {
         )}
       </div>
 
-      {(isTenant || isIndexBuilding) && isLikelyPureTenant && (
+      {(isTenant || isIndexBuilding) && isPureTenant && (
         <Card className="border-primary/20 bg-primary/[0.02] border-dashed shadow-sm overflow-hidden relative group transition-all hover:bg-primary/[0.04] text-left">
           <div className="absolute top-0 right-0 p-4 opacity-5 group-hover:opacity-10 transition-opacity">
             <Sparkles className="h-16 w-16 text-primary" />
@@ -304,11 +304,11 @@ export default function DashboardPage() {
             <div className="space-y-2 text-center sm:text-left relative z-10">
               <div className="flex items-center justify-center sm:justify-start gap-2 text-primary font-bold">
                 {isIndexBuilding ? <RefreshCw className="h-4 w-4 animate-spin" /> : <ShieldCheck className="h-4 w-4" />}
-                {isIndexBuilding ? "Establishing Secure Identity Link" : "Active Tenancy Identity Verified"}
+                {isIndexBuilding ? "Setting Up Your Tenancy" : "Active Tenancy Identity Verified"}
               </div>
               <p className="text-sm text-muted-foreground font-medium max-lg leading-relaxed">
                 {isIndexBuilding 
-                  ? "We are currently mapping your tenant records across the cloud. This one-time synchronization ensures your private data is accurately indexed for the portal." 
+                  ? "Our cloud system is synchronizing your tenant records for the first time. This high-speed indexing ensures your data remains private and secure. Live Sync Active." 
                   : "Your account is successfully linked to an active tenancy. You can now securely manage repairs, access safety certificates, and message your landlord."}
               </p>
             </div>
@@ -325,7 +325,7 @@ export default function DashboardPage() {
         </Card>
       )}
 
-      {!isLikelyPureTenant ? (
+      {!isPureTenant ? (
         <div className="grid gap-6">
           <PropertiesPanel 
             properties={filteredProperties} 

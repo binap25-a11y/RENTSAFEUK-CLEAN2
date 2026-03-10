@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -154,9 +153,9 @@ export default function TenantDashboard() {
                 <div className="absolute inset-0 bg-primary/5 blur-3xl rounded-full scale-150" />
             </div>
             <div className="space-y-3 px-4">
-                <h2 className="font-headline text-2xl font-bold text-primary">Tenancy Verification</h2>
+                <h2 className="font-headline text-2xl font-bold text-primary">Setting Up Your Tenancy</h2>
                 <p className="text-muted-foreground font-medium leading-relaxed">
-                    Our secure system is currently synchronizing your tenant records across the cloud. This one-time setup ensures your data remains private and protected.
+                    Our cloud system is synchronizing your tenant records for the first time. This high-speed indexing ensures your data remains private and secure. Live Sync Active.
                 </p>
             </div>
             <div className="flex flex-col items-center gap-4">

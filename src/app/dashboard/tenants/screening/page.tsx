@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -120,11 +119,11 @@ interface Tenant {
 
 /**
  * Robust data sanitization utility to prevent Firestore "undefined field" errors.
- * Recursively removes any keys with undefined values.
+ * Recursively removes any keys with undefined values by using JSON.stringify replacer.
  */
 const prepareForFirestore = (obj: any): any => {
     return JSON.parse(JSON.stringify(obj, (key, value) => {
-        if (value === undefined) return null;
+        if (value === undefined) return undefined;
         return value;
     }));
 };
