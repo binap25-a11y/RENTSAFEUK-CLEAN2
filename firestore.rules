@@ -14,8 +14,7 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // --- TOP-LEVEL DISCOVERY RULES (OPTIMIZED FOR INSTANT HANDSHAKE) ---
-    // These rules are placed at the root to ensure high-performance role resolution.
+    // --- TOP-LEVEL DISCOVERY RULES (CRITICAL FOR HANDSHAKE PERFORMANCE) ---
     
     match /{path=**}/tenants/{tenantId} {
       // Direct email matching for resident identity verification.

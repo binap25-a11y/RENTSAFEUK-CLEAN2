@@ -1,6 +1,6 @@
 'use client';
-
-/**
- * @fileOverview Shadow module cleared to prevent Webpack resolution conflicts with .ts logic module.
+/** 
+ * @fileOverview This module has been deprecated in favor of auth-utilities.ts 
+ * to resolve resolution conflicts.
  */
 export {};

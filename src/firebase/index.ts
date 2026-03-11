@@ -37,21 +37,9 @@ export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 
-// Explicit re-exports from .ts logic modules to ensure consistent Webpack resolution
-export { 
-  signInNonBlocking, 
-  createUserNonBlocking, 
-  initiateAnonymousSignIn,
-  initiateEmailSignUp,
-  initiateEmailSignIn 
-} from './non-blocking-login';
-
-export {
-  setDocumentNonBlocking,
-  addDocumentNonBlocking,
-  updateDocumentNonBlocking,
-  deleteDocumentNonBlocking
-} from './non-blocking-updates';
+// Consolidated Utilities
+export * from './auth-utilities';
+export * from './firestore-utilities';
 
 export * from './errors';
 export * from './error-emitter';
