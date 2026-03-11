@@ -90,10 +90,7 @@ export default function DashboardPage() {
       setProperties(list);
       
       // Landlords/Agents bypass verification instantly if they have properties
-      if ((userRole === 'landlord' || userRole === 'agent') && list.length > 0) {
-        setDiscoveryComplete(true);
-      } else if (userRole === 'landlord' || userRole === 'agent') {
-        // New Landlord with no properties yet
+      if ((userRole === 'landlord' || userRole === 'agent')) {
         setDiscoveryComplete(true);
       }
     });
@@ -161,7 +158,7 @@ export default function DashboardPage() {
             </div>
             <div className="space-y-3">
                 <h2 className="font-headline text-2xl font-bold text-primary">Cloud Synchronization</h2>
-                <p className="text-muted-foreground font-medium text-sm leading-relaxed">
+                <p className="text-muted-foreground font-medium text-sm leading-relaxed text-center">
                     The platform is building secure indexes for your resident identity. This usually takes 2-3 minutes on first setup.
                 </p>
             </div>
@@ -181,7 +178,7 @@ export default function DashboardPage() {
             </div>
             <div className="space-y-3">
                 <h2 className="font-headline text-2xl font-bold text-primary">Resident Onboarding</h2>
-                <p className="text-muted-foreground font-medium text-sm leading-relaxed">
+                <p className="text-muted-foreground font-medium text-sm leading-relaxed text-center">
                     You've registered as a Resident. The system is waiting for your Landlord to assign your email ({user?.email}) to a property record.
                 </p>
             </div>
