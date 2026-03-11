@@ -14,11 +14,11 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // --- COLLECTION GROUP RULES (TOP-LEVEL FOR INSTANT AUTHORIZATION) ---
-    // Moved to absolute top level to ensure query provability for discovery queries.
-    // Normalized comparison against auth token email provides zero-latency handshake.
+    // --- TOP-LEVEL STATICALLY PROVABLE RULES (OPTIMIZED FOR DISCOVERY) ---
+    // Moved to the top to ensure high-performance collectionGroup authorization.
     
     match /{path=**}/tenants/{tenantId} {
+      // Instant email verification for resident discovery
       allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
       
       allow get: if isSignedIn() && (

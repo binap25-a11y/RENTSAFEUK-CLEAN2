@@ -17,8 +17,7 @@ import {
   Bed, 
   Bath, 
   Sparkles,
-  RefreshCw,
-  ArrowRight
+  RefreshCw
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -60,7 +59,7 @@ export default function DashboardPage() {
   const [isLandlord, setIsLandlord] = useState<boolean | null>(null);
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
 
-  // 2. Parallel Identity Discovery Effect
+  // Identity Discovery Effect
   useEffect(() => {
     if (isUserLoading || !user || !firestore) return;
     
@@ -114,14 +113,14 @@ export default function DashboardPage() {
     };
   }, [user, isUserLoading, firestore]);
 
-  // 3. Routing Effect for Verified Residents
+  // Routing Effect for Verified Residents
   useEffect(() => {
     if (isTenant === true) {
         router.replace('/tenant/dashboard');
     }
   }, [isTenant, router]);
 
-  // 4. Filtering Logic (memoized for performance)
+  // Filtering Logic
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;
     const term = searchTerm.toLowerCase();
@@ -130,7 +129,7 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // --- RENDER BRANCHING (Always after all hooks) ---
+  // --- RENDER BRANCHING ---
 
   if (isUserLoading) {
     return (
@@ -151,7 +150,7 @@ export default function DashboardPage() {
       );
   }
 
-  // Synchronization phase for new accounts
+  // Synchronization phase
   if (isIndexBuilding && !isLandlord) {
       return (
         <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in duration-700 px-6">
@@ -173,7 +172,7 @@ export default function DashboardPage() {
       );
   }
 
-  // Active Portfolio Detected: Show Landlord Dashboard immediately
+  // Active Portfolio Detected: Show Landlord Dashboard
   if (isLandlord === true) {
       return (
         <div className="space-y-8 animate-in fade-in duration-500 text-left">
@@ -197,7 +196,7 @@ export default function DashboardPage() {
       );
   }
 
-  // Resolved Fallback: Completely empty new accounts
+  // Fallback for new empty accounts
   if (isLandlord === false && isTenant === false) {
       return (
         <div className="text-center py-20 animate-in fade-in">
@@ -215,7 +214,6 @@ export default function DashboardPage() {
       );
   }
 
-  // Default Loader
   return (
     <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary opacity-20" />
