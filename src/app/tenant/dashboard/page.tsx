@@ -52,7 +52,7 @@ export default function TenantDashboard() {
     const userEmail = user.email.toLowerCase().trim();
 
     // Secure Handshake: Match normalized email in global tenant registry
-    // Security Optimization: forced limit and specific email match for index-provable handshake
+    // Security Optimization: Simplified query to match optimized top-level rules
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
