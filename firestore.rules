@@ -21,7 +21,7 @@ service cloud.firestore {
     match /{path=**}/tenants/{tenantId} {
       /**
        * @description Authorized global identity handshake.
-       * Note: 'email' in DB must be stored lowercase.
+       * Uses direct token matching for instant query authorization.
        */
       allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
       allow get: if isSignedIn() && (
