@@ -234,6 +234,15 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore, router, isLandlord, properties.length]);
 
+  // All hooks must be called before conditional returns.
+  const filteredProperties = useMemo(() => {
+    if (!searchTerm) return properties;
+    const term = searchTerm.toLowerCase();
+    return properties.filter(p => 
+      Object.values(p.address).some(val => typeof val === 'string' && val.toLowerCase().includes(term))
+    );
+  }, [properties, searchTerm]);
+
   /**
    * GLOBAL LOADING STATE:
    * Block until either role is confirmed or we know they have no properties and no tenancy.
@@ -294,14 +303,6 @@ export default function DashboardPage() {
         </div>
       );
   }
-
-  const filteredProperties = useMemo(() => {
-    if (!searchTerm) return properties;
-    const term = searchTerm.toLowerCase();
-    return properties.filter(p => 
-      Object.values(p.address).some(val => typeof val === 'string' && val.toLowerCase().includes(term))
-    );
-  }, [properties, searchTerm]);
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 text-left">
