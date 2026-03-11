@@ -60,14 +60,12 @@ export default function DashboardPage() {
     const userProfileRef = doc(firestore, 'userProfiles', user.uid);
     const unsubProfile = onSnapshot(userProfileRef, (snap) => {
       const data = snap.data();
-      const role = data?.role || 'landlord'; // Default to landlord for legacy accounts
+      const role = data?.role || 'landlord';
       setUserRole(role);
       setIsLoadingProfile(false);
-
-      if (role === 'tenant') {
-        // If they are explicitly a tenant, we route them to discovery
-        // but we don't block the screen yet if they are already on /dashboard
-      }
+    }, (err) => {
+      console.error("Profile sync failed:", err);
+      setIsLoadingProfile(false);
     });
 
     return () => unsubProfile();
@@ -89,12 +87,13 @@ export default function DashboardPage() {
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Property));
       setProperties(list);
       
+      // Landlords bypass verification immediately if they have properties
       if (userRole === 'landlord' || userRole === 'agent') {
         setDiscoveryComplete(true);
       }
     });
 
-    // B. Tenant Global Discovery (Only if role is tenant or unknown)
+    // B. Tenant Global Discovery
     let unsubTenants = () => {};
     if (userEmail && (userRole === 'tenant')) {
         const tenantsQuery = query(
@@ -105,11 +104,14 @@ export default function DashboardPage() {
 
         unsubTenants = onSnapshot(tenantsQuery, (snap) => {
             if (!snap.empty) {
+                // Verified tenant found - move to hub
                 router.replace('/tenant/dashboard');
             } else {
-                // If role is tenant but no record found yet
                 setDiscoveryComplete(true);
             }
+        }, (err) => {
+            console.warn("Tenant discovery query pending or building:", err.message);
+            setDiscoveryComplete(true); // Allow fallthrough to onboarding/interstitial
         });
     }
 
@@ -118,14 +120,6 @@ export default function DashboardPage() {
         unsubTenants();
     };
   }, [user, userRole, isLoadingProfile, firestore, router]);
-
-  // 3. Auto-Redirect based on role
-  useEffect(() => {
-    if (userRole === 'tenant' && discoveryComplete) {
-        // Tenants should stay on verification until a match is found
-        // or stay on the interstitial. 
-    }
-  }, [userRole, discoveryComplete]);
 
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;
@@ -161,10 +155,11 @@ export default function DashboardPage() {
                     You've registered as a Resident. The system is waiting for your Landlord or Agent to assign your email ({user?.email}) to a property.
                 </p>
             </div>
-            <div className="pt-4 p-4 rounded-xl bg-muted/50 border border-dashed text-xs text-muted-foreground">
-                Once assigned, your Resident Hub will activate automatically.
+            <div className="pt-4 p-4 rounded-xl bg-muted/50 border border-dashed text-xs text-muted-foreground text-left">
+                <p className="font-bold uppercase text-[9px] mb-1">Status: Verification Pending</p>
+                Once your landlord registers your tenancy, your Resident Hub will activate automatically.
             </div>
-            <Button variant="outline" className="w-full h-11 font-bold uppercase text-[10px] tracking-widest" onClick={() => router.push('/dashboard')}>
+            <Button variant="outline" className="w-full h-11 font-bold uppercase text-[10px] tracking-widest" onClick={() => router.refresh()}>
                 <Sparkles className="mr-2 h-3.5 w-3.5" /> Refresh Connection
             </Button>
         </div>
