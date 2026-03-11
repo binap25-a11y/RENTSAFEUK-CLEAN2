@@ -9,6 +9,7 @@ import {
 
 /**
  * @fileOverview Core authentication utilities implemented as non-blocking functions.
+ * Merged into a single stable .ts file to prevent module resolution conflicts.
  */
 
 /**
@@ -49,6 +50,5 @@ export function signInNonBlocking(
   });
 }
 
-// Aliases for broad compatibility across the application
 export const initiateEmailSignUp = createUserNonBlocking;
 export const initiateEmailSignIn = signInNonBlocking;

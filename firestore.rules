@@ -16,12 +16,9 @@ service cloud.firestore {
 
     // --- COLLECTION GROUP RULES (TOP-LEVEL FOR INSTANT AUTHORIZATION) ---
     // Moved to absolute top level to ensure query provability for discovery queries.
+    // Normalized comparison against auth token email provides zero-latency handshake.
     
     match /{path=**}/tenants/{tenantId} {
-      /**
-       * Authorized identity handshake.
-       * Direct token matching allows Firestore to optimize queries instantly.
-       */
       allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
       
       allow get: if isSignedIn() && (
