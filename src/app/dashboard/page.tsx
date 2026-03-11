@@ -19,7 +19,8 @@ import {
   Sparkles,
   RefreshCw,
   ShieldCheck,
-  AlertCircle
+  AlertCircle,
+  ChevronRight
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -28,7 +29,7 @@ import { Input } from '@/components/ui/input';
 
 /**
  * @fileOverview Optimized Dashboard with Resilient Role Discovery.
- * Fixes "Identity Mapping" hang and ensures strict compliance with Rules of Hooks.
+ * Resolves "Identity Mapping" hang by providing a parallel discovery handshake and landlord escape hatch.
  */
 
 interface Property {
@@ -52,7 +53,7 @@ export default function DashboardPage() {
   const firestore = useFirestore();
   const router = useRouter();
   
-  // HOOK STACK: Ensure absolute top-level declaration for stability
+  // HOOK STACK: Absolute top-level declaration for stability
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [properties, setProperties] = useState<Property[]>([]);
@@ -81,6 +82,7 @@ export default function DashboardPage() {
       setProperties(list);
       setIsLoadingProps(false);
       setIsLandlord(snap.size > 0);
+      // If we found properties, we are a landlord, no need to wait for tenant mapping
       if (snap.size > 0) setDiscoveryStatus('standby');
     }, (error) => {
       console.warn("Landlord discovery issue:", error.message);
@@ -88,7 +90,7 @@ export default function DashboardPage() {
       setIsLandlord(false);
     });
 
-    // TENANT PATH: Global email handshake via high-performance collectionGroup
+    // TENANT PATH: Global email handshake via collectionGroup
     let unsubTenants = () => {};
     if (userEmail) {
         const tenantsQuery = query(
@@ -119,10 +121,10 @@ export default function DashboardPage() {
         setIsTenant(false);
     }
 
-    // Safety timeout: If mapping takes more than 4 seconds, allow landlord escape
+    // Safety timeout: If mapping takes more than 5 seconds, allow landlord escape
     const timer = setTimeout(() => {
         setHasTimedOut(true);
-    }, 4000);
+    }, 5000);
 
     return () => {
         unsubProps();
@@ -172,7 +174,7 @@ export default function DashboardPage() {
       );
   }
 
-  // Identity Handshake screen: Only shown if potentially a tenant and index is still building or query is pending
+  // Identity Mapping screen: Only shown if potentially a tenant and query is pending or index building
   if (!isLoadingProps && isLandlord === false && isTenant === null) {
       return (
         <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6 animate-in fade-in duration-700">
@@ -195,10 +197,14 @@ export default function DashboardPage() {
                 <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-sm" onClick={() => window.location.reload()}>
                     <RefreshCw className="mr-2 h-3.5 w-3.5" /> Check Identity Status
                 </Button>
-                {/* Escape hatch for landlords with 0 properties or when index is building or timed out */}
-                {(isIndexBuilding || hasTimedOut) && (
-                    <Button variant="ghost" className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors" onClick={() => setIsTenant(false)}>
-                        I am a landlord / Continue to Portfolio Manager
+                {/* Always show the Landlord escape hatch if the system is hanging or indexing */}
+                {(isIndexBuilding || hasTimedOut || isLandlord === false) && (
+                    <Button 
+                        variant="secondary" 
+                        className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full bg-muted/50 hover:bg-muted" 
+                        onClick={() => setIsTenant(false)}
+                    >
+                        I am a landlord / Continue to Portfolio <ChevronRight className="ml-1 h-3 w-3" />
                     </Button>
                 )}
             </div>

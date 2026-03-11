@@ -9,7 +9,7 @@ import {
 
 /**
  * @fileOverview Consolidated Authentication Utilities.
- * Resolves module resolution conflicts by using a single stable source.
+ * Identical mirror of .tsx to resolve module shadowing conflicts.
  */
 
 export function initiateAnonymousSignIn(auth: Auth): void {
