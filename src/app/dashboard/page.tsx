@@ -45,7 +45,7 @@ export default function DashboardPage() {
   const firestore = useFirestore();
   const router = useRouter();
   
-  // 1. Declare ALL hooks at top level
+  // 1. Declare ALL hooks at top level to ensure stable hook stack
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [properties, setProperties] = useState<Property[]>([]);
@@ -60,7 +60,7 @@ export default function DashboardPage() {
     
     const userEmail = user.email?.toLowerCase().trim();
 
-    // Landlord Check
+    // Landlord Check: Subcollection of current user
     const propQuery = query(
       collection(firestore, 'userProfiles', user.uid, 'properties'), 
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
@@ -70,13 +70,19 @@ export default function DashboardPage() {
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Property));
       setProperties(list);
       setIsLoadingProps(false);
-      setIsLandlord(snap.size > 0);
+      
+      if (snap.size > 0) {
+        setIsLandlord(true);
+        setDiscoveryComplete(true); // Landlord resolved, we can stop verification screen
+      } else {
+        setIsLandlord(false);
+      }
     }, () => {
       setIsLoadingProps(false);
       setIsLandlord(false);
     });
 
-    // Tenant Check
+    // Tenant Check: Global collection group search by email
     let unsubTenants = () => {};
     if (userEmail) {
         const tenantsQuery = query(
@@ -88,24 +94,27 @@ export default function DashboardPage() {
         unsubTenants = onSnapshot(tenantsQuery, (snap) => {
             if (!snap.empty) {
                 setIsTenant(true);
+                setDiscoveryComplete(true);
             } else {
                 setIsTenant(false);
+                // If landlord check also finished and was false, we are done
+                if (isLandlord === false) setDiscoveryComplete(true);
             }
-            setDiscoveryComplete(true);
-        }, () => {
+        }, (err) => {
+            console.warn("Tenant discovery query suppressed or failed:", err.message);
             setIsTenant(false);
-            setDiscoveryComplete(true);
+            if (isLandlord === false) setDiscoveryComplete(true);
         });
     } else {
         setIsTenant(false);
-        setDiscoveryComplete(true);
+        if (isLandlord === false) setDiscoveryComplete(true);
     }
 
     return () => {
         unsubProps();
         unsubTenants();
     };
-  }, [user, isUserLoading, firestore]);
+  }, [user, isUserLoading, firestore, isLandlord]);
 
   // 3. Routing Effect for Tenants
   useEffect(() => {
@@ -114,12 +123,12 @@ export default function DashboardPage() {
     }
   }, [isTenant, router]);
 
-  // 4. Discovery Safety Timeout
+  // 4. Discovery Safety Timeout - Never block access for more than 4 seconds
   useEffect(() => {
     if (!discoveryComplete && user && !isUserLoading) {
         const timer = setTimeout(() => {
             setDiscoveryComplete(true);
-        }, 6000);
+        }, 4000);
         return () => clearTimeout(timer);
     }
   }, [discoveryComplete, user, isUserLoading]);
@@ -136,17 +145,17 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // 5. Loading State
-  if (isUserLoading) {
+  // 5. Render Loading State
+  if (isUserLoading || (isLoadingProps && !discoveryComplete)) {
     return (
-      <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4">
+      <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Session...</p>
       </div>
     );
   }
 
-  // 6. Verification Handshake (Only if NOT already identified as a Landlord)
+  // 6. Interstitial Verification Screen (Only if discovery is still in progress)
   if (!discoveryComplete && isLandlord !== true) {
     return (
         <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6 animate-in fade-in duration-700">
@@ -168,7 +177,7 @@ export default function DashboardPage() {
     );
   }
 
-  // 7. Landlord Dashboard
+  // 7. Landlord View: Empty Portfolio State
   if (properties.length === 0 && !isLoadingProps) {
       return (
           <div className="text-center py-20 animate-in fade-in duration-500">
@@ -186,6 +195,7 @@ export default function DashboardPage() {
       );
   }
 
+  // 8. Landlord View: Active Portfolio
   return (
       <div className="space-y-8 animate-in fade-in duration-500">
         <div className="space-y-1">

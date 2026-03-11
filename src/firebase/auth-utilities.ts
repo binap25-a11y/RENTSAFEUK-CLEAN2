@@ -9,7 +9,7 @@ import {
 
 /**
  * @fileOverview Standardized Authentication Utilities.
- * Uses non-blocking patterns to allow the UI to respond to state changes via the auth observer.
+ * Consolidates all login and signup logic to prevent module resolution conflicts.
  */
 
 export function signInNonBlocking(
