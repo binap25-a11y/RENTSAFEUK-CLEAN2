@@ -46,7 +46,7 @@ export default function DashboardPage() {
   const firestore = useFirestore();
   const router = useRouter();
   
-  // ALL HOOKS AT TOP LEVEL
+  // 1. Declare ALL hooks at top level to prevent "Rules of Hooks" violations
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [properties, setProperties] = useState<Property[]>([]);
@@ -55,13 +55,13 @@ export default function DashboardPage() {
   const [isLandlord, setIsLandlord] = useState<boolean | null>(null);
   const [discoveryComplete, setDiscoveryComplete] = useState(false);
 
-  // Parallel Discovery Handshake
+  // 2. Parallel Discovery Handshake
   useEffect(() => {
     if (isUserLoading || !user || !firestore) return;
     
     const userEmail = user.email?.toLowerCase().trim();
 
-    // 1. Immediate Landlord Scan
+    // Scan for properties where user is the landlord
     const propQuery = query(
       collection(firestore, 'userProfiles', user.uid, 'properties'), 
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
@@ -73,12 +73,12 @@ export default function DashboardPage() {
       setIsLoadingProps(false);
       setIsLandlord(snap.size > 0);
     }, (error) => {
-      console.warn("Landlord check completed:", error.message);
+      console.warn("Landlord check completed with zero results:", error.message);
       setIsLoadingProps(false);
       setIsLandlord(false);
     });
 
-    // 2. Immediate Tenant Discovery
+    // Discovery query for Tenants
     let unsubTenants = () => {};
     if (userEmail) {
         const tenantsQuery = query(
@@ -95,7 +95,7 @@ export default function DashboardPage() {
             }
             setDiscoveryComplete(true);
         }, (error) => {
-            console.warn("Tenant check error:", error.message);
+            console.warn("Tenant discovery error:", error.message);
             setIsTenant(false);
             setDiscoveryComplete(true);
         });
@@ -110,19 +110,19 @@ export default function DashboardPage() {
     };
   }, [user, isUserLoading, firestore]);
 
-  // Resilient Routing for Tenants
+  // 3. Routing Effect for Tenants
   useEffect(() => {
     if (isTenant === true) {
         router.replace('/tenant/dashboard');
     }
   }, [isTenant, router]);
 
-  // Discovery Safety Timeout
+  // 4. Discovery Safety Timeout
   useEffect(() => {
     if (!discoveryComplete && user && !isUserLoading) {
         const timer = setTimeout(() => {
             setDiscoveryComplete(true);
-        }, 5000);
+        }, 6000);
         return () => clearTimeout(timer);
     }
   }, [discoveryComplete, user, isUserLoading]);
@@ -139,20 +139,60 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // UI STATES
+  // 5. Loading State Rendering
   if (isUserLoading) {
     return (
-      <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
+      <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Portfolio...</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Session...</p>
       </div>
     );
   }
 
-  // If we've identified as a landlord (have properties), show the dash immediately
-  if (isLandlord === true) {
+  // 6. Verification Handshake (Interstitial)
+  if (!discoveryComplete) {
     return (
-        <div className="space-y-8 animate-in fade-in duration-500 text-left">
+        <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6 animate-in fade-in duration-700">
+            <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto border shadow-inner">
+                <Sparkles className="h-12 w-12 text-primary animate-pulse" />
+            </div>
+            <div className="space-y-3">
+                <h2 className="font-headline text-2xl font-bold text-primary">Resident Verification</h2>
+                <p className="text-muted-foreground font-medium text-sm leading-relaxed">
+                    The platform is currently verifying your resident credentials. Access will be granted automatically once the cloud database synchronizes your records.
+                </p>
+            </div>
+            <div className="pt-4 space-y-3">
+                <Button variant="outline" className="w-full h-11 font-bold uppercase text-[10px] tracking-widest" onClick={() => setDiscoveryComplete(true)}>
+                    Continue to Portfolio Manager <ChevronRight className="ml-1 h-3 w-3" />
+                </Button>
+                <p className="text-[10px] text-muted-foreground italic text-center">New landlords: Choose this option to onboard your first asset.</p>
+            </div>
+        </div>
+    );
+  }
+
+  // 7. Landlord Dashboard (if Landlord or Discovery timed out)
+  if (isLandlord === true || discoveryComplete) {
+    if (properties.length === 0 && !isLoadingProps) {
+        return (
+            <div className="text-center py-20 animate-in fade-in duration-500">
+                <div className="max-w-md mx-auto space-y-6 px-6">
+                    <div className="bg-muted p-6 rounded-full w-fit mx-auto shadow-inner">
+                        <Home className="h-12 w-12 text-muted-foreground/40" />
+                    </div>
+                    <h2 className="text-2xl font-bold font-headline">Your Portfolio is Empty</h2>
+                    <p className="text-muted-foreground font-medium">Onboard your first rental property to begin managing your estate and tracking compliance.</p>
+                    <Button asChild size="lg" className="px-10 font-bold shadow-lg h-12 w-full mt-4">
+                        <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Onboard First Asset</Link>
+                    </Button>
+                </div>
+            </div>
+        );
+    }
+
+    return (
+        <div className="space-y-8 animate-in fade-in duration-500">
           <div className="space-y-1">
             <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Portfolio Manager</h1>
             <p className="text-muted-foreground font-medium text-lg">Central control for your rental estate.</p>
@@ -192,14 +232,14 @@ export default function DashboardPage() {
                           <img src={p.imageUrl} alt="Property" className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" />
                         ) : <div className="flex items-center justify-center w-full h-full bg-primary/5"><Home className="h-12 w-12 text-primary/10" /></div>}
                       </div>
-                      <CardHeader className="pb-3 px-4">
+                      <CardHeader className="pb-3 px-4 text-left">
                         <CardTitle className="text-base font-bold truncate">{[p.address.nameOrNumber, p.address.street].filter(Boolean).join(', ')}</CardTitle>
                         <CardDescription className="truncate text-xs">{p.address.city}, {p.address.postcode}</CardDescription>
                       </CardHeader>
                       <CardFooter className="flex justify-between items-center pt-4 px-4 border-t bg-muted/5">
                         <div className="flex items-center gap-3 text-[10px] font-bold text-muted-foreground uppercase">
-                          <span className="flex items-center gap-1"><Bed className="h-3 w-3" /> {p.bedrooms}</span>
-                          <span className="flex items-center gap-1"><Bath className="h-3 w-3" /> {p.bathrooms}</span>
+                          <span className="flex items-center gap-1"><Bed className="h-3.5 w-3.5" /> {p.bedrooms}</span>
+                          <span className="flex items-center gap-1"><Bath className="h-3.5 w-3.5" /> {p.bathrooms}</span>
                         </div>
                         <Badge variant={p.status === 'Occupied' ? 'default' : 'secondary'} className="text-[9px] uppercase h-5 font-bold">{p.status}</Badge>
                       </CardFooter>
@@ -211,21 +251,21 @@ export default function DashboardPage() {
                   <Table>
                     <TableHeader className="bg-muted/50">
                       <TableRow>
-                        <TableHead className="font-bold text-[10px] uppercase pl-6">Address</TableHead>
-                        <TableHead className="font-bold text-[10px] uppercase">Type</TableHead>
-                        <TableHead className="font-bold text-[10px] uppercase">Status</TableHead>
+                        <TableHead className="font-bold text-[10px] uppercase pl-6 text-left">Address</TableHead>
+                        <TableHead className="font-bold text-[10px] uppercase text-left">Type</TableHead>
+                        <TableHead className="font-bold text-[10px] uppercase text-left">Status</TableHead>
                         <TableHead className="text-right font-bold text-[10px] uppercase pr-6">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
                       {filteredProperties.map(p => (
                         <TableRow key={p.id} className="cursor-pointer hover:bg-muted/30" onClick={() => router.push(`/dashboard/properties/${p.id}`)}>
-                          <TableCell className="font-bold text-sm pl-6 py-4">
+                          <TableCell className="font-bold text-sm pl-6 py-4 text-left">
                             {[p.address.nameOrNumber, p.address.street].filter(Boolean).join(', ')}
                             <div className="text-[11px] text-muted-foreground font-medium">{p.address.city}, {p.address.postcode}</div>
                           </TableCell>
-                          <TableCell className="text-[10px] uppercase font-bold text-muted-foreground">{p.propertyType}</TableCell>
-                          <TableCell><Badge variant={p.status === 'Occupied' ? 'default' : 'secondary'} className="text-[9px] uppercase font-bold">{p.status}</Badge></TableCell>
+                          <TableCell className="text-[10px] uppercase font-bold text-muted-foreground text-left">{p.propertyType}</TableCell>
+                          <TableCell className="text-left"><Badge variant={p.status === 'Occupied' ? 'default' : 'secondary'} className="text-[9px] uppercase font-bold">{p.status}</Badge></TableCell>
                           <TableCell className="text-right pr-6">
                             <Button variant="ghost" size="icon" className="h-8 w-8 text-primary"><Eye className="h-4 w-4" /></Button>
                           </TableCell>
@@ -241,42 +281,5 @@ export default function DashboardPage() {
       );
   }
 
-  // If we are still checking roles and don't have properties
-  if (isLandlord === null && isTenant === null && !discoveryComplete) {
-    return (
-        <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6 animate-in fade-in duration-700">
-            <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto border shadow-inner">
-                <Sparkles className="h-12 w-12 text-primary animate-pulse" />
-            </div>
-            <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Resident Verification</h2>
-                <p className="text-muted-foreground font-medium text-sm leading-relaxed">
-                    The platform is currently verifying your resident credentials. Access will be granted automatically once the cloud database synchronizes your records.
-                </p>
-            </div>
-            <div className="pt-4 space-y-3">
-                <Button variant="outline" className="w-full h-11 font-bold uppercase text-[10px] tracking-widest" onClick={() => setDiscoveryComplete(true)}>
-                    Continue to Portfolio Manager <ChevronRight className="ml-1 h-3 w-3" />
-                </Button>
-                <p className="text-[10px] text-muted-foreground italic text-center">New landlords: Choose this option to onboard your first asset.</p>
-            </div>
-        </div>
-    );
-  }
-
-  // Final fallback: Portfolio Empty State (for verified non-tenants)
-  return (
-    <div className="text-center py-20 animate-in fade-in duration-500">
-        <div className="max-w-md mx-auto space-y-6 px-6 text-left">
-            <div className="bg-muted p-6 rounded-full w-fit mx-auto shadow-inner">
-                <Home className="h-12 w-12 text-muted-foreground/40" />
-            </div>
-            <h2 className="text-2xl font-bold font-headline text-center">Your Portfolio is Empty</h2>
-            <p className="text-muted-foreground font-medium text-center">Onboard your first rental property to begin managing your estate and tracking compliance.</p>
-            <Button asChild size="lg" className="px-10 font-bold shadow-lg h-12 w-full mt-4">
-                <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Onboard First Asset</Link>
-            </Button>
-        </div>
-    </div>
-  );
+  return null;
 }

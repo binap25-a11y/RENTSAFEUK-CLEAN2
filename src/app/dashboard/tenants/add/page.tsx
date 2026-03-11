@@ -37,10 +37,8 @@ import {
   useFirestore,
   useCollection,
   useMemoFirebase,
-  errorEmitter,
-  FirestorePermissionError,
 } from '@/firebase';
-import { collection, query, where, doc, updateDoc, addDoc, limit } from 'firebase/firestore';
+import { collection, query, doc, updateDoc, addDoc, limit } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -58,14 +56,6 @@ const tenantSchema = z.object({
   tenancyStartDate: z.coerce.date({ required_error: 'Please select a start date.' }),
   tenancyEndDate: z.coerce.date().optional(),
   notes: z.string().optional(),
-}).refine(data => {
-  if (data.tenancyEndDate && data.tenancyStartDate) {
-    return data.tenancyEndDate >= data.tenancyStartDate;
-  }
-  return true;
-}, {
-  message: "Tenancy end date must be after the start date.",
-  path: ["tenancyEndDate"]
 });
 
 type TenantFormValues = z.infer<typeof tenantSchema>;
@@ -98,17 +88,6 @@ const prepareForFirestore = (obj: any): any => {
     }
   }
   return result;
-};
-
-const formatDateForInput = (value: any) => {
-  if (!value) return '';
-  const date = value instanceof Date ? value : new Date(value);
-  if (isNaN(date.getTime())) return '';
-  try {
-    return date.toISOString().split('T')[0];
-  } catch (e) {
-    return '';
-  }
 };
 
 export default function AddTenantPage() {
@@ -171,26 +150,13 @@ export default function AddTenantPage() {
     properties.find(p => p.id === selectedPropertyId), 
   [properties, selectedPropertyId]);
   
-  useEffect(() => {
-    if (propertyIdFromUrl) {
-      form.setValue('propertyId', propertyIdFromUrl, { shouldValidate: true });
-    }
-  }, [propertyIdFromUrl, form]);
-
   async function onSubmit(data: TenantFormValues) {
-    if (!user || !firestore) {
-        toast({
-          variant: 'destructive',
-          title: 'Authentication Error',
-          description: 'You must be logged in to assign a tenant.',
-        });
-        return;
-    }
+    if (!user || !firestore) return;
     setIsSubmitting(true);
 
     const tenantsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', data.propertyId, 'tenants');
     
-    // Critical: Normalize email to lowercase for identity mapping robustness
+    // Identity mapping handshake requires normalized emails
     const normalizedEmail = data.email.toLowerCase().trim();
     
     const newTenant = {
@@ -201,28 +167,17 @@ export default function AddTenantPage() {
         createdDate: new Date().toISOString(),
     };
 
-    const cleanedTenantData = prepareForFirestore(newTenant);
-    
     try {
-        await addDoc(tenantsCollection, cleanedTenantData);
+        await addDoc(tenantsCollection, prepareForFirestore(newTenant));
         
         const propertyDocRef = doc(firestore, 'userProfiles', user.uid, 'properties', data.propertyId);
         await updateDoc(propertyDocRef, { status: 'Occupied' });
 
-        toast({
-          title: 'Tenant Assigned Successfully',
-          description: `Portfolio synchronized: ${data.name} is now the active tenant.`,
-        });
-        
-        router.push('/dashboard');
-        router.refresh();
-    } catch (serverError: any) {
-        console.error('Tenant assignment failed:', serverError);
-        toast({
-          variant: 'destructive',
-          title: 'Sync Error',
-          description: 'Tenant record was saved but property status failed to update.',
-        });
+        toast({ title: 'Tenant Assigned', description: 'Resident hub link established via secure handshake.' });
+        router.push(`/dashboard/properties/${data.propertyId}`);
+    } catch (err) {
+        console.error(err);
+        toast({ variant: 'destructive', title: 'Sync Failed' });
     } finally {
         setIsSubmitting(false);
     }
@@ -230,16 +185,14 @@ export default function AddTenantPage() {
 
   const formatAddress = (address: Property['address']) => {
     if (!address) return 'N/A';
-    return [address.nameOrNumber, address.street, address.city, address.county, address.postcode].filter(Boolean).join(', ');
+    return [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
   };
 
   return (
     <Card className="max-w-2xl mx-auto shadow-lg border-none">
       <CardHeader className="bg-primary/5 border-b border-primary/10">
         <CardTitle className="text-2xl font-headline text-primary">Assign New Tenant</CardTitle>
-        <CardDescription>
-          Record tenant identity and tenancy terms. Identity is secured via email normalization.
-        </CardDescription>
+        <CardDescription>Establishing identity mapping via verified email for resident portal access.</CardDescription>
       </CardHeader>
       <CardContent className="pt-6">
         <Form {...form}>
@@ -248,23 +201,17 @@ export default function AddTenantPage() {
               control={form.control}
               name="propertyId"
               render={({ field }) => (
-                <FormItem className="flex flex-col">
-                  <FormLabel className="font-bold">Select Portfolio Property</FormLabel>
+                <FormItem className="flex flex-col text-left">
+                  <FormLabel className="font-bold">Portfolio Property</FormLabel>
                   <Popover open={isPropSelectorOpen} onOpenChange={setIsPropSelectorOpen}>
                     <PopoverTrigger asChild>
                         <FormControl>
                             <Button
-                                id="tenant-property-selector"
+                                id="tenant-prop-trigger"
                                 variant="outline"
-                                role="combobox"
-                                className={cn(
-                                    "w-full justify-between h-11 bg-background text-left font-normal",
-                                    !field.value && "text-muted-foreground"
-                                )}
+                                className={cn("w-full justify-between h-11 bg-background text-left font-normal", !field.value && "text-muted-foreground")}
                             >
-                                {selectedProperty 
-                                    ? formatAddress(selectedProperty.address) 
-                                    : (isLoadingProperties ? "Loading portfolio..." : "Search by address or postcode...")}
+                                {selectedProperty ? formatAddress(selectedProperty.address) : "Search portfolio assets..."}
                                 <ChevronsUpDown className="ml-2 h-4 w-4 shrink-0 opacity-50" />
                             </Button>
                         </FormControl>
@@ -272,42 +219,21 @@ export default function AddTenantPage() {
                     <PopoverContent className="w-[--radix-popover-trigger-width] p-0 shadow-2xl border-primary/10">
                         <div className="flex items-center border-b px-3 bg-muted/20">
                             <Search className="h-4 w-4 shrink-0 opacity-50 mr-2" />
-                            <Input 
-                                id="tenant-property-search"
-                                name="propertySearch"
-                                placeholder="Type address..." 
-                                className="h-11 border-0 focus-visible:ring-0 bg-transparent" 
-                                value={propertySearch}
-                                onChange={(e) => setPropertySearch(e.target.value)}
-                            />
+                            <Input placeholder="Type address..." className="h-11 border-0 focus-visible:ring-0 bg-transparent" value={propertySearch} onChange={(e) => setPropertySearch(e.target.value)} />
                         </div>
                         <ScrollArea className="h-72">
                             {filteredProperties.length === 0 ? (
-                                <div className="p-8 text-center text-sm text-muted-foreground italic">
-                                    No properties found matching your search.
-                                </div>
+                                <div className="p-8 text-center text-sm text-muted-foreground italic">No matches.</div>
                             ) : (
                                 <div className="p-1">
                                     {filteredProperties.map(p => (
                                         <Button
                                             key={p.id}
                                             variant="ghost"
-                                            className={cn(
-                                                "w-full justify-start font-normal text-xs py-6 h-auto whitespace-normal text-left px-4",
-                                                p.id === field.value && "bg-primary/5 text-primary font-bold"
-                                            )}
-                                            onClick={() => {
-                                                form.setValue('propertyId', p.id);
-                                                setIsPropSelectorOpen(false);
-                                            }}
+                                            className={cn("w-full justify-start font-normal text-xs py-4 h-auto text-left px-4", p.id === field.value && "bg-primary/5 text-primary font-bold")}
+                                            onClick={() => { form.setValue('propertyId', p.id); setIsPropSelectorOpen(false); }}
                                         >
-                                            <div className="flex items-center gap-3">
-                                                <div className={cn(
-                                                    "h-2 w-2 rounded-full",
-                                                    p.id === field.value ? "bg-primary" : "bg-transparent"
-                                                )} />
-                                                {formatAddress(p.address)}
-                                            </div>
+                                            {formatAddress(p.address)}
                                         </Button>
                                     ))}
                                 </div>
@@ -320,160 +246,49 @@ export default function AddTenantPage() {
               )}
             />
             
-            <FormField
-              control={form.control}
-              name="name"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="font-bold">Full Legal Name</FormLabel>
-                  <FormControl>
-                    <Input id="tenant-name" name="name" placeholder="John Smith" className="h-11" {...field} />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <FormField control={form.control} name="name" render={({ field }) => (<FormItem className="text-left"><FormLabel className="font-bold">Full Legal Name</FormLabel><FormControl><Input placeholder="John Smith" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>)} />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-               <FormField
-                control={form.control}
-                name="email"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-bold">Email Address</FormLabel>
-                    <FormControl>
-                      <Input id="tenant-email" name="email" type="email" placeholder="john@example.com" className="h-11" {...field} />
-                    </FormControl>
-                    <FormDescription className="text-[10px]">Portal access will be tied to this normalized email.</FormDescription>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-               <FormField
-                control={form.control}
-                name="telephone"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-bold">Telephone</FormLabel>
-                    <FormControl>
-                      <Input id="tenant-phone" name="telephone" type="tel" placeholder="07123 456789" className="h-11" {...field} />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+               <FormField control={form.control} name="email" render={({ field }) => (
+                 <FormItem className="text-left">
+                   <FormLabel className="font-bold">Resident Portal Email</FormLabel>
+                   <FormControl><Input type="email" placeholder="tenant@example.com" className="h-11" {...field} /></FormControl>
+                   <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mt-1">This email is the unique key for resident portal verification.</p>
+                   <FormMessage />
+                 </FormItem>
+               )} />
+               <FormField control={form.control} name="telephone" render={({ field }) => (<FormItem className="text-left"><FormLabel className="font-bold">Telephone</FormLabel><FormControl><Input type="tel" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>)} />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t pt-6">
-                <FormField
-                    control={form.control}
-                    name="monthlyRent"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel className="font-bold">Agreed Monthly Rent (£)</FormLabel>
-                        <FormControl>
-                            <Input id="tenant-rent" name="monthlyRent" type="number" min="0" placeholder="0.00" className="h-11" {...field} value={field.value ?? ''} />
-                        </FormControl>
-                        <FormMessage />
-                    </FormItem>
-                    )}
-                />
-                <FormField
-                    control={form.control}
-                    name="rentDueDay"
-                    render={({ field }) => (
-                    <FormItem>
-                        <FormLabel className="font-bold flex items-center gap-2">
-                            <CalendarDays className="h-4 w-4 text-primary" />
-                            Rent Due Day
-                        </FormLabel>
+                <FormField control={form.control} name="monthlyRent" render={({ field }) => (<FormItem className="text-left"><FormLabel className="font-bold">Agreed Monthly Rent (£)</FormLabel><FormControl><Input type="number" min="0" placeholder="0.00" className="h-11" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="rentDueDay" render={({ field }) => (
+                    <FormItem className="text-left">
+                        <FormLabel className="font-bold flex items-center gap-2"><CalendarDays className="h-4 w-4 text-primary" />Rent Due Day</FormLabel>
                         <Select onValueChange={field.onChange} value={String(field.value)}>
-                            <FormControl>
-                                <SelectTrigger className="h-11">
-                                    <SelectValue placeholder="Select day" />
-                                </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                                {Array.from({ length: 31 }, (_, i) => (i + 1)).map(day => (
-                                    <SelectItem key={day} value={String(day)}>{day}{[1, 21, 31].includes(day) ? 'st' : [2, 22].includes(day) ? 'nd' : [3, 23].includes(day) ? 'rd' : 'th'} of month</SelectItem>
-                                ))}
-                            </SelectContent>
+                            <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select day" /></SelectTrigger></FormControl>
+                            <SelectContent>{Array.from({ length: 31 }, (_, i) => (i + 1)).map(day => (<SelectItem key={day} value={String(day)}>{day}{[1, 21, 31].includes(day) ? 'st' : [2, 22].includes(day) ? 'nd' : [3, 23].includes(day) ? 'rd' : 'th'} of month</SelectItem>))}</SelectContent>
                         </Select>
                         <FormMessage />
                     </FormItem>
-                    )}
-                />
+                )} />
             </div>
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-              <FormField
-                control={form.control}
-                name="tenancyStartDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-bold">Tenancy Start</FormLabel>
-                    <FormControl>
-                        <Input
-                            id="tenancy-start"
-                            name="tenancyStartDate"
-                            type="date"
-                            className="h-11"
-                            value={formatDateForInput(field.value)}
-                            onChange={(e) => field.onChange(e.target.value)}
-                        />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
-              <FormField
-                control={form.control}
-                name="tenancyEndDate"
-                render={({ field }) => (
-                  <FormItem>
-                    <FormLabel className="font-bold">Tenancy End (Optional)</FormLabel>
-                    <FormControl>
-                        <Input
-                            id="tenancy-end"
-                            name="tenancyEndDate"
-                            type="date"
-                            className="h-11"
-                            value={formatDateForInput(field.value)}
-                            onChange={(e) => field.onChange(e.target.value)}
-                        />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
-                )}
-              />
+              <FormField control={form.control} name="tenancyStartDate" render={({ field }) => (
+                <FormItem className="text-left"><FormLabel className="font-bold">Tenancy Start</FormLabel><FormControl><Input type="date" className="h-11" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>
+              )} />
+              <FormField control={form.control} name="tenancyEndDate" render={({ field }) => (
+                <FormItem className="text-left"><FormLabel className="font-bold">Tenancy End (Optional)</FormLabel><FormControl><Input type="date" className="h-11" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>
+              )} />
             </div>
             
-            <FormField
-              control={form.control}
-              name="notes"
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="font-bold">Management Notes</FormLabel>
-                  <FormControl>
-                    <Textarea
-                      id="tenant-notes"
-                      name="notes"
-                      placeholder="Special requirements, pets, or reference notes..."
-                      className="resize-none min-h-[100px] rounded-xl"
-                      {...field}
-                    />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+            <FormField control={form.control} name="notes" render={({ field }) => (<FormItem className="text-left"><FormLabel className="font-bold">Audit Notes</FormLabel><FormControl><Textarea className="resize-none min-h-[100px] rounded-xl" {...field} /></FormControl><FormMessage /></FormItem>)} />
 
             <div className="flex items-center justify-end gap-3 pt-4 border-t">
-                <Button type="button" variant="ghost" asChild className="font-bold uppercase tracking-widest text-xs h-11">
-                    <Link href={propertyIdFromUrl ? `/dashboard/properties/${propertyIdFromUrl}` : '/dashboard/tenants'}>Cancel</Link>
-                </Button>
+                <Button type="button" variant="ghost" asChild className="font-bold uppercase tracking-widest text-xs h-11"><Link href="/dashboard/tenants">Cancel</Link></Button>
                 <Button type="submit" disabled={isSubmitting} className="font-bold uppercase tracking-widest text-xs h-11 px-10 shadow-lg bg-primary hover:bg-primary/90">
-                  {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : 'Confirm Assignment'}
+                  {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Synchronizing...</> : 'Complete Assignment'}
                 </Button>
             </div>
           </form>
