@@ -4,8 +4,9 @@ import React, { DependencyList, createContext, useContext, ReactNode, useMemo, u
 import { FirebaseApp } from 'firebase/app';
 import { Firestore } from 'firebase/firestore';
 import { Auth, User, onAuthStateChanged } from 'firebase/auth';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+// Use relative imports to break circular dependencies with the barrel file
+import { errorEmitter } from './error-emitter';
+import { FirestorePermissionError } from './errors';
 
 /**
  * @fileOverview Manages Firebase service instances and authenticated user state.

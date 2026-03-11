@@ -30,11 +30,27 @@ export function getSdks(firebaseApp: FirebaseApp) {
   };
 }
 
+// Re-export core providers and hooks
 export * from './provider';
 export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
-export * from './non-blocking-updates';
-export * from './non-blocking-login';
+
+// Explicitly export non-blocking utilities from stable .ts files
+export { 
+  setDocumentNonBlocking, 
+  addDocumentNonBlocking, 
+  updateDocumentNonBlocking, 
+  deleteDocumentNonBlocking 
+} from './non-blocking-updates';
+
+export { 
+  initiateAnonymousSignIn, 
+  createUserNonBlocking, 
+  signInNonBlocking,
+  initiateEmailSignUp,
+  initiateEmailSignIn
+} from './non-blocking-login';
+
 export * from './errors';
 export * from './error-emitter';

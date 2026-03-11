@@ -1,6 +1,6 @@
 'use client';
 /**
  * @fileOverview This file is deprecated. 
- * Logic consolidated into non-blocking-login.ts to resolve TypeError.
+ * Logic has been consolidated into non-blocking-login.ts to resolve module resolution conflicts.
  */
 export {};
