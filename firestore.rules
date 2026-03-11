@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -19,17 +20,14 @@ service cloud.firestore {
     
     match /{path=**}/tenants/{tenantId} {
       /**
-       * @description Authorized global identity handshake.
-       * Optimized for collectionGroup queries to ensure instant provability.
+       * Authorized global identity handshake.
+       * Simplified for the query optimizer to ensure instant provability.
        */
-      allow list: if isSignedIn() && (
-        resource.data.email == request.auth.token.email ||
-        resource.data.userId == request.auth.uid
-      );
+      allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
       
       allow get: if isSignedIn() && (
         resource.data.email == request.auth.token.email ||
-        isOwner(resource.data.userId)
+        resource.data.userId == request.auth.uid
       );
     }
 
@@ -55,7 +53,7 @@ service cloud.firestore {
 
         match /tenants/{tenantId} {
           allow read, write: if isOwner(userId);
-          // Standard check for resident access
+          // Hierarchical resident access
           allow get: if isSignedIn() && resource.data.email == request.auth.token.email;
 
           match /messages/{messageId} {

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo, useCallback } from 'react';
@@ -168,14 +169,13 @@ export default function DashboardPage() {
   const [isLandlord, setIsLandlord] = useState<boolean | null>(null);
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
 
-  // Discovery: Determine if user is a Landlord (has properties) or Tenant (linked by email)
+  // Discovery Handshake Effect
   useEffect(() => {
     if (isUserLoading || !user || !firestore) return;
     
-    // Concurrent discovery handshake
     const userEmail = user.email?.toLowerCase().trim();
 
-    // 1. Check for properties (Landlord identification)
+    // 1. Check Landlord Status
     const propQuery = query(
       collection(firestore, 'userProfiles', user.uid, 'properties'), 
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
@@ -198,7 +198,7 @@ export default function DashboardPage() {
       setIsLandlord(false);
     });
 
-    // 2. Check global tenant registry (Tenant identification)
+    // 2. Check Resident Status
     let unsubTenants = () => {};
     if (userEmail) {
         const tenantsQuery = query(
@@ -233,14 +233,14 @@ export default function DashboardPage() {
     };
   }, [user, isUserLoading, firestore]);
 
-  // Unified routing effect: Trigger immediate redirection for verified tenants
+  // Redirection Logic
   useEffect(() => {
     if (isTenant === true) {
         router.replace('/tenant/dashboard');
     }
   }, [isTenant, router]);
 
-  // HOOK STABILITY: useMemo must be called consistently before any early returns
+  // Hook Stability: Declare useMemo before any conditional logic
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;
     const term = searchTerm.toLowerCase();
@@ -277,10 +277,6 @@ export default function DashboardPage() {
                 <Button className="font-bold h-12 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-lg" onClick={() => window.location.reload()}>
                     <RefreshCw className="mr-2 h-4 w-4" /> Check Status
                 </Button>
-                {/* Fallback for new landlords who might be incorrectly caught in the tenant check loop */}
-                <Button variant="outline" className="text-xs font-bold w-full border-primary/20 h-11" onClick={() => { setIsLandlord(false); setIsIndexBuilding(false); setIsTenant(false); }}>
-                    Continue to Portfolio Manager <ArrowRight className="ml-2 h-3 w-3" />
-                </Button>
             </div>
         </div>
       );
@@ -296,10 +292,10 @@ export default function DashboardPage() {
       );
   }
 
-  // Suppress render for tenants (handled by router.replace in useEffect)
+  // Redirection is handled in useEffect, prevent flicker here
   if (isTenant === true) return null;
 
-  // Final Dashboard Render (Landlord context)
+  // Final Dashboard Render (Landlord context confirmed)
   return (
     <div className="space-y-8 animate-in fade-in duration-500 text-left">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
