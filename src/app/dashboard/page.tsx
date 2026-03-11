@@ -116,16 +116,17 @@ export default function DashboardPage() {
     }
 
     // 3. SAFETY TIMEOUT: Prevent mapping hang
-    const timer = setTimeout(() => {
+    const timeoutId = setTimeout(() => {
         setHasTimedOut(true);
-        // If we haven't resolved tenant status by now, and landlord is false, allow recovery
+        // Fallback: If we haven't resolved tenant status, and landlord is clearly false, 
+        // we allow the UI to transition to the empty state.
         if (isTenant === null) setIsTenant(false);
-    }, 5000);
+    }, 6000);
 
     return () => {
         unsubProps();
         unsubTenants();
-        clearTimeout(timer);
+        clearTimeout(timeoutId);
     };
   }, [user, isUserLoading, firestore]);
 
