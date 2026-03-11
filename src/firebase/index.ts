@@ -7,7 +7,7 @@ import { getFirestore } from 'firebase/firestore';
 
 /**
  * @fileOverview Main Firebase Initialization Entry Point.
- * Optimized to ensure explicit exports from stable source modules.
+ * Consolidated to resolve module resolution conflicts and circular dependencies.
  */
 
 export function initializeFirebase() {
@@ -37,7 +37,7 @@ export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 
-// Authentication Utilities
+// Stable Exports from logic modules
 export { 
   signInNonBlocking, 
   createUserNonBlocking, 
@@ -46,7 +46,6 @@ export {
   initiateEmailSignIn 
 } from './non-blocking-login';
 
-// Database Utilities
 export {
   setDocumentNonBlocking,
   addDocumentNonBlocking,

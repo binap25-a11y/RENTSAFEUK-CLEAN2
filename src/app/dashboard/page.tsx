@@ -4,7 +4,7 @@ import { useState, useEffect, useMemo } from 'react';
 import { useUser, useFirestore } from '@/firebase';
 import { collection, query, where, onSnapshot, collectionGroup, limit } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { 
   PlusCircle, 
@@ -47,6 +47,7 @@ export default function DashboardPage() {
   const firestore = useFirestore();
   const router = useRouter();
   
+  // All hooks must be at the top level
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [properties, setProperties] = useState<Property[]>([]);
@@ -54,15 +55,15 @@ export default function DashboardPage() {
   const [isTenant, setIsTenant] = useState<boolean | null>(null);
   const [isLandlord, setIsLandlord] = useState<boolean | null>(null);
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
-  const [hasTimedOut, setHasTimedOut] = useState(false);
+  const [discoveryComplete, setDiscoveryComplete] = useState(false);
 
-  // 1. Role resolution logic
+  // 1. Discovery Handshake Effect
   useEffect(() => {
     if (isUserLoading || !user || !firestore) return;
     
     const userEmail = user.email?.toLowerCase().trim();
 
-    // Landlord Check: Scoped to user profile
+    // Landlord Check
     const propQuery = query(
       collection(firestore, 'userProfiles', user.uid, 'properties'), 
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
@@ -79,7 +80,7 @@ export default function DashboardPage() {
       setIsLandlord(false);
     });
 
-    // Tenant Check: Secure global identity handshake
+    // Tenant Check
     let unsubTenants = () => {};
     if (userEmail) {
         const tenantsQuery = query(
@@ -89,23 +90,24 @@ export default function DashboardPage() {
         );
 
         unsubTenants = onSnapshot(tenantsQuery, (snap) => {
-            const activeTenant = snap.docs.find(d => d.data().status === 'Active') || snap.docs[0];
-            if (activeTenant) {
+            if (!snap.empty) {
                 setIsTenant(true);
             } else {
                 setIsTenant(false);
             }
             setIsIndexBuilding(false);
+            setDiscoveryComplete(true);
         }, (error) => {
-            if (error.message.toLowerCase().includes('index') || error.code === 'failed-precondition') {
+            if (error.message.toLowerCase().includes('index')) {
                 setIsIndexBuilding(true);
             } else {
-                console.warn("Tenant discovery handshake interrupted:", error.message);
                 setIsTenant(false);
+                setDiscoveryComplete(true);
             }
         });
     } else {
         setIsTenant(false);
+        setDiscoveryComplete(true);
     }
 
     return () => {
@@ -114,23 +116,24 @@ export default function DashboardPage() {
     };
   }, [user, isUserLoading, firestore]);
 
-  // 2. Redirection and Handshake Timer
+  // 2. Routing Effect
   useEffect(() => {
     if (isTenant === true) {
         router.replace('/tenant/dashboard');
     }
   }, [isTenant, router]);
 
+  // 3. Discovery Timeout Fail-safe
   useEffect(() => {
-    if (isTenant === null && user && !isUserLoading) {
+    if (!discoveryComplete && user && !isUserLoading) {
         const timer = setTimeout(() => {
-            setHasTimedOut(true);
-        }, 6000);
+            setDiscoveryComplete(true);
+        }, 5000);
         return () => clearTimeout(timer);
     }
-  }, [isTenant, user, isUserLoading]);
+  }, [discoveryComplete, user, isUserLoading]);
 
-  // 3. Data Processing
+  // 4. Data Processing
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;
     const term = searchTerm.toLowerCase();
@@ -143,48 +146,36 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // 4. Render Logic
-  if (isUserLoading || (isTenant === true && !hasTimedOut)) {
+  // Loading States
+  if (isUserLoading || (isTenant === null && !discoveryComplete)) {
     return (
       <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Establishing Portal Access</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Syncing Secure Environment</p>
       </div>
     );
   }
 
-  // Identity discovery screen
-  if (!isLoadingProps && isLandlord === false && isTenant === null && !hasTimedOut) {
+  // Handshake Hang Fail-safe screen
+  if (!isLoadingProps && isLandlord === false && isTenant === null && !discoveryComplete) {
       return (
-        <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6 animate-in fade-in duration-700">
+        <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6">
             <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto border shadow-inner">
                 <Sparkles className="h-12 w-12 text-primary animate-pulse" />
             </div>
             <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Resident Handshake</h2>
+                <h2 className="font-headline text-2xl font-bold text-primary">Identity Discovery</h2>
                 <p className="text-muted-foreground font-medium text-sm leading-relaxed">
-                    Our secure system is currently mapping your resident identity across the platform. This ensures your access is private and protected.
+                    The platform is resolving your resident credentials. Access will be granted automatically.
                 </p>
                 {isIndexBuilding && (
                     <div className="flex items-center justify-center gap-2 p-3 bg-amber-50 text-amber-700 rounded-lg text-xs font-bold border border-amber-100 mt-4">
-                        <AlertCircle className="h-4 w-4" />
-                        Indexing Records...
+                        <AlertCircle className="h-4 w-4" /> Cloud Indexing...
                     </div>
                 )}
             </div>
-            <div className="space-y-3 pt-4">
-                <Button 
-                    variant="outline" 
-                    className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-sm" 
-                    onClick={() => window.location.reload()}
-                >
-                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Check Identity Status
-                </Button>
-                <Button 
-                    variant="ghost" 
-                    className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full text-muted-foreground" 
-                    onClick={() => setHasTimedOut(true)}
-                >
+            <div className="pt-4">
+                <Button variant="outline" className="w-full h-11 font-bold uppercase text-[10px] tracking-widest" onClick={() => setDiscoveryComplete(true)}>
                     Continue to Portfolio Manager <ChevronRight className="ml-1 h-3 w-3" />
                 </Button>
             </div>
@@ -192,7 +183,7 @@ export default function DashboardPage() {
       );
   }
 
-  // Dashboard Empty State
+  // Landlord Empty State
   if (properties.length === 0 && !isLoadingProps && isTenant !== true) {
       return (
         <div className="text-center py-20">
@@ -200,8 +191,8 @@ export default function DashboardPage() {
                 <div className="bg-muted p-6 rounded-full w-fit mx-auto shadow-inner">
                     <Home className="h-12 w-12 text-muted-foreground/40" />
                 </div>
-                <h2 className="text-2xl font-bold font-headline text-center">Welcome to RentSafeUK</h2>
-                <p className="text-muted-foreground font-medium text-center">Onboard your first rental property or wait for an assignment to a tenancy hub.</p>
+                <h2 className="text-2xl font-bold font-headline text-center">Your Portfolio is Empty</h2>
+                <p className="text-muted-foreground font-medium text-center">Onboard your first rental property to begin managing your estate.</p>
                 <Button asChild size="lg" className="px-10 font-bold shadow-lg h-12 w-full">
                     <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Add Asset</Link>
                 </Button>
@@ -296,39 +287,6 @@ export default function DashboardPage() {
           )}
         </CardContent>
       </Card>
-
-      {/* Mobile Grid Only */}
-      <div className="sm:hidden space-y-4">
-          <div className="flex items-center gap-2 px-1">
-              <div className="relative flex-1">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input value={searchTerm} onChange={(e) => setSearchTerm(e.target.value)} placeholder="Search..." className="pl-8 h-10" />
-              </div>
-              <Button asChild size="icon" className="h-10 w-10 shrink-0"><Link href="/dashboard/properties/add"><PlusCircle className="h-5 w-5" /></Link></Button>
-          </div>
-          <div className="grid gap-4">
-              {filteredProperties.map(p => (
-                  <Card key={p.id} className="overflow-hidden border-none shadow-sm" onClick={() => router.push(`/dashboard/properties/${p.id}`)}>
-                      <div className="flex">
-                          <div className="w-24 bg-muted shrink-0 relative">
-                              {p.imageUrl ? <img src={p.imageUrl} alt="" className="object-cover w-full h-full" /> : <div className="h-full w-full flex items-center justify-center"><Home className="h-6 w-6 text-primary/10" /></div>}
-                          </div>
-                          <div className="flex-1 p-3 min-w-0">
-                              <p className="font-bold text-sm truncate">{[p.address.nameOrNumber, p.address.street].filter(Boolean).join(', ')}</p>
-                              <p className="text-[10px] text-muted-foreground truncate">{p.address.city}, {p.address.postcode}</p>
-                              <div className="flex items-center justify-between mt-2">
-                                  <Badge variant="outline" className="text-[8px] uppercase h-4 px-1">{p.status}</Badge>
-                                  <div className="flex gap-2 text-[9px] font-bold text-muted-foreground uppercase">
-                                      <span className="flex items-center gap-0.5"><Bed className="h-2.5 w-2.5" />{p.bedrooms}</span>
-                                      <span className="flex items-center gap-0.5"><Bath className="h-2.5 w-2.5" />{p.bathrooms}</span>
-                                  </div>
-                              </div>
-                          </div>
-                      </div>
-                  </Card>
-              ))}
-          </div>
-      </div>
     </div>
   );
 }

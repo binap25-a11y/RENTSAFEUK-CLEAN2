@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * @fileOverview This file is a stable re-export module to resolve resolution conflicts.
+ * @fileOverview Redundant shadow module cleared to resolve TypeError: is not a function.
+ * All logic is now centralized in non-blocking-login.ts.
  */
-
-export * from './non-blocking-login';
+export {};
