@@ -27,7 +27,7 @@ import { Input } from '@/components/ui/input';
 
 /**
  * @fileOverview High-performance Parallel Role Discovery.
- * Actively resolves Landlord vs Tenant roles with explicit escape hatches for new users.
+ * Actively resolves Landlord vs Tenant roles with immediate routing for verified residents.
  */
 
 interface Property {
@@ -51,7 +51,7 @@ export default function DashboardPage() {
   const firestore = useFirestore();
   const router = useRouter();
   
-  // 1. STABLE HOOK ARCHITECTURE: Declare all hooks at the very top
+  // STABLE HOOK ARCHITECTURE: Declare all hooks at the very top to prevent Rules of Hooks violations.
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [properties, setProperties] = useState<Property[]>([]);

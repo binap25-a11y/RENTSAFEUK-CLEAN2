@@ -10,7 +10,7 @@ import { FirestorePermissionError } from './errors';
 
 /**
  * @fileOverview Manages Firebase service instances and authenticated user state.
- * Integrated Listener logic here to break circular module cycles causing ChunkLoadErrors.
+ * Integrated Error Listener logic to resolve circular dependencies that caused ChunkLoadErrors.
  */
 
 interface FirebaseProviderProps {
@@ -67,7 +67,7 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
 
   const [permissionError, setPermissionError] = useState<FirestorePermissionError | null>(null);
 
-  // 1. Integrated Error Listener to break circular module cycles
+  // 1. Integrated Error Listener
   useEffect(() => {
     const handleError = (error: FirestorePermissionError) => {
       setPermissionError(error);
@@ -109,7 +109,8 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     };
   }, [firebaseApp, firestore, auth, userAuthState]);
 
-  // Throw permission errors to be caught by the global error boundary
+  // We handle permission errors via the development overlay only if they exist
+  // but we don't block the initial mounting if there's no error.
   if (permissionError) {
     throw permissionError;
   }
