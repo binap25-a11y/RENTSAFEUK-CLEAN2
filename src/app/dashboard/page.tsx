@@ -18,7 +18,8 @@ import {
   Bath, 
   Sparkles,
   RefreshCw,
-  ChevronRight
+  ChevronRight,
+  ShieldCheck
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -51,7 +52,7 @@ export default function DashboardPage() {
   const firestore = useFirestore();
   const router = useRouter();
   
-  // STABLE HOOK ARCHITECTURE: Declare all hooks at the very top to prevent Rules of Hooks violations.
+  // HOOK STACK: Absolute top level
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [properties, setProperties] = useState<Property[]>([]);
@@ -59,11 +60,13 @@ export default function DashboardPage() {
   const [isTenant, setIsTenant] = useState<boolean | null>(null);
   const [isLandlord, setIsLandlord] = useState<boolean | null>(null);
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
+  const [discoveryStatus, setDiscoveryStatus] = useState<'standby' | 'mapping' | 'resolving'>('standby');
 
   // Identity Discovery Effect
   useEffect(() => {
     if (isUserLoading || !user || !firestore) return;
     
+    setDiscoveryStatus('mapping');
     const userEmail = user.email?.toLowerCase().trim();
 
     // LANDLORD PATH: Instant check for owned properties
@@ -77,13 +80,14 @@ export default function DashboardPage() {
       setProperties(list);
       setIsLoadingProps(false);
       setIsLandlord(snap.size > 0);
+      if (snap.size > 0) setDiscoveryStatus('standby');
     }, (error) => {
       console.warn("Landlord discovery issue:", error.message);
       setIsLoadingProps(false);
       setIsLandlord(false);
     });
 
-    // TENANT PATH: Global email handshake (requires collection group index)
+    // TENANT PATH: Global email handshake
     let unsubTenants = () => {};
     if (userEmail) {
         const tenantsQuery = query(
@@ -94,7 +98,12 @@ export default function DashboardPage() {
 
         unsubTenants = onSnapshot(tenantsQuery, (snap) => {
             const activeTenant = snap.docs.find(d => d.data().status === 'Active');
-            setIsTenant(!!activeTenant);
+            if (activeTenant) {
+                setIsTenant(true);
+                setDiscoveryStatus('resolving');
+            } else {
+                setIsTenant(false);
+            }
             setIsIndexBuilding(false);
         }, (error) => {
             const msg = error.message.toLowerCase();
@@ -115,6 +124,18 @@ export default function DashboardPage() {
     };
   }, [user, isUserLoading, firestore]);
 
+  // FAIL-SAFE: Stop mapping identity if it hangs too long
+  useEffect(() => {
+    const timer = setTimeout(() => {
+        if (isLandlord === false && isTenant === null) {
+            console.log("Discovery handshake slow. Defaulting to onboarding.");
+            setIsTenant(false);
+            setDiscoveryStatus('standby');
+        }
+    }, 6000);
+    return () => clearTimeout(timer);
+  }, [isLandlord, isTenant]);
+
   // Routing Effect for Verified Residents
   useEffect(() => {
     if (isTenant === true) {
@@ -130,8 +151,7 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // --- RENDER BRANCHING (POST-HOOKS) ---
-
+  // RENDER BRANCHING
   if (isUserLoading) {
     return (
       <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4">
@@ -141,17 +161,23 @@ export default function DashboardPage() {
     );
   }
 
-  // Resident Redirection Layer
+  // Resident Redirection Path
   if (isTenant === true) {
       return (
-        <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4">
-            <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Redirecting to Resident Portal...</p>
+        <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 text-center px-6">
+            <div className="relative">
+                <ShieldCheck className="h-16 w-16 text-primary animate-in zoom-in duration-500" />
+                <div className="absolute inset-0 h-16 w-16 bg-primary/20 rounded-full animate-ping" />
+            </div>
+            <div className="space-y-2">
+                <h2 className="text-xl font-bold font-headline">Identity Verified</h2>
+                <p className="text-muted-foreground text-sm font-medium">Entering Resident Hub...</p>
+            </div>
         </div>
       );
   }
 
-  // Landlord View (Active Portfolio) - FAST PATH
+  // Active Portfolio Path
   if (isLandlord === true) {
       return (
         <div className="space-y-8 animate-in fade-in duration-500 text-left">
@@ -171,7 +197,7 @@ export default function DashboardPage() {
       );
   }
 
-  // Cloud Synchronization Layer (Fallback for new accounts or indexing lag)
+  // Discovery / Handshake Path
   if (isIndexBuilding || (isLandlord === false && isTenant === null)) {
       return (
         <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6">
@@ -179,47 +205,31 @@ export default function DashboardPage() {
                 <Sparkles className="h-12 w-12 text-primary animate-pulse" />
             </div>
             <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Identity Handshake</h2>
+                <h2 className="font-headline text-2xl font-bold text-primary">Identity Mapping</h2>
                 <p className="text-muted-foreground font-medium text-sm leading-relaxed">
                     Our secure system is currently mapping your resident identity across the platform. Access will be restored automatically.
                 </p>
             </div>
-            <div className="flex flex-col gap-3">
-                <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full" onClick={() => window.location.reload()}>
-                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Check Status
-                </Button>
-                {/* Escape Hatch for Landlords who haven't added a property yet */}
-                <Button variant="ghost" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground group" onClick={() => { setIsLandlord(false); setIsTenant(false); setIsIndexBuilding(false); }}>
-                    Continue to Portfolio Manager <ChevronRight className="ml-1 h-3 w-3 group-hover:translate-x-1 transition-transform" />
-                </Button>
-            </div>
+            <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full" onClick={() => window.location.reload()}>
+                <RefreshCw className="mr-2 h-3.5 w-3.5" /> Check Identity Status
+            </Button>
         </div>
       );
   }
 
-  // New Account Onboarding
-  if (isLandlord === false && isTenant === false) {
-      return (
-        <div className="text-center py-20 animate-in fade-in">
-            <div className="max-w-md mx-auto space-y-6">
-                <div className="bg-muted p-6 rounded-full w-fit mx-auto">
-                    <Home className="h-12 w-12 text-muted-foreground/40" />
-                </div>
-                <h2 className="text-2xl font-bold font-headline">Welcome to RentSafeUK</h2>
-                <p className="text-muted-foreground">Start by onboarding your first rental property or wait for your landlord to assign you to a tenancy.</p>
-                <Button asChild size="lg" className="px-10 font-bold shadow-lg">
-                    <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Add First Property</Link>
-                </Button>
-            </div>
-        </div>
-      );
-  }
-
-  // Default Loader (Resolving Identity)
+  // New Landlord Path
   return (
-    <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4">
-        <Loader2 className="h-10 w-10 animate-spin text-primary opacity-20" />
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">Resolving Identity...</p>
+    <div className="text-center py-20 animate-in fade-in">
+        <div className="max-w-md mx-auto space-y-6">
+            <div className="bg-muted p-6 rounded-full w-fit mx-auto">
+                <Home className="h-12 w-12 text-muted-foreground/40" />
+            </div>
+            <h2 className="text-2xl font-bold font-headline">Welcome to RentSafeUK</h2>
+            <p className="text-muted-foreground">Start by onboarding your first rental property or wait for your landlord to assign you to a tenancy.</p>
+            <Button asChild size="lg" className="px-10 font-bold shadow-lg">
+                <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Add First Property</Link>
+            </Button>
+        </div>
     </div>
   );
 }
@@ -271,6 +281,7 @@ function PropertiesPanel({ properties, isLoading, searchTerm, setSearchTerm, vie
                 <Card key={p.id} className="group overflow-hidden flex flex-col hover:shadow-2xl transition-all duration-300 cursor-pointer border-none shadow-md bg-card text-left" onClick={() => router.push(`/dashboard/properties/${p.id}`)}>
                   <div className="relative aspect-[16/10] bg-muted overflow-hidden border-b">
                     {p.imageUrl ? (
+                      /* eslint-disable-next-line @next/next/no-img-element */
                       <img src={p.imageUrl} alt="Property" className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-500" />
                     ) : <div className="flex items-center justify-center w-full h-full bg-primary/5"><Home className="h-16 w-16 text-primary/10" /></div>}
                   </div>
