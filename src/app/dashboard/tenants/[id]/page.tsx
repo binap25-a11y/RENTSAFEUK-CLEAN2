@@ -25,13 +25,12 @@ import {
   Banknote,
   Send,
   ShieldCheck,
-  CheckCircle2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
 import { doc, collection, query, updateDoc, where, getDocs, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useMemo } from 'react';
+import { useState } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -121,28 +120,26 @@ export default function TenantDetailPage() {
     if (!tenant || !property || !user || !firestore) return;
     setIsUpdatingInvite(true);
     
-    const appUrl = window.location.origin;
-    const propertyAddr = [property.address.street, property.address.city].filter(Boolean).join(', ');
-    
-    const subject = encodeURIComponent(`Action Required: Verification for your RentSafeUK Tenant Portal`);
-    const body = encodeURIComponent(
-      `Hi ${tenant.name},\n\n` +
-      `Your landlord has added you to the RentSafeUK portal for your tenancy at ${propertyAddr}.\n\n` +
-      `To complete your verification and access your tenancy documents, report repairs, and track rent, please sign up for an account at the link below using this email address (${tenant.email}):\n\n` +
-      `${appUrl}\n\n` +
-      `Once you sign up, your account will be automatically verified and linked to this tenancy.\n\n` +
-      `Best regards,\n` +
-      `RentSafeUK Support`
-    );
-    
-    window.location.href = `mailto:${tenant.email}?subject=${subject}&body=${body}`;
-    
     try {
+        const appUrl = window.location.origin;
+        const propertyAddr = property.address.street || 'the property';
+        
+        // Simplified body to ensure generated mailto URL remains within system limits
+        const subject = `Invite: RentSafeUK Portal Access`;
+        const body = `Hi ${tenant.name},\n\nPlease join your Resident Portal for ${propertyAddr} at:\n\n${appUrl}\n\nSign up with this email: ${tenant.email}\n\nBest regards,\nLandlord Support`;
+        
+        const mailtoUrl = `mailto:${tenant.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
+        
+        // Trigger mail client
+        window.location.href = mailtoUrl;
+        
         const tRef = doc(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId, 'tenants', tenant.id);
         await updateDoc(tRef, { inviteSentDate: new Date().toISOString() });
-        toast({ title: 'Portal Invite Sent', description: 'Onboarding verification email prepared.' });
+        
+        toast({ title: 'Portal Invite Sent', description: 'Opening your email client...' });
     } catch (e) {
-        console.error("Failed to log invite:", e);
+        console.error("Invite failed:", e);
+        toast({ variant: 'destructive', title: 'Invite Error', description: 'Could not prepare the email.' });
     } finally {
         setIsUpdatingInvite(false);
     }
@@ -153,7 +150,7 @@ export default function TenantDetailPage() {
     
     const propertyAddr = [property.address.street, property.address.city].filter(Boolean).join(', ');
     const subject = encodeURIComponent(`Rent Reminder: ${propertyAddr}`);
-    const body = encodeURIComponent(`Hi ${tenant.name},\n\nThis is a friendly reminder that rent for ${propertyAddr} is due on the ${tenant.rentDueDay || '1st'} of the month.\n\nMonthly Rent: £${tenant.monthlyRent?.toLocaleString() || '0'}\n\nPlease let us know if you have any questions.\n\nBest regards,\nYour Landlord`);
+    const body = encodeURIComponent(`Hi ${tenant.name},\n\nThis is a friendly reminder that rent for ${propertyAddr} is due on the ${tenant.rentDueDay || '1st'} of the month.\n\nMonthly Rent: £${tenant.monthlyRent?.toLocaleString() || '0'}`);
     
     window.location.href = `mailto:${tenant.email}?subject=${subject}&body=${body}`;
     
