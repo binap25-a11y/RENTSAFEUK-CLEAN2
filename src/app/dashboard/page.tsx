@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useEffect, useMemo, useCallback } from 'react';
 import { useUser, useFirestore } from '@/firebase';
 import { collection, query, where, onSnapshot, collectionGroup, limit } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -160,16 +160,15 @@ export default function DashboardPage() {
   const firestore = useFirestore();
   const router = useRouter();
   
-  const [isTenant, setIsTenant] = useState<boolean | null>(null);
-  const [isLandlord, setIsLandlord] = useState<boolean | null>(null);
-  const [isIndexBuilding, setIsIndexBuilding] = useState(false);
-  
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoadingProps, setIsLoadingProps] = useState(true);
+  const [isTenant, setIsTenant] = useState<boolean | null>(null);
+  const [isLandlord, setIsLandlord] = useState<boolean | null>(null);
+  const [isIndexBuilding, setIsIndexBuilding] = useState(false);
 
-  // RULES OF HOOKS: All hooks must be defined before any conditional returns
+  // 1. Hook Normalization: Define all hooks at the absolute top
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;
     const term = searchTerm.toLowerCase();
@@ -178,7 +177,7 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // 1. Landlord Discovery: Check for existing properties (Fastest path)
+  // 2. Landlord Discovery: Immediate path for users with properties
   useEffect(() => {
     if (!user || !firestore) return;
     
@@ -192,7 +191,6 @@ export default function DashboardPage() {
       setProperties(list);
       setIsLoadingProps(false);
       
-      // If properties exist, this is definitely a landlord.
       if (snap.size > 0) {
           setIsLandlord(true);
           setIsTenant(false);
@@ -204,12 +202,9 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore]);
 
-  // 2. Tenant Discovery: Search across all properties for this email (Handshake path)
+  // 3. Tenant Discovery: Accelerated handshake for residents
   useEffect(() => {
-    if (!user || !firestore || !user.email) return;
-
-    // Optimization: Skip if already confirmed as landlord with properties
-    if (isLandlord === true) return;
+    if (!user || !firestore || !user.email || isLandlord === true) return;
 
     const email = user.email.toLowerCase().trim();
     const tenantsQuery = query(
@@ -222,22 +217,17 @@ export default function DashboardPage() {
       const activeTenant = snap.docs.find(d => d.data().status === 'Active');
       if (activeTenant) {
           setIsTenant(true);
-          // INSTANT REDIRECTION FOR VERIFIED TENANTS
           router.replace('/tenant/dashboard');
       } else {
-          // No active tenancy found
           setIsTenant(false);
-          // If no properties and no tenancy found yet, we assume they might be a new landlord
           if (properties.length === 0) setIsLandlord(false);
       }
       setIsIndexBuilding(false); 
     }, (error) => {
       const msg = error.message.toLowerCase();
-      // Only trigger index building screen if it's actually an index issue
       if (msg.includes('index') || error.code === 'failed-precondition') {
         setIsIndexBuilding(true);
       } else {
-        console.warn("Verification handshake issue:", error.message);
         setIsTenant(false);
       }
     });
@@ -245,10 +235,7 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore, router, isLandlord, properties.length]);
 
-  /**
-   * GLOBAL LOADING STATE:
-   * Block until either role is confirmed or we know they have no properties and no tenancy.
-   */
+  // 4. Conditional Rendering: Handled after all hooks are declared
   if (isUserLoading || (isTenant === null && isLandlord === null && !isIndexBuilding)) {
     return (
       <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background px-6">
@@ -264,63 +251,47 @@ export default function DashboardPage() {
                 Verifying Session
             </p>
             <h2 className="text-xl font-bold font-headline">Securing Access</h2>
-            <p className="text-xs text-muted-foreground leading-relaxed">
-                Establishing a secure path to your portal. This may take a few moments.
-            </p>
+            <p className="text-xs text-muted-foreground leading-relaxed">Establishing a secure path to your portal.</p>
           </div>
         </div>
       </div>
     );
   }
 
-  // Identity Mapping screen: Shown for potential tenants when the cloud index is building
   if (isIndexBuilding && properties.length === 0 && isTenant === null) {
       return (
         <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in duration-700 px-6">
-            <div className="relative">
-                <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto border shadow-inner">
-                    <Sparkles className="h-12 w-12 text-primary animate-pulse" />
-                </div>
-                <div className="absolute inset-0 bg-primary/5 blur-3xl rounded-full scale-150" />
+            <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto border shadow-inner">
+                <Sparkles className="h-12 w-12 text-primary animate-pulse" />
             </div>
             <div className="space-y-3">
                 <h2 className="font-headline text-3xl font-bold text-primary">Identity Mapping</h2>
                 <p className="text-muted-foreground font-medium leading-relaxed text-sm">
-                    The platform is currently mapping your resident identity across the secure portfolio. Access will be restored automatically once synchronization completes.
+                    The platform is currently mapping your resident identity. Access will be restored automatically once synchronization completes.
                 </p>
             </div>
             <div className="flex flex-col items-center gap-4 pt-4">
                 <Button className="font-bold h-12 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-lg" onClick={() => window.location.reload()}>
                     <RefreshCw className="mr-2 h-4 w-4" /> Check Status
                 </Button>
-                <div className="pt-10 border-t w-full mt-4 text-center">
-                    <p className="text-[10px] text-muted-foreground uppercase font-bold mb-4 tracking-widest">Are you a landlord?</p>
-                    <Button variant="outline" className="text-xs font-bold w-full border-primary/20 h-11" onClick={() => { setIsLandlord(false); setIsIndexBuilding(false); setIsTenant(false); }}>
-                        Continue to Portfolio Manager <ArrowRight className="ml-2 h-3 w-3" />
-                    </Button>
-                </div>
+                <Button variant="outline" className="text-xs font-bold w-full border-primary/20 h-11" onClick={() => { setIsLandlord(false); setIsIndexBuilding(false); setIsTenant(false); }}>
+                    Continue to Portfolio Manager <ArrowRight className="ml-2 h-3 w-3" />
+                </Button>
             </div>
         </div>
       );
   }
 
-  // If confirmed as tenant, redirect is handled by useEffect. 
-  // We return null here to avoid rendering the landlord dashboard for a millisecond.
   if (isTenant === true) return null;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 text-left">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
         <div className="space-y-1">
-          <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">
-            Portfolio Manager
-          </h1>
-          <p className="text-muted-foreground font-medium text-lg">
-            Control center for your rental estate.
-          </p>
+          <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Portfolio Manager</h1>
+          <p className="text-muted-foreground font-medium text-lg">Control center for your rental estate.</p>
         </div>
       </div>
-
       <div className="grid gap-6">
         <PropertiesPanel 
           properties={filteredProperties} 

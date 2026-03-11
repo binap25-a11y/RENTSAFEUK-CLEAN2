@@ -15,8 +15,8 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // --- COLLECTION GROUP RULES (MUST BE AT TOP LEVEL FOR QUERIES) ---
-    // Optimized for static provability in global identity discovery.
+    // --- COLLECTION GROUP RULES (MUST BE AT TOP LEVEL FOR OPTIMIZER) ---
+    // Direct token matching for high-performance global identity discovery.
     
     match /{path=**}/tenants/{tenantId} {
       /**
