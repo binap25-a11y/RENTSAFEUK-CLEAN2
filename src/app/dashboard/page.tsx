@@ -17,7 +17,8 @@ import {
   Bed, 
   Bath, 
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  ChevronRight
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -25,8 +26,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 
 /**
- * @fileOverview High-performance Role Discovery Controller.
- * Resolves Landlord vs Tenant roles in parallel with stable hook architecture.
+ * @fileOverview High-performance Parallel Role Discovery.
+ * Actively resolves Landlord vs Tenant roles with explicit escape hatches for new users.
  */
 
 interface Property {
@@ -50,7 +51,7 @@ export default function DashboardPage() {
   const firestore = useFirestore();
   const router = useRouter();
   
-  // 1. ALL HOOKS AT TOP - CRITICAL
+  // 1. STABLE HOOK ARCHITECTURE: Declare all hooks at the very top
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [properties, setProperties] = useState<Property[]>([]);
@@ -77,11 +78,12 @@ export default function DashboardPage() {
       setIsLoadingProps(false);
       setIsLandlord(snap.size > 0);
     }, (error) => {
+      console.warn("Landlord discovery issue:", error.message);
       setIsLoadingProps(false);
       setIsLandlord(false);
     });
 
-    // TENANT PATH: Global email handshake
+    // TENANT PATH: Global email handshake (requires collection group index)
     let unsubTenants = () => {};
     if (userEmail) {
         const tenantsQuery = query(
@@ -99,6 +101,7 @@ export default function DashboardPage() {
             if (msg.includes('index') || error.code === 'failed-precondition') {
                 setIsIndexBuilding(true);
             } else {
+                console.warn("Tenant discovery query failed:", error.message);
                 setIsTenant(false);
             }
         });
@@ -127,12 +130,12 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // --- RENDER BRANCHING ---
+  // --- RENDER BRANCHING (POST-HOOKS) ---
 
   if (isUserLoading) {
     return (
       <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Securing Session</p>
       </div>
     );
@@ -148,27 +151,7 @@ export default function DashboardPage() {
       );
   }
 
-  // Cloud Synchronization Layer (Fallback for new accounts)
-  if (isIndexBuilding && isLandlord === null && isTenant === null) {
-      return (
-        <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6">
-            <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto">
-                <Sparkles className="h-12 w-12 text-primary animate-pulse" />
-            </div>
-            <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Identity Mapping</h2>
-                <p className="text-muted-foreground font-medium text-sm leading-relaxed">
-                    Our secure system is currently mapping your resident identity across the platform. Access will be restored automatically.
-                </p>
-            </div>
-            <Button variant="ghost" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={() => window.location.reload()}>
-                <RefreshCw className="mr-2 h-3.5 w-3.5" /> Check Status
-            </Button>
-        </div>
-      );
-  }
-
-  // Landlord View (Active Portfolio)
+  // Landlord View (Active Portfolio) - FAST PATH
   if (isLandlord === true) {
       return (
         <div className="space-y-8 animate-in fade-in duration-500 text-left">
@@ -184,6 +167,32 @@ export default function DashboardPage() {
             view={view}
             setView={setView}
           />
+        </div>
+      );
+  }
+
+  // Cloud Synchronization Layer (Fallback for new accounts or indexing lag)
+  if (isIndexBuilding || (isLandlord === false && isTenant === null)) {
+      return (
+        <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6">
+            <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto border shadow-inner">
+                <Sparkles className="h-12 w-12 text-primary animate-pulse" />
+            </div>
+            <div className="space-y-3">
+                <h2 className="font-headline text-2xl font-bold text-primary">Identity Handshake</h2>
+                <p className="text-muted-foreground font-medium text-sm leading-relaxed">
+                    Our secure system is currently mapping your resident identity across the platform. Access will be restored automatically.
+                </p>
+            </div>
+            <div className="flex flex-col gap-3">
+                <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full" onClick={() => window.location.reload()}>
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Check Status
+                </Button>
+                {/* Escape Hatch for Landlords who haven't added a property yet */}
+                <Button variant="ghost" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground group" onClick={() => { setIsLandlord(false); setIsTenant(false); setIsIndexBuilding(false); }}>
+                    Continue to Portfolio Manager <ChevronRight className="ml-1 h-3 w-3 group-hover:translate-x-1 transition-transform" />
+                </Button>
+            </div>
         </div>
       );
   }
@@ -206,10 +215,11 @@ export default function DashboardPage() {
       );
   }
 
+  // Default Loader (Resolving Identity)
   return (
     <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4">
         <Loader2 className="h-10 w-10 animate-spin text-primary opacity-20" />
-        <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground/40">Resolving Identity...</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground/40">Resolving Identity...</p>
     </div>
   );
 }

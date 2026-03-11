@@ -9,7 +9,7 @@ import {
 
 /**
  * @fileOverview Consolidated authentication utilities.
- * Implemented in .tsx to ensure priority resolution by Next.js bundler.
+ * Implemented in .tsx to ensure priority resolution by Next.js bundler and fix TypeError issues.
  */
 
 export function initiateAnonymousSignIn(auth: Auth): void {

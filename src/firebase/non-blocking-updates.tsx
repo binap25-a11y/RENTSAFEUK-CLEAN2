@@ -13,8 +13,8 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
 /**
- * @fileOverview Firestore mutation utilities.
- * Consolidated into .tsx to resolve module resolution conflicts.
+ * @fileOverview Consolidated Firestore mutation utilities.
+ * Implemented in .tsx to ensure priority resolution and prevent "module has no exports" errors.
  */
 
 export function setDocumentNonBlocking(docRef: DocumentReference, data: any, options?: SetOptions) {
