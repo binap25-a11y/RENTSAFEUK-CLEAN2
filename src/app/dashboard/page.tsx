@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
-import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
+import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useUser, useFirestore } from '@/firebase';
 import { collection, query, where, onSnapshot, collectionGroup, limit } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -19,6 +19,7 @@ import {
   Sparkles,
   RefreshCw,
   ArrowRight,
+  AlertCircle
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -190,12 +191,11 @@ export default function DashboardPage() {
       setProperties(list);
       setIsLoadingProps(false);
       
-      // Landlord Fast-Path: If they own assets, they are definitely a landlord.
+      // Fast-Path: If they have assets, they are shown the landlord view.
       if (snap.size > 0) {
           setIsLandlord(true);
           setIsTenant(false);
       } else {
-          // No properties found, might be a new account or a resident.
           setIsLandlord(false);
       }
     }, (error) => {
@@ -227,7 +227,6 @@ export default function DashboardPage() {
       setIsIndexBuilding(false); 
     }, (error) => {
       const msg = error.message.toLowerCase();
-      // failed-precondition usually indicates a missing/building composite index for collectionGroup
       if (msg.includes('index') || error.code === 'failed-precondition') {
         setIsIndexBuilding(true);
       } else {
