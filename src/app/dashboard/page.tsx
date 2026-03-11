@@ -28,8 +28,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 
 /**
- * @fileOverview High-Speed Role Discovery Dashboard.
- * Resolves the "Identity Mapping" hang by parallelizing role detection and adding automated fallbacks.
+ * @fileOverview High-Performance Role Discovery Dashboard.
+ * Resolves the "Identity Handshake" hang and "Rules of Hooks" crash.
  */
 
 interface Property {
@@ -107,6 +107,7 @@ export default function DashboardPage() {
             if (error.message.toLowerCase().includes('index') || error.code === 'failed-precondition') {
                 setIsIndexBuilding(true);
             } else {
+                console.error("Tenant discovery error:", error.message);
                 setIsTenant(false);
             }
         });
@@ -117,16 +118,16 @@ export default function DashboardPage() {
     // 3. SAFETY TIMEOUT: Prevent infinite mapping hang
     const timer = setTimeout(() => {
         setHasTimedOut(true);
-        // If we haven't resolved tenant status by now, allow landlord UI to show
+        // If we haven't resolved tenant status by now, and landlord is false, allow recovery
         if (isTenant === null) setIsTenant(false);
-    }, 4500);
+    }, 5000);
 
     return () => {
         unsubProps();
         unsubTenants();
         clearTimeout(timer);
     };
-  }, [user, isUserLoading, firestore, isTenant]);
+  }, [user, isUserLoading, firestore]);
 
   // Routing Effect for Resident Hub
   useEffect(() => {
@@ -169,7 +170,7 @@ export default function DashboardPage() {
       );
   }
 
-  // Identity Mapping screen: Defensive screen during handshake
+  // Identity Mapping screen: Shown only when role is genuinely unknown
   if (!isLoadingProps && isLandlord === false && isTenant === null && !hasTimedOut) {
       return (
         <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6 animate-in fade-in duration-700">
@@ -182,13 +183,13 @@ export default function DashboardPage() {
                     Our secure system is currently mapping your resident identity across the platform. This ensures your access is private and protected.
                 </p>
                 {isIndexBuilding && (
-                    <div className="flex items-center justify-center gap-2 p-3 bg-amber-50 text-amber-700 rounded-lg text-xs font-bold border border-amber-100">
+                    <div className="flex items-center justify-center gap-2 p-3 bg-amber-50 text-amber-700 rounded-lg text-xs font-bold border border-amber-100 mt-4">
                         <AlertCircle className="h-4 w-4" />
                         System Updating (Cloud Index Sync)
                     </div>
                 )}
             </div>
-            <div className="space-y-3">
+            <div className="space-y-3 pt-4">
                 <Button 
                     variant="outline" 
                     className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-sm" 
@@ -199,7 +200,7 @@ export default function DashboardPage() {
                 <Button 
                     variant="ghost" 
                     className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full text-muted-foreground" 
-                    onClick={() => setIsTenant(false)}
+                    onClick={() => { setIsTenant(false); setHasTimedOut(true); }}
                 >
                     Continue to Portfolio Manager <ChevronRight className="ml-1 h-3 w-3" />
                 </Button>
@@ -218,7 +219,7 @@ export default function DashboardPage() {
                         <Home className="h-12 w-12 text-muted-foreground/40" />
                     </div>
                     <h2 className="text-2xl font-bold font-headline">Welcome to RentSafeUK</h2>
-                    <p className="text-muted-foreground">Start by onboard your first rental property or wait for a landlord to assign you to a tenancy.</p>
+                    <p className="text-muted-foreground">Start by onboarding your first rental property or wait for a landlord to assign you to a tenancy.</p>
                     <Button asChild size="lg" className="px-10 font-bold shadow-lg">
                         <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Add First Property</Link>
                     </Button>

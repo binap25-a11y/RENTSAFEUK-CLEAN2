@@ -7,7 +7,7 @@ import { getFirestore } from 'firebase/firestore';
 
 /**
  * @fileOverview Main Firebase Initialization Entry Point.
- * Stabilized to prevent circular dependencies and module resolution conflicts.
+ * Consolidated to prevent circular dependencies and module resolution conflicts.
  */
 
 export function initializeFirebase() {
@@ -40,7 +40,7 @@ export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 
-// Mutation Utilities (Consolidated from .ts)
+// Mutation Utilities - Consolidated Logic
 export { 
   setDocumentNonBlocking, 
   addDocumentNonBlocking, 
@@ -48,7 +48,7 @@ export {
   deleteDocumentNonBlocking 
 } from './non-blocking-updates';
 
-// Auth Utilities (Consolidated from .ts)
+// Auth Utilities - Consolidated Logic
 export { 
   initiateAnonymousSignIn, 
   createUserNonBlocking, 

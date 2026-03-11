@@ -14,7 +14,7 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // --- TOP-LEVEL STATICALLY PROVABLE RULES (OPTIMIZED FOR DISCOVERY) ---
+    // --- TOP-LEVEL STATICALLY PROVABLE RULES (OPTIMIZED FOR INSTANT DISCOVERY) ---
     // High-performance rules placed at top for instant collectionGroup query authorization.
     
     match /{path=**}/tenants/{tenantId} {
