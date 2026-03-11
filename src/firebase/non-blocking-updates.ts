@@ -14,7 +14,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 
 /**
  * @fileOverview Firestore mutation utilities implemented as non-blocking functions.
- * Unified into a stable .ts file to prevent Webpack resolution collisions.
+ * Consolidated into a single stable .ts file to prevent module resolution conflicts.
  */
 
 /**

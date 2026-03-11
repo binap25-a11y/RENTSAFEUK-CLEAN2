@@ -1,6 +1,6 @@
 'use client';
 /**
- * @fileOverview Redundant re-export file. 
- * Logic consolidated into non-blocking-updates.ts to resolve module cycles.
+ * @fileOverview This file is deprecated. 
+ * Logic consolidated into non-blocking-updates.ts to resolve module conflicts.
  */
-export * from './non-blocking-updates';
+export {};

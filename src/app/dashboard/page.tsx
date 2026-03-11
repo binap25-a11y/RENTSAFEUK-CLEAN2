@@ -18,7 +18,6 @@ import {
   Bath, 
   Sparkles,
   RefreshCw,
-  ChevronRight,
   ArrowRight
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
@@ -131,7 +130,7 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // --- RENDER BRANCHING ---
+  // --- RENDER BRANCHING (Always after all hooks) ---
 
   if (isUserLoading) {
     return (
@@ -142,7 +141,7 @@ export default function DashboardPage() {
     );
   }
 
-  // Confirmed Resident: Show transition screen while redirect triggers
+  // Verified Residents: Show transition screen while redirect triggers
   if (isTenant === true) {
       return (
         <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
@@ -152,7 +151,7 @@ export default function DashboardPage() {
       );
   }
 
-  // Confirmation required for Landlords or Index building phase
+  // Synchronization phase for new accounts
   if (isIndexBuilding && !isLandlord) {
       return (
         <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in duration-700 px-6">
@@ -160,15 +159,12 @@ export default function DashboardPage() {
                 <Sparkles className="h-12 w-12 text-primary animate-pulse" />
             </div>
             <div className="space-y-3 text-left">
-                <h2 className="font-headline text-2xl font-bold text-primary">Identity Handshake</h2>
+                <h2 className="font-headline text-2xl font-bold text-primary">Identity Mapping</h2>
                 <p className="text-muted-foreground font-medium text-sm leading-relaxed">
-                    Our secure system is currently mapping your identity across the portfolio. Access will be restored automatically once synchronization completes.
+                    Our secure system is currently mapping your resident identity across the secure portfolio. Access will be restored automatically once synchronization completes.
                 </p>
             </div>
             <div className="flex flex-col gap-3">
-                <Button className="w-full font-bold h-11 shadow-lg uppercase text-[10px] tracking-widest" onClick={() => setIsLandlord(true)}>
-                    Continue to Portfolio Manager <ArrowRight className="ml-2 h-4 w-4" />
-                </Button>
                 <Button variant="ghost" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={() => window.location.reload()}>
                     <RefreshCw className="mr-2 h-3.5 w-3.5" /> Check Status
                 </Button>
@@ -219,7 +215,7 @@ export default function DashboardPage() {
       );
   }
 
-  // Default Loader: While resolving initial roles
+  // Default Loader
   return (
     <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary opacity-20" />
