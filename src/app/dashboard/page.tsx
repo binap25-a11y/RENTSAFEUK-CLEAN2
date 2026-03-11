@@ -30,7 +30,7 @@ import { Input } from '@/components/ui/input';
 /**
  * @fileOverview Intelligent High-Performance Traffic Controller.
  * Resolves roles in parallel and routes Tenants to the Resident Hub immediately.
- * Stabilized hook stack to prevent Rules of Hooks crashes during identity mapping.
+ * Stabilized hook stack to prevent React runtime crashes during identity resolution.
  */
 
 interface Property {
@@ -98,11 +98,7 @@ export default function DashboardPage() {
 
         unsubTenants = onSnapshot(tenantsQuery, (snap) => {
             const activeTenant = snap.docs.find(d => d.data().status === 'Active');
-            if (activeTenant) {
-                setIsTenant(true);
-            } else {
-                setIsTenant(false);
-            }
+            setIsTenant(!!activeTenant);
             setIsIndexBuilding(false);
         }, (error) => {
             if (error.message.toLowerCase().includes('index') || error.code === 'failed-precondition') {
@@ -116,20 +112,23 @@ export default function DashboardPage() {
         setIsTenant(false);
     }
 
-    // DISCOVERY TIMEOUT: Prevent mapping hang
-    const timeoutId = setTimeout(() => {
-        setHasTimedOut(true);
-        if (isTenant === null) setIsTenant(false);
-    }, 6000);
-
     return () => {
         unsubProps();
         unsubTenants();
-        clearTimeout(timeoutId);
     };
   }, [user, isUserLoading, firestore]);
 
-  // 3. High-Speed Routing for Tenants
+  // 3. Handshake Safety Timeout
+  useEffect(() => {
+    if (isTenant === null) {
+        const timeoutId = setTimeout(() => {
+            setHasTimedOut(true);
+        }, 5000);
+        return () => clearTimeout(timeoutId);
+    }
+  }, [isTenant]);
+
+  // 4. High-Speed Routing for Tenants
   useEffect(() => {
     if (isTenant === true) {
         router.replace('/tenant/dashboard');
@@ -144,7 +143,7 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // 4. UI BRANCHING
+  // 5. UI BRANCHING
   if (isUserLoading) {
     return (
       <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4">

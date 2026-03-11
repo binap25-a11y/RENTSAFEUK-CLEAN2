@@ -13,8 +13,8 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
 /**
- * @fileOverview Stable Firestore Mutation Utilities.
- * Primary source of truth for non-blocking database mutations.
+ * @fileOverview Consolidated Firestore Mutation Utilities.
+ * Provides a reliable source for non-blocking database operations.
  */
 
 export function setDocumentNonBlocking(docRef: DocumentReference, data: any, options?: SetOptions) {

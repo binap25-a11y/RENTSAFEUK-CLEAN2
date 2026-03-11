@@ -8,8 +8,8 @@ import {
 } from 'firebase/auth';
 
 /**
- * @fileOverview Stable Authentication Utilities.
- * Primary source of truth for non-blocking auth actions.
+ * @fileOverview Consolidated Authentication Utilities.
+ * Resolves module resolution conflicts by providing a single source of truth for auth logic.
  */
 
 export function initiateAnonymousSignIn(auth: Auth): void {

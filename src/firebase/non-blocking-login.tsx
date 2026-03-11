@@ -2,8 +2,7 @@
 
 /**
  * @fileOverview Shadow module cleared to resolve TypeError: signInNonBlocking is not a function.
- * Webpack was prioritizing this empty .tsx over the .ts source logic.
- * Logic is now consolidated in non-blocking-login.ts.
+ * Logic is now centralized in the .ts module to prevent circular resolution loops.
  */
 
 export * from './non-blocking-login';
