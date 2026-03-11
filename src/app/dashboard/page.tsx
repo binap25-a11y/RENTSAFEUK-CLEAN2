@@ -1,7 +1,7 @@
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
-import { useUser, useFirestore } from '@/firebase';
+import { useState, useEffect, useMemo } from 'react';
+import { useUser, useFirestore, useMemoFirebase } from '@/firebase';
 import { collection, query, where, onSnapshot, collectionGroup, limit } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -16,7 +16,6 @@ import {
   Eye, 
   Bed, 
   Bath, 
-  ShieldCheck, 
   Sparkles,
   RefreshCw,
   ArrowRight,
@@ -156,7 +155,6 @@ export function PropertiesPanel({ properties, isLoading, searchTerm, setSearchTe
 }
 
 export default function DashboardPage() {
-  // CRITICAL: All hooks must be at the very top of the component body
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
@@ -169,6 +167,7 @@ export default function DashboardPage() {
   const [isLandlord, setIsLandlord] = useState<boolean | null>(null);
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
 
+  // Hook Order Stabilization: useMemo must be called before early returns
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;
     const term = searchTerm.toLowerCase();
@@ -177,37 +176,37 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // Landlord Check Hook
+  // Landlord Discovery
   useEffect(() => {
     if (!user || !firestore) return;
     
-    const propertiesQuery = query(
+    const propQuery = query(
       collection(firestore, 'userProfiles', user.uid, 'properties'), 
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
     );
 
-    const unsub = onSnapshot(propertiesQuery, (snap) => {
+    const unsub = onSnapshot(propQuery, (snap) => {
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Property));
       setProperties(list);
       setIsLoadingProps(false);
       
-      // Fast-Path: If properties exist, this is definitively a landlord.
+      // Landlord Fast-Path: If they own assets, they are definitely a landlord.
       if (snap.size > 0) {
           setIsLandlord(true);
           setIsTenant(false);
       } else {
-          // New landlord or tenant with 0 owned properties
+          // No properties found, might be a new account or a resident.
           setIsLandlord(false);
       }
     }, (error) => {
-      console.warn("Property fetch issue:", error.message);
+      console.warn("Portfolio resolution restricted:", error.message);
       setIsLoadingProps(false);
       setIsLandlord(false);
     });
     return () => unsub();
   }, [user, firestore]);
 
-  // Tenant Discovery Hook
+  // Resident Discovery (Parallel Handshake)
   useEffect(() => {
     if (!user || !firestore || !user.email || isLandlord === true) return;
 
@@ -228,6 +227,7 @@ export default function DashboardPage() {
       setIsIndexBuilding(false); 
     }, (error) => {
       const msg = error.message.toLowerCase();
+      // failed-precondition usually indicates a missing/building composite index for collectionGroup
       if (msg.includes('index') || error.code === 'failed-precondition') {
         setIsIndexBuilding(true);
       } else {
@@ -238,26 +238,25 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore, isLandlord]);
 
-  // Redirection Hook - Isolated to controlled effect
+  // Routing Logic
   useEffect(() => {
     if (isTenant === true) {
         router.replace('/tenant/dashboard');
     }
   }, [isTenant, router]);
 
-  // --- RENDERING HANDLED AFTER ALL HOOKS ---
+  // --- RENDER GATES ---
 
   if (isUserLoading) {
     return (
-      <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background px-6">
+      <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
         <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground animate-pulse">Verifying Session</p>
       </div>
     );
   }
 
-  // Handle building indexes or missing global handshake
-  // Note: We only block if we are waiting for a role resolution AND think an index is building
+  // Handle Identity Mapping (Index Phase)
   if (isIndexBuilding && properties.length === 0 && isTenant === null) {
       return (
         <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in duration-700 px-6">
@@ -282,7 +281,7 @@ export default function DashboardPage() {
       );
   }
 
-  // Final wait state before rendering content
+  // Waiting for role resolution
   if (isTenant === null && isLandlord === null) {
       return (
         <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">

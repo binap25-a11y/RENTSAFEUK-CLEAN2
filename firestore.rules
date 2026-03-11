@@ -15,13 +15,13 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // --- COLLECTION GROUP RULES (MUST BE AT TOP LEVEL FOR OPTIMIZER) ---
+    // --- COLLECTION GROUP RULES (TOP-LEVEL FOR INSTANT OPTIMIZATION) ---
     
     match /{path=**}/tenants/{tenantId} {
       /**
        * @description Authorized global identity handshake.
        * Uses direct token matching for instant query authorization.
-       * Rule is at top-level to ensure it is statically provable by query optimizer.
+       * Casing normalization is handled at the application layer.
        */
       allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
       allow get: if isSignedIn() && (

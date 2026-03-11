@@ -71,11 +71,14 @@ export default function TenantDashboard() {
             
             // Robust Path Parsing: userProfiles/{landlordId}/properties/{propertyId}/tenants/{tenantId}
             const segments = path.split('/');
-            const landlordId = segments[segments.indexOf('userProfiles') + 1];
-            const propertyId = segments[segments.indexOf('properties') + 1];
-            const tenantId = activeTenantDoc.id;
+            const userProfilesIdx = segments.indexOf('userProfiles');
+            const propertiesIdx = segments.indexOf('properties');
 
-            if (landlordId && propertyId) {
+            if (userProfilesIdx !== -1 && propertiesIdx !== -1) {
+                const landlordId = segments[userProfilesIdx + 1];
+                const propertyId = segments[propertiesIdx + 1];
+                const tenantId = activeTenantDoc.id;
+
                 const propRef = doc(firestore, 'userProfiles', landlordId, 'properties', propertyId);
                 propUnsub = onSnapshot(propRef, (propSnap) => {
                     if (propSnap.exists()) {
@@ -87,17 +90,17 @@ export default function TenantDashboard() {
                             propertyData: propSnap.data()
                         });
                     } else {
-                        setError("Your property details could not be resolved at this time.");
+                        setError("Property records could not be resolved.");
                     }
                     setIsLoading(false);
                     setIsIndexBuilding(false);
                 }, (err) => {
-                    console.warn("Property fetch restricted:", err.message);
-                    setError("Identity verified, but property access is temporarily restricted.");
+                    console.warn("Property access restricted:", err.message);
+                    setError("Database synchronization required.");
                     setIsLoading(false);
                 });
             } else {
-                setError("Tenant record found but the database path structure is unrecognized.");
+                setError("Tenancy mapping invalid.");
                 setIsLoading(false);
             }
         } else {
@@ -109,8 +112,8 @@ export default function TenantDashboard() {
         if (msg.includes('index') || err.code === 'failed-precondition') {
             setIsIndexBuilding(true);
         } else {
-            console.warn("Discovery issue:", err.message);
-            setError("The Resident handshake was interrupted. Please refresh.");
+            console.warn("Discovery handshake failed:", err.message);
+            setError("Handshake interrupted. Please refresh.");
         }
         setIsLoading(false);
     });
@@ -131,7 +134,7 @@ export default function TenantDashboard() {
     return (
         <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-background">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Syncing Resident Portal...</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Syncing Resident Hub...</p>
         </div>
     );
   }
@@ -164,12 +167,12 @@ export default function TenantDashboard() {
                 </div>
                 <CardTitle className="font-headline text-xl">Tenancy Not Resolved</CardTitle>
                 <CardDescription className="text-sm font-medium text-center">
-                    {error || `We could not find an active tenancy for ${user?.email}. Ensure your landlord has registered you with this exact email address.`}
+                    {error || `We could not find an active tenancy for ${user?.email}.`}
                 </CardDescription>
             </CardHeader>
             <CardFooter className="pt-6 flex flex-col gap-3 bg-background border-t">
                 <Button className="w-full font-bold h-11 shadow-lg uppercase tracking-widest text-xs" asChild><Link href="/dashboard">Back to Home</Link></Button>
-                <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={performDiscovery}><RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Handshake</Button>
+                <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={performDiscovery}><RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Sync</Button>
             </CardFooter>
         </Card>
     );
@@ -204,7 +207,7 @@ export default function TenantDashboard() {
             </CardHeader>
             <CardContent className="px-6 pb-6">
                 <div className="text-xl font-bold">{context.tenantData.tenancyStartDate?.seconds ? format(new Date(context.tenantData.tenancyStartDate.seconds * 1000), 'dd MMM yyyy') : 'Active Agreement'}</div>
-                <p className="text-xs text-muted-foreground mt-1 font-medium italic">Identity localized</p>
+                <p className="text-xs text-muted-foreground mt-1 font-medium italic">Handshake secured</p>
             </CardContent>
         </Card>
 
