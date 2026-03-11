@@ -17,7 +17,8 @@ import {
   ChevronRight,
   Sparkles,
   RefreshCw,
-  ShieldCheck
+  ShieldCheck,
+  Search
 } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
 import { collectionGroup, query, where, limit, onSnapshot, doc } from 'firebase/firestore';
@@ -49,9 +50,10 @@ export default function TenantDashboard() {
     setError(null);
     setIsIndexBuilding(false);
     
-    // Normalized handshake
+    // Normalized handshake email
     const userEmail = user.email.toLowerCase().trim();
 
+    // Query for any tenant record associated with this email
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
@@ -63,14 +65,14 @@ export default function TenantDashboard() {
     const unsub = onSnapshot(q, (snap) => {
         if (propUnsub) propUnsub();
 
-        // High-precision identity mapping
+        // 1. Pick the best doc: Active one first, then newest
         const activeTenantDoc = snap.docs.find(d => d.data().status === 'Active') || snap.docs[0];
 
         if (activeTenantDoc) {
             const data = activeTenantDoc.data();
             const path = activeTenantDoc.ref.path;
             
-            // Path Parsing: userProfiles/{landlordId}/properties/{propertyId}/tenants/{tenantId}
+            // Expected Path: userProfiles/{landlordId}/properties/{propertyId}/tenants/{tenantId}
             const segments = path.split('/');
             const userProfilesIdx = segments.indexOf('userProfiles');
             const propertiesIdx = segments.indexOf('properties');
@@ -90,6 +92,7 @@ export default function TenantDashboard() {
                             tenantData: data,
                             propertyData: propSnap.data()
                         });
+                        setError(null);
                     } else {
                         setError("Resident record resolved but property profile is inaccessible.");
                     }
@@ -97,15 +100,15 @@ export default function TenantDashboard() {
                     setIsIndexBuilding(false);
                 }, (err) => {
                     console.warn("Property sync failed:", err.message);
-                    setError("Portfolio synchronization pending.");
+                    setError("Portfolio synchronization pending. Access might be restricted by security rules.");
                     setIsLoading(false);
                 });
             } else {
-                setError("Tenancy record structure is non-standard.");
+                setError("Tenancy record structure is non-standard. Cannot resolve property link.");
                 setIsLoading(false);
             }
         } else {
-            // Unverified state
+            // No tenant document found for this email
             setIsLoading(false);
             setContext(null);
         }
@@ -114,8 +117,8 @@ export default function TenantDashboard() {
         if (msg.includes('index') || err.code === 'failed-precondition') {
             setIsIndexBuilding(true);
         } else {
-            console.warn("Messenger handshake interrupted:", err.message);
-            setError("Identity verification timed out. Please refresh.");
+            console.error("Discovery handshake failed:", err);
+            setError("Identity verification failed. This usually happens if your record hasn't been shared with you correctly.");
         }
         setIsLoading(false);
     });
@@ -136,7 +139,9 @@ export default function TenantDashboard() {
     return (
         <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Syncing Resident Hub...</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse text-center">
+                Syncing Resident Hub...
+            </p>
         </div>
     );
   }
@@ -147,14 +152,18 @@ export default function TenantDashboard() {
             <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto border shadow-inner">
                 <Sparkles className="h-12 w-12 text-primary animate-pulse" />
             </div>
-            <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Resident Verification</h2>
-                <p className="text-muted-foreground font-medium text-sm leading-relaxed">
-                    The platform is currently verifying your resident credentials. Access will be granted automatically once the cloud database synchronizes your records.
+            <div className="space-y-3 text-left">
+                <h2 className="font-headline text-2xl font-bold text-primary text-center">Resident Verification</h2>
+                <p className="text-muted-foreground font-medium text-sm leading-relaxed text-center">
+                    The platform is currently verifying your resident credentials in the cloud. 
                 </p>
+                <div className="p-4 rounded-xl bg-muted/50 border border-dashed text-xs text-muted-foreground mt-4">
+                    <p className="font-bold uppercase text-[9px] tracking-widest mb-1">Status Report</p>
+                    Cloud indexes are being built for your account. This is a one-time setup that takes a few moments.
+                </div>
             </div>
             <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-sm" onClick={() => window.location.reload()}>
-                <RefreshCw className="mr-2 h-4 w-4" /> Check Status
+                <RefreshCw className="mr-2 h-4 w-4" /> Check Status Now
             </Button>
         </div>
     );
@@ -163,18 +172,29 @@ export default function TenantDashboard() {
   if (error || !context) {
     return (
         <Card className="max-w-md mx-auto mt-20 shadow-2xl border-none text-left overflow-hidden">
-            <CardHeader className="text-center bg-muted/20 pb-8 px-6">
+            <CardHeader className="text-center bg-muted/20 pb-8 px-6 border-b">
                 <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 shadow-sm border">
-                    <AlertCircle className="h-10 w-10 text-destructive" />
+                    <Search className="h-10 w-10 text-primary/40" />
                 </div>
-                <CardTitle className="font-headline text-xl">Identity Not Verified</CardTitle>
+                <CardTitle className="font-headline text-xl text-primary">Identity Not Resolved</CardTitle>
                 <CardDescription className="text-sm font-medium text-center">
-                    {error || `We could not find a verified tenancy record for ${user?.email}. Please confirm with your landlord that your portal email matches exactly.`}
+                    We verified your login ({user?.email}) but could not locate an active tenancy record matching this identity.
                 </CardDescription>
             </CardHeader>
-            <CardFooter className="pt-6 flex flex-col gap-3 bg-background border-t">
-                <Button className="w-full font-bold h-11 shadow-lg uppercase tracking-widest text-xs" asChild><Link href="/dashboard">Continue to Dashboard</Link></Button>
-                <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={performDiscovery}><RefreshCw className="mr-2 h-3.5 w-3.5" /> Force Handshake</Button>
+            <CardContent className="pt-6 space-y-4">
+                <div className="space-y-2">
+                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Common Solutions</p>
+                    <ul className="text-xs text-muted-foreground space-y-2">
+                        <li className="flex items-start gap-2"><div className="h-1 w-1 rounded-full bg-primary mt-1.5 shrink-0" /> Confirm your landlord has added you using exactly <strong>{user?.email}</strong>.</li>
+                        <li className="flex items-start gap-2"><div className="h-1 w-1 rounded-full bg-primary mt-1.5 shrink-0" /> Ask your landlord to set your status to <strong>'Active'</strong>.</li>
+                    </ul>
+                </div>
+            </CardContent>
+            <CardFooter className="pt-6 flex flex-col gap-3 bg-muted/5 border-t">
+                <Button className="w-full font-bold h-11 shadow-lg uppercase tracking-widest text-xs" asChild><Link href="/dashboard">Back to Dashboard</Link></Button>
+                <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={performDiscovery}>
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Handshake
+                </Button>
             </CardFooter>
         </Card>
     );
@@ -189,8 +209,8 @@ export default function TenantDashboard() {
           <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Resident Hub</h1>
           <p className="text-muted-foreground font-medium flex items-center gap-2 mt-1"><Home className="h-4 w-4 text-primary/40" />{propertyAddress}</p>
         </div>
-        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-8 px-3 font-bold uppercase tracking-widest text-[9px] shadow-sm rounded-xl">
-            <ShieldCheck className="mr-1 h-3 w-3" /> Verified Resident
+        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-8 px-3 font-bold uppercase tracking-widest text-[9px] shadow-sm rounded-xl shrink-0">
+            <ShieldCheck className="mr-1.5 h-3.5 w-3.5" /> Verified Resident
         </Badge>
       </div>
 
@@ -200,7 +220,7 @@ export default function TenantDashboard() {
                 <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2"><Banknote className="h-3.5 w-3.5 text-primary" /> Monthly Rent</CardTitle>
             </CardHeader>
             <CardContent className="px-6 pb-6">
-                <div className="text-3xl font-bold">£{context.tenantData.monthlyRent?.toLocaleString() || '0'}</div>
+                <div className="text-3xl font-bold text-foreground">£{context.tenantData.monthlyRent?.toLocaleString() || '0'}</div>
                 <p className="text-xs text-muted-foreground mt-1 font-semibold">Payable on the {context.tenantData.rentDueDay || '1st'}</p>
             </CardContent>
         </Card>
@@ -210,14 +230,14 @@ export default function TenantDashboard() {
                 <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2"><Calendar className="h-3.5 w-3.5 text-primary" /> Tenancy Start</CardTitle>
             </CardHeader>
             <CardContent className="px-6 pb-6">
-                <div className="text-xl font-bold">{context.tenantData.tenancyStartDate?.seconds ? format(new Date(context.tenantData.tenancyStartDate.seconds * 1000), 'dd MMM yyyy') : 'Active Agreement'}</div>
+                <div className="text-xl font-bold text-foreground">{context.tenantData.tenancyStartDate?.seconds ? format(new Date(context.tenantData.tenancyStartDate.seconds * 1000), 'dd MMM yyyy') : 'Active Agreement'}</div>
                 <p className="text-xs text-muted-foreground mt-1 font-medium italic">Verified Audit Trail</p>
             </CardContent>
         </Card>
 
         <Card className="shadow-xl border-none bg-primary text-primary-foreground transition-all hover:translate-y-[-2px] text-left">
             <CardHeader className="pb-2 px-6">
-                <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-80 flex items-center gap-2"><MessageSquare className="h-3.5 w-3.5" /> Direct Contact</CardTitle>
+                <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-80 flex items-center gap-2 text-primary-foreground"><MessageSquare className="h-3.5 w-3.5" /> Direct Contact</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 px-6 pb-6">
                 <p className="text-xs font-medium leading-relaxed">Secure direct channel for repairs and tenancy queries.</p>
@@ -228,11 +248,11 @@ export default function TenantDashboard() {
 
       <div className="grid gap-6 lg:grid-cols-2 mt-8">
         <Card className="border-none shadow-md overflow-hidden group text-left">
-            <CardHeader className="bg-muted/30 border-b px-6"><CardTitle className="text-lg flex items-center gap-2 font-headline"><Wrench className="h-5 w-5 text-primary" /> Repair Center</CardTitle></CardHeader>
+            <CardHeader className="bg-muted/30 border-b px-6"><CardTitle className="text-lg flex items-center gap-2 font-headline text-foreground"><Wrench className="h-5 w-5 text-primary" /> Repair Center</CardTitle></CardHeader>
             <CardContent className="pt-6 px-6 pb-6">
                 <div className="flex items-center justify-between p-5 rounded-2xl bg-muted/20 border border-transparent group-hover:border-primary/10 transition-all">
                     <div className="space-y-1">
-                        <p className="text-sm font-bold">Report a property issue</p>
+                        <p className="text-sm font-bold text-foreground">Report a property issue</p>
                         <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Logged repairs appear in audit trail</p>
                     </div>
                     <Button size="sm" className="h-10 font-bold px-8 shadow-md rounded-xl uppercase tracking-widest text-[9px]" asChild><Link href="/tenant/maintenance">Report Repair</Link></Button>
@@ -241,11 +261,11 @@ export default function TenantDashboard() {
         </Card>
 
         <Card className="border-none shadow-md overflow-hidden group text-left">
-            <CardHeader className="bg-muted/30 border-b px-6"><CardTitle className="text-lg flex items-center gap-2 font-headline"><FileText className="h-5 w-5 text-primary" /> Documents</CardTitle></CardHeader>
+            <CardHeader className="bg-muted/30 border-b px-6"><CardTitle className="text-lg flex items-center gap-2 font-headline text-foreground"><FileText className="h-5 w-5 text-primary" /> Documents</CardTitle></CardHeader>
             <CardContent className="pt-6 px-6 pb-6">
                 <div className="flex items-center justify-between p-5 rounded-2xl bg-muted/20 border border-transparent group-hover:border-primary/10 transition-all">
                     <div className="space-y-1">
-                        <p className="text-sm font-bold">Safe & Compliant</p>
+                        <p className="text-sm font-bold text-foreground">Safe & Compliant</p>
                         <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Access shared certificates</p>
                     </div>
                     <Button variant="outline" size="sm" className="h-10 font-bold px-8 border-primary/20 hover:bg-primary/5 rounded-xl uppercase tracking-widest text-[9px]" asChild><Link href="/tenant/documents">View Folder</Link></Button>

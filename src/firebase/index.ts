@@ -37,12 +37,22 @@ export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 
-// Authentication Utilities (Explicit exports to avoid resolution shadowing)
-import { signInNonBlocking, createUserNonBlocking, initiateAnonymousSignIn } from './non-blocking-login';
-export { signInNonBlocking, createUserNonBlocking, initiateAnonymousSignIn };
+// Authentication Utilities (Stabilized imports to avoid .ts vs .tsx resolution shadowing)
+export { 
+  signInNonBlocking, 
+  createUserNonBlocking, 
+  initiateAnonymousSignIn,
+  initiateEmailSignUp,
+  initiateEmailSignIn 
+} from './non-blocking-login';
 
 // Database Utilities
-export * from './non-blocking-updates';
+export {
+  setDocumentNonBlocking,
+  addDocumentNonBlocking,
+  updateDocumentNonBlocking,
+  deleteDocumentNonBlocking
+} from './non-blocking-updates';
 
 export * from './errors';
 export * from './error-emitter';

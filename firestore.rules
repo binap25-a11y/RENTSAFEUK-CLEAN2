@@ -18,13 +18,8 @@ service cloud.firestore {
     // These rules are placed at the top level to ensure high-performance collection group verification.
     
     match /{path=**}/tenants/{tenantId} {
-      // Optimized for exact email matching queries. Mandatory for the identity handshake.
-      allow list: if isSignedIn() && (
-        (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
-        resource.data.userId == request.auth.uid
-      );
-      
-      allow get: if isSignedIn() && (
+      // Combined read rule for performance. Explicitly supports email-based global discovery.
+      allow read: if isSignedIn() && (
         (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
         resource.data.userId == request.auth.uid
       );
@@ -35,7 +30,7 @@ service cloud.firestore {
     }
     
     match /{path=**}/maintenanceLogs/{logId} {
-       allow list, get: if isSignedIn();
+       allow read: if isSignedIn();
        allow create: if isSignedIn();
     }
 
@@ -52,7 +47,7 @@ service cloud.firestore {
 
         match /tenants/{tenantId} {
           allow read, write: if isOwner(userId);
-          // Resident-specific read access via lower-cased normalization
+          // Resident-specific read access via path-based verification
           allow get: if isSignedIn() && request.auth.token.email != null && (
             resource.data.email == request.auth.token.email.lower() ||
             resource.data.userId == request.auth.uid
@@ -76,7 +71,7 @@ service cloud.firestore {
         match /maintenanceLogs/{logId} {
           allow read, write: if isOwner(userId);
           allow create: if isSignedIn();
-          allow get, list: if isSignedIn();
+          allow read: if isSignedIn();
         }
 
         match /inspections/{inspectionId} {
