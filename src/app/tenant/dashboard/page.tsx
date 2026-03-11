@@ -51,7 +51,7 @@ export default function TenantDashboard() {
     
     const userEmail = user.email.toLowerCase().trim();
 
-    // Forced normalization query for global discovery
+    // Secure Handshake: Match normalized email in global tenant registry
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
@@ -69,7 +69,7 @@ export default function TenantDashboard() {
             const data = activeTenantDoc.data();
             const path = activeTenantDoc.ref.path;
             
-            // Precise Path Parsing: userProfiles/{landlordId}/properties/{propertyId}/tenants/{tenantId}
+            // Robust Path Parsing: userProfiles/{landlordId}/properties/{propertyId}/tenants/{tenantId}
             const segments = path.split('/');
             const landlordId = segments[segments.indexOf('userProfiles') + 1];
             const propertyId = segments[segments.indexOf('properties') + 1];
@@ -87,17 +87,17 @@ export default function TenantDashboard() {
                             propertyData: propSnap.data()
                         });
                     } else {
-                        setError("Property details could not be resolved.");
+                        setError("Your property details could not be resolved at this time.");
                     }
                     setIsLoading(false);
                     setIsIndexBuilding(false);
                 }, (err) => {
                     console.warn("Property fetch restricted:", err.message);
-                    setError("Identity verified, but property data is currently restricted.");
+                    setError("Identity verified, but property access is temporarily restricted.");
                     setIsLoading(false);
                 });
             } else {
-                setError("Tenant record found but structure is invalid.");
+                setError("Tenant record found but the database path structure is unrecognized.");
                 setIsLoading(false);
             }
         } else {
@@ -110,7 +110,7 @@ export default function TenantDashboard() {
             setIsIndexBuilding(true);
         } else {
             console.warn("Discovery issue:", err.message);
-            setError("Identity handshake interrupted.");
+            setError("The Resident handshake was interrupted. Please refresh.");
         }
         setIsLoading(false);
     });
@@ -131,7 +131,7 @@ export default function TenantDashboard() {
     return (
         <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-background">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Syncing Secure Portal...</p>
+            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Syncing Resident Portal...</p>
         </div>
     );
   }
@@ -145,7 +145,7 @@ export default function TenantDashboard() {
             <div className="space-y-3">
                 <h2 className="font-headline text-2xl font-bold text-primary">Identity Synchronization</h2>
                 <p className="text-muted-foreground font-medium text-sm leading-relaxed">
-                    The platform is currently mapping your resident identity. Access will be restored automatically once the cloud database synchronizes.
+                    The platform is currently mapping your resident identity. Access will be restored automatically once the cloud database synchronizes your records.
                 </p>
             </div>
             <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full" onClick={() => window.location.reload()}>
@@ -168,7 +168,7 @@ export default function TenantDashboard() {
                 </CardDescription>
             </CardHeader>
             <CardFooter className="pt-6 flex flex-col gap-3 bg-background border-t">
-                <Button className="w-full font-bold h-11 shadow-lg uppercase tracking-widest text-xs" asChild><Link href="/dashboard">Check Portfolio View</Link></Button>
+                <Button className="w-full font-bold h-11 shadow-lg uppercase tracking-widest text-xs" asChild><Link href="/dashboard">Back to Home</Link></Button>
                 <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={performDiscovery}><RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Handshake</Button>
             </CardFooter>
         </Card>

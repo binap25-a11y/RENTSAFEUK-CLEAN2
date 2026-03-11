@@ -160,6 +160,7 @@ export default function DashboardPage() {
   const firestore = useFirestore();
   const router = useRouter();
   
+  // 1. ALL HOOKS MUST BE DECLARED AT THE ABSOLUTE TOP
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [properties, setProperties] = useState<Property[]>([]);
@@ -168,8 +169,6 @@ export default function DashboardPage() {
   const [isLandlord, setIsLandlord] = useState<boolean | null>(null);
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
 
-  // 1. ALL HOOKS MUST BE DECLARED AT THE ABSOLUTE TOP
-  // This satisfies the "Rules of Hooks" and prevents crashes during role resolution.
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;
     const term = searchTerm.toLowerCase();
@@ -192,7 +191,7 @@ export default function DashboardPage() {
       setProperties(list);
       setIsLoadingProps(false);
       
-      // If properties exist, this is definitely a landlord.
+      // Fast-Path: If properties exist, this is definitively a landlord.
       if (snap.size > 0) {
           setIsLandlord(true);
           setIsTenant(false);
@@ -219,10 +218,9 @@ export default function DashboardPage() {
       const activeTenant = snap.docs.find(d => d.data().status === 'Active');
       if (activeTenant) {
           setIsTenant(true);
-          router.replace('/tenant/dashboard');
+          // Redirect handled in subsequent useEffect to prevent React warning
       } else {
           setIsTenant(false);
-          // If no properties and no tenant record found, we assume a new landlord account
           if (properties.length === 0) setIsLandlord(false);
       }
       setIsIndexBuilding(false); 
@@ -236,7 +234,14 @@ export default function DashboardPage() {
     });
 
     return () => unsub();
-  }, [user, firestore, router, isLandlord, properties.length]);
+  }, [user, firestore, isLandlord, properties.length]);
+
+  // Redirection Hook - Isolated to controlled effect
+  useEffect(() => {
+    if (isTenant === true) {
+        router.replace('/tenant/dashboard');
+    }
+  }, [isTenant, router]);
 
   // 2. CONDITIONAL RENDERING HANDLED AFTER ALL HOOKS
   if (isUserLoading || (isTenant === null && isLandlord === null && !isIndexBuilding)) {
@@ -271,7 +276,7 @@ export default function DashboardPage() {
             <div className="space-y-3">
                 <h2 className="font-headline text-3xl font-bold text-primary">Identity Mapping</h2>
                 <p className="text-muted-foreground font-medium leading-relaxed text-sm">
-                    The platform is currently mapping your resident identity. Access will be restored automatically once synchronization completes.
+                    The platform is currently mapping your resident identity across the secure portfolio. Access will be restored automatically once synchronization completes.
                 </p>
             </div>
             <div className="flex flex-col items-center gap-4 pt-4">
@@ -286,7 +291,6 @@ export default function DashboardPage() {
       );
   }
 
-  // If identified as tenant, we've already initiated redirect.
   if (isTenant === true) return null;
 
   // Render the Landlord Dashboard
