@@ -183,7 +183,7 @@ export default function DashboardPage() {
       setProperties(list);
       setIsLoadingProps(false);
       
-      // If properties exist, this is a landlord.
+      // If properties exist, this is definitely a landlord.
       if (snap.size > 0) {
           setIsLandlord(true);
           setIsTenant(false);
@@ -218,12 +218,13 @@ export default function DashboardPage() {
       } else {
           // No active tenancy found
           setIsTenant(false);
-          // If no properties and no tenancy, they are a new landlord
+          // If no properties and no tenancy found yet, we assume they might be a new landlord
           if (properties.length === 0) setIsLandlord(false);
       }
       setIsIndexBuilding(false); 
     }, (error) => {
       const msg = error.message.toLowerCase();
+      // Only trigger index building screen if it's actually an index issue
       if (msg.includes('index') || error.code === 'failed-precondition') {
         setIsIndexBuilding(true);
       } else {
@@ -286,7 +287,7 @@ export default function DashboardPage() {
             <div className="space-y-3">
                 <h2 className="font-headline text-3xl font-bold text-primary">Identity Mapping</h2>
                 <p className="text-muted-foreground font-medium leading-relaxed text-sm">
-                    The platform is currently mapping your resident identity across the secure portfolio. Access will be restored automatically.
+                    The platform is currently mapping your resident identity across the secure portfolio. Access will be restored automatically once synchronization completes.
                 </p>
             </div>
             <div className="flex flex-col items-center gap-4 pt-4">
@@ -303,6 +304,10 @@ export default function DashboardPage() {
         </div>
       );
   }
+
+  // If confirmed as tenant, redirect is handled by useEffect. 
+  // We return null here to avoid rendering the landlord dashboard for a millisecond.
+  if (isTenant === true) return null;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 text-left">
