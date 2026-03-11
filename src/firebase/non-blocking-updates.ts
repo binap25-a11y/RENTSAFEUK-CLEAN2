@@ -10,7 +10,7 @@ import {
   SetOptions,
 } from 'firebase/firestore';
 import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/errors';
 
 /**
  * @fileOverview Consolidated Firestore Mutation Utilities.
@@ -26,7 +26,7 @@ export function setDocumentNonBlocking(docRef: DocumentReference, data: any, opt
         path: docRef.path,
         operation: 'write',
         requestResourceData: data,
-      })
+      } satisfies SecurityRuleContext)
     );
   });
 }
@@ -39,7 +39,7 @@ export function addDocumentNonBlocking(colRef: CollectionReference, data: any) {
         path: colRef.path,
         operation: 'create',
         requestResourceData: data,
-      })
+      } satisfies SecurityRuleContext)
     );
   });
 }
@@ -52,7 +52,7 @@ export function updateDocumentNonBlocking(docRef: DocumentReference, data: any) 
         path: docRef.path,
         operation: 'update',
         requestResourceData: data,
-      })
+      } satisfies SecurityRuleContext)
     );
   });
 }
@@ -64,7 +64,7 @@ export function deleteDocumentNonBlocking(docRef: DocumentReference) {
       new FirestorePermissionError({
         path: docRef.path,
         operation: 'delete',
-      })
+      } satisfies SecurityRuleContext)
     );
   });
 }

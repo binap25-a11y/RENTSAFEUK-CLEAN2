@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * @fileOverview This module has been deprecated in favor of the .ts version 
- * to resolve Webpack module resolution conflicts.
+ * @fileOverview DEPRECATED. Logic moved to non-blocking-updates.ts to resolve
+ * Webpack module resolution conflicts.
  */
 
 export {};

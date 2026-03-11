@@ -28,9 +28,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 
 /**
- * @fileOverview Intelligent High-Performance Traffic Controller.
- * Resolves roles in parallel and routes Tenants to the Resident Hub immediately.
- * Stabilized hook stack to prevent React runtime crashes during identity resolution.
+ * @fileOverview Intelligent Role Router & Dashboard Traffic Controller.
+ * Resolves Landlord/Tenant roles in parallel and routes to portals instantly.
+ * Stabilized hook stack ensures 100% React lifecycle reliability.
  */
 
 interface Property {
@@ -54,7 +54,7 @@ export default function DashboardPage() {
   const firestore = useFirestore();
   const router = useRouter();
   
-  // 1. STABLE HOOK STACK: Declare all hooks at the top to satisfy React lifecycle rules.
+  // 1. STABLE HOOK STACK: Declared at top level, no early returns.
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [properties, setProperties] = useState<Property[]>([]);
@@ -64,13 +64,13 @@ export default function DashboardPage() {
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
   const [hasTimedOut, setHasTimedOut] = useState(false);
 
-  // 2. Identity Discovery Effect: Parallel Handshake
+  // 2. Role Discovery Effect
   useEffect(() => {
     if (isUserLoading || !user || !firestore) return;
     
     const userEmail = user.email?.toLowerCase().trim();
 
-    // LANDLORD DISCOVERY (Fast Path)
+    // LANDLORD FAST-PATH
     const propQuery = query(
       collection(firestore, 'userProfiles', user.uid, 'properties'), 
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
@@ -82,19 +82,18 @@ export default function DashboardPage() {
       setIsLoadingProps(false);
       setIsLandlord(snap.size > 0);
     }, (error) => {
-      console.warn("Landlord discovery restricted:", error.message);
+      console.warn("Landlord profile restricted:", error.message);
       setIsLoadingProps(false);
       setIsLandlord(false);
     });
 
-    // TENANT DISCOVERY (Secure Handshake)
+    // TENANT SECURE HANDSHAKE
     let unsubTenants = () => {};
     if (userEmail) {
-        // High-performance group query optimized via rules-top indexes
         const tenantsQuery = query(
             collectionGroup(firestore, 'tenants'),
             where('email', '==', userEmail),
-            limit(5)
+            limit(1)
         );
 
         unsubTenants = onSnapshot(tenantsQuery, (snap) => {
@@ -105,7 +104,6 @@ export default function DashboardPage() {
             if (error.message.toLowerCase().includes('index') || error.code === 'failed-precondition') {
                 setIsIndexBuilding(true);
             } else {
-                console.error("Tenant discovery failure:", error.message);
                 setIsTenant(false);
             }
         });
@@ -119,24 +117,23 @@ export default function DashboardPage() {
     };
   }, [user, isUserLoading, firestore]);
 
-  // 3. Handshake Safety Timeout
+  // 3. Handshake Fail-Safe
   useEffect(() => {
     if (isTenant === null) {
         const timeoutId = setTimeout(() => {
             setHasTimedOut(true);
-        }, 6000);
+        }, 5000); // 5s fallback
         return () => clearTimeout(timeoutId);
     }
   }, [isTenant]);
 
-  // 4. High-Speed Routing for Tenants
+  // 4. Instant Tenant Routing
   useEffect(() => {
     if (isTenant === true) {
         router.replace('/tenant/dashboard');
     }
   }, [isTenant, router]);
 
-  // 5. Filter properties only after checking lifecycle requirements
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;
     const term = searchTerm.toLowerCase();
@@ -145,40 +142,27 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // 6. UI BRANCHING
-  if (isUserLoading) {
+  // 5. UI BRANCHING (Controlled after hook initialization)
+  if (isUserLoading || (isTenant === true && !hasTimedOut)) {
     return (
-      <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4">
-        <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Securing Session</p>
+      <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Syncing Secure Environment</p>
       </div>
     );
   }
 
-  // Tenant Transition Phase
-  if (isTenant === true) {
-      return (
-        <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 text-center px-6">
-            <ShieldCheck className="h-16 w-16 text-primary animate-in zoom-in duration-500" />
-            <div className="space-y-2">
-                <h2 className="text-xl font-bold font-headline">Identity Verified</h2>
-                <p className="text-muted-foreground text-sm font-medium">Entering Resident Hub...</p>
-            </div>
-        </div>
-      );
-  }
-
-  // Identity Mapping screen: Shown during handshake phase if no portfolio found
+  // Identity Mapping screen (Discovery Phase)
   if (!isLoadingProps && isLandlord === false && isTenant === null && !hasTimedOut) {
       return (
-        <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6 animate-in fade-in duration-700">
+        <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in duration-700 px-6">
             <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto border shadow-inner">
                 <Sparkles className="h-12 w-12 text-primary animate-pulse" />
             </div>
             <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Identity Mapping</h2>
+                <h2 className="font-headline text-2xl font-bold text-primary">Identity Handshake</h2>
                 <p className="text-muted-foreground font-medium text-sm leading-relaxed text-center">
-                    Our secure system is currently mapping your resident identity across the platform. This ensures your access is private and protected.
+                    Our secure system is currently mapping your resident identity across the platform. Access will be granted automatically.
                 </p>
                 {isIndexBuilding && (
                     <div className="flex items-center justify-center gap-2 p-3 bg-amber-50 text-amber-700 rounded-lg text-xs font-bold border border-amber-100 mt-4">
@@ -198,7 +182,7 @@ export default function DashboardPage() {
                 <Button 
                     variant="ghost" 
                     className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full text-muted-foreground" 
-                    onClick={() => { setIsTenant(false); setHasTimedOut(true); }}
+                    onClick={() => setHasTimedOut(true)}
                 >
                     Continue to Portfolio Manager <ChevronRight className="ml-1 h-3 w-3" />
                 </Button>
@@ -207,7 +191,7 @@ export default function DashboardPage() {
       );
   }
 
-  // Landlord View (or empty state)
+  // Landlord Dashboard / Empty State
   if (isLandlord === true || isTenant === false || hasTimedOut) {
       if (properties.length === 0 && !isLoadingProps) {
           return (
@@ -217,9 +201,9 @@ export default function DashboardPage() {
                         <Home className="h-12 w-12 text-muted-foreground/40" />
                     </div>
                     <h2 className="text-2xl font-bold font-headline">Welcome to RentSafeUK</h2>
-                    <p className="text-muted-foreground font-medium">Start by onboarding your first rental property or wait for a landlord to assign you to a tenancy.</p>
+                    <p className="text-muted-foreground font-medium">Onboard your first rental property or wait for a landlord to assign you to a tenancy hub.</p>
                     <Button asChild size="lg" className="px-10 font-bold shadow-lg h-12 w-full sm:w-auto">
-                        <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Add First Property</Link>
+                        <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Add Property</Link>
                     </Button>
                 </div>
             </div>
@@ -230,7 +214,7 @@ export default function DashboardPage() {
         <div className="space-y-8 animate-in fade-in duration-500 text-left">
           <div className="space-y-1">
             <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Portfolio Manager</h1>
-            <p className="text-muted-foreground font-medium text-lg">Control center for your rental estate.</p>
+            <p className="text-muted-foreground font-medium text-lg">Central control for your rental estate.</p>
           </div>
           <PropertiesPanel 
             properties={filteredProperties} 
@@ -247,7 +231,7 @@ export default function DashboardPage() {
   return (
     <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4">
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Resolving Identity...</p>
+      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Authorizing Access...</p>
     </div>
   );
 }
@@ -266,10 +250,10 @@ function PropertiesPanel({ properties, isLoading, searchTerm, setSearchTerm, vie
     <Card className="shadow-lg border-none overflow-hidden">
       <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b bg-muted/5">
         <div className="space-y-1">
-          <CardTitle className="text-lg font-bold text-left">My Portfolio</CardTitle>
-          <CardDescription className="text-left">Manage and view your property records.</CardDescription>
+          <CardTitle className="text-lg font-bold text-left">Estate View</CardTitle>
+          <CardDescription className="text-left">Live status of your property records.</CardDescription>
         </div>
-        <Button asChild className="font-bold uppercase tracking-widest text-[10px] h-10 px-6 shadow-md"><Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Add Property</Link></Button>
+        <Button asChild className="font-bold uppercase tracking-widest text-[10px] h-10 px-6 shadow-md"><Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Add Asset</Link></Button>
       </CardHeader>
       <CardContent className="pt-6">
         <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-6">
@@ -280,7 +264,7 @@ function PropertiesPanel({ properties, isLoading, searchTerm, setSearchTerm, vie
               name="search"
               value={searchTerm} 
               onChange={(e) => setSearchTerm(e.target.value)} 
-              placeholder="Search address..." 
+              placeholder="Filter by address..." 
               className="pl-8 h-10 bg-background" 
             />
           </div>
@@ -353,8 +337,8 @@ function PropertiesPanel({ properties, isLoading, searchTerm, setSearchTerm, vie
             <div className="p-6 rounded-full bg-background shadow-sm">
                 <Home className="h-12 w-12 text-primary/20" />
             </div>
-            <p className="font-bold text-lg">Your portfolio is empty</p>
-            <Button asChild variant="outline" size="sm" className="font-bold uppercase tracking-widest text-[10px] h-10 px-8 border-primary/20 hover:bg-primary/5 mt-2"><Link href="/dashboard/properties/add">Add First Property</Link></Button>
+            <p className="font-bold text-lg">Portfolio record empty</p>
+            <Button asChild variant="outline" size="sm" className="font-bold uppercase tracking-widest text-[10px] h-10 px-8 border-primary/20 hover:bg-primary/5 mt-2"><Link href="/dashboard/properties/add">Onboard First Property</Link></Button>
           </div>
         )}
       </CardContent>
