@@ -13,8 +13,8 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
 /**
- * @fileOverview Consolidated Firestore mutation utilities.
- * Uses .tsx to ensure priority in Next.js module resolution.
+ * @fileOverview Definitive Consolidated Firestore Mutation Utilities.
+ * Resolves module shadowing conflicts by centralizing mutation logic.
  */
 
 export function setDocumentNonBlocking(docRef: DocumentReference, data: any, options?: SetOptions) {

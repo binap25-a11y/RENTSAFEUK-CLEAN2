@@ -27,8 +27,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 
 /**
- * @fileOverview High-performance Parallel Role Discovery.
- * Actively resolves Landlord vs Tenant roles with immediate routing for verified residents.
+ * @fileOverview Optimized Dashboard with Parallel Role Discovery.
+ * Fixes "Identity Mapping" hang and ensures strict compliance with Rules of Hooks.
  */
 
 interface Property {
@@ -52,7 +52,7 @@ export default function DashboardPage() {
   const firestore = useFirestore();
   const router = useRouter();
   
-  // HOOK STACK: Absolute top level
+  // HOOK STACK: Ensure absolute top-level declaration for stability
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [properties, setProperties] = useState<Property[]>([]);
@@ -124,18 +124,6 @@ export default function DashboardPage() {
     };
   }, [user, isUserLoading, firestore]);
 
-  // FAIL-SAFE: Stop mapping identity if it hangs too long
-  useEffect(() => {
-    const timer = setTimeout(() => {
-        if (isLandlord === false && isTenant === null) {
-            console.log("Discovery handshake slow. Defaulting to onboarding.");
-            setIsTenant(false);
-            setDiscoveryStatus('standby');
-        }
-    }, 6000);
-    return () => clearTimeout(timer);
-  }, [isLandlord, isTenant]);
-
   // Routing Effect for Verified Residents
   useEffect(() => {
     if (isTenant === true) {
@@ -177,6 +165,32 @@ export default function DashboardPage() {
       );
   }
 
+  // Identity Handshake screen: Only shown if potentially a tenant and index is still building
+  if (isIndexBuilding || (isLandlord === false && isTenant === null)) {
+      return (
+        <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6 animate-in fade-in duration-700">
+            <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto border shadow-inner">
+                <Sparkles className="h-12 w-12 text-primary animate-pulse" />
+            </div>
+            <div className="space-y-3">
+                <h2 className="font-headline text-2xl font-bold text-primary">Identity Mapping</h2>
+                <p className="text-muted-foreground font-medium text-sm leading-relaxed">
+                    Our secure system is currently mapping your resident identity across the platform. Access will be restored automatically.
+                </p>
+            </div>
+            <div className="space-y-3">
+                <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-sm" onClick={() => window.location.reload()}>
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Check Identity Status
+                </Button>
+                {/* Escape hatch for landlords with 0 properties */}
+                <Button variant="ghost" className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors" onClick={() => setIsTenant(false)}>
+                    I am a landlord / Continue to Portfolio Manager
+                </Button>
+            </div>
+        </div>
+      );
+  }
+
   // Active Portfolio Path
   if (isLandlord === true) {
       return (
@@ -197,27 +211,7 @@ export default function DashboardPage() {
       );
   }
 
-  // Discovery / Handshake Path
-  if (isIndexBuilding || (isLandlord === false && isTenant === null)) {
-      return (
-        <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6">
-            <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto border shadow-inner">
-                <Sparkles className="h-12 w-12 text-primary animate-pulse" />
-            </div>
-            <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Identity Mapping</h2>
-                <p className="text-muted-foreground font-medium text-sm leading-relaxed">
-                    Our secure system is currently mapping your resident identity across the platform. Access will be restored automatically.
-                </p>
-            </div>
-            <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full" onClick={() => window.location.reload()}>
-                <RefreshCw className="mr-2 h-3.5 w-3.5" /> Check Identity Status
-            </Button>
-        </div>
-      );
-  }
-
-  // New Landlord Path
+  // New User / No Identity Path
   return (
     <div className="text-center py-20 animate-in fade-in">
         <div className="max-w-md mx-auto space-y-6">

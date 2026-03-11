@@ -8,8 +8,8 @@ import {
 } from 'firebase/auth';
 
 /**
- * @fileOverview Consolidated authentication utilities.
- * Uses .tsx to ensure priority in Next.js module resolution.
+ * @fileOverview Definitive Consolidated Authentication Utilities.
+ * Resolves module resolution conflicts by using a single stable source.
  */
 
 export function initiateAnonymousSignIn(auth: Auth): void {
