@@ -20,11 +20,12 @@ service cloud.firestore {
     match /{path=**}/tenants/{tenantId} {
       /**
        * @description Authorized global identity handshake.
-       * Split rules to ensure static provability for collectionGroup queries.
-       * This allows Firestore to authorize the query instantly using the email index.
+       * Optimized for collectionGroup queries to ensure instant provability.
        */
-      allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
+      allow list: if isSignedIn() && (
+        resource.data.email == request.auth.token.email ||
+        resource.data.userId == request.auth.uid
+      );
       
       allow get: if isSignedIn() && (
         resource.data.email == request.auth.token.email ||

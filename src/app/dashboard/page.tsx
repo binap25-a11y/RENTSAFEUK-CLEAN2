@@ -168,7 +168,79 @@ export default function DashboardPage() {
   const [isLandlord, setIsLandlord] = useState<boolean | null>(null);
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
 
-  // Hook Order Stabilization: useMemo must be called before early returns
+  // Discovery: Determine if user is a Landlord (has properties) or Tenant (linked by email)
+  useEffect(() => {
+    if (isUserLoading || !user || !firestore) return;
+    
+    // Concurrent discovery handshake
+    const userEmail = user.email?.toLowerCase().trim();
+
+    // 1. Check for properties (Landlord identification)
+    const propQuery = query(
+      collection(firestore, 'userProfiles', user.uid, 'properties'), 
+      where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
+    );
+
+    const unsubProps = onSnapshot(propQuery, (snap) => {
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Property));
+      setProperties(list);
+      setIsLoadingProps(false);
+      
+      if (snap.size > 0) {
+          setIsLandlord(true);
+          setIsTenant(false);
+      } else {
+          setIsLandlord(false);
+      }
+    }, (error) => {
+      console.warn("Portfolio check restricted:", error.message);
+      setIsLoadingProps(false);
+      setIsLandlord(false);
+    });
+
+    // 2. Check global tenant registry (Tenant identification)
+    let unsubTenants = () => {};
+    if (userEmail) {
+        const tenantsQuery = query(
+            collectionGroup(firestore, 'tenants'),
+            where('email', '==', userEmail),
+            limit(1)
+        );
+
+        unsubTenants = onSnapshot(tenantsQuery, (snap) => {
+            const activeTenant = snap.docs.find(d => d.data().status === 'Active');
+            if (activeTenant) {
+                setIsTenant(true);
+                setIsLandlord(false);
+            } else {
+                setIsTenant(false);
+            }
+            setIsIndexBuilding(false);
+        }, (error) => {
+            const msg = error.message.toLowerCase();
+            if (msg.includes('index') || error.code === 'failed-precondition') {
+                setIsIndexBuilding(true);
+            } else {
+                console.warn("Resident discovery issue:", error.message);
+                setIsTenant(false);
+            }
+        });
+    }
+
+    return () => {
+        unsubProps();
+        unsubTenants();
+    };
+  }, [user, isUserLoading, firestore]);
+
+  // Unified routing effect: Trigger immediate redirection for verified tenants
+  useEffect(() => {
+    if (isTenant === true) {
+        router.replace('/tenant/dashboard');
+    }
+  }, [isTenant, router]);
+
+  // HOOK STABILITY: useMemo must be called consistently before any early returns
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;
     const term = searchTerm.toLowerCase();
@@ -177,80 +249,7 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // Landlord Discovery (Parallel Handshake)
-  useEffect(() => {
-    if (!user || !firestore) return;
-    
-    // Scoped query: If properties exist here, the user is a landlord.
-    const propQuery = query(
-      collection(firestore, 'userProfiles', user.uid, 'properties'), 
-      where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
-    );
-
-    const unsub = onSnapshot(propQuery, (snap) => {
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Property));
-      setProperties(list);
-      setIsLoadingProps(false);
-      
-      // Established Landlord Check: Fast-path resolution
-      if (snap.size > 0) {
-          setIsLandlord(true);
-          setIsTenant(false);
-      } else {
-          setIsLandlord(false);
-      }
-    }, (error) => {
-      console.warn("Portfolio resolution restricted:", error.message);
-      setIsLoadingProps(false);
-      setIsLandlord(false);
-    });
-    return () => unsub();
-  }, [user, firestore]);
-
-  // Resident Discovery (Parallel Handshake)
-  useEffect(() => {
-    // Optimization: Skip if we've already confirmed landlord status with assets
-    if (!user || !firestore || !user.email || isLandlord === true) return;
-
-    const email = user.email.toLowerCase().trim();
-    const tenantsQuery = query(
-      collectionGroup(firestore, 'tenants'),
-      where('email', '==', email),
-      limit(1)
-    );
-
-    const unsub = onSnapshot(tenantsQuery, (snap) => {
-      // Identity Handshake: Check for an active tenancy record
-      const activeTenant = snap.docs.find(d => d.data().status === 'Active');
-      if (activeTenant) {
-          setIsTenant(true);
-      } else {
-          setIsTenant(false);
-      }
-      setIsIndexBuilding(false); 
-    }, (error) => {
-      const msg = error.message.toLowerCase();
-      // Handle cloud-indexing phase gracefully
-      if (msg.includes('index') || error.code === 'failed-precondition') {
-        setIsIndexBuilding(true);
-      } else {
-        console.warn("Resident handshake failed:", error.message);
-        setIsTenant(false);
-      }
-    });
-
-    return () => unsub();
-  }, [user, firestore, isLandlord]);
-
-  // Unified Routing Logic
-  useEffect(() => {
-    if (isTenant === true) {
-        console.log("Verified Resident detected. Routing to portal...");
-        router.replace('/tenant/dashboard');
-    }
-  }, [isTenant, router]);
-
-  // --- RENDER GATES ---
+  // --- RENDER LOGIC ---
 
   if (isUserLoading) {
     return (
@@ -261,7 +260,7 @@ export default function DashboardPage() {
     );
   }
 
-  // Handle Identity Mapping (Index Phase)
+  // Handle building indexes or unresolved identities
   if (isIndexBuilding && properties.length === 0 && isTenant === null) {
       return (
         <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in duration-700 px-6">
@@ -278,6 +277,7 @@ export default function DashboardPage() {
                 <Button className="font-bold h-12 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-lg" onClick={() => window.location.reload()}>
                     <RefreshCw className="mr-2 h-4 w-4" /> Check Status
                 </Button>
+                {/* Fallback for new landlords who might be incorrectly caught in the tenant check loop */}
                 <Button variant="outline" className="text-xs font-bold w-full border-primary/20 h-11" onClick={() => { setIsLandlord(false); setIsIndexBuilding(false); setIsTenant(false); }}>
                     Continue to Portfolio Manager <ArrowRight className="ml-2 h-3 w-3" />
                 </Button>
@@ -286,7 +286,7 @@ export default function DashboardPage() {
       );
   }
 
-  // Unified Resolver: Waiting for role discovery to complete
+  // Waiting for parallel handshake to resolve
   if (isTenant === null && isLandlord === null) {
       return (
         <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
@@ -296,10 +296,10 @@ export default function DashboardPage() {
       );
   }
 
-  // Tenant Redirection fallback (Effect handles the push, but we return null to prevent flash)
+  // Suppress render for tenants (handled by router.replace in useEffect)
   if (isTenant === true) return null;
 
-  // Final Render: Landlord Dashboard View
+  // Final Dashboard Render (Landlord context)
   return (
     <div className="space-y-8 animate-in fade-in duration-500 text-left">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">

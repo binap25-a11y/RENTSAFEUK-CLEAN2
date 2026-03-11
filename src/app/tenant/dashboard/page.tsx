@@ -52,7 +52,6 @@ export default function TenantDashboard() {
     const userEmail = user.email.toLowerCase().trim();
 
     // Secure Handshake: Match normalized email in global tenant registry
-    // Security Optimization: Simplified query to match optimized top-level rules
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
@@ -70,7 +69,7 @@ export default function TenantDashboard() {
             const data = activeTenantDoc.data();
             const path = activeTenantDoc.ref.path;
             
-            // Robust Path Parsing: userProfiles/{landlordId}/properties/{propertyId}/tenants/{tenantId}
+            // Secure Path Parsing: userProfiles/{landlordId}/properties/{propertyId}/tenants/{tenantId}
             const segments = path.split('/');
             const userProfilesIdx = segments.indexOf('userProfiles');
             const propertiesIdx = segments.indexOf('properties');
@@ -91,7 +90,7 @@ export default function TenantDashboard() {
                             propertyData: propSnap.data()
                         });
                     } else {
-                        setError("Property records could not be resolved.");
+                        setError("Linked property records could not be resolved.");
                     }
                     setIsLoading(false);
                     setIsIndexBuilding(false);
@@ -101,7 +100,7 @@ export default function TenantDashboard() {
                     setIsLoading(false);
                 });
             } else {
-                setError("Tenancy mapping invalid.");
+                setError("Tenancy structure mapping invalid.");
                 setIsLoading(false);
             }
         } else {
@@ -114,7 +113,7 @@ export default function TenantDashboard() {
             setIsIndexBuilding(true);
         } else {
             console.warn("Discovery handshake failed:", err.message);
-            setError("Handshake interrupted. Please refresh.");
+            setError("Identity handshake interrupted. Please refresh.");
         }
         setIsLoading(false);
     });
@@ -133,7 +132,7 @@ export default function TenantDashboard() {
 
   if (isUserLoading || (isLoading && !isIndexBuilding)) {
     return (
-        <div className="flex h-screen w-full flex-col items-center justify-center gap-4 bg-background">
+        <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Syncing Resident Hub...</p>
         </div>
@@ -147,13 +146,13 @@ export default function TenantDashboard() {
                 <Sparkles className="h-12 w-12 text-primary animate-pulse" />
             </div>
             <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Identity Synchronization</h2>
+                <h2 className="font-headline text-2xl font-bold text-primary">Resident Synchronization</h2>
                 <p className="text-muted-foreground font-medium text-sm leading-relaxed">
-                    The platform is currently mapping your resident identity. Access will be restored automatically once the cloud database synchronizes your records.
+                    The platform is currently mapping your resident identity across the secure portfolio. Access will be restored automatically once the cloud database synchronizes your records.
                 </p>
             </div>
             <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full" onClick={() => window.location.reload()}>
-                <RefreshCw className="mr-2 h-4 w-4" /> Check Status
+                <RefreshCw className="mr-2 h-4 w-4" /> Check Identity Status
             </Button>
         </div>
     );
@@ -168,12 +167,12 @@ export default function TenantDashboard() {
                 </div>
                 <CardTitle className="font-headline text-xl">Tenancy Not Resolved</CardTitle>
                 <CardDescription className="text-sm font-medium text-center">
-                    {error || `We could not find an active tenancy for ${user?.email}.`}
+                    {error || `We could not find an active tenancy associated with ${user?.email}. Please verify your portal email with your landlord.`}
                 </CardDescription>
             </CardHeader>
             <CardFooter className="pt-6 flex flex-col gap-3 bg-background border-t">
-                <Button className="w-full font-bold h-11 shadow-lg uppercase tracking-widest text-xs" asChild><Link href="/dashboard">Back to Home</Link></Button>
-                <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={performDiscovery}><RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Sync</Button>
+                <Button className="w-full font-bold h-11 shadow-lg uppercase tracking-widest text-xs" asChild><Link href="/dashboard">Return to Dashboard</Link></Button>
+                <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={performDiscovery}><RefreshCw className="mr-2 h-3.5 w-3.5" /> Force Refresh</Button>
             </CardFooter>
         </Card>
     );
