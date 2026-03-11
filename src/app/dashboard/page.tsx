@@ -19,8 +19,7 @@ import {
   Sparkles,
   RefreshCw,
   AlertCircle,
-  ChevronRight,
-  ShieldCheck
+  ChevronRight
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -99,9 +98,6 @@ export default function DashboardPage() {
             const activeTenant = snap.docs.find(d => d.data().status === 'Active');
             if (activeTenant) {
                 setIsTenant(true);
-            } else if (snap.size > 0) {
-                // Found tenant records but none are active
-                setIsTenant(false);
             } else {
                 setIsTenant(false);
             }
