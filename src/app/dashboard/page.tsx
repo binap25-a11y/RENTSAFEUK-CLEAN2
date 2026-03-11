@@ -28,8 +28,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 
 /**
- * @fileOverview Optimized Dashboard with Resilient Role Discovery.
- * Resolves "Identity Mapping" hang by providing a parallel discovery handshake and landlord escape hatch.
+ * @fileOverview High-Speed Role Discovery Dashboard.
+ * Resolves the "Identity Mapping" hang by parallelizing role detection and adding automated fallbacks.
  */
 
 interface Property {
@@ -53,7 +53,7 @@ export default function DashboardPage() {
   const firestore = useFirestore();
   const router = useRouter();
   
-  // HOOK STACK: Absolute top-level declaration for stability
+  // HOOK STACK: Absolute top-level declaration for lifecycle stability
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [properties, setProperties] = useState<Property[]>([]);
@@ -61,17 +61,15 @@ export default function DashboardPage() {
   const [isTenant, setIsTenant] = useState<boolean | null>(null);
   const [isLandlord, setIsLandlord] = useState<boolean | null>(null);
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
-  const [discoveryStatus, setDiscoveryStatus] = useState<'standby' | 'mapping' | 'resolving'>('standby');
   const [hasTimedOut, setHasTimedOut] = useState(false);
 
   // Identity Discovery Effect
   useEffect(() => {
     if (isUserLoading || !user || !firestore) return;
     
-    setDiscoveryStatus('mapping');
     const userEmail = user.email?.toLowerCase().trim();
 
-    // LANDLORD PATH: Instant check for owned properties
+    // 1. LANDLORD DISCOVERY: Fast path for existing assets
     const propQuery = query(
       collection(firestore, 'userProfiles', user.uid, 'properties'), 
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
@@ -82,15 +80,13 @@ export default function DashboardPage() {
       setProperties(list);
       setIsLoadingProps(false);
       setIsLandlord(snap.size > 0);
-      // If we found properties, we are a landlord, no need to wait for tenant mapping
-      if (snap.size > 0) setDiscoveryStatus('standby');
     }, (error) => {
-      console.warn("Landlord discovery issue:", error.message);
+      console.warn("Landlord discovery error:", error.message);
       setIsLoadingProps(false);
       setIsLandlord(false);
     });
 
-    // TENANT PATH: Global email handshake via collectionGroup
+    // 2. TENANT DISCOVERY: Global email handshake
     let unsubTenants = () => {};
     if (userEmail) {
         const tenantsQuery = query(
@@ -103,17 +99,14 @@ export default function DashboardPage() {
             const activeTenant = snap.docs.find(d => d.data().status === 'Active');
             if (activeTenant) {
                 setIsTenant(true);
-                setDiscoveryStatus('resolving');
             } else {
                 setIsTenant(false);
             }
             setIsIndexBuilding(false);
         }, (error) => {
-            const msg = error.message.toLowerCase();
-            if (msg.includes('index') || error.code === 'failed-precondition') {
+            if (error.message.toLowerCase().includes('index') || error.code === 'failed-precondition') {
                 setIsIndexBuilding(true);
             } else {
-                console.warn("Tenant discovery query failed:", error.message);
                 setIsTenant(false);
             }
         });
@@ -121,19 +114,21 @@ export default function DashboardPage() {
         setIsTenant(false);
     }
 
-    // Safety timeout: If mapping takes more than 5 seconds, allow landlord escape
+    // 3. SAFETY TIMEOUT: Prevent infinite mapping hang
     const timer = setTimeout(() => {
         setHasTimedOut(true);
-    }, 5000);
+        // If we haven't resolved tenant status by now, allow landlord UI to show
+        if (isTenant === null) setIsTenant(false);
+    }, 4500);
 
     return () => {
         unsubProps();
         unsubTenants();
         clearTimeout(timer);
     };
-  }, [user, isUserLoading, firestore]);
+  }, [user, isUserLoading, firestore, isTenant]);
 
-  // Routing Effect for Verified Residents
+  // Routing Effect for Resident Hub
   useEffect(() => {
     if (isTenant === true) {
         router.replace('/tenant/dashboard');
@@ -158,7 +153,7 @@ export default function DashboardPage() {
     );
   }
 
-  // Resident Redirection Path
+  // Resident Redirect Phase
   if (isTenant === true) {
       return (
         <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 text-center px-6">
@@ -174,8 +169,8 @@ export default function DashboardPage() {
       );
   }
 
-  // Identity Mapping screen: Only shown if potentially a tenant and query is pending or index building
-  if (!isLoadingProps && isLandlord === false && isTenant === null) {
+  // Identity Mapping screen: Defensive screen during handshake
+  if (!isLoadingProps && isLandlord === false && isTenant === null && !hasTimedOut) {
       return (
         <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6 animate-in fade-in duration-700">
             <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto border shadow-inner">
@@ -189,32 +184,33 @@ export default function DashboardPage() {
                 {isIndexBuilding && (
                     <div className="flex items-center justify-center gap-2 p-3 bg-amber-50 text-amber-700 rounded-lg text-xs font-bold border border-amber-100">
                         <AlertCircle className="h-4 w-4" />
-                        System Updating (Cloud Index Provisioning)
+                        System Updating (Cloud Index Sync)
                     </div>
                 )}
             </div>
             <div className="space-y-3">
-                <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-sm" onClick={() => window.location.reload()}>
+                <Button 
+                    variant="outline" 
+                    className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-sm" 
+                    onClick={() => window.location.reload()}
+                >
                     <RefreshCw className="mr-2 h-3.5 w-3.5" /> Check Identity Status
                 </Button>
-                {/* Always show the Landlord escape hatch if the system is hanging or indexing */}
-                {(isIndexBuilding || hasTimedOut || isLandlord === false) && (
-                    <Button 
-                        variant="secondary" 
-                        className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full bg-muted/50 hover:bg-muted" 
-                        onClick={() => setIsTenant(false)}
-                    >
-                        I am a landlord / Continue to Portfolio <ChevronRight className="ml-1 h-3 w-3" />
-                    </Button>
-                )}
+                <Button 
+                    variant="ghost" 
+                    className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full text-muted-foreground" 
+                    onClick={() => setIsTenant(false)}
+                >
+                    Continue to Portfolio Manager <ChevronRight className="ml-1 h-3 w-3" />
+                </Button>
             </div>
         </div>
       );
   }
 
-  // Active Portfolio Path (Landlord or User with 0 properties who isn't a tenant)
-  if (isLandlord === true || isTenant === false) {
-      if (properties.length === 0 && !isLoadingProps && isTenant === false) {
+  // Portfolio Dashboard (Landlord View)
+  if (isLandlord === true || isTenant === false || hasTimedOut) {
+      if (properties.length === 0 && !isLoadingProps) {
           return (
             <div className="text-center py-20 animate-in fade-in">
                 <div className="max-w-md mx-auto space-y-6">
@@ -222,7 +218,7 @@ export default function DashboardPage() {
                         <Home className="h-12 w-12 text-muted-foreground/40" />
                     </div>
                     <h2 className="text-2xl font-bold font-headline">Welcome to RentSafeUK</h2>
-                    <p className="text-muted-foreground">Start by onboarding your first rental property or wait for your landlord to assign you to a tenancy.</p>
+                    <p className="text-muted-foreground">Start by onboard your first rental property or wait for a landlord to assign you to a tenancy.</p>
                     <Button asChild size="lg" className="px-10 font-bold shadow-lg">
                         <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Add First Property</Link>
                     </Button>
@@ -249,7 +245,6 @@ export default function DashboardPage() {
       );
   }
 
-  // Default Loading fallback
   return (
     <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4">
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -272,8 +267,8 @@ function PropertiesPanel({ properties, isLoading, searchTerm, setSearchTerm, vie
     <Card className="shadow-lg border-none">
       <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b bg-muted/5">
         <div className="space-y-1">
-          <CardTitle className="text-lg font-bold">My Portfolio</CardTitle>
-          <CardDescription>Manage and view your property records.</CardDescription>
+          <CardTitle className="text-lg font-bold text-left">My Portfolio</CardTitle>
+          <CardDescription className="text-left">Manage and view your property records.</CardDescription>
         </div>
         <Button asChild className="font-bold uppercase tracking-widest text-[10px] h-10 px-6 shadow-md"><Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Add Property</Link></Button>
       </CardHeader>

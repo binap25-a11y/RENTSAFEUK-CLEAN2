@@ -14,7 +14,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 
 /**
  * @fileOverview Consolidated Firestore Mutation Utilities.
- * Identical mirror of .tsx to resolve module shadowing conflicts.
+ * Absolute source of truth for non-blocking database mutations.
  */
 
 export function setDocumentNonBlocking(docRef: DocumentReference, data: any, options?: SetOptions) {

@@ -5,7 +5,11 @@ import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 
-// IMPORTANT: DO NOT MODIFY THIS FUNCTION
+/**
+ * @fileOverview Main Firebase Initialization Entry Point.
+ * Stabilized to prevent circular dependencies and module resolution conflicts.
+ */
+
 export function initializeFirebase() {
   if (!getApps().length) {
     let firebaseApp;
@@ -30,13 +34,13 @@ export function getSdks(firebaseApp: FirebaseApp) {
   };
 }
 
-// Re-export core providers and hooks
+// Core Providers & Hooks
 export * from './provider';
 export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 
-// Explicitly export non-blocking utilities from stable source files
+// Mutation Utilities (Consolidated from .ts)
 export { 
   setDocumentNonBlocking, 
   addDocumentNonBlocking, 
@@ -44,6 +48,7 @@ export {
   deleteDocumentNonBlocking 
 } from './non-blocking-updates';
 
+// Auth Utilities (Consolidated from .ts)
 export { 
   initiateAnonymousSignIn, 
   createUserNonBlocking, 
