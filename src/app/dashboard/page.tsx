@@ -29,7 +29,6 @@ import { Input } from '@/components/ui/input';
 /**
  * @fileOverview High-Performance Role Router.
  * Resolves Landlord/Tenant identities in parallel and handles the handshake state.
- * Fixed: All hooks are now declared at the absolute top level to prevent runtime crashes.
  */
 
 interface Property {
@@ -95,7 +94,7 @@ export default function DashboardPage() {
         );
 
         unsubTenants = onSnapshot(tenantsQuery, (snap) => {
-            const activeTenant = snap.docs.find(d => d.data().status === 'Active');
+            const activeTenant = snap.docs.find(d => d.data().status === 'Active') || snap.docs[0];
             if (activeTenant) {
                 setIsTenant(true);
             } else {
@@ -125,7 +124,7 @@ export default function DashboardPage() {
     if (isTenant === null) {
         const timer = setTimeout(() => {
             setHasTimedOut(true);
-        }, 6000);
+        }, 5000);
         return () => clearTimeout(timer);
     }
   }, [isTenant]);
@@ -156,7 +155,7 @@ export default function DashboardPage() {
     );
   }
 
-  // Identity discovery handshake
+  // Identity discovery handshake screen
   if (!isLoadingProps && isLandlord === false && isTenant === null && !hasTimedOut) {
       return (
         <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6 animate-in fade-in duration-700">
