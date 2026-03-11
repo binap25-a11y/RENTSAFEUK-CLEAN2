@@ -17,8 +17,7 @@ import {
   Bed, 
   Bath, 
   Sparkles,
-  RefreshCw,
-  AlertCircle
+  RefreshCw
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -26,8 +25,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 
 /**
- * @fileOverview Landlord Portfolio Manager Dashboard.
- * Acts as the primary role traffic controller, resolving identities and redirecting tenants to the Resident Hub.
+ * @fileOverview Traffic Controller Dashboard.
+ * Rapidly resolves user role (Landlord/Tenant) and redirects tenants to their Resident Hub.
+ * Optimized to fix hook-order crashes and "Identity Mapping" hangs.
  */
 
 interface Property {
@@ -51,7 +51,7 @@ export default function DashboardPage() {
   const firestore = useFirestore();
   const router = useRouter();
   
-  // 1. ALL Hooks declared at the absolute top level for React stability
+  // 1. ALL HOOKS MUST BE DECLARED AT THE ABSOLUTE TOP
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [properties, setProperties] = useState<Property[]>([]);
@@ -60,13 +60,13 @@ export default function DashboardPage() {
   const [isLandlord, setIsLandlord] = useState<boolean | null>(null);
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
 
-  // 2. Parallel Role Discovery Handshake
+  // 2. Parallel Role Discovery
   useEffect(() => {
     if (isUserLoading || !user || !firestore) return;
     
     const userEmail = user.email?.toLowerCase().trim();
 
-    // A. Landlord Fast-Path: Resolve based on explicit ownership path
+    // A. Landlord Check: Resolve based on explicit ownership path
     const propQuery = query(
       collection(firestore, 'userProfiles', user.uid, 'properties'), 
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
@@ -79,9 +79,9 @@ export default function DashboardPage() {
       
       if (snap.size > 0) {
           setIsLandlord(true);
-          setIsTenant(false); // Can't be both in current MVP
+          setIsTenant(false); // Exclusive role priority for MVP
       } else if (isLandlord === null) {
-          // If no properties found yet, we wait for tenant check to conclude before deciding
+          // Wait for tenant handshake if no properties found yet
           setIsLandlord(false);
       }
     }, (error) => {
@@ -90,7 +90,7 @@ export default function DashboardPage() {
       setIsLandlord(false);
     });
 
-    // B. Tenant Identity Handshake: Resolve via global collection group
+    // B. Tenant Handshake: Resolve via global identity registry
     let unsubTenants = () => {};
     if (userEmail) {
         const tenantsQuery = query(
@@ -110,10 +110,11 @@ export default function DashboardPage() {
             setIsIndexBuilding(false);
         }, (error) => {
             const msg = error.message.toLowerCase();
+            // Handle index building gracefully without hanging indefinitely
             if (msg.includes('index') || error.code === 'failed-precondition') {
                 setIsIndexBuilding(true);
             } else {
-                console.warn("Resident discovery handshake issue:", error.message);
+                console.warn("Identity discovery issue:", error.message);
                 setIsTenant(false);
             }
         });
@@ -127,7 +128,7 @@ export default function DashboardPage() {
     };
   }, [user, isUserLoading, firestore]);
 
-  // 3. Accelerated Redirect for verified Residents
+  // 3. Automated Redirection for Residents
   useEffect(() => {
     if (isTenant === true) {
         router.replace('/tenant/dashboard');
@@ -142,13 +143,13 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // --- RENDER LOGIC (AFTER ALL HOOKS) ---
+  // --- RENDER LOGIC ---
 
   if (isUserLoading) {
     return (
       <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
         <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground animate-pulse">Verifying Session</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground animate-pulse">Securing Session</p>
       </div>
     );
   }
@@ -161,7 +162,7 @@ export default function DashboardPage() {
                 <Sparkles className="h-12 w-12 text-primary animate-pulse" />
             </div>
             <div className="space-y-3">
-                <h2 className="font-headline text-3xl font-bold text-primary">Resident Handshake</h2>
+                <h2 className="font-headline text-3xl font-bold text-primary">Identity Handshake</h2>
                 <p className="text-muted-foreground font-medium leading-relaxed text-sm">
                     Our secure system is currently mapping your resident identity across the platform. Access will be restored automatically.
                 </p>
@@ -175,20 +176,20 @@ export default function DashboardPage() {
       );
   }
 
-  // Waiting for parallel handshake to resolve role
+  // Brief loading state while handshake concludes
   if (isTenant === null && isLandlord === null) {
       return (
         <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Securing Identity...</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Verifying Role...</p>
         </div>
       );
   }
 
-  // Prevent flicker during redirect
+  // Prevent flicker during tenant redirect
   if (isTenant === true) return null;
 
-  // Final Dashboard Render (Landlord context confirmed)
+  // Render Landlord Dashboard
   return (
     <div className="space-y-8 animate-in fade-in duration-500 text-left">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
@@ -235,7 +236,7 @@ function PropertiesPanel({ properties, isLoading, searchTerm, setSearchTerm, vie
           <div className="relative w-full md:w-auto">
             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
             <Input 
-              id="dash-prop-search"
+              id="dashboard-search"
               name="search"
               value={searchTerm} 
               onChange={(e) => setSearchTerm(e.target.value)} 

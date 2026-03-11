@@ -16,11 +16,12 @@ service cloud.firestore {
     }
 
     // --- COLLECTION GROUP RULES (TOP-LEVEL FOR INSTANT OPTIMIZATION) ---
+    // Moved to the top and simplified for the query optimizer.
     
     match /{path=**}/tenants/{tenantId} {
       /**
        * Authorized global identity handshake.
-       * Simplified for the query optimizer to ensure instant provability using native indexes.
+       * Uses direct token matching to ensure instant query provability.
        */
       allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
       

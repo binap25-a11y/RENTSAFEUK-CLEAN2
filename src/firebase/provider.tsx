@@ -10,6 +10,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 /**
  * @fileOverview Manages Firebase service instances and authenticated user state.
  * Includes a built-in listener for Firestore permission errors to provide a unified error handling loop.
+ * Logic previously in FirebaseErrorListener integrated here to break circular dependencies causing ChunkLoadErrors.
  */
 
 interface FirebaseProviderProps {
@@ -53,7 +54,7 @@ export interface UserHookResult {
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
 
 /**
- * Unified Listener logic integrated to break circular dependencies.
+ * Integrated Listener logic to break circular module dependencies.
  */
 function useFirebaseErrorListener() {
   const [permissionError, setPermissionError] = useState<FirestorePermissionError | null>(null);
