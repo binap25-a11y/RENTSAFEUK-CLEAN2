@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useUser, useFirestore } from '@/firebase';
 import { collection, query, where, onSnapshot, collectionGroup, limit } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
@@ -19,13 +18,17 @@ import {
   Bath, 
   Sparkles,
   RefreshCw,
-  ArrowRight,
   AlertCircle
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
 import { Input } from '@/components/ui/input';
+
+/**
+ * @fileOverview Landlord Portfolio Manager Dashboard.
+ * Acts as the primary role traffic controller, resolving identities and redirecting tenants to the Resident Hub.
+ */
 
 interface Property {
   id: string;
@@ -43,7 +46,172 @@ interface Property {
   userId: string;
 }
 
-export function PropertiesPanel({ properties, isLoading, searchTerm, setSearchTerm, view, setView }: { 
+export default function DashboardPage() {
+  const { user, isUserLoading } = useUser();
+  const firestore = useFirestore();
+  const router = useRouter();
+  
+  // 1. ALL Hooks declared at the absolute top level for React stability
+  const [searchTerm, setSearchTerm] = useState('');
+  const [view, setView] = useState<'grid' | 'list'>('grid');
+  const [properties, setProperties] = useState<Property[]>([]);
+  const [isLoadingProps, setIsLoadingProps] = useState(true);
+  const [isTenant, setIsTenant] = useState<boolean | null>(null);
+  const [isLandlord, setIsLandlord] = useState<boolean | null>(null);
+  const [isIndexBuilding, setIsIndexBuilding] = useState(false);
+
+  // 2. Parallel Role Discovery Handshake
+  useEffect(() => {
+    if (isUserLoading || !user || !firestore) return;
+    
+    const userEmail = user.email?.toLowerCase().trim();
+
+    // A. Landlord Fast-Path: Resolve based on explicit ownership path
+    const propQuery = query(
+      collection(firestore, 'userProfiles', user.uid, 'properties'), 
+      where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
+    );
+
+    const unsubProps = onSnapshot(propQuery, (snap) => {
+      const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Property));
+      setProperties(list);
+      setIsLoadingProps(false);
+      
+      if (snap.size > 0) {
+          setIsLandlord(true);
+          setIsTenant(false); // Can't be both in current MVP
+      } else if (isLandlord === null) {
+          // If no properties found yet, we wait for tenant check to conclude before deciding
+          setIsLandlord(false);
+      }
+    }, (error) => {
+      console.warn("Portfolio check restricted:", error.message);
+      setIsLoadingProps(false);
+      setIsLandlord(false);
+    });
+
+    // B. Tenant Identity Handshake: Resolve via global collection group
+    let unsubTenants = () => {};
+    if (userEmail) {
+        const tenantsQuery = query(
+            collectionGroup(firestore, 'tenants'),
+            where('email', '==', userEmail),
+            limit(1)
+        );
+
+        unsubTenants = onSnapshot(tenantsQuery, (snap) => {
+            const activeTenant = snap.docs.find(d => d.data().status === 'Active');
+            if (activeTenant) {
+                setIsTenant(true);
+                setIsLandlord(false);
+            } else {
+                setIsTenant(false);
+            }
+            setIsIndexBuilding(false);
+        }, (error) => {
+            const msg = error.message.toLowerCase();
+            if (msg.includes('index') || error.code === 'failed-precondition') {
+                setIsIndexBuilding(true);
+            } else {
+                console.warn("Resident discovery handshake issue:", error.message);
+                setIsTenant(false);
+            }
+        });
+    } else {
+        setIsTenant(false);
+    }
+
+    return () => {
+        unsubProps();
+        unsubTenants();
+    };
+  }, [user, isUserLoading, firestore]);
+
+  // 3. Accelerated Redirect for verified Residents
+  useEffect(() => {
+    if (isTenant === true) {
+        router.replace('/tenant/dashboard');
+    }
+  }, [isTenant, router]);
+
+  const filteredProperties = useMemo(() => {
+    if (!searchTerm) return properties;
+    const term = searchTerm.toLowerCase();
+    return properties.filter(p => 
+      Object.values(p.address).some(val => typeof val === 'string' && val.toLowerCase().includes(term))
+    );
+  }, [properties, searchTerm]);
+
+  // --- RENDER LOGIC (AFTER ALL HOOKS) ---
+
+  if (isUserLoading) {
+    return (
+      <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground animate-pulse">Verifying Session</p>
+      </div>
+    );
+  }
+
+  // Handle building indexes or unresolved resident identities
+  if (isIndexBuilding && properties.length === 0 && isTenant === null) {
+      return (
+        <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in duration-700 px-6">
+            <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto border shadow-inner">
+                <Sparkles className="h-12 w-12 text-primary animate-pulse" />
+            </div>
+            <div className="space-y-3">
+                <h2 className="font-headline text-3xl font-bold text-primary">Resident Handshake</h2>
+                <p className="text-muted-foreground font-medium leading-relaxed text-sm">
+                    Our secure system is currently mapping your resident identity across the platform. Access will be restored automatically.
+                </p>
+            </div>
+            <div className="flex flex-col items-center gap-4 pt-4">
+                <Button className="font-bold h-12 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-lg" onClick={() => window.location.reload()}>
+                    <RefreshCw className="mr-2 h-4 w-4" /> Check Identity Status
+                </Button>
+            </div>
+        </div>
+      );
+  }
+
+  // Waiting for parallel handshake to resolve role
+  if (isTenant === null && isLandlord === null) {
+      return (
+        <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Securing Identity...</p>
+        </div>
+      );
+  }
+
+  // Prevent flicker during redirect
+  if (isTenant === true) return null;
+
+  // Final Dashboard Render (Landlord context confirmed)
+  return (
+    <div className="space-y-8 animate-in fade-in duration-500 text-left">
+      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
+        <div className="space-y-1">
+          <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Portfolio Manager</h1>
+          <p className="text-muted-foreground font-medium text-lg">Control center for your rental estate.</p>
+        </div>
+      </div>
+      <div className="grid gap-6">
+        <PropertiesPanel 
+          properties={filteredProperties} 
+          isLoading={isLoadingProps}
+          searchTerm={searchTerm}
+          setSearchTerm={setSearchTerm}
+          view={view}
+          setView={setView}
+        />
+      </div>
+    </div>
+  );
+}
+
+function PropertiesPanel({ properties, isLoading, searchTerm, setSearchTerm, view, setView }: { 
   properties: Property[], 
   isLoading: boolean, 
   searchTerm: string, 
@@ -153,167 +321,5 @@ export function PropertiesPanel({ properties, isLoading, searchTerm, setSearchTe
         )}
       </CardContent>
     </Card>
-  );
-}
-
-export default function DashboardPage() {
-  const { user, isUserLoading } = useUser();
-  const firestore = useFirestore();
-  const router = useRouter();
-  
-  const [searchTerm, setSearchTerm] = useState('');
-  const [view, setView] = useState<'grid' | 'list'>('grid');
-  const [properties, setProperties] = useState<Property[]>([]);
-  const [isLoadingProps, setIsLoadingProps] = useState(true);
-  const [isTenant, setIsTenant] = useState<boolean | null>(null);
-  const [isLandlord, setIsLandlord] = useState<boolean | null>(null);
-  const [isIndexBuilding, setIsIndexBuilding] = useState(false);
-
-  // Discovery Handshake Effect
-  useEffect(() => {
-    if (isUserLoading || !user || !firestore) return;
-    
-    const userEmail = user.email?.toLowerCase().trim();
-
-    // 1. Check Landlord Status
-    const propQuery = query(
-      collection(firestore, 'userProfiles', user.uid, 'properties'), 
-      where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
-    );
-
-    const unsubProps = onSnapshot(propQuery, (snap) => {
-      const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Property));
-      setProperties(list);
-      setIsLoadingProps(false);
-      
-      if (snap.size > 0) {
-          setIsLandlord(true);
-          setIsTenant(false);
-      } else {
-          setIsLandlord(false);
-      }
-    }, (error) => {
-      console.warn("Portfolio check restricted:", error.message);
-      setIsLoadingProps(false);
-      setIsLandlord(false);
-    });
-
-    // 2. Check Resident Status
-    let unsubTenants = () => {};
-    if (userEmail) {
-        const tenantsQuery = query(
-            collectionGroup(firestore, 'tenants'),
-            where('email', '==', userEmail),
-            limit(1)
-        );
-
-        unsubTenants = onSnapshot(tenantsQuery, (snap) => {
-            const activeTenant = snap.docs.find(d => d.data().status === 'Active');
-            if (activeTenant) {
-                setIsTenant(true);
-                setIsLandlord(false);
-            } else {
-                setIsTenant(false);
-            }
-            setIsIndexBuilding(false);
-        }, (error) => {
-            const msg = error.message.toLowerCase();
-            if (msg.includes('index') || error.code === 'failed-precondition') {
-                setIsIndexBuilding(true);
-            } else {
-                console.warn("Resident discovery issue:", error.message);
-                setIsTenant(false);
-            }
-        });
-    }
-
-    return () => {
-        unsubProps();
-        unsubTenants();
-    };
-  }, [user, isUserLoading, firestore]);
-
-  // Redirection Logic
-  useEffect(() => {
-    if (isTenant === true) {
-        router.replace('/tenant/dashboard');
-    }
-  }, [isTenant, router]);
-
-  // Hook Stability: Declare useMemo before any conditional logic
-  const filteredProperties = useMemo(() => {
-    if (!searchTerm) return properties;
-    const term = searchTerm.toLowerCase();
-    return properties.filter(p => 
-      Object.values(p.address).some(val => typeof val === 'string' && val.toLowerCase().includes(term))
-    );
-  }, [properties, searchTerm]);
-
-  // --- RENDER LOGIC ---
-
-  if (isUserLoading) {
-    return (
-      <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
-        <Loader2 className="h-12 w-12 animate-spin text-primary" />
-        <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground animate-pulse">Verifying Session</p>
-      </div>
-    );
-  }
-
-  // Handle building indexes or unresolved identities
-  if (isIndexBuilding && properties.length === 0 && isTenant === null) {
-      return (
-        <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in duration-700 px-6">
-            <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto border shadow-inner">
-                <Sparkles className="h-12 w-12 text-primary animate-pulse" />
-            </div>
-            <div className="space-y-3">
-                <h2 className="font-headline text-3xl font-bold text-primary">Identity Mapping</h2>
-                <p className="text-muted-foreground font-medium leading-relaxed text-sm">
-                    The platform is currently mapping your resident identity across the secure portfolio. Access will be restored automatically once synchronization completes.
-                </p>
-            </div>
-            <div className="flex flex-col items-center gap-4 pt-4">
-                <Button className="font-bold h-12 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-lg" onClick={() => window.location.reload()}>
-                    <RefreshCw className="mr-2 h-4 w-4" /> Check Status
-                </Button>
-            </div>
-        </div>
-      );
-  }
-
-  // Waiting for parallel handshake to resolve
-  if (isTenant === null && isLandlord === null) {
-      return (
-        <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
-            <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Securing Identity...</p>
-        </div>
-      );
-  }
-
-  // Redirection is handled in useEffect, prevent flicker here
-  if (isTenant === true) return null;
-
-  // Final Dashboard Render (Landlord context confirmed)
-  return (
-    <div className="space-y-8 animate-in fade-in duration-500 text-left">
-      <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
-        <div className="space-y-1">
-          <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Portfolio Manager</h1>
-          <p className="text-muted-foreground font-medium text-lg">Control center for your rental estate.</p>
-        </div>
-      </div>
-      <div className="grid gap-6">
-        <PropertiesPanel 
-          properties={filteredProperties} 
-          isLoading={isLoadingProps}
-          searchTerm={searchTerm}
-          setSearchTerm={setSearchTerm}
-          view={view}
-          setView={setView}
-        />
-      </div>
-    </div>
   );
 }
