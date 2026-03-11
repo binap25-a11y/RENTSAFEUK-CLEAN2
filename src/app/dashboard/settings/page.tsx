@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -45,7 +44,7 @@ import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/fireb
 import { updateProfile, deleteUser } from 'firebase/auth';
 import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { Loader2, ShieldCheck, Clock, Lock, Key, AlertTriangle } from 'lucide-react';
+import { Loader2, ShieldCheck, Clock, Lock, Key, AlertTriangle, UserCircle } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 
@@ -53,6 +52,7 @@ const profileSchema = z.object({
   displayName: z.string().min(2, 'Display name must be at least 2 characters.'),
   email: z.string().email().optional(),
   idleTimeoutMinutes: z.coerce.number().min(5, 'Minimum timeout is 5 minutes.'),
+  role: z.string().optional(),
 });
 
 type ProfileFormValues = z.infer<typeof profileSchema>;
@@ -70,6 +70,7 @@ export default function SettingsPage() {
       displayName: '',
       email: '',
       idleTimeoutMinutes: 30,
+      role: 'landlord',
     },
   });
 
@@ -86,6 +87,7 @@ export default function SettingsPage() {
         displayName: user.displayName || '',
         email: user.email || '',
         idleTimeoutMinutes: profile?.idleTimeoutMinutes || 30,
+        role: profile?.role || 'landlord',
       });
     }
   }, [user, profile, form]);
@@ -182,6 +184,8 @@ export default function SettingsPage() {
     );
   }
 
+  const currentRole = form.watch('role') || 'landlord';
+
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
        <div>
@@ -194,7 +198,13 @@ export default function SettingsPage() {
       <div className="grid gap-8">
         <Card className="shadow-sm">
           <CardHeader className="border-b bg-muted/10">
-            <CardTitle className="text-lg">Profile Details</CardTitle>
+            <div className="flex items-center justify-between">
+                <CardTitle className="text-lg">Profile Details</CardTitle>
+                <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 font-bold uppercase text-[9px] tracking-widest px-3">
+                    <UserCircle className="mr-1.5 h-3.5 w-3.5" />
+                    {currentRole} Account
+                </Badge>
+            </div>
             <CardDescription>
               Basic information used across your portfolio reports.
             </CardDescription>

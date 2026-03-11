@@ -9,7 +9,8 @@
 export { 
   signInNonBlocking, 
   createUserNonBlocking, 
-  initiateAnonymousSignIn 
+  initiateAnonymousSignIn,
+  type UserRole
 } from './auth-utilities';
 
 // 2. Explicitly export firestore utilities

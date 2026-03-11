@@ -1,6 +1,5 @@
 'use client';
 
-import Link from 'next/link';
 import { Button } from '@/components/ui/button';
 import { Logo, GoogleIcon } from '@/components/icons';
 import { useEffect, useState } from 'react';
@@ -9,7 +8,7 @@ import {
   signInWithRedirect,
   GoogleAuthProvider,
 } from 'firebase/auth';
-import { useUser, useAuth, createUserNonBlocking, signInNonBlocking } from '@/firebase';
+import { useUser, useAuth, createUserNonBlocking, signInNonBlocking, type UserRole } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -31,12 +30,15 @@ import {
   FormMessage,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
-import { Loader2, Eye, EyeOff, AlertCircle, ShieldCheck } from 'lucide-react';
+import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
+import { Loader2, Eye, EyeOff, AlertCircle, ShieldCheck, Building2, Users, UserCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Label } from '@/components/ui/label';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
   password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
+  role: z.enum(['landlord', 'agent', 'tenant']).default('landlord'),
 });
 
 type FormValues = z.infer<typeof formSchema>;
@@ -58,6 +60,7 @@ export default function LoginPage() {
     defaultValues: {
       email: '',
       password: '',
+      role: 'landlord',
     },
   });
 
@@ -92,7 +95,7 @@ export default function LoginPage() {
     };
 
     if (mode === 'signup') {
-      createUserNonBlocking(auth, data.email, data.password, handleError);
+      createUserNonBlocking(auth, data.email, data.password, data.role as UserRole, handleError);
     } else {
       signInNonBlocking(auth, data.email, data.password, handleError);
     }
@@ -150,6 +153,53 @@ export default function LoginPage() {
             )}
             <Form {...form}>
               <form onSubmit={form.handleSubmit(handleAuthAction)} className="space-y-4 text-left">
+                {mode === 'signup' && (
+                  <FormField
+                    control={form.control}
+                    name="role"
+                    render={({ field }) => (
+                      <FormItem className="space-y-3 pb-2">
+                        <FormLabel className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Select Your Role</FormLabel>
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                            className="grid grid-cols-3 gap-2"
+                          >
+                            <FormItem>
+                              <FormLabel className="[&:has([data-state=checked])]:border-primary border-2 rounded-xl p-3 flex flex-col items-center gap-2 cursor-pointer hover:bg-muted/50 transition-all">
+                                <FormControl>
+                                  <RadioGroupItem value="landlord" className="sr-only" />
+                                </FormControl>
+                                <Building2 className="h-5 w-5" />
+                                <span className="text-[10px] font-bold uppercase">Landlord</span>
+                              </FormLabel>
+                            </FormItem>
+                            <FormItem>
+                              <FormLabel className="[&:has([data-state=checked])]:border-primary border-2 rounded-xl p-3 flex flex-col items-center gap-2 cursor-pointer hover:bg-muted/50 transition-all">
+                                <FormControl>
+                                  <RadioGroupItem value="agent" className="sr-only" />
+                                </FormControl>
+                                <Users className="h-5 w-5" />
+                                <span className="text-[10px] font-bold uppercase">Agent</span>
+                              </FormLabel>
+                            </FormItem>
+                            <FormItem>
+                              <FormLabel className="[&:has([data-state=checked])]:border-primary border-2 rounded-xl p-3 flex flex-col items-center gap-2 cursor-pointer hover:bg-muted/50 transition-all">
+                                <FormControl>
+                                  <RadioGroupItem value="tenant" className="sr-only" />
+                                </FormControl>
+                                <UserCircle className="h-5 w-5" />
+                                <span className="text-[10px] font-bold uppercase">Tenant</span>
+                              </FormLabel>
+                            </FormItem>
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
                 <FormField
                   control={form.control}
                   name="email"
