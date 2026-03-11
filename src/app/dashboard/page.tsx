@@ -45,7 +45,6 @@ export default function DashboardPage() {
   const firestore = useFirestore();
   const router = useRouter();
   
-  // Hooks declared at top level for stable lifecycle
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [properties, setProperties] = useState<Property[]>([]);
@@ -73,19 +72,18 @@ export default function DashboardPage() {
       
       if (snap.size > 0) {
         setIsLandlord(true);
-        // If we found properties, we are definitely a landlord. 
-        // Stop the verification screen immediately.
+        // Instant pass for active landlords
         setDiscoveryComplete(true); 
       } else {
         setIsLandlord(false);
       }
     }, (err) => {
-      console.warn("Property query suppressed:", err.message);
+      console.warn("Property check suppressed:", err.message);
       setIsLoadingProps(false);
       setIsLandlord(false);
     });
 
-    // 2. Tenant Check: Global collection group search by email
+    // 2. Tenant Check: Global discovery via normalized email
     let unsubTenants = () => {};
     if (userEmail) {
         const tenantsQuery = query(
@@ -100,7 +98,6 @@ export default function DashboardPage() {
                 setDiscoveryComplete(true);
             } else {
                 setIsTenant(false);
-                // If landlord check also finished (and no properties found), and tenant check is empty, we are done
                 if (isLandlord === false) setDiscoveryComplete(true);
             }
         }, (err) => {
@@ -119,19 +116,19 @@ export default function DashboardPage() {
     };
   }, [user, isUserLoading, firestore, isLandlord]);
 
-  // Routing Effect for Verified Tenants
+  // Direct Routing for Verified Tenants
   useEffect(() => {
     if (isTenant === true) {
         router.replace('/tenant/dashboard');
     }
   }, [isTenant, router]);
 
-  // Discovery Safety Timeout: Never block the UI for more than 4 seconds
+  // Safety Timeout: Prevent UI hang during cloud indexing
   useEffect(() => {
     if (!discoveryComplete && user && !isUserLoading) {
         const timer = setTimeout(() => {
             setDiscoveryComplete(true);
-        }, 4000);
+        }, 5000);
         return () => clearTimeout(timer);
     }
   }, [discoveryComplete, user, isUserLoading]);
@@ -148,7 +145,6 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // Rendering logic
   if (isUserLoading || (isLoadingProps && !discoveryComplete)) {
     return (
       <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
@@ -158,7 +154,7 @@ export default function DashboardPage() {
     );
   }
 
-  // Verification Overlay: Only shown if discovery is active and no landlord data was found yet
+  // Interstitial screen shown during identity handshake
   if (!discoveryComplete && isLandlord !== true) {
     return (
         <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6 animate-in fade-in duration-700">
@@ -166,12 +162,12 @@ export default function DashboardPage() {
                 <Sparkles className="h-12 w-12 text-primary animate-pulse" />
             </div>
             <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Resident Verification</h2>
-                <p className="text-muted-foreground font-medium text-sm leading-relaxed">
-                    Verifying resident credentials. Access will be granted automatically once synchronized.
+                <h2 className="font-headline text-2xl font-bold text-primary text-center">Resident Verification</h2>
+                <p className="text-muted-foreground font-medium text-sm leading-relaxed text-center">
+                    The platform is currently verifying your resident credentials. Access will be granted automatically once synchronized.
                 </p>
             </div>
-            <div className="pt-4 space-y-3">
+            <div className="pt-4">
                 <Button variant="outline" className="w-full h-11 font-bold uppercase text-[10px] tracking-widest" onClick={() => setDiscoveryComplete(true)}>
                     Continue to Portfolio Manager <ChevronRight className="ml-1 h-3 w-3" />
                 </Button>
@@ -180,16 +176,16 @@ export default function DashboardPage() {
     );
   }
 
-  // Empty State
+  // Empty State for Landlords
   if (properties.length === 0 && !isLoadingProps) {
       return (
           <div className="text-center py-20 animate-in fade-in duration-500">
               <div className="max-w-md mx-auto space-y-6 px-6">
-                  <div className="bg-muted p-6 rounded-full w-fit mx-auto shadow-inner">
-                      <Home className="h-12 w-12 text-muted-foreground/40" />
+                  <div className="bg-muted p-6 rounded-full w-fit mx-auto shadow-inner text-muted-foreground/20">
+                      <Home className="h-12 w-12" />
                   </div>
-                  <h2 className="text-2xl font-bold font-headline">Your Portfolio is Empty</h2>
-                  <p className="text-muted-foreground font-medium">Onboard your first rental property to begin managing your estate.</p>
+                  <h2 className="text-2xl font-bold font-headline">Welcome to RentSafeUK</h2>
+                  <p className="text-muted-foreground font-medium">Onboard your first rental property to begin managing your estate and assigned residents.</p>
                   <Button asChild size="lg" className="px-10 font-bold shadow-lg h-12 w-full mt-4">
                       <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Onboard First Asset</Link>
                   </Button>
@@ -198,15 +194,14 @@ export default function DashboardPage() {
       );
   }
 
-  // Active Portfolio View
   return (
-      <div className="space-y-8 animate-in fade-in duration-500">
+      <div className="space-y-8 animate-in fade-in duration-500 text-left">
         <div className="space-y-1">
           <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Portfolio Manager</h1>
           <p className="text-muted-foreground font-medium text-lg">Central control for your rental estate.</p>
         </div>
         
-        <Card className="shadow-lg border-none">
+        <Card className="shadow-lg border-none overflow-hidden">
           <CardHeader className="flex flex-row items-center justify-between pb-2 bg-muted/5">
             <CardTitle className="text-lg font-bold">Estate View</CardTitle>
             <Button asChild size="sm" className="font-bold uppercase tracking-widest text-[10px] h-9 px-4">
@@ -218,7 +213,7 @@ export default function DashboardPage() {
               <div className="relative w-full max-w-sm">
                 <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                 <Input 
-                  id="dash-search"
+                  id="dashboard-filter"
                   value={searchTerm} 
                   onChange={(e) => setSearchTerm(e.target.value)} 
                   placeholder="Filter by address..." 

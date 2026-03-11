@@ -5,7 +5,7 @@
  * Optimized export structure to resolve module resolution conflicts and ensure function availability.
  */
 
-// 1. Explicitly export authentication utilities to prevent TypeError
+// 1. Explicitly export authentication utilities
 export { 
   signInNonBlocking, 
   createUserNonBlocking, 
