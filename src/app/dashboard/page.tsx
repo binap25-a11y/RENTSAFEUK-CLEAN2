@@ -17,7 +17,8 @@ import {
   Bed, 
   Bath, 
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  ArrowRight
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -120,7 +121,7 @@ export default function DashboardPage() {
     }
   }, [isTenant, router]);
 
-  // Filtering Logic
+  // Filtering Logic (Moved up to comply with hook order)
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;
     const term = searchTerm.toLowerCase();
@@ -150,8 +151,8 @@ export default function DashboardPage() {
       );
   }
 
-  // Synchronization phase
-  if (isIndexBuilding && !isLandlord) {
+  // Synchronization phase - Refined for Landlords
+  if (isIndexBuilding && isLandlord === null) {
       return (
         <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in duration-700 px-6">
             <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto border shadow-inner">
@@ -164,6 +165,9 @@ export default function DashboardPage() {
                 </p>
             </div>
             <div className="flex flex-col gap-3">
+                <Button variant="outline" className="font-bold h-11 uppercase text-[10px] tracking-widest" onClick={() => setIsLandlord(false)}>
+                    Continue to Portfolio Manager <ArrowRight className="ml-2 h-4 w-4" />
+                </Button>
                 <Button variant="ghost" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={() => window.location.reload()}>
                     <RefreshCw className="mr-2 h-3.5 w-3.5" /> Check Status
                 </Button>

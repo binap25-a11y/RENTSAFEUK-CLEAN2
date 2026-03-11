@@ -15,10 +15,10 @@ service cloud.firestore {
     }
 
     // --- TOP-LEVEL STATICALLY PROVABLE RULES (OPTIMIZED FOR DISCOVERY) ---
-    // Moved to the top to ensure high-performance collectionGroup authorization.
+    // Rules moved to the top to ensure high-performance collectionGroup authorization.
     
     match /{path=**}/tenants/{tenantId} {
-      // Instant email verification for resident discovery
+      // Instant email verification for resident discovery. No functional transforms.
       allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
       
       allow get: if isSignedIn() && (
