@@ -20,7 +20,6 @@ import {
   Sparkles,
   RefreshCw,
   ArrowRight,
-  ShieldAlert
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -162,24 +161,15 @@ export default function DashboardPage() {
   const router = useRouter();
   
   const [isTenant, setIsTenant] = useState<boolean | null>(null);
-  const [isLoadingPortalCheck, setIsLoadingPortalCheck] = useState(true);
+  const [isLandlord, setIsLandlord] = useState<boolean | null>(null);
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
-  const [hasHeuristicTimeout, setHasHeuristicTimeout] = useState(false);
   
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoadingProps, setIsLoadingProps] = useState(true);
 
-  // Heuristic Timeout: Shortened to 1.5s for faster role resolution.
-  useEffect(() => {
-    const timer = setTimeout(() => {
-        setHasHeuristicTimeout(true);
-    }, 1500);
-    return () => clearTimeout(timer);
-  }, []);
-
-  // Fetch Properties (Landlord Role)
+  // 1. Landlord Discovery: Check for existing properties (Fastest path)
   useEffect(() => {
     if (!user || !firestore) return;
     
@@ -193,10 +183,10 @@ export default function DashboardPage() {
       setProperties(list);
       setIsLoadingProps(false);
       
-      // OPTIMIZATION: If properties are found, user is a landlord. 
+      // If properties exist, this is a landlord. unblock the view.
       if (snap.size > 0) {
+          setIsLandlord(true);
           setIsTenant(false);
-          setIsLoadingPortalCheck(false);
       }
     }, (error) => {
       console.warn("Property fetch issue:", error.message);
@@ -205,15 +195,12 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore]);
 
-  // Tenant Discovery Handshake - Global Collection Group Search
+  // 2. Tenant Discovery: Search across all properties for this email (Handshake path)
   useEffect(() => {
-    if (!user || !firestore || !user.email) {
-      setIsLoadingPortalCheck(false);
-      return;
-    }
+    if (!user || !firestore || !user.email) return;
 
-    // Optimization: Skip if properties are already detected
-    if (isTenant === false) return;
+    // Optimization: Skip if already confirmed as landlord with properties
+    if (isLandlord === true) return;
 
     const email = user.email.toLowerCase().trim();
     const tenantsQuery = query(
@@ -228,47 +215,32 @@ export default function DashboardPage() {
           setIsTenant(true);
           router.replace('/tenant/dashboard');
       } else {
-          // No active tenancy found globally
+          // No active tenancy found
           setIsTenant(false);
+          // If no properties and no tenancy, they are a new landlord
+          if (properties.length === 0) setIsLandlord(false);
       }
-      setIsLoadingPortalCheck(false);
       setIsIndexBuilding(false); 
     }, (error) => {
       const msg = error.message.toLowerCase();
-      // "failed-precondition" usually means index is building or missing
       if (msg.includes('index') || error.code === 'failed-precondition') {
         setIsIndexBuilding(true);
-        setIsLoadingPortalCheck(false);
       } else {
         console.warn("Verification handshake issue:", error.message);
         setIsTenant(false);
-        setIsLoadingPortalCheck(false);
       }
     });
 
     return () => unsub();
-  }, [user, firestore, router, isTenant]);
-
-  const filteredProperties = useMemo(() => {
-    if (!searchTerm) return properties;
-    const term = searchTerm.toLowerCase();
-    return properties.filter(p => 
-      Object.values(p.address).some(val => typeof val === 'string' && val.toLowerCase().includes(term))
-    );
-  }, [properties, searchTerm]);
+  }, [user, firestore, router, isLandlord, properties.length]);
 
   /**
-   * Global Loading State:
-   * Block if we are still verifying and haven't hit the timeout or found data.
+   * GLOBAL LOADING STATE:
+   * Block until either role is confirmed or we know they have no properties and no tenancy.
    */
-  const isGlobalLoading = isUserLoading || (
-      isLoadingPortalCheck && 
-      isTenant === null && 
-      properties.length === 0 && 
-      !hasHeuristicTimeout
-  );
+  const isLoading = isUserLoading || (isTenant === null && isLandlord === null && !isIndexBuilding);
 
-  if (isGlobalLoading) {
+  if (isLoading) {
     return (
       <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background px-6">
         <div className="flex flex-col items-center gap-6 max-w-sm w-full text-center">
@@ -280,11 +252,11 @@ export default function DashboardPage() {
           </div>
           <div className="space-y-2">
             <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground animate-pulse">
-                Verifying Resident Identity
+                Verifying Session
             </p>
-            <h2 className="text-xl font-bold font-headline">Securing Connection</h2>
+            <h2 className="text-xl font-bold font-headline">Securing Access</h2>
             <p className="text-xs text-muted-foreground leading-relaxed">
-                Establishing a secure path to your tenancy records. This may take a few moments during your first sign-in.
+                Establishing a secure path to your portfolio. This may take a few moments.
             </p>
           </div>
         </div>
@@ -304,18 +276,18 @@ export default function DashboardPage() {
             </div>
             <div className="space-y-3">
                 <h2 className="font-headline text-3xl font-bold text-primary">Identity Mapping</h2>
-                <p className="text-muted-foreground font-medium leading-relaxed">
+                <p className="text-muted-foreground font-medium leading-relaxed text-sm">
                     The platform is currently mapping your resident identity across the secure portfolio. Access will be restored automatically.
                 </p>
             </div>
             <div className="flex flex-col items-center gap-4 pt-4">
                 <Button className="font-bold h-12 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-lg" onClick={() => window.location.reload()}>
-                    <RefreshCw className="mr-2 h-4 w-4" /> Check Status Now
+                    <RefreshCw className="mr-2 h-4 w-4" /> Check Status
                 </Button>
                 <div className="pt-10 border-t w-full mt-4">
                     <p className="text-[10px] text-muted-foreground uppercase font-bold mb-4 tracking-widest">Are you a landlord?</p>
-                    <Button variant="outline" className="text-xs font-bold w-full border-primary/20" onClick={() => { setIsTenant(false); setIsIndexBuilding(false); }}>
-                        Continue to Portfolio Dashboard <ArrowRight className="ml-2 h-3 w-3" />
+                    <Button variant="outline" className="text-xs font-bold w-full border-primary/20 h-11" onClick={() => { setIsLandlord(false); setIsIndexBuilding(false); setIsTenant(false); }}>
+                        Continue to Portfolio Manager <ArrowRight className="ml-2 h-3 w-3" />
                     </Button>
                 </div>
             </div>
@@ -323,7 +295,14 @@ export default function DashboardPage() {
       );
   }
 
-  // If role is Tenant, we should have redirected. If we are here, role is Landlord or Unknown.
+  const filteredProperties = useMemo(() => {
+    if (!searchTerm) return properties;
+    const term = searchTerm.toLowerCase();
+    return properties.filter(p => 
+      Object.values(p.address).some(val => typeof val === 'string' && val.toLowerCase().includes(term))
+    );
+  }, [properties, searchTerm]);
+
   return (
     <div className="space-y-8 animate-in fade-in duration-500 text-left">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">

@@ -50,7 +50,7 @@ export default function TenantDashboard() {
     
     const userEmail = user.email.toLowerCase().trim();
 
-    // Forced lowercase matching for security and indexing
+    // Search for any tenant record across the platform matching this email
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
@@ -68,7 +68,7 @@ export default function TenantDashboard() {
             const data = activeTenantDoc.data();
             const path = activeTenantDoc.ref.path;
             
-            // Robust path parsing: userProfiles/{uid}/properties/{pid}/tenants/{tid}
+            // Robust path parsing: userProfiles/{landlordId}/properties/{propertyId}/tenants/{tenantId}
             const pathSegments = path.split('/');
             const landlordIdx = pathSegments.indexOf('userProfiles');
             const propertyIdx = pathSegments.indexOf('properties');
@@ -89,7 +89,7 @@ export default function TenantDashboard() {
                             propertyData: propSnap.data()
                         });
                     } else {
-                        setError("Resident profile partially synchronized.");
+                        setError("Property details could not be resolved.");
                     }
                     setIsLoading(false);
                     setIsIndexBuilding(false);
@@ -98,11 +98,11 @@ export default function TenantDashboard() {
                         path: propRef.path,
                         operation: 'get',
                     }));
-                    setError("Restricted Access to Property Profile.");
+                    setError("Identity verified, but property data is restricted.");
                     setIsLoading(false);
                 });
             } else {
-                setError("Tenant identity could not be localized.");
+                setError("Tenant record found but structure is invalid.");
                 setIsLoading(false);
             }
         } else {
@@ -114,8 +114,8 @@ export default function TenantDashboard() {
         if (msg.includes('index') || err.code === 'failed-precondition') {
             setIsIndexBuilding(true);
         } else {
-            console.warn("Handshake issue:", err.message);
-            setError("Identity Verification Pending.");
+            console.warn("Discovery issue:", err.message);
+            setError("Identity handshake interrupted.");
         }
         setIsLoading(false);
     });
@@ -152,13 +152,13 @@ export default function TenantDashboard() {
             </div>
             <div className="space-y-3">
                 <h2 className="font-headline text-2xl font-bold text-primary">Identity Synchronization</h2>
-                <p className="text-muted-foreground font-medium leading-relaxed">
+                <p className="text-muted-foreground font-medium leading-relaxed text-sm">
                     The platform is currently mapping your resident identity. Access will be restored automatically once the cloud database synchronizes.
                 </p>
             </div>
             <div className="flex flex-col items-center gap-4">
-                <Button variant="outline" className="font-bold h-11 px-10 rounded-xl border-primary/20 hover:bg-primary/5 uppercase tracking-widest text-[10px]" onClick={() => window.location.reload()}>
-                    <RefreshCw className="mr-2 h-4 w-4" /> Check Sync Status
+                <Button variant="outline" className="font-bold h-11 px-10 rounded-xl border-primary/20 hover:bg-primary/5 uppercase tracking-widest text-[10px] w-full" onClick={() => window.location.reload()}>
+                    <RefreshCw className="mr-2 h-4 w-4" /> Check Status
                 </Button>
             </div>
         </div>
@@ -179,10 +179,10 @@ export default function TenantDashboard() {
             </CardHeader>
             <CardFooter className="pt-6 flex flex-col gap-3 bg-background border-t">
                 <Button className="w-full font-bold h-11 shadow-lg uppercase tracking-widest text-xs" asChild>
-                    <Link href="/dashboard">Return to Main View</Link>
+                    <Link href="/dashboard">Check Portfolio View</Link>
                 </Button>
                 <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={performDiscovery}>
-                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Verification
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Handshake
                 </Button>
             </CardFooter>
         </Card>

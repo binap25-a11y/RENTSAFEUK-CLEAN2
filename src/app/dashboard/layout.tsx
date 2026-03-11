@@ -13,11 +13,11 @@ import {
 import { MainNav } from '@/components/dashboard/main-nav';
 import { UserNav } from '@/components/dashboard/user-nav';
 import { Logo } from '@/components/icons';
-import { Loader2, Search, Share2, ShieldCheck, Sparkles, RefreshCw } from 'lucide-react';
+import { Loader2, Search, Share2, ShieldCheck } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
-import { useRouter } from 'next/navigation';
-import { useEffect, useState, useCallback } from 'react';
-import { collection, query, where, onSnapshot, collectionGroup, limit } from 'firebase/firestore';
+import { useRouter, usePathname } from 'next/navigation';
+import { useEffect, useState } from 'react';
+import { collection, query, limit, onSnapshot } from 'firebase/firestore';
 import { BackToTopButton } from '@/components/ui/back-to-top-button';
 import { Button } from '@/components/ui/button';
 import { IdleTimeout } from '@/components/dashboard/idle-timeout';
@@ -85,57 +85,25 @@ export default function DashboardLayout({
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
+  const pathname = usePathname();
   const [isMounted, setIsMounted] = useState(false);
-  
-  // Role Detection State
-  const [isTenant, setIsTenant] = useState<boolean | null>(null);
-  const [isIndexBuilding, setIsIndexBuilding] = useState(false);
-  const [isLoadingRole, setIsLoadingRole] = useState(true);
+  const [isLandlord, setIsLandlord] = useState<boolean | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
   }, []);
 
-  // Secure Role Handshake: Distinguishes between Landlord and Tenant layout
+  // Simple role check for sidebar visibility only
   useEffect(() => {
-    if (!isMounted || isUserLoading || !user || !firestore) return;
+    if (!isMounted || !user || !firestore) return;
 
-    // Check for properties (Landlord indicator)
-    const propUnsub = onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties'), limit(1)), (snap) => {
-        if (snap.size > 0) {
-            setIsTenant(false);
-            setIsLoadingRole(false);
-        }
+    // If any properties exist, this is a landlord account
+    const q = query(collection(firestore, 'userProfiles', user.uid, 'properties'), limit(1));
+    const unsub = onSnapshot(q, (snap) => {
+        setIsLandlord(snap.size > 0);
     });
-
-    // Check for tenancy (Tenant indicator)
-    const email = user.email?.toLowerCase().trim();
-    if (!email) {
-        setIsLoadingRole(false);
-        return;
-    }
-
-    const tenantUnsub = onSnapshot(query(collectionGroup(firestore, 'tenants'), where('email', '==', email), limit(1)), (snap) => {
-        if (snap.size > 0) {
-            setIsTenant(true);
-            setIsLoadingRole(false);
-        } else if (isTenant === null) {
-            // No direct landlord data found yet, might be a new landlord
-            setIsTenant(false);
-            setIsLoadingRole(false);
-        }
-    }, (error) => {
-        if (error.code === 'failed-precondition') {
-            setIsIndexBuilding(true);
-        }
-        setIsLoadingRole(false);
-    });
-
-    return () => {
-        propUnsub();
-        tenantUnsub();
-    };
-  }, [isMounted, user, isUserLoading, firestore, isTenant]);
+    return () => unsub();
+  }, [isMounted, user, firestore]);
 
   useEffect(() => {
     if (isMounted && !isUserLoading && !user) {
@@ -148,40 +116,20 @@ export default function DashboardLayout({
       <div className="flex h-screen w-full items-center justify-center bg-background">
         <div className="flex flex-col items-center gap-4">
           <Loader2 className="h-10 w-10 animate-spin text-primary" />
-          <p className="text-sm text-muted-foreground animate-pulse font-medium">Verifying Session Security...</p>
+          <p className="text-sm text-muted-foreground animate-pulse font-medium">Verifying Session...</p>
         </div>
       </div>
     );
   }
 
-  // If identity mapping is in progress and we can't determine role, show discovery screen
-  if (isIndexBuilding && isTenant === null) {
-      return (
-        <div className="flex h-screen w-full items-center justify-center bg-background p-6 text-center">
-            <div className="max-w-md space-y-8 animate-in fade-in duration-700">
-                <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto border shadow-inner">
-                    <Sparkles className="h-12 w-12 text-primary animate-pulse" />
-                </div>
-                <div className="space-y-3">
-                    <h2 className="font-headline text-3xl font-bold text-primary">Identity Mapping</h2>
-                    <p className="text-muted-foreground font-medium leading-relaxed">
-                        The platform is currently mapping your resident identity across the secure portfolio. Access will be restored automatically.
-                    </p>
-                </div>
-                <Button className="w-full h-12 font-bold uppercase tracking-widest text-[10px]" onClick={() => window.location.reload()}>
-                    <RefreshCw className="mr-2 h-4 w-4" /> Check Status
-                </Button>
-            </div>
-        </div>
-      );
-  }
+  // Standard Sidebar Layout
+  // Note: Sidebar is only visible if properties are detected, or if we're not on the root dashboard
+  const showSidebar = isLandlord === true || pathname !== '/dashboard';
 
-  // Standard Landlord Sidebar Layout
   return (
     <SidebarProvider>
       <IdleTimeout />
-      {/* Sidebar is only shown for landlords. Tenants are redirected or see the Tenant Hub. */}
-      {isTenant === false && (
+      {showSidebar && (
         <Sidebar>
             <SidebarHeader>
             <Link href="/dashboard" className="flex items-center gap-2 px-2 py-4">
