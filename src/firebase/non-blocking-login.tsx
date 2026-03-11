@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * @fileOverview This module has been deprecated in favor of the .ts version 
- * to resolve Webpack module resolution conflicts that caused Runtime TypeErrors.
+ * @fileOverview DEPRECATED. This file has been moved to .ts to resolve 
+ * module resolution conflicts causing Runtime TypeErrors.
  */
 
 export {};

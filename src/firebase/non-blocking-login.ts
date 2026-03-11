@@ -9,7 +9,7 @@ import {
 
 /**
  * @fileOverview Consolidated Authentication Utilities.
- * Resolves module resolution conflicts by providing a single source of truth for auth logic.
+ * Provides stable, non-blocking wrappers for Firebase Auth operations.
  */
 
 export function initiateAnonymousSignIn(auth: Auth): void {

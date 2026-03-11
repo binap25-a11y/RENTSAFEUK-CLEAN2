@@ -37,14 +37,7 @@ export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 
-// Explicitly export from .ts modules to resolve Webpack shadowing issues
-export { 
-  setDocumentNonBlocking, 
-  addDocumentNonBlocking, 
-  updateDocumentNonBlocking, 
-  deleteDocumentNonBlocking 
-} from './non-blocking-updates';
-
+// Authentication Utilities (Stable Exports)
 export { 
   initiateAnonymousSignIn, 
   createUserNonBlocking, 
@@ -52,6 +45,14 @@ export {
   initiateEmailSignUp,
   initiateEmailSignIn
 } from './non-blocking-login';
+
+// Database Utilities (Stable Exports)
+export { 
+  setDocumentNonBlocking, 
+  addDocumentNonBlocking, 
+  updateDocumentNonBlocking, 
+  deleteDocumentNonBlocking 
+} from './non-blocking-updates';
 
 export * from './errors';
 export * from './error-emitter';

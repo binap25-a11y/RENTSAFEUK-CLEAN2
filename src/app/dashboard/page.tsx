@@ -90,10 +90,11 @@ export default function DashboardPage() {
     // TENANT DISCOVERY (Secure Handshake)
     let unsubTenants = () => {};
     if (userEmail) {
+        // High-performance group query optimized via rules-top indexes
         const tenantsQuery = query(
             collectionGroup(firestore, 'tenants'),
             where('email', '==', userEmail),
-            limit(1)
+            limit(5)
         );
 
         unsubTenants = onSnapshot(tenantsQuery, (snap) => {
@@ -123,7 +124,7 @@ export default function DashboardPage() {
     if (isTenant === null) {
         const timeoutId = setTimeout(() => {
             setHasTimedOut(true);
-        }, 5000);
+        }, 6000);
         return () => clearTimeout(timeoutId);
     }
   }, [isTenant]);
