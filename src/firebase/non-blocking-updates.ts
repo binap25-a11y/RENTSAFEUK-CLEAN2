@@ -14,7 +14,7 @@ import { FirestorePermissionError, type SecurityRuleContext } from '@/firebase/e
 
 /**
  * @fileOverview Consolidated Firestore Mutation Utilities.
- * Stabilized in .ts to ensure reliable runtime identification.
+ * Stabilized logic to ensure runtime identification and consistent exports.
  */
 
 export function setDocumentNonBlocking(docRef: DocumentReference, data: any, options?: SetOptions) {

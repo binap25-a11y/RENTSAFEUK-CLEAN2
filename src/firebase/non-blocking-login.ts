@@ -9,7 +9,7 @@ import {
 
 /**
  * @fileOverview Stable Authentication Utilities.
- * Consolidated into .ts to prevent module shadowing issues in Next.js.
+ * Consolidated logic to ensure runtime identification and consistent exports.
  */
 
 export function signInNonBlocking(
@@ -19,7 +19,7 @@ export function signInNonBlocking(
   onError?: (error: any) => void
 ): void {
   signInWithEmailAndPassword(auth, email, password).catch((error) => {
-    if (onError) onError(error);
+    if (error && onError) onError(error);
   });
 }
 
@@ -30,7 +30,7 @@ export function createUserNonBlocking(
   onError?: (error: any) => void
 ): void {
   createUserWithEmailAndPassword(auth, email, password).catch((error) => {
-    if (onError) onError(error);
+    if (error && onError) onError(error);
   });
 }
 
@@ -39,3 +39,6 @@ export function initiateAnonymousSignIn(auth: Auth): void {
     console.error('Anonymous sign-in failed:', error);
   });
 }
+
+export const initiateEmailSignUp = createUserNonBlocking;
+export const initiateEmailSignIn = signInNonBlocking;

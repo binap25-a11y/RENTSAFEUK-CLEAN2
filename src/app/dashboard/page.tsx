@@ -130,7 +130,7 @@ export default function DashboardPage() {
     }
   }, [isTenant]);
 
-  // 3. Data Processing
+  // 3. Data Processing (Hooks must be at the top level)
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;
     const term = searchTerm.toLowerCase();
@@ -244,34 +244,30 @@ export default function DashboardPage() {
             </div>
           </div>
 
-          {isLoadingProps ? (
-            <div className="flex justify-center items-center h-48"><Loader2 className="animate-spin h-6 w-6 text-primary" /></div>
-          ) : (
-            view === 'grid' ? (
-              <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
-                {filteredProperties.map(p => (
-                  <Card key={p.id} className="group overflow-hidden flex flex-col hover:shadow-2xl transition-all duration-300 cursor-pointer border-none shadow-md bg-card text-left" onClick={() => router.push(`/dashboard/properties/${p.id}`)}>
-                    <div className="relative aspect-[16/10] bg-muted overflow-hidden border-b">
-                      {p.imageUrl ? (
-                        <img src={p.imageUrl} alt="Property" className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-500" />
-                      ) : <div className="flex items-center justify-center w-full h-full bg-primary/5"><Home className="h-16 w-16 text-primary/10" /></div>}
+          <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
+            {view === 'grid' ? (
+              filteredProperties.map(p => (
+                <Card key={p.id} className="group overflow-hidden flex flex-col hover:shadow-2xl transition-all duration-300 cursor-pointer border-none shadow-md bg-card text-left" onClick={() => router.push(`/dashboard/properties/${p.id}`)}>
+                  <div className="relative aspect-[16/10] bg-muted overflow-hidden border-b">
+                    {p.imageUrl ? (
+                      <img src={p.imageUrl} alt="Property" className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-500" />
+                    ) : <div className="flex items-center justify-center w-full h-full bg-primary/5"><Home className="h-16 w-16 text-primary/10" /></div>}
+                  </div>
+                  <CardHeader className="pb-3 px-4">
+                    <CardTitle className="text-lg font-bold truncate group-hover:text-primary transition-colors">{[p.address.nameOrNumber, p.address.street].filter(Boolean).join(', ')}</CardTitle>
+                    <CardDescription className="truncate">{p.address.city}, {p.address.postcode}</CardDescription>
+                  </CardHeader>
+                  <CardContent className="flex justify-between items-center mt-auto pt-4 px-4 border-t">
+                    <div className="flex items-center gap-4 text-[10px] font-bold text-muted-foreground uppercase">
+                      <span className="flex items-center gap-1"><Bed className="h-3.5 w-3.5" /> {p.bedrooms}</span>
+                      <span className="flex items-center gap-1"><Bath className="h-3.5 w-3.5" /> {p.bathrooms}</span>
                     </div>
-                    <CardHeader className="pb-3 px-4">
-                      <CardTitle className="text-lg font-bold truncate group-hover:text-primary transition-colors">{[p.address.nameOrNumber, p.address.street].filter(Boolean).join(', ')}</CardTitle>
-                      <CardDescription className="truncate">{p.address.city}, {p.address.postcode}</CardDescription>
-                    </CardHeader>
-                    <CardContent className="flex justify-between items-center mt-auto pt-4 px-4 border-t">
-                      <div className="flex items-center gap-4 text-[10px] font-bold text-muted-foreground uppercase">
-                        <span className="flex items-center gap-1"><Bed className="h-3.5 w-3.5" /> {p.bedrooms}</span>
-                        <span className="flex items-center gap-1"><Bath className="h-3.5 w-3.5" /> {p.bathrooms}</span>
-                      </div>
-                      <Badge variant={p.status === 'Occupied' ? 'default' : 'secondary'} className="text-[9px] uppercase font-bold px-2 py-0">{p.status}</Badge>
-                    </CardContent>
-                  </Card>
-                ))}
-              </div>
+                    <Badge variant={p.status === 'Occupied' ? 'default' : 'secondary'} className="text-[9px] uppercase font-bold px-2 py-0">{p.status}</Badge>
+                  </CardContent>
+                </Card>
+              ))
             ) : (
-              <div className="rounded-xl border overflow-hidden shadow-sm">
+              <div className="col-span-full rounded-xl border overflow-hidden shadow-sm">
                 <Table>
                   <TableHeader className="bg-muted/50">
                     <TableRow>
@@ -300,8 +296,8 @@ export default function DashboardPage() {
                   </TableBody>
                 </Table>
               </div>
-            )
-          )}
+            )}
+          </div>
         </CardContent>
       </Card>
     </div>

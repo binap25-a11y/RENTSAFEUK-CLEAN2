@@ -15,17 +15,17 @@ service cloud.firestore {
     }
 
     // --- TOP-LEVEL STATICALLY PROVABLE RULES (OPTIMIZED FOR INSTANT DISCOVERY) ---
-    // Rules must match query filters exactly for index verification.
+    // These rules are placed at the top level to ensure high-performance collection group verification.
     
     match /{path=**}/tenants/{tenantId} {
-      // Optimized for exact email matching queries.
+      // Optimized for exact email matching queries. Mandatory for the identity handshake.
       allow list: if isSignedIn() && (
-        resource.data.email == request.auth.token.email.lower() ||
+        (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
         resource.data.userId == request.auth.uid
       );
       
       allow get: if isSignedIn() && (
-        resource.data.email == request.auth.token.email.lower() ||
+        (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
         resource.data.userId == request.auth.uid
       );
     }
@@ -53,23 +53,23 @@ service cloud.firestore {
         match /tenants/{tenantId} {
           allow read, write: if isOwner(userId);
           // Resident-specific read access via lower-cased normalization
-          allow get: if isSignedIn() && (
+          allow get: if isSignedIn() && request.auth.token.email != null && (
             resource.data.email == request.auth.token.email.lower() ||
             resource.data.userId == request.auth.uid
           );
 
           match /messages/{messageId} {
-             allow read, write: if isOwner(userId) || (isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email.lower());
+             allow read, write: if isOwner(userId) || (isSignedIn() && request.auth.token.email != null && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email.lower());
           }
 
           match /screenings/{screeningId} {
              allow read, write: if isOwner(userId);
-             allow get: if isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email.lower();
+             allow get: if isSignedIn() && request.auth.token.email != null && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email.lower();
           }
           
           match /checklists/{checklistId} {
              allow read, write: if isOwner(userId);
-             allow get: if isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email.lower();
+             allow get: if isSignedIn() && request.auth.token.email != null && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email.lower();
           }
         }
 
