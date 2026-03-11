@@ -37,7 +37,7 @@ export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 
-// Authentication Utilities (Stabilized imports to avoid .ts vs .tsx resolution shadowing)
+// Authentication Utilities
 export { 
   signInNonBlocking, 
   createUserNonBlocking, 

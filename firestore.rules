@@ -18,7 +18,8 @@ service cloud.firestore {
     // These rules are placed at the top level to ensure high-performance collection group verification.
     
     match /{path=**}/tenants/{tenantId} {
-      // Combined read rule for performance. Explicitly supports email-based global discovery.
+      // High-performance read rule for role discovery handshake.
+      // Force normalized email comparison to ensure robust resident identity mapping.
       allow read: if isSignedIn() && (
         (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
         resource.data.userId == request.auth.uid
