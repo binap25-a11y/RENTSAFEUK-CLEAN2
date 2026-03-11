@@ -20,8 +20,7 @@ service cloud.firestore {
     match /{path=**}/tenants/{tenantId} {
       /**
        * @description Authorized global identity handshake.
-       * Uses direct comparison for static provability.
-       * The client must ensure emails are normalized to lowercase.
+       * Casing-safe comparison for static provability in collection group queries.
        */
       allow list: if isSignedIn() && request.auth.token.email.lower() == resource.data.email;
       allow get: if isSignedIn() && (

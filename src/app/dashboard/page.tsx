@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { collection, query, where, onSnapshot, collectionGroup, limit } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -19,8 +19,7 @@ import {
   ShieldCheck, 
   Sparkles,
   RefreshCw,
-  ArrowRight,
-  AlertCircle
+  ArrowRight
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -171,7 +170,8 @@ export default function DashboardPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoadingProps, setIsLoadingProps] = useState(true);
 
-  // Heuristic Timeout: If discovery takes too long, we allow landlords to see their dashboard.
+  // Heuristic Timeout: We wait up to 2 seconds for tenant discovery. 
+  // If it's slow or indexing, we allow landlords to proceed to their dashboard.
   useEffect(() => {
     const timer = setTimeout(() => {
         setHasHeuristicTimeout(true);
@@ -192,6 +192,13 @@ export default function DashboardPage() {
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Property));
       setProperties(list);
       setIsLoadingProps(false);
+      
+      // OPTIMIZATION: If properties are found, user is definitely a landlord. 
+      // We can stop the tenant check to save resources.
+      if (snap.size > 0) {
+          setIsTenant(false);
+          setIsLoadingPortalCheck(false);
+      }
     }, (error) => {
       console.warn("Property fetch issue:", error.message);
       setIsLoadingProps(false);
@@ -199,12 +206,15 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore]);
 
-  // Tenant Discovery Handshake - Non-blocking Global Search
+  // Tenant Discovery Handshake
   useEffect(() => {
     if (!user || !firestore || !user.email) {
       setIsLoadingPortalCheck(false);
       return;
     }
+
+    // Optimization: If already determined as landlord, skip
+    if (isTenant === false) return;
 
     const email = user.email.toLowerCase().trim();
     const tenantsQuery = query(
@@ -227,7 +237,8 @@ export default function DashboardPage() {
       const msg = error.message.toLowerCase();
       if (msg.includes('index') || error.code === 'failed-precondition') {
         setIsIndexBuilding(true);
-        // Release the global block so we can show the "Synchronization" UI
+        // Do not block the global screen if index is missing; 
+        // the landlord-optimistic logic will handle it.
         setIsLoadingPortalCheck(false);
       } else {
         console.warn("Verification issue:", error.message);
@@ -237,7 +248,7 @@ export default function DashboardPage() {
     });
 
     return () => unsub();
-  }, [user, firestore, router]);
+  }, [user, firestore, router, isTenant]);
 
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;
@@ -248,15 +259,14 @@ export default function DashboardPage() {
   }, [properties, searchTerm]);
 
   /**
-   * Global Loading State:
-   * We only block if:
-   * 1. Auth is still resolving
-   * 2. WE DON'T KNOW if they are a tenant AND (it's a new user OR we haven't timed out yet)
+   * Loading Logic:
+   * We only block if we truly have no data and haven't hit our timeout.
    */
   const isGlobalLoading = isUserLoading || (
       isLoadingPortalCheck && 
       isTenant === null && 
-      (properties.length === 0 || !hasHeuristicTimeout)
+      properties.length === 0 && 
+      !hasHeuristicTimeout
   );
 
   if (isGlobalLoading) {
@@ -283,7 +293,7 @@ export default function DashboardPage() {
     );
   }
 
-  // If the index is building and they have no properties, they are likely a tenant waiting for sync
+  // Identity Mapping screen: Shown for tenants or new users when index is building
   if (isIndexBuilding && properties.length === 0 && isTenant === null) {
       return (
         <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in duration-700 px-6">
@@ -296,14 +306,16 @@ export default function DashboardPage() {
                     The platform is currently mapping your resident identity across the secure portfolio. Access will be restored automatically.
                 </p>
             </div>
-            <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px]" onClick={() => window.location.reload()}>
-                <RefreshCw className="mr-2 h-4 w-4" /> Check Status Now
-            </Button>
-            <div className="pt-10 border-t">
-                <p className="text-[10px] text-muted-foreground uppercase font-bold mb-4 tracking-widest">Are you a landlord?</p>
-                <Button variant="ghost" className="text-xs font-bold" onClick={() => { setIsTenant(false); setIsIndexBuilding(false); }}>
-                    Skip to Landlord Dashboard <ArrowRight className="ml-2 h-3 w-3" />
+            <div className="flex flex-col items-center gap-4">
+                <Button variant="outline" className="font-bold h-11 px-10 rounded-xl border-primary/20 hover:bg-primary/5 uppercase tracking-widest text-[10px] w-full" onClick={() => window.location.reload()}>
+                    <RefreshCw className="mr-2 h-4 w-4" /> Check Status Now
                 </Button>
+                <div className="pt-10 border-t w-full">
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold mb-4 tracking-widest">Are you a landlord?</p>
+                    <Button variant="ghost" className="text-xs font-bold w-full" onClick={() => { setIsTenant(false); setIsIndexBuilding(false); }}>
+                        Continue to Landlord Dashboard <ArrowRight className="ml-2 h-3 w-3" />
+                    </Button>
+                </div>
             </div>
         </div>
       );
