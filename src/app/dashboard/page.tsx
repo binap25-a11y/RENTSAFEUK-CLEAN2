@@ -28,8 +28,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 
 /**
- * @fileOverview High-Performance Role Discovery Dashboard.
- * Resolves the "Identity Handshake" hang and "Rules of Hooks" crash.
+ * @fileOverview Intelligent High-Performance Traffic Controller.
+ * Resolves roles in parallel and routes Tenants to the Resident Hub immediately.
  */
 
 interface Property {
@@ -63,13 +63,13 @@ export default function DashboardPage() {
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
   const [hasTimedOut, setHasTimedOut] = useState(false);
 
-  // Identity Discovery Effect
+  // Identity Discovery Effect: Parallel Handshake
   useEffect(() => {
     if (isUserLoading || !user || !firestore) return;
     
     const userEmail = user.email?.toLowerCase().trim();
 
-    // 1. LANDLORD DISCOVERY: Fast path for existing assets
+    // 1. LANDLORD DISCOVERY (Fast Path)
     const propQuery = query(
       collection(firestore, 'userProfiles', user.uid, 'properties'), 
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
@@ -86,7 +86,7 @@ export default function DashboardPage() {
       setIsLandlord(false);
     });
 
-    // 2. TENANT DISCOVERY: Global email handshake
+    // 2. TENANT DISCOVERY (Secure Handshake)
     let unsubTenants = () => {};
     if (userEmail) {
         const tenantsQuery = query(
@@ -115,7 +115,7 @@ export default function DashboardPage() {
         setIsTenant(false);
     }
 
-    // 3. SAFETY TIMEOUT: Prevent infinite mapping hang
+    // 3. SAFETY TIMEOUT: Prevent mapping hang
     const timer = setTimeout(() => {
         setHasTimedOut(true);
         // If we haven't resolved tenant status by now, and landlord is false, allow recovery
@@ -129,7 +129,7 @@ export default function DashboardPage() {
     };
   }, [user, isUserLoading, firestore]);
 
-  // Routing Effect for Resident Hub
+  // High-Speed Routing for Tenants
   useEffect(() => {
     if (isTenant === true) {
         router.replace('/tenant/dashboard');
@@ -144,7 +144,7 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // RENDER BRANCHING
+  // UI BRANCHING
   if (isUserLoading) {
     return (
       <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4">
@@ -154,14 +154,11 @@ export default function DashboardPage() {
     );
   }
 
-  // Resident Redirect Phase
+  // Tenant Transition Phase
   if (isTenant === true) {
       return (
         <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 text-center px-6">
-            <div className="relative">
-                <ShieldCheck className="h-16 w-16 text-primary animate-in zoom-in duration-500" />
-                <div className="absolute inset-0 h-16 w-16 bg-primary/20 rounded-full animate-ping" />
-            </div>
+            <ShieldCheck className="h-16 w-16 text-primary animate-in zoom-in duration-500" />
             <div className="space-y-2">
                 <h2 className="text-xl font-bold font-headline">Identity Verified</h2>
                 <p className="text-muted-foreground text-sm font-medium">Entering Resident Hub...</p>
@@ -170,7 +167,7 @@ export default function DashboardPage() {
       );
   }
 
-  // Identity Mapping screen: Shown only when role is genuinely unknown
+  // Identity Mapping screen: Shown during handshake phase
   if (!isLoadingProps && isLandlord === false && isTenant === null && !hasTimedOut) {
       return (
         <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6 animate-in fade-in duration-700">
@@ -185,7 +182,7 @@ export default function DashboardPage() {
                 {isIndexBuilding && (
                     <div className="flex items-center justify-center gap-2 p-3 bg-amber-50 text-amber-700 rounded-lg text-xs font-bold border border-amber-100 mt-4">
                         <AlertCircle className="h-4 w-4" />
-                        System Updating (Cloud Index Sync)
+                        Cloud Indexing in Progress
                     </div>
                 )}
             </div>
@@ -209,7 +206,7 @@ export default function DashboardPage() {
       );
   }
 
-  // Portfolio Dashboard (Landlord View)
+  // Portfolio Manager Dashboard (Landlord View)
   if (isLandlord === true || isTenant === false || hasTimedOut) {
       if (properties.length === 0 && !isLoadingProps) {
           return (
