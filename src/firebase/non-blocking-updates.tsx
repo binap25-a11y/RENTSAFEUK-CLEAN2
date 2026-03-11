@@ -13,7 +13,7 @@ import { errorEmitter } from '@/firebase/error-emitter';
 import { FirestorePermissionError } from '@/firebase/errors';
 
 /**
- * @fileOverview Definitive Consolidated Firestore Mutation Utilities.
+ * @fileOverview Consolidated Firestore Mutation Utilities.
  * Resolves module shadowing conflicts by centralizing mutation logic.
  */
 

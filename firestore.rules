@@ -15,10 +15,10 @@ service cloud.firestore {
     }
 
     // --- TOP-LEVEL STATICALLY PROVABLE RULES (OPTIMIZED FOR DISCOVERY) ---
-    // These rules are at the top to ensure high-performance collectionGroup authorization.
+    // High-performance rules placed at top for instant collectionGroup query authorization.
     
     match /{path=**}/tenants/{tenantId} {
-      // Optimized for instant identity handshake
+      // Optimized for instant identity handshake via email token matching
       allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
       
       allow get: if isSignedIn() && (

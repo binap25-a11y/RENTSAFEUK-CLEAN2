@@ -18,8 +18,8 @@ import {
   Bath, 
   Sparkles,
   RefreshCw,
-  ChevronRight,
-  ShieldCheck
+  ShieldCheck,
+  AlertCircle
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -27,8 +27,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 
 /**
- * @fileOverview Optimized Dashboard with Parallel Role Discovery.
- * Fixes "Identity Mapping" hang and ensures strict compliance with Rules of Hooks.
+ * @fileOverview Optimized Dashboard with Resilient Role Discovery.
+ * Fixes "Identity Handshake" hang and ensures strict compliance with Rules of Hooks.
  */
 
 interface Property {
@@ -61,6 +61,7 @@ export default function DashboardPage() {
   const [isLandlord, setIsLandlord] = useState<boolean | null>(null);
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
   const [discoveryStatus, setDiscoveryStatus] = useState<'standby' | 'mapping' | 'resolving'>('standby');
+  const [hasTimedOut, setHasTimedOut] = useState(false);
 
   // Identity Discovery Effect
   useEffect(() => {
@@ -118,9 +119,15 @@ export default function DashboardPage() {
         setIsTenant(false);
     }
 
+    // Safety timeout: If mapping takes more than 6 seconds, allow landlord escape
+    const timer = setTimeout(() => {
+        setHasTimedOut(true);
+    }, 6000);
+
     return () => {
         unsubProps();
         unsubTenants();
+        clearTimeout(timer);
     };
   }, [user, isUserLoading, firestore]);
 
@@ -149,7 +156,7 @@ export default function DashboardPage() {
     );
   }
 
-  // Resident Redirection Path
+  // Resident Redirection Path (Prevents flash of landlord content)
   if (isTenant === true) {
       return (
         <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 text-center px-6">
@@ -165,8 +172,8 @@ export default function DashboardPage() {
       );
   }
 
-  // Identity Handshake screen: Only shown if potentially a tenant and index is still building
-  if (isIndexBuilding || (isLandlord === false && isTenant === null)) {
+  // Identity Handshake screen: Only shown if potentially a tenant and index is still building or query is pending
+  if (!isLoadingProps && isLandlord === false && isTenant === null) {
       return (
         <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6 animate-in fade-in duration-700">
             <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto border shadow-inner">
@@ -182,17 +189,36 @@ export default function DashboardPage() {
                 <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-sm" onClick={() => window.location.reload()}>
                     <RefreshCw className="mr-2 h-3.5 w-3.5" /> Check Identity Status
                 </Button>
-                {/* Escape hatch for landlords with 0 properties */}
-                <Button variant="ghost" className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors" onClick={() => setIsTenant(false)}>
-                    I am a landlord / Continue to Portfolio Manager
-                </Button>
+                {/* Escape hatch for landlords with 0 properties or when index is building */}
+                {(isIndexBuilding || hasTimedOut) && (
+                    <Button variant="ghost" className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors" onClick={() => setIsTenant(false)}>
+                        I am a landlord / Continue to Portfolio Manager
+                    </Button>
+                )}
             </div>
         </div>
       );
   }
 
   // Active Portfolio Path
-  if (isLandlord === true) {
+  if (isLandlord === true || isTenant === false) {
+      if (properties.length === 0 && !isLoadingProps && isTenant === false) {
+          return (
+            <div className="text-center py-20 animate-in fade-in">
+                <div className="max-w-md mx-auto space-y-6">
+                    <div className="bg-muted p-6 rounded-full w-fit mx-auto">
+                        <Home className="h-12 w-12 text-muted-foreground/40" />
+                    </div>
+                    <h2 className="text-2xl font-bold font-headline">Welcome to RentSafeUK</h2>
+                    <p className="text-muted-foreground">Start by onboarding your first rental property or wait for your landlord to assign you to a tenancy.</p>
+                    <Button asChild size="lg" className="px-10 font-bold shadow-lg">
+                        <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Add First Property</Link>
+                    </Button>
+                </div>
+            </div>
+          );
+      }
+
       return (
         <div className="space-y-8 animate-in fade-in duration-500 text-left">
           <div className="space-y-1">
@@ -211,19 +237,11 @@ export default function DashboardPage() {
       );
   }
 
-  // New User / No Identity Path
+  // Default Loading fallback
   return (
-    <div className="text-center py-20 animate-in fade-in">
-        <div className="max-w-md mx-auto space-y-6">
-            <div className="bg-muted p-6 rounded-full w-fit mx-auto">
-                <Home className="h-12 w-12 text-muted-foreground/40" />
-            </div>
-            <h2 className="text-2xl font-bold font-headline">Welcome to RentSafeUK</h2>
-            <p className="text-muted-foreground">Start by onboarding your first rental property or wait for your landlord to assign you to a tenancy.</p>
-            <Button asChild size="lg" className="px-10 font-bold shadow-lg">
-                <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Add First Property</Link>
-            </Button>
-        </div>
+    <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4">
+      <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Resolving Identity...</p>
     </div>
   );
 }

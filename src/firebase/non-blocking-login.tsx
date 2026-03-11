@@ -8,7 +8,7 @@ import {
 } from 'firebase/auth';
 
 /**
- * @fileOverview Definitive Consolidated Authentication Utilities.
+ * @fileOverview Consolidated Authentication Utilities.
  * Resolves module resolution conflicts by using a single stable source.
  */
 
