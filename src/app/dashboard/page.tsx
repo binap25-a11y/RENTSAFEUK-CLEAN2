@@ -168,7 +168,8 @@ export default function DashboardPage() {
   const [isLandlord, setIsLandlord] = useState<boolean | null>(null);
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
 
-  // 1. Hook Normalization: Define all hooks at the absolute top
+  // 1. ALL HOOKS MUST BE DECLARED AT THE ABSOLUTE TOP
+  // This satisfies the "Rules of Hooks" and prevents crashes during role resolution.
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;
     const term = searchTerm.toLowerCase();
@@ -177,7 +178,7 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // 2. Landlord Discovery: Immediate path for users with properties
+  // Landlord Check Hook
   useEffect(() => {
     if (!user || !firestore) return;
     
@@ -191,6 +192,7 @@ export default function DashboardPage() {
       setProperties(list);
       setIsLoadingProps(false);
       
+      // If properties exist, this is definitely a landlord.
       if (snap.size > 0) {
           setIsLandlord(true);
           setIsTenant(false);
@@ -202,7 +204,7 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore]);
 
-  // 3. Tenant Discovery: Accelerated handshake for residents
+  // Tenant Discovery Hook
   useEffect(() => {
     if (!user || !firestore || !user.email || isLandlord === true) return;
 
@@ -220,6 +222,7 @@ export default function DashboardPage() {
           router.replace('/tenant/dashboard');
       } else {
           setIsTenant(false);
+          // If no properties and no tenant record found, we assume a new landlord account
           if (properties.length === 0) setIsLandlord(false);
       }
       setIsIndexBuilding(false); 
@@ -235,7 +238,7 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore, router, isLandlord, properties.length]);
 
-  // 4. Conditional Rendering: Handled after all hooks are declared
+  // 2. CONDITIONAL RENDERING HANDLED AFTER ALL HOOKS
   if (isUserLoading || (isTenant === null && isLandlord === null && !isIndexBuilding)) {
     return (
       <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background px-6">
@@ -258,6 +261,7 @@ export default function DashboardPage() {
     );
   }
 
+  // Handle building indexes or missing global handshake
   if (isIndexBuilding && properties.length === 0 && isTenant === null) {
       return (
         <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in duration-700 px-6">
@@ -282,8 +286,10 @@ export default function DashboardPage() {
       );
   }
 
+  // If identified as tenant, we've already initiated redirect.
   if (isTenant === true) return null;
 
+  // Render the Landlord Dashboard
   return (
     <div className="space-y-8 animate-in fade-in duration-500 text-left">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">

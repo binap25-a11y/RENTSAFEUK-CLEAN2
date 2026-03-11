@@ -16,12 +16,12 @@ service cloud.firestore {
     }
 
     // --- COLLECTION GROUP RULES (MUST BE AT TOP LEVEL FOR OPTIMIZER) ---
-    // Direct token matching for high-performance global identity discovery.
     
     match /{path=**}/tenants/{tenantId} {
       /**
        * @description Authorized global identity handshake.
        * Uses direct token matching for instant query authorization.
+       * Case-sensitivity is handled via pre-normalized token email.
        */
       allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
       allow get: if isSignedIn() && (
