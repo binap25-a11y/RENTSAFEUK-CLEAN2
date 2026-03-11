@@ -37,22 +37,11 @@ export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 
-// Authentication Utilities (Stable Exports)
-export { 
-  initiateAnonymousSignIn, 
-  createUserNonBlocking, 
-  signInNonBlocking,
-  initiateEmailSignUp,
-  initiateEmailSignIn
-} from './non-blocking-login';
+// Authentication Utilities
+export * from './non-blocking-login';
 
-// Database Utilities (Stable Exports)
-export { 
-  setDocumentNonBlocking, 
-  addDocumentNonBlocking, 
-  updateDocumentNonBlocking, 
-  deleteDocumentNonBlocking 
-} from './non-blocking-updates';
+// Database Utilities
+export * from './non-blocking-updates';
 
 export * from './errors';
 export * from './error-emitter';

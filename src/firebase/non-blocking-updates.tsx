@@ -1,8 +1,8 @@
 'use client';
 
 /**
- * @fileOverview DEPRECATED. Logic moved to non-blocking-updates.ts to resolve
- * Webpack module resolution conflicts.
+ * @fileOverview Shadow module to resolve Webpack extension priority conflicts.
+ * Re-exports from the stable .ts source.
  */
 
-export {};
+export * from './non-blocking-updates';

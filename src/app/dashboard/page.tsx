@@ -28,9 +28,8 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 
 /**
- * @fileOverview Intelligent Role Router & Dashboard Traffic Controller.
- * Resolves Landlord/Tenant roles in parallel and routes to portals instantly.
- * Stabilized hook stack ensures 100% React lifecycle reliability.
+ * @fileOverview High-Performance Role Router.
+ * Resolves Landlord/Tenant identities in parallel and handles the handshake state.
  */
 
 interface Property {
@@ -54,7 +53,6 @@ export default function DashboardPage() {
   const firestore = useFirestore();
   const router = useRouter();
   
-  // 1. STABLE HOOK STACK: Declared at top level, no early returns.
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [properties, setProperties] = useState<Property[]>([]);
@@ -64,13 +62,13 @@ export default function DashboardPage() {
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
   const [hasTimedOut, setHasTimedOut] = useState(false);
 
-  // 2. Role Discovery Effect
+  // Role resolution logic
   useEffect(() => {
     if (isUserLoading || !user || !firestore) return;
     
     const userEmail = user.email?.toLowerCase().trim();
 
-    // LANDLORD FAST-PATH
+    // Landlord Check: Scoped to user profile
     const propQuery = query(
       collection(firestore, 'userProfiles', user.uid, 'properties'), 
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
@@ -82,12 +80,12 @@ export default function DashboardPage() {
       setIsLoadingProps(false);
       setIsLandlord(snap.size > 0);
     }, (error) => {
-      console.warn("Landlord profile restricted:", error.message);
+      console.warn("Portfolio access restricted:", error.message);
       setIsLoadingProps(false);
       setIsLandlord(false);
     });
 
-    // TENANT SECURE HANDSHAKE
+    // Tenant Check: Secure global identity handshake
     let unsubTenants = () => {};
     if (userEmail) {
         const tenantsQuery = query(
@@ -117,17 +115,17 @@ export default function DashboardPage() {
     };
   }, [user, isUserLoading, firestore]);
 
-  // 3. Handshake Fail-Safe
+  // Safety Timeout for Identity Discovery
   useEffect(() => {
     if (isTenant === null) {
-        const timeoutId = setTimeout(() => {
+        const timer = setTimeout(() => {
             setHasTimedOut(true);
-        }, 5000); // 5s fallback
-        return () => clearTimeout(timeoutId);
+        }, 5000);
+        return () => clearTimeout(timer);
     }
   }, [isTenant]);
 
-  // 4. Instant Tenant Routing
+  // Tenant Redirection
   useEffect(() => {
     if (isTenant === true) {
         router.replace('/tenant/dashboard');
@@ -142,32 +140,31 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // 5. UI BRANCHING (Controlled after hook initialization)
   if (isUserLoading || (isTenant === true && !hasTimedOut)) {
     return (
       <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Syncing Secure Environment</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Establishing Portal Access</p>
       </div>
     );
   }
 
-  // Identity Mapping screen (Discovery Phase)
+  // Identity discovery handshake
   if (!isLoadingProps && isLandlord === false && isTenant === null && !hasTimedOut) {
       return (
-        <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in duration-700 px-6">
+        <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6">
             <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto border shadow-inner">
                 <Sparkles className="h-12 w-12 text-primary animate-pulse" />
             </div>
             <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Identity Handshake</h2>
-                <p className="text-muted-foreground font-medium text-sm leading-relaxed text-center">
-                    Our secure system is currently mapping your resident identity across the platform. Access will be granted automatically.
+                <h2 className="font-headline text-2xl font-bold text-primary">Identity Mapping</h2>
+                <p className="text-muted-foreground font-medium text-sm leading-relaxed">
+                    Our secure system is currently mapping your resident identity across the platform. This ensures your access is private and protected.
                 </p>
                 {isIndexBuilding && (
                     <div className="flex items-center justify-center gap-2 p-3 bg-amber-50 text-amber-700 rounded-lg text-xs font-bold border border-amber-100 mt-4">
                         <AlertCircle className="h-4 w-4" />
-                        Cloud Indexing in Progress
+                        Indexing Records...
                     </div>
                 )}
             </div>
@@ -191,19 +188,19 @@ export default function DashboardPage() {
       );
   }
 
-  // Landlord Dashboard / Empty State
+  // Final Dashboard / Empty State
   if (isLandlord === true || isTenant === false || hasTimedOut) {
       if (properties.length === 0 && !isLoadingProps) {
           return (
-            <div className="text-center py-20 animate-in fade-in">
-                <div className="max-w-md mx-auto space-y-6 px-6">
+            <div className="text-center py-20">
+                <div className="max-w-md mx-auto space-y-6 px-6 text-left">
                     <div className="bg-muted p-6 rounded-full w-fit mx-auto shadow-inner">
                         <Home className="h-12 w-12 text-muted-foreground/40" />
                     </div>
-                    <h2 className="text-2xl font-bold font-headline">Welcome to RentSafeUK</h2>
-                    <p className="text-muted-foreground font-medium">Onboard your first rental property or wait for a landlord to assign you to a tenancy hub.</p>
-                    <Button asChild size="lg" className="px-10 font-bold shadow-lg h-12 w-full sm:w-auto">
-                        <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Add Property</Link>
+                    <h2 className="text-2xl font-bold font-headline text-center">Welcome to RentSafeUK</h2>
+                    <p className="text-muted-foreground font-medium text-center">Onboard your first rental property or wait for an assignment to a tenancy hub.</p>
+                    <Button asChild size="lg" className="px-10 font-bold shadow-lg h-12 w-full">
+                        <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Add Asset</Link>
                     </Button>
                 </div>
             </div>
@@ -231,7 +228,7 @@ export default function DashboardPage() {
   return (
     <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4">
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Authorizing Access...</p>
+      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Authorizing...</p>
     </div>
   );
 }
@@ -283,7 +280,6 @@ function PropertiesPanel({ properties, isLoading, searchTerm, setSearchTerm, vie
                 <Card key={p.id} className="group overflow-hidden flex flex-col hover:shadow-2xl transition-all duration-300 cursor-pointer border-none shadow-md bg-card text-left" onClick={() => router.push(`/dashboard/properties/${p.id}`)}>
                   <div className="relative aspect-[16/10] bg-muted overflow-hidden border-b">
                     {p.imageUrl ? (
-                      /* eslint-disable-next-line @next/next/no-img-element */
                       <img src={p.imageUrl} alt="Property" className="object-cover w-full h-full group-hover:scale-110 transition-transform duration-500" />
                     ) : <div className="flex items-center justify-center w-full h-full bg-primary/5"><Home className="h-16 w-16 text-primary/10" /></div>}
                   </div>
