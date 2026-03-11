@@ -10,18 +10,17 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    /** Checks if the authenticated user's UID matches the provided userId. */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // --- COLLECTION GROUP RULES (TOP-LEVEL FOR INSTANT OPTIMIZATION) ---
-    // Moved to the absolute top level to ensure statically provable authorization for discovery queries.
+    // --- COLLECTION GROUP RULES (TOP-LEVEL FOR INSTANT AUTHORIZATION) ---
+    // Moved to absolute top level to ensure query provability for discovery queries.
     
     match /{path=**}/tenants/{tenantId} {
       /**
-       * Authorized global identity handshake.
-       * Uses direct token matching to ensure instant query provability for collectionGroup queries.
+       * Authorized identity handshake.
+       * Direct token matching allows Firestore to optimize queries instantly.
        */
       allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
       
@@ -48,12 +47,12 @@ service cloud.firestore {
       match /properties/{propertyId} {
         allow read, write: if isOwner(userId);
         
-        // Residents can read assigned property details for portal context.
+        // Residents read assigned property details for hub context.
         allow get: if isSignedIn();
 
         match /tenants/{tenantId} {
           allow read, write: if isOwner(userId);
-          // Hierarchical resident access
+          // Resident-specific read access
           allow get: if isSignedIn() && resource.data.email == request.auth.token.email;
 
           match /messages/{messageId} {

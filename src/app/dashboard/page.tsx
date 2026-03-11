@@ -26,9 +26,9 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@
 import { Input } from '@/components/ui/input';
 
 /**
- * @fileOverview Traffic Controller Dashboard.
- * Rapidly resolves user role (Landlord/Tenant) and redirects tenants to their Resident Hub.
- * Optimized to fix hook-order crashes and "Identity Mapping" hangs.
+ * @fileOverview High-speed Traffic Controller Dashboard.
+ * Resolves Landlord vs Tenant roles in parallel. 
+ * Verified tenants are immediately recognized and routed to the Resident Hub.
  */
 
 interface Property {
@@ -52,7 +52,7 @@ export default function DashboardPage() {
   const firestore = useFirestore();
   const router = useRouter();
   
-  // 1. ALL HOOKS MUST BE DECLARED AT THE ABSOLUTE TOP OF THE COMPONENT
+  // 1. ALL HOOKS AT TOP OF COMPONENT
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [properties, setProperties] = useState<Property[]>([]);
@@ -61,13 +61,13 @@ export default function DashboardPage() {
   const [isLandlord, setIsLandlord] = useState<boolean | null>(null);
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
 
-  // 2. High-Speed Role Discovery Logic
+  // 2. Parallel Role Discovery Effect
   useEffect(() => {
     if (isUserLoading || !user || !firestore) return;
     
     const userEmail = user.email?.toLowerCase().trim();
 
-    // A. Landlord Fast-Path: Resolve based on explicit ownership path
+    // LANDLORD PATH: Check for owned properties
     const propQuery = query(
       collection(firestore, 'userProfiles', user.uid, 'properties'), 
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
@@ -80,8 +80,9 @@ export default function DashboardPage() {
       
       if (snap.size > 0) {
           setIsLandlord(true);
-          setIsTenant(false); // Established landlord accounts bypass tenant check priority
-      } else if (isLandlord === null) {
+          // If properties found, they are a landlord. 
+          // Tenant check continues in parallel but landlord view takes precedence.
+      } else {
           setIsLandlord(false);
       }
     }, (error) => {
@@ -90,7 +91,7 @@ export default function DashboardPage() {
       setIsLandlord(false);
     });
 
-    // B. Tenant Handshake: Resolve via global identity registry
+    // TENANT PATH: Global email handshake
     let unsubTenants = () => {};
     if (userEmail) {
         const tenantsQuery = query(
@@ -103,18 +104,15 @@ export default function DashboardPage() {
             const activeTenant = snap.docs.find(d => d.data().status === 'Active');
             if (activeTenant) {
                 setIsTenant(true);
-                setIsLandlord(false);
             } else {
                 setIsTenant(false);
             }
             setIsIndexBuilding(false);
         }, (error) => {
             const msg = error.message.toLowerCase();
-            // Handle index building gracefully without hanging the entire app
             if (msg.includes('index') || error.code === 'failed-precondition') {
                 setIsIndexBuilding(true);
             } else {
-                console.warn("Identity discovery handshake issue:", error.message);
                 setIsTenant(false);
             }
         });
@@ -126,16 +124,17 @@ export default function DashboardPage() {
         unsubProps();
         unsubTenants();
     };
-  }, [user, isUserLoading, firestore, isLandlord]);
+  }, [user, isUserLoading, firestore]);
 
-  // 3. Automated Redirection for Residents
+  // 3. Redirection logic for verified residents
   useEffect(() => {
     if (isTenant === true) {
+        // Tenants never stay on this page
         router.replace('/tenant/dashboard');
     }
   }, [isTenant, router]);
 
-  // 4. Client-side Search Logic
+  // 4. Filtering logic (calculated only if landlord)
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;
     const term = searchTerm.toLowerCase();
@@ -155,25 +154,20 @@ export default function DashboardPage() {
     );
   }
 
-  // Handle building indexes or unresolved resident identities
-  // Residents will automatically redirect the moment isTenant is true
-  if (isIndexBuilding && properties.length === 0 && isTenant !== true) {
+  // Handle building indexes or unresolved identity
+  if (isIndexBuilding && !isLandlord && isTenant !== true) {
       return (
         <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in duration-700 px-6">
             <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto border shadow-inner">
                 <Sparkles className="h-12 w-12 text-primary animate-pulse" />
             </div>
             <div className="space-y-3">
-                <h2 className="font-headline text-3xl font-bold text-primary">Identity Handshake</h2>
-                <p className="text-muted-foreground font-medium leading-relaxed text-sm">
-                    Our secure system is currently mapping your resident identity across the platform. Access will be restored automatically once synchronization completes.
+                <h2 className="font-headline text-2xl font-bold text-primary">Identity Handshake</h2>
+                <p className="text-muted-foreground font-medium text-sm leading-relaxed">
+                    Our secure system is currently mapping your identity across the portfolio. Access will be restored automatically once synchronization completes.
                 </p>
             </div>
-            <div className="flex flex-col items-center gap-4 pt-4">
-                {/* Escape hatch for Landlords whose tenants are still indexing */}
-                <Button className="font-bold h-12 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-lg" onClick={() => setIsIndexBuilding(false)}>
-                    Continue to Portfolio Manager <ChevronRight className="ml-2 h-4 w-4" />
-                </Button>
+            <div className="pt-4">
                 <Button variant="ghost" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={() => window.location.reload()}>
                     <RefreshCw className="mr-2 h-3.5 w-3.5" /> Check Status
                 </Button>
@@ -182,18 +176,33 @@ export default function DashboardPage() {
       );
   }
 
-  // Final role resolution state
-  if (isTenant === null && isLandlord === null) {
+  // Prevent flicker during tenant redirect
+  if (isTenant === true) {
       return (
         <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Resolving Role...</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Redirecting to Portal...</p>
         </div>
       );
   }
 
-  // Prevent flicker during tenant redirect
-  if (isTenant === true) return null;
+  // Resolve fallback for completely empty new accounts
+  if (isLandlord === false && isTenant === false) {
+      return (
+        <div className="text-center py-20 animate-in fade-in">
+            <div className="max-w-md mx-auto space-y-6">
+                <div className="bg-muted p-6 rounded-full w-fit mx-auto">
+                    <Home className="h-12 w-12 text-muted-foreground/40" />
+                </div>
+                <h2 className="text-2xl font-bold font-headline">Welcome to RentSafeUK</h2>
+                <p className="text-muted-foreground">You don't have any properties or active tenancies yet. Start by onboarding your first rental property.</p>
+                <Button asChild size="lg" className="px-10 font-bold uppercase text-[10px] tracking-widest shadow-lg">
+                    <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Add First Property</Link>
+                </Button>
+            </div>
+        </div>
+      );
+  }
 
   // Render Landlord Dashboard
   return (
