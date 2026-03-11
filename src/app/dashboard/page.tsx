@@ -19,7 +19,8 @@ import {
   ShieldCheck, 
   Sparkles,
   RefreshCw,
-  ArrowRight
+  ArrowRight,
+  ShieldAlert
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -170,12 +171,11 @@ export default function DashboardPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoadingProps, setIsLoadingProps] = useState(true);
 
-  // Heuristic Timeout: We wait up to 2 seconds for tenant discovery. 
-  // If it's slow or indexing, we allow landlords to proceed to their dashboard.
+  // Heuristic Timeout: Shortened to 1.5s for faster role resolution.
   useEffect(() => {
     const timer = setTimeout(() => {
         setHasHeuristicTimeout(true);
-    }, 2000);
+    }, 1500);
     return () => clearTimeout(timer);
   }, []);
 
@@ -193,8 +193,7 @@ export default function DashboardPage() {
       setProperties(list);
       setIsLoadingProps(false);
       
-      // OPTIMIZATION: If properties are found, user is definitely a landlord. 
-      // We can stop the tenant check to save resources.
+      // OPTIMIZATION: If properties are found, user is a landlord. 
       if (snap.size > 0) {
           setIsTenant(false);
           setIsLoadingPortalCheck(false);
@@ -206,14 +205,14 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore]);
 
-  // Tenant Discovery Handshake
+  // Tenant Discovery Handshake - Global Collection Group Search
   useEffect(() => {
     if (!user || !firestore || !user.email) {
       setIsLoadingPortalCheck(false);
       return;
     }
 
-    // Optimization: If already determined as landlord, skip
+    // Optimization: Skip if properties are already detected
     if (isTenant === false) return;
 
     const email = user.email.toLowerCase().trim();
@@ -229,19 +228,19 @@ export default function DashboardPage() {
           setIsTenant(true);
           router.replace('/tenant/dashboard');
       } else {
+          // No active tenancy found globally
           setIsTenant(false);
       }
       setIsLoadingPortalCheck(false);
       setIsIndexBuilding(false); 
     }, (error) => {
       const msg = error.message.toLowerCase();
+      // "failed-precondition" usually means index is building or missing
       if (msg.includes('index') || error.code === 'failed-precondition') {
         setIsIndexBuilding(true);
-        // Do not block the global screen if index is missing; 
-        // the landlord-optimistic logic will handle it.
         setIsLoadingPortalCheck(false);
       } else {
-        console.warn("Verification issue:", error.message);
+        console.warn("Verification handshake issue:", error.message);
         setIsTenant(false);
         setIsLoadingPortalCheck(false);
       }
@@ -254,13 +253,13 @@ export default function DashboardPage() {
     if (!searchTerm) return properties;
     const term = searchTerm.toLowerCase();
     return properties.filter(p => 
-      Object.values(p.address).some(val => val?.toLowerCase().includes(term))
+      Object.values(p.address).some(val => typeof val === 'string' && val.toLowerCase().includes(term))
     );
   }, [properties, searchTerm]);
 
   /**
-   * Loading Logic:
-   * We only block if we truly have no data and haven't hit our timeout.
+   * Global Loading State:
+   * Block if we are still verifying and haven't hit the timeout or found data.
    */
   const isGlobalLoading = isUserLoading || (
       isLoadingPortalCheck && 
@@ -281,11 +280,11 @@ export default function DashboardPage() {
           </div>
           <div className="space-y-2">
             <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground animate-pulse">
-                {isIndexBuilding ? "Database Synchronization" : "Securing Connection"}
+                Verifying Resident Identity
             </p>
-            <h2 className="text-xl font-bold font-headline">Resident Verification</h2>
+            <h2 className="text-xl font-bold font-headline">Securing Connection</h2>
             <p className="text-xs text-muted-foreground leading-relaxed">
-                Establishing a secure connection to your tenancy records. This may take a few seconds during your first sign-in.
+                Establishing a secure path to your tenancy records. This may take a few moments during your first sign-in.
             </p>
           </div>
         </div>
@@ -293,27 +292,30 @@ export default function DashboardPage() {
     );
   }
 
-  // Identity Mapping screen: Shown for tenants or new users when index is building
+  // Identity Mapping screen: Shown for potential tenants when the cloud index is building
   if (isIndexBuilding && properties.length === 0 && isTenant === null) {
       return (
         <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in duration-700 px-6">
-            <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto border shadow-inner">
-                <Sparkles className="h-12 w-12 text-primary animate-pulse" />
+            <div className="relative">
+                <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto border shadow-inner">
+                    <Sparkles className="h-12 w-12 text-primary animate-pulse" />
+                </div>
+                <div className="absolute inset-0 bg-primary/5 blur-3xl rounded-full scale-150" />
             </div>
             <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Identity Mapping</h2>
+                <h2 className="font-headline text-3xl font-bold text-primary">Identity Mapping</h2>
                 <p className="text-muted-foreground font-medium leading-relaxed">
                     The platform is currently mapping your resident identity across the secure portfolio. Access will be restored automatically.
                 </p>
             </div>
-            <div className="flex flex-col items-center gap-4">
-                <Button variant="outline" className="font-bold h-11 px-10 rounded-xl border-primary/20 hover:bg-primary/5 uppercase tracking-widest text-[10px] w-full" onClick={() => window.location.reload()}>
+            <div className="flex flex-col items-center gap-4 pt-4">
+                <Button className="font-bold h-12 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-lg" onClick={() => window.location.reload()}>
                     <RefreshCw className="mr-2 h-4 w-4" /> Check Status Now
                 </Button>
-                <div className="pt-10 border-t w-full">
+                <div className="pt-10 border-t w-full mt-4">
                     <p className="text-[10px] text-muted-foreground uppercase font-bold mb-4 tracking-widest">Are you a landlord?</p>
-                    <Button variant="ghost" className="text-xs font-bold w-full" onClick={() => { setIsTenant(false); setIsIndexBuilding(false); }}>
-                        Continue to Landlord Dashboard <ArrowRight className="ml-2 h-3 w-3" />
+                    <Button variant="outline" className="text-xs font-bold w-full border-primary/20" onClick={() => { setIsTenant(false); setIsIndexBuilding(false); }}>
+                        Continue to Portfolio Dashboard <ArrowRight className="ml-2 h-3 w-3" />
                     </Button>
                 </div>
             </div>
@@ -321,6 +323,7 @@ export default function DashboardPage() {
       );
   }
 
+  // If role is Tenant, we should have redirected. If we are here, role is Landlord or Unknown.
   return (
     <div className="space-y-8 animate-in fade-in duration-500 text-left">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
