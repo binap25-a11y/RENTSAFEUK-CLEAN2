@@ -54,7 +54,7 @@ export default function TenantDashboard() {
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
-        limit(5)
+        limit(1)
     );
 
     let propUnsub: (() => void) | null = null;
@@ -94,11 +94,8 @@ export default function TenantDashboard() {
                     setIsLoading(false);
                     setIsIndexBuilding(false);
                 }, (err) => {
-                    errorEmitter.emit('permission-error', new FirestorePermissionError({
-                        path: propRef.path,
-                        operation: 'get',
-                    }));
-                    setError("Identity verified, but property data is restricted.");
+                    console.warn("Property fetch restricted:", err.message);
+                    setError("Identity verified, but property data is currently restricted.");
                     setIsLoading(false);
                 });
             } else {

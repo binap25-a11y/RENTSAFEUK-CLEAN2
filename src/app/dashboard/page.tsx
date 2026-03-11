@@ -183,7 +183,7 @@ export default function DashboardPage() {
       setProperties(list);
       setIsLoadingProps(false);
       
-      // If properties exist, this is a landlord. unblock the view.
+      // If properties exist, this is a landlord.
       if (snap.size > 0) {
           setIsLandlord(true);
           setIsTenant(false);
@@ -213,6 +213,7 @@ export default function DashboardPage() {
       const activeTenant = snap.docs.find(d => d.data().status === 'Active');
       if (activeTenant) {
           setIsTenant(true);
+          // INSTANT REDIRECTION FOR VERIFIED TENANTS
           router.replace('/tenant/dashboard');
       } else {
           // No active tenancy found
@@ -234,7 +235,6 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore, router, isLandlord, properties.length]);
 
-  // All hooks must be called before conditional returns.
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;
     const term = searchTerm.toLowerCase();
@@ -265,7 +265,7 @@ export default function DashboardPage() {
             </p>
             <h2 className="text-xl font-bold font-headline">Securing Access</h2>
             <p className="text-xs text-muted-foreground leading-relaxed">
-                Establishing a secure path to your portfolio. This may take a few moments.
+                Establishing a secure path to your portal. This may take a few moments.
             </p>
           </div>
         </div>
@@ -293,7 +293,7 @@ export default function DashboardPage() {
                 <Button className="font-bold h-12 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-lg" onClick={() => window.location.reload()}>
                     <RefreshCw className="mr-2 h-4 w-4" /> Check Status
                 </Button>
-                <div className="pt-10 border-t w-full mt-4">
+                <div className="pt-10 border-t w-full mt-4 text-center">
                     <p className="text-[10px] text-muted-foreground uppercase font-bold mb-4 tracking-widest">Are you a landlord?</p>
                     <Button variant="outline" className="text-xs font-bold w-full border-primary/20 h-11" onClick={() => { setIsLandlord(false); setIsIndexBuilding(false); setIsTenant(false); }}>
                         Continue to Portfolio Manager <ArrowRight className="ml-2 h-3 w-3" />
