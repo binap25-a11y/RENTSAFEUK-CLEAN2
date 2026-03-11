@@ -169,6 +169,15 @@ export default function DashboardPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoadingProps, setIsLoadingProps] = useState(true);
 
+  // RULES OF HOOKS: All hooks must be defined before any conditional returns
+  const filteredProperties = useMemo(() => {
+    if (!searchTerm) return properties;
+    const term = searchTerm.toLowerCase();
+    return properties.filter(p => 
+      Object.values(p.address).some(val => typeof val === 'string' && val.toLowerCase().includes(term))
+    );
+  }, [properties, searchTerm]);
+
   // 1. Landlord Discovery: Check for existing properties (Fastest path)
   useEffect(() => {
     if (!user || !firestore) return;
@@ -236,21 +245,11 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore, router, isLandlord, properties.length]);
 
-  const filteredProperties = useMemo(() => {
-    if (!searchTerm) return properties;
-    const term = searchTerm.toLowerCase();
-    return properties.filter(p => 
-      Object.values(p.address).some(val => typeof val === 'string' && val.toLowerCase().includes(term))
-    );
-  }, [properties, searchTerm]);
-
   /**
    * GLOBAL LOADING STATE:
    * Block until either role is confirmed or we know they have no properties and no tenancy.
    */
-  const isLoading = isUserLoading || (isTenant === null && isLandlord === null && !isIndexBuilding);
-
-  if (isLoading) {
+  if (isUserLoading || (isTenant === null && isLandlord === null && !isIndexBuilding)) {
     return (
       <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background px-6">
         <div className="flex flex-col items-center gap-6 max-w-sm w-full text-center">
