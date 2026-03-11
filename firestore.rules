@@ -19,7 +19,10 @@ service cloud.firestore {
     
     match /{path=**}/tenants/{tenantId} {
       // Optimized for instant identity handshake via email token matching
-      allow list: if isSignedIn() && resource.data.email == request.auth.token.email;
+      allow list: if isSignedIn() && (
+        resource.data.email == request.auth.token.email ||
+        resource.data.userId == request.auth.uid
+      );
       
       allow get: if isSignedIn() && (
         resource.data.email == request.auth.token.email ||
@@ -50,7 +53,10 @@ service cloud.firestore {
         match /tenants/{tenantId} {
           allow read, write: if isOwner(userId);
           // Resident-specific read access
-          allow get: if isSignedIn() && resource.data.email == request.auth.token.email;
+          allow get: if isSignedIn() && (
+            resource.data.email == request.auth.token.email ||
+            resource.data.userId == request.auth.uid
+          );
 
           match /messages/{messageId} {
              allow read, write: if isOwner(userId) || (isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email);

@@ -1,8 +1,9 @@
 'use client';
 
 /**
- * @fileOverview Redundant entry point cleared to resolve module shadowing.
- * Logic relocated to non-blocking-login.ts for consistent Webpack resolution.
+ * @fileOverview Shadow module cleared to resolve TypeError: signInNonBlocking is not a function.
+ * Webpack was prioritizing this empty .tsx over the .ts source logic.
+ * Logic is now consolidated in non-blocking-login.ts.
  */
 
 export * from './non-blocking-login';

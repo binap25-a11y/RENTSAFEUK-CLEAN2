@@ -30,6 +30,7 @@ import { Input } from '@/components/ui/input';
 /**
  * @fileOverview Intelligent High-Performance Traffic Controller.
  * Resolves roles in parallel and routes Tenants to the Resident Hub immediately.
+ * Stabilized hook stack to prevent Rules of Hooks crashes during identity mapping.
  */
 
 interface Property {
@@ -53,7 +54,7 @@ export default function DashboardPage() {
   const firestore = useFirestore();
   const router = useRouter();
   
-  // HOOK STACK: Absolute top-level declaration for lifecycle stability
+  // 1. STABLE HOOK STACK: Absolute top-level declaration for lifecycle stability
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [properties, setProperties] = useState<Property[]>([]);
@@ -63,13 +64,13 @@ export default function DashboardPage() {
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
   const [hasTimedOut, setHasTimedOut] = useState(false);
 
-  // Identity Discovery Effect: Parallel Handshake
+  // 2. Identity Discovery Effect: Parallel Handshake
   useEffect(() => {
     if (isUserLoading || !user || !firestore) return;
     
     const userEmail = user.email?.toLowerCase().trim();
 
-    // 1. LANDLORD DISCOVERY (Fast Path)
+    // LANDLORD DISCOVERY (Fast Path)
     const propQuery = query(
       collection(firestore, 'userProfiles', user.uid, 'properties'), 
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
@@ -81,12 +82,12 @@ export default function DashboardPage() {
       setIsLoadingProps(false);
       setIsLandlord(snap.size > 0);
     }, (error) => {
-      console.warn("Landlord discovery error:", error.message);
+      console.warn("Landlord discovery restricted:", error.message);
       setIsLoadingProps(false);
       setIsLandlord(false);
     });
 
-    // 2. TENANT DISCOVERY (Secure Handshake)
+    // TENANT DISCOVERY (Secure Handshake)
     let unsubTenants = () => {};
     if (userEmail) {
         const tenantsQuery = query(
@@ -107,7 +108,7 @@ export default function DashboardPage() {
             if (error.message.toLowerCase().includes('index') || error.code === 'failed-precondition') {
                 setIsIndexBuilding(true);
             } else {
-                console.error("Tenant discovery error:", error.message);
+                console.error("Tenant discovery failure:", error.message);
                 setIsTenant(false);
             }
         });
@@ -115,11 +116,9 @@ export default function DashboardPage() {
         setIsTenant(false);
     }
 
-    // 3. SAFETY TIMEOUT: Prevent mapping hang
+    // DISCOVERY TIMEOUT: Prevent mapping hang
     const timeoutId = setTimeout(() => {
         setHasTimedOut(true);
-        // Fallback: If we haven't resolved tenant status, and landlord is clearly false, 
-        // we allow the UI to transition to the empty state.
         if (isTenant === null) setIsTenant(false);
     }, 6000);
 
@@ -130,7 +129,7 @@ export default function DashboardPage() {
     };
   }, [user, isUserLoading, firestore]);
 
-  // High-Speed Routing for Tenants
+  // 3. High-Speed Routing for Tenants
   useEffect(() => {
     if (isTenant === true) {
         router.replace('/tenant/dashboard');
@@ -145,7 +144,7 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // UI BRANCHING
+  // 4. UI BRANCHING
   if (isUserLoading) {
     return (
       <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4">
@@ -177,7 +176,7 @@ export default function DashboardPage() {
             </div>
             <div className="space-y-3">
                 <h2 className="font-headline text-2xl font-bold text-primary">Identity Mapping</h2>
-                <p className="text-muted-foreground font-medium text-sm leading-relaxed">
+                <p className="text-muted-foreground font-medium text-sm leading-relaxed text-center">
                     Our secure system is currently mapping your resident identity across the platform. This ensures your access is private and protected.
                 </p>
                 {isIndexBuilding && (
@@ -207,18 +206,18 @@ export default function DashboardPage() {
       );
   }
 
-  // Portfolio Manager Dashboard (Landlord View)
+  // Landlord View (or empty state)
   if (isLandlord === true || isTenant === false || hasTimedOut) {
       if (properties.length === 0 && !isLoadingProps) {
           return (
             <div className="text-center py-20 animate-in fade-in">
-                <div className="max-w-md mx-auto space-y-6">
-                    <div className="bg-muted p-6 rounded-full w-fit mx-auto">
+                <div className="max-w-md mx-auto space-y-6 px-6">
+                    <div className="bg-muted p-6 rounded-full w-fit mx-auto shadow-inner">
                         <Home className="h-12 w-12 text-muted-foreground/40" />
                     </div>
                     <h2 className="text-2xl font-bold font-headline">Welcome to RentSafeUK</h2>
-                    <p className="text-muted-foreground">Start by onboarding your first rental property or wait for a landlord to assign you to a tenancy.</p>
-                    <Button asChild size="lg" className="px-10 font-bold shadow-lg">
+                    <p className="text-muted-foreground font-medium">Start by onboarding your first rental property or wait for a landlord to assign you to a tenancy.</p>
+                    <Button asChild size="lg" className="px-10 font-bold shadow-lg h-12 w-full sm:w-auto">
                         <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Add First Property</Link>
                     </Button>
                 </div>
@@ -263,7 +262,7 @@ function PropertiesPanel({ properties, isLoading, searchTerm, setSearchTerm, vie
   const router = useRouter();
 
   return (
-    <Card className="shadow-lg border-none">
+    <Card className="shadow-lg border-none overflow-hidden">
       <CardHeader className="flex flex-col md:flex-row md:items-center justify-between gap-4 border-b bg-muted/5">
         <div className="space-y-1">
           <CardTitle className="text-lg font-bold text-left">My Portfolio</CardTitle>

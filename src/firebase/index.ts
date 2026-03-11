@@ -40,7 +40,7 @@ export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 
-// Mutation Utilities - Consolidated Logic
+// Mutation Utilities - Explicit exports from stable .ts source
 export { 
   setDocumentNonBlocking, 
   addDocumentNonBlocking, 
@@ -48,7 +48,7 @@ export {
   deleteDocumentNonBlocking 
 } from './non-blocking-updates';
 
-// Auth Utilities - Consolidated Logic
+// Auth Utilities - Explicit exports from stable .ts source
 export { 
   initiateAnonymousSignIn, 
   createUserNonBlocking, 
