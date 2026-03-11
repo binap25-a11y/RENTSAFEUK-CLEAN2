@@ -54,7 +54,7 @@ export default function DashboardPage() {
   const firestore = useFirestore();
   const router = useRouter();
   
-  // 1. STABLE HOOK STACK: Absolute top-level declaration for lifecycle stability
+  // 1. STABLE HOOK STACK: Declare all hooks at the top to satisfy React lifecycle rules.
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [properties, setProperties] = useState<Property[]>([]);
@@ -135,6 +135,7 @@ export default function DashboardPage() {
     }
   }, [isTenant, router]);
 
+  // 5. Filter properties only after checking lifecycle requirements
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;
     const term = searchTerm.toLowerCase();
@@ -143,7 +144,7 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // 5. UI BRANCHING
+  // 6. UI BRANCHING
   if (isUserLoading) {
     return (
       <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4">
@@ -166,7 +167,7 @@ export default function DashboardPage() {
       );
   }
 
-  // Identity Mapping screen: Shown during handshake phase
+  // Identity Mapping screen: Shown during handshake phase if no portfolio found
   if (!isLoadingProps && isLandlord === false && isTenant === null && !hasTimedOut) {
       return (
         <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6 animate-in fade-in duration-700">
