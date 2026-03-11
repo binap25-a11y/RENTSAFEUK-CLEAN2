@@ -18,7 +18,8 @@ service cloud.firestore {
     // High-performance rules placed at top for instant collectionGroup query authorization.
     
     match /{path=**}/tenants/{tenantId} {
-      // Optimized for instant identity handshake via email token matching
+      // Optimized for instant identity handshake via email token matching.
+      // Explicitly allowing list/get if the email matches the authenticated user.
       allow list: if isSignedIn() && (
         resource.data.email == request.auth.token.email ||
         resource.data.userId == request.auth.uid

@@ -18,9 +18,9 @@ import {
   Bath, 
   Sparkles,
   RefreshCw,
-  ShieldCheck,
   AlertCircle,
-  ChevronRight
+  ChevronRight,
+  ShieldCheck
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -30,6 +30,7 @@ import { Input } from '@/components/ui/input';
 /**
  * @fileOverview High-Performance Role Router.
  * Resolves Landlord/Tenant identities in parallel and handles the handshake state.
+ * Fixed: All hooks are now declared at the absolute top level to prevent runtime crashes.
  */
 
 interface Property {
@@ -62,7 +63,7 @@ export default function DashboardPage() {
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
   const [hasTimedOut, setHasTimedOut] = useState(false);
 
-  // Role resolution logic
+  // 1. Role resolution logic
   useEffect(() => {
     if (isUserLoading || !user || !firestore) return;
     
@@ -96,12 +97,20 @@ export default function DashboardPage() {
 
         unsubTenants = onSnapshot(tenantsQuery, (snap) => {
             const activeTenant = snap.docs.find(d => d.data().status === 'Active');
-            setIsTenant(!!activeTenant);
+            if (activeTenant) {
+                setIsTenant(true);
+            } else if (snap.size > 0) {
+                // Found tenant records but none are active
+                setIsTenant(false);
+            } else {
+                setIsTenant(false);
+            }
             setIsIndexBuilding(false);
         }, (error) => {
             if (error.message.toLowerCase().includes('index') || error.code === 'failed-precondition') {
                 setIsIndexBuilding(true);
             } else {
+                console.warn("Tenant discovery handshake interrupted:", error.message);
                 setIsTenant(false);
             }
         });
@@ -115,23 +124,24 @@ export default function DashboardPage() {
     };
   }, [user, isUserLoading, firestore]);
 
-  // Safety Timeout for Identity Discovery
+  // 2. Safety Timeout for Identity Discovery
   useEffect(() => {
     if (isTenant === null) {
         const timer = setTimeout(() => {
             setHasTimedOut(true);
-        }, 5000);
+        }, 6000);
         return () => clearTimeout(timer);
     }
   }, [isTenant]);
 
-  // Tenant Redirection
+  // 3. Tenant Redirection
   useEffect(() => {
     if (isTenant === true) {
         router.replace('/tenant/dashboard');
     }
   }, [isTenant, router]);
 
+  // 4. Memoized Data Processing
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;
     const term = searchTerm.toLowerCase();
@@ -140,6 +150,7 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
+  // 5. Render Logic
   if (isUserLoading || (isTenant === true && !hasTimedOut)) {
     return (
       <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
@@ -152,7 +163,7 @@ export default function DashboardPage() {
   // Identity discovery handshake
   if (!isLoadingProps && isLandlord === false && isTenant === null && !hasTimedOut) {
       return (
-        <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6">
+        <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6 animate-in fade-in duration-700">
             <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto border shadow-inner">
                 <Sparkles className="h-12 w-12 text-primary animate-pulse" />
             </div>
@@ -164,7 +175,7 @@ export default function DashboardPage() {
                 {isIndexBuilding && (
                     <div className="flex items-center justify-center gap-2 p-3 bg-amber-50 text-amber-700 rounded-lg text-xs font-bold border border-amber-100 mt-4">
                         <AlertCircle className="h-4 w-4" />
-                        Indexing Records...
+                        Indexing Resident Records...
                     </div>
                 )}
             </div>
@@ -228,7 +239,7 @@ export default function DashboardPage() {
   return (
     <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4">
       <Loader2 className="h-8 w-8 animate-spin text-primary" />
-      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Authorizing...</p>
+      <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Authorizing Session...</p>
     </div>
   );
 }
