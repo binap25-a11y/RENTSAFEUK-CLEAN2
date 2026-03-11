@@ -17,7 +17,8 @@ import {
   Bed, 
   Bath, 
   Sparkles,
-  RefreshCw
+  RefreshCw,
+  ChevronRight
 } from 'lucide-react';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -125,7 +126,7 @@ export default function DashboardPage() {
         unsubProps();
         unsubTenants();
     };
-  }, [user, isUserLoading, firestore]);
+  }, [user, isUserLoading, firestore, isLandlord]);
 
   // 3. Automated Redirection for Residents
   useEffect(() => {
@@ -134,7 +135,7 @@ export default function DashboardPage() {
     }
   }, [isTenant, router]);
 
-  // 4. Client-side Search Logic (Safe now that hooks are at top)
+  // 4. Client-side Search Logic
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;
     const term = searchTerm.toLowerCase();
@@ -155,7 +156,8 @@ export default function DashboardPage() {
   }
 
   // Handle building indexes or unresolved resident identities
-  if (isIndexBuilding && properties.length === 0 && isTenant === null) {
+  // Residents will automatically redirect the moment isTenant is true
+  if (isIndexBuilding && properties.length === 0 && isTenant !== true) {
       return (
         <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in duration-700 px-6">
             <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto border shadow-inner">
@@ -168,8 +170,12 @@ export default function DashboardPage() {
                 </p>
             </div>
             <div className="flex flex-col items-center gap-4 pt-4">
-                <Button className="font-bold h-12 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-lg" onClick={() => window.location.reload()}>
-                    <RefreshCw className="mr-2 h-4 w-4" /> Check Identity Status
+                {/* Escape hatch for Landlords whose tenants are still indexing */}
+                <Button className="font-bold h-12 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-lg" onClick={() => setIsIndexBuilding(false)}>
+                    Continue to Portfolio Manager <ChevronRight className="ml-2 h-4 w-4" />
+                </Button>
+                <Button variant="ghost" className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={() => window.location.reload()}>
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Check Status
                 </Button>
             </div>
         </div>

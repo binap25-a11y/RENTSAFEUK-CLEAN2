@@ -10,7 +10,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 /**
  * @fileOverview Manages Firebase service instances and authenticated user state.
  * Includes a built-in listener for Firestore permission errors to provide a unified error handling loop.
- * Integrated Listener logic here to break circular module dependencies causing ChunkLoadErrors.
+ * Integrated Listener logic here to break circular module cycles causing ChunkLoadErrors.
  */
 
 interface FirebaseProviderProps {
