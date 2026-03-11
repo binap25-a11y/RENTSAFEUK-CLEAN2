@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -83,9 +82,6 @@ interface Property {
   status: string;
 }
 
-/**
- * Robust data sanitization utility to prevent Firestore "undefined field" errors.
- */
 const prepareForFirestore = (obj: any): any => {
   if (obj === undefined) return null;
   if (obj === null || typeof obj !== 'object') return obj;
@@ -193,9 +189,13 @@ export default function AddTenantPage() {
     setIsSubmitting(true);
 
     const tenantsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', data.propertyId, 'tenants');
+    
+    // Critical: Normalize email to lowercase for identity mapping robustness
+    const normalizedEmail = data.email.toLowerCase().trim();
+    
     const newTenant = {
         ...data,
-        email: data.email.toLowerCase().trim(),
+        email: normalizedEmail,
         userId: user.uid,
         status: 'Active',
         createdDate: new Date().toISOString(),
@@ -344,6 +344,7 @@ export default function AddTenantPage() {
                     <FormControl>
                       <Input id="tenant-email" name="email" type="email" placeholder="john@example.com" className="h-11" {...field} />
                     </FormControl>
+                    <FormDescription className="text-[10px]">Portal access will be tied to this normalized email.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

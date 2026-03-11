@@ -14,9 +14,9 @@ export function initializeFirebase() {
   if (!getApps().length) {
     let firebaseApp;
     try {
-      firebaseApp = initializeApp();
-    } catch (e) {
       firebaseApp = initializeApp(firebaseConfig);
+    } catch (e) {
+      firebaseApp = initializeApp();
     }
     return getSdks(firebaseApp);
   }
@@ -37,8 +37,9 @@ export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 
-// Authentication Utilities
-export * from './non-blocking-login';
+// Authentication Utilities (Explicit exports to avoid resolution shadowing)
+import { signInNonBlocking, createUserNonBlocking, initiateAnonymousSignIn } from './non-blocking-login';
+export { signInNonBlocking, createUserNonBlocking, initiateAnonymousSignIn };
 
 // Database Utilities
 export * from './non-blocking-updates';

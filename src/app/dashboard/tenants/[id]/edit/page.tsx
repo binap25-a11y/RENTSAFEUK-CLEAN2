@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -22,6 +21,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import {
@@ -164,11 +164,13 @@ export default function EditTenantPage() {
     setIsSaving(true);
     
     try {
-      // 1. Update the tenant record
+      // 1. Critical: Normalize email to lowercase for identity discovery handshake
+      const normalizedEmail = data.email.toLowerCase().trim();
+      
       const tenantDocRef = doc(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId, 'tenants', tenant.id);
       const updateData = { 
         ...data, 
-        email: data.email.toLowerCase().trim(), 
+        email: normalizedEmail, 
         userId: user.uid 
       };
       const cleanedUpdateData = JSON.parse(JSON.stringify(updateData));
@@ -176,13 +178,12 @@ export default function EditTenantPage() {
       await updateDoc(tenantDocRef, cleanedUpdateData);
 
       // 2. Ensure property is marked as Occupied
-      // If the property changed, we update the new one.
       const propertyDocRef = doc(firestore, 'userProfiles', user.uid, 'properties', data.propertyId);
       await updateDoc(propertyDocRef, { status: 'Occupied' });
 
       toast({
         title: 'Tenant Profile Updated',
-        description: `${data.name}'s records and unit status have been synchronized.`,
+        description: `${data.name}'s records and verified identity have been synchronized.`,
       });
       router.push(`/dashboard/tenants/${tenant.id}?propertyId=${tenant.propertyId}`);
     } catch (error) {
@@ -238,7 +239,14 @@ export default function EditTenantPage() {
             />
             <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel className="font-bold">Full Legal Name</FormLabel><FormControl><Input className="h-11" {...field} /></FormControl><FormMessage /></FormItem>)} />
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-               <FormField control={form.control} name="email" render={({ field }) => (<FormItem><FormLabel className="font-bold">Email Address</FormLabel><FormControl><Input className="h-11" type="email" {...field} /></FormControl><FormMessage /></FormItem>)} />
+               <FormField control={form.control} name="email" render={({ field }) => (
+                 <FormItem>
+                   <FormLabel className="font-bold">Email Address</FormLabel>
+                   <FormControl><Input className="h-11" type="email" {...field} /></FormControl>
+                   <FormDescription className="text-[10px]">Verification mapping uses this normalized email.</FormDescription>
+                   <FormMessage />
+                 </FormItem>
+               )} />
                <FormField control={form.control} name="telephone" render={({ field }) => (<FormItem><FormLabel className="font-bold">Telephone</FormLabel><FormControl><Input className="h-11" type="tel" {...field} /></FormControl><FormMessage /></FormItem>)} />
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t pt-6">

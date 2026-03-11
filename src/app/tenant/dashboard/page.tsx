@@ -49,9 +49,9 @@ export default function TenantDashboard() {
     setError(null);
     setIsIndexBuilding(false);
     
+    // Normalized handshake
     const userEmail = user.email.toLowerCase().trim();
 
-    // Secure Handshake: Match normalized email in global tenant registry
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
@@ -63,14 +63,14 @@ export default function TenantDashboard() {
     const unsub = onSnapshot(q, (snap) => {
         if (propUnsub) propUnsub();
 
-        // Find an active tenancy record
+        // High-precision identity mapping
         const activeTenantDoc = snap.docs.find(d => d.data().status === 'Active') || snap.docs[0];
 
         if (activeTenantDoc) {
             const data = activeTenantDoc.data();
             const path = activeTenantDoc.ref.path;
             
-            // Secure Path Parsing: userProfiles/{landlordId}/properties/{propertyId}/tenants/{tenantId}
+            // Path Parsing: userProfiles/{landlordId}/properties/{propertyId}/tenants/{tenantId}
             const segments = path.split('/');
             const userProfilesIdx = segments.indexOf('userProfiles');
             const propertiesIdx = segments.indexOf('properties');
@@ -91,21 +91,21 @@ export default function TenantDashboard() {
                             propertyData: propSnap.data()
                         });
                     } else {
-                        setError("Linked property records could not be resolved.");
+                        setError("Resident record resolved but property profile is inaccessible.");
                     }
                     setIsLoading(false);
                     setIsIndexBuilding(false);
                 }, (err) => {
-                    console.warn("Property access restricted:", err.message);
-                    setError("Database synchronization required.");
+                    console.warn("Property sync failed:", err.message);
+                    setError("Portfolio synchronization pending.");
                     setIsLoading(false);
                 });
             } else {
-                setError("Tenancy structure mapping invalid.");
+                setError("Tenancy record structure is non-standard.");
                 setIsLoading(false);
             }
         } else {
-            // No record found
+            // Unverified state
             setIsLoading(false);
             setContext(null);
         }
@@ -114,8 +114,8 @@ export default function TenantDashboard() {
         if (msg.includes('index') || err.code === 'failed-precondition') {
             setIsIndexBuilding(true);
         } else {
-            console.warn("Discovery handshake failed:", err.message);
-            setError("Identity handshake interrupted. Please refresh.");
+            console.warn("Messenger handshake interrupted:", err.message);
+            setError("Identity verification timed out. Please refresh.");
         }
         setIsLoading(false);
     });
@@ -143,18 +143,18 @@ export default function TenantDashboard() {
 
   if (isIndexBuilding) {
     return (
-        <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in duration-700 px-6">
+        <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6">
             <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto border shadow-inner">
                 <Sparkles className="h-12 w-12 text-primary animate-pulse" />
             </div>
             <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Resident Synchronization</h2>
+                <h2 className="font-headline text-2xl font-bold text-primary">Resident Verification</h2>
                 <p className="text-muted-foreground font-medium text-sm leading-relaxed">
-                    The platform is currently mapping your resident identity across the secure portfolio. Access will be restored automatically once the cloud database synchronizes your records.
+                    The platform is currently verifying your resident credentials. Access will be granted automatically once the cloud database synchronizes your records.
                 </p>
             </div>
             <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-sm" onClick={() => window.location.reload()}>
-                <RefreshCw className="mr-2 h-4 w-4" /> Check Identity Status
+                <RefreshCw className="mr-2 h-4 w-4" /> Check Status
             </Button>
         </div>
     );
@@ -167,14 +167,14 @@ export default function TenantDashboard() {
                 <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 shadow-sm border">
                     <AlertCircle className="h-10 w-10 text-destructive" />
                 </div>
-                <CardTitle className="font-headline text-xl">Tenancy Not Resolved</CardTitle>
+                <CardTitle className="font-headline text-xl">Identity Not Verified</CardTitle>
                 <CardDescription className="text-sm font-medium text-center">
-                    {error || `We could not find an active tenancy associated with ${user?.email}. Please contact your landlord to verify your portal email.`}
+                    {error || `We could not find a verified tenancy record for ${user?.email}. Please confirm with your landlord that your portal email matches exactly.`}
                 </CardDescription>
             </CardHeader>
             <CardFooter className="pt-6 flex flex-col gap-3 bg-background border-t">
-                <Button className="w-full font-bold h-11 shadow-lg uppercase tracking-widest text-xs" asChild><Link href="/dashboard">Continue to Hub</Link></Button>
-                <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={performDiscovery}><RefreshCw className="mr-2 h-3.5 w-3.5" /> Force Discovery</Button>
+                <Button className="w-full font-bold h-11 shadow-lg uppercase tracking-widest text-xs" asChild><Link href="/dashboard">Continue to Dashboard</Link></Button>
+                <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={performDiscovery}><RefreshCw className="mr-2 h-3.5 w-3.5" /> Force Handshake</Button>
             </CardFooter>
         </Card>
     );
@@ -189,7 +189,9 @@ export default function TenantDashboard() {
           <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Resident Hub</h1>
           <p className="text-muted-foreground font-medium flex items-center gap-2 mt-1"><Home className="h-4 w-4 text-primary/40" />{propertyAddress}</p>
         </div>
-        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-8 px-3 font-bold uppercase tracking-widest text-[9px] shadow-sm rounded-xl"><ShieldCheck className="mr-1 h-3 w-3" /> Verified Resident</Badge>
+        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-8 px-3 font-bold uppercase tracking-widest text-[9px] shadow-sm rounded-xl">
+            <ShieldCheck className="mr-1 h-3 w-3" /> Verified Resident
+        </Badge>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
@@ -209,7 +211,7 @@ export default function TenantDashboard() {
             </CardHeader>
             <CardContent className="px-6 pb-6">
                 <div className="text-xl font-bold">{context.tenantData.tenancyStartDate?.seconds ? format(new Date(context.tenantData.tenancyStartDate.seconds * 1000), 'dd MMM yyyy') : 'Active Agreement'}</div>
-                <p className="text-xs text-muted-foreground mt-1 font-medium italic">Handshake secured</p>
+                <p className="text-xs text-muted-foreground mt-1 font-medium italic">Verified Audit Trail</p>
             </CardContent>
         </Card>
 

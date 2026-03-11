@@ -39,6 +39,3 @@ export function initiateAnonymousSignIn(auth: Auth): void {
     console.error('Anonymous sign-in failed:', error);
   });
 }
-
-export const initiateEmailSignUp = createUserNonBlocking;
-export const initiateEmailSignIn = signInNonBlocking;
