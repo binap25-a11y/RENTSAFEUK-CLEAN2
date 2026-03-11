@@ -10,7 +10,7 @@ import { FirestorePermissionError } from '@/firebase/errors';
 /**
  * @fileOverview Manages Firebase service instances and authenticated user state.
  * Includes a built-in listener for Firestore permission errors to provide a unified error handling loop.
- * Logic previously in FirebaseErrorListener integrated here to break circular dependencies causing ChunkLoadErrors.
+ * Integrated Listener logic here to break circular module dependencies causing ChunkLoadErrors.
  */
 
 interface FirebaseProviderProps {
@@ -53,25 +53,6 @@ export interface UserHookResult {
 
 export const FirebaseContext = createContext<FirebaseContextState | undefined>(undefined);
 
-/**
- * Integrated Listener logic to break circular module dependencies.
- */
-function useFirebaseErrorListener() {
-  const [permissionError, setPermissionError] = useState<FirestorePermissionError | null>(null);
-
-  useEffect(() => {
-    const handleError = (error: FirestorePermissionError) => {
-      setPermissionError(error);
-    };
-    errorEmitter.on('permission-error', handleError);
-    return () => errorEmitter.off('permission-error', handleError);
-  }, []);
-
-  if (permissionError) {
-    throw permissionError;
-  }
-}
-
 export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
   children,
   firebaseApp,
@@ -84,9 +65,18 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
     userError: null,
   });
 
-  // Listen for global permission errors to surface them to the dev overlay
-  useFirebaseErrorListener();
+  const [permissionError, setPermissionError] = useState<FirestorePermissionError | null>(null);
 
+  // 1. Integrated Error Listener to break circular module cycles
+  useEffect(() => {
+    const handleError = (error: FirestorePermissionError) => {
+      setPermissionError(error);
+    };
+    errorEmitter.on('permission-error', handleError);
+    return () => errorEmitter.off('permission-error', handleError);
+  }, []);
+
+  // 2. Auth State Observer
   useEffect(() => {
     if (!auth) {
       setUserAuthState({ user: null, isUserLoading: false, userError: new Error("Auth service missing.") });
@@ -118,6 +108,11 @@ export const FirebaseProvider: React.FC<FirebaseProviderProps> = ({
       userError: userAuthState.userError,
     };
   }, [firebaseApp, firestore, auth, userAuthState]);
+
+  // Throw permission errors to be caught by the global error boundary
+  if (permissionError) {
+    throw permissionError;
+  }
 
   return (
     <FirebaseContext.Provider value={contextValue}>

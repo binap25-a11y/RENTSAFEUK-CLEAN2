@@ -51,7 +51,7 @@ export default function DashboardPage() {
   const firestore = useFirestore();
   const router = useRouter();
   
-  // 1. ALL HOOKS MUST BE DECLARED AT THE ABSOLUTE TOP
+  // 1. ALL HOOKS MUST BE DECLARED AT THE ABSOLUTE TOP OF THE COMPONENT
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [properties, setProperties] = useState<Property[]>([]);
@@ -60,13 +60,13 @@ export default function DashboardPage() {
   const [isLandlord, setIsLandlord] = useState<boolean | null>(null);
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
 
-  // 2. Parallel Role Discovery
+  // 2. High-Speed Role Discovery Logic
   useEffect(() => {
     if (isUserLoading || !user || !firestore) return;
     
     const userEmail = user.email?.toLowerCase().trim();
 
-    // A. Landlord Check: Resolve based on explicit ownership path
+    // A. Landlord Fast-Path: Resolve based on explicit ownership path
     const propQuery = query(
       collection(firestore, 'userProfiles', user.uid, 'properties'), 
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
@@ -79,9 +79,8 @@ export default function DashboardPage() {
       
       if (snap.size > 0) {
           setIsLandlord(true);
-          setIsTenant(false); // Exclusive role priority for MVP
+          setIsTenant(false); // Established landlord accounts bypass tenant check priority
       } else if (isLandlord === null) {
-          // Wait for tenant handshake if no properties found yet
           setIsLandlord(false);
       }
     }, (error) => {
@@ -110,11 +109,11 @@ export default function DashboardPage() {
             setIsIndexBuilding(false);
         }, (error) => {
             const msg = error.message.toLowerCase();
-            // Handle index building gracefully without hanging indefinitely
+            // Handle index building gracefully without hanging the entire app
             if (msg.includes('index') || error.code === 'failed-precondition') {
                 setIsIndexBuilding(true);
             } else {
-                console.warn("Identity discovery issue:", error.message);
+                console.warn("Identity discovery handshake issue:", error.message);
                 setIsTenant(false);
             }
         });
@@ -135,6 +134,7 @@ export default function DashboardPage() {
     }
   }, [isTenant, router]);
 
+  // 4. Client-side Search Logic (Safe now that hooks are at top)
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;
     const term = searchTerm.toLowerCase();
@@ -164,7 +164,7 @@ export default function DashboardPage() {
             <div className="space-y-3">
                 <h2 className="font-headline text-3xl font-bold text-primary">Identity Handshake</h2>
                 <p className="text-muted-foreground font-medium leading-relaxed text-sm">
-                    Our secure system is currently mapping your resident identity across the platform. Access will be restored automatically.
+                    Our secure system is currently mapping your resident identity across the platform. Access will be restored automatically once synchronization completes.
                 </p>
             </div>
             <div className="flex flex-col items-center gap-4 pt-4">
@@ -176,12 +176,12 @@ export default function DashboardPage() {
       );
   }
 
-  // Brief loading state while handshake concludes
+  // Final role resolution state
   if (isTenant === null && isLandlord === null) {
       return (
         <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Verifying Role...</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Resolving Role...</p>
         </div>
       );
   }
