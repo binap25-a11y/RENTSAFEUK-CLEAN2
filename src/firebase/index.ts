@@ -36,7 +36,7 @@ export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 
-// Explicitly export non-blocking utilities from stable .ts files
+// Explicitly export non-blocking utilities from stable files
 export { 
   setDocumentNonBlocking, 
   addDocumentNonBlocking, 

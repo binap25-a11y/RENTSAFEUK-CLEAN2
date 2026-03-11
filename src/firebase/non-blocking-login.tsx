@@ -8,8 +8,8 @@ import {
 } from 'firebase/auth';
 
 /**
- * @fileOverview Consolidated non-blocking login logic.
- * Overwritten to ensure availability regardless of bundler extension preference.
+ * @fileOverview Consolidated authentication utilities.
+ * Implemented in .tsx to ensure priority resolution by Next.js bundler.
  */
 
 export function initiateAnonymousSignIn(auth: Auth): void {
