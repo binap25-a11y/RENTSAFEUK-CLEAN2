@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -23,11 +22,14 @@ import {
   AlertCircle,
   BellRing,
   CalendarDays,
-  Banknote
+  Banknote,
+  Send,
+  ShieldCheck,
+  CheckCircle2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
-import { doc, collection, query, updateDoc, where, collectionGroup, getDocs, limit } from 'firebase/firestore';
+import { doc, collection, query, updateDoc, where, getDocs, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useMemo } from 'react';
 import {
@@ -66,6 +68,8 @@ interface Tenant {
     status?: string;
     userId: string;
     lastReminderSent?: any;
+    inviteSentDate?: any;
+    joinedDate?: any;
 }
 
 interface TenantScreening { id: string; screeningDate: any; }
@@ -90,30 +94,14 @@ export default function TenantDetailPage() {
   
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
+  const [isUpdatingInvite, setIsUpdatingInvite] = useState(false);
 
   const directTenantRef = useMemoFirebase(() => {
     if (!firestore || !id || !urlPropertyId || !user) return null;
     return doc(firestore, 'userProfiles', user.uid, 'properties', urlPropertyId, 'tenants', id);
   }, [firestore, id, urlPropertyId, user]);
   
-  const { data: directTenant, isLoading: isLoadingDirect } = useDoc<Tenant>(directTenantRef);
-
-  const tenantSearchQuery = useMemoFirebase(() => {
-    if (!firestore || !id || !user || urlPropertyId) return null;
-    return query(
-      collectionGroup(firestore, 'tenants'),
-      where('userId', '==', user.uid)
-    );
-  }, [firestore, id, user, urlPropertyId]);
-  
-  const { data: searchResults, isLoading: isLoadingSearch } = useCollection<Tenant>(tenantSearchQuery);
-
-  const tenant = useMemo(() => {
-      if (directTenant) return directTenant;
-      return searchResults?.find(t => t.id === id) || null;
-  }, [directTenant, searchResults, id]);
-
-  const isLoadingTenant = isLoadingDirect || isLoadingSearch;
+  const { data: tenant, isLoading: isLoadingTenant } = useDoc<Tenant>(directTenantRef);
 
   const propertyRef = useMemoFirebase(() => {
     if (!firestore || !tenant?.propertyId || !user) return null;
@@ -128,6 +116,37 @@ export default function TenantDetailPage() {
   const { data: screenings } = useCollection<TenantScreening>(screeningsQuery);
   
   const firstScreening = screenings?.[0];
+
+  const handleSendInvite = async () => {
+    if (!tenant || !property || !user || !firestore) return;
+    setIsUpdatingInvite(true);
+    
+    const appUrl = window.location.origin;
+    const propertyAddr = [property.address.street, property.address.city].filter(Boolean).join(', ');
+    
+    const subject = encodeURIComponent(`Action Required: Verification for your RentSafeUK Tenant Portal`);
+    const body = encodeURIComponent(
+      `Hi ${tenant.name},\n\n` +
+      `Your landlord has added you to the RentSafeUK portal for your tenancy at ${propertyAddr}.\n\n` +
+      `To complete your verification and access your tenancy documents, report repairs, and track rent, please sign up for an account at the link below using this email address (${tenant.email}):\n\n` +
+      `${appUrl}\n\n` +
+      `Once you sign up, your account will be automatically verified and linked to this tenancy.\n\n` +
+      `Best regards,\n` +
+      `RentSafeUK Support`
+    );
+    
+    window.location.href = `mailto:${tenant.email}?subject=${subject}&body=${body}`;
+    
+    try {
+        const tRef = doc(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId, 'tenants', tenant.id);
+        await updateDoc(tRef, { inviteSentDate: new Date().toISOString() });
+        toast({ title: 'Portal Invite Sent', description: 'Onboarding verification email prepared.' });
+    } catch (e) {
+        console.error("Failed to log invite:", e);
+    } finally {
+        setIsUpdatingInvite(false);
+    }
+  };
 
   const handleSendReminder = async () => {
     if (!tenant || !property || !user || !firestore) return;
@@ -150,11 +169,8 @@ export default function TenantDetailPage() {
 
     try {
         const ref = doc(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId, 'tenants', tenant.id);
-        
-        // 1. Mark tenant as archived
         await updateDoc(ref, { status: 'Archived' });
 
-        // 2. Check if any other active tenants exist for this property
         const activeTenantsQuery = query(
             collection(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId, 'tenants'),
             where('status', '==', 'Active'),
@@ -162,7 +178,6 @@ export default function TenantDetailPage() {
         );
         const activeTenantsSnap = await getDocs(activeTenantsQuery);
         
-        // 3. If no other active tenants, set property to Vacant
         if (activeTenantsSnap.empty) {
             await updateDoc(propertyRef, { status: 'Vacant' });
         }
@@ -182,7 +197,7 @@ export default function TenantDetailPage() {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-sm text-muted-foreground animate-pulse font-medium">Resolving secure path...</p>
+        <p className="text-sm text-muted-foreground animate-pulse font-medium">Resolving Secure Portal Link...</p>
       </div>
     );
   }
@@ -210,6 +225,7 @@ export default function TenantDetailPage() {
   };
 
   const propertyAddress = formatAddress(property?.address);
+  const isVerified = !!tenant.joinedDate;
 
   return (
     <div className="flex flex-col gap-6">
@@ -219,11 +235,28 @@ export default function TenantDetailPage() {
                     <Link href="/dashboard/tenants"><ArrowLeft className="h-4 w-4" /></Link>
                 </Button>
                 <div className="min-w-0">
-                    <h1 className="text-2xl font-bold font-headline leading-tight break-words">{tenant.name}</h1>
-                    <p className="text-sm text-muted-foreground font-medium">Tenant Profile</p>
+                    <div className="flex items-center gap-2 flex-wrap">
+                        <h1 className="text-2xl font-bold font-headline leading-tight break-words">{tenant.name}</h1>
+                        {isVerified ? (
+                            <Badge className="bg-green-100 text-green-800 border-green-200 gap-1 font-bold uppercase text-[9px]">
+                                <ShieldCheck className="h-3 w-3" /> Verified Resident
+                            </Badge>
+                        ) : (
+                            <Badge variant="secondary" className="gap-1 font-bold uppercase text-[9px]">
+                                <Loader2 className="h-3 w-3 animate-spin" /> Verification Pending
+                            </Badge>
+                        )}
+                    </div>
+                    <p className="text-sm text-muted-foreground font-medium">Tenant Management Profile</p>
                 </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
+                {!isVerified && (
+                    <Button onClick={handleSendInvite} disabled={isUpdatingInvite} className="gap-2 font-bold uppercase tracking-widest text-[10px] h-10 px-6 shadow-lg bg-primary hover:bg-primary/90">
+                        <Send className="h-3.5 w-3.5" /> 
+                        {tenant.inviteSentDate ? 'Resend Portal Invite' : 'Send Verification Invite'}
+                    </Button>
+                )}
                 <Button variant="outline" onClick={handleSendReminder} className="gap-2 font-bold uppercase tracking-widest text-[10px] h-10 px-6 shadow-sm border-primary/20 hover:bg-primary/5">
                     <BellRing className="h-3.5 w-3.5 text-primary" /> Send Rent Nudge
                 </Button>
@@ -248,6 +281,21 @@ export default function TenantDetailPage() {
         </div>
 
         <div className="flex flex-col gap-6">
+            {!isVerified && (
+                <Card className="border-primary/20 bg-primary/5 shadow-inner">
+                    <CardContent className="flex items-center gap-4 py-4">
+                        <div className="p-2 rounded-full bg-primary/10 text-primary">
+                            <AlertCircle className="h-5 w-5" />
+                        </div>
+                        <div className="flex-1">
+                            <p className="text-sm font-bold text-primary">Verification Required</p>
+                            <p className="text-xs text-muted-foreground">This tenant has not yet joined the portal. Send an invite to enable repair reporting and document sharing.</p>
+                        </div>
+                        <Button size="sm" onClick={handleSendInvite} className="font-bold text-[10px] uppercase">Invite Now</Button>
+                    </CardContent>
+                </Card>
+            )}
+
             <Card className="shadow-lg border-none">
                 <CardHeader className="pb-4 bg-muted/20 border-b">
                     <CardTitle className="text-lg font-headline">Contact Information</CardTitle>

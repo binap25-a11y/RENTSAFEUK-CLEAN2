@@ -1,7 +1,6 @@
 'use client';
 
 /**
- * @fileOverview Circular resolution safety. 
- * Shadow module cleared to ensure Webpack prioritizes the .ts logic module.
+ * @fileOverview Shadow module cleared to prevent Webpack resolution conflicts with .ts logic module.
  */
-export * from './non-blocking-login';
+export {};

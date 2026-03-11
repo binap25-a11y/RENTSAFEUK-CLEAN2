@@ -21,7 +21,7 @@ import {
   Search
 } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
-import { collectionGroup, query, where, limit, onSnapshot, doc } from 'firebase/firestore';
+import { collectionGroup, query, where, limit, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
 
 interface TenantContext {
@@ -50,10 +50,8 @@ export default function TenantDashboard() {
     setError(null);
     setIsIndexBuilding(false);
     
-    // Normalized handshake email
     const userEmail = user.email.toLowerCase().trim();
 
-    // Query for any tenant record associated with this email
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
@@ -65,14 +63,12 @@ export default function TenantDashboard() {
     const unsub = onSnapshot(q, (snap) => {
         if (propUnsub) propUnsub();
 
-        // 1. Pick the best doc: Active one first, then newest
         const activeTenantDoc = snap.docs.find(d => d.data().status === 'Active') || snap.docs[0];
 
         if (activeTenantDoc) {
             const data = activeTenantDoc.data();
             const path = activeTenantDoc.ref.path;
             
-            // Expected Path: userProfiles/{landlordId}/properties/{propertyId}/tenants/{tenantId}
             const segments = path.split('/');
             const userProfilesIdx = segments.indexOf('userProfiles');
             const propertiesIdx = segments.indexOf('properties');
@@ -92,6 +88,18 @@ export default function TenantDashboard() {
                             tenantData: data,
                             propertyData: propSnap.data()
                         });
+                        
+                        /**
+                         * AUTO-VERIFICATION:
+                         * If the tenant logs in and hasn't been marked as joined, update the landlord's record.
+                         */
+                        if (!data.joinedDate) {
+                            updateDoc(activeTenantDoc.ref, { 
+                                joinedDate: new Date().toISOString(),
+                                userId: user.uid 
+                            }).catch(err => console.warn("Tenant metadata update failed:", err));
+                        }
+
                         setError(null);
                     } else {
                         setError("Resident record resolved but property profile is inaccessible.");
@@ -108,7 +116,6 @@ export default function TenantDashboard() {
                 setIsLoading(false);
             }
         } else {
-            // No tenant document found for this email
             setIsLoading(false);
             setContext(null);
         }
@@ -186,7 +193,7 @@ export default function TenantDashboard() {
                     <p className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Common Solutions</p>
                     <ul className="text-xs text-muted-foreground space-y-2">
                         <li className="flex items-start gap-2"><div className="h-1 w-1 rounded-full bg-primary mt-1.5 shrink-0" /> Confirm your landlord has added you using exactly <strong>{user?.email}</strong>.</li>
-                        <li className="flex items-start gap-2"><div className="h-1 w-1 rounded-full bg-primary mt-1.5 shrink-0" /> Ask your landlord to set your status to <strong>'Active'</strong>.</li>
+                        <li className="flex items-start gap-2"><div className="h-1 w-1 rounded-full bg-primary mt-1.5 shrink-0" /> Ask your landlord to send you a <strong>Verification Invite</strong>.</li>
                     </ul>
                 </div>
             </CardContent>
