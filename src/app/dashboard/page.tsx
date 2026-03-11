@@ -47,7 +47,7 @@ export default function DashboardPage() {
   const firestore = useFirestore();
   const router = useRouter();
   
-  // 1. ALL HOOKS AT TOP LEVEL
+  // 1. ALL HOOKS AT TOP LEVEL - Ensures stable React runtime
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [properties, setProperties] = useState<Property[]>([]);
@@ -128,7 +128,7 @@ export default function DashboardPage() {
     if (!discoveryComplete && user && !isUserLoading) {
         const timer = setTimeout(() => {
             setDiscoveryComplete(true);
-        }, 6000); // Resilience timeout
+        }, 6000); // Resilience timeout ensures Landlords aren't blocked by slow tenant sync
         return () => clearTimeout(timer);
     }
   }, [discoveryComplete, user, isUserLoading]);

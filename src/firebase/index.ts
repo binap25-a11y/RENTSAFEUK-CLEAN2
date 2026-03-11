@@ -37,7 +37,7 @@ export * from './client-provider';
 export * from './firestore/use-collection';
 export * from './firestore/use-doc';
 
-// Stable Exports from logic modules
+// Explicit re-exports from .ts logic modules to ensure consistent Webpack resolution
 export { 
   signInNonBlocking, 
   createUserNonBlocking, 

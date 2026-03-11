@@ -2,6 +2,6 @@
 
 /**
  * @fileOverview Circular resolution safety. 
- * Re-exports from .ts to ensure Webpack finds logic regardless of preferred extension.
+ * Shadow module cleared to ensure Webpack prioritizes the .ts logic module.
  */
 export * from './non-blocking-login';
