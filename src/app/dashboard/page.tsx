@@ -28,7 +28,7 @@ import { Input } from '@/components/ui/input';
 
 /**
  * @fileOverview Optimized Dashboard with Resilient Role Discovery.
- * Fixes "Identity Handshake" hang and ensures strict compliance with Rules of Hooks.
+ * Fixes "Identity Mapping" hang and ensures strict compliance with Rules of Hooks.
  */
 
 interface Property {
@@ -88,7 +88,7 @@ export default function DashboardPage() {
       setIsLandlord(false);
     });
 
-    // TENANT PATH: Global email handshake
+    // TENANT PATH: Global email handshake via high-performance collectionGroup
     let unsubTenants = () => {};
     if (userEmail) {
         const tenantsQuery = query(
@@ -119,10 +119,10 @@ export default function DashboardPage() {
         setIsTenant(false);
     }
 
-    // Safety timeout: If mapping takes more than 6 seconds, allow landlord escape
+    // Safety timeout: If mapping takes more than 4 seconds, allow landlord escape
     const timer = setTimeout(() => {
         setHasTimedOut(true);
-    }, 6000);
+    }, 4000);
 
     return () => {
         unsubProps();
@@ -156,7 +156,7 @@ export default function DashboardPage() {
     );
   }
 
-  // Resident Redirection Path (Prevents flash of landlord content)
+  // Resident Redirection Path
   if (isTenant === true) {
       return (
         <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 text-center px-6">
@@ -182,14 +182,20 @@ export default function DashboardPage() {
             <div className="space-y-3">
                 <h2 className="font-headline text-2xl font-bold text-primary">Identity Mapping</h2>
                 <p className="text-muted-foreground font-medium text-sm leading-relaxed">
-                    Our secure system is currently mapping your resident identity across the platform. Access will be restored automatically.
+                    Our secure system is currently mapping your resident identity across the platform. This ensures your access is private and protected.
                 </p>
+                {isIndexBuilding && (
+                    <div className="flex items-center justify-center gap-2 p-3 bg-amber-50 text-amber-700 rounded-lg text-xs font-bold border border-amber-100">
+                        <AlertCircle className="h-4 w-4" />
+                        System Updating (Cloud Index Provisioning)
+                    </div>
+                )}
             </div>
             <div className="space-y-3">
                 <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-sm" onClick={() => window.location.reload()}>
                     <RefreshCw className="mr-2 h-3.5 w-3.5" /> Check Identity Status
                 </Button>
-                {/* Escape hatch for landlords with 0 properties or when index is building */}
+                {/* Escape hatch for landlords with 0 properties or when index is building or timed out */}
                 {(isIndexBuilding || hasTimedOut) && (
                     <Button variant="ghost" className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary transition-colors" onClick={() => setIsTenant(false)}>
                         I am a landlord / Continue to Portfolio Manager
@@ -200,7 +206,7 @@ export default function DashboardPage() {
       );
   }
 
-  // Active Portfolio Path
+  // Active Portfolio Path (Landlord or User with 0 properties who isn't a tenant)
   if (isLandlord === true || isTenant === false) {
       if (properties.length === 0 && !isLoadingProps && isTenant === false) {
           return (
