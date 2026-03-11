@@ -1,6 +1,5 @@
 'use client';
 /** 
- * @fileOverview This module has been deprecated in favor of auth-utilities.ts 
- * to resolve resolution conflicts.
+ * @fileOverview Deprecated module. Logic moved to auth-utilities.ts
  */
 export {};

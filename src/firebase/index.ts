@@ -5,7 +5,7 @@
  * Optimized export order to resolve module resolution conflicts and circular dependencies.
  */
 
-// 1. Export core utilities first to ensure they are defined for subsequent modules
+// 1. Export core utilities first
 export * from './auth-utilities';
 export * from './firestore-utilities';
 export * from './errors';

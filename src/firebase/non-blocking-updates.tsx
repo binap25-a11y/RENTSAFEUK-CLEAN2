@@ -1,6 +1,5 @@
 'use client';
 /** 
- * @fileOverview This module has been deprecated in favor of firestore-utilities.ts 
- * to resolve resolution conflicts.
+ * @fileOverview Deprecated module. Logic moved to firestore-utilities.ts
  */
 export {};
