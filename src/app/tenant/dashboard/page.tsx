@@ -63,7 +63,8 @@ export default function TenantDashboard() {
     const unsub = onSnapshot(q, (snap) => {
         if (propUnsub) propUnsub();
 
-        const activeTenantDoc = snap.docs.find(d => d.data().status === 'Active');
+        // Find an active tenancy record
+        const activeTenantDoc = snap.docs.find(d => d.data().status === 'Active') || snap.docs[0];
 
         if (activeTenantDoc) {
             const data = activeTenantDoc.data();
@@ -104,6 +105,7 @@ export default function TenantDashboard() {
                 setIsLoading(false);
             }
         } else {
+            // No record found
             setIsLoading(false);
             setContext(null);
         }
@@ -151,7 +153,7 @@ export default function TenantDashboard() {
                     The platform is currently mapping your resident identity across the secure portfolio. Access will be restored automatically once the cloud database synchronizes your records.
                 </p>
             </div>
-            <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full" onClick={() => window.location.reload()}>
+            <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-sm" onClick={() => window.location.reload()}>
                 <RefreshCw className="mr-2 h-4 w-4" /> Check Identity Status
             </Button>
         </div>
@@ -167,12 +169,12 @@ export default function TenantDashboard() {
                 </div>
                 <CardTitle className="font-headline text-xl">Tenancy Not Resolved</CardTitle>
                 <CardDescription className="text-sm font-medium text-center">
-                    {error || `We could not find an active tenancy associated with ${user?.email}. Please verify your portal email with your landlord.`}
+                    {error || `We could not find an active tenancy associated with ${user?.email}. Please contact your landlord to verify your portal email.`}
                 </CardDescription>
             </CardHeader>
             <CardFooter className="pt-6 flex flex-col gap-3 bg-background border-t">
-                <Button className="w-full font-bold h-11 shadow-lg uppercase tracking-widest text-xs" asChild><Link href="/dashboard">Return to Dashboard</Link></Button>
-                <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={performDiscovery}><RefreshCw className="mr-2 h-3.5 w-3.5" /> Force Refresh</Button>
+                <Button className="w-full font-bold h-11 shadow-lg uppercase tracking-widest text-xs" asChild><Link href="/dashboard">Continue to Hub</Link></Button>
+                <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={performDiscovery}><RefreshCw className="mr-2 h-3.5 w-3.5" /> Force Discovery</Button>
             </CardFooter>
         </Card>
     );

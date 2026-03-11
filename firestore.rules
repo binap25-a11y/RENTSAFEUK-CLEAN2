@@ -19,14 +19,13 @@ service cloud.firestore {
     
     match /{path=**}/tenants/{tenantId} {
       // Optimized for instant identity handshake via email token matching.
-      // Explicitly allowing list/get if the email matches the authenticated user.
       allow list: if isSignedIn() && (
-        resource.data.email == request.auth.token.email ||
+        resource.data.email.lower() == request.auth.token.email.lower() ||
         resource.data.userId == request.auth.uid
       );
       
       allow get: if isSignedIn() && (
-        resource.data.email == request.auth.token.email ||
+        resource.data.email.lower() == request.auth.token.email.lower() ||
         resource.data.userId == request.auth.uid
       );
     }
@@ -55,22 +54,22 @@ service cloud.firestore {
           allow read, write: if isOwner(userId);
           // Resident-specific read access
           allow get: if isSignedIn() && (
-            resource.data.email == request.auth.token.email ||
+            resource.data.email.lower() == request.auth.token.email.lower() ||
             resource.data.userId == request.auth.uid
           );
 
           match /messages/{messageId} {
-             allow read, write: if isOwner(userId) || (isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email);
+             allow read, write: if isOwner(userId) || (isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email.lower() == request.auth.token.email.lower());
           }
 
           match /screenings/{screeningId} {
              allow read, write: if isOwner(userId);
-             allow get: if isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email;
+             allow get: if isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email.lower() == request.auth.token.email.lower();
           }
           
           match /checklists/{checklistId} {
              allow read, write: if isOwner(userId);
-             allow get: if isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email;
+             allow get: if isSignedIn() && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email.lower() == request.auth.token.email.lower();
           }
         }
 

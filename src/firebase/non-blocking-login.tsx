@@ -9,7 +9,7 @@ import {
 
 /**
  * @fileOverview Stable Authentication Utilities.
- * Consolidated into .tsx to ensure Webpack priority and runtime identification.
+ * Consolidated logic to ensure runtime identification and consistent exports.
  */
 
 export function signInNonBlocking(
