@@ -53,6 +53,7 @@ export default function TenantDashboard() {
     const userEmail = user.email.toLowerCase().trim();
 
     // 1. Discovery Handshake via Collection Group
+    // Note: Requires a COLLECTION_GROUP index on 'tenants' for 'email'.
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),

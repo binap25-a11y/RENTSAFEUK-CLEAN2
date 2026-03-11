@@ -19,7 +19,8 @@ import {
   Bath, 
   Sparkles,
   ChevronRight,
-  UserCircle
+  UserCircle,
+  RefreshCw
 } from 'lucide-react';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -52,6 +53,7 @@ export default function DashboardPage() {
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [discoveryComplete, setDiscoveryComplete] = useState(false);
+  const [isIndexBuilding, setIsIndexBuilding] = useState(false);
 
   // 1. Unified Profile & Role Discovery
   useEffect(() => {
@@ -77,7 +79,7 @@ export default function DashboardPage() {
 
     const userEmail = user.email?.toLowerCase().trim();
 
-    // A. Landlord Discovery
+    // A. Landlord Discovery (Always active for Landlords/Agents)
     const propQuery = query(
       collection(firestore, 'userProfiles', user.uid, 'properties'), 
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
@@ -87,15 +89,18 @@ export default function DashboardPage() {
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Property));
       setProperties(list);
       
-      // Landlords bypass verification immediately if they have properties
-      if (userRole === 'landlord' || userRole === 'agent') {
+      // Landlords/Agents bypass verification instantly if they have properties
+      if ((userRole === 'landlord' || userRole === 'agent') && list.length > 0) {
+        setDiscoveryComplete(true);
+      } else if (userRole === 'landlord' || userRole === 'agent') {
+        // New Landlord with no properties yet
         setDiscoveryComplete(true);
       }
     });
 
-    // B. Tenant Global Discovery
+    // B. Tenant Global Discovery (Only active for potential Tenants)
     let unsubTenants = () => {};
-    if (userEmail && (userRole === 'tenant')) {
+    if (userEmail && userRole === 'tenant') {
         const tenantsQuery = query(
             collectionGroup(firestore, 'tenants'),
             where('email', '==', userEmail),
@@ -110,8 +115,12 @@ export default function DashboardPage() {
                 setDiscoveryComplete(true);
             }
         }, (err) => {
-            console.warn("Tenant discovery query pending or building:", err.message);
-            setDiscoveryComplete(true); // Allow fallthrough to onboarding/interstitial
+            const msg = err.message.toLowerCase();
+            if (msg.includes('index') || err.code === 'failed-precondition') {
+                setIsIndexBuilding(true);
+            } else {
+                setDiscoveryComplete(true);
+            }
         });
     }
 
@@ -133,6 +142,7 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
+  // Loading States
   if (isUserLoading || isLoadingProfile) {
     return (
       <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
@@ -142,22 +152,42 @@ export default function DashboardPage() {
     );
   }
 
+  // Interstitial for Index Building
+  if (isIndexBuilding && userRole === 'tenant') {
+    return (
+        <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6 animate-in fade-in duration-700">
+            <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto border shadow-inner">
+                <Sparkles className="h-12 w-12 text-primary animate-pulse" />
+            </div>
+            <div className="space-y-3">
+                <h2 className="font-headline text-2xl font-bold text-primary">Cloud Synchronization</h2>
+                <p className="text-muted-foreground font-medium text-sm leading-relaxed">
+                    The platform is building secure indexes for your resident identity. This usually takes 2-3 minutes on first setup.
+                </p>
+            </div>
+            <Button variant="outline" className="w-full h-11 font-bold uppercase text-[10px] tracking-widest" onClick={() => router.refresh()}>
+                <RefreshCw className="mr-2 h-3.5 w-3.5" /> Check Status
+            </Button>
+        </div>
+    );
+  }
+
   // Interstitial for Tenants without matched records
-  if (userRole === 'tenant') {
+  if (userRole === 'tenant' && !discoveryComplete) {
     return (
         <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6 animate-in fade-in duration-700">
             <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto border shadow-inner">
                 <UserCircle className="h-12 w-12 text-primary" />
             </div>
             <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary text-center">Resident Onboarding</h2>
-                <p className="text-muted-foreground font-medium text-sm leading-relaxed text-center">
-                    You've registered as a Resident. The system is waiting for your Landlord or Agent to assign your email ({user?.email}) to a property.
+                <h2 className="font-headline text-2xl font-bold text-primary">Resident Onboarding</h2>
+                <p className="text-muted-foreground font-medium text-sm leading-relaxed">
+                    You've registered as a Resident. The system is waiting for your Landlord to assign your email ({user?.email}) to a property record.
                 </p>
             </div>
             <div className="pt-4 p-4 rounded-xl bg-muted/50 border border-dashed text-xs text-muted-foreground text-left">
                 <p className="font-bold uppercase text-[9px] mb-1">Status: Verification Pending</p>
-                Once your landlord registers your tenancy, your Resident Hub will activate automatically.
+                Once assigned, your Resident Hub will activate automatically.
             </div>
             <Button variant="outline" className="w-full h-11 font-bold uppercase text-[10px] tracking-widest" onClick={() => router.refresh()}>
                 <Sparkles className="mr-2 h-3.5 w-3.5" /> Refresh Connection
@@ -170,12 +200,12 @@ export default function DashboardPage() {
   if (properties.length === 0 && (userRole === 'landlord' || userRole === 'agent')) {
       return (
           <div className="text-center py-20 animate-in fade-in duration-500">
-              <div className="max-w-md mx-auto space-y-6 px-6">
+              <div className="max-w-md mx-auto space-y-6 px-6 text-left">
                   <div className="bg-muted p-6 rounded-full w-fit mx-auto shadow-inner text-muted-foreground/20">
                       <Home className="h-12 w-12" />
                   </div>
-                  <h2 className="text-2xl font-bold font-headline">Welcome, {userRole.charAt(0).toUpperCase() + userRole.slice(1)}</h2>
-                  <p className="text-muted-foreground font-medium">Onboard your first rental asset to begin managing your estate and assigned residents.</p>
+                  <h2 className="text-2xl font-bold font-headline text-center">Welcome, {userRole.charAt(0).toUpperCase() + userRole.slice(1)}</h2>
+                  <p className="text-muted-foreground font-medium text-center">Onboard your first rental asset to begin managing your estate and assigned residents.</p>
                   <Button asChild size="lg" className="px-10 font-bold shadow-lg h-12 w-full mt-4">
                       <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Onboard First Asset</Link>
                   </Button>
@@ -184,6 +214,7 @@ export default function DashboardPage() {
       );
   }
 
+  // Main Landlord Dashboard View
   return (
       <div className="space-y-8 animate-in fade-in duration-500 text-left">
         <div className="space-y-1">

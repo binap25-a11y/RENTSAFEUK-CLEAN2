@@ -2,10 +2,11 @@
 
 /**
  * @fileOverview Main Firebase Initialization Entry Point.
- * Optimized export structure to resolve module resolution conflicts and ensure function availability.
+ * Consolidated re-exports from stable utility modules to prevent circular dependencies 
+ * and module resolution conflicts (TypeError: X is not a function).
  */
 
-// 1. Explicitly export authentication utilities
+// 1. Core Authentication Utilities
 export { 
   signInNonBlocking, 
   createUserNonBlocking, 
@@ -13,7 +14,7 @@ export {
   type UserRole
 } from './auth-utilities';
 
-// 2. Explicitly export firestore utilities
+// 2. Core Firestore Mutation Utilities
 export {
   setDocumentNonBlocking,
   addDocumentNonBlocking,
@@ -21,10 +22,11 @@ export {
   deleteDocumentNonBlocking
 } from './firestore-utilities';
 
+// 3. Error Handling Architecture
 export * from './errors';
 export * from './error-emitter';
 
-// 3. Firebase App Initialization
+// 4. Firebase App Initialization
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
@@ -51,7 +53,7 @@ export function getSdks(firebaseApp: FirebaseApp) {
   };
 }
 
-// 4. Export hooks and providers
+// 5. Provider Hooks
 export * from './provider';
 export * from './client-provider';
 export * from './firestore/use-collection';
