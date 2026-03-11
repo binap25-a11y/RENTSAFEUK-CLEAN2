@@ -47,7 +47,7 @@ export default function DashboardPage() {
   const firestore = useFirestore();
   const router = useRouter();
   
-  // All hooks must be at the top level
+  // 1. ALL HOOKS AT TOP LEVEL
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [properties, setProperties] = useState<Property[]>([]);
@@ -57,13 +57,13 @@ export default function DashboardPage() {
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
   const [discoveryComplete, setDiscoveryComplete] = useState(false);
 
-  // 1. Discovery Handshake Effect
+  // 2. Parallel Discovery Handshake
   useEffect(() => {
     if (isUserLoading || !user || !firestore) return;
     
     const userEmail = user.email?.toLowerCase().trim();
 
-    // Landlord Check
+    // Landlord Check: Immediate portfolio scan
     const propQuery = query(
       collection(firestore, 'userProfiles', user.uid, 'properties'), 
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
@@ -75,12 +75,12 @@ export default function DashboardPage() {
       setIsLoadingProps(false);
       setIsLandlord(snap.size > 0);
     }, (error) => {
-      console.warn("Portfolio access restricted:", error.message);
+      console.warn("Landlord access check completed:", error.message);
       setIsLoadingProps(false);
       setIsLandlord(false);
     });
 
-    // Tenant Check
+    // Tenant Check: collectionGroup search via verified email
     let unsubTenants = () => {};
     if (userEmail) {
         const tenantsQuery = query(
@@ -116,24 +116,24 @@ export default function DashboardPage() {
     };
   }, [user, isUserLoading, firestore]);
 
-  // 2. Routing Effect
+  // 3. Resilient Routing
   useEffect(() => {
     if (isTenant === true) {
         router.replace('/tenant/dashboard');
     }
   }, [isTenant, router]);
 
-  // 3. Discovery Timeout Fail-safe
+  // 4. Discovery Safety Timeout
   useEffect(() => {
     if (!discoveryComplete && user && !isUserLoading) {
         const timer = setTimeout(() => {
             setDiscoveryComplete(true);
-        }, 5000);
+        }, 6000); // Resilience timeout
         return () => clearTimeout(timer);
     }
   }, [discoveryComplete, user, isUserLoading]);
 
-  // 4. Data Processing
+  // 5. Data Filtering
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;
     const term = searchTerm.toLowerCase();
@@ -146,17 +146,17 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // Loading States
+  // UI STATES
   if (isUserLoading || (isTenant === null && !discoveryComplete)) {
     return (
       <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Syncing Secure Environment</p>
+        <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse">Establishing Identity Link</p>
       </div>
     );
   }
 
-  // Handshake Hang Fail-safe screen
+  // Handshake Fail-safe screen
   if (!isLoadingProps && isLandlord === false && isTenant === null && !discoveryComplete) {
       return (
         <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6">
@@ -164,9 +164,9 @@ export default function DashboardPage() {
                 <Sparkles className="h-12 w-12 text-primary animate-pulse" />
             </div>
             <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Identity Discovery</h2>
+                <h2 className="font-headline text-2xl font-bold text-primary">Resident Verification</h2>
                 <p className="text-muted-foreground font-medium text-sm leading-relaxed">
-                    The platform is resolving your resident credentials. Access will be granted automatically.
+                    The platform is currently verifying your resident credentials. Access will be granted automatically once the cloud database synchronizes your records.
                 </p>
                 {isIndexBuilding && (
                     <div className="flex items-center justify-center gap-2 p-3 bg-amber-50 text-amber-700 rounded-lg text-xs font-bold border border-amber-100 mt-4">
@@ -174,10 +174,11 @@ export default function DashboardPage() {
                     </div>
                 )}
             </div>
-            <div className="pt-4">
+            <div className="pt-4 space-y-3">
                 <Button variant="outline" className="w-full h-11 font-bold uppercase text-[10px] tracking-widest" onClick={() => setDiscoveryComplete(true)}>
                     Continue to Portfolio Manager <ChevronRight className="ml-1 h-3 w-3" />
                 </Button>
+                <p className="text-[10px] text-muted-foreground italic">New landlords: Choose this option to onboard your first asset.</p>
             </div>
         </div>
       );
@@ -192,9 +193,9 @@ export default function DashboardPage() {
                     <Home className="h-12 w-12 text-muted-foreground/40" />
                 </div>
                 <h2 className="text-2xl font-bold font-headline text-center">Your Portfolio is Empty</h2>
-                <p className="text-muted-foreground font-medium text-center">Onboard your first rental property to begin managing your estate.</p>
+                <p className="text-muted-foreground font-medium text-center">Onboard your first rental property to begin managing your estate and tracking compliance.</p>
                 <Button asChild size="lg" className="px-10 font-bold shadow-lg h-12 w-full">
-                    <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Add Asset</Link>
+                    <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Onboard First Asset</Link>
                 </Button>
             </div>
         </div>

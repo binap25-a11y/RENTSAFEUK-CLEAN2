@@ -1,7 +1,7 @@
 'use client';
 
 /**
- * @fileOverview Redundant shadow module cleared to resolve TypeError: is not a function.
- * All logic is now centralized in non-blocking-login.ts.
+ * @fileOverview Circular resolution safety. 
+ * Re-exports from .ts to ensure Webpack finds logic regardless of preferred extension.
  */
-export {};
+export * from './non-blocking-login';

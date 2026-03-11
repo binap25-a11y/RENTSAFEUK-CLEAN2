@@ -14,12 +14,12 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // --- TOP-LEVEL STATICALLY PROVABLE RULES (OPTIMIZED FOR INSTANT DISCOVERY) ---
-    // These rules are placed at the top level to ensure high-performance collection group verification.
+    // --- TOP-LEVEL DISCOVERY RULES (OPTIMIZED FOR INSTANT HANDSHAKE) ---
+    // These rules are placed at the root to ensure high-performance role resolution.
     
     match /{path=**}/tenants/{tenantId} {
-      // High-performance read rule for role discovery handshake.
-      // Force normalized email comparison to ensure robust resident identity mapping.
+      // Direct email matching for resident identity verification.
+      // Uses normalized lowercase comparison for robustness.
       allow read: if isSignedIn() && (
         (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
         resource.data.userId == request.auth.uid
@@ -35,7 +35,7 @@ service cloud.firestore {
        allow create: if isSignedIn();
     }
 
-    // --- CORE HIERARCHICAL DATA ---
+    // --- CORE HIERARCHICAL PORTFOLIO DATA ---
 
     match /userProfiles/{userId} {
       allow get, list, create, update, delete: if isOwner(userId);
@@ -48,6 +48,7 @@ service cloud.firestore {
 
         match /tenants/{tenantId} {
           allow read, write: if isOwner(userId);
+          
           // Resident-specific read access via path-based verification
           allow get: if isSignedIn() && request.auth.token.email != null && (
             resource.data.email == request.auth.token.email.lower() ||
