@@ -156,11 +156,11 @@ export function PropertiesPanel({ properties, isLoading, searchTerm, setSearchTe
 }
 
 export default function DashboardPage() {
+  // CRITICAL: All hooks must be at the very top of the component body
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
   
-  // 1. ALL HOOKS MUST BE DECLARED AT THE ABSOLUTE TOP
   const [searchTerm, setSearchTerm] = useState('');
   const [view, setView] = useState<'grid' | 'list'>('grid');
   const [properties, setProperties] = useState<Property[]>([]);
@@ -195,10 +195,14 @@ export default function DashboardPage() {
       if (snap.size > 0) {
           setIsLandlord(true);
           setIsTenant(false);
+      } else {
+          // New landlord or tenant with 0 owned properties
+          setIsLandlord(false);
       }
     }, (error) => {
       console.warn("Property fetch issue:", error.message);
       setIsLoadingProps(false);
+      setIsLandlord(false);
     });
     return () => unsub();
   }, [user, firestore]);
@@ -218,10 +222,8 @@ export default function DashboardPage() {
       const activeTenant = snap.docs.find(d => d.data().status === 'Active');
       if (activeTenant) {
           setIsTenant(true);
-          // Redirect handled in subsequent useEffect to prevent React warning
       } else {
           setIsTenant(false);
-          if (properties.length === 0) setIsLandlord(false);
       }
       setIsIndexBuilding(false); 
     }, (error) => {
@@ -234,7 +236,7 @@ export default function DashboardPage() {
     });
 
     return () => unsub();
-  }, [user, firestore, isLandlord, properties.length]);
+  }, [user, firestore, isLandlord]);
 
   // Redirection Hook - Isolated to controlled effect
   useEffect(() => {
@@ -243,30 +245,19 @@ export default function DashboardPage() {
     }
   }, [isTenant, router]);
 
-  // 2. CONDITIONAL RENDERING HANDLED AFTER ALL HOOKS
-  if (isUserLoading || (isTenant === null && isLandlord === null && !isIndexBuilding)) {
+  // --- RENDERING HANDLED AFTER ALL HOOKS ---
+
+  if (isUserLoading) {
     return (
       <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background px-6">
-        <div className="flex flex-col items-center gap-6 max-w-sm w-full text-center">
-          <div className="relative">
-            <Loader2 className="h-12 w-12 animate-spin text-primary" />
-            <div className="absolute inset-0 flex items-center justify-center">
-                <ShieldCheck className="h-4 w-4 text-primary opacity-20" />
-            </div>
-          </div>
-          <div className="space-y-2">
-            <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground animate-pulse">
-                Verifying Session
-            </p>
-            <h2 className="text-xl font-bold font-headline">Securing Access</h2>
-            <p className="text-xs text-muted-foreground leading-relaxed">Establishing a secure path to your portal.</p>
-          </div>
-        </div>
+        <Loader2 className="h-12 w-12 animate-spin text-primary" />
+        <p className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground animate-pulse">Verifying Session</p>
       </div>
     );
   }
 
   // Handle building indexes or missing global handshake
+  // Note: We only block if we are waiting for a role resolution AND think an index is building
   if (isIndexBuilding && properties.length === 0 && isTenant === null) {
       return (
         <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in duration-700 px-6">
@@ -291,6 +282,17 @@ export default function DashboardPage() {
       );
   }
 
+  // Final wait state before rendering content
+  if (isTenant === null && isLandlord === null) {
+      return (
+        <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Securing Identity...</p>
+        </div>
+      );
+  }
+
+  // If role is tenant, redirection is handled by the effect above.
   if (isTenant === true) return null;
 
   // Render the Landlord Dashboard
