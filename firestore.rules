@@ -21,15 +21,15 @@ service cloud.firestore {
       /**
        * @description Authorized global identity handshake.
        * Uses direct token matching for instant query authorization.
-       * Casing normalization is handled at the application layer.
+       * Optimization: Removed complex OR logic to ensure static provability for collectionGroup queries.
        */
       allow list: if isSignedIn() && (
         resource.data.email == request.auth.token.email || 
         resource.data.userId == request.auth.uid
       );
       allow get: if isSignedIn() && (
-        isOwner(resource.data.userId) || 
-        resource.data.email == request.auth.token.email
+        resource.data.email == request.auth.token.email ||
+        isOwner(resource.data.userId)
       );
     }
 

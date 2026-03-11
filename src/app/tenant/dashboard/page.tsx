@@ -52,11 +52,11 @@ export default function TenantDashboard() {
     const userEmail = user.email.toLowerCase().trim();
 
     // Secure Handshake: Match normalized email in global tenant registry
-    // The security rules allow this list operation if the filter matches request.auth.token.email
+    // Security Optimization: forced limit and specific email match for index-provable handshake
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
-        limit(5) // Allow for historical records, we will filter for 'Active'
+        limit(5) 
     );
 
     let propUnsub: (() => void) | null = null;

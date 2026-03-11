@@ -177,10 +177,11 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // Landlord Discovery
+  // Landlord Discovery (Parallel Handshake)
   useEffect(() => {
     if (!user || !firestore) return;
     
+    // Scoped query: If properties exist here, the user is a landlord.
     const propQuery = query(
       collection(firestore, 'userProfiles', user.uid, 'properties'), 
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
@@ -191,7 +192,7 @@ export default function DashboardPage() {
       setProperties(list);
       setIsLoadingProps(false);
       
-      // Fast-Path: If they have assets, they are shown the landlord view.
+      // Established Landlord Check: Fast-path resolution
       if (snap.size > 0) {
           setIsLandlord(true);
           setIsTenant(false);
@@ -208,6 +209,7 @@ export default function DashboardPage() {
 
   // Resident Discovery (Parallel Handshake)
   useEffect(() => {
+    // Optimization: Skip if we've already confirmed landlord status with assets
     if (!user || !firestore || !user.email || isLandlord === true) return;
 
     const email = user.email.toLowerCase().trim();
@@ -218,6 +220,7 @@ export default function DashboardPage() {
     );
 
     const unsub = onSnapshot(tenantsQuery, (snap) => {
+      // Identity Handshake: Check for an active tenancy record
       const activeTenant = snap.docs.find(d => d.data().status === 'Active');
       if (activeTenant) {
           setIsTenant(true);
@@ -227,9 +230,11 @@ export default function DashboardPage() {
       setIsIndexBuilding(false); 
     }, (error) => {
       const msg = error.message.toLowerCase();
+      // Handle cloud-indexing phase gracefully
       if (msg.includes('index') || error.code === 'failed-precondition') {
         setIsIndexBuilding(true);
       } else {
+        console.warn("Resident handshake failed:", error.message);
         setIsTenant(false);
       }
     });
@@ -237,9 +242,10 @@ export default function DashboardPage() {
     return () => unsub();
   }, [user, firestore, isLandlord]);
 
-  // Routing Logic
+  // Unified Routing Logic
   useEffect(() => {
     if (isTenant === true) {
+        console.log("Verified Resident detected. Routing to portal...");
         router.replace('/tenant/dashboard');
     }
   }, [isTenant, router]);
@@ -280,7 +286,7 @@ export default function DashboardPage() {
       );
   }
 
-  // Waiting for role resolution
+  // Unified Resolver: Waiting for role discovery to complete
   if (isTenant === null && isLandlord === null) {
       return (
         <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
@@ -290,10 +296,10 @@ export default function DashboardPage() {
       );
   }
 
-  // If role is tenant, redirection is handled by the effect above.
+  // Tenant Redirection fallback (Effect handles the push, but we return null to prevent flash)
   if (isTenant === true) return null;
 
-  // Render the Landlord Dashboard
+  // Final Render: Landlord Dashboard View
   return (
     <div className="space-y-8 animate-in fade-in duration-500 text-left">
       <div className="flex flex-col md:flex-row md:items-end justify-between gap-4">
