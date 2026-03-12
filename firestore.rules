@@ -11,24 +11,23 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // --- GLOBAL DISCOVERY (REQUIRED FOR HANDSHAKE) ---
+    // --- TENANT HANDSHAKE & DISCOVERY (TOP LEVEL) ---
     
     match /{path=**}/tenants/{tenantId} {
-      // Allow tenants to discover their own record by email or linked UID.
-      // Rules must be simple for collectionGroup query safety.
-      allow read: if isSignedIn() && (
-        resource.data.email == request.auth.token.email.lower() || 
-        resource.data.userId == request.auth.uid
-      );
+      // Allow tenants to discover their record by email.
+      // This rule is strictly matched to the collectionGroup query.
+      allow read: if isSignedIn() && resource.data.email == request.auth.token.email.lower();
       
-      // Verification Handshake: Allow the tenant to link their UID once.
-      // Restrict updates to only identity-mapping fields.
+      // Allow tenants to access their record directly once UID is linked.
+      allow get: if isSignedIn() && resource.data.userId == request.auth.uid;
+
+      // Identity Verification: Allows the linking of identity keys.
       allow update: if isSignedIn() && 
         resource.data.email == request.auth.token.email.lower() &&
         request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'verified', 'joinedDate', 'lastSyncCheck']);
     }
 
-    // --- CORE HIERARCHICAL PORTFOLIO DATA ---
+    // --- CORE PORTFOLIO HIERARCHY ---
 
     match /userProfiles/{userId} {
       allow get, list, create, update, delete: if isOwner(userId);
@@ -36,12 +35,13 @@ service cloud.firestore {
       match /properties/{propertyId} {
         allow read, write: if isOwner(userId);
         
-        // Residents can read basic property details for the home they are assigned to
+        // Verified residents can read their assigned property details
         allow get: if isSignedIn();
 
         match /tenants/{tenantId} {
           allow read, write: if isOwner(userId);
           
+          // Identity access for residents
           allow get: if isSignedIn() && (
             resource.data.email == request.auth.token.email.lower() || 
             resource.data.userId == request.auth.uid

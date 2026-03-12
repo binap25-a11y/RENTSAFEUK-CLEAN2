@@ -23,7 +23,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
-import { collectionGroup, query, where, limit, onSnapshot, doc, updateDoc, getDocs } from 'firebase/firestore';
+import { collectionGroup, query, where, limit, doc, updateDoc, getDocs, getDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/hooks/use-toast';
@@ -48,39 +48,59 @@ export default function TenantDashboard() {
   const [isHandshaking, setIsHandshaking] = useState(false);
   const [syncAttempt, setSyncAttempt] = useState(1);
   
-  const handshakeInProgress = useRef(false);
-  const pollingInterval = useRef<NodeJS.Timeout | null>(null);
+  const discoveryRef = useRef(false);
 
   const performDiscovery = useCallback(async () => {
-    if (!user || !firestore || !user.email) {
-      setIsLoading(false);
-      return;
-    }
+    if (!user || !firestore || !user.email || discoveryRef.current) return;
+    discoveryRef.current = true;
 
     const userEmail = user.email.toLowerCase().trim();
 
     try {
-        // 1. PRIMARY SEARCH: Find record already linked to this UID
-        const uidQuery = query(
+        // 1. Check for existing path in local storage (Fast Path)
+        const savedPath = localStorage.getItem(`tenant_path_${user.uid}`);
+        
+        if (savedPath) {
+            const tenantRef = doc(firestore, savedPath);
+            const tenantSnap = await getDoc(tenantRef);
+            
+            if (tenantSnap.exists()) {
+                const data = tenantSnap.data();
+                const segments = savedPath.split('/');
+                const landlordId = segments[1];
+                const propertyId = segments[3];
+                
+                const propRef = doc(firestore, 'userProfiles', landlordId, 'properties', propertyId);
+                const propSnap = await getDoc(propRef);
+
+                if (propSnap.exists()) {
+                    setContext({
+                        landlordId,
+                        propertyId,
+                        tenantId: tenantSnap.id,
+                        tenantData: data,
+                        propertyData: propSnap.data()
+                    });
+                    setIsLoading(false);
+                    return;
+                }
+            }
+        }
+
+        // 2. Fallback: Discovery via Collection Group
+        // Use a simple query that aligns exactly with security rules
+        const q = query(
             collectionGroup(firestore, 'tenants'),
-            where('userId', '==', user.uid),
+            where('email', '==', userEmail),
             limit(1)
         );
-        let snap = await getDocs(uidQuery);
-
-        // 2. FALLBACK SEARCH: Find record by verified email (Initial Handshake)
-        if (snap.empty) {
-            const emailQuery = query(
-                collectionGroup(firestore, 'tenants'),
-                where('email', '==', userEmail),
-                limit(1)
-            );
-            snap = await getDocs(emailQuery);
-        }
+        
+        const snap = await getDocs(q);
 
         if (snap.empty) {
             setIsLoading(false);
             setContext(null);
+            discoveryRef.current = false;
             return;
         }
 
@@ -88,98 +108,69 @@ export default function TenantDashboard() {
         const data = activeTenantDoc.data();
         const path = activeTenantDoc.ref.path;
         
-        // Parse Hierarchy: userProfiles/{landlordId}/properties/{propertyId}/tenants/{tenantId}
         const segments = path.split('/');
-        const landlordIdx = segments.indexOf('userProfiles');
-        const propertyIdx = segments.indexOf('properties');
+        const landlordId = segments[1];
+        const propertyId = segments[3];
 
-        if (landlordIdx !== -1 && propertyIdx !== -1) {
-            const landlordId = segments[landlordIdx + 1];
-            const propertyId = segments[propertyIdx + 1];
-            const tenantId = activeTenantDoc.id;
+        // Store path for immediate resolution next time
+        localStorage.setItem(`tenant_path_${user.uid}`, path);
 
-            // 3. ATOMIC VERIFICATION HANDSHAKE (Only if not already verified)
-            if (!data.verified || data.userId !== user.uid) {
-                if (!handshakeInProgress.current) {
-                    setIsHandshaking(true);
-                    handshakeInProgress.current = true;
-                    
-                    try {
-                        await updateDoc(activeTenantDoc.ref, { 
-                            joinedDate: new Date().toISOString(),
-                            userId: user.uid,
-                            verified: true,
-                            lastSyncCheck: new Date().toISOString()
-                        });
-                        toast({ title: "Identity Verified", description: "Your portal connection is now secure." });
-                    } catch (handshakeErr: any) {
-                        console.warn("Handshake update deferred:", handshakeErr.message);
-                        handshakeInProgress.current = false;
-                    } finally {
-                        setIsHandshaking(false);
-                    }
-                }
-            }
-
-            // 4. PROPERTY SYNC
-            const propRef = doc(firestore, 'userProfiles', landlordId, 'properties', propertyId);
-            const propSnap = await getDocs(query(collection(firestore, 'userProfiles', landlordId, 'properties'), where('__name__', '==', propertyId), limit(1)));
-            
-            if (!propSnap.empty) {
-                setContext({
-                    landlordId,
-                    propertyId,
-                    tenantId,
-                    tenantData: data,
-                    propertyData: propSnap.docs[0].data()
+        // 3. Perform Handshake if needed
+        if (!data.verified || data.userId !== user.uid) {
+            setIsHandshaking(true);
+            try {
+                await updateDoc(activeTenantDoc.ref, { 
+                    joinedDate: new Date().toISOString(),
+                    userId: user.uid,
+                    verified: true,
+                    lastSyncCheck: new Date().toISOString()
                 });
-                setIsIndexBuilding(false);
-                if (pollingInterval.current) {
-                    clearInterval(pollingInterval.current);
-                    pollingInterval.current = null;
-                }
+                toast({ title: "Identity Linked", description: "Verification handshake complete." });
+            } catch (hErr) {
+                console.warn("Handshake deferral:", hErr);
+            } finally {
+                setIsHandshaking(false);
             }
-            setIsLoading(false);
         }
-    } catch (err: any) {
-        const msg = err.message.toLowerCase();
-        if (msg.includes('index') || err.code === 'failed-precondition' || err.code === 'permission-denied') {
-            setIsIndexBuilding(true);
-            setError(null);
-        } else {
-            console.error("Discovery error:", err);
-            setError("Identity mapping failed.");
+
+        // 4. Resolve Property
+        const propRef = doc(firestore, 'userProfiles', landlordId, 'properties', propertyId);
+        const propSnap = await getDoc(propRef);
+        
+        if (propSnap.exists()) {
+            setContext({
+                landlordId,
+                propertyId,
+                tenantId: activeTenantDoc.id,
+                tenantData: { ...data, verified: true, userId: user.uid },
+                propertyData: propSnap.data()
+            });
         }
         setIsLoading(false);
+    } catch (err: any) {
+        console.error("Discovery error:", err);
+        if (err.message.includes('index') || err.code === 'failed-precondition') {
+            setIsIndexBuilding(true);
+        } else {
+            setError("Identity verification service unavailable.");
+        }
+        setIsLoading(false);
+        discoveryRef.current = false;
     }
   }, [user, firestore]);
 
   useEffect(() => {
-    if (!isUserLoading && !context) {
+    if (!isUserLoading) {
         performDiscovery();
-        
-        if (!pollingInterval.current) {
-            pollingInterval.current = setInterval(() => {
-                setSyncAttempt(prev => prev + 1);
-                performDiscovery();
-            }, 10000); // Poll every 10 seconds during initialization
-        }
     }
-
-    return () => {
-        if (pollingInterval.current) {
-            clearInterval(pollingInterval.current);
-            pollingInterval.current = null;
-        }
-    };
-  }, [isUserLoading, context, performDiscovery]);
+  }, [isUserLoading, performDiscovery]);
 
   if (isUserLoading || (isLoading && !isIndexBuilding)) {
     return (
         <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">
-                Synchronizing Secure Keys...
+                Establishing Secure Link...
             </p>
         </div>
     );
@@ -192,21 +183,18 @@ export default function TenantDashboard() {
                 <Sparkles className="h-12 w-12 text-primary animate-pulse" />
             </div>
             <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Resident Portal Initialization</h2>
+                <h2 className="font-headline text-2xl font-bold text-primary">Resident Portal Initializing</h2>
                 <p className="text-muted-foreground font-medium text-sm leading-relaxed">
-                    The platform is currently building your secure identity discovery index. 
+                    The platform is currently building your one-time secure discovery index. 
                 </p>
                 <div className="p-4 rounded-xl bg-muted/50 border border-dashed text-xs text-muted-foreground mt-4 text-left">
-                    <p className="font-bold uppercase text-[9px] tracking-widest mb-1 text-primary">Status: Provisioning Cloud Optimization</p>
-                    <p>This is a one-time setup that typically takes 2-3 minutes. Access will activate automatically.</p>
+                    <p className="font-bold uppercase text-[9px] tracking-widest mb-1 text-primary">Status: Cloud Optimization in Progress</p>
+                    <p>This process usually takes 2-3 minutes. Once complete, access will activate automatically.</p>
                 </div>
             </div>
-            <div className="flex flex-col gap-2">
-                <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-sm" onClick={() => window.location.reload()}>
-                    <RefreshCw className="mr-2 h-4 w-4" /> Refresh Now
-                </Button>
-                <p className="text-[10px] text-muted-foreground italic">Background Sync Attempt {syncAttempt}</p>
-            </div>
+            <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-sm" onClick={() => window.location.reload()}>
+                <RefreshCw className="mr-2 h-4 w-4" /> Check Identity Status
+            </Button>
         </div>
     );
   }
@@ -218,23 +206,23 @@ export default function TenantDashboard() {
                 <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 shadow-sm border text-muted-foreground/20">
                     <Search className="h-10 w-10" />
                 </div>
-                <CardTitle className="font-headline text-xl text-primary">Tenancy Not Resolved</CardTitle>
+                <CardTitle className="font-headline text-xl text-primary">Identity Not Found</CardTitle>
                 <CardDescription className="text-sm font-medium">
-                    No active record found for <strong>{user?.email}</strong>.
+                    No active tenancy matches <strong>{user?.email}</strong>.
                 </CardDescription>
             </CardHeader>
             <CardContent className="pt-6">
                 <div className="p-4 rounded-xl bg-destructive/5 border border-destructive/10 text-xs text-destructive text-left leading-relaxed">
-                    <p className="font-bold mb-1">Common Fixes:</p>
+                    <p className="font-bold mb-1">How to fix this:</p>
                     <ul className="space-y-1 ml-4 list-disc">
-                        <li>Ask your landlord to verify your portal email in the registry.</li>
-                        <li>Ensure the email matches exactly what the landlord entered.</li>
+                        <li>Ask your landlord to verify the email they entered in the registry.</li>
+                        <li>Ensure you are logged in with the exact same email address.</li>
                     </ul>
                 </div>
             </CardContent>
             <CardFooter className="pt-6 bg-muted/5 border-t">
-                <Button variant="outline" className="w-full h-11 rounded-xl font-bold uppercase tracking-widest text-[10px]" onClick={() => window.location.reload()}>
-                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Discovery
+                <Button variant="outline" className="w-full h-11 rounded-xl font-bold uppercase tracking-widest text-[10px]" onClick={() => { discoveryRef.current = false; setSyncAttempt(s => s + 1); performDiscovery(); }}>
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Discovery (Sync {syncAttempt})
                 </Button>
             </CardFooter>
         </Card>
