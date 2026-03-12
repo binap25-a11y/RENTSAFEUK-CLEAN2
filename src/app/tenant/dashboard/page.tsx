@@ -20,7 +20,7 @@ import {
   RefreshCw,
   Search
 } from 'lucide-react';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collection, query, where, limit, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -56,6 +56,7 @@ export default function TenantDashboard() {
         const tenantsCol = collection(firestore, 'tenants');
         
         // STAGE 1: Priority discovery by existing UID link
+        console.log("Tenant Discovery: Searching by UID...");
         const qByUid = query(tenantsCol, where('userId', '==', user.uid), limit(1));
         let snap = await getDocs(qByUid);
 
@@ -86,7 +87,7 @@ export default function TenantDashboard() {
                 userId: user.uid,
                 verified: true,
                 joinedDate: new Date().toISOString(),
-                status: 'Active' // Ensure they are marked active
+                status: 'Active' 
             });
             
             toast({ 
@@ -113,6 +114,15 @@ export default function TenantDashboard() {
         discoveryRef.current = false;
     } catch (err: any) {
         console.error("Resident Hub Discovery Error:", err.message);
+        
+        // Emit rich error for developer oversight
+        if (err.code === 'permission-denied') {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+                path: 'tenants',
+                operation: 'list'
+            }));
+        }
+
         setIsLoading(false);
         setDiscoveryStatus('failed');
         discoveryRef.current = false;
