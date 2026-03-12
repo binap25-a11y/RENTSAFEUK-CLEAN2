@@ -1,8 +1,9 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, getDoc, getDocs, limit } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -65,6 +66,16 @@ export default function DashboardPage() {
             return;
           }
         } else {
+          // If no user doc yet, check if they are a registered tenant by email
+          const tenantsCol = collection(firestore, 'tenants');
+          const q = query(tenantsCol, where('email', '==', user.email?.toLowerCase().trim()), limit(1));
+          const tenantSnap = await getDocs(q);
+          
+          if (!tenantSnap.empty) {
+            router.replace('/tenant/dashboard');
+            return;
+          }
+          // Default fallback
           setUserRole('landlord');
         }
         setIsLoadingProfile(false);
@@ -109,9 +120,11 @@ export default function DashboardPage() {
   if (isUserLoading || isLoadingProfile) {
     return (
       <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <div className="bg-primary/5 p-8 rounded-full">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        </div>
         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">
-            Synchronizing Portfolio...
+            Synchronizing Portfolio Registry...
         </p>
       </div>
     );
@@ -146,7 +159,7 @@ export default function DashboardPage() {
         </div>
         
         <Card className="shadow-lg border-none overflow-hidden">
-          <CardHeader className="flex flex-row items-center justify-between pb-2 bg-muted/5">
+          <CardHeader className="flex flex-row items-center justify-between pb-2 bg-muted/5 border-b">
             <CardTitle className="text-lg font-bold">Estate View</CardTitle>
             <Button asChild size="sm" className="font-bold uppercase tracking-widest text-[10px] h-9 px-4">
               <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-3.5 w-3.5" /> Add Asset</Link>
@@ -161,10 +174,10 @@ export default function DashboardPage() {
                   value={searchTerm} 
                   onChange={(e) => setSearchTerm(e.target.value)} 
                   placeholder="Filter by address..." 
-                  className="pl-8 h-10" 
+                  className="pl-8 h-10 bg-background" 
                 />
               </div>
-              <div className="flex items-center rounded-md bg-muted p-1">
+              <div className="flex items-center rounded-md bg-muted p-1 border">
                 <Button variant={view === 'grid' ? 'secondary' : 'ghost'} size="sm" className="h-8 w-8 p-0" onClick={() => setView('grid')}><LayoutGrid className="h-4 w-4" /></Button>
                 <Button variant={view === 'list' ? 'secondary' : 'ghost'} size="sm" className="h-8 w-8 p-0" onClick={() => setView('list')}><List className="h-4 w-4" /></Button>
               </div>

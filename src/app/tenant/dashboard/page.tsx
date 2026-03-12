@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -52,7 +53,7 @@ export default function TenantDashboard() {
     try {
         const tenantsCol = collection(firestore, 'tenants');
         
-        // 1. Discovery Phase: Search by Email or UID
+        // 1. Discovery Phase: Search by Email or UID in root collection
         const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
         const qByUid = query(tenantsCol, where('userId', '==', user.uid), limit(1));
         
@@ -71,7 +72,7 @@ export default function TenantDashboard() {
         const tenantDoc = snap.docs[0];
         const tenantData = tenantDoc.data();
         
-        // 2. Verification Handshake: Link account if verified is false or userId is missing
+        // 2. Verification Handshake: Link account atomically
         if (!tenantData.userId || tenantData.userId !== user.uid || !tenantData.verified) {
             setIsHandshaking(true);
             setDiscoveryStatus('handshaking');
@@ -84,7 +85,7 @@ export default function TenantDashboard() {
             
             toast({ 
                 title: "Resident Hub Active", 
-                description: "Your portal access is now securely verified." 
+                description: "Your secure portal access is now fully verified." 
             });
             setIsHandshaking(false);
         }
@@ -129,13 +130,13 @@ export default function TenantDashboard() {
                 <h2 className="font-headline text-2xl font-bold text-primary">Identity Sync Active</h2>
                 <p className="text-muted-foreground font-medium px-6 leading-relaxed">
                     {discoveryStatus === 'handshaking' 
-                        ? 'Completing the secure handshake with your property record...' 
-                        : 'Resolving your resident access keys...'}
+                        ? 'Finalizing your secure Resident Hub connection...' 
+                        : 'Resolving your property access keys...'}
                 </p>
-                <div className="pt-4">
-                    <Badge variant="outline" className="bg-muted text-muted-foreground font-bold uppercase text-[9px] px-3 py-1 border-dashed">
-                        Status: Handshake in progress
-                    </Badge>
+                <div className="pt-4 px-10">
+                    <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
+                        <div className="h-full bg-primary animate-progress-indeterminate" />
+                    </div>
                 </div>
             </div>
         </div>
@@ -155,11 +156,11 @@ export default function TenantDashboard() {
                 </CardDescription>
             </CardHeader>
             <CardContent className="pt-6 text-sm text-muted-foreground">
-                <p>If you believe this is an error, please ask your landlord to verify that they have registered your email <strong>{user?.email}</strong> correctly in the RentSafeUK portal.</p>
+                <p className="leading-relaxed">If you believe this is an error, please ask your landlord to verify that they have registered your email <strong>{user?.email}</strong> correctly in the RentSafeUK portal.</p>
             </CardContent>
             <CardFooter className="pt-6 bg-muted/5 border-t">
                 <Button variant="outline" className="w-full h-11 rounded-xl font-bold uppercase tracking-widest text-[10px]" onClick={() => { discoveryRef.current = false; performDiscovery(); }}>
-                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Sync
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Identity Discovery
                 </Button>
             </CardFooter>
         </Card>

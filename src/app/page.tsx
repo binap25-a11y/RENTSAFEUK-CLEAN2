@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -34,7 +35,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Loader2, Eye, EyeOff, AlertCircle, ShieldCheck, Building2, Users, UserCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Label } from '@/components/ui/label';
-import { doc, getDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, limit, setDoc } from 'firebase/firestore';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -64,20 +65,47 @@ export default function LoginPage() {
           const userRef = doc(firestore, 'users', user.uid);
           const snap = await getDoc(userRef);
           
+          let role: string | null = null;
+
           if (snap.exists()) {
-            const role = snap.data().role;
-            if (role === 'tenant') {
-              router.replace('/tenant/dashboard');
-            } else {
-              router.replace('/dashboard');
+            role = snap.data().role;
+          } else {
+            // SMART DISCOVERY: If no user doc, check if they are an invited tenant
+            const tenantsCol = collection(firestore, 'tenants');
+            const q = query(tenantsCol, where('email', '==', user.email?.toLowerCase().trim()), limit(1));
+            const tenantSnap = await getDocs(q);
+            
+            if (!tenantSnap.empty) {
+              role = 'tenant';
+              // Auto-provision profile for discovered tenant
+              await setDoc(userRef, {
+                id: user.uid,
+                email: user.email?.toLowerCase().trim(),
+                role: 'tenant',
+                createdAt: new Date().toISOString(),
+                idleTimeoutMinutes: 30
+              });
+            } else if (mode === 'login') {
+              // Social login / First-time login: Default to landlord if not a tenant
+              role = 'landlord';
+              await setDoc(userRef, {
+                id: user.uid,
+                email: user.email?.toLowerCase().trim(),
+                role: 'landlord',
+                createdAt: new Date().toISOString(),
+                idleTimeoutMinutes: 30
+              });
             }
-          } else if (mode === 'login') {
-            // Social login or existing user without a profile doc yet
-            // Default to landlord but check for tenant mapping
+          }
+          
+          // Final Redirection
+          if (role === 'tenant') {
+            router.replace('/tenant/dashboard');
+          } else {
             router.replace('/dashboard');
           }
         } catch (error) {
-          console.error("Redirection error:", error);
+          console.error("Redirection engine error:", error);
           router.replace('/dashboard');
         }
       };
