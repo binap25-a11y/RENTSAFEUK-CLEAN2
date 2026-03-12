@@ -74,6 +74,7 @@ export default function LoginPage() {
             // SELF-HEALING: If user is logged in as landlord but exists in tenants registry, correct it immediately
             if (role === 'landlord' && userEmail) {
                 const tenantsCol = collection(firestore, 'tenants');
+                // Use optimized query that exactly matches normalized case
                 const q = query(tenantsCol, where('email', '==', userEmail), limit(1));
                 const tenantSnap = await getDocs(q);
                 if (!tenantSnap.empty) {
@@ -121,6 +122,8 @@ export default function LoginPage() {
           }
         } catch (error) {
           console.error("Redirection engine error:", error);
+          // Safety fallback: if discovery fails due to rules, we can't definitively route
+          // But with fixed rules, this shouldn't happen for verified residents.
           router.replace('/dashboard');
         }
       };

@@ -17,14 +17,14 @@ service cloud.firestore {
     }
 
     // Check if the current user is the tenant linked to the record
-    // We now assume emails are normalized to lowercase in the database to support optimized queries
+    // We use case-insensitive email comparison to ensure reliability across identity providers
     function isTenantOf(data) {
-      let userEmail = request.auth.token.email;
+      let userEmail = request.auth.token.email.lower();
       return isSignedIn() && (
         data.tenantId == request.auth.uid || 
         data.userId == request.auth.uid || 
-        (data.email != null && data.email == userEmail) ||
-        (data.tenantEmail != null && data.tenantEmail == userEmail)
+        (data.email != null && data.email.lower() == userEmail) ||
+        (data.tenantEmail != null && data.tenantEmail.lower() == userEmail)
       );
     }
 
