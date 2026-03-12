@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -122,7 +121,7 @@ export default function DashboardPage() {
                   <div className="bg-muted p-6 rounded-full w-fit mx-auto shadow-inner text-muted-foreground/20">
                       <Home className="h-12 w-12" />
                   </div>
-                  <h2 className="text-2xl font-bold font-headline text-center">Welcome to Maintain UK</h2>
+                  <h2 className="text-2xl font-bold font-headline text-center">Welcome to RentSafeUK</h2>
                   <p className="text-muted-foreground font-medium text-center leading-relaxed">
                       Your management profile is active. Onboard your first property asset to begin tracking compliance and tenancies.
                   </p>
