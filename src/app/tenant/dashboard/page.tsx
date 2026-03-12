@@ -100,15 +100,18 @@ export default function TenantDashboard() {
                         });
                         
                         // VERIFICATION HANDSHAKE:
-                        // Automatically update the verified flag and joined date upon successful identity match.
-                        // This triggers the transition from "Pending" to "Verified" in the Landlord's view.
-                        if (data.verified !== true || !data.joinedDate || data.userId !== user.uid) {
+                        // Trigger the update if missing or if userId hasn't been linked to this Auth account yet.
+                        if (data.verified !== true || data.userId !== user.uid) {
                             console.log("Tenant Hub: Completing verified identity handshake...");
                             updateDoc(activeTenantDoc.ref, { 
                                 joinedDate: new Date().toISOString(),
                                 userId: user.uid,
                                 verified: true
-                            }).catch(err => console.warn("Auto-verification write failed:", err.message));
+                            }).then(() => {
+                                console.log("Handshake Complete: Resident status updated to Verified.");
+                            }).catch(err => {
+                                console.warn("Handshake write failed. Check security rules.", err.message);
+                            });
                         }
 
                         setError(null);

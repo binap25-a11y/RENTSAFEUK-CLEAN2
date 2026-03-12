@@ -20,13 +20,15 @@ service cloud.firestore {
     
     match /{path=**}/tenants/{tenantId} {
       allow read: if isSignedIn() && (
-        (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
+        (request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower()) ||
         resource.data.userId == request.auth.uid
       );
       
       // Allow the tenant to update their own verification status during the handshake
       // but restrict them to ONLY updating identity-linking fields.
-      allow update: if isSignedIn() && request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()
+      // Uses .lower() on both sides to handle case-insensitive registration.
+      allow update: if isSignedIn() && request.auth.token.email != null 
+                    && resource.data.email.lower() == request.auth.token.email.lower()
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['joinedDate', 'userId', 'verified']);
     }
 
@@ -55,22 +57,22 @@ service cloud.firestore {
           
           // Resident-specific access via path-based verification
           allow get: if isSignedIn() && (
-            (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
+            (request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower()) ||
             resource.data.userId == request.auth.uid
           );
 
           match /messages/{messageId} {
-             allow read, write: if isOwner(userId) || (isSignedIn() && request.auth.token.email != null && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email.lower());
+             allow read, write: if isOwner(userId) || (isSignedIn() && request.auth.token.email != null && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email.lower() == request.auth.token.email.lower());
           }
 
           match /screenings/{screeningId} {
              allow read, write: if isOwner(userId);
-             allow get: if isSignedIn() && request.auth.token.email != null && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email.lower();
+             allow get: if isSignedIn() && request.auth.token.email != null && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email.lower() == request.auth.token.email.lower();
           }
           
           match /checklists/{checklistId} {
              allow read, write: if isOwner(userId);
-             allow get: if isSignedIn() && request.auth.token.email != null && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email.lower();
+             allow get: if isSignedIn() && request.auth.token.email != null && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email.lower() == request.auth.token.email.lower();
           }
         }
 
