@@ -16,21 +16,20 @@ service cloud.firestore {
     }
 
     // --- TOP-LEVEL DISCOVERY RULES (CRITICAL FOR IDENTITY HANDSHAKE) ---
-    // These rules allow the Resident Hub to discover and link tenancy records across the entire database.
     
     match /{path=**}/tenants/{tenantId} {
       // Identity Discovery: Allow tenants to find their record by email or their own linked UID.
+      // Rules must be query-safe for collectionGroup filters.
       allow read: if isSignedIn() && (
         (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
-        (resource.data.userId != null && resource.data.userId == request.auth.uid) ||
+        (resource.data.userId == request.auth.uid) ||
         (resource.data.userId == '')
       );
       
       // Verification Handshake: Allow the resident to link their unique UID and join the portal.
-      // Restrict updates to ONLY these identity-binding fields to prevent residents from modifying rent/contracts.
       allow update: if isSignedIn() && (
         (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
-        (resource.data.userId != null && (resource.data.userId == request.auth.uid || resource.data.userId == ''))
+        (resource.data.userId == request.auth.uid || resource.data.userId == '')
       ) && request.resource.data.diff(resource.data).affectedKeys().hasAny(['joinedDate', 'userId', 'verified', 'lastSyncCheck']);
     }
 
@@ -48,18 +47,15 @@ service cloud.firestore {
     // --- CORE HIERARCHICAL PORTFOLIO DATA ---
 
     match /userProfiles/{userId} {
-      // Users can manage their own profile metadata
       allow get, list, create, update, delete: if isOwner(userId);
 
       match /properties/{propertyId} {
-        // Only the landlord owner has full read/write to the property asset
         allow read, write: if isOwner(userId);
         
         // Residents can read basic property details for the home they are assigned to
         allow get: if isSignedIn();
 
         match /tenants/{tenantId} {
-          // Path-specific rules mirroring the discovery rules for consistency
           allow read, write: if isOwner(userId);
           
           allow get: if isSignedIn() && (

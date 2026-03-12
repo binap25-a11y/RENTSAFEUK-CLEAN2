@@ -8,10 +8,6 @@
         {
           "fieldPath": "email",
           "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "status",
-          "order": "ASCENDING"
         }
       ]
     },
@@ -21,10 +17,6 @@
       "fields": [
         {
           "fieldPath": "userId",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "status",
           "order": "ASCENDING"
         }
       ]
@@ -36,15 +28,9 @@
         {
           "fieldPath": "email",
           "order": "ASCENDING"
-        }
-      ]
-    },
-    {
-      "collectionGroup": "tenants",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
+        },
         {
-          "fieldPath": "userId",
+          "fieldPath": "status",
           "order": "ASCENDING"
         }
       ]

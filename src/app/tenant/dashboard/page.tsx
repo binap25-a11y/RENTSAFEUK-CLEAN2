@@ -65,7 +65,7 @@ export default function TenantDashboard() {
     const userEmail = user.email.toLowerCase().trim();
 
     try {
-        // 1. Search by existing UID link (Fastest)
+        // 1. SEARCH BY UID FIRST (Fastest, uses specific index)
         const uidQuery = query(
             collectionGroup(firestore, 'tenants'),
             where('userId', '==', user.uid),
@@ -73,7 +73,7 @@ export default function TenantDashboard() {
         );
         let snap = await getDocs(uidQuery);
 
-        // 2. Fallback to Email search if not yet linked
+        // 2. FALLBACK TO EMAIL SEARCH (For initial handshake)
         if (snap.empty) {
             const emailQuery = query(
                 collectionGroup(firestore, 'tenants'),
@@ -85,7 +85,7 @@ export default function TenantDashboard() {
 
         if (snap.empty) {
             setIsLoading(false);
-            setIsIndexBuilding(false);
+            // Don't set isIndexBuilding to false here, keep polling if we just haven't found it yet
             setContext(null);
             return;
         }
@@ -116,7 +116,7 @@ export default function TenantDashboard() {
                         propertyData: pSnap.data()
                     });
 
-                    // 3. ATOMIC HANDSHAKE: Link UID and verify if missing
+                    // 3. ATOMIC HANDSHAKE: Link UID and verify if missing or mismatched
                     if (!data.verified || data.userId !== user.uid) {
                         if (!handshakeAttempted.current) {
                             setIsHandshaking(true);
@@ -131,14 +131,17 @@ export default function TenantDashboard() {
                                 setIsHandshaking(false);
                                 toast({ title: "Portal Active", description: "Identity verified successfully." });
                             }).catch(err => {
-                                console.warn("Handshake permission issue:", err.message);
+                                console.warn("Handshake blocked by cloud policy:", err.message);
                                 setIsHandshaking(false);
                                 handshakeAttempted.current = false;
                             });
                         }
                     }
                     setIsIndexBuilding(false);
-                    if (pollingInterval.current) clearInterval(pollingInterval.current);
+                    if (pollingInterval.current) {
+                        clearInterval(pollingInterval.current);
+                        pollingInterval.current = null;
+                    }
                 }
                 setIsLoading(false);
             }, (err) => {
@@ -150,12 +153,13 @@ export default function TenantDashboard() {
         }
     } catch (err: any) {
         const msg = err.message.toLowerCase();
+        // Permission Denied on collectionGroup usually means index building or rule mismatch
         if (msg.includes('index') || err.code === 'failed-precondition' || msg.includes('permission')) {
             setIsIndexBuilding(true);
-            setError(null); // Clear errors while indexing
+            setError(null);
         } else {
-            console.error("Discovery error:", err);
-            setError("Connection sync error. Please check your signal.");
+            console.error("Discovery process error:", err);
+            setError("Identity resolution failed. Please refresh.");
         }
         setIsLoading(false);
     }
@@ -166,14 +170,19 @@ export default function TenantDashboard() {
     if (!isUserLoading && !context) {
         performDiscovery();
         
-        pollingInterval.current = setInterval(() => {
-            setSyncAttempt(prev => prev + 1);
-            performDiscovery();
-        }, 15000); // Poll every 15s while building or finding
+        if (!pollingInterval.current) {
+            pollingInterval.current = setInterval(() => {
+                setSyncAttempt(prev => prev + 1);
+                performDiscovery();
+            }, 10000); // Faster polling (10s) while resolving identity
+        }
     }
 
     return () => {
-        if (pollingInterval.current) clearInterval(pollingInterval.current);
+        if (pollingInterval.current) {
+            clearInterval(pollingInterval.current);
+            pollingInterval.current = null;
+        }
     };
   }, [isUserLoading, context, performDiscovery]);
 
@@ -194,12 +203,12 @@ export default function TenantDashboard() {
             <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto border shadow-inner">
                 <Sparkles className="h-12 w-12 text-primary animate-pulse" />
             </div>
-            <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Portal Handshake Active</h2>
-                <p className="text-muted-foreground font-medium text-sm leading-relaxed">
+            <div className="space-y-3 text-left">
+                <h2 className="font-headline text-2xl font-bold text-primary text-center">Portal Handshake Active</h2>
+                <p className="text-muted-foreground font-medium text-sm leading-relaxed text-center">
                     The platform is currently mapping your resident identity keys.
                 </p>
-                <div className="p-4 rounded-xl bg-muted/50 border border-dashed text-xs text-muted-foreground mt-4 text-left">
+                <div className="p-4 rounded-xl bg-muted/50 border border-dashed text-xs text-muted-foreground mt-4">
                     <p className="font-bold uppercase text-[9px] tracking-widest mb-1 text-primary">Status: Initializing Cloud Index</p>
                     <p>This secure one-time setup typically completes within 2-3 minutes. Access will be granted automatically.</p>
                 </div>
@@ -258,7 +267,7 @@ export default function TenantDashboard() {
             {isHandshaking ? (
                 <div className="flex items-center gap-2 text-[10px] font-bold uppercase text-primary animate-pulse px-3 bg-primary/5 py-1.5 rounded-lg border border-primary/10">
                     <Loader2 className="h-3 w-3 animate-spin" />
-                    Syncing Identity...
+                    Linking Identity...
                 </div>
             ) : isVerified ? (
                 <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-8 px-3 font-bold uppercase tracking-widest text-[9px] shadow-sm rounded-xl shrink-0">
