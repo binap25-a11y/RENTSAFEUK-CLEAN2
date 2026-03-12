@@ -214,7 +214,8 @@ export default function TenantDetailPage() {
   }
 
   const propertyAddress = [property?.address.nameOrNumber, property?.address.street, property?.address.city, property?.address.postcode].filter(Boolean).join(', ') || 'N/A';
-  // Use explicit verified flag or joinedDate as confirmation
+  
+  // VERIFICATION LOGIC: A tenant is verified if explicitly flagged true OR if they have joinedDate linked via handshake
   const isVerified = tenant.verified === true || !!tenant.joinedDate;
 
   return (
@@ -275,11 +276,11 @@ export default function TenantDetailPage() {
                 <Card className="border-primary/20 bg-primary/5 shadow-inner">
                     <CardContent className="flex items-center gap-4 py-4">
                         <div className="p-2 rounded-full bg-primary/10 text-primary shrink-0"><AlertCircle className="h-5 w-5" /></div>
-                        <div className="flex-1">
-                            <p className="text-sm font-bold text-primary">Verification Required</p>
-                            <p className="text-xs text-muted-foreground">Tenant hasn't joined yet. Shared repair reporting will be inactive until verified.</p>
+                        <div className="flex-1 text-left">
+                            <p className="text-sm font-bold text-primary">Verification Handshake Required</p>
+                            <p className="text-xs text-muted-foreground">This tenant has not yet accessed the Resident Hub. Shared maintenance tracking will be inactive until verified.</p>
                         </div>
-                        <Button size="sm" onClick={handleSendInvite} className="font-bold text-[10px] uppercase">Invite Now</Button>
+                        <Button size="sm" onClick={handleSendInvite} className="font-bold text-[10px] uppercase">Send Invite</Button>
                     </CardContent>
                 </Card>
             )}
@@ -293,7 +294,7 @@ export default function TenantDetailPage() {
                         <div className="flex items-center gap-4 p-4 rounded-xl bg-background border shadow-sm transition-all hover:border-primary/20">
                             <div className="p-2.5 rounded-full bg-primary/10 text-primary shrink-0"><Mail className="h-4 w-4" /></div>
                             <div className="min-w-0 flex-1">
-                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.2em] mb-0.5">Verified Email</p>
+                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.2em] mb-0.5">Verified Identity Key</p>
                                 <a href={`mailto:${tenant.email}`} className="font-bold text-primary hover:underline break-all block text-sm">{tenant.email}</a>
                             </div>
                         </div>
@@ -355,7 +356,7 @@ export default function TenantDetailPage() {
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-4 rounded-xl bg-background border shadow-sm">
                         <div className="flex items-start gap-4 flex-1 min-w-0">
                             <div className="p-2.5 rounded-lg bg-muted/50 text-primary shrink-0 mt-1"><MapPin className="h-5 w-5" /></div>
-                            <div className="min-w-0 flex-1">
+                            <div className="min-w-0 flex-1 text-left">
                                 <Link href={`/dashboard/properties/${tenant.propertyId}`} className="text-lg font-bold text-primary hover:underline leading-tight block whitespace-normal">{propertyAddress}</Link>
                                 <Badge variant="outline" className="text-[9px] uppercase font-bold tracking-widest border-primary/20 bg-primary/5 text-primary mt-2">Active Lease</Badge>
                             </div>

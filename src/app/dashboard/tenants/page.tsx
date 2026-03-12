@@ -180,9 +180,9 @@ export default function TenantsPage() {
 
   return (
     <>
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6 text-left">
         <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between sm:items-center">
-          <div>
+          <div className="text-left">
             <h1 className="text-3xl font-bold font-headline text-primary">Tenants</h1>
             <p className="text-muted-foreground font-medium">
               Manage resident verification and tenancy records.
@@ -203,9 +203,9 @@ export default function TenantsPage() {
         </div>
         
         <Card className="border-none shadow-lg overflow-hidden">
-          <CardHeader className="bg-muted/20 border-b pb-6">
+          <CardHeader className="bg-muted/20 border-b pb-6 text-left">
             <CardTitle>Portfolio Registry</CardTitle>
-            <CardDescription>A list of active tenants and their verification status.</CardDescription>
+            <CardDescription>A list of active tenants and their Resident Hub status.</CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
             <div className="relative w-full max-w-sm mb-6">
@@ -249,18 +249,18 @@ export default function TenantsPage() {
                         const isVerified = tenant.verified === true || !!tenant.joinedDate;
                         return (
                           <TableRow key={tenant.id} className="hover:bg-muted/30 transition-colors group">
-                            <TableCell className="font-bold pl-6 py-5">
+                            <TableCell className="font-bold pl-6 py-5 text-left">
                               <Link href={`/dashboard/tenants/${tenant.id}?propertyId=${tenant.propertyId}`} className="hover:underline text-primary">
                                 {tenant.name}
                               </Link>
                               <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest mt-0.5">{tenant.email}</div>
                             </TableCell>
-                            <TableCell className="text-xs font-medium text-muted-foreground">
+                            <TableCell className="text-xs font-medium text-muted-foreground text-left">
                               {propertyMap[tenant.propertyId] || 'Assigned Property'}
                             </TableCell>
-                            <TableCell>
+                            <TableCell className="text-left">
                               {isVerified ? (
-                                <Badge variant="default" className="bg-green-50 text-green-700 border-green-200 gap-1.5 font-bold uppercase text-[9px] px-2.5 h-6">
+                                <Badge variant="default" className="bg-green-50 text-green-700 border-green-200 gap-1.5 font-bold uppercase text-[9px] px-2.5 h-6 shadow-sm">
                                     <ShieldCheck className="h-3 w-3" /> Verified
                                 </Badge>
                               ) : (
@@ -287,7 +287,7 @@ export default function TenantsPage() {
                   {filteredTenants.map((tenant) => {
                     const isVerified = tenant.verified === true || !!tenant.joinedDate;
                     return (
-                      <Card key={tenant.id} className="shadow-sm border-muted/60 overflow-hidden">
+                      <Card key={tenant.id} className="shadow-sm border-muted/60 overflow-hidden text-left">
                         <CardHeader className="pb-3 bg-muted/5 border-b">
                           <div className="flex justify-between items-start">
                             <div className="space-y-1">
@@ -307,13 +307,13 @@ export default function TenantsPage() {
                                 </Button>
                               </DropdownMenuTrigger>
                               <DropdownMenuContent align="end" className="w-48 p-1">
-                                <DropdownMenuItem asChild>
-                                  <Link href={`/dashboard/tenants/${tenant.id}?propertyId=${tenant.propertyId}`} className="cursor-pointer">
+                                <DropdownMenuItem asChild className="cursor-pointer">
+                                  <Link href={`/dashboard/tenants/${tenant.id}?propertyId=${tenant.propertyId}`}>
                                       <Eye className="mr-2 h-4 w-4" /> View Profile
                                   </Link>
                                 </DropdownMenuItem>
-                                <DropdownMenuItem asChild>
-                                  <Link href={`/dashboard/tenants/${tenant.id}/edit?propertyId=${tenant.propertyId}`} className="cursor-pointer">
+                                <DropdownMenuItem asChild className="cursor-pointer">
+                                  <Link href={`/dashboard/tenants/${tenant.id}/edit?propertyId=${tenant.propertyId}`}>
                                     <Edit className="mr-2 h-4 w-4" /> Edit Record
                                   </Link>
                                 </DropdownMenuItem>

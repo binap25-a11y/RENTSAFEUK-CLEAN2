@@ -56,6 +56,10 @@ export default function DashboardPage() {
 
     const userProfileRef = doc(firestore, 'userProfiles', user.uid);
     const unsubProfile = onSnapshot(userProfileRef, (snap) => {
+      if (!snap.exists()) {
+          setIsLoadingProfile(false);
+          return;
+      }
       const data = snap.data();
       const role = data?.role || 'landlord';
       setUserRole(role);
@@ -86,6 +90,9 @@ export default function DashboardPage() {
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Property));
       setProperties(list);
       setDiscoveryComplete(true);
+    }, (err) => {
+        console.warn("Property sync clearance issue:", err.message);
+        setDiscoveryComplete(true);
     });
 
     return () => unsubProps();
@@ -118,7 +125,7 @@ export default function DashboardPage() {
     return (
         <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-sm font-medium text-muted-foreground">Synchronizing Portfolio...</p>
+            <p className="text-sm font-medium text-muted-foreground">Synchronizing Portfolio Assets...</p>
         </div>
     );
   }
