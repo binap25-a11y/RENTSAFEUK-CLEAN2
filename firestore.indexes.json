@@ -8,6 +8,10 @@
         {
           "fieldPath": "email",
           "order": "ASCENDING"
+        },
+        {
+          "fieldPath": "status",
+          "order": "ASCENDING"
         }
       ]
     },
@@ -27,10 +31,6 @@
       "fields": [
         {
           "fieldPath": "email",
-          "order": "ASCENDING"
-        },
-        {
-          "fieldPath": "status",
           "order": "ASCENDING"
         }
       ]

@@ -39,7 +39,7 @@ interface TenantContext {
 /**
  * @fileOverview Tenant Hub Dashboard. 
  * Resolves the identity handshake between the user and the landlord's registry.
- * Includes automated polling to handle cloud indexing delays.
+ * Uses a sequential search pattern to handle cloud indexing lags gracefully.
  */
 export default function TenantDashboard() {
   const { user, isUserLoading } = useUser();
@@ -65,7 +65,7 @@ export default function TenantDashboard() {
     const userEmail = user.email.toLowerCase().trim();
 
     try {
-        // 1. SEARCH BY UID FIRST (Fastest, uses specific index)
+        // 1. PRIMARY SEARCH: By linked userId (Optimized path)
         const uidQuery = query(
             collectionGroup(firestore, 'tenants'),
             where('userId', '==', user.uid),
@@ -73,7 +73,7 @@ export default function TenantDashboard() {
         );
         let snap = await getDocs(uidQuery);
 
-        // 2. FALLBACK TO EMAIL SEARCH (For initial handshake)
+        // 2. FALLBACK SEARCH: By verified email (Handshake path)
         if (snap.empty) {
             const emailQuery = query(
                 collectionGroup(firestore, 'tenants'),
@@ -85,7 +85,6 @@ export default function TenantDashboard() {
 
         if (snap.empty) {
             setIsLoading(false);
-            // Don't set isIndexBuilding to false here, keep polling if we just haven't found it yet
             setContext(null);
             return;
         }
@@ -94,6 +93,7 @@ export default function TenantDashboard() {
         const data = activeTenantDoc.data();
         const path = activeTenantDoc.ref.path;
         
+        // Extract hierarchy: userProfiles/{landlordId}/properties/{propertyId}/tenants/{tenantId}
         const segments = path.split('/');
         const landlordIdx = segments.indexOf('userProfiles');
         const propertyIdx = segments.indexOf('properties');
@@ -105,7 +105,7 @@ export default function TenantDashboard() {
 
             const propRef = doc(firestore, 'userProfiles', landlordId, 'properties', propertyId);
             
-            // Real-time listener for property and tenancy context
+            // Sync property metadata in real-time
             const unsubProp = onSnapshot(propRef, (pSnap) => {
                 if (pSnap.exists()) {
                     setContext({
@@ -116,7 +116,7 @@ export default function TenantDashboard() {
                         propertyData: pSnap.data()
                     });
 
-                    // 3. ATOMIC HANDSHAKE: Link UID and verify if missing or mismatched
+                    // 3. ATOMIC VERIFICATION HANDSHAKE
                     if (!data.verified || data.userId !== user.uid) {
                         if (!handshakeAttempted.current) {
                             setIsHandshaking(true);
@@ -129,9 +129,9 @@ export default function TenantDashboard() {
                                 lastSyncCheck: new Date().toISOString()
                             }).then(() => {
                                 setIsHandshaking(false);
-                                toast({ title: "Portal Active", description: "Identity verified successfully." });
+                                toast({ title: "Portal Verified", description: "Identity keys linked successfully." });
                             }).catch(err => {
-                                console.warn("Handshake blocked by cloud policy:", err.message);
+                                console.warn("Handshake update blocked:", err.message);
                                 setIsHandshaking(false);
                                 handshakeAttempted.current = false;
                             });
@@ -145,7 +145,7 @@ export default function TenantDashboard() {
                 }
                 setIsLoading(false);
             }, (err) => {
-                console.warn("Property context metadata sync restricted:", err.message);
+                console.warn("Property sync access restricted:", err.message);
                 setIsLoading(false);
             });
 
@@ -153,19 +153,19 @@ export default function TenantDashboard() {
         }
     } catch (err: any) {
         const msg = err.message.toLowerCase();
-        // Permission Denied on collectionGroup usually means index building or rule mismatch
+        // Permission Denied or Failed Precondition on collectionGroup usually means index building
         if (msg.includes('index') || err.code === 'failed-precondition' || msg.includes('permission')) {
             setIsIndexBuilding(true);
             setError(null);
         } else {
-            console.error("Discovery process error:", err);
-            setError("Identity resolution failed. Please refresh.");
+            console.error("Discovery error:", err);
+            setError("Identity resolution failed.");
         }
         setIsLoading(false);
     }
   }, [user, firestore]);
 
-  // Automated Polling for Cloud Index Readiness
+  // Automated Polling for Background Discovery
   useEffect(() => {
     if (!isUserLoading && !context) {
         performDiscovery();
@@ -174,7 +174,7 @@ export default function TenantDashboard() {
             pollingInterval.current = setInterval(() => {
                 setSyncAttempt(prev => prev + 1);
                 performDiscovery();
-            }, 10000); // Faster polling (10s) while resolving identity
+            }, 15000); 
         }
     }
 
@@ -204,13 +204,13 @@ export default function TenantDashboard() {
                 <Sparkles className="h-12 w-12 text-primary animate-pulse" />
             </div>
             <div className="space-y-3 text-left">
-                <h2 className="font-headline text-2xl font-bold text-primary text-center">Portal Handshake Active</h2>
+                <h2 className="font-headline text-2xl font-bold text-primary text-center">Portal Setup in Progress</h2>
                 <p className="text-muted-foreground font-medium text-sm leading-relaxed text-center">
-                    The platform is currently mapping your resident identity keys.
+                    The platform is currently initializing high-speed identity discovery.
                 </p>
                 <div className="p-4 rounded-xl bg-muted/50 border border-dashed text-xs text-muted-foreground mt-4">
-                    <p className="font-bold uppercase text-[9px] tracking-widest mb-1 text-primary">Status: Initializing Cloud Index</p>
-                    <p>This secure one-time setup typically completes within 2-3 minutes. Access will be granted automatically.</p>
+                    <p className="font-bold uppercase text-[9px] tracking-widest mb-1 text-primary">Status: Building Discovery Index</p>
+                    <p>This is a one-time cloud initialization that typically takes 2-3 minutes. Access will grant automatically.</p>
                 </div>
             </div>
             <div className="flex flex-col gap-2">
@@ -230,17 +230,17 @@ export default function TenantDashboard() {
                 <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 shadow-sm border text-muted-foreground/20">
                     <Search className="h-10 w-10" />
                 </div>
-                <CardTitle className="font-headline text-xl text-primary">Identity Not Found</CardTitle>
+                <CardTitle className="font-headline text-xl text-primary">Identity Mapping Failed</CardTitle>
                 <CardDescription className="text-sm font-medium text-center px-4">
                     No active tenancy found for <strong>{user?.email}</strong>.
                 </CardDescription>
             </CardHeader>
             <CardContent className="pt-6 space-y-4">
                 <div className="space-y-2 text-left">
-                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Resolution Steps</p>
+                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Next Steps</p>
                     <ul className="text-xs text-muted-foreground space-y-2">
-                        <li className="flex items-start gap-2"><div className="h-1 w-1 rounded-full bg-primary mt-1.5 shrink-0" /> Contact your landlord to verify your registered email.</li>
-                        <li className="flex items-start gap-2"><div className="h-1 w-1 rounded-full bg-primary mt-1.5 shrink-0" /> Ensure the email matches exactly (lowercase).</li>
+                        <li className="flex items-start gap-2"><div className="h-1 w-1 rounded-full bg-primary mt-1.5 shrink-0" /> Ask your landlord to verify your registered email.</li>
+                        <li className="flex items-start gap-2"><div className="h-1 w-1 rounded-full bg-primary mt-1.5 shrink-0" /> Ensure you are logged into the correct account.</li>
                     </ul>
                 </div>
             </CardContent>
@@ -275,7 +275,7 @@ export default function TenantDashboard() {
                 </Badge>
             ) : (
                 <Badge variant="secondary" className="h-8 px-3 font-bold uppercase tracking-widest text-[9px] rounded-xl shrink-0 opacity-50">
-                    Verification Pending
+                    Handshake Active
                 </Badge>
             )}
         </div>

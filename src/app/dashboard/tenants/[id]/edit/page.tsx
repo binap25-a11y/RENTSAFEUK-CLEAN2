@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -81,6 +82,7 @@ interface Tenant {
     tenancyStartDate: { seconds: number, nanoseconds: number } | Date;
     tenancyEndDate?: { seconds: number, nanoseconds: number } | Date;
     notes?: string;
+    userId?: string; // Tenant's UID
 }
 
 const formatDateForInput = (value: any) => {
@@ -168,10 +170,12 @@ export default function EditTenantPage() {
       const normalizedEmail = data.email.toLowerCase().trim();
       
       const tenantDocRef = doc(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId, 'tenants', tenant.id);
+      
       const updateData = { 
         ...data, 
-        email: normalizedEmail, 
-        userId: user.uid 
+        email: normalizedEmail,
+        // CRITICAL FIX: Preserve existing tenant userId, do NOT overwrite with Landlord UID
+        userId: tenant.userId || ''
       };
       const cleanedUpdateData = JSON.parse(JSON.stringify(updateData));
 
