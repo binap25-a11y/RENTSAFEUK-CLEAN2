@@ -11,23 +11,27 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // 1. Users Collection
+    // Landlord check based on explicit landlordId field
+    function isLandlordOf(data) {
+      return isSignedIn() && (data.landlordId == request.auth.uid || data.userId == request.auth.uid);
+    }
+
+    // --- 1. Users Collection ---
     match /users/{userId} {
       allow read, write: if isOwner(userId);
     }
 
-    // 2. Properties Collection
+    // --- 2. Properties Collection ---
     match /properties/{id} {
       allow create: if isSignedIn();
       allow read: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
-        resource.data.tenantId == request.auth.uid ||
-        (resource.data.status != 'Deleted')
+        resource.data.tenantId == request.auth.uid
       );
       allow update, delete: if isSignedIn() && resource.data.landlordId == request.auth.uid;
     }
 
-    // 3. Tenants Collection
+    // --- 3. Tenants Collection ---
     match /tenants/{id} {
       allow create: if isSignedIn();
       allow read: if isSignedIn() && (
@@ -42,75 +46,27 @@ service cloud.firestore {
       allow delete: if isSignedIn() && resource.data.landlordId == request.auth.uid;
     }
 
-    // 4. Repairs (Maintenance) Collection
-    match /repairs/{id} {
-      allow create: if isSignedIn();
-      allow read, update: if isSignedIn() && (
-        resource.data.landlordId == request.auth.uid || 
-        resource.data.tenantId == request.auth.uid ||
-        resource.data.reportedBy == request.auth.uid
-      );
-      allow delete: if isSignedIn() && resource.data.landlordId == request.auth.uid;
-    }
-
-    // 5. Documents Collection
-    match /documents/{id} {
+    // --- 4. Shared Portfolio Collections (Repairs, Documents, etc.) ---
+    match /{collectionName}/{id} {
       allow create: if isSignedIn();
       allow read: if isSignedIn() && (
+        resource.data.landlordId == request.auth.uid || 
+        resource.data.tenantId == request.auth.uid ||
+        resource.data.reportedBy == request.auth.uid ||
+        resource.data.userId == request.auth.uid
+      );
+      allow update: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.tenantId == request.auth.uid ||
         resource.data.userId == request.auth.uid
       );
-      allow update, delete: if isSignedIn() && resource.data.landlordId == request.auth.uid;
-    }
-
-    // 6. Messages Collection
-    match /messages/{id} {
-      allow create: if isSignedIn();
-      allow read: if isSignedIn() && (
-        resource.data.senderId == request.auth.uid || 
-        resource.data.receiverId == request.auth.uid ||
-        resource.data.landlordId == request.auth.uid ||
-        resource.data.tenantId == request.auth.uid
-      );
-    }
-
-    // 7. Expenses Collection
-    match /expenses/{id} {
-      allow create, read, update, delete: if isSignedIn() && resource.data.landlordId == request.auth.uid;
-    }
-
-    // 8. Inspections Collection
-    match /inspections/{id} {
-      allow create: if isSignedIn();
-      allow read: if isSignedIn() && (
+      allow delete: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
-        resource.data.tenantId == request.auth.uid
+        resource.data.userId == request.auth.uid
       );
-      allow update, delete: if isSignedIn() && resource.data.landlordId == request.auth.uid;
-    }
-
-    // 9. Contractors Collection
-    match /contractors/{id} {
-      allow create, read, update, delete: if isSignedIn() && resource.data.landlordId == request.auth.uid;
-    }
-
-    // 10. Rent Payments Collection
-    match /rentPayments/{id} {
-      allow create, read, update, delete: if isSignedIn() && resource.data.landlordId == request.auth.uid;
-    }
-
-    // 11. Checklists Collection
-    match /checklists/{id} {
-      allow create, read, update, delete: if isSignedIn() && resource.data.landlordId == request.auth.uid;
-    }
-
-    // 12. Screenings Collection
-    match /screenings/{id} {
-      allow create, read, update, delete: if isSignedIn() && (
-        resource.data.landlordId == request.auth.uid ||
-        resource.data.tenantId == request.auth.uid
-      );
+      
+      // Explicit constraints for create operations to ensure landlordId is present
+      allow create: if isSignedIn();
     }
   }
 }

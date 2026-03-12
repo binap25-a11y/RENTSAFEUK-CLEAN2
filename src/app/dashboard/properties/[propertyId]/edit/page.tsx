@@ -56,7 +56,7 @@ type PropertyFormValues = z.infer<typeof propertySchema>;
 
 interface Property {
     id: string;
-    userId: string;
+    landlordId: string;
     address: {
       nameOrNumber?: string;
       street: string;
@@ -88,7 +88,6 @@ export default function EditPropertyPage() {
   const firestore = useFirestore();
   const [isSubmitting, setIsSubmitting] = useState(false);
   
-  // Photo Logic
   const [selectedMainFile, setSelectedMainFile] = useState<File | null>(null);
   const [mainPreviewUrl, setMainPreviewUrl] = useState<string | null>(null);
   const [isMainRemoved, setIsMainRemoved] = useState(false);
@@ -101,7 +100,7 @@ export default function EditPropertyPage() {
 
   const propertyRef = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
-    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId);
+    return doc(firestore, 'properties', propertyId);
   }, [firestore, user, propertyId]);
   const { data: property, isLoading } = useDoc<Property>(propertyRef);
 
@@ -179,7 +178,7 @@ export default function EditPropertyPage() {
       setMainPreviewUrl(url);
       setSelectedMainFile(null);
       setIsMainRemoved(false);
-      toast({ title: "Primary Photo Updated", description: "This image is now the main property identity." });
+      toast({ title: "Primary Photo Updated" });
   };
 
   async function onSubmit(data: PropertyFormValues) {
@@ -211,14 +210,14 @@ export default function EditPropertyPage() {
           ...data,
           imageUrl: finalIdentityUrl,
           additionalImageUrls: Array.from(new Set(combinedGallery)),
-          userId: user.uid
+          landlordId: user.uid
       };
 
       const cleanedPayload = JSON.parse(JSON.stringify(updatePayload));
 
       updateDoc(propertyRef, cleanedPayload)
         .then(() => {
-            toast({ title: "Asset Updated", description: "All records and media synchronized successfully." });
+            toast({ title: "Asset Updated" });
             router.push(`/dashboard/properties/${propertyId}`);
         })
         .catch(async (serverError) => {
@@ -228,13 +227,13 @@ export default function EditPropertyPage() {
                 requestResourceData: cleanedPayload,
             });
             errorEmitter.emit('permission-error', permissionError);
-            toast({ variant: "destructive", title: "Update Failed", description: "Could not save changes to the database." });
+            toast({ variant: "destructive", title: "Update Failed" });
         })
         .finally(() => setIsSubmitting(false));
 
     } catch (e: any) {
       console.error("Submission failed:", e);
-      toast({ variant: "destructive", title: "Process Error", description: e.message || "An unexpected error occurred." });
+      toast({ variant: "destructive", title: "Process Error" });
       setIsSubmitting(false);
     }
   }
@@ -257,23 +256,23 @@ export default function EditPropertyPage() {
                         <FormField control={form.control} name="address.nameOrNumber" render={({ field }) => (
                           <FormItem>
                             <FormLabel>Building Name/No</FormLabel>
-                            <FormControl><Input id="edit-no" name="nameOrNumber" className="h-11 bg-background" {...field} /></FormControl>
+                            <FormControl><Input className="h-11 bg-background" {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
                         <FormField control={form.control} name="address.street" render={({ field }) => (
                           <FormItem>
                             <FormLabel>Street Address</FormLabel>
-                            <FormControl><Input id="edit-street" name="street" className="h-11 bg-background" {...field} /></FormControl>
+                            <FormControl><Input className="h-11 bg-background" {...field} /></FormControl>
                             <FormMessage />
                           </FormItem>
                         )} />
                         <div className="grid grid-cols-2 gap-4">
                             <FormField control={form.control} name="address.city" render={({ field }) => (
-                              <FormItem><FormLabel>City</FormLabel><FormControl><Input id="edit-city" name="city" className="h-11 bg-background" {...field} /></FormControl><FormMessage /></FormItem>
+                              <FormItem><FormLabel>City</FormLabel><FormControl><Input className="h-11 bg-background" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                             <FormField control={form.control} name="address.postcode" render={({ field }) => (
-                              <FormItem><FormLabel>Postcode</FormLabel><FormControl><Input id="edit-postcode" name="postcode" className="uppercase h-11 bg-background" {...field} /></FormControl><FormMessage /></FormItem>
+                              <FormItem><FormLabel>Postcode</FormLabel><FormControl><Input className="uppercase h-11 bg-background" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                         </div>
                     </CardContent>
@@ -286,16 +285,10 @@ export default function EditPropertyPage() {
             <div className="grid grid-cols-1 lg:grid-cols-2 gap-10 border-t pt-10">
                 <div className="space-y-6">
                     <FormLabel className="font-bold flex items-center gap-2 text-lg"><Home className="h-5 w-5 text-primary" /> Identity Photo</FormLabel>
-                    <FormDescription className="text-xs">Primary photo for the grid view. Automatically added to your gallery.</FormDescription>
+                    <FormDescription className="text-xs">Primary photo for the grid view.</FormDescription>
                     {mainPreviewUrl ? (
                         <div className="relative aspect-video rounded-2xl overflow-hidden border-2 border-primary shadow-lg group">
-                            <Image 
-                              src={mainPreviewUrl} 
-                              alt="Asset Identity" 
-                              fill 
-                              className="object-cover" 
-                              unoptimized
-                            />
+                            <Image src={mainPreviewUrl} alt="Asset Identity" fill className="object-cover" unoptimized />
                             <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center gap-2">
                                 <Button type="button" variant="secondary" size="sm" onClick={() => mainInputRef.current?.click()}><Upload className="mr-2 h-4 w-4" /> Change</Button>
                                 <Button type="button" variant="destructive" size="sm" onClick={() => { setSelectedMainFile(null); setMainPreviewUrl(null); setIsMainRemoved(true); }}><X className="mr-2 h-4 w-4" /> Remove</Button>
@@ -307,40 +300,33 @@ export default function EditPropertyPage() {
                             <p className="text-sm font-bold">Assign Asset Identity Photo</p>
                         </div>
                     )}
-                    <input type="file" ref={mainInputRef} onChange={handleMainFileChange} accept="image/*" className="hidden" id="edit-main-photo" name="editMainPhoto" />
+                    <input type="file" ref={mainInputRef} onChange={handleMainFileChange} accept="image/*" className="hidden" />
                 </div>
 
                 <div className="space-y-6">
                     <FormLabel className="font-bold flex items-center gap-2 text-lg"><Images className="h-5 w-5 text-primary" /> Photo Gallery</FormLabel>
-                    <FormDescription className="text-xs">Manage all photos associated with this record.</FormDescription>
                     <div className="grid grid-cols-3 gap-4">
                         {existingGallery.map((url, idx) => (
                             <div key={`existing-${idx}`} className="relative aspect-square rounded-xl overflow-hidden border group shadow-sm bg-background">
                                 <Image src={url} alt="Gallery Item" fill className="object-cover" unoptimized />
                                 <div className="absolute inset-0 bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex flex-col items-center justify-center gap-1">
-                                    <button type="button" onClick={() => promoteToPrimary(url)} title="Set as Primary" className="p-1.5 bg-background text-primary rounded-full hover:scale-110 transition-transform shadow-md"><CheckCircle2 className="h-4 w-4" /></button>
+                                    <button type="button" onClick={() => promoteToPrimary(url)} className="p-1.5 bg-background text-primary rounded-full hover:scale-110 transition-transform shadow-md"><CheckCircle2 className="h-4 w-4" /></button>
                                     <button type="button" onClick={() => setExistingGallery(p => p.filter(u => u !== url))} className="p-1.5 bg-destructive text-white rounded-full hover:scale-110 transition-transform shadow-md"><X className="h-4 w-4" /></button>
                                 </div>
-                            </div>
-                        ))}
-                        {newGalleryPreviews.map((url, idx) => (
-                            <div key={`new-${idx}`} className="relative aspect-square rounded-xl overflow-hidden border border-primary/50 group bg-background">
-                                <Image src={url} alt="Pending Sync" fill className="object-cover" unoptimized />
-                                <button type="button" onClick={() => removeNewGalleryImage(idx)} className="absolute top-1.5 right-1.5 p-1 bg-destructive/90 text-white rounded-full opacity-0 group-hover:opacity-100 transition-opacity hover:bg-destructive shadow-md"><X className="h-3 w-3" /></button>
                             </div>
                         ))}
                         <div className="border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 bg-muted/5 cursor-pointer aspect-square hover:bg-muted/10 transition-colors" onClick={() => galleryInputRef.current?.click()}>
                             <PlusCircle className="h-6 w-6 text-muted-foreground" /><span className="text-[10px] font-bold uppercase tracking-tighter">Add Photo</span>
                         </div>
                     </div>
-                    <input type="file" ref={galleryInputRef} multiple onChange={handleNewGalleryChange} accept="image/*" className="hidden" id="edit-gallery" name="editGallery" />
+                    <input type="file" ref={galleryInputRef} multiple onChange={handleNewGalleryChange} accept="image/*" className="hidden" />
                 </div>
             </div>
 
             <div className="flex justify-end gap-4 pt-6 border-t">
               <Button type="button" variant="ghost" asChild className="h-11 font-bold uppercase text-xs tracking-widest"><Link href={`/dashboard/properties/${propertyId}`}>Cancel</Link></Button>
               <Button type="submit" disabled={isSubmitting} className="h-11 px-10 shadow-lg font-bold uppercase text-xs tracking-widest bg-primary hover:bg-primary/90">
-                {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Synchronizing Portfolio...</> : 'Save Record Changes'}
+                {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Syncing...</> : 'Save Record Changes'}
               </Button>
             </div>
           </form>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -39,7 +40,7 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, doc, updateDoc, addDoc, limit } from 'firebase/firestore';
+import { collection, query, doc, updateDoc, addDoc, limit, where } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -123,7 +124,8 @@ export default function AddTenantPage() {
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
-      collection(firestore, 'userProfiles', user.uid, 'properties'),
+      collection(firestore, 'properties'),
+      where('landlordId', '==', user.uid),
       limit(500)
     );
   }, [firestore, user]);
@@ -155,18 +157,14 @@ export default function AddTenantPage() {
     if (!user || !firestore) return;
     setIsSubmitting(true);
 
-    const tenantsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', data.propertyId, 'tenants');
-    
-    // Identity mapping handshake requires normalized emails
+    const tenantsCollection = collection(firestore, 'tenants');
     const normalizedEmail = data.email.toLowerCase().trim();
     
     const newTenant = {
         ...data,
         email: normalizedEmail,
-        // userId MUST BE EMPTY so the tenant can claim it later. 
-        // Do not set it to user.uid (the landlord's ID).
         userId: '', 
-        ownerId: user.uid, 
+        landlordId: user.uid, 
         status: 'Active',
         verified: false,
         createdDate: new Date().toISOString(),
@@ -175,10 +173,10 @@ export default function AddTenantPage() {
     try {
         await addDoc(tenantsCollection, prepareForFirestore(newTenant));
         
-        const propertyDocRef = doc(firestore, 'userProfiles', user.uid, 'properties', data.propertyId);
-        await updateDoc(propertyDocRef, { status: 'Occupied' });
+        const propertyDocRef = doc(firestore, 'properties', data.propertyId);
+        await updateDoc(propertyDocRef, { status: 'Occupied', tenantId: '' }); // Handshake handles linkage
 
-        toast({ title: 'Tenant Assigned', description: 'Resident hub link established via secure handshake.' });
+        toast({ title: 'Tenant Assigned' });
         router.push(`/dashboard/properties/${data.propertyId}`);
     } catch (err) {
         console.error(err);
@@ -212,7 +210,6 @@ export default function AddTenantPage() {
                     <PopoverTrigger asChild>
                         <FormControl>
                             <Button
-                                id="tenant-prop-trigger"
                                 variant="outline"
                                 className={cn("w-full justify-between h-11 bg-background text-left font-normal", !field.value && "text-muted-foreground")}
                             >
@@ -258,7 +255,7 @@ export default function AddTenantPage() {
                  <FormItem>
                    <FormLabel className="font-bold">Resident Portal Email</FormLabel>
                    <FormControl><Input type="email" placeholder="tenant@example.com" className="h-11" {...field} /></FormControl>
-                   <FormDescription className="text-[10px] uppercase font-bold tracking-widest leading-tight">This email is the unique key for resident portal verification.</FormDescription>
+                   <FormDescription className="text-[10px] leading-tight">This email is used for portal verification.</FormDescription>
                    <FormMessage />
                  </FormItem>
                )} />
@@ -266,13 +263,13 @@ export default function AddTenantPage() {
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t pt-6">
-                <FormField control={form.control} name="monthlyRent" render={({ field }) => (<FormItem><FormLabel className="font-bold">Agreed Monthly Rent (£)</FormLabel><FormControl><Input type="number" min="0" placeholder="0.00" className="h-11" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="monthlyRent" render={({ field }) => (<FormItem><FormLabel className="font-bold">Agreed Monthly Rent (£)</FormLabel><FormControl><Input type="number" min="0" className="h-11" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="rentDueDay" render={({ field }) => (
                     <FormItem>
                         <FormLabel className="font-bold flex items-center gap-2"><CalendarDays className="h-4 w-4 text-primary" />Rent Due Day</FormLabel>
                         <Select onValueChange={field.onChange} value={String(field.value)}>
-                            <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select day" /></SelectTrigger></FormControl>
-                            <SelectContent>{Array.from({ length: 31 }, (_, i) => (i + 1)).map(day => (<SelectItem key={day} value={String(day)}>{day}{[1, 21, 31].includes(day) ? 'st' : [2, 22].includes(day) ? 'nd' : [3, 23].includes(day) ? 'rd' : 'th'} of month</SelectItem>))}</SelectContent>
+                            <FormControl><SelectTrigger className="h-11"><SelectValue /></SelectTrigger></FormControl>
+                            <SelectContent>{Array.from({ length: 31 }, (_, i) => (i + 1)).map(day => (<SelectItem key={day} value={String(day)}>{day} of month</SelectItem>))}</SelectContent>
                         </Select>
                         <FormMessage />
                     </FormItem>
@@ -291,9 +288,9 @@ export default function AddTenantPage() {
             <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel className="font-bold">Audit Notes</FormLabel><FormControl><Textarea className="resize-none min-h-[100px] rounded-xl" {...field} /></FormControl><FormMessage /></FormItem>)} />
 
             <div className="flex items-center justify-end gap-3 pt-4 border-t">
-                <Button type="button" variant="ghost" asChild className="font-bold uppercase tracking-widest text-[10px] h-11"><Link href="/dashboard/tenants">Cancel</Link></Button>
-                <Button type="submit" disabled={isSubmitting} className="font-bold uppercase tracking-widest text-[10px] h-11 px-10 shadow-lg bg-primary hover:bg-primary/90">
-                  {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Synchronizing...</> : 'Complete Assignment'}
+                <Button type="button" variant="ghost" asChild className="h-11" asChild><Link href="/dashboard/tenants">Cancel</Link></Button>
+                <Button type="submit" disabled={isSubmitting} className="h-11 px-10 shadow-lg bg-primary hover:bg-primary/90 font-bold">
+                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Complete Assignment'}
                 </Button>
             </div>
           </form>

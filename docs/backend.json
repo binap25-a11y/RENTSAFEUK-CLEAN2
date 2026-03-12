@@ -50,7 +50,7 @@
       }
     },
     "Repair": {
-      "description": "Maintenance requests (formerly maintenanceLogs).",
+      "description": "Maintenance requests.",
       "properties": {
         "id": { "type": "string" },
         "landlordId": { "type": "string" },
@@ -65,13 +65,17 @@
     }
   },
   "firestore": {
-    "users/{userId}": { "schema": "User", "description": "Root user profiles" },
+    "users/{userId}": { "schema": "User", "description": "Global user registry" },
     "properties/{propertyId}": { "schema": "Property", "description": "Flat property registry" },
     "tenants/{tenantId}": { "schema": "Tenant", "description": "Flat tenant registry" },
     "repairs/{repairId}": { "schema": "Repair", "description": "Flat maintenance logs" },
-    "documents/{docId}": { "schema": { "$ref": "#/entities/Tenant" }, "description": "Flat document audit trail" },
-    "messages/{msgId}": { "schema": { "$ref": "#/entities/Tenant" }, "description": "Flat messaging channel" },
-    "contractors/{contractorId}": { "schema": { "$ref": "#/entities/Tenant" }, "description": "Flat contractor directory" },
-    "rentPayments/{paymentId}": { "schema": { "$ref": "#/entities/Tenant" }, "description": "Flat financial ledger" }
+    "documents/{docId}": { "schema": "Tenant", "description": "Compliance document registry" },
+    "messages/{msgId}": { "schema": "Tenant", "description": "Secure messaging registry" },
+    "expenses/{expenseId}": { "schema": "Tenant", "description": "Financial outgoing ledger" },
+    "inspections/{inspectionId}": { "schema": "Tenant", "description": "Property inspection registry" },
+    "contractors/{contractorId}": { "schema": "Tenant", "description": "Tradespeople directory" },
+    "rentPayments/{paymentId}": { "schema": "Tenant", "description": "Income tracking ledger" },
+    "checklists/{checklistId}": { "schema": "Tenant", "description": "Pre-tenancy audit logs" },
+    "screenings/{screeningId}": { "schema": "Tenant", "description": "Tenant vetting records" }
   }
 }
