@@ -43,7 +43,6 @@ export function createUserNonBlocking(
       const db = getFirestore();
       
       // Initialize the user profile document immediately
-      // This is the source of truth for routing logic
       const profileData = {
         id: user.uid,
         email: email.toLowerCase().trim(),
@@ -54,7 +53,6 @@ export function createUserNonBlocking(
 
       await setDoc(doc(db, 'userProfiles', user.uid), profileData);
       
-      // Set a default display name based on role
       const defaultName = role.charAt(0).toUpperCase() + role.slice(1);
       await updateProfile(user, { displayName: defaultName });
     })
