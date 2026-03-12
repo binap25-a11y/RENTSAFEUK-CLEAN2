@@ -23,7 +23,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
-import { collectionGroup, query, where, limit, onSnapshot, doc, updateDoc, or } from 'firebase/firestore';
+import { collectionGroup, query, where, limit, onSnapshot, doc, updateDoc, getDocs, or } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/hooks/use-toast';
@@ -53,10 +53,10 @@ export default function TenantDashboard() {
   const handshakeAttempted = useRef(false);
   const retryCount = useRef(0);
 
-  const performDiscovery = useCallback(() => {
+  const performDiscovery = useCallback(async () => {
     if (!user || !firestore || !user.email) {
       setIsLoading(false);
-      return () => {};
+      return;
     }
 
     setIsLoading(true);
@@ -64,24 +64,28 @@ export default function TenantDashboard() {
     
     const userEmail = user.email.toLowerCase().trim();
 
-    // Identity Discovery: Perform a case-insensitive lookup for the tenancy record.
-    const q = query(
-        collectionGroup(firestore, 'tenants'), 
-        or(
-            where('email', '==', userEmail),
-            where('userId', '==', user.uid)
-        ),
-        limit(1) 
-    );
+    try {
+        // 1. PHASE ONE: Search by existing UID link (Fastest, no email dependency)
+        const uidQuery = query(
+            collectionGroup(firestore, 'tenants'),
+            where('userId', '==', user.uid),
+            limit(1)
+        );
+        let snap = await getDocs(uidQuery);
 
-    let propUnsub: (() => void) | null = null;
-
-    const unsub = onSnapshot(q, (snap) => {
-        if (propUnsub) propUnsub();
+        // 2. PHASE TWO: If no UID link, search by normalized email
+        if (snap.empty) {
+            const emailQuery = query(
+                collectionGroup(firestore, 'tenants'),
+                where('email', '==', userEmail),
+                limit(1)
+            );
+            snap = await getDocs(emailQuery);
+        }
 
         if (snap.empty) {
+            console.log("No tenancy record found for:", userEmail);
             setIsLoading(false);
-            setIsIndexBuilding(false);
             setContext(null);
             return;
         }
@@ -101,19 +105,21 @@ export default function TenantDashboard() {
 
             // Fetch Property Meta for context
             const propRef = doc(firestore, 'userProfiles', landlordId, 'properties', propertyId);
-            propUnsub = onSnapshot(propRef, (propSnap) => {
-                if (propSnap.exists()) {
-                    const propertyData = propSnap.data();
+            const propSnap = await getDocs(query(collection(firestore, 'userProfiles', landlordId, 'properties'), where('id', '==', propertyId), limit(1)));
+            
+            // We use a listener for the property data to ensure real-time updates
+            const unsubProp = onSnapshot(propRef, (pSnap) => {
+                if (pSnap.exists()) {
                     setContext({
                         landlordId,
                         propertyId,
                         tenantId,
                         tenantData: data,
-                        propertyData
+                        propertyData: pSnap.data()
                     });
-                    
-                    // HANDSHAKE TRIGGER: Set verified status and bind UID if not already linked.
-                    // This creates the permanent link between the record and the secure account.
+
+                    // 3. PHASE THREE: HANDSHAKE TRIGGER
+                    // Bind the secure UID and verify the resident if not already done.
                     if (!data.verified || data.userId !== user.uid) {
                         if (!handshakeAttempted.current) {
                             setIsHandshaking(true);
@@ -126,7 +132,7 @@ export default function TenantDashboard() {
                                 lastSyncCheck: new Date().toISOString()
                             }).then(() => {
                                 setIsHandshaking(false);
-                                toast({ title: "Verification Successful", description: "Identity verified and portal access granted." });
+                                toast({ title: "Portal Active", description: "Identity verified successfully." });
                             }).catch(err => {
                                 console.warn("Handshake permission issue:", err.message);
                                 setIsHandshaking(false);
@@ -134,49 +140,32 @@ export default function TenantDashboard() {
                             });
                         }
                     }
-
-                    setError(null);
                 } else {
                     setError("Identity verified, but property metadata is currently restricted.");
                 }
                 setIsLoading(false);
-                setIsIndexBuilding(false);
-            }, (err) => {
-                console.warn("Property sync error:", err.message);
-                setError("Sync error: Portions of your registry are restricted.");
-                setIsLoading(false);
             });
+
+            return () => unsubProp();
         } else {
-            setError("Identity handshake failed: Mapping mismatch.");
+            setError("Identity handshake failed: Path mismatch.");
             setIsLoading(false);
         }
-    }, (err) => {
+    } catch (err: any) {
         const msg = err.message.toLowerCase();
-        // Handle Missing Index or Permission Denial during propagation
-        if (msg.includes('index') || err.code === 'failed-precondition' || msg.includes('permission')) {
+        if (msg.includes('index') || err.code === 'failed-precondition') {
             setIsIndexBuilding(true);
-            if (retryCount.current < 15) { 
-                setTimeout(() => {
-                    retryCount.current += 1;
-                    performDiscovery();
-                }, 15000);
-            }
         } else {
             console.error("Discovery error:", err);
-            setError("Database connectivity error. Please refresh.");
+            setError("Database sync error. Please try again.");
         }
         setIsLoading(false);
-    });
-
-    return () => {
-        unsub();
-        if (propUnsub) propUnsub();
-    };
+    }
   }, [user, firestore]);
 
   useEffect(() => {
     if (!isUserLoading) {
-        return performDiscovery();
+        performDiscovery();
     }
   }, [isUserLoading, performDiscovery]);
 

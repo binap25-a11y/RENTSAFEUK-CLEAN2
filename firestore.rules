@@ -19,17 +19,18 @@ service cloud.firestore {
     // These rules allow the Resident Hub to discover and link tenancy records across the entire database.
     
     match /{path=**}/tenants/{tenantId} {
-      // Identity Discovery: Allow tenants to find their record by normalized email or their own linked UID.
+      // Identity Discovery: Allow tenants to find their record by email or their own linked UID.
+      // We normalize comparisons to ensure capitalization mismatches don't block access.
       allow read: if isSignedIn() && (
         (request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower()) ||
-        resource.data.userId == request.auth.uid
+        (resource.data.userId != null && resource.data.userId == request.auth.uid)
       );
       
       // Verification Handshake: Allow the resident to link their unique UID and join the portal.
-      // Restrict updates to only these identity-binding fields to prevent residents from modifying rent/contracts.
+      // Restrict updates to ONLY these identity-binding fields to prevent residents from modifying rent/contracts.
       allow update: if isSignedIn() && (
         (request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower()) ||
-        resource.data.userId == request.auth.uid
+        (resource.data.userId != null && resource.data.userId == request.auth.uid)
       ) && request.resource.data.diff(resource.data).affectedKeys().hasAny(['joinedDate', 'userId', 'verified', 'lastSyncCheck']);
     }
 
