@@ -19,8 +19,7 @@ import {
   Sparkles,
   RefreshCw,
   ShieldCheck,
-  Search,
-  CheckCircle2
+  Search
 } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
 import { collectionGroup, query, where, limit, doc, updateDoc, getDocs, getDoc } from 'firebase/firestore';
@@ -36,6 +35,10 @@ interface TenantContext {
     propertyData: any;
 }
 
+/**
+ * @fileOverview Resident Hub Dashboard.
+ * Handles secure identity discovery via Collection Group queries and manages the handshake sync.
+ */
 export default function TenantDashboard() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
@@ -57,7 +60,7 @@ export default function TenantDashboard() {
     const userEmail = user.email.toLowerCase().trim();
 
     try {
-        // 1. Fast Path: Check for existing resolved path
+        // 1. Fast Path: Check for existing resolved path in local storage
         const savedPath = localStorage.getItem(`tenant_path_${user.uid}`);
         if (savedPath) {
             const tenantRef = doc(firestore, savedPath);
@@ -86,12 +89,11 @@ export default function TenantDashboard() {
             }
         }
 
-        // 2. Slow Path: Multi-Stage Discovery
-        // First attempt by UID (linked)
+        // 2. Slow Path: Discovery by secure UID
         let q = query(collectionGroup(firestore, 'tenants'), where('userId', '==', user.uid), limit(1));
         let snap = await getDocs(q);
 
-        // Fallback to email (discovery)
+        // 3. Fallback: Discovery by verified Email (initial connection)
         if (snap.empty) {
             q = query(collectionGroup(firestore, 'tenants'), where('email', '==', userEmail), limit(1));
             snap = await getDocs(q);
@@ -114,7 +116,7 @@ export default function TenantDashboard() {
 
         localStorage.setItem(`tenant_path_${user.uid}`, path);
 
-        // 3. One-Time Identity Handshake
+        // 4. Atomic Identity Handshake
         if (!data.verified || data.userId !== user.uid) {
             setIsHandshaking(true);
             try {
@@ -124,15 +126,15 @@ export default function TenantDashboard() {
                     verified: true,
                     lastSyncCheck: new Date().toISOString()
                 });
-                toast({ title: "Portal Connected", description: "Identity verification complete." });
+                toast({ title: "Portal Linked", description: "Your identity has been verified." });
             } catch (hErr) {
-                console.warn("Handshake deferral:", hErr);
+                console.warn("Handshake delay:", hErr);
             } finally {
                 setIsHandshaking(false);
             }
         }
 
-        // 4. Resolve Context
+        // 5. Resolve Final Context
         const propRef = doc(firestore, 'userProfiles', landlordId, 'properties', propertyId);
         const propSnap = await getDoc(propRef);
         
@@ -149,14 +151,11 @@ export default function TenantDashboard() {
         setIsIndexBuilding(false);
     } catch (err: any) {
         console.error("Discovery error:", err);
-        // Identify specific index missing errors
-        if (err.message.includes('index') || err.code === 'failed-precondition' || err.message.includes('COLLECTION_GROUP')) {
-            setIsIndexBuilding(true);
-        } else if (err.code === 'permission-denied') {
-            // Rules often return permission denied if the index isn't ready to verify the query scope
+        // Detect index-building state (FAILED_PRECONDITION or Permission Denied during index build)
+        if (err.message?.includes('index') || err.code === 'failed-precondition' || err.code === 'permission-denied') {
             setIsIndexBuilding(true);
         } else {
-            setError("Tenancy matching unavailable.");
+            setError("Tenancy matching service unavailable.");
         }
         setIsLoading(false);
         discoveryRef.current = false;
@@ -169,14 +168,14 @@ export default function TenantDashboard() {
     }
   }, [isUserLoading, performDiscovery]);
 
-  // Automated Polling for Index Building
+  // Automated Polling for Cloud Index Resolution
   useEffect(() => {
     if (isIndexBuilding) {
         const timer = setTimeout(() => {
             discoveryRef.current = false;
             setSyncAttempt(s => s + 1);
             performDiscovery();
-        }, 15000);
+        }, 15000); // Polling every 15 seconds
         return () => clearTimeout(timer);
     }
   }, [isIndexBuilding, performDiscovery, syncAttempt]);
@@ -201,16 +200,16 @@ export default function TenantDashboard() {
             <div className="space-y-3">
                 <h2 className="font-headline text-2xl font-bold text-primary">Portal Setup in Progress</h2>
                 <p className="text-muted-foreground font-medium text-sm leading-relaxed px-4">
-                    The platform is currently initializing high-speed identity discovery.
+                    The platform is currently initializing high-speed identity discovery across the portfolio.
                 </p>
                 <div className="p-4 rounded-xl bg-muted/50 border border-dashed text-xs text-muted-foreground mt-4 text-left">
-                    <p className="font-bold uppercase text-[9px] tracking-widest mb-1 text-primary">Status: Building Discovery Index</p>
-                    <p>This is a one-time cloud initialization that typically takes 2-3 minutes. Access will activate automatically.</p>
+                    <p className="font-bold uppercase text-[9px] tracking-widest mb-1 text-primary">Cloud Status: Building Discovery Index</p>
+                    <p>This is a one-time secure initialization that typically takes 2-3 minutes. Your portal will activate automatically once ready.</p>
                 </div>
             </div>
             <div className="space-y-4">
                 <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-sm" onClick={() => { discoveryRef.current = false; setSyncAttempt(s => s + 1); performDiscovery(); }}>
-                    <RefreshCw className="mr-2 h-4 w-4" /> Check Status
+                    <RefreshCw className="mr-2 h-4 w-4" /> Check Identity Status
                 </Button>
                 <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">Handshake Attempt {syncAttempt}</p>
             </div>
@@ -235,7 +234,7 @@ export default function TenantDashboard() {
                     <p className="font-bold mb-1">Common causes:</p>
                     <ul className="space-y-1 ml-4 list-disc">
                         <li>The landlord hasn't assigned your email to a property record yet.</li>
-                        <li>You are logged in with a different email than the one registered.</li>
+                        <li>You are logged in with a different email than the one provided to the landlord.</li>
                     </ul>
                 </div>
             </CardContent>
@@ -306,7 +305,7 @@ export default function TenantDashboard() {
                 <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-80 flex items-center gap-2 text-primary-foreground"><MessageSquare className="h-3.5 w-3.5" /> Support Channel</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 px-6 pb-6">
-                <p className="text-xs font-medium">Direct line to your landlord for maintenance.</p>
+                <p className="text-xs font-medium">Direct line to your landlord for maintenance and repairs.</p>
                 <Button variant="secondary" size="sm" className="w-full font-bold h-9 shadow-md rounded-xl uppercase tracking-widest text-[10px]" asChild><Link href="/tenant/messages">Open Inbox <ChevronRight className="ml-1 h-3 w-3"/></Link></Button>
             </CardContent>
         </Card>
