@@ -19,7 +19,7 @@ import {
   ShieldCheck,
   RefreshCw,
   Search,
-  Sparkles
+  CheckCircle2
 } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
 import { collection, query, where, limit, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore';
@@ -42,7 +42,6 @@ export default function TenantDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [isHandshaking, setIsHandshaking] = useState(false);
   const [discoveryStatus, setDiscoveryStatus] = useState<'searching' | 'failed' | 'handshaking'>('searching');
-  const [syncAttempt, setSyncAttempt] = useState(1);
   const discoveryRef = useRef(false);
 
   const performDiscovery = useCallback(async () => {
@@ -53,14 +52,17 @@ export default function TenantDashboard() {
     const userEmail = user.email.toLowerCase().trim();
 
     try {
-        // 1. Root Collection Sequential Discovery (Flat Structure)
-        // First try finding by UID (returning users)
-        const qByUid = query(collection(firestore, 'tenants'), where('userId', '==', user.uid), limit(1));
+        // 1. Direct Root Collection Discovery
+        // We check for records where either the UID is already set OR the Email matches
+        const tenantsCol = collection(firestore, 'tenants');
+        
+        // Try UID first (returning users)
+        const qByUid = query(tenantsCol, where('userId', '==', user.uid), limit(1));
         let snap = await getDocs(qByUid);
 
-        // Second try finding by Email (new users)
+        // If not found, try Email (new users completing handshake)
         if (snap.empty) {
-            const qByEmail = query(collection(firestore, 'tenants'), where('email', '==', userEmail), limit(1));
+            const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
             snap = await getDocs(qByEmail);
         }
 
@@ -74,20 +76,26 @@ export default function TenantDashboard() {
         const tenantDoc = snap.docs[0];
         const tenantData = tenantDoc.data();
         
-        // 2. Identity Verification Handshake
+        // 2. Identity Handshake & Verification
+        // If the record exists but isn't linked to this UID yet, we perform the link
         if (!tenantData.userId || tenantData.userId !== user.uid) {
             setIsHandshaking(true);
             setDiscoveryStatus('handshaking');
+            
             await updateDoc(tenantDoc.ref, { 
                 userId: user.uid,
                 verified: true,
                 joinedDate: new Date().toISOString()
             });
-            toast({ title: "Portal Connected", description: "Identity keys synchronized." });
+            
+            toast({ 
+                title: "Identity Verified", 
+                description: "Your account is now securely linked to your tenancy." 
+            });
             setIsHandshaking(false);
         }
 
-        // 3. Resolve Property Data
+        // 3. Resolve Property Context
         const propSnap = await getDoc(doc(firestore, 'properties', tenantData.propertyId));
         
         if (propSnap.exists()) {
@@ -95,11 +103,11 @@ export default function TenantDashboard() {
                 landlordId: tenantData.landlordId,
                 propertyId: tenantData.propertyId,
                 tenantId: tenantDoc.id,
-                tenantData: { ...tenantData, verified: true },
+                tenantData: { ...tenantData, verified: true, userId: user.uid },
                 propertyData: propSnap.data()
             });
-            setDiscoveryStatus('searching');
         }
+        
         setIsLoading(false);
         discoveryRef.current = false;
     } catch (err: any) {
@@ -124,20 +132,17 @@ export default function TenantDashboard() {
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/5 rounded-full animate-ping" />
             </div>
             <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Portal Handshake Active</h2>
+                <h2 className="font-headline text-2xl font-bold text-primary">Identity Sync Active</h2>
                 <p className="text-muted-foreground font-medium px-6 leading-relaxed">
-                    The platform is currently mapping your resident identity keys.
+                    {discoveryStatus === 'handshaking' 
+                        ? 'Completing the secure handshake with your property record...' 
+                        : 'Resolving your resident access keys...'}
                 </p>
-                <div className="pt-4 flex flex-col items-center gap-2">
+                <div className="pt-4">
                     <Badge variant="outline" className="bg-muted text-muted-foreground font-bold uppercase text-[9px] px-3 py-1 border-dashed">
-                        Status: {discoveryStatus === 'handshaking' ? 'Linking Identity' : 'Verifying Credentials'}
+                        Status: Handshake in progress
                     </Badge>
                 </div>
-            </div>
-            <div className="pt-6">
-                <Button variant="ghost" onClick={performDiscovery} className="text-[10px] font-bold uppercase tracking-widest text-primary/40 hover:text-primary">
-                    <RefreshCw className="mr-2 h-3 w-3" /> Sync Attempt {syncAttempt}
-                </Button>
             </div>
         </div>
     );
@@ -150,14 +155,17 @@ export default function TenantDashboard() {
                 <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 shadow-sm border text-muted-foreground/20">
                     <Search className="h-10 w-10" />
                 </div>
-                <CardTitle className="font-headline text-xl text-primary text-center">Tenancy Not Found</CardTitle>
+                <CardTitle className="font-headline text-xl text-primary text-center">Tenancy Not Linked</CardTitle>
                 <CardDescription className="text-sm font-medium text-center px-4">
-                    Your email <strong>{user?.email}</strong> is not yet linked to an active property asset.
+                    The email <strong>{user?.email}</strong> is not associated with an active tenancy in our registry.
                 </CardDescription>
             </CardHeader>
+            <CardContent className="pt-6 text-sm text-muted-foreground">
+                <p>If you believe this is an error, please ask your landlord to verify that they have registered your email <strong>{user?.email}</strong> correctly in the RentSafeUK portal.</p>
+            </CardContent>
             <CardFooter className="pt-6 bg-muted/5 border-t">
-                <Button variant="outline" className="w-full h-11 rounded-xl font-bold uppercase tracking-widest text-[10px]" onClick={() => performDiscovery()}>
-                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Re-trigger Handshake
+                <Button variant="outline" className="w-full h-11 rounded-xl font-bold uppercase tracking-widest text-[10px]" onClick={() => { discoveryRef.current = false; performDiscovery(); }}>
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Sync
                 </Button>
             </CardFooter>
         </Card>

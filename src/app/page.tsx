@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -71,8 +72,10 @@ export default function LoginPage() {
             } else {
               router.replace('/dashboard');
             }
-          } else if (mode === 'login') {
-            // If it's a login and doc doesn't exist, assume landlord or wait for creation
+          } else {
+            // Fallback for users without a document yet (e.g. during slow creation)
+            // or social login users who haven't picked a role.
+            // Landlord is the default dashboard.
             router.replace('/dashboard');
           }
         } catch (error) {
@@ -83,7 +86,7 @@ export default function LoginPage() {
       
       checkRoleAndRedirect();
     }
-  }, [user, isUserLoading, router, firestore, mode]);
+  }, [user, isUserLoading, router, firestore]);
 
   const handleAuthAction = (data: FormValues) => {
     if (!auth) {
@@ -132,6 +135,15 @@ export default function LoginPage() {
     setAuthError(null);
     form.reset();
   }
+
+  const form = useForm<FormValues>({
+    resolver: zodResolver(formSchema),
+    defaultValues: {
+      email: '',
+      password: '',
+      role: 'landlord',
+    },
+  });
 
   if (isUserLoading || user) {
     return (
