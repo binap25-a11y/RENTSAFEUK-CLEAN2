@@ -70,6 +70,7 @@ interface Tenant {
     lastReminderSent?: any;
     inviteSentDate?: any;
     joinedDate?: any;
+    verified?: boolean;
 }
 
 interface TenantScreening { id: string; screeningDate: any; }
@@ -213,7 +214,8 @@ export default function TenantDetailPage() {
   }
 
   const propertyAddress = [property?.address.nameOrNumber, property?.address.street, property?.address.city, property?.address.postcode].filter(Boolean).join(', ') || 'N/A';
-  const isVerified = !!tenant.joinedDate;
+  // Use explicit verified flag or joinedDate as confirmation
+  const isVerified = tenant.verified === true || !!tenant.joinedDate;
 
   return (
     <div className="flex flex-col gap-6 text-left">

@@ -66,6 +66,13 @@ export default function TenantDashboard() {
     const unsub = onSnapshot(q, (snap) => {
         if (propUnsub) propUnsub();
 
+        if (snap.empty) {
+            setIsLoading(false);
+            setContext(null);
+            return;
+        }
+
+        // Prioritize Active and Verified record
         const activeTenantDoc = snap.docs.find(d => d.data().status === 'Active') || snap.docs[0];
 
         if (activeTenantDoc) {
@@ -93,16 +100,18 @@ export default function TenantDashboard() {
                         });
                         
                         // Metadata auto-sync for handshake confirmation
-                        if (!data.joinedDate || data.userId !== user.uid) {
+                        // This changes the status from "Pending" to "Verified" logically by setting verified: true
+                        if (!data.joinedDate || data.userId !== user.uid || !data.verified) {
                             updateDoc(activeTenantDoc.ref, { 
                                 joinedDate: new Date().toISOString(),
-                                userId: user.uid 
-                            }).catch(err => console.warn("Resident metadata sync failed:", err));
+                                userId: user.uid,
+                                verified: true
+                            }).catch(err => console.warn("Resident verification sync failed:", err));
                         }
 
                         setError(null);
                     } else {
-                        setError("Resident identity verified but property profile is currently inaccessible.");
+                        setError("Resident identity linked but property profile is currently inaccessible.");
                     }
                     setIsLoading(false);
                     setIsIndexBuilding(false);

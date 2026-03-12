@@ -21,6 +21,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -164,6 +165,7 @@ export default function AddTenantPage() {
         email: normalizedEmail,
         userId: user.uid,
         status: 'Active',
+        verified: false, // Explicitly false until they log in
         createdDate: new Date().toISOString(),
     };
 
@@ -189,19 +191,19 @@ export default function AddTenantPage() {
   };
 
   return (
-    <Card className="max-w-2xl mx-auto shadow-lg border-none">
+    <Card className="max-w-2xl mx-auto shadow-lg border-none overflow-hidden">
       <CardHeader className="bg-primary/5 border-b border-primary/10">
         <CardTitle className="text-2xl font-headline text-primary">Assign New Tenant</CardTitle>
         <CardDescription>Establishing identity mapping via verified email for resident portal access.</CardDescription>
       </CardHeader>
-      <CardContent className="pt-6">
+      <CardContent className="pt-8">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 text-left">
             <FormField
               control={form.control}
               name="propertyId"
               render={({ field }) => (
-                <FormItem className="flex flex-col text-left">
+                <FormItem className="flex flex-col">
                   <FormLabel className="font-bold">Portfolio Property</FormLabel>
                   <Popover open={isPropSelectorOpen} onOpenChange={setIsPropSelectorOpen}>
                     <PopoverTrigger asChild>
@@ -246,24 +248,24 @@ export default function AddTenantPage() {
               )}
             />
             
-            <FormField control={form.control} name="name" render={({ field }) => (<FormItem className="text-left"><FormLabel className="font-bold">Full Legal Name</FormLabel><FormControl><Input placeholder="John Smith" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="name" render={({ field }) => (<FormItem><FormLabel className="font-bold">Full Legal Name</FormLabel><FormControl><Input placeholder="John Smith" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>)} />
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                <FormField control={form.control} name="email" render={({ field }) => (
-                 <FormItem className="text-left">
+                 <FormItem>
                    <FormLabel className="font-bold">Resident Portal Email</FormLabel>
                    <FormControl><Input type="email" placeholder="tenant@example.com" className="h-11" {...field} /></FormControl>
-                   <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mt-1">This email is the unique key for resident portal verification.</p>
+                   <FormDescription className="text-[10px] uppercase font-bold tracking-widest leading-tight">This email is the unique key for resident portal verification.</FormDescription>
                    <FormMessage />
                  </FormItem>
                )} />
-               <FormField control={form.control} name="telephone" render={({ field }) => (<FormItem className="text-left"><FormLabel className="font-bold">Telephone</FormLabel><FormControl><Input type="tel" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>)} />
+               <FormField control={form.control} name="telephone" render={({ field }) => (<FormItem><FormLabel className="font-bold">Telephone</FormLabel><FormControl><Input type="tel" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>)} />
             </div>
 
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t pt-6">
-                <FormField control={form.control} name="monthlyRent" render={({ field }) => (<FormItem className="text-left"><FormLabel className="font-bold">Agreed Monthly Rent (£)</FormLabel><FormControl><Input type="number" min="0" placeholder="0.00" className="h-11" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="monthlyRent" render={({ field }) => (<FormItem><FormLabel className="font-bold">Agreed Monthly Rent (£)</FormLabel><FormControl><Input type="number" min="0" placeholder="0.00" className="h-11" {...field} value={field.value ?? ''} /></FormControl><FormMessage /></FormItem>)} />
                 <FormField control={form.control} name="rentDueDay" render={({ field }) => (
-                    <FormItem className="text-left">
+                    <FormItem>
                         <FormLabel className="font-bold flex items-center gap-2"><CalendarDays className="h-4 w-4 text-primary" />Rent Due Day</FormLabel>
                         <Select onValueChange={field.onChange} value={String(field.value)}>
                             <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select day" /></SelectTrigger></FormControl>
@@ -276,18 +278,18 @@ export default function AddTenantPage() {
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
               <FormField control={form.control} name="tenancyStartDate" render={({ field }) => (
-                <FormItem className="text-left"><FormLabel className="font-bold">Tenancy Start</FormLabel><FormControl><Input type="date" className="h-11" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel className="font-bold">Tenancy Start</FormLabel><FormControl><Input type="date" className="h-11" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>
               )} />
               <FormField control={form.control} name="tenancyEndDate" render={({ field }) => (
-                <FormItem className="text-left"><FormLabel className="font-bold">Tenancy End (Optional)</FormLabel><FormControl><Input type="date" className="h-11" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel className="font-bold">Tenancy End (Optional)</FormLabel><FormControl><Input type="date" className="h-11" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>
               )} />
             </div>
             
-            <FormField control={form.control} name="notes" render={({ field }) => (<FormItem className="text-left"><FormLabel className="font-bold">Audit Notes</FormLabel><FormControl><Textarea className="resize-none min-h-[100px] rounded-xl" {...field} /></FormControl><FormMessage /></FormItem>)} />
+            <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel className="font-bold">Audit Notes</FormLabel><FormControl><Textarea className="resize-none min-h-[100px] rounded-xl" {...field} /></FormControl><FormMessage /></FormItem>)} />
 
             <div className="flex items-center justify-end gap-3 pt-4 border-t">
-                <Button type="button" variant="ghost" asChild className="font-bold uppercase tracking-widest text-xs h-11"><Link href="/dashboard/tenants">Cancel</Link></Button>
-                <Button type="submit" disabled={isSubmitting} className="font-bold uppercase tracking-widest text-xs h-11 px-10 shadow-lg bg-primary hover:bg-primary/90">
+                <Button type="button" variant="ghost" asChild className="font-bold uppercase tracking-widest text-[10px] h-11"><Link href="/dashboard/tenants">Cancel</Link></Button>
+                <Button type="submit" disabled={isSubmitting} className="font-bold uppercase tracking-widest text-[10px] h-11 px-10 shadow-lg bg-primary hover:bg-primary/90">
                   {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Synchronizing...</> : 'Complete Assignment'}
                 </Button>
             </div>

@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -35,6 +34,8 @@ import {
   Mail,
   Phone,
   Eye,
+  ShieldCheck,
+  Clock
 } from 'lucide-react';
 import {
   useUser,
@@ -58,6 +59,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { Badge } from '@/components/ui/badge';
 
 // Types
 interface Tenant {
@@ -68,6 +70,8 @@ interface Tenant {
   propertyId: string;
   userId: string;
   status?: string;
+  verified?: boolean;
+  joinedDate?: any;
 }
 
 interface Property {
@@ -179,18 +183,18 @@ export default function TenantsPage() {
       <div className="flex flex-col gap-6">
         <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between sm:items-center">
           <div>
-            <h1 className="text-3xl font-bold font-headline">Tenants</h1>
+            <h1 className="text-3xl font-bold font-headline text-primary">Tenants</h1>
             <p className="text-muted-foreground font-medium">
-              Manage all your tenants in one place.
+              Manage resident verification and tenancy records.
             </p>
           </div>
           <div className="flex flex-col sm:flex-row items-center gap-2 w-full sm:w-auto">
-              <Button asChild variant="outline" className="w-full sm:w-auto">
+              <Button asChild variant="outline" className="w-full sm:w-auto font-bold uppercase tracking-widest text-[10px] h-10 px-6">
                   <Link href="/dashboard/tenants/archived">
                       <Archive className="mr-2 h-4 w-4" /> View Archived
                   </Link>
               </Button>
-              <Button asChild className="w-full sm:w-auto">
+              <Button asChild className="w-full sm:w-auto font-bold uppercase tracking-widest text-[10px] h-10 px-8 shadow-lg bg-primary hover:bg-primary/90">
                 <Link href="/dashboard/tenants/add">
                   <PlusCircle className="mr-2 h-4 w-4" /> Add Tenant
                 </Link>
@@ -198,19 +202,19 @@ export default function TenantsPage() {
           </div>
         </div>
         
-        <Card className="border-none shadow-lg">
-          <CardHeader>
-            <CardTitle>Active Tenants</CardTitle>
-            <CardDescription>A list of current tenants associated with your properties.</CardDescription>
+        <Card className="border-none shadow-lg overflow-hidden">
+          <CardHeader className="bg-muted/20 border-b pb-6">
+            <CardTitle>Portfolio Registry</CardTitle>
+            <CardDescription>A list of active tenants and their verification status.</CardDescription>
           </CardHeader>
-          <CardContent>
+          <CardContent className="pt-6">
             <div className="relative w-full max-w-sm mb-6">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 id="tenant-search-input"
                 name="tenantSearch"
                 placeholder="Search by name or email..."
-                className="pl-8 h-11"
+                className="pl-8 h-11 bg-background"
                 value={searchTerm}
                 onChange={(e) => setSearchTerm(e.target.value)}
               />
@@ -219,10 +223,10 @@ export default function TenantsPage() {
             {isLoading ? (
               <div className="flex flex-col justify-center items-center h-64 gap-2 text-muted-foreground">
                 <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                <p className="text-sm font-medium">Loading tenants...</p>
+                <p className="text-sm font-medium">Synchronizing residents...</p>
               </div>
             ) : !filteredTenants?.length ? (
-              <div className="text-center py-20 border-2 border-dashed rounded-xl bg-muted/5">
+              <div className="text-center py-20 border-2 border-dashed rounded-2xl bg-muted/5">
                 <Search className="h-10 w-10 mx-auto text-muted-foreground/20 mb-4" />
                 <p className="text-muted-foreground font-medium">
                   {searchTerm ? `No tenants found for "${searchTerm}".` : 'No active tenants found.'}
@@ -230,107 +234,118 @@ export default function TenantsPage() {
               </div>
             ) : (
               <>
-                <div className="hidden rounded-md border md:block overflow-hidden">
+                <div className="hidden rounded-xl border md:block overflow-hidden shadow-sm">
                   <Table>
                     <TableHeader className="bg-muted/50">
                       <TableRow>
-                        <TableHead className="font-bold text-[10px] uppercase tracking-wider">Name</TableHead>
+                        <TableHead className="font-bold text-[10px] uppercase tracking-wider pl-6 py-4">Resident Identity</TableHead>
                         <TableHead className="font-bold text-[10px] uppercase tracking-wider">Property</TableHead>
-                        <TableHead className="font-bold text-[10px] uppercase tracking-wider">Contact</TableHead>
+                        <TableHead className="font-bold text-[10px] uppercase tracking-wider">Status</TableHead>
                         <TableHead className="text-right font-bold text-[10px] uppercase tracking-wider pr-6">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
-                      {filteredTenants.map((tenant) => (
-                        <TableRow key={tenant.id} className="hover:bg-muted/30 transition-colors">
-                          <TableCell className="font-bold">
-                            <Link href={`/dashboard/tenants/${tenant.id}?propertyId=${tenant.propertyId}`} className="hover:underline text-primary">
-                              {tenant.name}
-                            </Link>
-                          </TableCell>
-                          <TableCell className="text-xs font-medium text-muted-foreground">
-                            {propertyMap[tenant.propertyId] || 'Assigned Property'}
-                          </TableCell>
-                          <TableCell>
-                            <div className="space-y-0.5">
-                                <p className="text-xs font-semibold">{tenant.email}</p>
-                                <p className="text-[10px] text-muted-foreground">{tenant.telephone}</p>
-                            </div>
-                          </TableCell>
-                          <TableCell className="text-right pr-6">
-                            <div className="flex justify-end gap-1">
-                                <Button asChild variant="ghost" size="icon" className="h-8 w-8">
-                                    <Link href={`/dashboard/tenants/${tenant.id}?propertyId=${tenant.propertyId}`}>
-                                        <Eye className="h-4 w-4" />
-                                    </Link>
-                                </Button>
-                                <Button asChild variant="ghost" size="icon" className="h-8 w-8">
-                                    <Link href={`/dashboard/tenants/${tenant.id}/edit?propertyId=${tenant.propertyId}`}>
-                                        <Edit className="mr-2 h-4 w-4" />
-                                    </Link>
-                                </Button>
-                                <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => setTenantToArchive(tenant)}>
-                                    <Archive className="h-4 w-4" />
-                                </Button>
-                            </div>
-                          </TableCell>
-                        </TableRow>
-                      ))}
+                      {filteredTenants.map((tenant) => {
+                        const isVerified = tenant.verified === true || !!tenant.joinedDate;
+                        return (
+                          <TableRow key={tenant.id} className="hover:bg-muted/30 transition-colors group">
+                            <TableCell className="font-bold pl-6 py-5">
+                              <Link href={`/dashboard/tenants/${tenant.id}?propertyId=${tenant.propertyId}`} className="hover:underline text-primary">
+                                {tenant.name}
+                              </Link>
+                              <div className="text-[10px] text-muted-foreground font-medium uppercase tracking-widest mt-0.5">{tenant.email}</div>
+                            </TableCell>
+                            <TableCell className="text-xs font-medium text-muted-foreground">
+                              {propertyMap[tenant.propertyId] || 'Assigned Property'}
+                            </TableCell>
+                            <TableCell>
+                              {isVerified ? (
+                                <Badge variant="default" className="bg-green-50 text-green-700 border-green-200 gap-1.5 font-bold uppercase text-[9px] px-2.5 h-6">
+                                    <ShieldCheck className="h-3 w-3" /> Verified
+                                </Badge>
+                              ) : (
+                                <Badge variant="secondary" className="gap-1.5 font-bold uppercase text-[9px] px-2.5 h-6 opacity-70">
+                                    <Clock className="h-3 w-3" /> Pending
+                                </Badge>
+                              )}
+                            </TableCell>
+                            <TableCell className="text-right pr-6">
+                              <div className="flex justify-end gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                                  <Button asChild variant="ghost" size="icon" className="h-8 w-8 text-primary shadow-none"><Link href={`/dashboard/tenants/${tenant.id}?propertyId=${tenant.propertyId}`}><Eye className="h-4 w-4" /></Link></Button>
+                                  <Button asChild variant="ghost" size="icon" className="h-8 w-8 text-primary shadow-none"><Link href={`/dashboard/tenants/${tenant.id}/edit?propertyId=${tenant.propertyId}`}><Edit className="h-4 w-4" /></Link></Button>
+                                  <Button variant="ghost" size="icon" className="h-8 w-8 text-destructive shadow-none" onClick={() => setTenantToArchive(tenant)}><Archive className="h-4 w-4" /></Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        );
+                      })}
                     </TableBody>
                   </Table>
                 </div>
 
                 <div className="grid gap-4 md:hidden">
-                  {filteredTenants.map((tenant) => (
-                    <Card key={tenant.id} className="shadow-sm border-muted/60">
-                      <CardHeader className="pb-3">
-                        <div className="flex justify-between items-start">
-                          <div>
-                            <CardTitle className="text-lg font-bold">
-                              <Link href={`/dashboard/tenants/${tenant.id}?propertyId=${tenant.propertyId}`} className="hover:underline">
-                                {tenant.name}
-                              </Link>
-                            </CardTitle>
-                            <CardDescription className="text-xs font-bold uppercase tracking-tight mt-1 text-primary">
-                              {propertyMap[tenant.propertyId] || 'Assigned Property'}
-                            </CardDescription>
+                  {filteredTenants.map((tenant) => {
+                    const isVerified = tenant.verified === true || !!tenant.joinedDate;
+                    return (
+                      <Card key={tenant.id} className="shadow-sm border-muted/60 overflow-hidden">
+                        <CardHeader className="pb-3 bg-muted/5 border-b">
+                          <div className="flex justify-between items-start">
+                            <div className="space-y-1">
+                              <CardTitle className="text-lg font-bold">
+                                <Link href={`/dashboard/tenants/${tenant.id}?propertyId=${tenant.propertyId}`} className="hover:underline">
+                                  {tenant.name}
+                                </Link>
+                              </CardTitle>
+                              <CardDescription className="text-xs font-bold uppercase tracking-tight text-primary">
+                                {propertyMap[tenant.propertyId] || 'Assigned Property'}
+                              </CardDescription>
+                            </div>
+                            <DropdownMenu>
+                              <DropdownMenuTrigger asChild>
+                                <Button variant="ghost" size="icon" className="-mr-2 -mt-2">
+                                  <MoreVertical className="h-4 w-4" />
+                                </Button>
+                              </DropdownMenuTrigger>
+                              <DropdownMenuContent align="end" className="w-48 p-1">
+                                <DropdownMenuItem asChild>
+                                  <Link href={`/dashboard/tenants/${tenant.id}?propertyId=${tenant.propertyId}`} className="cursor-pointer">
+                                      <Eye className="mr-2 h-4 w-4" /> View Profile
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem asChild>
+                                  <Link href={`/dashboard/tenants/${tenant.id}/edit?propertyId=${tenant.propertyId}`} className="cursor-pointer">
+                                    <Edit className="mr-2 h-4 w-4" /> Edit Record
+                                  </Link>
+                                </DropdownMenuItem>
+                                <DropdownMenuItem onClick={() => setTenantToArchive(tenant)} className="text-destructive font-bold cursor-pointer">
+                                  <Archive className="mr-2 h-4 w-4" /> Archive Tenant
+                                </DropdownMenuItem>
+                              </DropdownMenuContent>
+                            </DropdownMenu>
                           </div>
-                          <DropdownMenu>
-                            <DropdownMenuTrigger asChild>
-                              <Button variant="ghost" size="icon" className="-mr-2 -mt-2">
-                                <MoreVertical className="h-4 w-4" />
-                              </Button>
-                            </DropdownMenuTrigger>
-                            <DropdownMenuContent align="end">
-                              <DropdownMenuItem asChild>
-                                <Link href={`/dashboard/tenants/${tenant.id}?propertyId=${tenant.propertyId}`}>
-                                    <Eye className="mr-2 h-4 w-4" /> View Profile
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem asChild>
-                                <Link href={`/dashboard/tenants/${tenant.id}/edit?propertyId=${tenant.propertyId}`}>
-                                  <Edit className="mr-2 h-4 w-4" /> Edit
-                                </Link>
-                              </DropdownMenuItem>
-                              <DropdownMenuItem onClick={() => setTenantToArchive(tenant)} className="text-destructive">
-                                <Archive className="mr-2 h-4 w-4" /> Archive
-                              </DropdownMenuItem>
-                            </DropdownMenuContent>
-                          </DropdownMenu>
-                        </div>
-                      </CardHeader>
-                      <CardContent className="space-y-2 text-sm pt-0 pb-4 border-b border-dashed">
-                        <div className="flex items-center gap-2">
-                          <Mail className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span className='truncate font-medium'>{tenant.email}</span>
-                        </div>
-                        <div className="flex items-center gap-2">
-                          <Phone className="h-3.5 w-3.5 text-muted-foreground" />
-                          <span className="font-medium">{tenant.telephone}</span>
-                        </div>
-                      </CardContent>
-                    </Card>
-                  ))}
+                        </CardHeader>
+                        <CardContent className="space-y-3 pt-4 pb-4">
+                          <div className="flex items-center justify-between">
+                              <div className="flex items-center gap-2 text-sm">
+                                <Mail className="h-3.5 w-3.5 text-muted-foreground" />
+                                <span className='truncate font-medium'>{tenant.email}</span>
+                              </div>
+                              {isVerified ? (
+                                <Badge className="bg-green-50 text-green-700 border-green-200 text-[8px] uppercase font-bold px-2 py-0">Verified</Badge>
+                              ) : (
+                                <Badge variant="secondary" className="text-[8px] uppercase font-bold px-2 py-0">Pending</Badge>
+                              )}
+                          </div>
+                          {tenant.telephone && (
+                            <div className="flex items-center gap-2 text-sm">
+                              <Phone className="h-3.5 w-3.5 text-muted-foreground" />
+                              <span className="font-medium">{tenant.telephone}</span>
+                            </div>
+                          )}
+                        </CardContent>
+                      </Card>
+                    );
+                  })}
                 </div>
               </>
             )}
@@ -339,17 +354,18 @@ export default function TenantsPage() {
       </div>
 
       <AlertDialog open={!!tenantToArchive} onOpenChange={(open) => !open && setTenantToArchive(null)}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Archive tenant record?</AlertDialogTitle>
-            <AlertDialogDescription>
-              This will move {tenantToArchive?.name} to the archives. You can restore them later from the archived tenants page.
+            <div className="p-4 rounded-full bg-destructive/10 w-fit mx-auto mb-4"><Archive className="h-8 w-8 text-destructive" /></div>
+            <AlertDialogTitle className="text-xl text-center">Archive tenant record?</AlertDialogTitle>
+            <AlertDialogDescription className="text-base font-medium text-center">
+              This will move <strong className="text-foreground">{tenantToArchive?.name}</strong> to your archives. Access to the Resident Hub will be revoked.
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel>Cancel</AlertDialogCancel>
+          <AlertDialogFooter className="gap-3 mt-6">
+            <AlertDialogCancel className="rounded-2xl font-bold uppercase text-[10px] h-12 flex-1">Cancel</AlertDialogCancel>
             <AlertDialogAction
-              className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+              className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-2xl font-bold uppercase text-[10px] h-12 flex-1 shadow-lg"
               onClick={handleArchiveConfirm}
             >
               Archive Tenant
