@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -19,7 +20,6 @@ import {
   Bath, 
   Sparkles,
   ChevronRight,
-  UserCircle,
   RefreshCw
 } from 'lucide-react';
 import Link from 'next/link';
@@ -80,7 +80,7 @@ export default function DashboardPage() {
 
     const userEmail = user.email?.toLowerCase().trim();
 
-    // A. Landlord Discovery (Always happens in parallel)
+    // A. Landlord Discovery
     const propQuery = query(
       collection(firestore, 'userProfiles', user.uid, 'properties'), 
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
@@ -90,13 +90,13 @@ export default function DashboardPage() {
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Property));
       setProperties(list);
       
-      // If user has properties, they are definitely a landlord/agent context
+      // If user has properties, they are definitely a landlord context
       if (list.length > 0 || userRole === 'landlord' || userRole === 'agent') {
         setDiscoveryComplete(true);
       }
     });
 
-    // B. Tenant Global Discovery (Only if role is tenant or unknown)
+    // B. Tenant Global Discovery (Identity Handshake)
     let unsubTenants = () => {};
     if (userEmail) {
         const tenantsQuery = query(
@@ -107,10 +107,10 @@ export default function DashboardPage() {
 
         unsubTenants = onSnapshot(tenantsQuery, (snap) => {
             if (!snap.empty) {
-                // Verified tenant found - redirect to hub immediately
+                // Verified tenant found - route to specialized hub immediately
                 router.replace('/tenant/dashboard');
             } else if (userRole === 'tenant') {
-                // Explicitly a tenant but no record found yet
+                // Explicitly a tenant but no record found yet - allow to see empty state or wait
                 setDiscoveryComplete(true); 
             }
         }, (err) => {
@@ -123,9 +123,11 @@ export default function DashboardPage() {
         });
     }
 
-    // C. Safety Timeout for Discovery
+    // C. Safety Timeout for Discovery (5 seconds)
     const timer = setTimeout(() => {
         setHandshakeTimedOut(true);
+        // Fallback: If timed out and role is landlord/agent, just show the dashboard
+        if (userRole !== 'tenant') setDiscoveryComplete(true);
     }, 5000);
 
     return () => {
@@ -152,7 +154,7 @@ export default function DashboardPage() {
     return (
       <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">Initializing Portal...</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">Verifying Credentials...</p>
       </div>
     );
   }
@@ -174,7 +176,7 @@ export default function DashboardPage() {
             <div className="p-4 rounded-xl bg-muted/50 border border-dashed text-xs text-muted-foreground text-left">
                 <p className="font-bold uppercase text-[9px] mb-1">Status: Mapping Identity</p>
                 {isIndexBuilding 
-                    ? "Firestore cloud indexes are being provisioned. This takes 2-3 minutes on first setup." 
+                    ? "Firestore cloud indexes are being provisioned. This typically takes 2-3 minutes." 
                     : "Synchronizing with your landlord's records..."}
             </div>
             <div className="flex flex-col gap-2">
@@ -246,6 +248,7 @@ export default function DashboardPage() {
                   <Card key={p.id} className="group overflow-hidden flex flex-col hover:shadow-xl transition-all cursor-pointer border-none shadow-md bg-card" onClick={() => router.push(`/dashboard/properties/${p.id}`)}>
                     <div className="relative aspect-[16/10] bg-muted overflow-hidden border-b">
                       {p.imageUrl ? (
+                        /* eslint-disable-next-line @next/next/no-img-element */
                         <img src={p.imageUrl} alt="Property" className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" />
                       ) : <div className="flex items-center justify-center w-full h-full bg-primary/5"><Home className="h-12 w-12 text-primary/10" /></div>}
                     </div>

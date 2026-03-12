@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -23,6 +24,7 @@ import {
 import { useUser, useFirestore } from '@/firebase';
 import { collectionGroup, query, where, limit, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
+import { useRouter } from 'next/navigation';
 
 interface TenantContext {
     landlordId: string;
@@ -35,6 +37,7 @@ interface TenantContext {
 export default function TenantDashboard() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const router = useRouter();
   const [context, setContext] = useState<TenantContext | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
@@ -53,7 +56,7 @@ export default function TenantDashboard() {
     const userEmail = user.email.toLowerCase().trim();
 
     // 1. Discovery Handshake via Collection Group
-    // Note: Requires a COLLECTION_GROUP index on 'tenants' for 'email'.
+    // Forced normalization matching landlord-side forced lowercase emails
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
@@ -71,7 +74,6 @@ export default function TenantDashboard() {
             const data = activeTenantDoc.data();
             const path = activeTenantDoc.ref.path;
             
-            // Resolve parent references from path
             const segments = path.split('/');
             const userProfilesIdx = segments.indexOf('userProfiles');
             const propertiesIdx = segments.indexOf('properties');
@@ -92,12 +94,12 @@ export default function TenantDashboard() {
                             propertyData: propSnap.data()
                         });
                         
-                        // Automatic Join-Date Sync
+                        // Metadata auto-sync
                         if (!data.joinedDate) {
                             updateDoc(activeTenantDoc.ref, { 
                                 joinedDate: new Date().toISOString(),
                                 userId: user.uid 
-                            }).catch(err => console.warn("Resident metadata update failed:", err));
+                            }).catch(err => console.warn("Resident metadata sync failed:", err));
                         }
 
                         setError(null);
@@ -108,7 +110,7 @@ export default function TenantDashboard() {
                     setIsIndexBuilding(false);
                 }, (err) => {
                     console.warn("Property sync pending security clearance:", err.message);
-                    setError("Portfolio synchronization pending. Access might be restricted by landlord security settings.");
+                    setError("Portfolio synchronization pending. Access restricted by landlord security settings.");
                     setIsLoading(false);
                 });
             } else {
