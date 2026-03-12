@@ -54,7 +54,7 @@ export default function TenantDashboard() {
     
     const userEmail = user.email.toLowerCase().trim();
 
-    // 1. Discovery Handshake via Collection Group (Forced lowercase matching)
+    // 1. Discovery Handshake via Collection Group
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
@@ -100,13 +100,15 @@ export default function TenantDashboard() {
                         });
                         
                         // VERIFICATION HANDSHAKE:
-                        // Synchronize status to "Verified" if this is their first time joining or identity linking
-                        if (!data.joinedDate || data.userId !== user.uid || data.verified !== true) {
+                        // Automatically update the verified flag and joined date upon successful identity match.
+                        // This triggers the transition from "Pending" to "Verified" in the Landlord's view.
+                        if (data.verified !== true || !data.joinedDate || data.userId !== user.uid) {
+                            console.log("Tenant Hub: Completing verified identity handshake...");
                             updateDoc(activeTenantDoc.ref, { 
                                 joinedDate: new Date().toISOString(),
                                 userId: user.uid,
                                 verified: true
-                            }).catch(err => console.warn("Auto-verification failed:", err));
+                            }).catch(err => console.warn("Auto-verification write failed:", err.message));
                         }
 
                         setError(null);

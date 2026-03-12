@@ -165,7 +165,7 @@ export default function AddTenantPage() {
         email: normalizedEmail,
         userId: user.uid,
         status: 'Active',
-        verified: false, // Explicitly false until they log in
+        verified: false, // EXPLICITLY FALSE: Transitions to true only when tenant logs in
         createdDate: new Date().toISOString(),
     };
 
