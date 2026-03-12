@@ -54,7 +54,7 @@ import { uploadPropertyImage } from '@/lib/upload-image';
 
 interface Property {
     id: string;
-    userId: string;
+    landlordId: string;
     address: {
       nameOrNumber?: string;
       street: string;
@@ -86,18 +86,18 @@ interface Tenant {
     status?: string;
 }
 
-interface MaintenanceLog {
+interface Repair {
     id: string;
     title: string;
     status: string;
-    reportedDate: { seconds: number; nanoseconds: number } | Date;
+    reportedDate: any;
 }
 
 interface Inspection {
     id: string;
     type: string;
     status: string;
-    scheduledDate: { seconds: number; nanoseconds: number } | Date;
+    scheduledDate: any;
 }
 
 export default function PropertyDetailPage() {
@@ -115,61 +115,41 @@ export default function PropertyDetailPage() {
 
   const propertyRef = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
-    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId);
+    return doc(firestore, 'properties', propertyId);
   }, [firestore, propertyId, user]);
   const { data: property, isLoading: isLoadingProperty, error: propertyError } = useDoc<Property>(propertyRef);
   
-  const tenantsForPropertyQuery = useMemoFirebase(() => {
+  const tenantsQuery = useMemoFirebase(() => {
     if (!user || !firestore || !propertyId) return null;
     return query(
-      collection(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'tenants'),
+      collection(firestore, 'tenants'),
+      where('propertyId', '==', propertyId),
       where('status', '==', 'Active')
     );
   }, [firestore, user, propertyId]);
+  const { data: activeTenants, isLoading: isLoadingTenants } = useCollection<Tenant>(tenantsQuery);
 
-  const { data: activeTenants, isLoading: isLoadingTenants } = useCollection<Tenant>(tenantsForPropertyQuery);
-
-  /**
-   * SELF-HEALING LOGIC: Automatically synchronizes property status based on active tenant count.
-   * Resolves issues where property remains 'Vacant' despite having assigned tenants.
-   */
-  useEffect(() => {
-    if (!isLoadingProperty && !isLoadingTenants && property && activeTenants !== null && propertyRef) {
-      const hasActiveTenants = activeTenants.length > 0;
-      const expectedStatus = hasActiveTenants ? 'Occupied' : 'Vacant';
-      
-      // We only auto-adjust if the current status is Vacant or Occupied
-      // We don't touch 'Under Maintenance' or 'Deleted' as those are manual states
-      if (['Vacant', 'Occupied'].includes(property.status) && property.status !== expectedStatus) {
-        console.log(`Auto-repairing property status to ${expectedStatus} based on tenant registry.`);
-        updateDoc(propertyRef, { status: expectedStatus }).catch(err => {
-            console.error("Status auto-repair failed:", err);
-        });
-      }
-    }
-  }, [property, activeTenants, isLoadingProperty, isLoadingTenants, propertyRef]);
-
-  const maintenanceQuery = useMemoFirebase(() => {
+  const repairsQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
-    return collection(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'maintenanceLogs');
+    return query(collection(firestore, 'repairs'), where('propertyId', '==', propertyId));
   }, [firestore, propertyId, user]);
-  const { data: maintenanceLogs } = useCollection<MaintenanceLog>(maintenanceQuery);
+  const { data: repairs } = useCollection<Repair>(repairsQuery);
 
   const inspectionQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
-    return collection(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'inspections');
+    return query(collection(firestore, 'inspections'), where('propertyId', '==', propertyId));
   }, [firestore, propertyId, user]);
   const { data: inspections } = useCollection<Inspection>(inspectionQuery);
 
-  const activeMaintenance = useMemo(() => {
-    return maintenanceLogs?.filter(log => log.status === 'Open' || log.status === 'In Progress') || [];
-  }, [maintenanceLogs]);
+  const activeRepairs = useMemo(() => {
+    return repairs?.filter(log => log.status === 'Open' || log.status === 'In Progress') || [];
+  }, [repairs]);
 
   const scheduledInspections = useMemo(() => {
     return inspections?.filter(insp => insp.status === 'Scheduled') || [];
   }, [inspections]);
 
-  const openMaintenanceCount = activeMaintenance.length;
+  const openRepairsCount = activeRepairs.length;
 
   const handleMediaAction = async (action: 'upload' | 'delete' | 'promote', url?: string, files?: FileList | null) => {
     if (!user || !property || !propertyRef) return;
@@ -230,8 +210,7 @@ export default function PropertyDetailPage() {
   const handleDeleteConfirm = async () => {
     if (!firestore || !user || !property) return;
     try {
-      const docRef = doc(firestore, 'userProfiles', user.uid, 'properties', propertyId);
-      await updateDoc(docRef, { status: 'Deleted' });
+      await updateDoc(doc(firestore, 'properties', propertyId), { status: 'Deleted' });
       toast({ title: 'Property Archived', description: `${property.address.street} moved to archived records.` });
       router.push('/dashboard/properties');
     } catch (e) {
@@ -259,7 +238,7 @@ export default function PropertyDetailPage() {
     );
   }
 
-  if (propertyError) {
+  if (propertyError || !property) {
     return (
       <div className="flex flex-col items-center justify-center h-64 gap-4 p-6">
         <AlertCircle className="h-12 w-12 text-destructive opacity-20" />
@@ -268,8 +247,6 @@ export default function PropertyDetailPage() {
       </div>
     );
   }
-  
-  if (!property) return <div className="text-center py-20"><p className="text-muted-foreground italic">Property record not found.</p></div>;
 
   const propertyAddressTitle = [property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ');
   const propertyAddressSubtitle = [property.address.city, property.address.county, property.address.postcode].filter(Boolean).join(', ');
@@ -284,10 +261,10 @@ export default function PropertyDetailPage() {
                     <h1 className="text-2xl font-bold font-headline leading-tight break-words text-foreground">{propertyAddressTitle}</h1>
                     <div className="flex items-center flex-wrap gap-2 mt-1">
                         <p className="text-muted-foreground text-sm font-medium">{propertyAddressSubtitle}</p>
-                        {openMaintenanceCount > 0 && (
+                        {openRepairsCount > 0 && (
                             <Badge variant="destructive" className="h-5 px-1.5 gap-1 animate-pulse shrink-0">
                                 <AlertCircle className="h-3 w-3" />
-                                {openMaintenanceCount} Open
+                                {openRepairsCount} Open
                             </Badge>
                         )}
                     </div>
@@ -539,16 +516,16 @@ export default function PropertyDetailPage() {
                   <Button variant="ghost" size="sm" asChild className="text-[10px] font-bold uppercase h-8"><Link href={`/dashboard/maintenance/logged?propertyId=${propertyId}`}>View All</Link></Button>
               </CardHeader>
               <CardContent className="pt-6 bg-muted/5">
-                {(activeMaintenance.length === 0 && scheduledInspections.length === 0) ? (
+                {(activeRepairs.length === 0 && scheduledInspections.length === 0) ? (
                   <p className="text-[10px] text-muted-foreground text-center py-6 italic uppercase tracking-wider">No active events</p>
                 ) : (
                   <div className="space-y-4">
-                    {activeMaintenance.slice(0, 3).map(log => (
-                      <div key={log.id} className="text-sm border-l-4 border-destructive pl-4 py-2 bg-background rounded-r-xl shadow-sm">
-                        <Link href={`/dashboard/maintenance/${log.id}?propertyId=${propertyId}`} className="font-bold hover:text-primary transition-colors line-clamp-1">{log.title}</Link>
+                    {activeRepairs.slice(0, 3).map(repair => (
+                      <div key={repair.id} className="text-sm border-l-4 border-destructive pl-4 py-2 bg-background rounded-r-xl shadow-sm">
+                        <Link href={`/dashboard/maintenance/${repair.id}?propertyId=${propertyId}`} className="font-bold hover:text-primary transition-colors line-clamp-1">{repair.title}</Link>
                         <div className="flex items-center gap-2 mt-1.5">
-                            <Badge variant="outline" className="text-[9px] h-4 uppercase font-bold">{log.status}</Badge>
-                            <span className="text-[9px] font-bold text-muted-foreground uppercase">{safeFormatDate(log.reportedDate, 'dd MMM')}</span>
+                            <Badge variant="outline" className="text-[9px] h-4 uppercase font-bold">{repair.status}</Badge>
+                            <span className="text-[9px] font-bold text-muted-foreground uppercase">{safeFormatDate(repair.reportedDate, 'dd MMM')}</span>
                         </div>
                       </div>
                     ))}

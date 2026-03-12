@@ -51,7 +51,7 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, addDoc, limit } from 'firebase/firestore';
+import { collection, query, addDoc, limit, where } from 'firebase/firestore';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
 import { cn } from '@/lib/utils';
@@ -83,7 +83,7 @@ interface Property {
     county?: string;
     postcode: string;
   };
-  userId: string;
+  landlordId: string;
   status: string;
 }
 
@@ -94,9 +94,6 @@ interface Contractor {
     trade: string;
 }
 
-/**
- * Robust data sanitization utility to prevent Firestore "undefined field" errors.
- */
 const prepareForFirestore = (obj: any): any => {
     return JSON.parse(JSON.stringify(obj, (key, value) => {
         if (value === undefined) return null;
@@ -138,7 +135,8 @@ export default function MaintenancePage() {
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
-      collection(firestore, 'userProfiles', user.uid, 'properties'),
+      collection(firestore, 'properties'),
+      where('landlordId', '==', user.uid),
       limit(500)
     );
   }, [firestore, user]);
@@ -170,7 +168,8 @@ export default function MaintenancePage() {
   const contractorsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
-      collection(firestore, 'userProfiles', user.uid, 'contractors'),
+      collection(firestore, 'contractors'),
+      where('landlordId', '==', user.uid),
       limit(500)
     );
   }, [firestore, user]);
@@ -180,16 +179,15 @@ export default function MaintenancePage() {
     if (!user || !firestore) return;
     setIsSubmitting(true);
 
-    // Sanitize data to remove undefined values
     const newLog = prepareForFirestore({ 
         ...data, 
-        userId: user.uid, 
+        landlordId: user.uid, 
         status: 'Open', 
         createdDate: new Date().toISOString() 
     });
 
     try {
-      const logsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', data.propertyId, 'maintenanceLogs');
+      const logsCollection = collection(firestore, 'repairs');
       const newDocRef = await addDoc(logsCollection, newLog);
 
       toast({ title: 'Issue Logged', description: 'Maintenance request successfully recorded.' });
@@ -244,7 +242,6 @@ export default function MaintenancePage() {
                                     <FormControl>
                                         <Button
                                             id="maintenance-prop-trigger"
-                                            name="propertyId"
                                             variant="outline"
                                             role="combobox"
                                             className={cn(
@@ -264,7 +261,6 @@ export default function MaintenancePage() {
                                         <Search className="h-4 w-4 shrink-0 opacity-50 mr-2" />
                                         <Input 
                                             id="prop-search-field"
-                                            name="propertySearch"
                                             placeholder="Type address..." 
                                             className="h-11 border-0 focus-visible:ring-0 bg-transparent" 
                                             value={propertySearch}
@@ -318,7 +314,7 @@ export default function MaintenancePage() {
                                 <FormLabel className="font-bold" htmlFor="issue-category-select">Trade Category</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl>
-                                    <SelectTrigger id="issue-category-select" name="category" className="h-11 bg-background">
+                                    <SelectTrigger id="issue-category-select" className="h-11 bg-background">
                                       <SelectValue placeholder="Select trade" />
                                     </SelectTrigger>
                                   </FormControl>
@@ -340,7 +336,7 @@ export default function MaintenancePage() {
                                 <FormLabel className="font-bold" htmlFor="issue-priority-select">Priority Status</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl>
-                                    <SelectTrigger id="issue-priority-select" name="priority" className="h-11 bg-background">
+                                    <SelectTrigger id="issue-priority-select" className="h-11 bg-background">
                                       <SelectValue placeholder="Select urgency" />
                                     </SelectTrigger>
                                   </FormControl>
@@ -366,7 +362,6 @@ export default function MaintenancePage() {
                                 <FormControl>
                                   <Textarea
                                     id="other-details-area"
-                                    name="otherCategoryDetails"
                                     placeholder="Please specify the type of maintenance required..."
                                     className="bg-background resize-none rounded-xl"
                                     {...field}
@@ -386,7 +381,6 @@ export default function MaintenancePage() {
                             <FormControl>
                               <Input 
                                 id="issue-headline-input"
-                                name="title"
                                 placeholder="e.g., Leaking boiler in kitchen" 
                                 className="h-11 bg-background" 
                                 {...field} 
@@ -402,7 +396,6 @@ export default function MaintenancePage() {
                             <FormControl>
                               <Textarea 
                                 id="issue-desc-area"
-                                name="description"
                                 placeholder="Please describe the issue in detail for the contractor." 
                                 className="min-h-[120px] rounded-xl bg-background resize-none" 
                                 {...field} 
@@ -423,7 +416,6 @@ export default function MaintenancePage() {
                                 <FormControl>
                                   <Input 
                                     id="reported-by-input"
-                                    name="reportedBy"
                                     placeholder="e.g., Tenant name" 
                                     className="h-11 bg-background" 
                                     {...field} 
@@ -439,7 +431,6 @@ export default function MaintenancePage() {
                                 <FormControl>
                                   <Input 
                                     id="reported-date-input"
-                                    name="reportedDate"
                                     type="date" 
                                     className="h-11 bg-background" 
                                     value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} 
@@ -461,7 +452,7 @@ export default function MaintenancePage() {
                                         form.setValue('contractorPhone', contractor.phone);
                                     }
                                 }}>
-                                    <SelectTrigger id="contractor-select-quick" name="quickContractor" className="h-11 bg-background">
+                                    <SelectTrigger id="contractor-select-quick" className="h-11 bg-background">
                                         <SelectValue placeholder="Search your directory..." />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -477,7 +468,6 @@ export default function MaintenancePage() {
                                 <FormControl>
                                   <Input 
                                     id="assigned-contractor-input"
-                                    name="contractorName"
                                     placeholder="Contractor name" 
                                     className="h-11 bg-background" 
                                     {...field} 

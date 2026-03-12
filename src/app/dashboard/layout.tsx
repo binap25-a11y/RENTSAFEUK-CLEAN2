@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -13,11 +14,11 @@ import {
 import { MainNav } from '@/components/dashboard/main-nav';
 import { UserNav } from '@/components/dashboard/user-nav';
 import { Logo } from '@/components/icons';
-import { Loader2, Search, Share2, ShieldCheck } from 'lucide-react';
+import { Loader2, Search, Share2 } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { collection, query, limit, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, limit, onSnapshot } from 'firebase/firestore';
 import { BackToTopButton } from '@/components/ui/back-to-top-button';
 import { Button } from '@/components/ui/button';
 import { IdleTimeout } from '@/components/dashboard/idle-timeout';
@@ -93,12 +94,11 @@ export default function DashboardLayout({
     setIsMounted(true);
   }, []);
 
-  // Simple role check for sidebar visibility only
   useEffect(() => {
     if (!isMounted || !user || !firestore) return;
 
-    // If any properties exist, this is a landlord account
-    const q = query(collection(firestore, 'userProfiles', user.uid, 'properties'), limit(1));
+    // Flat structure query check
+    const q = query(collection(firestore, 'properties'), where('landlordId', '==', user.uid), limit(1));
     const unsub = onSnapshot(q, (snap) => {
         setIsLandlord(snap.size > 0);
     });
@@ -122,8 +122,6 @@ export default function DashboardLayout({
     );
   }
 
-  // Standard Sidebar Layout
-  // Note: Sidebar is only visible if properties are detected, or if we're not on the root dashboard
   const showSidebar = isLandlord === true || pathname !== '/dashboard';
 
   return (
@@ -142,7 +140,7 @@ export default function DashboardLayout({
             </SidebarContent>
             <SidebarFooter>
             <div className="p-4 text-[10px] text-muted-foreground uppercase tracking-widest text-center opacity-50">
-                RentSafeUK Portfolio v1.0
+                RentSafeUK Portfolio v2.0
             </div>
             </SidebarFooter>
         </Sidebar>

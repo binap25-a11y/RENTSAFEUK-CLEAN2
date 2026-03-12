@@ -36,13 +36,9 @@ interface Property {
   bedrooms: number;
   bathrooms: number;
   imageUrl?: string;
-  userId: string;
+  landlordId: string;
 }
 
-/**
- * @fileOverview Main Dashboard Entry Point.
- * Acts as a secure traffic controller, routing users based on their account role.
- */
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
@@ -53,17 +49,13 @@ export default function DashboardPage() {
   const [properties, setProperties] = useState<Property[]>([]);
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
-  const [discoveryComplete, setDiscoveryComplete] = useState(false);
 
-  // 1. Role-Based Routing Logic
-  // Fetches the user's central profile to determine their access hub.
   useEffect(() => {
     if (isUserLoading || !user || !firestore) return;
 
-    const userProfileRef = doc(firestore, 'userProfiles', user.uid);
-    const unsubProfile = onSnapshot(userProfileRef, (snap) => {
+    const userRef = doc(firestore, 'users', user.uid);
+    const unsubProfile = onSnapshot(userRef, (snap) => {
       if (!snap.exists()) {
-          // If no profile exists, default to landlord for onboarding
           setUserRole('landlord');
           setIsLoadingProfile(false);
           return;
@@ -73,38 +65,26 @@ export default function DashboardPage() {
       setUserRole(role);
       setIsLoadingProfile(false);
 
-      // IMMEDIATE REDIRECTION: If the role is 'tenant', route to Resident Hub instantly.
       if (role === 'tenant') {
         router.replace('/tenant/dashboard');
       }
-    }, (err) => {
-      console.warn("Profile sync access restricted:", err.message);
-      setIsLoadingProfile(false);
-    });
+    }, () => setIsLoadingProfile(false));
 
     return () => unsubProfile();
   }, [user, isUserLoading, firestore, router]);
 
-  // 2. Landlord-Only Property Discovery
-  // This listener only starts if the user is identified as a landlord/agent.
   useEffect(() => {
-    if (isLoadingProfile || !user || !firestore || userRole === 'tenant') {
-        if (userRole === 'tenant') setDiscoveryComplete(true);
-        return;
-    }
+    if (isLoadingProfile || !user || !firestore || userRole === 'tenant') return;
 
     const propQuery = query(
-      collection(firestore, 'userProfiles', user.uid, 'properties'), 
+      collection(firestore, 'properties'), 
+      where('landlordId', '==', user.uid),
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
     );
 
     const unsubProps = onSnapshot(propQuery, (snap) => {
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Property));
       setProperties(list);
-      setDiscoveryComplete(true);
-    }, (err) => {
-        console.warn("Property sync restricted:", err.message);
-        setDiscoveryComplete(true);
     });
 
     return () => unsubProps();
@@ -122,8 +102,7 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // Global Loading & Discovery Overlay
-  if (isUserLoading || isLoadingProfile || (!discoveryComplete && userRole !== 'tenant')) {
+  if (isUserLoading || isLoadingProfile) {
     return (
       <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
@@ -134,18 +113,16 @@ export default function DashboardPage() {
     );
   }
 
-  // Tenant redirection fallback (if router.replace is slightly delayed)
   if (userRole === 'tenant') return null;
 
-  // New Landlord Empty State
   if (properties.length === 0) {
       return (
-          <div className="text-center py-20 animate-in fade-in duration-500">
+          <div className="text-center py-20">
               <div className="max-w-md mx-auto space-y-6 px-6 text-left">
                   <div className="bg-muted p-6 rounded-full w-fit mx-auto shadow-inner text-muted-foreground/20">
                       <Home className="h-12 w-12" />
                   </div>
-                  <h2 className="text-2xl font-bold font-headline text-center">Welcome to RentSafeUK</h2>
+                  <h2 className="text-2xl font-bold font-headline text-center">Welcome to Maintain UK</h2>
                   <p className="text-muted-foreground font-medium text-center leading-relaxed">
                       Your management profile is active. Onboard your first property asset to begin tracking compliance and tenancies.
                   </p>
@@ -195,7 +172,6 @@ export default function DashboardPage() {
                   <Card key={p.id} className="group overflow-hidden flex flex-col hover:shadow-xl transition-all cursor-pointer border-none shadow-md bg-card" onClick={() => router.push(`/dashboard/properties/${p.id}`)}>
                     <div className="relative aspect-[16/10] bg-muted overflow-hidden border-b">
                       {p.imageUrl ? (
-                        /* eslint-disable-next-line @next/next/no-img-element */
                         <img src={p.imageUrl} alt="Property" className="object-cover w-full h-full group-hover:scale-105 transition-transform duration-500" />
                       ) : <div className="flex items-center justify-center w-full h-full bg-primary/5"><Home className="h-12 w-12 text-primary/10" /></div>}
                     </div>

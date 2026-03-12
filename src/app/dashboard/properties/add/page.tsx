@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -16,9 +17,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { toast } from '@/hooks/use-toast';
 import { 
   useUser, 
-  useFirestore, 
-  errorEmitter, 
-  FirestorePermissionError 
+  useFirestore
 } from '@/firebase';
 import { collection, addDoc, updateDoc } from 'firebase/firestore';
 import { Loader2, Home, Images, PlusCircle, X, Upload, MapPin, ChevronRight, ChevronLeft, Banknote } from 'lucide-react';
@@ -112,70 +111,47 @@ export default function AddPropertyPage() {
   };
 
   const onSubmit = async (data: PropertyFormValues) => {
-    if (!user || !firestore) {
-        toast({
-          variant: 'destructive',
-          title: 'Error',
-          description: 'Authentication not available.',
-        });
-        return;
-    }
+    if (!user || !firestore) return;
     setIsSubmitting(true);
 
-    const propertyCollection = collection(firestore, 'userProfiles', user.uid, 'properties');
+    const propertyCollection = collection(firestore, 'properties');
     const propertyData = {
         ...JSON.parse(JSON.stringify(data)),
-        userId: user.uid,
+        landlordId: user.uid,
         createdDate: new Date().toISOString(),
         imageUrl: '',
         additionalImageUrls: [],
     };
 
-    // Initiate creation (Non-blocking)
-    addDoc(propertyCollection, propertyData)
-      .then(async (docRef) => {
-          let finalIdentityUrl = '';
-          if (mainFile) {
-              finalIdentityUrl = await uploadPropertyImage(mainFile, user.uid, docRef.id);
-          }
+    try {
+      const docRef = await addDoc(propertyCollection, propertyData);
+      
+      let finalIdentityUrl = '';
+      if (mainFile) {
+          finalIdentityUrl = await uploadPropertyImage(mainFile, user.uid, docRef.id);
+      }
 
-          let galleryUrls: string[] = [];
-          if (galleryFiles.length > 0) {
-              const uploads = await Promise.all(galleryFiles.map(f => uploadPropertyImage(f, user.uid, docRef.id)));
-              galleryUrls = uploads.filter((u): u is string => !!u);
-          }
+      let galleryUrls: string[] = [];
+      if (galleryFiles.length > 0) {
+          const uploads = await Promise.all(galleryFiles.map(f => uploadPropertyImage(f, user.uid, docRef.id)));
+          galleryUrls = uploads.filter((u): u is string => !!u);
+      }
 
-          const finalGallery = [...galleryUrls];
-          if (finalIdentityUrl && !finalGallery.includes(finalIdentityUrl)) {
-            finalGallery.unshift(finalIdentityUrl);
-          }
+      const finalGallery = [...galleryUrls];
+      if (finalIdentityUrl && !finalGallery.includes(finalIdentityUrl)) {
+        finalGallery.unshift(finalIdentityUrl);
+      }
 
-          const updateData = { imageUrl: finalIdentityUrl, additionalImageUrls: finalGallery };
-          
-          // Final sync update (Non-blocking)
-          updateDoc(docRef, updateData)
-            .then(() => {
-                toast({ title: 'Property Onboarded', description: 'Asset record and Photo Gallery synchronized successfully.' });
-                router.push('/dashboard/properties');
-            })
-            .catch(async (serverError) => {
-                const permissionError = new FirestorePermissionError({
-                    path: docRef.path,
-                    operation: 'update',
-                    requestResourceData: updateData,
-                });
-                errorEmitter.emit('permission-error', permissionError);
-            });
-      })
-      .catch(async (serverError) => {
-          const permissionError = new FirestorePermissionError({
-              path: propertyCollection.path,
-              operation: 'create',
-              requestResourceData: propertyData,
-          });
-          errorEmitter.emit('permission-error', permissionError);
-      })
-      .finally(() => setIsSubmitting(false));
+      await updateDoc(docRef, { imageUrl: finalIdentityUrl, additionalImageUrls: finalGallery });
+      
+      toast({ title: 'Property Onboarded' });
+      router.push('/dashboard/properties');
+    } catch (err) {
+      console.error(err);
+      toast({ variant: 'destructive', title: 'Onboarding Failed' });
+    } finally {
+      setIsSubmitting(false);
+    }
   };
 
   return (

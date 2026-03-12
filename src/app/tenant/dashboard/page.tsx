@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -15,15 +16,14 @@ import {
   Banknote,
   AlertCircle,
   ChevronRight,
-  Sparkles,
-  RefreshCw,
   ShieldCheck,
-  Search
+  RefreshCw,
+  Search,
+  Sparkles
 } from 'lucide-react';
-import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { collectionGroup, query, where, limit, doc, updateDoc, getDocs, getDoc } from 'firebase/firestore';
+import { useUser, useFirestore } from '@/firebase';
+import { collection, query, where, limit, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
-import { useRouter } from 'next/navigation';
 import { toast } from '@/hooks/use-toast';
 
 interface TenantContext {
@@ -37,213 +37,140 @@ interface TenantContext {
 export default function TenantDashboard() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
-  const router = useRouter();
   
   const [context, setContext] = useState<TenantContext | null>(null);
   const [isLoading, setIsLoading] = useState(true);
-  const [isIndexBuilding, setIsIndexBuilding] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [isHandshaking, setIsHandshaking] = useState(false);
+  const [discoveryStatus, setDiscoveryStatus] = useState<'searching' | 'failed' | 'handshaking'>('searching');
   const [syncAttempt, setSyncAttempt] = useState(1);
-  
   const discoveryRef = useRef(false);
 
   const performDiscovery = useCallback(async () => {
     if (!user || !firestore || !user.email || discoveryRef.current) return;
     discoveryRef.current = true;
+    setIsLoading(true);
 
     const userEmail = user.email.toLowerCase().trim();
 
     try {
-        // 1. Path-Persistent Fast Lookup
-        const savedPath = localStorage.getItem(`tenant_path_${user.uid}`);
-        if (savedPath) {
-            const tenantRef = doc(firestore, savedPath);
-            const tenantSnap = await getDoc(tenantRef);
-            
-            if (tenantSnap.exists()) {
-                const data = tenantSnap.data();
-                const segments = savedPath.split('/');
-                const landlordId = segments[1];
-                const propertyId = segments[3];
-                
-                const propRef = doc(firestore, 'userProfiles', landlordId, 'properties', propertyId);
-                const propSnap = await getDoc(propRef);
+        // 1. Root Collection Sequential Discovery
+        // First try finding by UID (returning users)
+        const qByUid = query(collection(firestore, 'tenants'), where('userId', '==', user.uid), limit(1));
+        let snap = await getDocs(qByUid);
 
-                if (propSnap.exists()) {
-                    setContext({
-                        landlordId,
-                        propertyId,
-                        tenantId: tenantSnap.id,
-                        tenantData: data,
-                        propertyData: propSnap.data()
-                    });
-                    setIsLoading(false);
-                    setIsIndexBuilding(false);
-                    discoveryRef.current = false;
-                    return;
-                }
-            }
-        }
-
-        // 2. Parallel Sequential Discovery Pattern
-        // Resolves "Missing Index" by attempting UID match then fallback to Email
-        let snap = null;
-        
-        try {
-            const qUID = query(collectionGroup(firestore, 'tenants'), where('userId', '==', user.uid), limit(1));
-            snap = await getDocs(qUID);
-        } catch (uidErr: any) {
-            console.warn("UID Indexing active, attempting Email discovery fallback...");
-        }
-
-        if (!snap || snap.empty) {
-            const qEmail = query(collectionGroup(firestore, 'tenants'), where('email', '==', userEmail), limit(1));
-            snap = await getDocs(qEmail);
+        // Second try finding by Email (new users)
+        if (snap.empty) {
+            const qByEmail = query(collection(firestore, 'tenants'), where('email', '==', userEmail), limit(1));
+            snap = await getDocs(qByEmail);
         }
 
         if (snap.empty) {
             setIsLoading(false);
-            setContext(null);
+            setDiscoveryStatus('failed');
             discoveryRef.current = false;
             return;
         }
 
-        const activeTenantDoc = snap.docs[0];
-        const data = activeTenantDoc.data();
-        const path = activeTenantDoc.ref.path;
+        const tenantDoc = snap.docs[0];
+        const tenantData = tenantDoc.data();
         
-        const segments = path.split('/');
-        const landlordId = segments[1];
-        const propertyId = segments[3];
-
-        localStorage.setItem(`tenant_path_${user.uid}`, path);
-
-        // 3. Identity Verification Handshake
-        if (!data.verified || data.userId !== user.uid) {
+        // 2. Identity Verification Handshake
+        if (!tenantData.userId || tenantData.userId !== user.uid) {
             setIsHandshaking(true);
-            try {
-                await updateDoc(activeTenantDoc.ref, { 
-                    joinedDate: new Date().toISOString(),
-                    userId: user.uid,
-                    verified: true,
-                    lastSyncCheck: new Date().toISOString()
-                });
-                toast({ title: "Identity Verified", description: "Secure link established." });
-            } catch (hErr) {
-                console.warn("Handshake rules check:", hErr);
-            } finally {
-                setIsHandshaking(false);
-            }
+            setDiscoveryStatus('handshaking');
+            await updateDoc(tenantDoc.ref, { 
+                userId: user.uid,
+                verified: true,
+                joinedDate: new Date().toISOString()
+            });
+            toast({ title: "Portal Connected", description: "Identity keys synchronized." });
+            setIsHandshaking(false);
         }
 
-        // 4. Resolve Property Context
-        const propRef = doc(firestore, 'userProfiles', landlordId, 'properties', propertyId);
-        const propSnap = await getDoc(propRef);
+        // 3. Resolve Property Data
+        const propSnap = await getDoc(doc(firestore, 'properties', tenantData.propertyId));
         
         if (propSnap.exists()) {
             setContext({
-                landlordId,
-                propertyId,
-                tenantId: activeTenantDoc.id,
-                tenantData: { ...data, verified: true, userId: user.uid },
+                landlordId: tenantData.landlordId,
+                propertyId: tenantData.propertyId,
+                tenantId: tenantDoc.id,
+                tenantData: { ...tenantData, verified: true },
                 propertyData: propSnap.data()
             });
+            setDiscoveryStatus('searching');
         }
         setIsLoading(false);
-        setIsIndexBuilding(false);
         discoveryRef.current = false;
     } catch (err: any) {
-        const isTransient = err.code === 'failed-precondition' || 
-                           err.code === 'permission-denied' ||
-                           err.message?.toLowerCase().includes('index');
-        
-        if (isTransient) {
-            setIsIndexBuilding(true);
-        } else {
-            setError("Identity Registry unreachable.");
-        }
+        console.warn("Discovery Delay:", err.message);
         setIsLoading(false);
+        setDiscoveryStatus('failed');
         discoveryRef.current = false;
     }
   }, [user, firestore]);
 
   useEffect(() => {
-    if (!isUserLoading) performDiscovery();
-  }, [isUserLoading, performDiscovery]);
+    if (!isUserLoading && !context) performDiscovery();
+  }, [isUserLoading, context, performDiscovery]);
 
   useEffect(() => {
-    if (isIndexBuilding) {
+    if (discoveryStatus === 'failed' && !context) {
         const timer = setTimeout(() => {
-            setSyncAttempt(s => s + 1);
-            discoveryRef.current = false;
+            setSyncAttempt(prev => prev + 1);
             performDiscovery();
-        }, 15000); 
+        }, 15000);
         return () => clearTimeout(timer);
     }
-  }, [isIndexBuilding, performDiscovery, syncAttempt]);
+  }, [discoveryStatus, context, performDiscovery]);
 
-  if (isUserLoading || (isLoading && !isIndexBuilding)) {
+  if (isUserLoading || isLoading || isHandshaking) {
     return (
-        <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
-            <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">
-                Resolving Resident identity...
-            </p>
-        </div>
-    );
-  }
-
-  if (isIndexBuilding) {
-    return (
-        <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6 animate-in fade-in duration-700">
-            <div className="bg-primary/10 p-10 rounded-full w-fit mx-auto border shadow-inner">
-                <Sparkles className="h-12 w-12 text-primary animate-pulse" />
+        <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in duration-700">
+            <div className="relative">
+                <div className="bg-primary/10 p-10 rounded-full w-fit mx-auto relative z-10">
+                    <Loader2 className="h-12 w-12 text-primary animate-spin" />
+                </div>
+                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/5 rounded-full animate-ping" />
             </div>
             <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Portal Setup in Progress</h2>
-                <p className="text-muted-foreground font-medium text-sm leading-relaxed px-4 text-center">
-                    The platform is currently initializing high-speed identity discovery.
+                <h2 className="font-headline text-2xl font-bold text-primary">Portal Handshake Active</h2>
+                <p className="text-muted-foreground font-medium px-6 leading-relaxed">
+                    The platform is currently mapping your resident identity keys.
                 </p>
-                <div className="p-4 rounded-xl bg-muted/50 border border-dashed text-xs text-muted-foreground mt-4 text-left">
-                    <p className="font-bold uppercase text-[9px] tracking-widest mb-1 text-primary">Status: Indexing Security Keys</p>
-                    <p>This is a one-time cloud initialization. Your hub will activate automatically once the sync completes.</p>
+                <div className="pt-4 flex flex-col items-center gap-2">
+                    <Badge variant="outline" className="bg-muted text-muted-foreground font-bold uppercase text-[9px] px-3 py-1 border-dashed">
+                        Status: {discoveryStatus === 'handshaking' ? 'Linking Identity' : 'Verifying Credentials'}
+                    </Badge>
+                    <p className="text-[10px] text-muted-foreground/60 max-w-[240px] mx-auto italic">
+                        This secure initialization usually completes within 60 seconds. Identity matching is currently in progress.
+                    </p>
                 </div>
             </div>
-            <div className="space-y-4">
-                <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-sm" onClick={() => { setSyncAttempt(s => s + 1); discoveryRef.current = false; performDiscovery(); }}>
-                    <RefreshCw className="mr-2 h-4 w-4" /> Check Status
+            <div className="pt-6">
+                <Button variant="ghost" onClick={performDiscovery} className="text-[10px] font-bold uppercase tracking-widest text-primary/40 hover:text-primary">
+                    <RefreshCw className="mr-2 h-3 w-3" /> Sync Attempt {syncAttempt}
                 </Button>
-                <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">Handshake Attempt {syncAttempt}</p>
             </div>
         </div>
     );
   }
 
-  if (error || !context) {
+  if (!context) {
     return (
-        <Card className="max-w-md mx-auto mt-20 shadow-2xl border-none overflow-hidden text-left">
+        <Card className="max-w-md mx-auto mt-20 shadow-2xl border-none overflow-hidden text-left animate-in fade-in zoom-in-95 duration-500">
             <CardHeader className="text-center bg-muted/20 pb-8 border-b">
                 <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 shadow-sm border text-muted-foreground/20">
                     <Search className="h-10 w-10" />
                 </div>
-                <CardTitle className="font-headline text-xl text-primary text-center">Identity Not Recognized</CardTitle>
+                <CardTitle className="font-headline text-xl text-primary text-center">Tenancy Not Found</CardTitle>
                 <CardDescription className="text-sm font-medium text-center px-4">
-                    No active tenancy matches <strong>{user?.email}</strong>.
+                    Your email <strong>{user?.email}</strong> is not yet linked to an active property asset.
                 </CardDescription>
             </CardHeader>
-            <CardContent className="pt-6">
-                <div className="p-4 rounded-xl bg-destructive/5 border border-destructive/10 text-xs text-destructive text-left leading-relaxed">
-                    <p className="font-bold mb-1">Potential issues:</p>
-                    <ul className="space-y-1 ml-4 list-disc">
-                        <li>The landlord has not yet assigned this email to a property asset.</li>
-                        <li>The landlord used a different email for your management record.</li>
-                    </ul>
-                </div>
-            </CardContent>
             <CardFooter className="pt-6 bg-muted/5 border-t">
-                <Button variant="outline" className="w-full h-11 rounded-xl font-bold uppercase tracking-widest text-[10px]" onClick={() => { discoveryRef.current = false; performDiscovery(); }}>
-                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Identification
+                <Button variant="outline" className="w-full h-11 rounded-xl font-bold uppercase tracking-widest text-[10px]" onClick={() => window.location.reload()}>
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Re-trigger Handshake
                 </Button>
             </CardFooter>
         </Card>
@@ -251,7 +178,6 @@ export default function TenantDashboard() {
   }
 
   const propertyAddress = [context.propertyData?.address?.street, context.propertyData?.address?.city].filter(Boolean).join(', ');
-  const isVerified = context.tenantData.verified === true || !!context.tenantData.joinedDate;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 text-left">
@@ -261,19 +187,9 @@ export default function TenantDashboard() {
           <p className="text-muted-foreground font-medium flex items-center gap-2 mt-1"><Home className="h-4 w-4 text-primary/40" />{propertyAddress}</p>
         </div>
         <div className="flex items-center gap-2">
-            {isHandshaking ? (
-                <div className="flex items-center gap-2 text-[10px] font-bold uppercase text-primary animate-pulse px-3 bg-primary/5 py-1.5 rounded-lg border border-primary/10">
-                    <Loader2 className="h-3 w-3 animate-spin" /> Syncing...
-                </div>
-            ) : isVerified ? (
-                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-8 px-3 font-bold uppercase tracking-widest text-[9px] shadow-sm rounded-xl shrink-0">
-                    <ShieldCheck className="mr-1.5 h-3.5 w-3.5" /> Verified Resident
-                </Badge>
-            ) : (
-                <Badge variant="secondary" className="h-8 px-3 font-bold uppercase tracking-widest text-[9px] rounded-xl shrink-0 opacity-50">
-                    Establishing Link
-                </Badge>
-            )}
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-8 px-3 font-bold uppercase tracking-widest text-[9px] shadow-sm rounded-xl shrink-0">
+                <ShieldCheck className="mr-1.5 h-3.5 w-3.5" /> Verified Resident
+            </Badge>
         </div>
       </div>
 
@@ -296,18 +212,18 @@ export default function TenantDashboard() {
                 <div className="text-xl font-bold text-foreground">
                     {context.tenantData.tenancyStartDate?.seconds 
                         ? format(new Date(context.tenantData.tenancyStartDate.seconds * 1000), 'dd MMM yyyy') 
-                        : 'Rolling Periodic'}
+                        : 'Active'}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1 font-medium italic">Active Agreement</p>
+                <p className="text-xs text-muted-foreground mt-1 font-medium italic">Lease Active</p>
             </CardContent>
         </Card>
 
         <Card className="shadow-xl border-none bg-primary text-primary-foreground text-left">
             <CardHeader className="pb-2 px-6">
-                <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-80 flex items-center gap-2 text-primary-foreground"><MessageSquare className="h-3.5 w-3.5" /> Support Channel</CardTitle>
+                <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-80 flex items-center gap-2 text-primary-foreground"><MessageSquare className="h-3.5 w-3.5" /> Support</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 px-6 pb-6 text-left">
-                <p className="text-xs font-medium">Direct line to your landlord for maintenance and repairs.</p>
+                <p className="text-xs font-medium">Message your landlord directly about any issues.</p>
                 <Button variant="secondary" size="sm" className="w-full font-bold h-9 shadow-md rounded-xl uppercase tracking-widest text-[10px]" asChild><Link href="/tenant/messages">Open Inbox <ChevronRight className="ml-1 h-3 w-3"/></Link></Button>
             </CardContent>
         </Card>
@@ -315,14 +231,14 @@ export default function TenantDashboard() {
 
       <div className="grid gap-6 lg:grid-cols-2 mt-8">
         <Card className="border-none shadow-md overflow-hidden group text-left">
-            <CardHeader className="bg-muted/30 border-b px-6 text-left"><CardTitle className="text-lg flex items-center gap-2 font-headline text-foreground"><Wrench className="h-5 w-5 text-primary" /> Repair Logs</CardTitle></CardHeader>
+            <CardHeader className="bg-muted/30 border-b px-6 text-left"><CardTitle className="text-lg flex items-center gap-2 font-headline text-foreground"><Wrench className="h-5 w-5 text-primary" /> Repairs</CardTitle></CardHeader>
             <CardContent className="pt-6 px-6 pb-6">
                 <div className="flex items-center justify-between p-5 rounded-2xl bg-muted/20 border border-transparent group-hover:border-primary/10 transition-all">
                     <div className="space-y-1 text-left">
-                        <p className="text-sm font-bold">Report Issue</p>
-                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Shared maintenance hub</p>
+                        <p className="text-sm font-bold">Request a Fix</p>
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Submit photos and details</p>
                     </div>
-                    <Button size="sm" className="h-10 font-bold px-8 shadow-md rounded-xl uppercase tracking-widest text-[9px]" asChild><Link href="/tenant/maintenance">Report Repair</Link></Button>
+                    <Button size="sm" className="h-10 font-bold px-8 shadow-md rounded-xl uppercase tracking-widest text-[9px]" asChild><Link href="/tenant/maintenance">Log Issue</Link></Button>
                 </div>
             </CardContent>
         </Card>
