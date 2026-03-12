@@ -15,20 +15,21 @@ service cloud.firestore {
     }
 
     // --- TOP-LEVEL DISCOVERY RULES (CRITICAL FOR HANDSHAKE PERFORMANCE) ---
-    // These rules are placed here to ensure the discovery queries (collectionGroup)
-    // resolve instantly even before the full profile document is parsed.
     
     match /{path=**}/tenants/{tenantId} {
+      // Allow any signed-in user to find a record matching their email
+      // This is the "Identity Handshake" discovery query
       allow read: if isSignedIn() && (
         (request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower()) ||
         resource.data.userId == request.auth.uid
       );
       
-      // Allow the tenant to update their own verification status during the handshake
-      // restrict them to ONLY identity-linking fields.
-      allow update: if isSignedIn() && request.auth.token.email != null 
-                    && resource.data.email.lower() == request.auth.token.email.lower()
-                    && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['joinedDate', 'userId', 'verified']);
+      // Allow the tenant to update their own verification status
+      // We allow updates if the email matches, or if they are already the assigned user.
+      allow update: if isSignedIn() && (
+        (request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower()) ||
+        resource.data.userId == request.auth.uid
+      ) && request.resource.data.diff(resource.data).affectedKeys().hasAny(['joinedDate', 'userId', 'verified', 'lastSyncCheck']);
     }
 
     match /{path=**}/messages/{messageId} {
@@ -54,16 +55,16 @@ service cloud.firestore {
         match /tenants/{tenantId} {
           allow read, write: if isOwner(userId);
           
-          // Resident-specific access via path-based verification
+          // Duplicate path-based rules for the specific hierarchy
           allow get: if isSignedIn() && (
             (request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower()) ||
             resource.data.userId == request.auth.uid
           );
 
-          // Explicitly allow the tenant to perform the identity handshake update at the specific path
-          allow update: if isSignedIn() && request.auth.token.email != null 
-                        && resource.data.email.lower() == request.auth.token.email.lower()
-                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['joinedDate', 'userId', 'verified']);
+          allow update: if isSignedIn() && (
+            (request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower()) ||
+            resource.data.userId == request.auth.uid
+          ) && request.resource.data.diff(resource.data).affectedKeys().hasAny(['joinedDate', 'userId', 'verified', 'lastSyncCheck']);
 
           match /messages/{messageId} {
              allow read, write: if isOwner(userId) || (isSignedIn() && request.auth.token.email != null && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email.lower() == request.auth.token.email.lower());

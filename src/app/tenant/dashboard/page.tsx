@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback, useRef } from 'react';
+import { useEffect, useState, useCallback } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -18,7 +18,8 @@ import {
   Sparkles,
   RefreshCw,
   ShieldCheck,
-  Search
+  Search,
+  CheckCircle2
 } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
 import { collectionGroup, query, where, limit, onSnapshot, doc, updateDoc } from 'firebase/firestore';
@@ -101,7 +102,7 @@ export default function TenantDashboard() {
                             propertyData: propSnap.data()
                         });
                         
-                        // VERIFICATION HANDSHAKE TRIGGER
+                        // VERIFICATION HANDSHAKE TRIGGER: Persistent and explicit
                         if (data.verified !== true || data.userId !== user.uid) {
                             setIsHandshaking(true);
                             updateDoc(activeTenantDoc.ref, { 
@@ -110,9 +111,13 @@ export default function TenantDashboard() {
                                 verified: true
                             }).then(() => {
                                 setIsHandshaking(false);
-                                toast({ title: "Portal Access Verified", description: "Your identity has been securely linked to your tenancy." });
+                                // Local state update to avoid waiting for snapshot
+                                setContext(prev => prev ? ({
+                                    ...prev,
+                                    tenantData: { ...prev.tenantData, verified: true, userId: user.uid }
+                                }) : null);
                             }).catch(err => {
-                                console.warn("Handshake write failed:", err.message);
+                                console.warn("Handshake write blocked by security or index:", err.message);
                                 setIsHandshaking(false);
                             });
                         }
@@ -164,7 +169,7 @@ export default function TenantDashboard() {
         <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse text-center">
-                Syncing Portal Access...
+                Verifying Resident Identity...
             </p>
         </div>
     );
@@ -179,7 +184,7 @@ export default function TenantDashboard() {
             <div className="space-y-3">
                 <h2 className="font-headline text-2xl font-bold text-primary">Portal Setup in Progress</h2>
                 <p className="text-muted-foreground font-medium text-sm leading-relaxed">
-                    The platform is currently initializing high-speed identity discovery.
+                    The platform is currently initializing high-speed identity discovery for your account.
                 </p>
                 <div className="p-4 rounded-xl bg-muted/50 border border-dashed text-xs text-muted-foreground mt-4 text-left">
                     <p className="font-bold uppercase text-[9px] tracking-widest mb-1">Status: Building Discovery Index</p>
@@ -225,6 +230,7 @@ export default function TenantDashboard() {
   }
 
   const propertyAddress = [context.propertyData?.address?.street, context.propertyData?.address?.city].filter(Boolean).join(', ');
+  const isVerified = context.tenantData.verified === true;
 
   return (
     <div className="space-y-8 animate-in fade-in duration-500 text-left">
@@ -234,15 +240,20 @@ export default function TenantDashboard() {
           <p className="text-muted-foreground font-medium flex items-center gap-2 mt-1"><Home className="h-4 w-4 text-primary/40" />{propertyAddress}</p>
         </div>
         <div className="flex items-center gap-2">
-            {isHandshaking && (
-                <div className="flex items-center gap-2 text-[10px] font-bold uppercase text-primary animate-pulse px-2">
+            {isHandshaking ? (
+                <div className="flex items-center gap-2 text-[10px] font-bold uppercase text-primary animate-pulse px-2 bg-primary/5 py-1 rounded-lg border border-primary/10">
                     <Loader2 className="h-3 w-3 animate-spin" />
-                    Linking Identity...
+                    Syncing Verification...
                 </div>
+            ) : isVerified ? (
+                <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-8 px-3 font-bold uppercase tracking-widest text-[9px] shadow-sm rounded-xl shrink-0">
+                    <ShieldCheck className="mr-1.5 h-3.5 w-3.5" /> Verified Resident
+                </Badge>
+            ) : (
+                <Badge variant="secondary" className="h-8 px-3 font-bold uppercase tracking-widest text-[9px] rounded-xl shrink-0 opacity-50">
+                    Pending Verification
+                </Badge>
             )}
-            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-8 px-3 font-bold uppercase tracking-widest text-[9px] shadow-sm rounded-xl shrink-0">
-                <ShieldCheck className="mr-1.5 h-3.5 w-3.5" /> Verified Resident
-            </Badge>
         </div>
       </div>
 
@@ -263,7 +274,7 @@ export default function TenantDashboard() {
             </CardHeader>
             <CardContent className="px-6 pb-6">
                 <div className="text-xl font-bold text-foreground">{context.tenantData.tenancyStartDate?.seconds ? format(new Date(context.tenantData.tenancyStartDate.seconds * 1000), 'dd MMM yyyy') : 'Rolling Periodic'}</div>
-                <p className="text-xs text-muted-foreground mt-1 font-medium italic">Verified Audit Trail</p>
+                <p className="text-xs text-muted-foreground mt-1 font-medium italic">Secure Lease Mapping</p>
             </CardContent>
         </Card>
 

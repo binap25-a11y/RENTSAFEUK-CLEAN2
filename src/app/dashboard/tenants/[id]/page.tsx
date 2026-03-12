@@ -26,7 +26,8 @@ import {
   Banknote,
   Send,
   ShieldCheck,
-  RefreshCw
+  RefreshCw,
+  CheckCircle2
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
@@ -73,8 +74,6 @@ interface Tenant {
     joinedDate?: any;
     verified?: boolean;
 }
-
-interface TenantScreening { id: string; screeningDate: any; }
 
 function safeCreateDate(dateValue: any): Date | null {
     if (!dateValue) return null;
@@ -142,11 +141,11 @@ export default function TenantDetailPage() {
   const handleSyncIdentity = async () => {
       if (!directTenantRef) return;
       setIsSyncing(true);
-      toast({ title: "Synchronizing Registry", description: "Fetching latest identity metadata..." });
+      toast({ title: "Synchronizing Registry", description: "Fetching latest verification state..." });
       // Minor metadata update to trigger a re-sync of the document
       updateDoc(directTenantRef, { lastSyncCheck: new Date().toISOString() })
         .finally(() => {
-            setTimeout(() => setIsSyncing(false), 1000);
+            setTimeout(() => setIsSyncing(false), 800);
         });
   };
 
@@ -198,7 +197,7 @@ export default function TenantDetailPage() {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-sm text-muted-foreground animate-pulse">Resolving Identity...</p>
+        <p className="text-sm text-muted-foreground animate-pulse font-medium">Resolving Identity...</p>
       </div>
     );
   }
@@ -245,17 +244,10 @@ export default function TenantDetailPage() {
                 </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-                {!isVerified ? (
-                    <Button onClick={handleSendInvite} disabled={isUpdatingInvite} className="gap-2 font-bold uppercase tracking-widest text-[10px] h-10 px-6 shadow-lg bg-primary hover:bg-primary/90">
-                        <Send className="h-3.5 w-3.5" /> 
-                        {tenant.inviteSentDate ? 'Resend Portal Invite' : 'Send Verification Invite'}
-                    </Button>
-                ) : (
-                    <Button variant="outline" onClick={handleSyncIdentity} disabled={isSyncing} className="gap-2 font-bold uppercase tracking-widest text-[10px] h-10 px-6 shadow-sm border-primary/20 hover:bg-primary/5">
-                        <RefreshCw className={isSyncing ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} />
-                        Sync Identity
-                    </Button>
-                )}
+                <Button variant={isVerified ? "outline" : "default"} onClick={isVerified ? handleSyncIdentity : handleSendInvite} disabled={isUpdatingInvite || isSyncing} className="gap-2 font-bold uppercase tracking-widest text-[10px] h-10 px-6 shadow-lg">
+                    {isSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : isVerified ? <RefreshCw className="h-3.5 w-3.5" /> : <Send className="h-3.5 w-3.5" />}
+                    {isVerified ? 'Sync Identity' : (tenant.inviteSentDate ? 'Resend Portal Invite' : 'Send Verification Invite')}
+                </Button>
                 <Button variant="outline" onClick={handleSendReminder} className="gap-2 font-bold uppercase tracking-widest text-[10px] h-10 px-6 shadow-sm border-primary/20 hover:bg-primary/5">
                     <BellRing className="h-3.5 w-3.5 text-primary" /> Send Rent Nudge
                 </Button>
@@ -286,7 +278,7 @@ export default function TenantDetailPage() {
                         <div className="p-2 rounded-full bg-primary/10 text-primary shrink-0"><AlertCircle className="h-5 w-5" /></div>
                         <div className="flex-1 text-left">
                             <p className="text-sm font-bold text-primary">Verification Handshake Required</p>
-                            <p className="text-xs text-muted-foreground">This tenant has not yet accessed the Resident Hub. Shared maintenance tracking will be inactive until verified.</p>
+                            <p className="text-xs text-muted-foreground">This tenant has not yet accessed the Resident Hub. Shared maintenance tracking and document sync will be inactive until verified.</p>
                         </div>
                         <Button size="sm" onClick={handleSendInvite} className="font-bold text-[10px] uppercase">Send Invite</Button>
                     </CardContent>
