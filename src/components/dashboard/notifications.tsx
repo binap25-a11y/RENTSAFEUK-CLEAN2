@@ -15,7 +15,7 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Bell, FileWarning, CalendarClock, Loader2, Banknote } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { collection, query, where, Timestamp, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, Timestamp, onSnapshot, limit } from 'firebase/firestore';
 import { format, isBefore, addDays, isFuture, setDate, startOfMonth, isPast } from 'date-fns';
 
 interface Property {
@@ -32,7 +32,7 @@ interface Document {
   id: string;
   title: string;
   propertyId: string;
-  expiryDate: Timestamp | Date | { seconds: number; nanoseconds: number };
+  expiryDate: any;
 }
 
 interface Inspection {
@@ -41,7 +41,7 @@ interface Inspection {
   inspectionType?: string;
   type: string;
   status: string;
-  scheduledDate: Timestamp | Date | { seconds: number; nanoseconds: number };
+  scheduledDate: any;
 }
 
 interface Tenant {
@@ -82,86 +82,44 @@ export function Notifications() {
   const { user } = useUser();
   const firestore = useFirestore();
 
-  const propertiesQuery = useMemoFirebase(() => {
-    if (!user || !firestore) return null;
-    return query(
-      collection(firestore, 'userProfiles', user.uid, 'properties'), 
-      where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
-    );
-  }, [firestore, user]);
-  const { data: properties } = useCollection<Property>(propertiesQuery);
-
   const [allDocuments, setAllDocuments] = useState<Document[]>([]);
   const [allInspections, setAllInspections] = useState<Inspection[]>([]);
   const [allTenants, setAllTenants] = useState<Tenant[]>([]);
   const [allRentPayments, setAllRentPayments] = useState<RentPayment[]>([]);
-  const [isLoadingAggregates, setIsLoadingAggregates] = useState(false);
+  const [isLoading, setIsLoading] = useState(false);
 
+  // Flat Registry Syncing
   useEffect(() => {
-    if (!user || !firestore || !properties || properties.length === 0) {
-        setAllDocuments([]);
-        setAllInspections([]);
-        setAllTenants([]);
-        setAllRentPayments([]);
-        return;
-    }
+    if (!user || !firestore) return;
 
-    setIsLoadingAggregates(true);
-    const unsubs: (() => void)[] = [];
-    const docMap: Record<string, Document[]> = {};
-    const inspMap: Record<string, Inspection[]> = {};
-    const tenantMap: Record<string, Tenant[]> = {};
-    const paymentMap: Record<string, RentPayment[]> = {};
+    setIsLoading(true);
+    
+    // High-performance Flat Listeners
+    const qDocs = query(collection(firestore, 'documents'), where('landlordId', '==', user.uid), limit(50));
+    const qInsp = query(collection(firestore, 'inspections'), where('landlordId', '==', user.uid), limit(50));
+    const qTenants = query(collection(firestore, 'tenants'), where('landlordId', '==', user.uid), where('status', '==', 'Active'));
+    const qRent = query(collection(firestore, 'rentPayments'), where('landlordId', '==', user.uid), limit(50));
 
-    const updateState = () => {
-        setAllDocuments(Object.values(docMap).flat());
-        setAllInspections(Object.values(inspMap).flat());
-        setAllTenants(Object.values(tenantMap).flat());
-        setAllRentPayments(Object.values(paymentMap).flat());
-        setIsLoadingAggregates(false);
-    };
-
-    properties.forEach(prop => {
-        unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'documents'), (snap) => {
-            docMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Document));
-            updateState();
-        }, (error) => {
-            console.warn(`Registry sync delay for docs at ${prop.id}`);
-        }));
-        unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'inspections'), (snap) => {
-            inspMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Inspection));
-            updateState();
-        }, (error) => {
-            console.warn(`Registry sync delay for inspections at ${prop.id}`);
-        }));
-        unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'tenants'), (snap) => {
-            tenantMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Tenant));
-            updateState();
-        }, (error) => {
-            console.warn(`Registry sync delay for tenants at ${prop.id}`);
-        }));
-        unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'rentPayments'), (snap) => {
-            paymentMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as RentPayment));
-            updateState();
-        }, (error) => {
-            // Contextual error emission for debugging while preserving app stability
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: `userProfiles/${user.uid}/properties/${prop.id}/rentPayments`,
-                operation: 'list',
-            }));
+    const unsubDocs = onSnapshot(qDocs, (snap) => setAllDocuments(snap.docs.map(d => ({ id: d.id, ...d.data() } as Document))));
+    const unsubInsp = onSnapshot(qInsp, (snap) => setAllInspections(snap.docs.map(d => ({ id: d.id, ...d.data() } as Inspection))));
+    const unsubTenants = onSnapshot(qTenants, (snap) => setAllTenants(snap.docs.map(d => ({ id: d.id, ...d.data() } as Tenant))));
+    const unsubRent = onSnapshot(qRent, (snap) => setAllRentPayments(snap.docs.map(d => ({ id: d.id, ...d.data() } as RentPayment))), (error) => {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'rentPayments',
+            operation: 'list',
         }));
     });
 
-    return () => unsubs.forEach(u => u());
-  }, [user, properties, firestore]);
+    setIsLoading(false);
 
-  const propertyMap = useMemo(() => {
-    return properties?.reduce((map, prop) => {
-      map[prop.id] = prop.address ? [prop.address.nameOrNumber, prop.address.street].filter(Boolean).join(', ') : 'Unknown';
-      return map;
-    }, {} as Record<string, string>) ?? {};
-  }, [properties]);
-  
+    return () => {
+        unsubDocs();
+        unsubInsp();
+        unsubTenants();
+        unsubRent();
+    };
+  }, [user, firestore]);
+
   const allReminders = useMemo(() => {
     const today = new Date();
     
@@ -175,11 +133,10 @@ export function Notifications() {
         .map((doc) => ({
           id: `doc-${doc.id}`,
           description: doc.title,
-          property: propertyMap[doc.propertyId] || 'Portfolio',
           dueDate: doc.expiryDate,
           status: doc.status,
           icon: FileWarning,
-          href: `/dashboard/documents?propertyId=${doc.propertyId}`
+          href: `/dashboard/documents`
         }));
 
     const inspectionReminders = allInspections
@@ -192,11 +149,10 @@ export function Notifications() {
         .map((insp) => ({
           id: `insp-${insp.id}`,
           description: insp.inspectionType || insp.type || 'Inspection',
-          property: propertyMap[insp.propertyId] || 'Portfolio',
           dueDate: insp.scheduledDate,
           status: 'Scheduled',
           icon: CalendarClock,
-          href: `/dashboard/inspections/${insp.id}?propertyId=${insp.propertyId}`
+          href: `/dashboard/inspections`
         }));
 
     const rentReminders = allTenants
@@ -212,13 +168,9 @@ export function Notifications() {
             const daysToDueLimit = addDays(today, 3);
             if (isFuture(dueDate) && isBefore(daysToDueLimit, dueDate)) return null;
 
-            const addr = propertyMap[tenant.propertyId] || 'Property';
-            const amount = tenant.monthlyRent?.toLocaleString() || '0';
-
             return {
                 id: `rent-${tenant.id}`,
-                description: `Rent due for ${addr} - £${amount}`,
-                property: addr,
+                description: `Rent due for ${tenant.name}`,
                 dueDate: dueDate,
                 status: isPast(dueDate) && dueDate.getDate() !== today.getDate() ? 'Overdue' : 'Due Soon',
                 icon: Banknote,
@@ -228,7 +180,7 @@ export function Notifications() {
         .filter((r): r is NonNullable<typeof r> => r !== null);
 
     return [...documentReminders, ...inspectionReminders, ...rentReminders].sort((a, b) => a.dueDate.getTime() - b.dueDate.getTime());
-  }, [allDocuments, allInspections, allTenants, allRentPayments, propertyMap]);
+  }, [allDocuments, allInspections, allTenants, allRentPayments]);
 
   const notificationCount = allReminders.length;
 
@@ -236,7 +188,7 @@ export function Notifications() {
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
         <Button variant="ghost" className="relative h-8 w-8 rounded-full">
-          {isLoadingAggregates ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : <Bell className="h-5 w-5" />}
+          {isLoading ? <Loader2 className="h-5 w-5 animate-spin text-muted-foreground" /> : <Bell className="h-5 w-5" />}
           {notificationCount > 0 && (
             <Badge className="absolute -top-1 -right-1 flex h-4 w-4 items-center justify-center rounded-full p-0 text-[10px]" variant="destructive">
               {notificationCount}
@@ -270,7 +222,6 @@ export function Notifications() {
                             <Badge variant={reminder.status === 'Expired' || reminder.status === 'Overdue' ? 'destructive' : 'secondary'} className="text-[10px] h-5">{reminder.status}</Badge>
                         </div>
                         <div className="pl-6 space-y-0.5">
-                            <p className="text-[11px] text-muted-foreground font-medium">{reminder.property}</p>
                             <p className="text-[10px] text-muted-foreground/70">Due: {format(reminder.dueDate, 'PP')}</p>
                         </div>
                     </Link>

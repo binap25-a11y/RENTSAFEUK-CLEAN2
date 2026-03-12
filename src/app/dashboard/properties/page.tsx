@@ -30,7 +30,7 @@ interface Property {
   bedrooms: number;
   bathrooms: number;
   imageUrl?: string;
-  userId: string;
+  landlordId: string;
 }
 
 export default function PropertiesPage() {
@@ -44,14 +44,18 @@ export default function PropertiesPage() {
 
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    return query(collection(firestore, 'userProfiles', user.uid, 'properties'), where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance']));
+    return query(
+      collection(firestore, 'properties'), 
+      where('landlordId', '==', user.uid), 
+      where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
+    );
   }, [firestore, user]);
 
   const { data: properties, isLoading } = useCollection<Property>(propertiesQuery);
 
   useEffect(() => {
     if (!user || !firestore || !properties || properties.length === 0) return;
-    const unsubs = properties.map(p => onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'maintenanceLogs'), where('status', 'in', ['Open', 'In Progress'])), (snap) => {
+    const unsubs = properties.map(p => onSnapshot(query(collection(firestore, 'repairs'), where('propertyId', '==', p.id), where('status', 'in', ['Open', 'In Progress'])), (snap) => {
         setOpenMaintenanceMap(prev => ({ ...prev, [p.id]: snap.size }));
     }));
     return () => unsubs.forEach(u => u());
@@ -61,13 +65,19 @@ export default function PropertiesPage() {
     if (!properties) return [];
     if (!searchTerm) return properties;
     const term = searchTerm.toLowerCase();
-    return properties.filter(p => Object.values(p.address).some(val => val?.toLowerCase().includes(term)));
+    return properties.filter(p => 
+      [p.address.nameOrNumber, p.address.street, p.address.city, p.address.postcode]
+        .filter(Boolean)
+        .join(' ')
+        .toLowerCase()
+        .includes(term)
+    );
   }, [properties, searchTerm]);
 
   const handleDeleteConfirm = async () => {
     if (!firestore || !user || !propertyToDelete) return;
     try {
-      await updateDoc(doc(firestore, 'userProfiles', user.uid, 'properties', propertyToDelete.id), { status: 'Deleted' });
+      await updateDoc(doc(firestore, 'properties', propertyToDelete.id), { status: 'Deleted' });
       toast({ title: 'Property Archived', description: 'Moved to archived properties.' });
     } catch (e) {
       toast({ variant: 'destructive', title: 'Error archiving property.' });

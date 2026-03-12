@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -45,9 +46,9 @@ import {
   errorEmitter,
   FirestorePermissionError,
 } from '@/firebase';
-import { collection, query, where, doc, updateDoc, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
-import { useMemo, useState, useEffect } from 'react';
+import { useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
 import {
   AlertDialog,
@@ -68,7 +69,7 @@ interface Tenant {
   email: string;
   telephone: string;
   propertyId: string;
-  userId: string;
+  landlordId: string;
   status?: string;
   verified?: boolean;
   joinedDate?: any;
@@ -80,7 +81,6 @@ interface Property {
     nameOrNumber?: string;
     street: string;
     city: string;
-    county?: string;
     postcode: string;
   };
 }
@@ -91,60 +91,38 @@ export default function TenantsPage() {
   const firestore = useFirestore();
   const [searchTerm, setSearchTerm] = useState('');
   const [tenantToArchive, setTenantToArchive] = useState<Tenant | null>(null);
-  const [portfolioTenants, setPortfolioTenants] = useState<Tenant[]>([]);
-  const [isAggregating, setIsAggregating] = useState(false);
 
-  // Fetch properties - strictly hierarchical
+  // Fetch properties - strictly hierarchical for context
   const propertiesQuery = useMemoFirebase(() => {
     if(!user || !firestore) return null;
     return query(
-        collection(firestore, 'userProfiles', user.uid, 'properties'),
+        collection(firestore, 'properties'),
+        where('landlordId', '==', user.uid),
         where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
     );
   }, [firestore, user]);
-  const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
+  const { data: properties } = useCollection<Property>(propertiesQuery);
   
-  // Aggregated Tenants Listener - Fetches from secure nested property paths
-  useEffect(() => {
-    if (!user || !firestore || !properties || properties.length === 0) {
-        setPortfolioTenants([]);
-        return;
-    }
-
-    setIsAggregating(true);
-    const unsubs: (() => void)[] = [];
-    const tenantsMap: Record<string, Tenant[]> = {};
-
-    const updateState = () => {
-        setPortfolioTenants(Object.values(tenantsMap).flat().filter(t => t.status === 'Active'));
-        setIsAggregating(false);
-    };
-
-    properties.forEach(p => {
-        const q = collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'tenants');
-        const unsub = onSnapshot(q, (snap) => {
-            tenantsMap[p.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Tenant));
-            updateState();
-        }, (error) => {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: q.path,
-                operation: 'list',
-            }));
-        });
-        unsubs.push(unsub);
-    });
-
-    return () => unsubs.forEach(u => u());
-  }, [user, properties, firestore]);
+  // High-performance Flat Tenant Query
+  const tenantsQuery = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return query(
+        collection(firestore, 'tenants'),
+        where('landlordId', '==', user.uid),
+        where('status', '==', 'Active')
+    );
+  }, [user, firestore]);
+  const { data: tenants, isLoading } = useCollection<Tenant>(tenantsQuery);
 
   const filteredTenants = useMemo(() => {
-    if (!portfolioTenants) return [];
-    if (!searchTerm) return portfolioTenants;
-    return portfolioTenants.filter(tenant =>
-        tenant.name.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        tenant.email.toLowerCase().includes(searchTerm.toLowerCase())
+    if (!tenants) return [];
+    if (!searchTerm) return tenants;
+    const lower = searchTerm.toLowerCase();
+    return tenants.filter(t =>
+        t.name.toLowerCase().includes(lower) ||
+        t.email.toLowerCase().includes(lower)
     );
-  }, [portfolioTenants, searchTerm]);
+  }, [tenants, searchTerm]);
 
   const propertyMap = useMemo(() => {
     if (!properties) return {};
@@ -158,7 +136,7 @@ export default function TenantsPage() {
   const handleArchiveConfirm = async () => {
     if (!firestore || !user || !tenantToArchive) return;
     try {
-      const docRef = doc(firestore, 'userProfiles', user.uid, 'properties', tenantToArchive.propertyId, 'tenants', tenantToArchive.id);
+      const docRef = doc(firestore, 'tenants', tenantToArchive.id);
       await updateDoc(docRef, { status: 'Archived' });
       toast({
         title: 'Tenant Archived',
@@ -175,14 +153,12 @@ export default function TenantsPage() {
       setTenantToArchive(null);
     }
   };
-  
-  const isLoading = isLoadingProperties || isAggregating;
 
   return (
     <>
       <div className="flex flex-col gap-6 text-left">
         <div className="flex flex-col items-start gap-4 sm:flex-row sm:justify-between sm:items-center">
-          <div className="text-left">
+          <div>
             <h1 className="text-3xl font-bold font-headline text-primary">Tenants</h1>
             <p className="text-muted-foreground font-medium">
               Manage resident verification and tenancy records.
