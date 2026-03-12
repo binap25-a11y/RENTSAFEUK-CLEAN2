@@ -8,7 +8,8 @@
         "email": { "type": "string", "format": "email" },
         "displayName": { "type": "string" },
         "role": { "type": "string", "enum": ["landlord", "agent", "tenant"] },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "createdAt": { "type": "string", "format": "date-time" },
+        "idleTimeoutMinutes": { "type": "number" }
       }
     },
     "Property": {
@@ -31,14 +32,15 @@
         "bedrooms": { "type": "number" },
         "bathrooms": { "type": "number" },
         "monthlyRent": { "type": "number" },
-        "imageUrl": { "type": "string" }
+        "imageUrl": { "type": "string" },
+        "additionalImageUrls": { "type": "array", "items": { "type": "string" } }
       }
     },
     "Tenant": {
       "description": "Tenant records linking users to properties.",
       "properties": {
         "id": { "type": "string" },
-        "userId": { "type": "string", "description": "The tenant's UID, set after handshake" },
+        "userId": { "type": "string", "description": "The tenant's unique identity key" },
         "landlordId": { "type": "string" },
         "propertyId": { "type": "string" },
         "name": { "type": "string" },
@@ -46,11 +48,15 @@
         "telephone": { "type": "string" },
         "status": { "type": "string", "enum": ["Active", "Archived"] },
         "tenancyStartDate": { "type": "string", "format": "date-time" },
-        "verified": { "type": "boolean" }
+        "tenancyEndDate": { "type": "string", "format": "date-time" },
+        "monthlyRent": { "type": "number" },
+        "rentDueDay": { "type": "number" },
+        "verified": { "type": "boolean" },
+        "joinedDate": { "type": "string", "format": "date-time" }
       }
     },
     "Repair": {
-      "description": "Maintenance requests.",
+      "description": "Maintenance request audit logs.",
       "properties": {
         "id": { "type": "string" },
         "landlordId": { "type": "string" },
@@ -58,24 +64,26 @@
         "tenantId": { "type": "string" },
         "title": { "type": "string" },
         "description": { "type": "string" },
+        "category": { "type": "string" },
         "status": { "type": "string", "enum": ["Open", "In Progress", "Completed", "Cancelled"] },
         "priority": { "type": "string" },
-        "reportedDate": { "type": "string", "format": "date-time" }
+        "reportedDate": { "type": "string", "format": "date-time" },
+        "photoUrls": { "type": "array", "items": { "type": "string" } }
       }
     }
   },
   "firestore": {
-    "users/{userId}": { "schema": "User", "description": "Global user registry" },
+    "users/{userId}": { "schema": "User", "description": "Global account registry" },
     "properties/{propertyId}": { "schema": "Property", "description": "Flat property registry" },
-    "tenants/{tenantId}": { "schema": "Tenant", "description": "Flat tenant registry" },
-    "repairs/{repairId}": { "schema": "Repair", "description": "Flat maintenance logs" },
-    "documents/{docId}": { "schema": "Tenant", "description": "Compliance document registry" },
-    "messages/{msgId}": { "schema": "Tenant", "description": "Secure messaging registry" },
-    "expenses/{expenseId}": { "schema": "Tenant", "description": "Financial outgoing ledger" },
-    "inspections/{inspectionId}": { "schema": "Tenant", "description": "Property inspection registry" },
-    "contractors/{contractorId}": { "schema": "Tenant", "description": "Tradespeople directory" },
-    "rentPayments/{paymentId}": { "schema": "Tenant", "description": "Income tracking ledger" },
-    "checklists/{checklistId}": { "schema": "Tenant", "description": "Pre-tenancy audit logs" },
+    "tenants/{tenantId}": { "schema": "Tenant", "description": "Flat tenancy registry" },
+    "repairs/{repairId}": { "schema": "Repair", "description": "Audit trail for maintenance" },
+    "documents/{docId}": { "schema": "Property", "description": "Compliance document registry" },
+    "messages/{msgId}": { "schema": "Tenant", "description": "Secure messaging ledge" },
+    "expenses/{expenseId}": { "schema": "Property", "description": "Financial outgoing ledger" },
+    "inspections/{inspectionId}": { "schema": "Property", "description": "Property audit records" },
+    "contractors/{contractorId}": { "schema": "User", "description": "Tradespeople directory" },
+    "rentPayments/{paymentId}": { "schema": "Tenant", "description": "Rent collection ledger" },
+    "checklists/{checklistId}": { "schema": "Tenant", "description": "Legal pre-tenancy audits" },
     "screenings/{screeningId}": { "schema": "Tenant", "description": "Tenant vetting records" }
   }
 }

@@ -20,42 +20,40 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Download, Loader2, FileWarning, CalendarClock, Activity, Banknote, BellRing } from 'lucide-react';
+import { Download, Loader2, FileWarning, CalendarClock, Banknote } from 'lucide-react';
 import { format, isBefore, addDays, isFuture, setDate, isPast, startOfMonth } from 'date-fns';
 import {
   useUser,
   useFirestore,
   useCollection,
   useMemoFirebase,
-  errorEmitter,
-  FirestorePermissionError,
 } from '@/firebase';
-import { collection, query, where, Timestamp, onSnapshot, doc, updateDoc, limit } from 'firebase/firestore';
-import jsPDF from 'jspdf';
-import autoTable from 'jspdf-autotable';
-import { toast } from '@/hooks/use-toast';
+import { collection, query, where, limit } from 'firebase/firestore';
 
-interface Document {
+interface DocumentRecord {
   id: string;
   title: string;
   propertyId: string;
+  landlordId: string;
   expiryDate: any;
   documentType: string;
 }
 
-interface Inspection {
+interface InspectionRecord {
   id: string;
   propertyId: string;
+  landlordId: string;
   type: string;
   status: string;
   scheduledDate: any;
 }
 
-interface Tenant {
+interface TenantRecord {
     id: string;
     name: string;
     email: string;
     propertyId: string;
+    landlordId: string;
     monthlyRent?: number;
     rentDueDay?: number;
     status: string;
@@ -76,24 +74,24 @@ export default function RemindersPage() {
 
   useEffect(() => { setToday(new Date()); }, []);
 
-  // Fetch everything using flat root collection queries
+  // 1. Fetch data using flat root collection queries
   const docsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(collection(firestore, 'documents'), where('landlordId', '==', user.uid));
   }, [firestore, user]);
-  const { data: allDocuments, isLoading: isLoadingDocs } = useCollection<Document>(docsQuery);
+  const { data: allDocuments, isLoading: isLoadingDocs } = useCollection<DocumentRecord>(docsQuery);
 
   const inspQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(collection(firestore, 'inspections'), where('landlordId', '==', user.uid), where('status', '==', 'Scheduled'));
   }, [firestore, user]);
-  const { data: allInspections, isLoading: isLoadingInsp } = useCollection<Inspection>(inspQuery);
+  const { data: allInspections, isLoading: isLoadingInsp } = useCollection<InspectionRecord>(inspQuery);
 
   const tenantsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(collection(firestore, 'tenants'), where('landlordId', '==', user.uid), where('status', '==', 'Active'));
   }, [firestore, user]);
-  const { data: allTenants, isLoading: isLoadingTenants } = useCollection<Tenant>(tenantsQuery);
+  const { data: allTenants, isLoading: isLoadingTenants } = useCollection<TenantRecord>(tenantsQuery);
 
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;

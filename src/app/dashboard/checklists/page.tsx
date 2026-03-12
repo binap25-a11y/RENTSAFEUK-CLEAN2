@@ -167,14 +167,14 @@ export default function ChecklistPage() {
 
   const propertyRef = useMemoFirebase(() => {
     if (!firestore || !user || !propertyIdFromUrl) return null;
-    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyIdFromUrl);
+    return doc(firestore, 'properties', propertyIdFromUrl);
   }, [firestore, user, propertyIdFromUrl]);
   const { data: property, isLoading: isLoadingProperty } = useDoc<Property>(propertyRef);
 
   const tenantRef = useMemoFirebase(() => {
-    if (!firestore || !user || !propertyIdFromUrl || !tenantIdFromUrl) return null;
-    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyIdFromUrl, 'tenants', tenantIdFromUrl);
-  }, [firestore, user, propertyIdFromUrl, tenantIdFromUrl]);
+    if (!firestore || !user || !tenantIdFromUrl) return null;
+    return doc(firestore, 'tenants', tenantIdFromUrl);
+  }, [firestore, user, tenantIdFromUrl]);
   const { data: tenant, isLoading: isLoadingTenant } = useDoc<Tenant>(tenantRef);
 
   async function proceedToSave(data: ChecklistFormValues) {
@@ -189,13 +189,13 @@ export default function ChecklistPage() {
 
     setIsSubmitting(true);
     
-    // Use standardized userId naming for rules compatibility
+    // Flattened structure data model
     const cleanedData = JSON.parse(JSON.stringify({
         ...data,
-        userId: user.uid,
+        landlordId: user.uid,
     }));
 
-    const checklistsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', data.propertyId, 'checklists');
+    const checklistsCollection = collection(firestore, 'checklists');
 
     addDoc(checklistsCollection, cleanedData)
       .then(() => {

@@ -53,13 +53,11 @@ import {
   useFirestore,
   useCollection,
   useMemoFirebase,
-  errorEmitter,
-  FirestorePermissionError,
 } from '@/firebase';
-import { collection, query, where, doc, setDoc, addDoc, limit, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, doc, setDoc, addDoc, limit } from 'firebase/firestore';
 import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import jsPDF from 'jspdf';
+import jsPDF from 'jsPDF';
 import autoTable from 'jspdf-autotable';
 import Link from 'next/link';
 
@@ -81,24 +79,25 @@ interface Property {
     monthlyRent: number;
   };
   status: string;
-  userId: string;
+  landlordId: string;
 }
 
 interface Expense {
   id: string;
   propertyId: string;
-  date: { seconds: number; nanoseconds: number } | Date;
+  landlordId: string;
+  date: any;
   expenseType: string;
   amount: number;
   paidBy: string;
   notes?: string;
-  userId: string;
 }
 
 type PaymentStatus = 'Paid' | 'Partially Paid' | 'Unpaid' | 'Pending';
 interface RentPayment {
   id: string;
   propertyId: string;
+  landlordId: string;
   year: number;
   month: string;
   status: PaymentStatus;
@@ -139,81 +138,50 @@ export default function FinancialsPage() {
   const [selectedPropertyId, setSelectedPropertyId] = useState('all');
   const [selectedYear, setSelectedYear] = useState<number | null>(null);
 
-  const [portfolioExpenses, setPortfolioExpenses] = useState<Expense[]>([]);
-  const [portfolioRentPayments, setPortfolioRentPayments] = useState<RentPayment[]>([]);
-  const [isAggregating, setIsAggregating] = useState(false);
-
   useEffect(() => {
     setSelectedYear(getYear(new Date()));
   }, []);
 
+  // 1. Fetch properties
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    return query(collection(firestore, 'userProfiles', user.uid, 'properties'), where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance']), limit(500));
+    return query(collection(firestore, 'properties'), where('landlordId', '==', user.uid), where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance']), limit(500));
   }, [firestore, user]);
-
   const { data: activeProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
   
+  // 2. Fetch all expenses for this landlord
+  const expensesQuery = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return query(collection(firestore, 'expenses'), where('landlordId', '==', user.uid), limit(500));
+  }, [firestore, user]);
+  const { data: allExpenses, isLoading: isLoadingExpenses } = useCollection<Expense>(expensesQuery);
+
+  // 3. Fetch rent payments for this landlord
+  const rentQuery = useMemoFirebase(() => {
+    if (!user || !firestore || !selectedYear) return null;
+    return query(collection(firestore, 'rentPayments'), where('landlordId', '==', user.uid), where('year', '==', selectedYear));
+  }, [firestore, user, selectedYear]);
+  const { data: allRentPayments, isLoading: isLoadingRent } = useCollection<RentPayment>(rentQuery);
+
   const selectedProperty = useMemo(() => {
     if (selectedPropertyId === 'all') return undefined;
     return activeProperties?.find(p => p.id === selectedPropertyId);
   }, [activeProperties, selectedPropertyId]);
 
-  useEffect(() => {
-    if (!user || !activeProperties || activeProperties.length === 0 || !selectedYear || !firestore) {
-        setPortfolioExpenses([]);
-        setPortfolioRentPayments([]);
-        return;
-    }
-
-    setIsAggregating(true);
-    const unsubs: (() => void)[] = [];
-    const expensesMap: Record<string, Expense[]> = {};
-    const rentMap: Record<string, RentPayment[]> = {};
-
-    const updateState = () => {
-        setPortfolioExpenses(Object.values(expensesMap).flat());
-        setPortfolioRentPayments(Object.values(rentMap).flat());
-        setIsAggregating(false);
-    };
-
-    activeProperties.forEach(p => {
-        unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'expenses'), (snap) => {
-            expensesMap[p.id] = snap.docs.map(d => ({ id: d.id, ...d.data(), propertyId: p.id } as Expense));
-            updateState();
-        }, async (serverError) => {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: `userProfiles/${user.uid}/properties/${p.id}/expenses`,
-                operation: 'list',
-            }));
-        }));
-
-        unsubs.push(onSnapshot(query(collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'rentPayments'), where('year', '==', selectedYear)), (snap) => {
-            rentMap[p.id] = snap.docs.map(d => ({ id: d.id, ...d.data(), propertyId: p.id } as RentPayment));
-            updateState();
-        }, async (serverError) => {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: `userProfiles/${user.uid}/properties/${p.id}/rentPayments`,
-                operation: 'list',
-            }));
-        }));
-    });
-
-    return () => unsubs.forEach(u => u());
-  }, [user, activeProperties, firestore, selectedYear]);
-
   const expenses = useMemo(() => {
-    if (!selectedYear) return [];
-    const list = selectedPropertyId !== 'all' ? (portfolioExpenses.filter(e => e.propertyId === selectedPropertyId)) : portfolioExpenses;
-    return list.filter(exp => {
+    if (!allExpenses || !selectedYear) return [];
+    return allExpenses.filter(exp => {
         const d = safeToDate(exp.date);
-        return d && isSameYear(d, new Date(selectedYear, 0, 1));
+        const matchesYear = d && isSameYear(d, new Date(selectedYear, 0, 1));
+        const matchesProperty = selectedPropertyId === 'all' || exp.propertyId === selectedPropertyId;
+        return matchesYear && matchesProperty;
     });
-  }, [portfolioExpenses, selectedPropertyId, selectedYear]);
+  }, [allExpenses, selectedPropertyId, selectedYear]);
 
   const rentPayments = useMemo(() => {
-    return selectedPropertyId !== 'all' ? (portfolioRentPayments.filter(p => p.propertyId === selectedPropertyId)) : portfolioRentPayments;
-  }, [portfolioRentPayments, selectedPropertyId]);
+    if (!allRentPayments) return [];
+    return allRentPayments.filter(p => selectedPropertyId === 'all' || p.propertyId === selectedPropertyId);
+  }, [allRentPayments, selectedPropertyId]);
 
   const displayIncome = useMemo(() => {
     if (selectedPropertyId !== 'all' && selectedProperty) {
@@ -226,7 +194,7 @@ export default function FinancialsPage() {
   const totalExpenses = useMemo(() => expenses.reduce((acc, expense) => acc + Number(expense.amount || 0), 0), [expenses]);
   const netIncome = totalPaidRent - totalExpenses;
   
-  const isLoading = isLoadingProperties || !selectedYear || isAggregating;
+  const isLoading = isLoadingProperties || isLoadingExpenses || isLoadingRent || !selectedYear;
 
   const generateHMRCPDF = () => {
     if (!selectedYear) return;
@@ -282,7 +250,9 @@ export default function FinancialsPage() {
             <div className="grid w-full gap-1.5">
                 <Label htmlFor="financial-scope-selector" className="text-xs uppercase font-bold text-muted-foreground">Scope View</Label>
                 <Select onValueChange={setSelectedPropertyId} value={selectedPropertyId}>
-                    <SelectTrigger id="financial-scope-selector" name="financialScope" className="h-11"><SelectValue placeholder="All Properties" /></SelectTrigger>
+                    <SelectTrigger id="financial-scope-selector" className="h-11">
+                        <SelectValue placeholder={isLoadingProperties ? "Syncing..." : "All Properties"} />
+                    </SelectTrigger>
                     <SelectContent>
                         <SelectItem value="all">All Properties (Portfolio View)</SelectItem>
                         {activeProperties?.map((prop) => (
@@ -296,7 +266,7 @@ export default function FinancialsPage() {
             <div className="grid w-full gap-1.5">
                 <Label htmlFor="reporting-year-selector" className="text-xs uppercase font-bold text-muted-foreground">Reporting Year</Label>
                 <Select onValueChange={(value) => setSelectedYear(Number(value))} value={selectedYear ? String(selectedYear) : ''}>
-                    <SelectTrigger id="reporting-year-selector" name="reportingYear" className="h-11"><SelectValue /></SelectTrigger>
+                    <SelectTrigger id="reporting-year-selector" className="h-11"><SelectValue /></SelectTrigger>
                     <SelectContent>
                         {Array.from({ length: 5 }, (_, i) => (new Date().getFullYear()) - i).map(year => (
                             <SelectItem key={year} value={String(year)}>{year}</SelectItem>
@@ -362,8 +332,8 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
   function onSubmit(data: ExpenseFormValues) {
     if (!user || !firestore) return;
     setIsSubmitting(true);
-    const expCol = collection(firestore, 'userProfiles', user.uid, 'properties', data.propertyId, 'expenses');
-    addDoc(expCol, { ...data, userId: user.uid })
+    const expCol = collection(firestore, 'expenses');
+    addDoc(expCol, { ...data, landlordId: user.uid })
       .then(() => {
         toast({ title: 'Expense Logged', description: 'Financial record added to audit trail.' });
         form.reset({ propertyId: selectedPropertyId !== 'all' ? selectedPropertyId : '', expenseType: '', notes: '', date: new Date(), paidBy: 'Landlord', amount: 0 });
@@ -539,9 +509,19 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
 
   const handleStatusChange = (month: string, status: PaymentStatus) => {
     if (!firestore || !user || !selectedProperty) return;
-    const rentPaymentRef = doc(firestore, 'userProfiles', user.uid, 'properties', selectedProperty.id, 'rentPayments', `${selectedYear}-${month}`);
+    const rentPaymentId = `${selectedProperty.id}-${selectedYear}-${month}`;
+    const rentPaymentRef = doc(firestore, 'rentPayments', rentPaymentId);
     const expectedAmount = statement.find(s => s.month === month)?.rent ?? 0;
-    setDoc(rentPaymentRef, { userId: user.uid, propertyId: selectedProperty.id, year: selectedYear, month, status, expectedAmount, amountPaid: status === 'Paid' ? expectedAmount : 0 }, { merge: true }).then(() => {
+    
+    setDoc(rentPaymentRef, { 
+        landlordId: user.uid, 
+        propertyId: selectedProperty.id, 
+        year: selectedYear, 
+        month, 
+        status, 
+        expectedAmount, 
+        amountPaid: status === 'Paid' ? expectedAmount : 0 
+    }, { merge: true }).then(() => {
         toast({ title: 'Ledger Updated', description: `Rent for ${month} marked as ${status}.` });
     });
   };

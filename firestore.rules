@@ -11,9 +11,18 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Landlord check based on explicit landlordId field
+    // Check if the current user is the landlord of the record
     function isLandlordOf(data) {
-      return isSignedIn() && (data.landlordId == request.auth.uid || data.userId == request.auth.uid);
+      return isSignedIn() && data.landlordId == request.auth.uid;
+    }
+
+    // Check if the current user is the tenant linked to the record
+    function isTenantOf(data) {
+      return isSignedIn() && (
+        data.tenantId == request.auth.uid || 
+        data.userId == request.auth.uid || 
+        (data.email != null && data.email.lower() == request.auth.token.email.lower())
+      );
     }
 
     // --- 1. Users Collection ---
@@ -24,49 +33,25 @@ service cloud.firestore {
     // --- 2. Properties Collection ---
     match /properties/{id} {
       allow create: if isSignedIn();
-      allow read: if isSignedIn() && (
-        resource.data.landlordId == request.auth.uid || 
-        resource.data.tenantId == request.auth.uid
-      );
-      allow update, delete: if isSignedIn() && resource.data.landlordId == request.auth.uid;
+      allow read: if isLandlordOf(resource.data) || isTenantOf(resource.data);
+      allow update, delete: if isLandlordOf(resource.data);
     }
 
     // --- 3. Tenants Collection ---
     match /tenants/{id} {
       allow create: if isSignedIn();
-      allow read: if isSignedIn() && (
-        resource.data.landlordId == request.auth.uid || 
-        resource.data.userId == request.auth.uid ||
-        resource.data.email == request.auth.token.email.lower()
-      );
-      allow update: if isSignedIn() && (
-        resource.data.landlordId == request.auth.uid || 
-        resource.data.userId == request.auth.uid
-      );
-      allow delete: if isSignedIn() && resource.data.landlordId == request.auth.uid;
+      allow read: if isLandlordOf(resource.data) || isTenantOf(resource.data);
+      allow update: if isLandlordOf(resource.data) || isTenantOf(resource.data);
+      allow delete: if isLandlordOf(resource.data);
     }
 
-    // --- 4. Shared Portfolio Collections (Repairs, Documents, etc.) ---
+    // --- 4. Portfolio Shared Ledger Data ---
+    // (Repairs, Documents, Messages, Expenses, Inspections, Contractors, RentPayments, Checklists, Screenings)
     match /{collectionName}/{id} {
       allow create: if isSignedIn();
-      allow read: if isSignedIn() && (
-        resource.data.landlordId == request.auth.uid || 
-        resource.data.tenantId == request.auth.uid ||
-        resource.data.reportedBy == request.auth.uid ||
-        resource.data.userId == request.auth.uid
-      );
-      allow update: if isSignedIn() && (
-        resource.data.landlordId == request.auth.uid || 
-        resource.data.tenantId == request.auth.uid ||
-        resource.data.userId == request.auth.uid
-      );
-      allow delete: if isSignedIn() && (
-        resource.data.landlordId == request.auth.uid || 
-        resource.data.userId == request.auth.uid
-      );
-      
-      // Explicit constraints for create operations to ensure landlordId is present
-      allow create: if isSignedIn();
+      allow read: if isLandlordOf(resource.data) || isTenantOf(resource.data) || resource.data.userId == request.auth.uid;
+      allow update: if isLandlordOf(resource.data) || isTenantOf(resource.data) || resource.data.userId == request.auth.uid;
+      allow delete: if isLandlordOf(resource.data);
     }
   }
 }
