@@ -23,7 +23,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
-import { collectionGroup, query, where, limit, onSnapshot, doc, updateDoc, getDocs, collection } from 'firebase/firestore';
+import { collectionGroup, query, where, limit, onSnapshot, doc, updateDoc, getDocs } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/hooks/use-toast';
@@ -36,11 +36,6 @@ interface TenantContext {
     propertyData: any;
 }
 
-/**
- * @fileOverview Tenant Hub Dashboard. 
- * Resolves the identity handshake between the user and the landlord's registry.
- * Uses a sequential search pattern to handle cloud indexing lags gracefully.
- */
 export default function TenantDashboard() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
@@ -53,7 +48,7 @@ export default function TenantDashboard() {
   const [isHandshaking, setIsHandshaking] = useState(false);
   const [syncAttempt, setSyncAttempt] = useState(1);
   
-  const handshakeAttempted = useRef(false);
+  const handshakeInProgress = useRef(false);
   const pollingInterval = useRef<NodeJS.Timeout | null>(null);
 
   const performDiscovery = useCallback(async () => {
@@ -65,7 +60,7 @@ export default function TenantDashboard() {
     const userEmail = user.email.toLowerCase().trim();
 
     try {
-        // 1. PRIMARY SEARCH: By linked userId (Optimized path)
+        // 1. PRIMARY SEARCH: Find record already linked to this UID
         const uidQuery = query(
             collectionGroup(firestore, 'tenants'),
             where('userId', '==', user.uid),
@@ -73,7 +68,7 @@ export default function TenantDashboard() {
         );
         let snap = await getDocs(uidQuery);
 
-        // 2. FALLBACK SEARCH: By verified email (Handshake path)
+        // 2. FALLBACK SEARCH: Find record by verified email (Initial Handshake)
         if (snap.empty) {
             const emailQuery = query(
                 collectionGroup(firestore, 'tenants'),
@@ -93,7 +88,7 @@ export default function TenantDashboard() {
         const data = activeTenantDoc.data();
         const path = activeTenantDoc.ref.path;
         
-        // Extract hierarchy: userProfiles/{landlordId}/properties/{propertyId}/tenants/{tenantId}
+        // Parse Hierarchy: userProfiles/{landlordId}/properties/{propertyId}/tenants/{tenantId}
         const segments = path.split('/');
         const landlordIdx = segments.indexOf('userProfiles');
         const propertyIdx = segments.indexOf('properties');
@@ -103,69 +98,62 @@ export default function TenantDashboard() {
             const propertyId = segments[propertyIdx + 1];
             const tenantId = activeTenantDoc.id;
 
-            const propRef = doc(firestore, 'userProfiles', landlordId, 'properties', propertyId);
-            
-            // Sync property metadata in real-time
-            const unsubProp = onSnapshot(propRef, (pSnap) => {
-                if (pSnap.exists()) {
-                    setContext({
-                        landlordId,
-                        propertyId,
-                        tenantId,
-                        tenantData: data,
-                        propertyData: pSnap.data()
-                    });
-
-                    // 3. ATOMIC VERIFICATION HANDSHAKE
-                    if (!data.verified || data.userId !== user.uid) {
-                        if (!handshakeAttempted.current) {
-                            setIsHandshaking(true);
-                            handshakeAttempted.current = true;
-                            
-                            updateDoc(activeTenantDoc.ref, { 
-                                joinedDate: new Date().toISOString(),
-                                userId: user.uid,
-                                verified: true,
-                                lastSyncCheck: new Date().toISOString()
-                            }).then(() => {
-                                setIsHandshaking(false);
-                                toast({ title: "Portal Verified", description: "Identity keys linked successfully." });
-                            }).catch(err => {
-                                console.warn("Handshake update blocked:", err.message);
-                                setIsHandshaking(false);
-                                handshakeAttempted.current = false;
-                            });
-                        }
-                    }
-                    setIsIndexBuilding(false);
-                    if (pollingInterval.current) {
-                        clearInterval(pollingInterval.current);
-                        pollingInterval.current = null;
+            // 3. ATOMIC VERIFICATION HANDSHAKE (Only if not already verified)
+            if (!data.verified || data.userId !== user.uid) {
+                if (!handshakeInProgress.current) {
+                    setIsHandshaking(true);
+                    handshakeInProgress.current = true;
+                    
+                    try {
+                        await updateDoc(activeTenantDoc.ref, { 
+                            joinedDate: new Date().toISOString(),
+                            userId: user.uid,
+                            verified: true,
+                            lastSyncCheck: new Date().toISOString()
+                        });
+                        toast({ title: "Identity Verified", description: "Your portal connection is now secure." });
+                    } catch (handshakeErr: any) {
+                        console.warn("Handshake update deferred:", handshakeErr.message);
+                        handshakeInProgress.current = false;
+                    } finally {
+                        setIsHandshaking(false);
                     }
                 }
-                setIsLoading(false);
-            }, (err) => {
-                console.warn("Property sync access restricted:", err.message);
-                setIsLoading(false);
-            });
+            }
 
-            return () => unsubProp();
+            // 4. PROPERTY SYNC
+            const propRef = doc(firestore, 'userProfiles', landlordId, 'properties', propertyId);
+            const propSnap = await getDocs(query(collection(firestore, 'userProfiles', landlordId, 'properties'), where('__name__', '==', propertyId), limit(1)));
+            
+            if (!propSnap.empty) {
+                setContext({
+                    landlordId,
+                    propertyId,
+                    tenantId,
+                    tenantData: data,
+                    propertyData: propSnap.docs[0].data()
+                });
+                setIsIndexBuilding(false);
+                if (pollingInterval.current) {
+                    clearInterval(pollingInterval.current);
+                    pollingInterval.current = null;
+                }
+            }
+            setIsLoading(false);
         }
     } catch (err: any) {
         const msg = err.message.toLowerCase();
-        // Permission Denied or Failed Precondition on collectionGroup usually means index building
-        if (msg.includes('index') || err.code === 'failed-precondition' || msg.includes('permission')) {
+        if (msg.includes('index') || err.code === 'failed-precondition' || err.code === 'permission-denied') {
             setIsIndexBuilding(true);
             setError(null);
         } else {
             console.error("Discovery error:", err);
-            setError("Identity resolution failed.");
+            setError("Identity mapping failed.");
         }
         setIsLoading(false);
     }
   }, [user, firestore]);
 
-  // Automated Polling for Background Discovery
   useEffect(() => {
     if (!isUserLoading && !context) {
         performDiscovery();
@@ -174,7 +162,7 @@ export default function TenantDashboard() {
             pollingInterval.current = setInterval(() => {
                 setSyncAttempt(prev => prev + 1);
                 performDiscovery();
-            }, 15000); 
+            }, 10000); // Poll every 10 seconds during initialization
         }
     }
 
@@ -190,8 +178,8 @@ export default function TenantDashboard() {
     return (
         <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center px-6">
-                Resolving Resident Identity...
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">
+                Synchronizing Secure Keys...
             </p>
         </div>
     );
@@ -199,18 +187,18 @@ export default function TenantDashboard() {
 
   if (isIndexBuilding) {
     return (
-        <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6 animate-in fade-in duration-700">
+        <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6">
             <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto border shadow-inner">
                 <Sparkles className="h-12 w-12 text-primary animate-pulse" />
             </div>
-            <div className="space-y-3 text-left">
-                <h2 className="font-headline text-2xl font-bold text-primary text-center">Portal Setup in Progress</h2>
-                <p className="text-muted-foreground font-medium text-sm leading-relaxed text-center">
-                    The platform is currently initializing high-speed identity discovery.
+            <div className="space-y-3">
+                <h2 className="font-headline text-2xl font-bold text-primary">Resident Portal Initialization</h2>
+                <p className="text-muted-foreground font-medium text-sm leading-relaxed">
+                    The platform is currently building your secure identity discovery index. 
                 </p>
-                <div className="p-4 rounded-xl bg-muted/50 border border-dashed text-xs text-muted-foreground mt-4">
-                    <p className="font-bold uppercase text-[9px] tracking-widest mb-1 text-primary">Status: Building Discovery Index</p>
-                    <p>This is a one-time cloud initialization that typically takes 2-3 minutes. Access will grant automatically.</p>
+                <div className="p-4 rounded-xl bg-muted/50 border border-dashed text-xs text-muted-foreground mt-4 text-left">
+                    <p className="font-bold uppercase text-[9px] tracking-widest mb-1 text-primary">Status: Provisioning Cloud Optimization</p>
+                    <p>This is a one-time setup that typically takes 2-3 minutes. Access will activate automatically.</p>
                 </div>
             </div>
             <div className="flex flex-col gap-2">
@@ -225,26 +213,26 @@ export default function TenantDashboard() {
 
   if (error || !context) {
     return (
-        <Card className="max-w-md mx-auto mt-20 shadow-2xl border-none text-left overflow-hidden">
-            <CardHeader className="text-center bg-muted/20 pb-8 px-6 border-b">
+        <Card className="max-w-md mx-auto mt-20 shadow-2xl border-none overflow-hidden">
+            <CardHeader className="text-center bg-muted/20 pb-8 border-b">
                 <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 shadow-sm border text-muted-foreground/20">
                     <Search className="h-10 w-10" />
                 </div>
-                <CardTitle className="font-headline text-xl text-primary">Identity Mapping Failed</CardTitle>
-                <CardDescription className="text-sm font-medium text-center px-4">
-                    No active tenancy found for <strong>{user?.email}</strong>.
+                <CardTitle className="font-headline text-xl text-primary">Tenancy Not Resolved</CardTitle>
+                <CardDescription className="text-sm font-medium">
+                    No active record found for <strong>{user?.email}</strong>.
                 </CardDescription>
             </CardHeader>
-            <CardContent className="pt-6 space-y-4">
-                <div className="space-y-2 text-left">
-                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Next Steps</p>
-                    <ul className="text-xs text-muted-foreground space-y-2">
-                        <li className="flex items-start gap-2"><div className="h-1 w-1 rounded-full bg-primary mt-1.5 shrink-0" /> Ask your landlord to verify your registered email.</li>
-                        <li className="flex items-start gap-2"><div className="h-1 w-1 rounded-full bg-primary mt-1.5 shrink-0" /> Ensure you are logged into the correct account.</li>
+            <CardContent className="pt-6">
+                <div className="p-4 rounded-xl bg-destructive/5 border border-destructive/10 text-xs text-destructive text-left leading-relaxed">
+                    <p className="font-bold mb-1">Common Fixes:</p>
+                    <ul className="space-y-1 ml-4 list-disc">
+                        <li>Ask your landlord to verify your portal email in the registry.</li>
+                        <li>Ensure the email matches exactly what the landlord entered.</li>
                     </ul>
                 </div>
             </CardContent>
-            <CardFooter className="pt-6 flex flex-col gap-3 bg-muted/5 border-t">
+            <CardFooter className="pt-6 bg-muted/5 border-t">
                 <Button variant="outline" className="w-full h-11 rounded-xl font-bold uppercase tracking-widest text-[10px]" onClick={() => window.location.reload()}>
                     <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Discovery
                 </Button>
@@ -282,19 +270,19 @@ export default function TenantDashboard() {
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">
-        <Card className="shadow-lg border-none hover:bg-muted/5 transition-all hover:translate-y-[-2px] text-left">
+        <Card className="shadow-lg border-none hover:bg-muted/5 transition-all text-left">
             <CardHeader className="pb-2 px-6">
                 <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2"><Banknote className="h-3.5 w-3.5 text-primary" /> Monthly Rent</CardTitle>
             </CardHeader>
             <CardContent className="px-6 pb-6">
                 <div className="text-3xl font-bold text-foreground">£{context.tenantData.monthlyRent?.toLocaleString() || '0'}</div>
-                <p className="text-xs text-muted-foreground mt-1 font-semibold">Due on the {context.tenantData.rentDueDay || '1st'} of the month</p>
+                <p className="text-xs text-muted-foreground mt-1 font-semibold">Due on the {context.tenantData.rentDueDay || '1st'} of month</p>
             </CardContent>
         </Card>
 
-        <Card className="shadow-lg border-none hover:bg-muted/5 transition-all hover:translate-y-[-2px] text-left">
+        <Card className="shadow-lg border-none hover:bg-muted/5 transition-all text-left">
             <CardHeader className="pb-2 px-6">
-                <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2"><Calendar className="h-3.5 w-3.5 text-primary" /> Agreement Date</CardTitle>
+                <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2"><Calendar className="h-3.5 w-3.5 text-primary" /> Tenancy Date</CardTitle>
             </CardHeader>
             <CardContent className="px-6 pb-6">
                 <div className="text-xl font-bold text-foreground">
@@ -302,31 +290,31 @@ export default function TenantDashboard() {
                         ? format(new Date(context.tenantData.tenancyStartDate.seconds * 1000), 'dd MMM yyyy') 
                         : 'Rolling Periodic'}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1 font-medium italic">Active Tenancy</p>
+                <p className="text-xs text-muted-foreground mt-1 font-medium italic">Active Agreement</p>
             </CardContent>
         </Card>
 
-        <Card className="shadow-xl border-none bg-primary text-primary-foreground transition-all hover:translate-y-[-2px] text-left">
+        <Card className="shadow-xl border-none bg-primary text-primary-foreground text-left">
             <CardHeader className="pb-2 px-6">
                 <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-80 flex items-center gap-2 text-primary-foreground"><MessageSquare className="h-3.5 w-3.5" /> Support Channel</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 px-6 pb-6">
-                <p className="text-xs font-medium leading-relaxed">Direct messaging for repairs and queries.</p>
-                <Button variant="secondary" size="sm" className="w-full font-bold h-9 shadow-md rounded-xl uppercase tracking-widest text-[10px]" asChild><Link href="/tenant/messages">Messenger Inbox <ChevronRight className="ml-1 h-3 w-3"/></Link></Button>
+                <p className="text-xs font-medium">Direct line to your landlord for maintenance.</p>
+                <Button variant="secondary" size="sm" className="w-full font-bold h-9 shadow-md rounded-xl uppercase tracking-widest text-[10px]" asChild><Link href="/tenant/messages">Open Inbox <ChevronRight className="ml-1 h-3 w-3"/></Link></Button>
             </CardContent>
         </Card>
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2 mt-8">
         <Card className="border-none shadow-md overflow-hidden group text-left">
-            <CardHeader className="bg-muted/30 border-b px-6"><CardTitle className="text-lg flex items-center gap-2 font-headline text-foreground"><Wrench className="h-5 w-5 text-primary" /> Repair Tracking</CardTitle></CardHeader>
+            <CardHeader className="bg-muted/30 border-b px-6"><CardTitle className="text-lg flex items-center gap-2 font-headline text-foreground"><Wrench className="h-5 w-5 text-primary" /> Repair Logs</CardTitle></CardHeader>
             <CardContent className="pt-6 px-6 pb-6">
                 <div className="flex items-center justify-between p-5 rounded-2xl bg-muted/20 border border-transparent group-hover:border-primary/10 transition-all">
                     <div className="space-y-1">
-                        <p className="text-sm font-bold text-foreground">Report a new repair</p>
-                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Shared maintenance log</p>
+                        <p className="text-sm font-bold">Report Issue</p>
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Shared maintenance hub</p>
                     </div>
-                    <Button size="sm" className="h-10 font-bold px-8 shadow-md rounded-xl uppercase tracking-widest text-[9px]" asChild><Link href="/tenant/maintenance">Report Issue</Link></Button>
+                    <Button size="sm" className="h-10 font-bold px-8 shadow-md rounded-xl uppercase tracking-widest text-[9px]" asChild><Link href="/tenant/maintenance">Report Repair</Link></Button>
                 </div>
             </CardContent>
         </Card>
@@ -336,10 +324,10 @@ export default function TenantDashboard() {
             <CardContent className="pt-6 px-6 pb-6">
                 <div className="flex items-center justify-between p-5 rounded-2xl bg-muted/20 border border-transparent group-hover:border-primary/10 transition-all">
                     <div className="space-y-1">
-                        <p className="text-sm font-bold text-foreground">View Documents</p>
-                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Agreements & Certificates</p>
+                        <p className="text-sm font-bold">Certificates</p>
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">EPC, Gas & Agreements</p>
                     </div>
-                    <Button variant="outline" size="sm" className="h-10 font-bold px-8 border-primary/20 hover:bg-primary/5 rounded-xl uppercase tracking-widest text-[9px]" asChild><Link href="/tenant/documents">Vault Access</Link></Button>
+                    <Button variant="outline" size="sm" className="h-10 font-bold px-8 border-primary/20 hover:bg-primary/5 rounded-xl uppercase tracking-widest text-[9px]" asChild><Link href="/tenant/documents">View Vault</Link></Button>
                 </div>
             </CardContent>
         </Card>

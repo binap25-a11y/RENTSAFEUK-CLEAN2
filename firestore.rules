@@ -3,10 +3,6 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    /**
-     * GLOBAL SECURITY HELPERS
-     */
-
     function isSignedIn() {
       return request.auth != null;
     }
@@ -15,37 +11,21 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // --- TOP-LEVEL DISCOVERY RULES (CRITICAL FOR IDENTITY HANDSHAKE) ---
+    // --- GLOBAL DISCOVERY (REQUIRED FOR HANDSHAKE) ---
     
     match /{path=**}/tenants/{tenantId} {
-      // Identity Discovery: Rules must be strictly query-safe for collectionGroup.
-      // We split the rules to ensure Firestore can optimize the index lookup.
-      
-      // 1. Allow discovery by exactly matching the authenticated email
+      // Allow tenants to discover their own record by email or linked UID.
+      // Rules must be simple for collectionGroup query safety.
       allow read: if isSignedIn() && (
-        request.auth.token.email != null && 
-        resource.data.email == request.auth.token.email.lower()
+        resource.data.email == request.auth.token.email.lower() || 
+        resource.data.userId == request.auth.uid
       );
       
-      // 2. Allow discovery by the linked UID (once verified)
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      
-      // Verification Handshake: Allow the resident to link their unique UID.
-      allow update: if isSignedIn() && (
-        (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
-        (resource.data.userId == request.auth.uid || resource.data.userId == '')
-      ) && request.resource.data.diff(resource.data).affectedKeys().hasAny(['joinedDate', 'userId', 'verified', 'lastSyncCheck']);
-    }
-
-    // --- SHARED DATA ACCESS RULES ---
-
-    match /{path=**}/messages/{messageId} {
-       allow read, write: if isSignedIn();
-    }
-    
-    match /{path=**}/maintenanceLogs/{logId} {
-       allow read: if isSignedIn();
-       allow create: if isSignedIn();
+      // Verification Handshake: Allow the tenant to link their UID once.
+      // Restrict updates to only identity-mapping fields.
+      allow update: if isSignedIn() && 
+        resource.data.email == request.auth.token.email.lower() &&
+        request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'verified', 'joinedDate', 'lastSyncCheck']);
     }
 
     // --- CORE HIERARCHICAL PORTFOLIO DATA ---
@@ -63,12 +43,12 @@ service cloud.firestore {
           allow read, write: if isOwner(userId);
           
           allow get: if isSignedIn() && (
-            (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
+            resource.data.email == request.auth.token.email.lower() || 
             resource.data.userId == request.auth.uid
           );
 
           match /messages/{messageId} {
-             allow read, write: if isOwner(userId) || (isSignedIn() && request.auth.token.email != null && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email.lower());
+             allow read, write: if isOwner(userId) || (isSignedIn() && request.auth.uid == get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.userId);
           }
         }
 
