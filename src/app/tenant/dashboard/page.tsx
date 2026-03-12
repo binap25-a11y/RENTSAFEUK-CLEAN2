@@ -24,6 +24,7 @@ import { useUser, useFirestore } from '@/firebase';
 import { collectionGroup, query, where, limit, onSnapshot, doc, updateDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
+import { toast } from '@/hooks/use-toast';
 
 interface TenantContext {
     landlordId: string;
@@ -41,7 +42,7 @@ export default function TenantDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const handshakeAttempted = useRef(false);
+  const [isHandshaking, setIsHandshaking] = useState(false);
 
   const performDiscovery = useCallback(() => {
     if (!user || !firestore || !user.email) {
@@ -100,19 +101,19 @@ export default function TenantDashboard() {
                             propertyData: propSnap.data()
                         });
                         
-                        // VERIFICATION HANDSHAKE:
-                        // Trigger the update if missing or if userId hasn't been linked to this Auth account yet.
-                        if (!handshakeAttempted.current && (data.verified !== true || data.userId !== user.uid)) {
-                            handshakeAttempted.current = true;
-                            console.log("Tenant Hub: Initiating verified identity handshake...");
+                        // VERIFICATION HANDSHAKE TRIGGER
+                        if (data.verified !== true || data.userId !== user.uid) {
+                            setIsHandshaking(true);
                             updateDoc(activeTenantDoc.ref, { 
                                 joinedDate: new Date().toISOString(),
                                 userId: user.uid,
                                 verified: true
                             }).then(() => {
-                                console.log("Handshake Complete: Resident status updated to Verified.");
+                                setIsHandshaking(false);
+                                toast({ title: "Portal Access Verified", description: "Your identity has been securely linked to your tenancy." });
                             }).catch(err => {
-                                console.warn("Handshake write failed. Check security rules.", err.message);
+                                console.warn("Handshake write failed:", err.message);
+                                setIsHandshaking(false);
                             });
                         }
 
@@ -232,9 +233,17 @@ export default function TenantDashboard() {
           <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Resident Hub</h1>
           <p className="text-muted-foreground font-medium flex items-center gap-2 mt-1"><Home className="h-4 w-4 text-primary/40" />{propertyAddress}</p>
         </div>
-        <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-8 px-3 font-bold uppercase tracking-widest text-[9px] shadow-sm rounded-xl shrink-0">
-            <ShieldCheck className="mr-1.5 h-3.5 w-3.5" /> Verified Resident
-        </Badge>
+        <div className="flex items-center gap-2">
+            {isHandshaking && (
+                <div className="flex items-center gap-2 text-[10px] font-bold uppercase text-primary animate-pulse px-2">
+                    <Loader2 className="h-3 w-3 animate-spin" />
+                    Linking Identity...
+                </div>
+            )}
+            <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-8 px-3 font-bold uppercase tracking-widest text-[9px] shadow-sm rounded-xl shrink-0">
+                <ShieldCheck className="mr-1.5 h-3.5 w-3.5" /> Verified Resident
+            </Badge>
+        </div>
       </div>
 
       <div className="grid gap-6 md:grid-cols-2 lg:grid-cols-3">

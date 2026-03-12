@@ -26,6 +26,7 @@ import {
   Banknote,
   Send,
   ShieldCheck,
+  RefreshCw
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
@@ -96,6 +97,7 @@ export default function TenantDetailPage() {
   const [isDeleteDialogOpen, setIsDeleteDialogOpen] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
   const [isUpdatingInvite, setIsUpdatingInvite] = useState(false);
+  const [isSyncing, setIsSyncing] = useState(false);
 
   const directTenantRef = useMemoFirebase(() => {
     if (!firestore || !id || !urlPropertyId || !user) return null;
@@ -110,14 +112,6 @@ export default function TenantDetailPage() {
   }, [firestore, tenant?.propertyId, user]);
   const { data: property } = useDoc<Property>(propertyRef);
   
-  const screeningsQuery = useMemoFirebase(() => {
-    if (!firestore || !tenant || !user) return null;
-    return collection(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId, 'tenants', tenant.id, 'screenings');
-  }, [firestore, tenant, user]);
-  const { data: screenings } = useCollection<TenantScreening>(screeningsQuery);
-  
-  const firstScreening = screenings?.[0];
-
   const handleSendInvite = async () => {
     if (!tenant || !property || !user || !firestore) return;
     setIsUpdatingInvite(true);
@@ -126,13 +120,11 @@ export default function TenantDetailPage() {
         const appUrl = window.location.origin;
         const propertyAddr = property.address.street || 'the property';
         
-        // Compact body to ensure mailto URL remains within browser safety limits
         const subject = `Resident Portal Invite - ${propertyAddr}`;
         const body = `Hi ${tenant.name},\n\nJoin your portal for ${propertyAddr} at:\n${appUrl}\n\nEmail: ${tenant.email}\n\n- Landlord Support`;
         
         const mailtoUrl = `mailto:${tenant.email}?subject=${encodeURIComponent(subject)}&body=${encodeURIComponent(body)}`;
         
-        // Trigger mail client
         window.location.href = mailtoUrl;
         
         const tRef = doc(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId, 'tenants', tenant.id);
@@ -145,6 +137,17 @@ export default function TenantDetailPage() {
     } finally {
         setIsUpdatingInvite(false);
     }
+  };
+
+  const handleSyncIdentity = async () => {
+      if (!directTenantRef) return;
+      setIsSyncing(true);
+      toast({ title: "Synchronizing Registry", description: "Fetching latest identity metadata..." });
+      // Minor metadata update to trigger a re-sync of the document
+      updateDoc(directTenantRef, { lastSyncCheck: new Date().toISOString() })
+        .finally(() => {
+            setTimeout(() => setIsSyncing(false), 1000);
+        });
   };
 
   const handleSendReminder = async () => {
@@ -242,10 +245,15 @@ export default function TenantDetailPage() {
                 </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
-                {!isVerified && (
+                {!isVerified ? (
                     <Button onClick={handleSendInvite} disabled={isUpdatingInvite} className="gap-2 font-bold uppercase tracking-widest text-[10px] h-10 px-6 shadow-lg bg-primary hover:bg-primary/90">
                         <Send className="h-3.5 w-3.5" /> 
                         {tenant.inviteSentDate ? 'Resend Portal Invite' : 'Send Verification Invite'}
+                    </Button>
+                ) : (
+                    <Button variant="outline" onClick={handleSyncIdentity} disabled={isSyncing} className="gap-2 font-bold uppercase tracking-widest text-[10px] h-10 px-6 shadow-sm border-primary/20 hover:bg-primary/5">
+                        <RefreshCw className={isSyncing ? "h-3.5 w-3.5 animate-spin" : "h-3.5 w-3.5"} />
+                        Sync Identity
                     </Button>
                 )}
                 <Button variant="outline" onClick={handleSendReminder} className="gap-2 font-bold uppercase tracking-widest text-[10px] h-10 px-6 shadow-sm border-primary/20 hover:bg-primary/5">

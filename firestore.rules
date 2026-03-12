@@ -25,7 +25,7 @@ service cloud.firestore {
       );
       
       // Allow the tenant to update their own verification status during the handshake
-      // but restrict them to ONLY updating identity-linking fields.
+      // restrict them to ONLY identity-linking fields.
       allow update: if isSignedIn() && request.auth.token.email != null 
                     && resource.data.email.lower() == request.auth.token.email.lower()
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['joinedDate', 'userId', 'verified']);
