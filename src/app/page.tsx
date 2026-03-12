@@ -57,15 +57,6 @@ export default function LoginPage() {
   const [showPassword, setShowPassword] = useState(false);
   const [authError, setAuthError] = useState<string | null>(null);
 
-  const form = useForm<FormValues>({
-    resolver: zodResolver(formSchema),
-    defaultValues: {
-      email: '',
-      password: '',
-      role: 'landlord',
-    },
-  });
-
   useEffect(() => {
     if (!isUserLoading && user && firestore) {
       const checkRoleAndRedirect = async () => {
@@ -80,8 +71,8 @@ export default function LoginPage() {
             } else {
               router.replace('/dashboard');
             }
-          } else {
-            // Default fallback if profile is still being created
+          } else if (mode === 'login') {
+            // If it's a login and doc doesn't exist, assume landlord or wait for creation
             router.replace('/dashboard');
           }
         } catch (error) {
@@ -92,7 +83,7 @@ export default function LoginPage() {
       
       checkRoleAndRedirect();
     }
-  }, [user, isUserLoading, router, firestore]);
+  }, [user, isUserLoading, router, firestore, mode]);
 
   const handleAuthAction = (data: FormValues) => {
     if (!auth) {
@@ -144,10 +135,12 @@ export default function LoginPage() {
 
   if (isUserLoading || user) {
     return (
-      <div className="flex h-screen w-full items-center justify-center">
+      <div className="flex h-screen w-full items-center justify-center bg-background">
          <div className="flex flex-col items-center gap-4">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
-            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Authenticating...</p>
+            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">
+                Authenticating Session...
+            </p>
          </div>
       </div>
     );
