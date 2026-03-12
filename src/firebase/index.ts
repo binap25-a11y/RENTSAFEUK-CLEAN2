@@ -2,8 +2,7 @@
 
 /**
  * @fileOverview Main Firebase Initialization Entry Point.
- * Consolidated re-exports from stable utility modules to prevent circular dependencies 
- * and module resolution conflicts (TypeError: X is not a function).
+ * Re-exports from stable modules to ensure reliable module resolution.
  */
 
 // 1. Core Authentication Utilities

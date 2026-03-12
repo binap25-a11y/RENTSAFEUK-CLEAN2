@@ -16,51 +16,52 @@ import { doc, setDoc, getFirestore } from 'firebase/firestore';
 
 export type UserRole = 'landlord' | 'agent' | 'tenant';
 
-export function signInNonBlocking(
+export async function signInNonBlocking(
   auth: Auth,
   email: string,
   password: string,
   onError?: (error: any) => void
-): void {
+): Promise<void> {
   if (!auth) return;
-  signInWithEmailAndPassword(auth, email, password).catch((error) => {
-    if (error && onError) onError(error);
-  });
+  try {
+    await signInWithEmailAndPassword(auth, email, password);
+  } catch (error) {
+    if (onError) onError(error);
+  }
 }
 
-export function createUserNonBlocking(
+export async function createUserNonBlocking(
   auth: Auth,
   email: string,
   password: string,
   role: UserRole,
   onError?: (error: any) => void
-): void {
+): Promise<void> {
   if (!auth) return;
   
   const normalizedEmail = email.toLowerCase().trim();
   
-  createUserWithEmailAndPassword(auth, normalizedEmail, password)
-    .then(async (userCredential) => {
-      const user = userCredential.user;
-      const db = getFirestore();
-      
-      // Initialize the user profile document immediately
-      const profileData = {
-        id: user.uid,
-        email: normalizedEmail,
-        role: role,
-        createdAt: new Date().toISOString(),
-        idleTimeoutMinutes: 30,
-      };
+  try {
+    const userCredential = await createUserWithEmailAndPassword(auth, normalizedEmail, password);
+    const user = userCredential.user;
+    const db = getFirestore();
+    
+    // Initialize the user profile document immediately
+    const profileData = {
+      id: user.uid,
+      email: normalizedEmail,
+      role: role,
+      createdAt: new Date().toISOString(),
+      idleTimeoutMinutes: 30,
+    };
 
-      await setDoc(doc(db, 'userProfiles', user.uid), profileData);
-      
-      const defaultName = role.charAt(0).toUpperCase() + role.slice(1);
-      await updateProfile(user, { displayName: defaultName });
-    })
-    .catch((error) => {
-      if (error && onError) onError(error);
-    });
+    await setDoc(doc(db, 'userProfiles', user.uid), profileData);
+    
+    const defaultName = role.charAt(0).toUpperCase() + role.slice(1);
+    await updateProfile(user, { displayName: defaultName });
+  } catch (error) {
+    if (onError) onError(error);
+  }
 }
 
 export function initiateAnonymousSignIn(auth: Auth): void {

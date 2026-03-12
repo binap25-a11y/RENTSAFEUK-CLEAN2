@@ -15,7 +15,8 @@ service cloud.firestore {
     }
 
     // --- TOP-LEVEL DISCOVERY RULES (CRITICAL FOR HANDSHAKE PERFORMANCE) ---
-    // This allows the collectionGroup discovery query to verify identity instantly.
+    // These rules are placed here to ensure the discovery queries (collectionGroup)
+    // resolve instantly even before the full profile document is parsed.
     
     match /{path=**}/tenants/{tenantId} {
       allow read: if isSignedIn() && (
@@ -41,7 +42,7 @@ service cloud.firestore {
       match /properties/{propertyId} {
         allow read, write: if isOwner(userId);
         
-        // Residents read assigned property details for hub context.
+        // Residents can read the property details they are assigned to
         allow get: if isSignedIn();
 
         match /tenants/{tenantId} {

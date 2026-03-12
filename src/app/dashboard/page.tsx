@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, query, where, onSnapshot, collectionGroup, limit, doc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,8 +17,6 @@ import {
   Eye, 
   Bed, 
   Bath, 
-  Sparkles,
-  ChevronRight,
   RefreshCw
 } from 'lucide-react';
 import Link from 'next/link';
@@ -52,10 +50,8 @@ export default function DashboardPage() {
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
   const [discoveryComplete, setDiscoveryComplete] = useState(false);
-  const [isIndexBuilding, setIsIndexBuilding] = useState(false);
-  const [handshakeTimedOut, setHandshakeTimedOut] = useState(false);
 
-  // 1. Unified Profile & Role Discovery
+  // 1. Core Profile & Role Discovery
   useEffect(() => {
     if (isUserLoading || !user || !firestore) return;
 
@@ -65,21 +61,23 @@ export default function DashboardPage() {
       const role = data?.role || 'landlord';
       setUserRole(role);
       setIsLoadingProfile(false);
+
+      // IMMEDIATE REDIRECTION: If the role is explicitly 'tenant', skip further discovery
+      if (role === 'tenant') {
+        router.replace('/tenant/dashboard');
+      }
     }, (err) => {
       console.error("Profile sync failed:", err);
       setIsLoadingProfile(false);
     });
 
     return () => unsubProfile();
-  }, [user, isUserLoading, firestore]);
+  }, [user, isUserLoading, firestore, router]);
 
-  // 2. Parallel Data Handshake & Redirection
+  // 2. Landlord Property Discovery
   useEffect(() => {
-    if (isLoadingProfile || !user || !firestore || !userRole) return;
+    if (isLoadingProfile || !user || !firestore || userRole === 'tenant') return;
 
-    const userEmail = user.email?.toLowerCase().trim();
-
-    // A. Landlord Discovery
     const propQuery = query(
       collection(firestore, 'userProfiles', user.uid, 'properties'), 
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
@@ -88,53 +86,11 @@ export default function DashboardPage() {
     const unsubProps = onSnapshot(propQuery, (snap) => {
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Property));
       setProperties(list);
-      
-      // If user has properties, they are definitely a landlord context
-      if (list.length > 0 || userRole === 'landlord' || userRole === 'agent') {
-        setDiscoveryComplete(true);
-      }
+      setDiscoveryComplete(true);
     });
 
-    // B. Tenant Global Discovery (Identity Handshake)
-    let unsubTenants = () => {};
-    if (userEmail) {
-        const tenantsQuery = query(
-            collectionGroup(firestore, 'tenants'),
-            where('email', '==', userEmail),
-            limit(1)
-        );
-
-        unsubTenants = onSnapshot(tenantsQuery, (snap) => {
-            if (!snap.empty) {
-                // Verified tenant found - route to specialized hub immediately
-                router.replace('/tenant/dashboard');
-            } else if (userRole === 'tenant') {
-                // Explicitly a tenant but no record found yet - allow to see empty state or wait
-                setDiscoveryComplete(true); 
-            }
-        }, (err) => {
-            const msg = err.message.toLowerCase();
-            if (msg.includes('index') || err.code === 'failed-precondition') {
-                if (userRole === 'tenant') setIsIndexBuilding(true);
-            } else {
-                if (userRole === 'tenant') setDiscoveryComplete(true);
-            }
-        });
-    }
-
-    // C. Safety Timeout for Discovery (5 seconds)
-    const timer = setTimeout(() => {
-        setHandshakeTimedOut(true);
-        // Fallback: If timed out and role is landlord/agent, just show the dashboard
-        if (userRole !== 'tenant') setDiscoveryComplete(true);
-    }, 5000);
-
-    return () => {
-        unsubProps();
-        unsubTenants();
-        clearTimeout(timer);
-    };
-  }, [user, userRole, isLoadingProfile, firestore, router]);
+    return () => unsubProps();
+  }, [user, userRole, isLoadingProfile, firestore]);
 
   const filteredProperties = useMemo(() => {
     if (!searchTerm) return properties;
@@ -153,44 +109,23 @@ export default function DashboardPage() {
     return (
       <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">Verifying Credentials...</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">Verifying Access...</p>
       </div>
     );
   }
 
-  // Interstitial for Index Building or Hanging Handshake
-  if ((isIndexBuilding || !discoveryComplete) && !handshakeTimedOut && userRole === 'tenant') {
+  // Interstitial for Discovery phase (Bypassed for tenants)
+  if (!discoveryComplete && userRole !== 'tenant') {
     return (
-        <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6 animate-in fade-in duration-700">
-            <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto border shadow-inner">
-                <Sparkles className="h-12 w-12 text-primary animate-pulse" />
-            </div>
-            <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Resident Verification</h2>
-                <p className="text-muted-foreground font-medium text-sm leading-relaxed text-center">
-                    The platform is currently verifying your resident credentials in the cloud.
-                </p>
-            </div>
-            <div className="p-4 rounded-xl bg-muted/50 border border-dashed text-xs text-muted-foreground text-left">
-                <p className="font-bold uppercase text-[9px] mb-1">Status: Mapping Identity</p>
-                {isIndexBuilding 
-                    ? "Firestore cloud indexes are being provisioned. This typically takes 2-3 minutes." 
-                    : "Synchronizing with your landlord's records..."}
-            </div>
-            <div className="flex flex-col gap-2">
-                <Button variant="outline" className="w-full h-11 font-bold uppercase text-[10px] tracking-widest" onClick={() => window.location.reload()}>
-                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Check Status
-                </Button>
-                <Button variant="ghost" className="w-full text-[9px] font-bold uppercase text-muted-foreground" onClick={() => setDiscoveryComplete(true)}>
-                    Bypass to Portfolio Manager
-                </Button>
-            </div>
+        <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            <p className="text-sm font-medium text-muted-foreground">Synchronizing Portfolio...</p>
         </div>
     );
   }
 
   // Empty State / New Landlord Onboarding
-  if (properties.length === 0 && (userRole === 'landlord' || userRole === 'agent' || !userRole)) {
+  if (properties.length === 0 && (userRole === 'landlord' || userRole === 'agent')) {
       return (
           <div className="text-center py-20 animate-in fade-in duration-500">
               <div className="max-w-md mx-auto space-y-6 px-6 text-left">

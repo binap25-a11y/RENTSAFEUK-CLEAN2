@@ -54,7 +54,7 @@ export default function TenantDashboard() {
     
     const userEmail = user.email.toLowerCase().trim();
 
-    // 1. Discovery Handshake via Collection Group
+    // 1. Discovery Handshake via Collection Group (Case-Insensitive match via forced lowercase)
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
@@ -92,8 +92,8 @@ export default function TenantDashboard() {
                             propertyData: propSnap.data()
                         });
                         
-                        // Metadata auto-sync
-                        if (!data.joinedDate) {
+                        // Metadata auto-sync for handshake confirmation
+                        if (!data.joinedDate || data.userId !== user.uid) {
                             updateDoc(activeTenantDoc.ref, { 
                                 joinedDate: new Date().toISOString(),
                                 userId: user.uid 
@@ -108,11 +108,11 @@ export default function TenantDashboard() {
                     setIsIndexBuilding(false);
                 }, (err) => {
                     console.warn("Property sync pending security clearance:", err.message);
-                    setError("Portfolio synchronization pending. Access restricted by landlord security settings.");
+                    setError("Portfolio synchronization pending. Please wait a moment.");
                     setIsLoading(false);
                 });
             } else {
-                setError("Incompatible tenancy record structure. Please contact your property manager.");
+                setError("Incompatible tenancy record structure. Please contact support.");
                 setIsLoading(false);
             }
         } else {
@@ -147,7 +147,7 @@ export default function TenantDashboard() {
         <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse text-center">
-                Syncing Resident Hub...
+                Resolving Resident Portal...
             </p>
         </div>
     );
@@ -160,17 +160,17 @@ export default function TenantDashboard() {
                 <Sparkles className="h-12 w-12 text-primary animate-pulse" />
             </div>
             <div className="space-y-3 text-left">
-                <h2 className="font-headline text-2xl font-bold text-primary text-center">Resident Verification</h2>
+                <h2 className="font-headline text-2xl font-bold text-primary text-center">Portal Setup in Progress</h2>
                 <p className="text-muted-foreground font-medium text-sm leading-relaxed text-center">
-                    The platform is currently verifying your resident credentials in the cloud. 
+                    The platform is currently initializing high-speed identity discovery.
                 </p>
                 <div className="p-4 rounded-xl bg-muted/50 border border-dashed text-xs text-muted-foreground mt-4">
-                    <p className="font-bold uppercase text-[9px] tracking-widest mb-1">Status: Index Building</p>
-                    Firestore cloud indexes are being provisioned for your account. This one-time setup typically takes 2-3 minutes.
+                    <p className="font-bold uppercase text-[9px] tracking-widest mb-1">Status: Building Discovery Index</p>
+                    This is a one-time cloud initialization that typically takes 2-3 minutes.
                 </div>
             </div>
             <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-sm" onClick={() => window.location.reload()}>
-                <RefreshCw className="mr-2 h-4 w-4" /> Check Connection Status
+                <RefreshCw className="mr-2 h-4 w-4" /> Check Status
             </Button>
         </div>
     );
@@ -185,22 +185,22 @@ export default function TenantDashboard() {
                 </div>
                 <CardTitle className="font-headline text-xl text-primary">Identity Not Linked</CardTitle>
                 <CardDescription className="text-sm font-medium text-center">
-                    We verified your credentials ({user?.email}) but could not locate an active tenancy record matching this identity.
+                    We verified your credentials but could not locate an active tenancy record matching <strong>{user?.email}</strong>.
                 </CardDescription>
             </CardHeader>
             <CardContent className="pt-6 space-y-4">
                 <div className="space-y-2">
                     <p className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Solutions</p>
                     <ul className="text-xs text-muted-foreground space-y-2">
-                        <li className="flex items-start gap-2"><div className="h-1 w-1 rounded-full bg-primary mt-1.5 shrink-0" /> Verify with your landlord that they registered your account with <strong>{user?.email}</strong>.</li>
-                        <li className="flex items-start gap-2"><div className="h-1 w-1 rounded-full bg-primary mt-1.5 shrink-0" /> Ask for a fresh <strong>Resident Verification Invite</strong>.</li>
+                        <li className="flex items-start gap-2"><div className="h-1 w-1 rounded-full bg-primary mt-1.5 shrink-0" /> Ask your landlord to verify that your email is spelled correctly in their records.</li>
+                        <li className="flex items-start gap-2"><div className="h-1 w-1 rounded-full bg-primary mt-1.5 shrink-0" /> Ensure you are logged in with the exact same email address provided to your landlord.</li>
                     </ul>
                 </div>
             </CardContent>
             <CardFooter className="pt-6 flex flex-col gap-3 bg-muted/5 border-t">
-                <Button className="w-full font-bold h-11 shadow-lg uppercase tracking-widest text-xs" asChild><Link href="/dashboard">Return to Dashboard</Link></Button>
+                <Button className="w-full font-bold h-11 shadow-lg uppercase tracking-widest text-xs" onClick={() => router.push('/dashboard')}>Go to Dashboard</Button>
                 <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={performDiscovery}>
-                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Force Handshake Retry
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Identity Handshake
                 </Button>
             </CardFooter>
         </Card>
