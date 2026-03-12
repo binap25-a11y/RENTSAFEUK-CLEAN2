@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,6 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
+import { Label } from '@/components/ui/label';
 import { 
   PoundSterling, 
   Loader2, 
@@ -55,9 +55,8 @@ import {
   useMemoFirebase,
 } from '@/firebase';
 import { collection, query, where, doc, setDoc, addDoc, limit } from 'firebase/firestore';
-import { Label } from '@/components/ui/label';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
-import jsPDF from 'jsPDF';
+import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Link from 'next/link';
 
@@ -245,7 +244,7 @@ export default function FinancialsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 max-w-6xl mx-auto">
+    <div className="flex flex-col gap-6 max-w-6xl mx-auto text-left">
         <div className="flex flex-col gap-4 max-w-md bg-card p-6 rounded-lg border shadow-sm">
             <div className="grid w-full gap-1.5">
                 <Label htmlFor="financial-scope-selector" className="text-xs uppercase font-bold text-muted-foreground">Scope View</Label>
@@ -277,14 +276,14 @@ export default function FinancialsPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card className="border-none shadow-md overflow-hidden"><div className="h-1 bg-primary w-full" /><CardHeader className="pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{selectedPropertyId === 'all' ? 'Portfolio Gross' : 'Property Gross'}</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold tracking-tight">{formatCurrency(displayIncome)}</div></CardContent></Card>
-            <Card className="border-none shadow-md overflow-hidden"><div className="h-1 bg-green-500 w-full" /><CardHeader className="pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-green-600">Income Received</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold tracking-tight">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : formatCurrency(totalPaidRent)}</div></CardContent></Card>
-            <Card className="border-none shadow-md overflow-hidden"><div className="h-1 bg-destructive w-full" /><CardHeader className="pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-destructive">Expenses</CardTitle></CardHeader><CardContent><div className="text-2xl font-bold tracking-tight">{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : formatCurrency(totalExpenses)}</div></CardContent></Card>
-            <Card className="border-none shadow-md overflow-hidden"><div className="h-1 bg-amber-500 w-full" /><CardHeader className="pb-2"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Net Position</CardTitle></CardHeader><CardContent><div className={"text-2xl font-bold tracking-tight " + (netIncome < 0 ? "text-destructive" : "text-primary")}>{isLoading ? <Loader2 className="h-6 w-6 animate-spin" /> : formatCurrency(netIncome)}</div></CardContent></Card>
+            <Card className="border-none shadow-md overflow-hidden text-left"><div className="h-1 bg-primary w-full" /><CardHeader className="pb-2 px-6"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{selectedPropertyId === 'all' ? 'Portfolio Gross' : 'Property Gross'}</CardTitle></CardHeader><CardContent className='px-6 pb-6'><div className="text-2xl font-bold tracking-tight">{formatCurrency(displayIncome)}</div></CardContent></Card>
+            <Card className="border-none shadow-md overflow-hidden text-left"><div className="h-1 bg-green-500 w-full" /><CardHeader className="pb-2 px-6"><CardTitle className="text-xs font-bold uppercase tracking-widest text-green-600">Income Received</CardTitle></CardHeader><CardContent className='px-6 pb-6'><div className="text-2xl font-bold tracking-tight">{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(totalPaidRent)}</div></CardContent></Card>
+            <Card className="border-none shadow-md overflow-hidden text-left"><div className="h-1 bg-destructive w-full" /><CardHeader className="pb-2 px-6"><CardTitle className="text-xs font-bold uppercase tracking-widest text-destructive">Expenses</CardTitle></CardHeader><CardContent className='px-6 pb-6'><div className="text-2xl font-bold tracking-tight">{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(totalExpenses)}</div></CardContent></Card>
+            <Card className="border-none shadow-md overflow-hidden text-left"><div className="h-1 bg-amber-500 w-full" /><CardHeader className="pb-2 px-6"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Net Position</CardTitle></CardHeader><CardContent className='px-6 pb-6'><div className={"text-2xl font-bold tracking-tight " + (netIncome < 0 ? "text-destructive" : "text-primary")}>{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(netIncome)}</div></CardContent></Card>
         </div>
 
         <Tabs defaultValue="expenses" className="pt-4">
-            <TabsList className="bg-muted/50 p-1 h-auto"><TabsTrigger value="expenses" className="font-bold">Tracker</TabsTrigger><TabsTrigger value="summary" className="font-bold">Tax Summary</TabsTrigger><TabsTrigger value="statement" className="font-bold">Rent Ledger</TabsTrigger></TabsList>
+            <TabsList className="bg-muted/50 p-1 h-auto"><TabsTrigger value="expenses" className="font-bold px-6">Tracker</TabsTrigger><TabsTrigger value="summary" className="font-bold px-6">Tax Summary</TabsTrigger><TabsTrigger value="statement" className="font-bold px-6">Rent Ledger</TabsTrigger></TabsList>
             <TabsContent value="expenses">
                 <ExpenseTracker properties={activeProperties || []} selectedPropertyId={selectedPropertyId} />
             </TabsContent>
@@ -348,17 +347,17 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
   }
 
   return (
-    <div className="space-y-6">
-        <Card className="mt-6 border-none shadow-lg">
-            <CardHeader>
-            <CardTitle className="text-lg">Log New Financial Outgoing</CardTitle>
-            <CardDescription>Select a property and category to record a new expense.</CardDescription>
+    <div className="space-y-6 text-left">
+        <Card className="mt-6 border-none shadow-lg overflow-hidden">
+            <CardHeader className="bg-primary/5 border-b px-6">
+                <CardTitle className="text-lg">Log New Financial Outgoing</CardTitle>
+                <CardDescription>Select a property and category to record a new expense.</CardDescription>
             </CardHeader>
-            <CardContent>
+            <CardContent className="pt-8 px-6 pb-8">
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <FormField control={form.control} name="propertyId" render={({ field }) => (
-                    <FormItem>
+                    <FormItem className='text-left'>
                         <FormLabel className="font-bold" htmlFor="expense-property-select">Target Property</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                         <FormControl><SelectTrigger id="expense-property-select" name="propertyId" className="h-11 bg-background"><SelectValue placeholder="Select from portfolio" /></SelectTrigger></FormControl>
@@ -367,9 +366,9 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                         <FormMessage />
                     </FormItem>
                 )} />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField control={form.control} name="date" render={({ field }) => (
-                        <FormItem>
+                        <FormItem className='text-left'>
                           <FormLabel className="font-bold" htmlFor="expense-date-input">Date</FormLabel>
                           <FormControl>
                             <Input 
@@ -385,7 +384,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                         </FormItem>
                     )} />
                     <FormField control={form.control} name="expenseType" render={({ field }) => (
-                        <FormItem>
+                        <FormItem className='text-left'>
                             <FormLabel className="font-bold" htmlFor="expense-type-select">Category</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
                                 <FormControl><SelectTrigger id="expense-type-select" name="expenseType" className="h-11 bg-background"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
@@ -397,9 +396,9 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                         </FormItem>
                     )} />
                 </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField control={form.control} name="amount" render={({ field }) => (
-                        <FormItem>
+                        <FormItem className='text-left'>
                           <FormLabel className="font-bold" htmlFor="expense-amount-input">Amount (£)</FormLabel>
                           <FormControl>
                             <Input 
@@ -416,7 +415,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                         </FormItem>
                     )} />
                     <FormField control={form.control} name="paidBy" render={({ field }) => (
-                      <FormItem>
+                      <FormItem className='text-left'>
                         <FormLabel className="font-bold" htmlFor="expense-paid-by-input">Paid By</FormLabel>
                         <FormControl>
                           <Input 
@@ -432,7 +431,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                     )} />
                 </div>
                 <FormField control={form.control} name="notes" render={({ field }) => (
-                  <FormItem>
+                  <FormItem className='text-left'>
                     <FormLabel className="font-bold" htmlFor="expense-notes-area">Audit Notes</FormLabel>
                     <FormControl>
                       <Textarea 
@@ -452,7 +451,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
         </Card>
 
         <div className="flex items-center gap-3 w-full px-1">
-            <Button asChild variant="outline" className="flex-1 font-bold shadow-sm h-11 px-6 border-primary/20 hover:bg-primary/5 transition-all">
+            <Button asChild variant="outline" className="flex-1 font-bold shadow-sm h-11 px-6 border-primary/20 hover:bg-primary/5 transition-all uppercase tracking-widest text-[10px]">
                 <Link href="/dashboard/expenses/logged">
                     <History className="mr-2 h-4 w-4 text-primary" /> View History
                 </Link>
@@ -460,7 +459,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
             <Button 
                 onClick={form.handleSubmit(onSubmit)} 
                 disabled={isSubmitting} 
-                className="flex-1 font-bold shadow-lg h-11 px-8 bg-primary hover:bg-primary/90 transition-all"
+                className="flex-1 font-bold shadow-lg h-11 px-8 bg-primary hover:bg-primary/90 transition-all uppercase tracking-widest text-[10px]"
             >
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
                 Log Expense Record
@@ -478,18 +477,18 @@ function AnnualSummary({ selectedYear, expenses, isLoadingExpenses }: { selected
   }, [expenses]);
 
   return (
-    <Card className="mt-6 border-none shadow-lg overflow-hidden">
-        <CardHeader className="bg-primary/5 border-b border-primary/10">
+    <Card className="mt-6 border-none shadow-lg overflow-hidden text-left">
+        <CardHeader className="bg-primary/5 border-b border-primary/10 px-6">
             <CardTitle className="text-lg">Tax Year Summary: {selectedYear}</CardTitle>
             <CardDescription>Aggregated outgoings for self-assessment reporting.</CardDescription>
         </CardHeader>
-        <CardContent className="pt-6">
+        <CardContent className="pt-0 px-0">
             {isLoadingExpenses ? (<div className="flex h-48 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>) : expensesByCategory.length === 0 ? (<p className="py-16 text-center text-muted-foreground italic">No expense data found for this period.</p>) : (
                 <Table>
                     <TableHeader className="bg-muted/50">
-                        <TableRow><TableHead className="font-bold text-[10px] uppercase tracking-wider">Category</TableHead><TableHead className="text-right font-bold text-[10px] uppercase tracking-wider pr-6">Total Outgoing</TableHead></TableRow>
+                        <TableRow><TableHead className="font-bold text-[10px] uppercase tracking-wider pl-6">Category</TableHead><TableHead className="text-right font-bold text-[10px] uppercase tracking-wider pr-6">Total Outgoing</TableHead></TableRow>
                     </TableHeader>
-                    <TableBody>{expensesByCategory.map(([name, amount]) => (<TableRow key={name} className="hover:bg-muted/30 transition-colors"><TableCell className="font-bold">{name}</TableCell><TableCell className="text-right font-bold pr-6">{formatCurrency(amount)}</TableCell></TableRow>))}</TableBody>
+                    <TableBody>{expensesByCategory.map(([name, amount]) => (<TableRow key={name} className="hover:bg-muted/30 transition-colors"><TableCell className="font-bold pl-6 py-4">{name}</TableCell><TableCell className="text-right font-bold pr-6">{formatCurrency(amount)}</TableCell></TableRow>))}</TableBody>
                 </Table>
             )}
         </CardContent>
@@ -526,11 +525,11 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
     });
   };
 
-  if (!selectedProperty) return <Card className="mt-6 border-dashed bg-muted/5"><CardContent className='py-24 text-center'><div className="bg-background p-4 rounded-full w-fit mx-auto shadow-sm mb-4"><Banknote className="h-10 w-10 text-muted-foreground opacity-20" /></div><p className="text-muted-foreground font-medium">Select a specific property to view its rent ledger.</p></CardContent></Card>;
+  if (!selectedProperty) return <Card className="mt-6 border-dashed bg-muted/5"><CardContent className='py-24 text-center'><div className="bg-background p-4 rounded-full w-fit mx-auto shadow-sm mb-4 border"><Banknote className="h-10 w-10 text-muted-foreground opacity-20" /></div><p className="text-muted-foreground font-medium">Select a specific property to view its rent ledger.</p></CardContent></Card>;
 
   return (
-    <Card className="mt-6 border-none shadow-lg overflow-hidden">
-        <CardHeader className="bg-primary/5 border-b border-primary/10">
+    <Card className="mt-6 border-none shadow-lg overflow-hidden text-left">
+        <CardHeader className="bg-primary/5 border-b border-primary/10 px-6">
             <CardTitle className="text-lg">Rent Ledger: {selectedYear}</CardTitle>
             <CardDescription>Track collection status month-by-month.</CardDescription>
         </CardHeader>
@@ -542,11 +541,11 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                 <TableBody>
                     {statement.map((row) => (
                         <TableRow key={row.month} className="hover:bg-muted/30 transition-colors">
-                            <TableCell className="font-bold pl-6">{row.month}</TableCell>
+                            <TableCell className="font-bold pl-6 py-4">{row.month}</TableCell>
                             <TableCell className="font-medium">{formatCurrency(row.rent)}</TableCell>
                             <TableCell className="pr-6">
                                 <Select value={row.status} onValueChange={(v) => handleStatusChange(row.month, v as PaymentStatus)}>
-                                    <SelectTrigger id={`payment-status-select-${row.month}`} name={`rentStatus-${row.month}`} className="w-[160px] h-9 text-xs font-bold shadow-none bg-background"><SelectValue /></SelectTrigger>
+                                    <SelectTrigger id={`payment-status-select-${row.month}`} name={`rentStatus-${row.month}`} className="w-[160px] h-9 text-xs font-bold shadow-none bg-background border-2"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="Paid">Paid</SelectItem>
                                         <SelectItem value="Partially Paid">Partially Paid</SelectItem>

@@ -5,23 +5,23 @@ import Link from 'next/link';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Loader2, Calendar as CalendarIcon, User, Download, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Loader2, Calendar as CalendarIcon, User, Download, AlertCircle, FileCheck, ShieldCheck } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc } from 'firebase/firestore';
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 
 // Helper component to display a checklist item
 const ChecklistItemDisplay = ({ label, checked }: { label: string; checked: boolean | undefined }) => (
-  <div className="flex items-center justify-between rounded-md border p-3 bg-background">
-    <p className="text-sm font-medium">{label}</p>
+  <div className="flex items-center justify-between rounded-xl border-2 p-4 bg-background shadow-sm transition-all hover:border-primary/20">
+    <p className="text-sm font-bold text-foreground">{label}</p>
     {checked === true ? (
-      <Badge variant="default" className="bg-green-100 text-green-800 border-green-200">Pass</Badge>
+      <Badge variant="default" className="bg-green-100 text-green-800 border-green-200 uppercase font-bold text-[9px] px-2.5 h-6">Pass</Badge>
     ) : checked === false ? (
-      <Badge variant="destructive">Fail</Badge>
+      <Badge variant="destructive" className='uppercase font-bold text-[9px] px-2.5 h-6'>Fail</Badge>
     ) : (
-      <Badge variant="outline">N/A</Badge>
+      <Badge variant="outline" className='uppercase font-bold text-[9px] px-2.5 h-6 opacity-40'>N/A</Badge>
     )}
   </div>
 );
@@ -30,9 +30,9 @@ const ChecklistItemDisplay = ({ label, checked }: { label: string; checked: bool
 const NotesDisplay = ({ notes, title = "Notes" }: { notes: string | undefined, title?: string }) => {
   if (!notes) return null;
   return (
-    <div className="mt-4 rounded-md border border-dashed bg-muted/50 p-4">
-      <h4 className="font-semibold text-sm mb-2">{title}</h4>
-      <p className="text-sm text-muted-foreground whitespace-pre-wrap">{notes}</p>
+    <div className="mt-4 rounded-xl border-2 border-dashed bg-muted/5 p-5">
+      <h4 className="font-bold text-[10px] uppercase tracking-[0.2em] text-muted-foreground mb-2">{title}</h4>
+      <p className="text-sm text-muted-foreground font-medium whitespace-pre-wrap leading-relaxed italic">"{notes}"</p>
     </div>
   );
 };
@@ -42,11 +42,11 @@ const LandlordContactInfo = ({ data }: { data: any }) => {
     return null;
   }
   return (
-    <div className="mb-4 grid grid-cols-1 gap-x-4 gap-y-2 rounded-md border p-4 sm:grid-cols-2">
-      <h4 className="sm:col-span-2 text-base font-semibold mb-2">Landlord Contact Details</h4>
-      {data.name && <div className="text-sm sm:col-span-2"><p className="font-medium">Name</p><p className="text-muted-foreground">{data.name}</p></div>}
-      {data.email && <div className="text-sm"><p className="font-medium">Email</p><p className="text-muted-foreground">{data.email}</p></div>}
-      {data.phone && <div className="text-sm"><p className="font-medium">Phone</p><p className="text-muted-foreground">{data.phone}</p></div>}
+    <div className="mb-6 grid grid-cols-1 gap-6 rounded-xl border-2 p-6 sm:grid-cols-3 bg-muted/10">
+      <h4 className="sm:col-span-3 text-[10px] uppercase font-bold tracking-[0.2em] text-muted-foreground border-b pb-2">Landlord Contact Details</h4>
+      {data.name && <div className="text-sm"><p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Name</p><p className="font-bold">{data.name}</p></div>}
+      {data.email && <div className="text-sm"><p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Email</p><p className="font-bold text-primary break-all">{data.email}</p></div>}
+      {data.phone && <div className="text-sm"><p className="text-[10px] font-bold text-muted-foreground uppercase mb-1">Phone</p><p className="font-bold">{data.phone}</p></div>}
     </div>
   );
 };
@@ -60,13 +60,13 @@ const ScreeningSection = ({ title, data, fields, notesKey = 'notes' }: { title: 
     if (!hasData) return null;
 
     return (
-        <Card>
-            <CardHeader>
-                <CardTitle className="text-lg">{title}</CardTitle>
+        <Card className='shadow-md border-none overflow-hidden'>
+            <CardHeader className='bg-muted/30 border-b px-6'>
+                <CardTitle className="text-lg font-headline">{title}</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-3">
+            <CardContent className="space-y-4 pt-6 px-6 pb-6">
                  {title === 'Previous Landlord Reference' && <LandlordContactInfo data={data} />}
-                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                     {fields.map(field => (data[field.key] !== undefined && data[field.key] !== false) &&
                       <ChecklistItemDisplay key={field.key} label={field.label} checked={data[field.key]} />
                     )}
@@ -100,15 +100,15 @@ export default function ViewScreeningPage() {
   const { user } = useUser();
 
   const screeningRef = useMemoFirebase(() => {
-    if (!firestore || !user || !tenantId || !screeningId || !propertyId) return null;
-    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'tenants', tenantId, 'screenings', screeningId);
-  }, [firestore, user, tenantId, screeningId, propertyId]);
+    if (!firestore || !user || !screeningId) return null;
+    return doc(firestore, 'screenings', screeningId);
+  }, [firestore, user, screeningId]);
   const { data: screening, isLoading: isLoadingScreening, error: screeningError } = useDoc(screeningRef);
   
   const tenantRef = useMemoFirebase(() => {
-    if(!firestore || !user || !tenantId || !propertyId) return null;
-    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'tenants', tenantId);
-  }, [firestore, user, tenantId, propertyId]);
+    if(!firestore || !user || !tenantId) return null;
+    return doc(firestore, 'tenants', tenantId);
+  }, [firestore, user, tenantId]);
   const { data: tenant, isLoading: isLoadingTenant } = useDoc(tenantRef);
 
   const generatePDF = () => {
@@ -200,29 +200,29 @@ export default function ViewScreeningPage() {
   const isLoading = isLoadingScreening || isLoadingTenant;
 
   if (isLoading) {
-    return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
+    return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
-  if (screeningError || !propertyId) {
+  if (screeningError || !screeningId) {
     return (
-        <div className="flex flex-col items-center justify-center h-64 gap-4 p-6 text-center">
+        <div className="flex flex-col items-center justify-center h-64 gap-4 p-6 text-center text-left">
             <AlertCircle className="h-12 w-12 text-destructive opacity-20" />
-            <h2 className="text-lg font-bold">Failed to Load Report</h2>
-            <p className="text-sm text-muted-foreground max-w-xs">There was an error loading the record details. Ensure the URL is correct and you have permission.</p>
+            <h2 className="text-lg font-bold text-foreground">Access Error</h2>
+            <p className="text-sm text-muted-foreground max-w-xs">There was an error accessing the screening record.</p>
             <Button asChild variant="outline"><Link href="/dashboard/tenants">Return to Tenants</Link></Button>
         </div>
     );
   }
 
-  if (!screening) {
+  if (!screening || !tenant) {
     return (
-        <div className="flex flex-col items-center justify-center h-96 gap-6 p-6 text-center">
+        <div className="flex flex-col items-center justify-center h-96 gap-6 p-6 text-center text-left">
             <div className="bg-muted p-6 rounded-full">
                 <AlertCircle className="h-12 w-12 text-muted-foreground opacity-20" />
             </div>
             <div className="text-center space-y-2">
                 <h2 className="text-xl font-bold">Screening Record Not Found</h2>
-                <p className="text-muted-foreground max-w-xs mx-auto">This screening report may have been deleted, or you might be accessing a link without the required property context.</p>
+                <p className="text-muted-foreground max-w-xs mx-auto">This screening report may have been deleted or is inaccessible.</p>
             </div>
             <Button asChild variant="outline">
                 <Link href="/dashboard/tenants">Return to Tenants List</Link>
@@ -234,39 +234,39 @@ export default function ViewScreeningPage() {
   const screeningDate = screening.screeningDate?.seconds ? format(new Date(screening.screeningDate.seconds * 1000), 'PPP') : 'N/A';
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 text-left">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
             <Button variant="outline" size="icon" asChild>
                 <Link href={`/dashboard/tenants/${tenantId}?propertyId=${propertyId}`}><ArrowLeft className="h-4 w-4" /></Link>
             </Button>
             <div>
-                <h1 className="text-2xl font-bold">Screening Report</h1>
-                <p className="text-muted-foreground">{tenant?.name || 'Loading tenant...'}</p>
+                <h1 className="text-2xl font-bold font-headline leading-tight">Screening Audit</h1>
+                <p className="text-muted-foreground text-sm font-medium">{tenant?.name || 'Loading tenant...'}</p>
             </div>
         </div>
-         <Button onClick={generatePDF} disabled={!screening || !tenant}>
-            <Download className="mr-2 h-4 w-4" /> Download PDF
+         <Button onClick={generatePDF} disabled={!screening || !tenant} className='shadow-lg font-bold uppercase tracking-widest text-[10px] h-10 px-6'>
+            <Download className="mr-2 h-3.5 w-3.5" /> Download PDF
         </Button>
       </div>
       
-      <Card>
-        <CardHeader>
-            <CardTitle>Screening Summary</CardTitle>
+      <Card className='shadow-lg border-none overflow-hidden'>
+        <CardHeader className='bg-primary/5 border-b px-6'>
+            <CardTitle className='text-lg font-headline'>Audit Metadata</CardTitle>
         </CardHeader>
-        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 px-8 pb-8">
             <div className="flex items-start gap-4">
-                <CalendarIcon className="h-5 w-5 text-muted-foreground mt-1" />
+                <div className="p-2.5 rounded-lg bg-primary/10 text-primary shrink-0"><CalendarIcon className="h-5 w-5" /></div>
                 <div>
-                    <p className="text-sm text-muted-foreground">Screening Date</p>
-                    <p>{screeningDate}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.2em] mb-1">Screening Date</p>
+                    <p className='font-bold'>{screeningDate}</p>
                 </div>
             </div>
              <div className="flex items-start gap-4">
-                <User className="h-5 w-5 text-muted-foreground mt-1" />
+                <div className="p-2.5 rounded-lg bg-primary/10 text-primary shrink-0"><User className="h-5 w-5" /></div>
                 <div>
-                    <p className="text-sm text-muted-foreground">Tenant</p>
-                    <p>{tenant?.name || 'N/A'}</p>
+                    <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.2em] mb-1">Applicant Identity</p>
+                    <p className='font-bold'>{tenant?.name || 'N/A'}</p>
                 </div>
             </div>
         </CardContent>
@@ -276,12 +276,15 @@ export default function ViewScreeningPage() {
         {Object.entries(screeningSections).map(([key, { title, fields }]) => (
             <ScreeningSection key={key} title={title} data={screening[key]} fields={fields} />
         ))}
-        <Card>
-            <CardHeader>
-                <CardTitle className="text-lg">Overall Summary & Decision</CardTitle>
+        <Card className='shadow-xl border-none overflow-hidden bg-primary text-primary-foreground'>
+            <CardHeader className='bg-white/10 border-b border-white/5 px-6'>
+                <CardTitle className="text-lg font-headline flex items-center gap-2">
+                    <ShieldCheck className='h-5 w-5' />
+                    Final Executive Summary
+                </CardTitle>
             </CardHeader>
-            <CardContent>
-                <p className="text-sm text-muted-foreground whitespace-pre-wrap">{screening.overallNotes || 'No overall summary provided.'}</p>
+            <CardContent className='pt-6 px-6 pb-6'>
+                <p className="text-sm font-medium whitespace-pre-wrap leading-relaxed">{screening.overallNotes || 'No overall summary provided.'}</p>
             </CardContent>
         </Card>
       </div>
