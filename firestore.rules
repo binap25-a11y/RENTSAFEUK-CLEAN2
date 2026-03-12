@@ -15,14 +15,15 @@ service cloud.firestore {
     // Specifically optimized for collectionGroup queries used in the Resident Hub.
     match /{path=**}/tenants/{tenantId} {
       // Allow discovery by normalized email or linked UID.
+      // We use direct matching to ensure query-safety for collectionGroup lookups.
       allow read: if isSignedIn() && (
-        resource.data.email == request.auth.token.email || 
+        resource.data.email == request.auth.token.email.lower() || 
         resource.data.userId == request.auth.uid
       );
       
       // Allow the identity handshake update.
       allow update: if isSignedIn() && 
-        resource.data.email == request.auth.token.email &&
+        resource.data.email == request.auth.token.email.lower() &&
         request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'verified', 'joinedDate', 'lastSyncCheck']);
     }
 
@@ -41,7 +42,7 @@ service cloud.firestore {
           
           // Identity access for residents at specific paths.
           allow get: if isSignedIn() && (
-            resource.data.email == request.auth.token.email || 
+            resource.data.email == request.auth.token.email.lower() || 
             resource.data.userId == request.auth.uid
           );
 
@@ -74,11 +75,16 @@ service cloud.firestore {
           allow get: if isSignedIn();
         }
 
-        match /rentPayments/{paymentId} {
+        // Explicitly recursive match for nested data to ensure landlord list/get operations are authorized.
+        match /rentPayments/{allPaths=**} {
           allow read, write: if isOwner(userId);
         }
 
-        match /checklists/{checklistId} {
+        match /checklists/{allPaths=**} {
+          allow read, write: if isOwner(userId);
+        }
+        
+        match /screenings/{allPaths=**} {
           allow read, write: if isOwner(userId);
         }
       }

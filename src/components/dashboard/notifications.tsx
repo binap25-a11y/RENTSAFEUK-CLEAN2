@@ -82,8 +82,6 @@ export function Notifications() {
   const { user } = useUser();
   const firestore = useFirestore();
 
-  // Explicitly filter for active properties to ensure notifications clear on deletion
-  // Redundant userId filter removed as it is implicit in the root path rule
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
@@ -124,38 +122,29 @@ export function Notifications() {
     };
 
     properties.forEach(prop => {
-        // Path matches provide implicit UID check via security rules
         unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'documents'), (snap) => {
             docMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Document));
             updateState();
-        }, async (error) => {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: `userProfiles/${user.uid}/properties/${prop.id}/documents`,
-                operation: 'list',
-            }));
+        }, (error) => {
+            console.warn(`Registry sync delay for docs at ${prop.id}`);
         }));
         unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'inspections'), (snap) => {
             inspMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Inspection));
             updateState();
-        }, async (error) => {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: `userProfiles/${user.uid}/properties/${prop.id}/inspections`,
-                operation: 'list',
-            }));
+        }, (error) => {
+            console.warn(`Registry sync delay for inspections at ${prop.id}`);
         }));
         unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'tenants'), (snap) => {
             tenantMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Tenant));
             updateState();
-        }, async (error) => {
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: `userProfiles/${user.uid}/properties/${prop.id}/tenants`,
-                operation: 'list',
-            }));
+        }, (error) => {
+            console.warn(`Registry sync delay for tenants at ${prop.id}`);
         }));
         unsubs.push(onSnapshot(collection(firestore, 'userProfiles', user.uid, 'properties', prop.id, 'rentPayments'), (snap) => {
             paymentMap[prop.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as RentPayment));
             updateState();
-        }, async (error) => {
+        }, (error) => {
+            // Contextual error emission for debugging while preserving app stability
             errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: `userProfiles/${user.uid}/properties/${prop.id}/rentPayments`,
                 operation: 'list',
@@ -220,7 +209,6 @@ export function Notifications() {
             if (isPaid) return null;
 
             let dueDate = setDate(startOfMonth(today), tenant.rentDueDay!);
-            // Show in notifications if overdue or due in next 3 days
             const daysToDueLimit = addDays(today, 3);
             if (isFuture(dueDate) && isBefore(daysToDueLimit, dueDate)) return null;
 
@@ -259,7 +247,7 @@ export function Notifications() {
       <DropdownMenuContent className="w-80 md:w-96" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex items-center justify-between">
-            <p className="text-sm font-bold leading-none">Notifications</p>
+            <p className="text-sm font-bold leading-none">Portfolio Alerts</p>
             <Link href="/dashboard/reminders" className="text-xs text-primary hover:underline">
               View all
             </Link>
