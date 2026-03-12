@@ -8,7 +8,7 @@ import {
   signInWithRedirect,
   GoogleAuthProvider,
 } from 'firebase/auth';
-import { useUser, useAuth, createUserNonBlocking, signInNonBlocking, type UserRole } from '@/firebase';
+import { useUser, useAuth, useFirestore, createUserNonBlocking, signInNonBlocking, type UserRole } from '@/firebase';
 import { useToast } from '@/hooks/use-toast';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
@@ -34,6 +34,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Loader2, Eye, EyeOff, AlertCircle, ShieldCheck, Building2, Users, UserCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Label } from '@/components/ui/label';
+import { doc, getDoc } from 'firebase/firestore';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -48,6 +49,7 @@ type AuthMode = 'login' | 'signup';
 export default function LoginPage() {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
+  const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
   const [mode, setMode] = useState<AuthMode>('login');
@@ -65,10 +67,32 @@ export default function LoginPage() {
   });
 
   useEffect(() => {
-    if (!isUserLoading && user) {
-      router.push('/dashboard');
+    if (!isUserLoading && user && firestore) {
+      const checkRoleAndRedirect = async () => {
+        try {
+          const userRef = doc(firestore, 'users', user.uid);
+          const snap = await getDoc(userRef);
+          
+          if (snap.exists()) {
+            const role = snap.data().role;
+            if (role === 'tenant') {
+              router.replace('/tenant/dashboard');
+            } else {
+              router.replace('/dashboard');
+            }
+          } else {
+            // Default fallback if profile is still being created
+            router.replace('/dashboard');
+          }
+        } catch (error) {
+          console.error("Redirection error:", error);
+          router.replace('/dashboard');
+        }
+      };
+      
+      checkRoleAndRedirect();
     }
-  }, [user, isUserLoading, router]);
+  }, [user, isUserLoading, router, firestore]);
 
   const handleAuthAction = (data: FormValues) => {
     if (!auth) {
@@ -121,7 +145,10 @@ export default function LoginPage() {
   if (isUserLoading || user) {
     return (
       <div className="flex h-screen w-full items-center justify-center">
-         <Loader2 className="h-8 w-8 animate-spin text-primary" />
+         <div className="flex flex-col items-center gap-4">
+            <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Authenticating...</p>
+         </div>
       </div>
     );
   }
