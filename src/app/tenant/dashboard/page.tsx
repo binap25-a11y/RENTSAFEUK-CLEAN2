@@ -84,16 +84,19 @@ export default function TenantDashboard() {
                         propertyData: propSnap.data()
                     });
                     setIsLoading(false);
+                    setIsIndexBuilding(false);
                     return;
                 }
             }
         }
 
         // 2. Slow Path: Discovery by secure UID
+        // Requires COLLECTION_GROUP index on userId
         let q = query(collectionGroup(firestore, 'tenants'), where('userId', '==', user.uid), limit(1));
         let snap = await getDocs(q);
 
         // 3. Fallback: Discovery by verified Email (initial connection)
+        // Requires COLLECTION_GROUP index on email
         if (snap.empty) {
             q = query(collectionGroup(firestore, 'tenants'), where('email', '==', userEmail), limit(1));
             snap = await getDocs(q);
@@ -150,9 +153,13 @@ export default function TenantDashboard() {
         setIsLoading(false);
         setIsIndexBuilding(false);
     } catch (err: any) {
-        console.error("Discovery error:", err);
-        // Detect index-building state (FAILED_PRECONDITION or Permission Denied during index build)
-        if (err.message?.includes('index') || err.code === 'failed-precondition' || err.code === 'permission-denied') {
+        console.error("Discovery error context:", err);
+        // Detect index-building state specifically from Firebase error message or code
+        const isIndexError = err.message?.toLowerCase().includes('index') || 
+                           err.code === 'failed-precondition' || 
+                           err.message?.toLowerCase().includes('requires a collection_group');
+        
+        if (isIndexError) {
             setIsIndexBuilding(true);
         } else {
             setError("Tenancy matching service unavailable.");
