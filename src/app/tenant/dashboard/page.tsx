@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -56,7 +55,6 @@ export default function TenantDashboard() {
     const userEmail = user.email.toLowerCase().trim();
 
     // 1. Discovery Handshake via Collection Group
-    // Forced normalization matching landlord-side forced lowercase emails
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),

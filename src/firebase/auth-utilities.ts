@@ -37,7 +37,9 @@ export function createUserNonBlocking(
 ): void {
   if (!auth) return;
   
-  createUserWithEmailAndPassword(auth, email, password)
+  const normalizedEmail = email.toLowerCase().trim();
+  
+  createUserWithEmailAndPassword(auth, normalizedEmail, password)
     .then(async (userCredential) => {
       const user = userCredential.user;
       const db = getFirestore();
@@ -45,7 +47,7 @@ export function createUserNonBlocking(
       // Initialize the user profile document immediately
       const profileData = {
         id: user.uid,
-        email: email.toLowerCase().trim(),
+        email: normalizedEmail,
         role: role,
         createdAt: new Date().toISOString(),
         idleTimeoutMinutes: 30,

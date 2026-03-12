@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -160,7 +159,6 @@ export default function DashboardPage() {
   }
 
   // Interstitial for Index Building or Hanging Handshake
-  // Only show this to users who are strictly defined as tenants and discovery is not complete
   if ((isIndexBuilding || !discoveryComplete) && !handshakeTimedOut && userRole === 'tenant') {
     return (
         <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6 animate-in fade-in duration-700">
@@ -180,7 +178,7 @@ export default function DashboardPage() {
                     : "Synchronizing with your landlord's records..."}
             </div>
             <div className="flex flex-col gap-2">
-                <Button variant="outline" className="w-full h-11 font-bold uppercase text-[10px] tracking-widest" onClick={() => router.refresh()}>
+                <Button variant="outline" className="w-full h-11 font-bold uppercase text-[10px] tracking-widest" onClick={() => window.location.reload()}>
                     <RefreshCw className="mr-2 h-3.5 w-3.5" /> Check Status
                 </Button>
                 <Button variant="ghost" className="w-full text-[9px] font-bold uppercase text-muted-foreground" onClick={() => setDiscoveryComplete(true)}>
