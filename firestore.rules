@@ -10,17 +10,17 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // --- GLOBAL TENANT DISCOVERY (TOP LEVEL) ---
-    // Rules optimized for collectionGroup queries used in the Resident Hub.
+    // --- GLOBAL TENANT DISCOVERY ---
+    // Optimized for collectionGroup queries. 
+    // Uses direct field matching to ensure static verification during indexing.
     match /{path=**}/tenants/{tenantId} {
-      // Allow discovery by email key (normalized)
-      allow read: if isSignedIn() && resource.data.email == request.auth.token.email.lower();
+      allow read: if isSignedIn() && (
+        resource.data.email == request.auth.token.email.lower() || 
+        resource.data.userId == request.auth.uid
+      );
       
-      // Allow access by secure linked UID
-      allow read: if isSignedIn() && resource.data.userId == request.auth.uid;
-      
-      // Allow the identity handshake update.
-      // Explicitly authorizes linking fields for verification.
+      // Explicitly authorize identity linking fields. 
+      // Prevents "Permission Denied" during the Portal Handshake.
       allow update: if isSignedIn() && (
         resource.data.email == request.auth.token.email.lower() || 
         resource.data.userId == request.auth.uid
@@ -31,55 +31,23 @@ service cloud.firestore {
     match /userProfiles/{userId} {
       allow get, list, create, update, delete: if isOwner(userId);
 
+      // Recursive match grants landlords unambiguous access to all nested property data
+      // Fixes permission errors in rentPayments, screenings, and checklists.
+      match /properties/{propertyId}/{allPaths=**} {
+        allow read, write: if isOwner(userId);
+      }
+      
+      // Legacy explicit matches for clarity and specific tenant overrides
       match /properties/{propertyId} {
         allow read, write: if isOwner(userId);
-        
-        // Tenants can read their assigned property record for context.
-        allow get: if isSignedIn();
+        allow get: if isSignedIn(); // Allow residents to resolve property context
 
         match /tenants/{tenantId} {
           allow read, write: if isOwner(userId);
           
-          // Identity access for residents at specific paths.
-          allow get: if isSignedIn() && (
-            resource.data.email == request.auth.token.email.lower() || 
-            resource.data.userId == request.auth.uid
-          );
-
           match /messages/{messageId} {
              allow read, write: if isOwner(userId) || (isSignedIn() && request.auth.uid == get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.userId);
           }
-
-          match /screenings/{screeningId} {
-            allow read, write: if isOwner(userId);
-          }
-        }
-
-        match /maintenanceLogs/{logId} {
-          allow read, write: if isOwner(userId);
-          allow create: if isSignedIn();
-          allow read: if isSignedIn();
-        }
-
-        match /inspections/{inspectionId} {
-          allow read, write: if isOwner(userId);
-          allow get: if isSignedIn();
-        }
-
-        match /expenses/{expenseId} {
-          allow read, write: if isOwner(userId);
-        }
-
-        match /rentPayments/{allPaths=**} {
-          allow read, write: if isOwner(userId);
-        }
-
-        match /checklists/{allPaths=**} {
-          allow read, write: if isOwner(userId);
-        }
-        
-        match /screenings/{allPaths=**} {
-          allow read, write: if isOwner(userId);
         }
       }
 

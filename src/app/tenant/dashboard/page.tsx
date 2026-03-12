@@ -55,7 +55,7 @@ export default function TenantDashboard() {
     const userEmail = user.email.toLowerCase().trim();
 
     try {
-        // 1. Fast Path: Check for existing resolved path in local storage
+        // 1. Path-Persistent Fast Lookup
         const savedPath = localStorage.getItem(`tenant_path_${user.uid}`);
         if (savedPath) {
             const tenantRef = doc(firestore, savedPath);
@@ -86,15 +86,20 @@ export default function TenantDashboard() {
             }
         }
 
-        // 2. Sequential Discovery Pattern
-        // Attempt A: Search by secure UID (Previously verified path)
-        let q = query(collectionGroup(firestore, 'tenants'), where('userId', '==', user.uid), limit(1));
-        let snap = await getDocs(q);
+        // 2. Parallel Sequential Discovery Pattern
+        // Resolves "Missing Index" by attempting UID match then fallback to Email
+        let snap = null;
+        
+        try {
+            const qUID = query(collectionGroup(firestore, 'tenants'), where('userId', '==', user.uid), limit(1));
+            snap = await getDocs(qUID);
+        } catch (uidErr: any) {
+            console.warn("UID Indexing active, attempting Email discovery fallback...");
+        }
 
-        // Attempt B: Fallback to Email (Initial verification handshake)
-        if (snap.empty) {
-            q = query(collectionGroup(firestore, 'tenants'), where('email', '==', userEmail), limit(1));
-            snap = await getDocs(q);
+        if (!snap || snap.empty) {
+            const qEmail = query(collectionGroup(firestore, 'tenants'), where('email', '==', userEmail), limit(1));
+            snap = await getDocs(qEmail);
         }
 
         if (snap.empty) {
@@ -112,11 +117,9 @@ export default function TenantDashboard() {
         const landlordId = segments[1];
         const propertyId = segments[3];
 
-        // Cache resolved path for high-performance direct lookup on next session
         localStorage.setItem(`tenant_path_${user.uid}`, path);
 
-        // 3. Atomic Identity Handshake
-        // Only trigger if identity keys are missing or mismatched
+        // 3. Identity Verification Handshake
         if (!data.verified || data.userId !== user.uid) {
             setIsHandshaking(true);
             try {
@@ -126,9 +129,9 @@ export default function TenantDashboard() {
                     verified: true,
                     lastSyncCheck: new Date().toISOString()
                 });
-                toast({ title: "Identity Linked", description: "Your resident account is now securely verified." });
+                toast({ title: "Identity Verified", description: "Secure link established." });
             } catch (hErr) {
-                console.warn("Handshake delay (verification rules):", hErr);
+                console.warn("Handshake rules check:", hErr);
             } finally {
                 setIsHandshaking(false);
             }
@@ -151,16 +154,14 @@ export default function TenantDashboard() {
         setIsIndexBuilding(false);
         discoveryRef.current = false;
     } catch (err: any) {
-        // Catch index-building or permission failures during the initial cloud indexing phase
-        const isTransientError = err.code === 'failed-precondition' || 
-                                err.code === 'permission-denied' ||
-                                err.message?.toLowerCase().includes('index');
+        const isTransient = err.code === 'failed-precondition' || 
+                           err.code === 'permission-denied' ||
+                           err.message?.toLowerCase().includes('index');
         
-        if (isTransientError) {
+        if (isTransient) {
             setIsIndexBuilding(true);
         } else {
-            console.error("Discovery Engine Status:", err.message);
-            setError("Identification registry service error.");
+            setError("Identity Registry unreachable.");
         }
         setIsLoading(false);
         discoveryRef.current = false;
@@ -168,9 +169,7 @@ export default function TenantDashboard() {
   }, [user, firestore]);
 
   useEffect(() => {
-    if (!isUserLoading) {
-        performDiscovery();
-    }
+    if (!isUserLoading) performDiscovery();
   }, [isUserLoading, performDiscovery]);
 
   useEffect(() => {
@@ -188,8 +187,8 @@ export default function TenantDashboard() {
     return (
         <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center px-6">
-                Resolving Resident Identity...
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">
+                Resolving Resident identity...
             </p>
         </div>
     );
@@ -207,8 +206,8 @@ export default function TenantDashboard() {
                     The platform is currently initializing high-speed identity discovery.
                 </p>
                 <div className="p-4 rounded-xl bg-muted/50 border border-dashed text-xs text-muted-foreground mt-4 text-left">
-                    <p className="font-bold uppercase text-[9px] tracking-widest mb-1 text-primary">Status: Building Discovery Index</p>
-                    <p>This is a one-time cloud initialization that typically takes 2-3 minutes. Your hub will activate automatically once the sync completes.</p>
+                    <p className="font-bold uppercase text-[9px] tracking-widest mb-1 text-primary">Status: Indexing Security Keys</p>
+                    <p>This is a one-time cloud initialization. Your hub will activate automatically once the sync completes.</p>
                 </div>
             </div>
             <div className="space-y-4">
@@ -223,7 +222,7 @@ export default function TenantDashboard() {
 
   if (error || !context) {
     return (
-        <Card className="max-w-md mx-auto mt-20 shadow-2xl border-none overflow-hidden">
+        <Card className="max-w-md mx-auto mt-20 shadow-2xl border-none overflow-hidden text-left">
             <CardHeader className="text-center bg-muted/20 pb-8 border-b">
                 <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 shadow-sm border text-muted-foreground/20">
                     <Search className="h-10 w-10" />
@@ -264,7 +263,7 @@ export default function TenantDashboard() {
         <div className="flex items-center gap-2">
             {isHandshaking ? (
                 <div className="flex items-center gap-2 text-[10px] font-bold uppercase text-primary animate-pulse px-3 bg-primary/5 py-1.5 rounded-lg border border-primary/10">
-                    <Loader2 className="h-3 w-3 animate-spin" /> Verifying...
+                    <Loader2 className="h-3 w-3 animate-spin" /> Syncing...
                 </div>
             ) : isVerified ? (
                 <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-8 px-3 font-bold uppercase tracking-widest text-[9px] shadow-sm rounded-xl shrink-0">

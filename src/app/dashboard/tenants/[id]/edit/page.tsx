@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -121,7 +120,6 @@ export default function EditTenantPage() {
     if (!firestore || !tenantId || !user || urlPropertyId) return null;
     return query(
       collectionGroup(firestore, 'tenants'),
-      where('userId', '==', user.uid),
       where('id', '==', tenantId)
     );
   }, [firestore, tenantId, user, urlPropertyId]);
@@ -134,7 +132,6 @@ export default function EditTenantPage() {
     if (!user || !firestore) return null;
     return query(
       collection(firestore, 'userProfiles', user.uid, 'properties'),
-      where('userId', '==', user.uid),
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
     );
   }, [firestore, user]);
@@ -159,57 +156,51 @@ export default function EditTenantPage() {
       toast({
         variant: 'destructive',
         title: 'Error',
-        description: 'Authentication error or tenant not found.',
+        description: 'Tenant record context missing.',
       });
       return;
     }
     setIsSaving(true);
     
     try {
-      // 1. Critical: Normalize email to lowercase for identity discovery handshake
       const normalizedEmail = data.email.toLowerCase().trim();
-      
       const tenantDocRef = doc(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId, 'tenants', tenant.id);
       
       const updateData = { 
         ...data, 
         email: normalizedEmail,
-        // CRITICAL FIX: Preserve existing tenant userId, do NOT overwrite with Landlord UID
+        // PRESERVE IDENTITY KEY: Do not overwrite the tenant's userId with the Landlord's UID.
         userId: tenant.userId || ''
       };
       const cleanedUpdateData = JSON.parse(JSON.stringify(updateData));
 
       await updateDoc(tenantDocRef, cleanedUpdateData);
 
-      // 2. Ensure property is marked as Occupied
-      const propertyDocRef = doc(firestore, 'userProfiles', user.uid, 'properties', data.propertyId);
-      await updateDoc(propertyDocRef, { status: 'Occupied' });
-
       toast({
-        title: 'Tenant Profile Updated',
-        description: `${data.name}'s records and verified identity have been synchronized.`,
+        title: 'Registry Updated',
+        description: 'Identity mappings preserved.',
       });
       router.push(`/dashboard/tenants/${tenant.id}?propertyId=${tenant.propertyId}`);
     } catch (error) {
-      console.error('Failed to update tenant:', error);
-      toast({ variant: 'destructive', title: 'Update Failed' });
+      console.error('Registry sync failed:', error);
+      toast({ variant: 'destructive', title: 'Sync Failed' });
     } finally {
       setIsSaving(false);
     }
   }
   
   const formatAddress = (address: Property['address']) => {
-    return [address.nameOrNumber, address.street, address.city, address.county, address.postcode].filter(Boolean).join(', ');
+    return [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
   };
 
   if (isLoadingTenant || isLoadingProperties) {
-    return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>;
+    return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
   
-  if (!tenant && !isLoadingTenant) return <div className="text-center py-10"><p>Tenant not found.</p><Button asChild variant="link"><Link href="/dashboard/tenants">Return to Tenants List</Link></Button></div>;
+  if (!tenant && !isLoadingTenant) return <div className="text-center py-10"><p>Tenant not found.</p></div>;
 
   return (
-    <Card className="max-w-2xl mx-auto shadow-md border-none">
+    <Card className="max-w-2xl mx-auto shadow-md border-none text-left">
       <CardHeader className="bg-primary/5 border-b border-primary/10">
         <CardTitle className="text-2xl font-headline text-primary">Edit Tenant Profile</CardTitle>
         <CardDescription>Update identity and contract details for {tenant?.name}.</CardDescription>
@@ -247,7 +238,7 @@ export default function EditTenantPage() {
                  <FormItem>
                    <FormLabel className="font-bold">Email Address</FormLabel>
                    <FormControl><Input className="h-11" type="email" {...field} /></FormControl>
-                   <FormDescription className="text-[10px]">Verification mapping uses this normalized email.</FormDescription>
+                   <FormDescription className="text-[10px]">Verification uses this normalized email.</FormDescription>
                    <FormMessage />
                  </FormItem>
                )} />
