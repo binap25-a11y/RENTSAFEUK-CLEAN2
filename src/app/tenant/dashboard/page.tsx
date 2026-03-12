@@ -87,10 +87,8 @@ export default function TenantDashboard() {
             }
         }
 
-        // 2. Sequential Discovery Pattern (UID first, then Email)
-        // This is more reliable during the one-time cloud indexing phase.
-        
-        // Attempt A: Search by secure UID (Verified path)
+        // 2. Sequential Discovery Pattern
+        // Attempt A: Search by secure UID (Previously verified path)
         let q = query(collectionGroup(firestore, 'tenants'), where('userId', '==', user.uid), limit(1));
         let snap = await getDocs(q);
 
@@ -115,7 +113,7 @@ export default function TenantDashboard() {
         const landlordId = segments[1];
         const propertyId = segments[3];
 
-        // Cache for high-performance direct lookup on next session
+        // Cache resolved path for high-performance direct lookup on next session
         localStorage.setItem(`tenant_path_${user.uid}`, path);
 
         // 3. Atomic Identity Handshake
@@ -129,9 +127,9 @@ export default function TenantDashboard() {
                     verified: true,
                     lastSyncCheck: new Date().toISOString()
                 });
-                toast({ title: "Identity Verified", description: "Your portal connection is now secured." });
+                toast({ title: "Identity Linked", description: "Your resident account is now securely verified." });
             } catch (hErr) {
-                console.warn("Handshake delay (indexing):", hErr);
+                console.warn("Handshake delay (verification rules):", hErr);
             } finally {
                 setIsHandshaking(false);
             }
@@ -154,17 +152,17 @@ export default function TenantDashboard() {
         setIsIndexBuilding(false);
         discoveryRef.current = false;
     } catch (err: any) {
-        console.error("Resident discovery status:", err.message);
+        console.error("Discovery Engine Status:", err.message);
         
-        // Catch failed-precondition (missing index) or permission-denied (static rule failure during index build)
-        const isIndexError = err.code === 'failed-precondition' || 
-                           err.message?.toLowerCase().includes('index') ||
-                           err.code === 'permission-denied';
+        // Catch index-building or permission failures during the initial cloud indexing phase
+        const isTransientError = err.code === 'failed-precondition' || 
+                                err.code === 'permission-denied' ||
+                                err.message?.toLowerCase().includes('index');
         
-        if (isIndexError) {
+        if (isTransientError) {
             setIsIndexBuilding(true);
         } else {
-            setError("Identity verification service error.");
+            setError("Identification registry service error.");
         }
         setIsLoading(false);
         discoveryRef.current = false;
@@ -181,7 +179,7 @@ export default function TenantDashboard() {
     if (isIndexBuilding) {
         const timer = setTimeout(() => {
             setSyncAttempt(s => s + 1);
-            discoveryRef.current = false; // Reset ref to allow retry
+            discoveryRef.current = false;
             performDiscovery();
         }, 15000); 
         return () => clearTimeout(timer);
@@ -192,8 +190,8 @@ export default function TenantDashboard() {
     return (
         <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">
-                Resolving Identity Registry...
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center px-6">
+                Resolving Resident Identity...
             </p>
         </div>
     );
@@ -207,7 +205,7 @@ export default function TenantDashboard() {
             </div>
             <div className="space-y-3">
                 <h2 className="font-headline text-2xl font-bold text-primary">Portal Setup in Progress</h2>
-                <p className="text-muted-foreground font-medium text-sm leading-relaxed px-4">
+                <p className="text-muted-foreground font-medium text-sm leading-relaxed px-4 text-center">
                     The platform is currently initializing high-speed identity discovery.
                 </p>
                 <div className="p-4 rounded-xl bg-muted/50 border border-dashed text-xs text-muted-foreground mt-4 text-left">
@@ -232,23 +230,23 @@ export default function TenantDashboard() {
                 <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 shadow-sm border text-muted-foreground/20">
                     <Search className="h-10 w-10" />
                 </div>
-                <CardTitle className="font-headline text-xl text-primary">Identity Not Recognized</CardTitle>
-                <CardDescription className="text-sm font-medium">
+                <CardTitle className="font-headline text-xl text-primary text-center">Identity Not Recognized</CardTitle>
+                <CardDescription className="text-sm font-medium text-center px-4">
                     No active tenancy matches <strong>{user?.email}</strong>.
                 </CardDescription>
             </CardHeader>
             <CardContent className="pt-6">
                 <div className="p-4 rounded-xl bg-destructive/5 border border-destructive/10 text-xs text-destructive text-left leading-relaxed">
-                    <p className="font-bold mb-1">Common causes:</p>
+                    <p className="font-bold mb-1">Potential issues:</p>
                     <ul className="space-y-1 ml-4 list-disc">
-                        <li>The landlord hasn't assigned your portal email to a property yet.</li>
-                        <li>The landlord used a different email for your record.</li>
+                        <li>The landlord has not yet assigned this email to a property asset.</li>
+                        <li>The landlord used a different email for your management record.</li>
                     </ul>
                 </div>
             </CardContent>
             <CardFooter className="pt-6 bg-muted/5 border-t">
                 <Button variant="outline" className="w-full h-11 rounded-xl font-bold uppercase tracking-widest text-[10px]" onClick={() => { discoveryRef.current = false; performDiscovery(); }}>
-                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Discovery
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Identification
                 </Button>
             </CardFooter>
         </Card>
@@ -268,7 +266,7 @@ export default function TenantDashboard() {
         <div className="flex items-center gap-2">
             {isHandshaking ? (
                 <div className="flex items-center gap-2 text-[10px] font-bold uppercase text-primary animate-pulse px-3 bg-primary/5 py-1.5 rounded-lg border border-primary/10">
-                    <Loader2 className="h-3 w-3 animate-spin" /> Linking Identity...
+                    <Loader2 className="h-3 w-3 animate-spin" /> Verifying...
                 </div>
             ) : isVerified ? (
                 <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-8 px-3 font-bold uppercase tracking-widest text-[9px] shadow-sm rounded-xl shrink-0">
@@ -276,7 +274,7 @@ export default function TenantDashboard() {
                 </Badge>
             ) : (
                 <Badge variant="secondary" className="h-8 px-3 font-bold uppercase tracking-widest text-[9px] rounded-xl shrink-0 opacity-50">
-                    Syncing Verification
+                    Establishing Link
                 </Badge>
             )}
         </div>
@@ -287,7 +285,7 @@ export default function TenantDashboard() {
             <CardHeader className="pb-2 px-6">
                 <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2"><Banknote className="h-3.5 w-3.5 text-primary" /> Monthly Rent</CardTitle>
             </CardHeader>
-            <CardContent className="px-6 pb-6">
+            <CardContent className="px-6 pb-6 text-left">
                 <div className="text-3xl font-bold text-foreground">£{context.tenantData.monthlyRent?.toLocaleString() || '0'}</div>
                 <p className="text-xs text-muted-foreground mt-1 font-semibold">Due on the {context.tenantData.rentDueDay || '1st'} of month</p>
             </CardContent>
@@ -297,7 +295,7 @@ export default function TenantDashboard() {
             <CardHeader className="pb-2 px-6">
                 <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2"><Calendar className="h-3.5 w-3.5 text-primary" /> Tenancy Date</CardTitle>
             </CardHeader>
-            <CardContent className="px-6 pb-6">
+            <CardContent className="px-6 pb-6 text-left">
                 <div className="text-xl font-bold text-foreground">
                     {context.tenantData.tenancyStartDate?.seconds 
                         ? format(new Date(context.tenantData.tenancyStartDate.seconds * 1000), 'dd MMM yyyy') 
@@ -311,7 +309,7 @@ export default function TenantDashboard() {
             <CardHeader className="pb-2 px-6">
                 <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-80 flex items-center gap-2 text-primary-foreground"><MessageSquare className="h-3.5 w-3.5" /> Support Channel</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4 px-6 pb-6">
+            <CardContent className="space-y-4 px-6 pb-6 text-left">
                 <p className="text-xs font-medium">Direct line to your landlord for maintenance and repairs.</p>
                 <Button variant="secondary" size="sm" className="w-full font-bold h-9 shadow-md rounded-xl uppercase tracking-widest text-[10px]" asChild><Link href="/tenant/messages">Open Inbox <ChevronRight className="ml-1 h-3 w-3"/></Link></Button>
             </CardContent>
@@ -320,10 +318,10 @@ export default function TenantDashboard() {
 
       <div className="grid gap-6 lg:grid-cols-2 mt-8">
         <Card className="border-none shadow-md overflow-hidden group text-left">
-            <CardHeader className="bg-muted/30 border-b px-6"><CardTitle className="text-lg flex items-center gap-2 font-headline text-foreground"><Wrench className="h-5 w-5 text-primary" /> Repair Logs</CardTitle></CardHeader>
+            <CardHeader className="bg-muted/30 border-b px-6 text-left"><CardTitle className="text-lg flex items-center gap-2 font-headline text-foreground"><Wrench className="h-5 w-5 text-primary" /> Repair Logs</CardTitle></CardHeader>
             <CardContent className="pt-6 px-6 pb-6">
                 <div className="flex items-center justify-between p-5 rounded-2xl bg-muted/20 border border-transparent group-hover:border-primary/10 transition-all">
-                    <div className="space-y-1">
+                    <div className="space-y-1 text-left">
                         <p className="text-sm font-bold">Report Issue</p>
                         <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Shared maintenance hub</p>
                     </div>
@@ -333,10 +331,10 @@ export default function TenantDashboard() {
         </Card>
 
         <Card className="border-none shadow-md overflow-hidden group text-left">
-            <CardHeader className="bg-muted/30 border-b px-6"><CardTitle className="text-lg flex items-center gap-2 font-headline text-foreground"><FileText className="h-5 w-5 text-primary" /> Shared Vault</CardTitle></CardHeader>
+            <CardHeader className="bg-muted/30 border-b px-6 text-left"><CardTitle className="text-lg flex items-center gap-2 font-headline text-foreground"><FileText className="h-5 w-5 text-primary" /> Shared Vault</CardTitle></CardHeader>
             <CardContent className="pt-6 px-6 pb-6">
                 <div className="flex items-center justify-between p-5 rounded-2xl bg-muted/20 border border-transparent group-hover:border-primary/10 transition-all">
-                    <div className="space-y-1">
+                    <div className="space-y-1 text-left">
                         <p className="text-sm font-bold">Certificates</p>
                         <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">EPC, Gas & Agreements</p>
                     </div>

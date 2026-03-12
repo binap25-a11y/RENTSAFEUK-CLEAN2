@@ -11,18 +11,17 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // --- GLOBAL DISCOVERY (TOP LEVEL) ---
-    // Specifically optimized for collectionGroup queries used in the Resident Hub.
+    // --- GLOBAL TENANT DISCOVERY (TOP LEVEL) ---
+    // Rules optimized for collectionGroup queries used in the Resident Hub.
     match /{path=**}/tenants/{tenantId} {
-      // Allow discovery by normalized email or linked UID.
-      // Rules are optimized for index-safe collectionGroup queries.
+      // Allow discovery by normalized email (discovery) or linked UID (access)
       allow read: if isSignedIn() && (
         resource.data.email == request.auth.token.email.lower() || 
         resource.data.userId == request.auth.uid
       );
       
       // Allow the identity handshake update.
-      // Explicitly authorizes identity keys required for verification.
+      // Explicitly authorizes linking fields for verification.
       allow update: if isSignedIn() && (
         resource.data.email == request.auth.token.email.lower() || 
         resource.data.userId == request.auth.uid
@@ -36,7 +35,7 @@ service cloud.firestore {
       match /properties/{propertyId} {
         allow read, write: if isOwner(userId);
         
-        // Tenants can read their assigned property record.
+        // Tenants can read their assigned property record for context.
         allow get: if isSignedIn();
 
         match /tenants/{tenantId} {
