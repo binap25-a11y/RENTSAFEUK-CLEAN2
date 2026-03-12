@@ -14,52 +14,17 @@ import {
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Bell, FileWarning, CalendarClock, Loader2, Banknote } from 'lucide-react';
-import { useUser, useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { collection, query, where, Timestamp, onSnapshot, limit } from 'firebase/firestore';
+import { useUser, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { collection, query, where, onSnapshot, limit } from 'firebase/firestore';
 import { format, isBefore, addDays, isFuture, setDate, startOfMonth, isPast } from 'date-fns';
 
-interface Property {
+interface Message {
   id: string;
-  address: {
-    nameOrNumber?: string;
-    street: string;
-    city: string;
-  };
+  description: string;
+  dueDate: Date;
   status: string;
-}
-
-interface Document {
-  id: string;
-  title: string;
-  propertyId: string;
-  expiryDate: any;
-}
-
-interface Inspection {
-  id: string;
-  propertyId: string;
-  inspectionType?: string;
-  type: string;
-  status: string;
-  scheduledDate: any;
-}
-
-interface Tenant {
-    id: string;
-    name: string;
-    email: string;
-    propertyId: string;
-    monthlyRent?: number;
-    rentDueDay?: number;
-    status: string;
-}
-
-interface RentPayment {
-    id: string;
-    propertyId: string;
-    month: string;
-    year: number;
-    status: string;
+  icon: any;
+  href: string;
 }
 
 const toDate = (val: any): Date | null => {
@@ -82,28 +47,27 @@ export function Notifications() {
   const { user } = useUser();
   const firestore = useFirestore();
 
-  const [allDocuments, setAllDocuments] = useState<Document[]>([]);
-  const [allInspections, setAllInspections] = useState<Inspection[]>([]);
-  const [allTenants, setAllTenants] = useState<Tenant[]>([]);
-  const [allRentPayments, setAllRentPayments] = useState<RentPayment[]>([]);
+  const [allDocuments, setAllDocuments] = useState<any[]>([]);
+  const [allInspections, setAllInspections] = useState<any[]>([]);
+  const [allTenants, setAllTenants] = useState<any[]>([]);
+  const [allRentPayments, setAllRentPayments] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
-  // Flat Registry Syncing
   useEffect(() => {
     if (!user || !firestore) return;
 
     setIsLoading(true);
     
-    // High-performance Flat Listeners
+    // Professional Flat Collection Listeners
     const qDocs = query(collection(firestore, 'documents'), where('landlordId', '==', user.uid), limit(50));
     const qInsp = query(collection(firestore, 'inspections'), where('landlordId', '==', user.uid), limit(50));
     const qTenants = query(collection(firestore, 'tenants'), where('landlordId', '==', user.uid), where('status', '==', 'Active'));
     const qRent = query(collection(firestore, 'rentPayments'), where('landlordId', '==', user.uid), limit(50));
 
-    const unsubDocs = onSnapshot(qDocs, (snap) => setAllDocuments(snap.docs.map(d => ({ id: d.id, ...d.data() } as Document))));
-    const unsubInsp = onSnapshot(qInsp, (snap) => setAllInspections(snap.docs.map(d => ({ id: d.id, ...d.data() } as Inspection))));
-    const unsubTenants = onSnapshot(qTenants, (snap) => setAllTenants(snap.docs.map(d => ({ id: d.id, ...d.data() } as Tenant))));
-    const unsubRent = onSnapshot(qRent, (snap) => setAllRentPayments(snap.docs.map(d => ({ id: d.id, ...d.data() } as RentPayment))), (error) => {
+    const unsubDocs = onSnapshot(qDocs, (snap) => setAllDocuments(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    const unsubInsp = onSnapshot(qInsp, (snap) => setAllInspections(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    const unsubTenants = onSnapshot(qTenants, (snap) => setAllTenants(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    const unsubRent = onSnapshot(qRent, (snap) => setAllRentPayments(snap.docs.map(d => ({ id: d.id, ...d.data() }))), (error) => {
         errorEmitter.emit('permission-error', new FirestorePermissionError({
             path: 'rentPayments',
             operation: 'list',
@@ -196,7 +160,7 @@ export function Notifications() {
           )}
         </Button>
       </DropdownMenuTrigger>
-      <DropdownMenuContent className="w-80 md:w-96" align="end" forceMount>
+      <DropdownMenuContent className="w-80 md:w-96 text-left" align="end" forceMount>
         <DropdownMenuLabel className="font-normal">
           <div className="flex items-center justify-between">
             <p className="text-sm font-bold leading-none">Portfolio Alerts</p>
@@ -216,12 +180,12 @@ export function Notifications() {
               allReminders.slice(0, 10).map((reminder) => (
                 <DropdownMenuItem key={reminder.id} asChild className="cursor-pointer focus:bg-accent p-0">
                     <Link href={reminder.href} className="flex flex-col items-start gap-1 p-3 w-full border-b last:border-0">
-                        <div className="flex items-center gap-2 w-full">
-                            <reminder.icon className={`h-4 w-4 ${reminder.status === 'Expired' || reminder.status === 'Overdue' ? 'text-destructive' : 'text-yellow-500'}`}/>
+                        <div className="flex items-center gap-2 w-full text-left">
+                            <reminder.icon className={`h-4 w-4 shrink-0 ${reminder.status === 'Expired' || reminder.status === 'Overdue' ? 'text-destructive' : 'text-yellow-500'}`}/>
                             <p className="font-semibold text-sm truncate flex-1">{reminder.description}</p>
                             <Badge variant={reminder.status === 'Expired' || reminder.status === 'Overdue' ? 'destructive' : 'secondary'} className="text-[10px] h-5">{reminder.status}</Badge>
                         </div>
-                        <div className="pl-6 space-y-0.5">
+                        <div className="pl-6 space-y-0.5 text-left">
                             <p className="text-[10px] text-muted-foreground/70">Due: {format(reminder.dueDate, 'PP')}</p>
                         </div>
                     </Link>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useMemo } from 'react';
@@ -27,7 +28,7 @@ interface Property extends Searchable {
     postcode: string; 
   };
   status?: string;
-  ownerId: string;
+  landlordId: string;
 }
 interface Tenant extends Searchable { name: string; email: string; status?: string; propertyId: string; }
 interface Contractor extends Searchable { name: string; trade: string; status?: string; }
@@ -66,24 +67,16 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
       const fetchData = async () => {
         setIsLoading(true);
         try {
-          // Strictly hierarchical fetches
-          const propertiesCollection = collection(firestore, 'userProfiles', user.uid, 'properties');
-          const contractorsCollection = collection(firestore, 'userProfiles', user.uid, 'contractors');
-          
-          const [propSnap, contractorSnap] = await Promise.all([
-            getDocs(query(propertiesCollection, limit(100))),
-            getDocs(query(contractorsCollection, limit(100)))
+          // Relational Flat Fetches
+          const [propSnap, contractorSnap, tenantSnap] = await Promise.all([
+            getDocs(query(collection(firestore, 'properties'), where('landlordId', '==', user.uid), limit(100))),
+            getDocs(query(collection(firestore, 'contractors'), where('landlordId', '==', user.uid), limit(100))),
+            getDocs(query(collection(firestore, 'tenants'), where('landlordId', '==', user.uid), limit(100)))
           ]);
           
           const properties = propSnap.docs.map(d => ({ id: d.id, ...d.data() } as Property));
           const contractors = contractorSnap.docs.map(d => ({ id: d.id, ...d.data() } as Contractor));
-          
-          // Efficiently fetch tenants for active properties
-          const tenantPromises = properties.map(p => 
-            getDocs(query(collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'tenants'), limit(10)))
-          );
-          const tenantSnaps = await Promise.all(tenantPromises);
-          const tenants = tenantSnaps.flatMap(snap => snap.docs.map(d => ({ id: d.id, ...d.data() } as Tenant)));
+          const tenants = tenantSnap.docs.map(d => ({ id: d.id, ...d.data() } as Tenant));
           
           setAllData({ properties, tenants, contractors });
         } catch (error) {
@@ -137,7 +130,7 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
 
   return (
     <Dialog open={isOpen} onOpenChange={(open) => { onOpenChange(open); if (!open) setSearchTerm(''); }}>
-      <DialogContent className="p-0 gap-0 max-w-3xl overflow-hidden border-none shadow-2xl">
+      <DialogContent className="p-0 gap-0 max-w-3xl overflow-hidden border-none shadow-2xl text-left">
         <DialogHeader className="sr-only">
           <DialogTitle>Search Portfolio</DialogTitle>
           <DialogDescription>Search properties, tenants, and contractors across your entire portfolio.</DialogDescription>
@@ -209,7 +202,7 @@ export function GlobalSearchDialog({ isOpen, onOpenChange }: GlobalSearchDialogP
             )}
         </div>
         <div className="p-4 border-t bg-muted/30 flex justify-between items-center text-[10px] text-muted-foreground uppercase tracking-widest px-6">
-            <span>RentSafeUK High-Performance Search</span>
+            <span>RentSafeUK Flat Search</span>
             <span>{allData ? `${allData.properties.length + allData.tenants.length} Records Indexed` : 'Standby'}</span>
         </div>
       </DialogContent>

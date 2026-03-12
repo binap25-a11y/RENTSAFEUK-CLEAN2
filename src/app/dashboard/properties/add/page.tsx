@@ -155,7 +155,7 @@ export default function AddPropertyPage() {
   };
 
   return (
-    <div className="max-w-4xl mx-auto space-y-8">
+    <div className="max-w-4xl mx-auto space-y-8 text-left">
       <div className="space-y-4">
         <div className="flex items-center justify-between">
           <h1 className="text-3xl font-bold font-headline text-primary">Onboard Property</h1>
@@ -203,8 +203,8 @@ export default function AddPropertyPage() {
                 <CardTitle className="flex items-center gap-2 font-headline"><Home className="h-5 w-5" /> Property Characteristics</CardTitle>
                 <CardDescription>Define the physical capacity of the rental unit.</CardDescription>
               </CardHeader>
-              <CardContent className="pt-6 space-y-6">
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <CardContent className="pt-6 space-y-6 text-left">
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6 text-left">
                     <FormField control={form.control} name="propertyType" render={({ field }) => (
                         <FormItem>
                             <FormLabel>Asset Type</FormLabel>

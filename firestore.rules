@@ -11,7 +11,7 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // 1. Users Collection (Standardized Profiles)
+    // 1. Users Collection
     match /users/{userId} {
       allow read, write: if isOwner(userId);
     }
@@ -21,6 +21,7 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow read: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
+        resource.data.tenantId == request.auth.uid ||
         (resource.data.status != 'Deleted')
       );
       allow update, delete: if isSignedIn() && resource.data.landlordId == request.auth.uid;
@@ -36,8 +37,7 @@ service cloud.firestore {
       );
       allow update: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
-        resource.data.userId == request.auth.uid ||
-        resource.data.email == request.auth.token.email.lower()
+        resource.data.userId == request.auth.uid
       );
       allow delete: if isSignedIn() && resource.data.landlordId == request.auth.uid;
     }
@@ -82,7 +82,12 @@ service cloud.firestore {
 
     // 8. Inspections Collection
     match /inspections/{id} {
-      allow create, read, update, delete: if isSignedIn() && resource.data.landlordId == request.auth.uid;
+      allow create: if isSignedIn();
+      allow read: if isSignedIn() && (
+        resource.data.landlordId == request.auth.uid || 
+        resource.data.tenantId == request.auth.uid
+      );
+      allow update, delete: if isSignedIn() && resource.data.landlordId == request.auth.uid;
     }
 
     // 9. Contractors Collection
