@@ -1,6 +1,6 @@
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -41,6 +41,7 @@ export default function TenantDashboard() {
   const [isLoading, setIsLoading] = useState(true);
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
   const [error, setError] = useState<string | null>(null);
+  const handshakeAttempted = useRef(false);
 
   const performDiscovery = useCallback(() => {
     if (!user || !firestore || !user.email) {
@@ -101,8 +102,9 @@ export default function TenantDashboard() {
                         
                         // VERIFICATION HANDSHAKE:
                         // Trigger the update if missing or if userId hasn't been linked to this Auth account yet.
-                        if (data.verified !== true || data.userId !== user.uid) {
-                            console.log("Tenant Hub: Completing verified identity handshake...");
+                        if (!handshakeAttempted.current && (data.verified !== true || data.userId !== user.uid)) {
+                            handshakeAttempted.current = true;
+                            console.log("Tenant Hub: Initiating verified identity handshake...");
                             updateDoc(activeTenantDoc.ref, { 
                                 joinedDate: new Date().toISOString(),
                                 userId: user.uid,

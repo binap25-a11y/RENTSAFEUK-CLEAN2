@@ -26,7 +26,6 @@ service cloud.firestore {
       
       // Allow the tenant to update their own verification status during the handshake
       // but restrict them to ONLY updating identity-linking fields.
-      // Uses .lower() on both sides to handle case-insensitive registration.
       allow update: if isSignedIn() && request.auth.token.email != null 
                     && resource.data.email.lower() == request.auth.token.email.lower()
                     && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['joinedDate', 'userId', 'verified']);
@@ -60,6 +59,11 @@ service cloud.firestore {
             (request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower()) ||
             resource.data.userId == request.auth.uid
           );
+
+          // Explicitly allow the tenant to perform the identity handshake update at the specific path
+          allow update: if isSignedIn() && request.auth.token.email != null 
+                        && resource.data.email.lower() == request.auth.token.email.lower()
+                        && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['joinedDate', 'userId', 'verified']);
 
           match /messages/{messageId} {
              allow read, write: if isOwner(userId) || (isSignedIn() && request.auth.token.email != null && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email.lower() == request.auth.token.email.lower());
