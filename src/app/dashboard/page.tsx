@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -38,6 +39,10 @@ interface Property {
   userId: string;
 }
 
+/**
+ * @fileOverview Main Dashboard Entry Point.
+ * Acts as a secure traffic controller, routing users based on their account role.
+ */
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
@@ -50,13 +55,16 @@ export default function DashboardPage() {
   const [userRole, setUserRole] = useState<string | null>(null);
   const [discoveryComplete, setDiscoveryComplete] = useState(false);
 
-  // 1. Core Profile & Role Discovery
+  // 1. Role-Based Routing Logic
+  // Fetches the user's central profile to determine their access hub.
   useEffect(() => {
     if (isUserLoading || !user || !firestore) return;
 
     const userProfileRef = doc(firestore, 'userProfiles', user.uid);
     const unsubProfile = onSnapshot(userProfileRef, (snap) => {
       if (!snap.exists()) {
+          // If no profile exists, default to landlord for onboarding
+          setUserRole('landlord');
           setIsLoadingProfile(false);
           return;
       }
@@ -65,21 +73,25 @@ export default function DashboardPage() {
       setUserRole(role);
       setIsLoadingProfile(false);
 
-      // IMMEDIATE REDIRECTION: If the role is explicitly 'tenant', route them to the portal
+      // IMMEDIATE REDIRECTION: If the role is 'tenant', route to Resident Hub instantly.
       if (role === 'tenant') {
         router.replace('/tenant/dashboard');
       }
     }, (err) => {
-      console.error("Profile sync failed:", err);
+      console.warn("Profile sync access restricted:", err.message);
       setIsLoadingProfile(false);
     });
 
     return () => unsubProfile();
   }, [user, isUserLoading, firestore, router]);
 
-  // 2. Landlord Property Discovery
+  // 2. Landlord-Only Property Discovery
+  // This listener only starts if the user is identified as a landlord/agent.
   useEffect(() => {
-    if (isLoadingProfile || !user || !firestore || userRole === 'tenant') return;
+    if (isLoadingProfile || !user || !firestore || userRole === 'tenant') {
+        if (userRole === 'tenant') setDiscoveryComplete(true);
+        return;
+    }
 
     const propQuery = query(
       collection(firestore, 'userProfiles', user.uid, 'properties'), 
@@ -91,7 +103,7 @@ export default function DashboardPage() {
       setProperties(list);
       setDiscoveryComplete(true);
     }, (err) => {
-        console.warn("Property sync clearance issue:", err.message);
+        console.warn("Property sync restricted:", err.message);
         setDiscoveryComplete(true);
     });
 
@@ -110,28 +122,23 @@ export default function DashboardPage() {
     );
   }, [properties, searchTerm]);
 
-  // Loading States
-  if (isUserLoading || isLoadingProfile) {
+  // Global Loading & Discovery Overlay
+  if (isUserLoading || isLoadingProfile || (!discoveryComplete && userRole !== 'tenant')) {
     return (
       <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">Verifying Access...</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">
+            Synchronizing Portfolio...
+        </p>
       </div>
     );
   }
 
-  // Interstitial for Discovery phase (Bypassed for tenants)
-  if (!discoveryComplete && userRole !== 'tenant') {
-    return (
-        <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4">
-            <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-sm font-medium text-muted-foreground">Synchronizing Portfolio Assets...</p>
-        </div>
-    );
-  }
+  // Tenant redirection fallback (if router.replace is slightly delayed)
+  if (userRole === 'tenant') return null;
 
-  // Empty State / New Landlord Onboarding
-  if (properties.length === 0 && (userRole === 'landlord' || userRole === 'agent')) {
+  // New Landlord Empty State
+  if (properties.length === 0) {
       return (
           <div className="text-center py-20 animate-in fade-in duration-500">
               <div className="max-w-md mx-auto space-y-6 px-6 text-left">
@@ -139,7 +146,9 @@ export default function DashboardPage() {
                       <Home className="h-12 w-12" />
                   </div>
                   <h2 className="text-2xl font-bold font-headline text-center">Welcome to RentSafeUK</h2>
-                  <p className="text-muted-foreground font-medium text-center">Your profile is active. Onboard your first rental asset to begin managing your estate.</p>
+                  <p className="text-muted-foreground font-medium text-center leading-relaxed">
+                      Your management profile is active. Onboard your first property asset to begin tracking compliance and tenancies.
+                  </p>
                   <Button asChild size="lg" className="px-10 font-bold shadow-lg h-12 w-full mt-4">
                       <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Onboard First Asset</Link>
                   </Button>
@@ -148,7 +157,6 @@ export default function DashboardPage() {
       );
   }
 
-  // Main Landlord Dashboard View
   return (
       <div className="space-y-8 animate-in fade-in duration-500 text-left">
         <div className="space-y-1">

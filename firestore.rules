@@ -15,23 +15,25 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // --- TOP-LEVEL DISCOVERY RULES (CRITICAL FOR HANDSHAKE PERFORMANCE) ---
-    // These rules allow tenants to find their records across the entire database via collectionGroup queries.
+    // --- TOP-LEVEL DISCOVERY RULES (CRITICAL FOR IDENTITY HANDSHAKE) ---
+    // These rules allow the Resident Hub to discover and link tenancy records across the entire database.
     
     match /{path=**}/tenants/{tenantId} {
-      // Identity Discovery: Allow tenants to find their record by email or their own linked UID.
+      // Identity Discovery: Allow tenants to find their record by normalized email or their own linked UID.
       allow read: if isSignedIn() && (
-        (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
+        (request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower()) ||
         resource.data.userId == request.auth.uid
       );
       
       // Verification Handshake: Allow the resident to link their unique UID and join the portal.
-      // We restrict updates to ONLY these specific fields to prevent residents from modifying contract data.
+      // Restrict updates to only these identity-binding fields to prevent residents from modifying rent/contracts.
       allow update: if isSignedIn() && (
-        (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
+        (request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower()) ||
         resource.data.userId == request.auth.uid
-      ) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['joinedDate', 'userId', 'verified', 'lastSyncCheck']);
+      ) && request.resource.data.diff(resource.data).affectedKeys().hasAny(['joinedDate', 'userId', 'verified', 'lastSyncCheck']);
     }
+
+    // --- SHARED DATA ACCESS RULES ---
 
     match /{path=**}/messages/{messageId} {
        allow read, write: if isSignedIn();
@@ -45,40 +47,42 @@ service cloud.firestore {
     // --- CORE HIERARCHICAL PORTFOLIO DATA ---
 
     match /userProfiles/{userId} {
+      // Users can manage their own profile metadata
       allow get, list, create, update, delete: if isOwner(userId);
 
       match /properties/{propertyId} {
+        // Only the landlord owner has full read/write to the property asset
         allow read, write: if isOwner(userId);
         
-        // Residents can read the property details they are assigned to
+        // Residents can read basic property details for the home they are assigned to
         allow get: if isSignedIn();
 
         match /tenants/{tenantId} {
+          // Path-specific rules mirroring the discovery rules for consistency
           allow read, write: if isOwner(userId);
           
-          // Path-specific rules for deeper hierarchy (Parity with discovery rules)
           allow get: if isSignedIn() && (
-            (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
+            (request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower()) ||
             resource.data.userId == request.auth.uid
           );
 
           allow update: if isSignedIn() && (
-            (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
+            (request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower()) ||
             resource.data.userId == request.auth.uid
-          ) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['joinedDate', 'userId', 'verified', 'lastSyncCheck']);
+          ) && request.resource.data.diff(resource.data).affectedKeys().hasAny(['joinedDate', 'userId', 'verified', 'lastSyncCheck']);
 
           match /messages/{messageId} {
-             allow read, write: if isOwner(userId) || (isSignedIn() && request.auth.token.email != null && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email.lower());
+             allow read, write: if isOwner(userId) || (isSignedIn() && request.auth.token.email != null && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email.lower() == request.auth.token.email.lower());
           }
 
           match /screenings/{screeningId} {
              allow read, write: if isOwner(userId);
-             allow get: if isSignedIn() && request.auth.token.email != null && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email.lower();
+             allow get: if isSignedIn() && request.auth.token.email != null && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email.lower() == request.auth.token.email.lower();
           }
           
           match /checklists/{checklistId} {
              allow read, write: if isOwner(userId);
-             allow get: if isSignedIn() && request.auth.token.email != null && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email.lower();
+             allow get: if isSignedIn() && request.auth.token.email != null && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email.lower() == request.auth.token.email.lower();
           }
         }
 

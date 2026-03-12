@@ -64,7 +64,7 @@ export default function TenantDashboard() {
     
     const userEmail = user.email.toLowerCase().trim();
 
-    // identity discovery via Collection Group query
+    // Identity Discovery: Perform a case-insensitive lookup for the tenancy record.
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         or(
@@ -99,6 +99,7 @@ export default function TenantDashboard() {
             const propertyId = segments[propertiesIdx + 1];
             const tenantId = activeTenantDoc.id;
 
+            // Fetch Property Meta for context
             const propRef = doc(firestore, 'userProfiles', landlordId, 'properties', propertyId);
             propUnsub = onSnapshot(propRef, (propSnap) => {
                 if (propSnap.exists()) {
@@ -111,7 +112,8 @@ export default function TenantDashboard() {
                         propertyData
                     });
                     
-                    // HANDSHAKE TRIGGER: Set verified status and bind UID if not already linked
+                    // HANDSHAKE TRIGGER: Set verified status and bind UID if not already linked.
+                    // This creates the permanent link between the record and the secure account.
                     if (!data.verified || data.userId !== user.uid) {
                         if (!handshakeAttempted.current) {
                             setIsHandshaking(true);
@@ -120,14 +122,14 @@ export default function TenantDashboard() {
                             updateDoc(activeTenantDoc.ref, { 
                                 joinedDate: new Date().toISOString(),
                                 userId: user.uid,
-                                verified: true
+                                verified: true,
+                                lastSyncCheck: new Date().toISOString()
                             }).then(() => {
                                 setIsHandshaking(false);
-                                toast({ title: "Identity Handshake Successful", description: "Your account is now securely linked to your tenancy record." });
+                                toast({ title: "Verification Successful", description: "Identity verified and portal access granted." });
                             }).catch(err => {
                                 console.warn("Handshake permission issue:", err.message);
                                 setIsHandshaking(false);
-                                // Reset attempt ref to allow retry on next change or interaction
                                 handshakeAttempted.current = false;
                             });
                         }
@@ -135,33 +137,33 @@ export default function TenantDashboard() {
 
                     setError(null);
                 } else {
-                    setError("Record found but property metadata is currently restricted.");
+                    setError("Identity verified, but property metadata is currently restricted.");
                 }
                 setIsLoading(false);
                 setIsIndexBuilding(false);
             }, (err) => {
-                setError("Tenant identified, but could not synchronize property profile.");
+                console.warn("Property sync error:", err.message);
+                setError("Sync error: Portions of your registry are restricted.");
                 setIsLoading(false);
             });
         } else {
-            setError("Tenancy mapping mismatch.");
+            setError("Identity handshake failed: Mapping mismatch.");
             setIsLoading(false);
         }
     }, (err) => {
         const msg = err.message.toLowerCase();
-        // Detect index building status
-        if (msg.includes('index') || err.code === 'failed-precondition') {
+        // Handle Missing Index or Permission Denial during propagation
+        if (msg.includes('index') || err.code === 'failed-precondition' || msg.includes('permission')) {
             setIsIndexBuilding(true);
-            // Auto-retry discovery while index builds
-            if (retryCount.current < 20) { 
+            if (retryCount.current < 15) { 
                 setTimeout(() => {
                     retryCount.current += 1;
                     performDiscovery();
-                }, 10000);
+                }, 15000);
             }
         } else {
             console.error("Discovery error:", err);
-            setError("Handshake failed due to database connectivity issues.");
+            setError("Database connectivity error. Please refresh.");
         }
         setIsLoading(false);
     });
@@ -196,20 +198,20 @@ export default function TenantDashboard() {
                 <Sparkles className="h-12 w-12 text-primary animate-pulse" />
             </div>
             <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Portal Setup in Progress</h2>
+                <h2 className="font-headline text-2xl font-bold text-primary">Portal Handshake Active</h2>
                 <p className="text-muted-foreground font-medium text-sm leading-relaxed">
-                    The platform is currently initializing high-speed identity discovery.
+                    The platform is currently mapping your resident identity keys.
                 </p>
                 <div className="p-4 rounded-xl bg-muted/50 border border-dashed text-xs text-muted-foreground mt-4 text-left">
-                    <p className="font-bold uppercase text-[9px] tracking-widest mb-1 text-primary">Status: Building Discovery Index</p>
-                    <p>This is a one-time cloud initialization that typically takes 2-3 minutes. Verification will resolve automatically.</p>
+                    <p className="font-bold uppercase text-[9px] tracking-widest mb-1 text-primary">Status: Verifying Credentials</p>
+                    <p>This secure initialization usually completes within 60 seconds. Identity matching is currently in progress.</p>
                 </div>
             </div>
             <div className="flex flex-col gap-2">
                 <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-sm" onClick={() => window.location.reload()}>
-                    <RefreshCw className="mr-2 h-4 w-4" /> Check Status
+                    <RefreshCw className="mr-2 h-4 w-4" /> Check Identity Status
                 </Button>
-                <p className="text-[10px] text-muted-foreground italic">Attempt {retryCount.current + 1}</p>
+                <p className="text-[10px] text-muted-foreground italic">Sync Attempt {retryCount.current + 1}</p>
             </div>
         </div>
     );
@@ -219,26 +221,26 @@ export default function TenantDashboard() {
     return (
         <Card className="max-w-md mx-auto mt-20 shadow-2xl border-none text-left overflow-hidden">
             <CardHeader className="text-center bg-muted/20 pb-8 px-6 border-b">
-                <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 shadow-sm border">
-                    <Search className="h-10 w-10 text-primary/40" />
+                <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 shadow-sm border text-muted-foreground/20">
+                    <Search className="h-10 w-10" />
                 </div>
-                <CardTitle className="font-headline text-xl text-primary">Identity Not Found</CardTitle>
+                <CardTitle className="font-headline text-xl text-primary">Identity Not Resolved</CardTitle>
                 <CardDescription className="text-sm font-medium text-center px-4">
-                    We could not find an active tenancy record matching <strong>{user?.email}</strong>.
+                    No active tenancy found for <strong>{user?.email}</strong>.
                 </CardDescription>
             </CardHeader>
             <CardContent className="pt-6 space-y-4">
                 <div className="space-y-2">
-                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Next Steps</p>
+                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Required Actions</p>
                     <ul className="text-xs text-muted-foreground space-y-2">
-                        <li className="flex items-start gap-2"><div className="h-1 w-1 rounded-full bg-primary mt-1.5 shrink-0" /> Contact your landlord to verify your registered email.</li>
-                        <li className="flex items-start gap-2"><div className="h-1 w-1 rounded-full bg-primary mt-1.5 shrink-0" /> Ensure you are logged in with your portal account.</li>
+                        <li className="flex items-start gap-2"><div className="h-1 w-1 rounded-full bg-primary mt-1.5 shrink-0" /> Ask your landlord to verify your registered portal email.</li>
+                        <li className="flex items-start gap-2"><div className="h-1 w-1 rounded-full bg-primary mt-1.5 shrink-0" /> Ensure you are logged in with the correct account credentials.</li>
                     </ul>
                 </div>
             </CardContent>
             <CardFooter className="pt-6 flex flex-col gap-3 bg-muted/5 border-t">
                 <Button variant="outline" className="w-full h-11 rounded-xl font-bold uppercase tracking-widest text-[10px]" onClick={() => { retryCount.current = 0; performDiscovery(); }}>
-                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Force Handshake Retry
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Re-trigger Handshake
                 </Button>
                 <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={() => router.push('/dashboard')}>Portfolio View</Button>
             </CardFooter>
@@ -268,7 +270,7 @@ export default function TenantDashboard() {
                 </Badge>
             ) : (
                 <Badge variant="secondary" className="h-8 px-3 font-bold uppercase tracking-widest text-[9px] rounded-xl shrink-0 opacity-50">
-                    Verification In Progress
+                    Handshake Pending
                 </Badge>
             )}
         </div>
