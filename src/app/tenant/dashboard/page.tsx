@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -18,8 +17,7 @@ import {
   ChevronRight,
   ShieldCheck,
   RefreshCw,
-  Search,
-  CheckCircle2
+  Search
 } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
 import { collection, query, where, limit, getDocs, doc, updateDoc, getDoc } from 'firebase/firestore';
@@ -52,17 +50,14 @@ export default function TenantDashboard() {
     const userEmail = user.email.toLowerCase().trim();
 
     try {
-        // 1. Direct Root Collection Discovery
-        // We check for records where either the UID is already set OR the Email matches
         const tenantsCol = collection(firestore, 'tenants');
         
-        // Try UID first (returning users)
+        // 1. Discovery Phase: Search by Email or UID
+        const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
         const qByUid = query(tenantsCol, where('userId', '==', user.uid), limit(1));
+        
         let snap = await getDocs(qByUid);
-
-        // If not found, try Email (new users completing handshake)
         if (snap.empty) {
-            const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
             snap = await getDocs(qByEmail);
         }
 
@@ -76,9 +71,8 @@ export default function TenantDashboard() {
         const tenantDoc = snap.docs[0];
         const tenantData = tenantDoc.data();
         
-        // 2. Identity Handshake & Verification
-        // If the record exists but isn't linked to this UID yet, we perform the link
-        if (!tenantData.userId || tenantData.userId !== user.uid) {
+        // 2. Verification Handshake: Link account if verified is false or userId is missing
+        if (!tenantData.userId || tenantData.userId !== user.uid || !tenantData.verified) {
             setIsHandshaking(true);
             setDiscoveryStatus('handshaking');
             
@@ -89,8 +83,8 @@ export default function TenantDashboard() {
             });
             
             toast({ 
-                title: "Identity Verified", 
-                description: "Your account is now securely linked to your tenancy." 
+                title: "Resident Hub Active", 
+                description: "Your portal access is now securely verified." 
             });
             setIsHandshaking(false);
         }
@@ -111,7 +105,7 @@ export default function TenantDashboard() {
         setIsLoading(false);
         discoveryRef.current = false;
     } catch (err: any) {
-        console.error("Discovery Error:", err.message);
+        console.error("Resident Hub Discovery Error:", err.message);
         setIsLoading(false);
         setDiscoveryStatus('failed');
         discoveryRef.current = false;

@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, query, where, onSnapshot, doc } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, doc, getDoc } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -52,24 +52,29 @@ export default function DashboardPage() {
   useEffect(() => {
     if (isUserLoading || !user || !firestore) return;
 
-    const userRef = doc(firestore, 'users', user.uid);
-    const unsubProfile = onSnapshot(userRef, (snap) => {
-      if (!snap.exists()) {
+    const checkRole = async () => {
+      try {
+        const userRef = doc(firestore, 'users', user.uid);
+        const snap = await getDoc(userRef);
+        
+        if (snap.exists()) {
+          const role = snap.data().role;
+          setUserRole(role);
+          if (role === 'tenant') {
+            router.replace('/tenant/dashboard');
+            return;
+          }
+        } else {
           setUserRole('landlord');
-          setIsLoadingProfile(false);
-          return;
+        }
+        setIsLoadingProfile(false);
+      } catch (e) {
+        console.error("Dashboard role check failed:", e);
+        setIsLoadingProfile(false);
       }
-      const data = snap.data();
-      const role = data?.role || 'landlord';
-      setUserRole(role);
-      setIsLoadingProfile(false);
+    };
 
-      if (role === 'tenant') {
-        router.replace('/tenant/dashboard');
-      }
-    }, () => setIsLoadingProfile(false));
-
-    return () => unsubProfile();
+    checkRole();
   }, [user, isUserLoading, firestore, router]);
 
   useEffect(() => {

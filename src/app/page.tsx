@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -72,10 +71,9 @@ export default function LoginPage() {
             } else {
               router.replace('/dashboard');
             }
-          } else {
-            // Fallback for users without a document yet (e.g. during slow creation)
-            // or social login users who haven't picked a role.
-            // Landlord is the default dashboard.
+          } else if (mode === 'login') {
+            // Social login or existing user without a profile doc yet
+            // Default to landlord but check for tenant mapping
             router.replace('/dashboard');
           }
         } catch (error) {
@@ -86,7 +84,7 @@ export default function LoginPage() {
       
       checkRoleAndRedirect();
     }
-  }, [user, isUserLoading, router, firestore]);
+  }, [user, isUserLoading, router, firestore, mode]);
 
   const handleAuthAction = (data: FormValues) => {
     if (!auth) {
@@ -145,13 +143,13 @@ export default function LoginPage() {
     },
   });
 
-  if (isUserLoading || user) {
+  if (isUserLoading || (user && !authError)) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
          <div className="flex flex-col items-center gap-4">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">
-                Authenticating Session...
+                Verifying Session...
             </p>
          </div>
       </div>
