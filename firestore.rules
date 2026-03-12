@@ -48,6 +48,10 @@ service cloud.firestore {
           match /messages/{messageId} {
              allow read, write: if isOwner(userId) || (isSignedIn() && request.auth.uid == get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.userId);
           }
+
+          match /screenings/{screeningId} {
+            allow read, write: if isOwner(userId);
+          }
         }
 
         match /maintenanceLogs/{logId} {
@@ -68,6 +72,14 @@ service cloud.firestore {
         match /documents/{documentId} {
           allow read, write: if isOwner(userId);
           allow get: if isSignedIn();
+        }
+
+        match /rentPayments/{paymentId} {
+          allow read, write: if isOwner(userId);
+        }
+
+        match /checklists/{checklistId} {
+          allow read, write: if isOwner(userId);
         }
       }
 

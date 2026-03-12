@@ -85,18 +85,17 @@ export default function TenantDashboard() {
                     });
                     setIsLoading(false);
                     setIsIndexBuilding(false);
+                    discoveryRef.current = false;
                     return;
                 }
             }
         }
 
         // 2. Slow Path: Discovery by secure UID
-        // Requires COLLECTION_GROUP index on userId
         let q = query(collectionGroup(firestore, 'tenants'), where('userId', '==', user.uid), limit(1));
         let snap = await getDocs(q);
 
         // 3. Fallback: Discovery by verified Email (initial connection)
-        // Requires COLLECTION_GROUP index on email
         if (snap.empty) {
             q = query(collectionGroup(firestore, 'tenants'), where('email', '==', userEmail), limit(1));
             snap = await getDocs(q);
@@ -152,11 +151,13 @@ export default function TenantDashboard() {
         }
         setIsLoading(false);
         setIsIndexBuilding(false);
+        discoveryRef.current = false;
     } catch (err: any) {
         console.error("Discovery error context:", err);
-        // Detect index-building state specifically from Firebase error message or code
+        // Detect index-building or permission-denied state
         const isIndexError = err.message?.toLowerCase().includes('index') || 
                            err.code === 'failed-precondition' || 
+                           err.code === 'permission-denied' ||
                            err.message?.toLowerCase().includes('requires a collection_group');
         
         if (isIndexError) {
@@ -179,10 +180,9 @@ export default function TenantDashboard() {
   useEffect(() => {
     if (isIndexBuilding) {
         const timer = setTimeout(() => {
-            discoveryRef.current = false;
             setSyncAttempt(s => s + 1);
             performDiscovery();
-        }, 15000); // Polling every 15 seconds
+        }, 15000); 
         return () => clearTimeout(timer);
     }
   }, [isIndexBuilding, performDiscovery, syncAttempt]);
@@ -215,7 +215,7 @@ export default function TenantDashboard() {
                 </div>
             </div>
             <div className="space-y-4">
-                <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-sm" onClick={() => { discoveryRef.current = false; setSyncAttempt(s => s + 1); performDiscovery(); }}>
+                <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-sm" onClick={() => { setSyncAttempt(s => s + 1); performDiscovery(); }}>
                     <RefreshCw className="mr-2 h-4 w-4" /> Check Identity Status
                 </Button>
                 <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">Handshake Attempt {syncAttempt}</p>
@@ -246,7 +246,7 @@ export default function TenantDashboard() {
                 </div>
             </CardContent>
             <CardFooter className="pt-6 bg-muted/5 border-t">
-                <Button variant="outline" className="w-full h-11 rounded-xl font-bold uppercase tracking-widest text-[10px]" onClick={() => { discoveryRef.current = false; setSyncAttempt(s => s + 1); performDiscovery(); }}>
+                <Button variant="outline" className="w-full h-11 rounded-xl font-bold uppercase tracking-widest text-[10px]" onClick={() => { setSyncAttempt(s => s + 1); performDiscovery(); }}>
                     <RefreshCw className="mr-2 h-3.5 w-3.5" /> Refresh Connection
                 </Button>
             </CardFooter>
