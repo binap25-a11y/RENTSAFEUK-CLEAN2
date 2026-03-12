@@ -54,13 +54,13 @@ export default function TenantDashboard() {
     try {
         const tenantsCol = collection(firestore, 'tenants');
         
-        // 1. Discovery Phase: Search by Email or UID in root collection
-        // Explicitly check Email FIRST for unverified users
-        const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
+        // STAGE 1: Discovery by existing UID link (Verified State)
         const qByUid = query(tenantsCol, where('userId', '==', user.uid), limit(1));
-        
         let snap = await getDocs(qByUid);
+
+        // STAGE 2: Discovery by normalized email (New Handshake State)
         if (snap.empty) {
+            const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
             snap = await getDocs(qByEmail);
         }
 
@@ -75,7 +75,7 @@ export default function TenantDashboard() {
         const tenantDoc = snap.docs[0];
         const tenantData = tenantDoc.data();
         
-        // 2. Verification Handshake: Link account atomically if not already linked
+        // VERIFICATION HANDSHAKE: Link account atomically
         if (!tenantData.userId || tenantData.userId !== user.uid || !tenantData.verified) {
             setIsHandshaking(true);
             setDiscoveryStatus('handshaking');
@@ -87,13 +87,13 @@ export default function TenantDashboard() {
             });
             
             toast({ 
-                title: "Resident Hub Active", 
-                description: "Your secure portal access is now fully verified." 
+                title: "Portal Verified", 
+                description: "You are now connected to your resident dashboard." 
             });
             setIsHandshaking(false);
         }
 
-        // 3. Resolve Property Context
+        // RESOLVE CONTEXT
         const propSnap = await getDoc(doc(firestore, 'properties', tenantData.propertyId));
         
         if (propSnap.exists()) {
@@ -132,17 +132,12 @@ export default function TenantDashboard() {
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/5 rounded-full animate-ping" />
             </div>
             <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Identity Sync Active</h2>
+                <h2 className="font-headline text-2xl font-bold text-primary">Resident Identity Sync</h2>
                 <p className="text-muted-foreground font-medium leading-relaxed">
                     {discoveryStatus === 'handshaking' 
-                        ? 'Finalizing your secure Resident Hub connection...' 
-                        : 'Resolving your property access keys...'}
+                        ? 'Finalizing your secure connection...' 
+                        : 'Searching the property registry...'}
                 </p>
-                <div className="pt-4 max-w-[200px] mx-auto">
-                    <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-primary animate-pulse" style={{ width: '60%' }} />
-                    </div>
-                </div>
             </div>
         </div>
     );
@@ -161,11 +156,11 @@ export default function TenantDashboard() {
                 </CardDescription>
             </CardHeader>
             <CardContent className="pt-6 text-sm text-muted-foreground">
-                <p className="leading-relaxed">If you believe this is an error, please ask your landlord to verify that they have registered your email <strong>{user?.email}</strong> correctly in the RentSafeUK portal.</p>
+                <p className="leading-relaxed text-center">Please ask your landlord to verify that they have registered your email <strong>{user?.email}</strong> correctly.</p>
             </CardContent>
             <CardFooter className="pt-6 bg-muted/5 border-t">
                 <Button variant="outline" className="w-full h-11 rounded-xl font-bold uppercase tracking-widest text-[10px]" onClick={() => { discoveryRef.current = false; performDiscovery(); }}>
-                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Identity Discovery
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Discovery
                 </Button>
             </CardFooter>
         </Card>

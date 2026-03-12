@@ -35,7 +35,7 @@ import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Loader2, Eye, EyeOff, AlertCircle, ShieldCheck, Building2, Users, UserCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { Label } from '@/components/ui/label';
-import { doc, getDoc, collection, query, where, getDocs, limit, setDoc } from 'firebase/firestore';
+import { doc, getDoc, collection, query, where, getDocs, limit, setDoc, updateDoc } from 'firebase/firestore';
 
 const formSchema = z.object({
   email: z.string().email({ message: 'Please enter a valid email address.' }),
@@ -66,13 +66,22 @@ export default function LoginPage() {
           const snap = await getDoc(userRef);
           
           let role: string | null = null;
+          const userEmail = user.email?.toLowerCase().trim();
 
           if (snap.exists()) {
             role = snap.data().role;
+            // SELF-HEALING: If user is logged in as landlord but exists in tenants registry, correct it immediately
+            if (role === 'landlord' && userEmail) {
+                const tenantsCol = collection(firestore, 'tenants');
+                const q = query(tenantsCol, where('email', '==', userEmail), limit(1));
+                const tenantSnap = await getDocs(q);
+                if (!tenantSnap.empty) {
+                    role = 'tenant';
+                    await updateDoc(userRef, { role: 'tenant' });
+                }
+            }
           } else {
-            // SMART DISCOVERY: If no user doc, check if they are an invited tenant
-            // Normalize email for discovery
-            const userEmail = user.email?.toLowerCase().trim();
+            // SMART DISCOVERY: Identity Handshake for new users
             if (userEmail) {
                 const tenantsCol = collection(firestore, 'tenants');
                 const q = query(tenantsCol, where('email', '==', userEmail), limit(1));
@@ -80,7 +89,6 @@ export default function LoginPage() {
                 
                 if (!tenantSnap.empty) {
                   role = 'tenant';
-                  // Auto-provision profile for discovered tenant
                   await setDoc(userRef, {
                     id: user.uid,
                     email: userEmail,
@@ -89,7 +97,7 @@ export default function LoginPage() {
                     idleTimeoutMinutes: 30
                   });
                 } else if (mode === 'login') {
-                  // Social login / First-time login: Default to landlord if not a discovered tenant
+                  // Default to landlord only if no tenancy exists in the registry
                   role = 'landlord';
                   await setDoc(userRef, {
                     id: user.uid,
@@ -102,7 +110,7 @@ export default function LoginPage() {
             }
           }
           
-          // Final Redirection
+          // Final Navigation
           if (role === 'tenant') {
             router.replace('/tenant/dashboard');
           } else {
@@ -110,7 +118,6 @@ export default function LoginPage() {
           }
         } catch (error) {
           console.error("Redirection engine error:", error);
-          // Fallback to dashboard if anything fails, common role guard will handle it
           router.replace('/dashboard');
         }
       };
