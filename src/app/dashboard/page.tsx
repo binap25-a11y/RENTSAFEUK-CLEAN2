@@ -74,13 +74,13 @@ export default function DashboardPage() {
     return () => unsubProfile();
   }, [user, isUserLoading, firestore]);
 
-  // 2. Parallel Data Handshake
+  // 2. Parallel Data Handshake & Redirection
   useEffect(() => {
     if (isLoadingProfile || !user || !firestore || !userRole) return;
 
     const userEmail = user.email?.toLowerCase().trim();
 
-    // A. Landlord Discovery
+    // A. Landlord Discovery (Always happens in parallel)
     const propQuery = query(
       collection(firestore, 'userProfiles', user.uid, 'properties'), 
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
@@ -90,15 +90,15 @@ export default function DashboardPage() {
       const list = snap.docs.map(d => ({ id: d.id, ...d.data() } as Property));
       setProperties(list);
       
-      // Landlords bypass verification instantly if they have properties
+      // If user has properties, they are definitely a landlord/agent context
       if (list.length > 0 || userRole === 'landlord' || userRole === 'agent') {
         setDiscoveryComplete(true);
       }
     });
 
-    // B. Tenant Global Discovery
+    // B. Tenant Global Discovery (Only if role is tenant or unknown)
     let unsubTenants = () => {};
-    if (userEmail && userRole === 'tenant') {
+    if (userEmail) {
         const tenantsQuery = query(
             collectionGroup(firestore, 'tenants'),
             where('email', '==', userEmail),
@@ -107,16 +107,18 @@ export default function DashboardPage() {
 
         unsubTenants = onSnapshot(tenantsQuery, (snap) => {
             if (!snap.empty) {
+                // Verified tenant found - redirect to hub immediately
                 router.replace('/tenant/dashboard');
-            } else {
-                setDiscoveryComplete(true);
+            } else if (userRole === 'tenant') {
+                // Explicitly a tenant but no record found yet
+                setDiscoveryComplete(true); 
             }
         }, (err) => {
             const msg = err.message.toLowerCase();
             if (msg.includes('index') || err.code === 'failed-precondition') {
-                setIsIndexBuilding(true);
+                if (userRole === 'tenant') setIsIndexBuilding(true);
             } else {
-                setDiscoveryComplete(true);
+                if (userRole === 'tenant') setDiscoveryComplete(true);
             }
         });
     }
@@ -124,7 +126,7 @@ export default function DashboardPage() {
     // C. Safety Timeout for Discovery
     const timer = setTimeout(() => {
         setHandshakeTimedOut(true);
-    }, 4000);
+    }, 5000);
 
     return () => {
         unsubProps();
@@ -150,12 +152,13 @@ export default function DashboardPage() {
     return (
       <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Initializing Portal...</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">Initializing Portal...</p>
       </div>
     );
   }
 
   // Interstitial for Index Building or Hanging Handshake
+  // Only show this to users who are strictly defined as tenants and discovery is not complete
   if ((isIndexBuilding || !discoveryComplete) && !handshakeTimedOut && userRole === 'tenant') {
     return (
         <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6 animate-in fade-in duration-700">
@@ -170,17 +173,24 @@ export default function DashboardPage() {
             </div>
             <div className="p-4 rounded-xl bg-muted/50 border border-dashed text-xs text-muted-foreground text-left">
                 <p className="font-bold uppercase text-[9px] mb-1">Status: Mapping Identity</p>
-                This usually takes a few moments on first entry.
+                {isIndexBuilding 
+                    ? "Firestore cloud indexes are being provisioned. This takes 2-3 minutes on first setup." 
+                    : "Synchronizing with your landlord's records..."}
             </div>
-            <Button variant="outline" className="w-full h-11 font-bold uppercase text-[10px] tracking-widest" onClick={() => router.refresh()}>
-                <RefreshCw className="mr-2 h-3.5 w-3.5" /> Check Status
-            </Button>
+            <div className="flex flex-col gap-2">
+                <Button variant="outline" className="w-full h-11 font-bold uppercase text-[10px] tracking-widest" onClick={() => router.refresh()}>
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Check Status
+                </Button>
+                <Button variant="ghost" className="w-full text-[9px] font-bold uppercase text-muted-foreground" onClick={() => setDiscoveryComplete(true)}>
+                    Bypass to Portfolio Manager
+                </Button>
+            </div>
         </div>
     );
   }
 
   // Empty State / New Landlord Onboarding
-  if (properties.length === 0 && (userRole === 'landlord' || userRole === 'agent')) {
+  if (properties.length === 0 && (userRole === 'landlord' || userRole === 'agent' || !userRole)) {
       return (
           <div className="text-center py-20 animate-in fade-in duration-500">
               <div className="max-w-md mx-auto space-y-6 px-6 text-left">
@@ -188,7 +198,7 @@ export default function DashboardPage() {
                       <Home className="h-12 w-12" />
                   </div>
                   <h2 className="text-2xl font-bold font-headline text-center">Welcome to RentSafeUK</h2>
-                  <p className="text-muted-foreground font-medium text-center">Your profile is active as a {userRole}. Onboard your first rental asset to begin managing your estate.</p>
+                  <p className="text-muted-foreground font-medium text-center">Your profile is active. Onboard your first rental asset to begin managing your estate.</p>
                   <Button asChild size="lg" className="px-10 font-bold shadow-lg h-12 w-full mt-4">
                       <Link href="/dashboard/properties/add"><PlusCircle className="mr-2 h-4 w-4" /> Onboard First Asset</Link>
                   </Button>
