@@ -21,7 +21,7 @@ import {
   ShieldCheck,
   Search
 } from 'lucide-react';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collectionGroup, query, where, limit, doc, updateDoc, getDocs, getDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
@@ -87,12 +87,14 @@ export default function TenantDashboard() {
             }
         }
 
-        // 2. Multi-Stage Discovery Logic (Sequentially more reliable during index build)
-        // Stage A: Search by secure UID
+        // 2. Sequential Discovery Pattern (UID first, then Email)
+        // This is more reliable during the one-time cloud indexing phase.
+        
+        // Attempt A: Search by secure UID (Verified path)
         let q = query(collectionGroup(firestore, 'tenants'), where('userId', '==', user.uid), limit(1));
         let snap = await getDocs(q);
 
-        // Stage B: Fallback to Email (Initial Verification Handshake)
+        // Attempt B: Fallback to Email (Initial verification handshake)
         if (snap.empty) {
             q = query(collectionGroup(firestore, 'tenants'), where('email', '==', userEmail), limit(1));
             snap = await getDocs(q);
@@ -117,6 +119,7 @@ export default function TenantDashboard() {
         localStorage.setItem(`tenant_path_${user.uid}`, path);
 
         // 3. Atomic Identity Handshake
+        // Only trigger if identity keys are missing or mismatched
         if (!data.verified || data.userId !== user.uid) {
             setIsHandshaking(true);
             try {
@@ -126,9 +129,9 @@ export default function TenantDashboard() {
                     verified: true,
                     lastSyncCheck: new Date().toISOString()
                 });
-                toast({ title: "Portal Linked", description: "Your resident identity has been verified." });
+                toast({ title: "Identity Verified", description: "Your portal connection is now secured." });
             } catch (hErr) {
-                console.warn("Handshake pending indexing:", hErr);
+                console.warn("Handshake delay (indexing):", hErr);
             } finally {
                 setIsHandshaking(false);
             }
@@ -151,15 +154,17 @@ export default function TenantDashboard() {
         setIsIndexBuilding(false);
         discoveryRef.current = false;
     } catch (err: any) {
-        console.error("Discovery log:", err);
-        const isIndexError = err.message?.toLowerCase().includes('index') || 
-                           err.code === 'failed-precondition' || 
+        console.error("Resident discovery status:", err.message);
+        
+        // Catch failed-precondition (missing index) or permission-denied (static rule failure during index build)
+        const isIndexError = err.code === 'failed-precondition' || 
+                           err.message?.toLowerCase().includes('index') ||
                            err.code === 'permission-denied';
         
         if (isIndexError) {
             setIsIndexBuilding(true);
         } else {
-            setError("Identity verification service timed out.");
+            setError("Identity verification service error.");
         }
         setIsLoading(false);
         discoveryRef.current = false;
@@ -176,6 +181,7 @@ export default function TenantDashboard() {
     if (isIndexBuilding) {
         const timer = setTimeout(() => {
             setSyncAttempt(s => s + 1);
+            discoveryRef.current = false; // Reset ref to allow retry
             performDiscovery();
         }, 15000); 
         return () => clearTimeout(timer);
@@ -187,7 +193,7 @@ export default function TenantDashboard() {
         <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">
-                Verifying Credentials...
+                Resolving Identity Registry...
             </p>
         </div>
     );
@@ -200,20 +206,20 @@ export default function TenantDashboard() {
                 <Sparkles className="h-12 w-12 text-primary animate-pulse" />
             </div>
             <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Portal Handshake Active</h2>
+                <h2 className="font-headline text-2xl font-bold text-primary">Portal Setup in Progress</h2>
                 <p className="text-muted-foreground font-medium text-sm leading-relaxed px-4">
-                    The platform is currently mapping your resident identity keys.
+                    The platform is currently initializing high-speed identity discovery.
                 </p>
                 <div className="p-4 rounded-xl bg-muted/50 border border-dashed text-xs text-muted-foreground mt-4 text-left">
-                    <p className="font-bold uppercase text-[9px] tracking-widest mb-1 text-primary">Status: Initializing Cloud Discovery</p>
-                    <p>This secure initialization usually completes within 60 seconds. Your portal will activate automatically once identity matching is confirmed.</p>
+                    <p className="font-bold uppercase text-[9px] tracking-widest mb-1 text-primary">Status: Building Discovery Index</p>
+                    <p>This is a one-time cloud initialization that typically takes 2-3 minutes. Your hub will activate automatically once the sync completes.</p>
                 </div>
             </div>
             <div className="space-y-4">
-                <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-sm" onClick={() => { setSyncAttempt(s => s + 1); performDiscovery(); }}>
-                    <RefreshCw className="mr-2 h-4 w-4" /> Check Identity Status
+                <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-sm" onClick={() => { setSyncAttempt(s => s + 1); discoveryRef.current = false; performDiscovery(); }}>
+                    <RefreshCw className="mr-2 h-4 w-4" /> Check Status
                 </Button>
-                <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">Sync Attempt {syncAttempt}</p>
+                <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest">Handshake Attempt {syncAttempt}</p>
             </div>
         </div>
     );
@@ -236,13 +242,13 @@ export default function TenantDashboard() {
                     <p className="font-bold mb-1">Common causes:</p>
                     <ul className="space-y-1 ml-4 list-disc">
                         <li>The landlord hasn't assigned your portal email to a property yet.</li>
-                        <li>You are logged in with a different identity than the one provided to the landlord.</li>
+                        <li>The landlord used a different email for your record.</li>
                     </ul>
                 </div>
             </CardContent>
             <CardFooter className="pt-6 bg-muted/5 border-t">
-                <Button variant="outline" className="w-full h-11 rounded-xl font-bold uppercase tracking-widest text-[10px]" onClick={() => performDiscovery()}>
-                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Re-trigger Discovery
+                <Button variant="outline" className="w-full h-11 rounded-xl font-bold uppercase tracking-widest text-[10px]" onClick={() => { discoveryRef.current = false; performDiscovery(); }}>
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Discovery
                 </Button>
             </CardFooter>
         </Card>
