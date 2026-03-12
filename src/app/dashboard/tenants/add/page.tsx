@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -163,9 +164,10 @@ export default function AddTenantPage() {
     const newTenant = {
         ...data,
         email: normalizedEmail,
-        userId: user.uid,
+        userId: '', // IMPORTANT: Leave empty for the tenant to link their UID during handshake
+        ownerId: user.uid, // Track the landlord separately
         status: 'Active',
-        verified: false, // EXPLICITLY FALSE: Transitions to true only when tenant logs in
+        verified: false,
         createdDate: new Date().toISOString(),
     };
 

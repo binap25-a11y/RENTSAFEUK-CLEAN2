@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useCallback } from 'react';
@@ -22,7 +23,7 @@ import {
   CheckCircle2
 } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
-import { collectionGroup, query, where, limit, onSnapshot, doc, updateDoc } from 'firebase/firestore';
+import { collectionGroup, query, where, limit, onSnapshot, doc, updateDoc, or } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { useRouter } from 'next/navigation';
 import { toast } from '@/hooks/use-toast';
@@ -57,11 +58,15 @@ export default function TenantDashboard() {
     
     const userEmail = user.email.toLowerCase().trim();
 
-    // 1. Discovery Handshake via Collection Group
+    // 1. Robust Discovery Handshake via Collection Group
+    // We search by email OR by previously linked userId for maximum speed
     const q = query(
         collectionGroup(firestore, 'tenants'), 
-        where('email', '==', userEmail),
-        limit(5) 
+        or(
+            where('email', '==', userEmail),
+            where('userId', '==', user.uid)
+        ),
+        limit(1) 
     );
 
     let propUnsub: (() => void) | null = null;
@@ -75,71 +80,58 @@ export default function TenantDashboard() {
             return;
         }
 
-        // Identify the correct active record
-        const activeTenantDoc = snap.docs.find(d => d.data().status === 'Active') || snap.docs[0];
+        const activeTenantDoc = snap.docs[0];
+        const data = activeTenantDoc.data();
+        const path = activeTenantDoc.ref.path;
+        
+        const segments = path.split('/');
+        const userProfilesIdx = segments.indexOf('userProfiles');
+        const propertiesIdx = segments.indexOf('properties');
 
-        if (activeTenantDoc) {
-            const data = activeTenantDoc.data();
-            const path = activeTenantDoc.ref.path;
-            
-            const segments = path.split('/');
-            const userProfilesIdx = segments.indexOf('userProfiles');
-            const propertiesIdx = segments.indexOf('properties');
+        if (userProfilesIdx !== -1 && propertiesIdx !== -1) {
+            const landlordId = segments[userProfilesIdx + 1];
+            const propertyId = segments[propertiesIdx + 1];
+            const tenantId = activeTenantDoc.id;
 
-            if (userProfilesIdx !== -1 && propertiesIdx !== -1) {
-                const landlordId = segments[userProfilesIdx + 1];
-                const propertyId = segments[propertiesIdx + 1];
-                const tenantId = activeTenantDoc.id;
-
-                const propRef = doc(firestore, 'userProfiles', landlordId, 'properties', propertyId);
-                propUnsub = onSnapshot(propRef, (propSnap) => {
-                    if (propSnap.exists()) {
-                        setContext({
-                            landlordId,
-                            propertyId,
-                            tenantId,
-                            tenantData: data,
-                            propertyData: propSnap.data()
+            const propRef = doc(firestore, 'userProfiles', landlordId, 'properties', propertyId);
+            propUnsub = onSnapshot(propRef, (propSnap) => {
+                if (propSnap.exists()) {
+                    setContext({
+                        landlordId,
+                        propertyId,
+                        tenantId,
+                        tenantData: data,
+                        propertyData: propSnap.data()
+                    });
+                    
+                    // HANDSHAKE TRIGGER: Update record if identity linking is incomplete
+                    if (data.verified !== true || data.userId !== user.uid) {
+                        setIsHandshaking(true);
+                        updateDoc(activeTenantDoc.ref, { 
+                            joinedDate: new Date().toISOString(),
+                            userId: user.uid,
+                            verified: true
+                        }).then(() => {
+                            setIsHandshaking(false);
+                        }).catch(err => {
+                            console.warn("Handshake write pending index:", err.message);
+                            setIsHandshaking(false);
                         });
-                        
-                        // VERIFICATION HANDSHAKE TRIGGER: Persistent and explicit
-                        if (data.verified !== true || data.userId !== user.uid) {
-                            setIsHandshaking(true);
-                            updateDoc(activeTenantDoc.ref, { 
-                                joinedDate: new Date().toISOString(),
-                                userId: user.uid,
-                                verified: true
-                            }).then(() => {
-                                setIsHandshaking(false);
-                                // Local state update to avoid waiting for snapshot
-                                setContext(prev => prev ? ({
-                                    ...prev,
-                                    tenantData: { ...prev.tenantData, verified: true, userId: user.uid }
-                                }) : null);
-                            }).catch(err => {
-                                console.warn("Handshake write blocked by security or index:", err.message);
-                                setIsHandshaking(false);
-                            });
-                        }
-
-                        setError(null);
-                    } else {
-                        setError("Resident identity linked but property profile is currently inaccessible.");
                     }
-                    setIsLoading(false);
-                    setIsIndexBuilding(false);
-                }, (err) => {
-                    console.warn("Property sync clearance issue:", err.message);
-                    setError("Portfolio synchronization pending. Please wait a moment.");
-                    setIsLoading(false);
-                });
-            } else {
-                setError("Incompatible tenancy record structure.");
+
+                    setError(null);
+                } else {
+                    setError("Identity linked but property profile is currently inaccessible.");
+                }
                 setIsLoading(false);
-            }
+                setIsIndexBuilding(false);
+            }, (err) => {
+                setError("Property synchronization pending. Landlord access verification required.");
+                setIsLoading(false);
+            });
         } else {
+            setError("Tenancy record is incompatible with portal discovery.");
             setIsLoading(false);
-            setContext(null);
         }
     }, (err) => {
         const msg = err.message.toLowerCase();
@@ -147,7 +139,7 @@ export default function TenantDashboard() {
             setIsIndexBuilding(true);
         } else {
             console.error("Discovery error:", err);
-            setError("Cloud identity verification failed.");
+            setError("Cloud identity handshake failed.");
         }
         setIsLoading(false);
     });
@@ -169,7 +161,7 @@ export default function TenantDashboard() {
         <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
             <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse text-center">
-                Verifying Resident Identity...
+                Resolving Resident Identity...
             </p>
         </div>
     );
@@ -184,11 +176,11 @@ export default function TenantDashboard() {
             <div className="space-y-3">
                 <h2 className="font-headline text-2xl font-bold text-primary">Portal Setup in Progress</h2>
                 <p className="text-muted-foreground font-medium text-sm leading-relaxed">
-                    The platform is currently initializing high-speed identity discovery for your account.
+                    The platform is currently initializing high-speed identity discovery.
                 </p>
                 <div className="p-4 rounded-xl bg-muted/50 border border-dashed text-xs text-muted-foreground mt-4 text-left">
-                    <p className="font-bold uppercase text-[9px] tracking-widest mb-1">Status: Building Discovery Index</p>
-                    This is a one-time cloud initialization that typically takes 2-3 minutes.
+                    <p className="font-bold uppercase text-[9px] tracking-widest mb-1 text-primary">Status: Building Discovery Index</p>
+                    <p>This is a one-time cloud task that typically takes 2-3 minutes. Access will grant automatically upon completion.</p>
                 </div>
             </div>
             <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-sm" onClick={() => window.location.reload()}>
@@ -207,22 +199,22 @@ export default function TenantDashboard() {
                 </div>
                 <CardTitle className="font-headline text-xl text-primary">Tenancy Not Found</CardTitle>
                 <CardDescription className="text-sm font-medium text-center px-4">
-                    We verified your credentials but could not locate an active record matching <strong>{user?.email}</strong>.
+                    We could not locate an active record matching <strong>{user?.email}</strong>.
                 </CardDescription>
             </CardHeader>
             <CardContent className="pt-6 space-y-4">
                 <div className="space-y-2">
-                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Next Steps</p>
+                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Helpful Tips</p>
                     <ul className="text-xs text-muted-foreground space-y-2">
-                        <li className="flex items-start gap-2"><div className="h-1 w-1 rounded-full bg-primary mt-1.5 shrink-0" /> Ask your landlord to verify your portal email in their records.</li>
-                        <li className="flex items-start gap-2"><div className="h-1 w-1 rounded-full bg-primary mt-1.5 shrink-0" /> Ensure you logged in with the exact email provided to your landlord.</li>
+                        <li className="flex items-start gap-2"><div className="h-1 w-1 rounded-full bg-primary mt-1.5 shrink-0" /> Verify with your landlord that <strong>{user?.email}</strong> is recorded correctly.</li>
+                        <li className="flex items-start gap-2"><div className="h-1 w-1 rounded-full bg-primary mt-1.5 shrink-0" /> Ensure your landlord has set your tenancy status to 'Active'.</li>
                     </ul>
                 </div>
             </CardContent>
             <CardFooter className="pt-6 flex flex-col gap-3 bg-muted/5 border-t">
                 <Button className="w-full font-bold h-11 shadow-lg uppercase tracking-widest text-xs" onClick={() => router.push('/dashboard')}>Go to Main Dashboard</Button>
                 <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={performDiscovery}>
-                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Force Handshake Retry
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Re-trigger Handshake
                 </Button>
             </CardFooter>
         </Card>
@@ -243,7 +235,7 @@ export default function TenantDashboard() {
             {isHandshaking ? (
                 <div className="flex items-center gap-2 text-[10px] font-bold uppercase text-primary animate-pulse px-2 bg-primary/5 py-1 rounded-lg border border-primary/10">
                     <Loader2 className="h-3 w-3 animate-spin" />
-                    Syncing Verification...
+                    Linking Identity...
                 </div>
             ) : isVerified ? (
                 <Badge variant="outline" className="bg-green-50 text-green-700 border-green-200 h-8 px-3 font-bold uppercase tracking-widest text-[9px] shadow-sm rounded-xl shrink-0">
@@ -251,7 +243,7 @@ export default function TenantDashboard() {
                 </Badge>
             ) : (
                 <Badge variant="secondary" className="h-8 px-3 font-bold uppercase tracking-widest text-[9px] rounded-xl shrink-0 opacity-50">
-                    Pending Verification
+                    Handshake Processing
                 </Badge>
             )}
         </div>
@@ -270,11 +262,11 @@ export default function TenantDashboard() {
 
         <Card className="shadow-lg border-none hover:bg-muted/5 transition-all hover:translate-y-[-2px] text-left">
             <CardHeader className="pb-2 px-6">
-                <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2"><Calendar className="h-3.5 w-3.5 text-primary" /> Agreement Active</CardTitle>
+                <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2"><Calendar className="h-3.5 w-3.5 text-primary" /> Agreement Date</CardTitle>
             </CardHeader>
             <CardContent className="px-6 pb-6">
                 <div className="text-xl font-bold text-foreground">{context.tenantData.tenancyStartDate?.seconds ? format(new Date(context.tenantData.tenancyStartDate.seconds * 1000), 'dd MMM yyyy') : 'Rolling Periodic'}</div>
-                <p className="text-xs text-muted-foreground mt-1 font-medium italic">Secure Lease Mapping</p>
+                <p className="text-xs text-muted-foreground mt-1 font-medium italic">Active Tenancy Registry</p>
             </CardContent>
         </Card>
 
