@@ -71,30 +71,34 @@ export default function LoginPage() {
             role = snap.data().role;
           } else {
             // SMART DISCOVERY: If no user doc, check if they are an invited tenant
-            const tenantsCol = collection(firestore, 'tenants');
-            const q = query(tenantsCol, where('email', '==', user.email?.toLowerCase().trim()), limit(1));
-            const tenantSnap = await getDocs(q);
-            
-            if (!tenantSnap.empty) {
-              role = 'tenant';
-              // Auto-provision profile for discovered tenant
-              await setDoc(userRef, {
-                id: user.uid,
-                email: user.email?.toLowerCase().trim(),
-                role: 'tenant',
-                createdAt: new Date().toISOString(),
-                idleTimeoutMinutes: 30
-              });
-            } else if (mode === 'login') {
-              // Social login / First-time login: Default to landlord if not a tenant
-              role = 'landlord';
-              await setDoc(userRef, {
-                id: user.uid,
-                email: user.email?.toLowerCase().trim(),
-                role: 'landlord',
-                createdAt: new Date().toISOString(),
-                idleTimeoutMinutes: 30
-              });
+            // Normalize email for discovery
+            const userEmail = user.email?.toLowerCase().trim();
+            if (userEmail) {
+                const tenantsCol = collection(firestore, 'tenants');
+                const q = query(tenantsCol, where('email', '==', userEmail), limit(1));
+                const tenantSnap = await getDocs(q);
+                
+                if (!tenantSnap.empty) {
+                  role = 'tenant';
+                  // Auto-provision profile for discovered tenant
+                  await setDoc(userRef, {
+                    id: user.uid,
+                    email: userEmail,
+                    role: 'tenant',
+                    createdAt: new Date().toISOString(),
+                    idleTimeoutMinutes: 30
+                  });
+                } else if (mode === 'login') {
+                  // Social login / First-time login: Default to landlord if not a discovered tenant
+                  role = 'landlord';
+                  await setDoc(userRef, {
+                    id: user.uid,
+                    email: userEmail,
+                    role: 'landlord',
+                    createdAt: new Date().toISOString(),
+                    idleTimeoutMinutes: 30
+                  });
+                }
             }
           }
           
@@ -106,6 +110,7 @@ export default function LoginPage() {
           }
         } catch (error) {
           console.error("Redirection engine error:", error);
+          // Fallback to dashboard if anything fails, common role guard will handle it
           router.replace('/dashboard');
         }
       };

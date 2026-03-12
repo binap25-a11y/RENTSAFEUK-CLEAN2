@@ -47,6 +47,7 @@ export default function TenantDashboard() {
     if (!user || !firestore || !user.email || discoveryRef.current) return;
     discoveryRef.current = true;
     setIsLoading(true);
+    setDiscoveryStatus('searching');
 
     const userEmail = user.email.toLowerCase().trim();
 
@@ -54,6 +55,7 @@ export default function TenantDashboard() {
         const tenantsCol = collection(firestore, 'tenants');
         
         // 1. Discovery Phase: Search by Email or UID in root collection
+        // Explicitly check Email FIRST for unverified users
         const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
         const qByUid = query(tenantsCol, where('userId', '==', user.uid), limit(1));
         
@@ -63,6 +65,7 @@ export default function TenantDashboard() {
         }
 
         if (snap.empty) {
+            console.warn("Tenant Discovery: No record found for", userEmail);
             setIsLoading(false);
             setDiscoveryStatus('failed');
             discoveryRef.current = false;
@@ -72,7 +75,7 @@ export default function TenantDashboard() {
         const tenantDoc = snap.docs[0];
         const tenantData = tenantDoc.data();
         
-        // 2. Verification Handshake: Link account atomically
+        // 2. Verification Handshake: Link account atomically if not already linked
         if (!tenantData.userId || tenantData.userId !== user.uid || !tenantData.verified) {
             setIsHandshaking(true);
             setDiscoveryStatus('handshaking');
@@ -114,12 +117,14 @@ export default function TenantDashboard() {
   }, [user, firestore]);
 
   useEffect(() => {
-    if (!isUserLoading && !context) performDiscovery();
-  }, [isUserLoading, context, performDiscovery]);
+    if (!isUserLoading && user && !context) {
+        performDiscovery();
+    }
+  }, [isUserLoading, user, context, performDiscovery]);
 
   if (isUserLoading || isLoading || isHandshaking) {
     return (
-        <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in duration-700">
+        <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in duration-700 px-6">
             <div className="relative">
                 <div className="bg-primary/10 p-10 rounded-full w-fit mx-auto relative z-10">
                     <Loader2 className="h-12 w-12 text-primary animate-spin" />
@@ -128,14 +133,14 @@ export default function TenantDashboard() {
             </div>
             <div className="space-y-3">
                 <h2 className="font-headline text-2xl font-bold text-primary">Identity Sync Active</h2>
-                <p className="text-muted-foreground font-medium px-6 leading-relaxed">
+                <p className="text-muted-foreground font-medium leading-relaxed">
                     {discoveryStatus === 'handshaking' 
                         ? 'Finalizing your secure Resident Hub connection...' 
                         : 'Resolving your property access keys...'}
                 </p>
-                <div className="pt-4 px-10">
+                <div className="pt-4 max-w-[200px] mx-auto">
                     <div className="h-1 w-full bg-muted rounded-full overflow-hidden">
-                        <div className="h-full bg-primary animate-progress-indeterminate" />
+                        <div className="h-full bg-primary animate-pulse" style={{ width: '60%' }} />
                     </div>
                 </div>
             </div>

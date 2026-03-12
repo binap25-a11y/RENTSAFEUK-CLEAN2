@@ -158,6 +158,7 @@ export default function AddTenantPage() {
     setIsSubmitting(true);
 
     const tenantsCollection = collection(firestore, 'tenants');
+    // Normalize email for discovery Handshake
     const normalizedEmail = data.email.toLowerCase().trim();
     
     const newTenant = {
@@ -174,7 +175,7 @@ export default function AddTenantPage() {
         await addDoc(tenantsCollection, prepareForFirestore(newTenant));
         
         const propertyDocRef = doc(firestore, 'properties', data.propertyId);
-        await updateDoc(propertyDocRef, { status: 'Occupied', tenantId: '' }); // Handshake handles linkage
+        await updateDoc(propertyDocRef, { status: 'Occupied' });
 
         toast({ title: 'Tenant Assigned' });
         router.push(`/dashboard/properties/${data.propertyId}`);
@@ -288,7 +289,7 @@ export default function AddTenantPage() {
             <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel className="font-bold">Audit Notes</FormLabel><FormControl><Textarea className="resize-none min-h-[100px] rounded-xl" {...field} /></FormControl><FormMessage /></FormItem>)} />
 
             <div className="flex items-center justify-end gap-3 pt-4 border-t">
-                <Button type="button" variant="ghost" asChild className="h-11" asChild><Link href="/dashboard/tenants">Cancel</Link></Button>
+                <Button type="button" variant="ghost" className="h-11" asChild><Link href="/dashboard/tenants">Cancel</Link></Button>
                 <Button type="submit" disabled={isSubmitting} className="h-11 px-10 shadow-lg bg-primary hover:bg-primary/90 font-bold">
                   {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Complete Assignment'}
                 </Button>
