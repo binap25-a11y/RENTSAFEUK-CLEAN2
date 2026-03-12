@@ -20,13 +20,13 @@ export function IdleTimeout() {
   const router = useRouter();
   const timeoutRef = useRef<NodeJS.Timeout | null>(null);
 
-  // Fetch the user's profile to get their preferred timeout
-  const userProfileRef = useMemoFirebase(() => {
+  // Fetch the user's profile from the root 'users' collection
+  const userDocRef = useMemoFirebase(() => {
     if (!firestore || !user) return null;
-    return doc(firestore, 'userProfiles', user.uid);
+    return doc(firestore, 'users', user.uid);
   }, [firestore, user]);
   
-  const { data: profile } = useDoc(userProfileRef);
+  const { data: profile } = useDoc(userDocRef);
 
   // Default to 30 minutes if no preference is found
   const timeoutMinutes = profile?.idleTimeoutMinutes || 30;

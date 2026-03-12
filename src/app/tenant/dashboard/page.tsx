@@ -53,7 +53,7 @@ export default function TenantDashboard() {
     const userEmail = user.email.toLowerCase().trim();
 
     try {
-        // 1. Root Collection Sequential Discovery
+        // 1. Root Collection Sequential Discovery (Flat Structure)
         // First try finding by UID (returning users)
         const qByUid = query(collection(firestore, 'tenants'), where('userId', '==', user.uid), limit(1));
         let snap = await getDocs(qByUid);
@@ -103,7 +103,7 @@ export default function TenantDashboard() {
         setIsLoading(false);
         discoveryRef.current = false;
     } catch (err: any) {
-        console.warn("Discovery Delay:", err.message);
+        console.error("Discovery Error:", err.message);
         setIsLoading(false);
         setDiscoveryStatus('failed');
         discoveryRef.current = false;
@@ -113,16 +113,6 @@ export default function TenantDashboard() {
   useEffect(() => {
     if (!isUserLoading && !context) performDiscovery();
   }, [isUserLoading, context, performDiscovery]);
-
-  useEffect(() => {
-    if (discoveryStatus === 'failed' && !context) {
-        const timer = setTimeout(() => {
-            setSyncAttempt(prev => prev + 1);
-            performDiscovery();
-        }, 15000);
-        return () => clearTimeout(timer);
-    }
-  }, [discoveryStatus, context, performDiscovery]);
 
   if (isUserLoading || isLoading || isHandshaking) {
     return (
@@ -142,9 +132,6 @@ export default function TenantDashboard() {
                     <Badge variant="outline" className="bg-muted text-muted-foreground font-bold uppercase text-[9px] px-3 py-1 border-dashed">
                         Status: {discoveryStatus === 'handshaking' ? 'Linking Identity' : 'Verifying Credentials'}
                     </Badge>
-                    <p className="text-[10px] text-muted-foreground/60 max-w-[240px] mx-auto italic">
-                        This secure initialization usually completes within 60 seconds. Identity matching is currently in progress.
-                    </p>
                 </div>
             </div>
             <div className="pt-6">
@@ -169,7 +156,7 @@ export default function TenantDashboard() {
                 </CardDescription>
             </CardHeader>
             <CardFooter className="pt-6 bg-muted/5 border-t">
-                <Button variant="outline" className="w-full h-11 rounded-xl font-bold uppercase tracking-widest text-[10px]" onClick={() => window.location.reload()}>
+                <Button variant="outline" className="w-full h-11 rounded-xl font-bold uppercase tracking-widest text-[10px]" onClick={() => performDiscovery()}>
                     <RefreshCw className="mr-2 h-3.5 w-3.5" /> Re-trigger Handshake
                 </Button>
             </CardFooter>
