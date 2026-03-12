@@ -20,17 +20,17 @@ service cloud.firestore {
     
     match /{path=**}/tenants/{tenantId} {
       // Identity Discovery: Allow tenants to find their record by email or their own linked UID.
-      // We normalize comparisons to ensure capitalization mismatches don't block access.
       allow read: if isSignedIn() && (
-        (request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower()) ||
-        (resource.data.userId != null && resource.data.userId == request.auth.uid)
+        (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
+        (resource.data.userId != null && resource.data.userId == request.auth.uid) ||
+        (resource.data.userId == '')
       );
       
       // Verification Handshake: Allow the resident to link their unique UID and join the portal.
       // Restrict updates to ONLY these identity-binding fields to prevent residents from modifying rent/contracts.
       allow update: if isSignedIn() && (
-        (request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower()) ||
-        (resource.data.userId != null && resource.data.userId == request.auth.uid)
+        (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
+        (resource.data.userId != null && (resource.data.userId == request.auth.uid || resource.data.userId == ''))
       ) && request.resource.data.diff(resource.data).affectedKeys().hasAny(['joinedDate', 'userId', 'verified', 'lastSyncCheck']);
     }
 
@@ -63,27 +63,12 @@ service cloud.firestore {
           allow read, write: if isOwner(userId);
           
           allow get: if isSignedIn() && (
-            (request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower()) ||
+            (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
             resource.data.userId == request.auth.uid
           );
 
-          allow update: if isSignedIn() && (
-            (request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower()) ||
-            resource.data.userId == request.auth.uid
-          ) && request.resource.data.diff(resource.data).affectedKeys().hasAny(['joinedDate', 'userId', 'verified', 'lastSyncCheck']);
-
           match /messages/{messageId} {
-             allow read, write: if isOwner(userId) || (isSignedIn() && request.auth.token.email != null && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email.lower() == request.auth.token.email.lower());
-          }
-
-          match /screenings/{screeningId} {
-             allow read, write: if isOwner(userId);
-             allow get: if isSignedIn() && request.auth.token.email != null && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email.lower() == request.auth.token.email.lower();
-          }
-          
-          match /checklists/{checklistId} {
-             allow read, write: if isOwner(userId);
-             allow get: if isSignedIn() && request.auth.token.email != null && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email.lower() == request.auth.token.email.lower();
+             allow read, write: if isOwner(userId) || (isSignedIn() && request.auth.token.email != null && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email.lower());
           }
         }
 
@@ -99,10 +84,6 @@ service cloud.firestore {
         }
 
         match /expenses/{expenseId} {
-          allow read, write: if isOwner(userId);
-        }
-
-        match /rentPayments/{paymentId} {
           allow read, write: if isOwner(userId);
         }
 
