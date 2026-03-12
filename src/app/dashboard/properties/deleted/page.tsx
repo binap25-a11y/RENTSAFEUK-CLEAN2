@@ -57,8 +57,8 @@ export default function DeletedPropertiesPage() {
     const deletedPropertiesQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
         return query(
-            collection(firestore, 'userProfiles', user.uid, 'properties'),
-            where('userId', '==', user.uid),
+            collection(firestore, 'properties'),
+            where('landlordId', '==', user.uid),
             where('status', '==', 'Deleted')
         );
     }, [firestore, user]);
@@ -68,7 +68,7 @@ export default function DeletedPropertiesPage() {
     const handleRestore = async (propertyId: string, address: Property['address']) => {
         if (!firestore || !user) return;
         try {
-            const docRef = doc(firestore, 'userProfiles', user.uid, 'properties', propertyId);
+            const docRef = doc(firestore, 'properties', propertyId);
             await updateDoc(docRef, { status: 'Vacant' });
             toast({
                 title: 'Property Restored',
@@ -84,7 +84,7 @@ export default function DeletedPropertiesPage() {
         if (!firestore || !propertyToDelete || !user) return;
         setIsDeleting(true);
         try {
-            const docRef = doc(firestore, 'userProfiles', user.uid, 'properties', propertyToDelete.id);
+            const docRef = doc(firestore, 'properties', propertyToDelete.id);
             await deleteDoc(docRef);
             toast({
                 title: 'Property Deleted Permanently',
@@ -104,41 +104,47 @@ export default function DeletedPropertiesPage() {
     };
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 text-left">
         <div className="flex items-center gap-4">
             <Button variant="outline" size="icon" asChild>
                 <Link href="/dashboard/properties"><ArrowLeft className="h-4 w-4" /></Link>
             </Button>
             <div>
-                <h1 className="text-3xl font-bold">Deleted Properties</h1>
-                <p className="text-muted-foreground">A list of properties that have been deleted from your portfolio.</p>
+                <h1 className="text-3xl font-bold">Archived Assets</h1>
+                <p className="text-muted-foreground">Manage properties that have been removed from your active portfolio.</p>
             </div>
         </div>
         <Card>
             <CardHeader>
-                <CardTitle>Deleted Properties</CardTitle>
-                <CardDescription>Restore these properties or delete them permanently.</CardDescription>
+                <CardTitle>Archived List</CardTitle>
+                <CardDescription>Restore these properties or delete them permanently from the system.</CardDescription>
             </CardHeader>
             <CardContent>
                 {isLoading ? (
                     <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin text-muted-foreground" /></div>
                 ) : error ? (
-                    <div className="text-center py-10 text-destructive">Error: {error.message}</div>
+                    <div className="text-center py-10 text-destructive font-medium">Error: {error.message}</div>
                 ) : !deletedProperties?.length ? (
-                     <div className="text-center py-10 text-muted-foreground">No deleted properties found.</div>
+                     <div className="text-center py-10 text-muted-foreground italic">No archived properties found.</div>
                 ) : (
                 <>
-                    <div className="hidden rounded-md border md:block">
+                    <div className="hidden rounded-md border md:block overflow-hidden">
                         <Table>
-                            <TableHeader><TableRow><TableHead>Address</TableHead><TableHead>Type</TableHead><TableHead className="text-right">Actions</TableHead></TableRow></TableHeader>
+                            <TableHeader className="bg-muted/50">
+                                <TableRow>
+                                    <TableHead className="font-bold text-[10px] uppercase tracking-wider pl-6 py-4">Address</TableHead>
+                                    <TableHead className="font-bold text-[10px] uppercase tracking-wider">Type</TableHead>
+                                    <TableHead className="text-right font-bold text-[10px] uppercase tracking-wider pr-6">Actions</TableHead>
+                                </TableRow>
+                            </TableHeader>
                             <TableBody>
                                 {deletedProperties.map((property) => (
-                                <TableRow key={property.id}>
-                                    <TableCell className="font-medium">{formatAddress(property.address)}</TableCell>
-                                    <TableCell>{property.propertyType}</TableCell>
-                                    <TableCell className="text-right space-x-2">
-                                        <Button size="sm" variant="outline" onClick={() => handleRestore(property.id, property.address)}><RefreshCw className="mr-2 h-4 w-4" /> Restore</Button>
-                                        <Button size="sm" variant="destructive" onClick={() => setPropertyToDelete(property)}><Trash2 className="mr-2 h-4 w-4" /> Delete</Button>
+                                <TableRow key={property.id} className="hover:bg-muted/30 transition-colors">
+                                    <TableCell className="font-medium pl-6 py-4">{formatAddress(property.address)}</TableCell>
+                                    <TableCell className="text-xs uppercase font-bold text-muted-foreground">{property.propertyType}</TableCell>
+                                    <TableCell className="text-right pr-6 space-x-2">
+                                        <Button size="sm" variant="outline" className="h-8 text-xs font-bold uppercase tracking-widest px-4" onClick={() => handleRestore(property.id, property.address)}><RefreshCw className="mr-2 h-3.5 w-3.5" /> Restore</Button>
+                                        <Button size="sm" variant="destructive" className="h-8 text-xs font-bold uppercase tracking-widest px-4" onClick={() => setPropertyToDelete(property)}><Trash2 className="mr-2 h-3.5 w-3.5" /> Delete</Button>
                                     </TableCell>
                                 </TableRow>
                                 ))}
@@ -147,14 +153,14 @@ export default function DeletedPropertiesPage() {
                     </div>
                     <div className="grid gap-4 md:hidden">
                         {deletedProperties.map((property) => (
-                            <Card key={property.id}>
-                                <CardHeader>
-                                    <CardTitle className="text-base">{[property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ')}</CardTitle>
-                                    <CardDescription>{`${property.address.city}, ${property.address.postcode}`}</CardDescription>
+                            <Card key={property.id} className="shadow-none border-muted/60">
+                                <CardHeader className="pb-3">
+                                    <CardTitle className="text-base font-bold">{[property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ')}</CardTitle>
+                                    <CardDescription className="text-xs">{`${property.address.city}, ${property.address.postcode}`}</CardDescription>
                                 </CardHeader>
-                                <CardFooter className="flex flex-col gap-2">
-                                    <Button size="sm" variant="outline" className="w-full" onClick={() => handleRestore(property.id, property.address)}><RefreshCw className="mr-2 h-4 w-4" /> Restore</Button>
-                                    <Button size="sm" variant="destructive" className="w-full" onClick={() => setPropertyToDelete(property)}><Trash2 className="mr-2 h-4 w-4" /> Delete</Button>
+                                <CardFooter className="flex flex-col gap-2 pt-0">
+                                    <Button size="sm" variant="outline" className="w-full font-bold h-10" onClick={() => handleRestore(property.id, property.address)}><RefreshCw className="mr-2 h-4 w-4" /> Restore Property</Button>
+                                    <Button size="sm" variant="destructive" className="w-full font-bold h-10" onClick={() => setPropertyToDelete(property)}><Trash2 className="mr-2 h-4 w-4" /> Permanent Delete</Button>
                                 </CardFooter>
                             </Card>
                         ))}
@@ -164,9 +170,19 @@ export default function DeletedPropertiesPage() {
             </CardContent>
         </Card>
         <AlertDialog open={!!propertyToDelete} onOpenChange={(open) => !open && setPropertyToDelete(null)}>
-            <AlertDialogContent>
-                <AlertDialogHeader><AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle><AlertDialogDescription>This will permanently delete the property record at {[propertyToDelete?.address.nameOrNumber, propertyToDelete?.address.street].filter(Boolean).join(', ')}.</AlertDialogDescription></AlertDialogHeader>
-                <AlertDialogFooter><AlertDialogCancel disabled={isDeleting}>Cancel</AlertDialogCancel><AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90" onClick={handleDeletePermanently} disabled={isDeleting}>{isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Delete Permanently</AlertDialogAction></AlertDialogFooter>
+            <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
+                <AlertDialogHeader>
+                    <AlertDialogTitle className="text-xl">Are you absolutely sure?</AlertDialogTitle>
+                    <AlertDialogDescription className="text-base font-medium">
+                        This will permanently delete the property record at <strong className="text-foreground">{[propertyToDelete?.address.nameOrNumber, propertyToDelete?.address.street].filter(Boolean).join(', ')}</strong>. This action cannot be undone.
+                    </AlertDialogDescription>
+                </AlertDialogHeader>
+                <AlertDialogFooter className="gap-3 mt-4">
+                    <AlertDialogCancel className="rounded-xl font-bold uppercase text-xs h-11" disabled={isDeleting}>Cancel</AlertDialogCancel>
+                    <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold uppercase text-xs h-11 px-8 shadow-lg" onClick={handleDeletePermanently} disabled={isDeleting}>
+                        {isDeleting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Trash2 className="mr-2 h-4 w-4" />} Permanent Delete
+                    </AlertDialogAction>
+                </AlertDialogFooter>
             </AlertDialogContent>
         </AlertDialog>
     </div>

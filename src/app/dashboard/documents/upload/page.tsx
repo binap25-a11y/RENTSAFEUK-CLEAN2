@@ -39,8 +39,6 @@ import {
   useFirestore,
   useCollection,
   useMemoFirebase,
-  errorEmitter,
-  FirestorePermissionError,
 } from '@/firebase';
 import { collection, query, where, addDoc, limit } from 'firebase/firestore';
 import { differenceInMonths } from 'date-fns';
@@ -68,7 +66,7 @@ interface Property {
     street: string;
     city: string;
   };
-  userId: string;
+  landlordId: string;
   status: string;
 }
 
@@ -106,7 +104,8 @@ export default function UploadDocumentPage() {
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
-      collection(firestore, 'userProfiles', user.uid, 'properties'),
+      collection(firestore, 'properties'),
+      where('landlordId', '==', user.uid),
       limit(500)
     );
   }, [firestore, user]);
@@ -137,12 +136,12 @@ export default function UploadDocumentPage() {
         fileUrl = await uploadPropertyDocument(selectedFile, user.uid, data.propertyId);
       }
 
-      const documentsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', data.propertyId, 'documents');
+      const documentsCollection = collection(firestore, 'documents');
       
       const dataToSave: any = {
         ...data,
         fileUrl,
-        userId: user.uid,
+        landlordId: user.uid,
         createdDate: new Date().toISOString()
       };
 
@@ -163,7 +162,7 @@ export default function UploadDocumentPage() {
   };
 
   return (
-    <div className="flex flex-col gap-8 max-w-2xl mx-auto">
+    <div className="flex flex-col gap-8 max-w-2xl mx-auto text-left">
       {/* Page Header - Consistent with Audit Trail Style */}
       <div className="space-y-2">
         <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Log Property Document</h1>

@@ -94,12 +94,12 @@ interface Property {
 interface Expense {
   id: string;
   propertyId: string;
+  landlordId: string;
   date: { seconds: number; nanoseconds: number } | Date;
   expenseType: string;
   amount: number;
   paidBy: string;
   notes?: string;
-  userId: string;
 }
 
 const expenseSchema = z.object({
@@ -147,12 +147,12 @@ export default function LoggedExpensesPage() {
   const [deletingExpense, setDeletingExpense] = useState<Expense | null>(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  // Fetch properties
+  // Fetch properties using flat structure
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
-      collection(firestore, 'userProfiles', user.uid, 'properties'),
-      where('userId', '==', user.uid),
+      collection(firestore, 'properties'),
+      where('landlordId', '==', user.uid),
       limit(500)
     );
   }, [firestore, user]);
@@ -163,12 +163,13 @@ export default function LoggedExpensesPage() {
     return allProperties?.filter(p => activeStatuses.includes(p.status || '')) ?? [];
   }, [allProperties]);
 
-  // Fetch expenses for the selected property
+  // Fetch expenses for the selected property using high-performance flat collection
   const expensesQuery = useMemoFirebase(() => {
     if (!user || !firestore || !selectedPropertyId) return null;
     return query(
-      collection(firestore, 'userProfiles', user.uid, 'properties', selectedPropertyId, 'expenses'),
-      where('userId', '==', user.uid)
+      collection(firestore, 'expenses'),
+      where('landlordId', '==', user.uid),
+      where('propertyId', '==', selectedPropertyId)
     );
   }, [firestore, user, selectedPropertyId]);
   const { data: rawExpenses, isLoading: isLoadingExpenses } = useCollection<Expense>(expensesQuery);
@@ -210,7 +211,7 @@ export default function LoggedExpensesPage() {
   const handleUpdate = async (data: ExpenseFormValues) => {
     if (!firestore || !editingExpense || !user) return;
     setIsSubmitting(true);
-    const docRef = doc(firestore, 'userProfiles', user.uid, 'properties', editingExpense.propertyId, 'expenses', editingExpense.id);
+    const docRef = doc(firestore, 'expenses', editingExpense.id);
     
     updateDoc(docRef, { ...data })
       .then(() => {
@@ -227,7 +228,7 @@ export default function LoggedExpensesPage() {
   const handleDelete = async () => {
     if (!firestore || !deletingExpense || !user) return;
     setIsSubmitting(true);
-    const docRef = doc(firestore, 'userProfiles', user.uid, 'properties', deletingExpense.propertyId, 'expenses', deletingExpense.id);
+    const docRef = doc(firestore, 'expenses', deletingExpense.id);
     
     deleteDoc(docRef)
       .then(() => {
@@ -242,7 +243,7 @@ export default function LoggedExpensesPage() {
   };
 
   return (
-    <div className="space-y-6 max-w-6xl mx-auto">
+    <div className="space-y-6 max-w-6xl mx-auto text-left">
       <div className="flex items-center gap-4">
         <Button variant="outline" size="icon" asChild>
           <Link href="/dashboard/expenses">
@@ -335,9 +336,9 @@ export default function LoggedExpensesPage() {
                     <Table>
                         <TableHeader className="bg-muted/50">
                             <TableRow>
-                                <TableHead>Date</TableHead>
-                                <TableHead>Type</TableHead>
-                                <TableHead>Paid By</TableHead>
+                                <TableHead className="text-left">Date</TableHead>
+                                <TableHead className="text-left">Type</TableHead>
+                                <TableHead className="text-left">Paid By</TableHead>
                                 <TableHead className="text-right">Amount</TableHead>
                                 <TableHead className="text-right">Actions</TableHead>
                             </TableRow>
@@ -345,11 +346,11 @@ export default function LoggedExpensesPage() {
                         <TableBody>
                             {filteredExpenses.map((expense) => (
                                 <TableRow key={expense.id} className="hover:bg-muted/20 transition-colors">
-                                    <TableCell className="text-sm">
+                                    <TableCell className="text-sm text-left">
                                         {safeToDate(expense.date) ? format(safeToDate(expense.date)!, 'dd/MM/yyyy') : 'N/A'}
                                     </TableCell>
-                                    <TableCell className="font-semibold text-sm">{expense.expenseType}</TableCell>
-                                    <TableCell className="text-sm">{expense.paidBy}</TableCell>
+                                    <TableCell className="font-semibold text-sm text-left">{expense.expenseType}</TableCell>
+                                    <TableCell className="text-sm text-left">{expense.paidBy}</TableCell>
                                     <TableCell className="text-right font-bold text-sm">{formatCurrency(expense.amount)}</TableCell>
                                     <TableCell className="text-right">
                                         <div className="flex justify-end gap-1">
@@ -377,7 +378,7 @@ export default function LoggedExpensesPage() {
 
       {/* VIEW DIALOG */}
       <Dialog open={!!viewingExpense} onOpenChange={(open) => !open && setViewingExpense(null)}>
-        <DialogContent className="max-w-md">
+        <DialogContent className="max-w-md text-left">
             <DialogHeader>
                 <DialogTitle>Expense Record</DialogTitle>
                 <DialogDescription>Viewing detailed information.</DialogDescription>
@@ -418,7 +419,7 @@ export default function LoggedExpensesPage() {
 
       {/* EDIT DIALOG */}
       <Dialog open={!!editingExpense} onOpenChange={(open) => !open && setEditingExpense(null)}>
-        <DialogContent className="max-w-lg">
+        <DialogContent className="max-w-lg text-left">
             <DialogHeader>
                 <DialogTitle>Update Record</DialogTitle>
                 <DialogDescription>Modify the details for this expense.</DialogDescription>

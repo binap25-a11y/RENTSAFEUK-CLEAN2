@@ -7,7 +7,7 @@ import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { PlusCircle, Bed, Bath, Loader2, LayoutGrid, List, Eye, Home, Search } from 'lucide-react';
+import { PlusCircle, Bed, Bath, Loader2, LayoutGrid, List, Eye, Home, Search, AlertCircle } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
@@ -55,9 +55,17 @@ export default function PropertiesPage() {
 
   useEffect(() => {
     if (!user || !firestore || !properties || properties.length === 0) return;
-    const unsubs = properties.map(p => onSnapshot(query(collection(firestore, 'repairs'), where('propertyId', '==', p.id), where('status', 'in', ['Open', 'In Progress'])), (snap) => {
+    
+    // Subscribe to maintenance counts for each property, including landlordId filter for security compliance
+    const unsubs = properties.map(p => onSnapshot(query(
+        collection(firestore, 'repairs'), 
+        where('landlordId', '==', user.uid),
+        where('propertyId', '==', p.id), 
+        where('status', 'in', ['Open', 'In Progress'])
+    ), (snap) => {
         setOpenMaintenanceMap(prev => ({ ...prev, [p.id]: snap.size }));
     }));
+    
     return () => unsubs.forEach(u => u());
   }, [user, properties, firestore]);
 
@@ -120,6 +128,14 @@ export default function PropertiesPage() {
                                 <Image src={property.imageUrl} alt="Property" fill className="object-cover group-hover:scale-110 transition-transform duration-500" priority unoptimized />
                               ) : (
                                 <div className="w-full h-full flex items-center justify-center bg-primary/5"><Home className="w-16 h-16 text-primary/10" /></div>
+                              )}
+                              {openMaintenanceMap[property.id] > 0 && (
+                                <div className="absolute top-3 right-3">
+                                    <Badge variant="destructive" className="animate-pulse shadow-lg font-bold gap-1">
+                                        <AlertCircle className="h-3 w-3" />
+                                        {openMaintenanceMap[property.id]}
+                                    </Badge>
+                                </div>
                               )}
                           </div>
                           <CardHeader className="pb-3">

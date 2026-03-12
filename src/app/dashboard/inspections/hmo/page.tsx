@@ -248,8 +248,8 @@ export default function HmoInspectionPage() {
     const propertiesQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
         return query(
-            collection(firestore, 'userProfiles', user.uid, 'properties'),
-            where('userId', '==', user.uid),
+            collection(firestore, 'properties'),
+            where('landlordId', '==', user.uid),
             limit(500)
         );
     }, [firestore, user]);
@@ -274,7 +274,7 @@ export default function HmoInspectionPage() {
         const { propertyId, ...inspectionData } = data;
         const newInspection = {
             ...inspectionData,
-            userId: user.uid,
+            landlordId: user.uid,
             propertyId: propertyId,
             scheduledDate: data.inspectionDate,
             type: 'HMO',
@@ -283,7 +283,7 @@ export default function HmoInspectionPage() {
 
         try {
             const cleanedSubmission = prepareForFirestore(newInspection);
-            const inspectionsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'inspections');
+            const inspectionsCollection = collection(firestore, 'inspections');
             await addDoc(inspectionsCollection, cleanedSubmission);
             toast({ title: 'HMO Inspection Saved' });
             router.push('/dashboard/inspections');
@@ -300,7 +300,7 @@ export default function HmoInspectionPage() {
     };
 
     return (
-        <Card className="max-w-4xl mx-auto">
+        <Card className="max-w-4xl mx-auto text-left">
             <CardHeader>
                 <CardTitle>HMO Inspection Checklist</CardTitle>
                 <CardDescription>

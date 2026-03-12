@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useSearchParams } from 'next/navigation';
@@ -112,14 +113,14 @@ export default function ViewInspectionPage() {
   const { user } = useUser();
 
   const inspectionRef = useMemoFirebase(() => {
-    if (!firestore || !propertyId || !id || !user) return null;
-    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'inspections', id);
-  }, [firestore, propertyId, id, user]);
+    if (!firestore || !id || !user) return null;
+    return doc(firestore, 'inspections', id);
+  }, [firestore, id, user]);
   const { data: inspection, isLoading: isLoadingInspection, error: inspectionError } = useDoc(inspectionRef);
   
   const propertyRef = useMemoFirebase(() => {
     if(!firestore || !propertyId || !user) return null;
-    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId);
+    return doc(firestore, 'properties', propertyId);
   }, [firestore, propertyId, user]);
   const { data: property, isLoading: isLoadingProperty } = useDoc<Property>(propertyRef);
 
@@ -277,7 +278,7 @@ export default function ViewInspectionPage() {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-sm text-muted-foreground animate-pulse">Loading inspection report...</p>
+        <p className="text-sm text-muted-foreground animate-pulse font-medium">Loading inspection report...</p>
       </div>
     );
   }
@@ -287,7 +288,7 @@ export default function ViewInspectionPage() {
       <div className="flex flex-col items-center justify-center h-64 gap-4 p-6 text-center">
         <AlertCircle className="h-12 w-12 text-destructive opacity-20" />
         <h2 className="text-lg font-bold">Failed to Load Inspection</h2>
-        <p className="text-sm text-muted-foreground max-w-xs">There was an error loading the record details. Ensure the URL is correct.</p>
+        <p className="text-sm text-muted-foreground max-w-xs text-center">There was an error loading the record details. Ensure the URL is correct.</p>
         <Button asChild variant="outline"><Link href="/dashboard/inspections">Return to Inspections</Link></Button>
       </div>
     );
@@ -295,8 +296,8 @@ export default function ViewInspectionPage() {
 
   if (!inspection) {
     return (
-      <div className="flex flex-col items-center justify-center h-96 gap-6 p-6 text-center">
-        <div className="bg-muted p-6 rounded-full">
+      <div className="flex flex-col items-center justify-center h-96 gap-6 p-6 text-center text-left">
+        <div className="bg-muted p-6 rounded-full mx-auto">
           <CalendarIcon className="h-12 w-12 text-muted-foreground opacity-20" />
         </div>
         <div className="text-center space-y-2">
@@ -316,7 +317,7 @@ export default function ViewInspectionPage() {
 
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 text-left">
       <div className="flex items-center justify-between gap-4">
         <div className="flex items-center gap-4">
             <Button variant="outline" size="icon" asChild>

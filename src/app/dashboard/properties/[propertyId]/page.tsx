@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
@@ -29,14 +29,12 @@ import {
   Phone,
   Upload,
   X,
-  CheckCircle2,
-  CalendarCheck,
-  Wrench
+  CheckCircle2
 } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc, collection, query, where, onSnapshot } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, getDocs, limit } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useMemo, useRef, useEffect } from 'react';
+import { useState, useMemo, useRef } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -117,12 +115,14 @@ export default function PropertyDetailPage() {
     if (!firestore || !propertyId || !user) return null;
     return doc(firestore, 'properties', propertyId);
   }, [firestore, propertyId, user]);
+  
   const { data: property, isLoading: isLoadingProperty, error: propertyError } = useDoc<Property>(propertyRef);
   
   const tenantsQuery = useMemoFirebase(() => {
     if (!user || !firestore || !propertyId) return null;
     return query(
       collection(firestore, 'tenants'),
+      where('landlordId', '==', user.uid),
       where('propertyId', '==', propertyId),
       where('status', '==', 'Active')
     );
@@ -131,13 +131,21 @@ export default function PropertyDetailPage() {
 
   const repairsQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
-    return query(collection(firestore, 'repairs'), where('propertyId', '==', propertyId));
+    return query(
+        collection(firestore, 'repairs'), 
+        where('landlordId', '==', user.uid),
+        where('propertyId', '==', propertyId)
+    );
   }, [firestore, propertyId, user]);
   const { data: repairs } = useCollection<Repair>(repairsQuery);
 
   const inspectionQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
-    return query(collection(firestore, 'inspections'), where('propertyId', '==', propertyId));
+    return query(
+        collection(firestore, 'inspections'), 
+        where('landlordId', '==', user.uid),
+        where('propertyId', '==', propertyId)
+    );
   }, [firestore, propertyId, user]);
   const { data: inspections } = useCollection<Inspection>(inspectionQuery);
 
@@ -240,9 +248,10 @@ export default function PropertyDetailPage() {
 
   if (propertyError || !property) {
     return (
-      <div className="flex flex-col items-center justify-center h-64 gap-4 p-6">
+      <div className="flex flex-col items-center justify-center h-64 gap-4 p-6 text-center">
         <AlertCircle className="h-12 w-12 text-destructive opacity-20" />
         <h2 className="text-lg font-bold">Asset Access Error</h2>
+        <p className="text-sm text-muted-foreground">This property may have been archived or moved.</p>
         <Button asChild variant="outline"><Link href="/dashboard/properties">Return to Portfolio</Link></Button>
       </div>
     );
@@ -253,7 +262,7 @@ export default function PropertyDetailPage() {
 
   return (
     <>
-      <div className="flex flex-col gap-6">
+      <div className="flex flex-col gap-6 text-left">
         <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-4 overflow-hidden text-left">
                 <Button variant="outline" size="icon" asChild className="shrink-0"><Link href="/dashboard/properties"><ArrowLeft className="h-4 w-4" /></Link></Button>
@@ -264,7 +273,7 @@ export default function PropertyDetailPage() {
                         {openRepairsCount > 0 && (
                             <Badge variant="destructive" className="h-5 px-1.5 gap-1 animate-pulse shrink-0">
                                 <AlertCircle className="h-3 w-3" />
-                                {openRepairsCount} Open
+                                {openRepairsCount} Open Repairs
                             </Badge>
                         )}
                     </div>
@@ -275,7 +284,7 @@ export default function PropertyDetailPage() {
                     <DropdownMenuTrigger asChild>
                         <Button variant="outline" className="gap-2 shrink-0 h-11 px-6 font-bold uppercase tracking-widest text-xs shadow-sm">
                             <MoreVertical className="h-4 w-4" />
-                            <span>Edit Property</span>
+                            <span>Manage Asset</span>
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56 p-1">

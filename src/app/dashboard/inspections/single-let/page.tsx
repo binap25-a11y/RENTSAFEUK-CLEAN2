@@ -41,8 +41,6 @@ import {
   useFirestore,
   useCollection,
   useMemoFirebase,
-  errorEmitter,
-  FirestorePermissionError,
 } from '@/firebase';
 import { collection, query, where, addDoc, limit } from 'firebase/firestore';
 import {
@@ -231,8 +229,8 @@ export default function SingleLetInspectionPage() {
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
-        collection(firestore, 'userProfiles', user.uid, 'properties'),
-        where('userId', '==', user.uid),
+        collection(firestore, 'properties'),
+        where('landlordId', '==', user.uid),
         limit(500)
     );
   }, [firestore, user]);
@@ -261,7 +259,7 @@ export default function SingleLetInspectionPage() {
       
       const newInspection = {
         ...inspectionData,
-        userId: user.uid,
+        landlordId: user.uid,
         propertyId: propertyId,
         type: 'Single-Let',
         status: data.status || 'Completed',
@@ -269,7 +267,7 @@ export default function SingleLetInspectionPage() {
 
       const cleanedSubmission = prepareForFirestore(newInspection);
 
-      const inspectionsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'inspections');
+      const inspectionsCollection = collection(firestore, 'inspections');
       await addDoc(inspectionsCollection, cleanedSubmission);
       
       toast({
@@ -330,7 +328,7 @@ export default function SingleLetInspectionPage() {
 
   return (
     <>
-      <Card className="max-w-4xl mx-auto">
+      <Card className="max-w-4xl mx-auto text-left">
         <CardHeader>
           <CardTitle>Record Single-Let Inspection</CardTitle>
           <CardDescription>
@@ -644,33 +642,6 @@ export default function SingleLetInspectionPage() {
 
               </Accordion>
               
-              <Card>
-                  <CardHeader>
-                  <CardTitle className="text-xl">Upload Report</CardTitle>
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                  <FormField
-                      control={form.control}
-                      name="report"
-                      render={({ field }) => (
-                      <FormItem>
-                          <FormLabel>Upload File (Optional)</FormLabel>
-                          <FormControl>
-                          <Button asChild variant="outline" className="w-full">
-                              <label className="cursor-pointer">
-                                  <Upload className="mr-2 h-4 w-4" />
-                                  Choose File
-                                  <Input type="file" className="sr-only" onChange={(e) => field.onChange(e.target.files)} />
-                              </label>
-                          </Button>
-                          </FormControl>
-                          <FormMessage />
-                      </FormItem>
-                      )}
-                  />
-                  </CardContent>
-              </Card>
-
               <div className="flex justify-end gap-2">
                 <Button type="button" variant="outline" asChild>
                   <Link href="/dashboard/inspections">Cancel</Link>

@@ -116,12 +116,12 @@ export default function InspectionsPage() {
     null
   );
 
-  // Fetch properties - strictly scoped to logged-in user
+  // Fetch properties - strictly scoped to logged-in user using high-performance flat structure
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
-      collection(firestore, 'userProfiles', user.uid, 'properties'),
-      where('userId', '==', user.uid),
+      collection(firestore, 'properties'),
+      where('landlordId', '==', user.uid),
       limit(500)
     );
   }, [firestore, user]);
@@ -134,12 +134,13 @@ export default function InspectionsPage() {
     return allProperties?.filter(p => activeStatuses.includes(p.status || '')) ?? [];
   }, [allProperties]);
 
-  // Fetch inspections for the selected property - strictly scoped to logged-in user
+  // Fetch inspections for the selected property - strictly scoped to logged-in user via root collection
   const inspectionsQuery = useMemoFirebase(() => {
     if (!user || !firestore || !selectedPropertyId) return null;
     return query(
-      collection(firestore, 'userProfiles', user.uid, 'properties', selectedPropertyId, 'inspections'),
-      where('userId', '==', user.uid),
+      collection(firestore, 'inspections'),
+      where('landlordId', '==', user.uid),
+      where('propertyId', '==', selectedPropertyId),
       limit(500)
     );
   }, [firestore, user, selectedPropertyId]);
@@ -166,15 +167,7 @@ export default function InspectionsPage() {
   const handleDeleteConfirm = async () => {
     if (!firestore || !user || !inspectionToDelete || !selectedPropertyId) return;
     try {
-      const docRef = doc(
-        firestore,
-        'userProfiles',
-        user.uid,
-        'properties',
-        selectedPropertyId,
-        'inspections',
-        inspectionToDelete.id
-      );
+      const docRef = doc(firestore, 'inspections', inspectionToDelete.id);
       await deleteDoc(docRef);
       toast({
         title: 'Inspection Deleted',
@@ -193,7 +186,7 @@ export default function InspectionsPage() {
   };
 
   return (
-    <div className="flex flex-col gap-8">
+    <div className="flex flex-col gap-8 text-left">
       <div className="flex flex-col gap-6">
         <div className="space-y-2">
           <div className="flex items-center gap-2 text-primary">
@@ -297,7 +290,7 @@ export default function InspectionsPage() {
               <p className="text-xl font-medium text-foreground mb-2">
                 No Property Selected
               </p>
-              <p className="text-sm max-w-sm mx-auto">
+              <p className="text-sm max-w-sm mx-auto text-center">
                 Choose an active property from the dropdown above to view its specific inspection history and manage existing reports.
               </p>
             </div>
@@ -309,7 +302,7 @@ export default function InspectionsPage() {
               <p className="text-xl font-medium text-foreground mb-2">
                 No records for this property
               </p>
-              <p className="text-sm max-w-sm mx-auto">
+              <p className="text-sm max-w-sm mx-auto text-center">
                 Start a new inspection using the buttons at the top of the page to populate this list.
               </p>
             </div>
@@ -338,10 +331,10 @@ export default function InspectionsPage() {
                       key={inspection.id}
                       className="hover:bg-muted/30 transition-colors group"
                     >
-                      <TableCell className="font-semibold pl-6 py-4">
+                      <TableCell className="font-semibold pl-6 py-4 text-left">
                         {inspection.type}
                       </TableCell>
-                      <TableCell>
+                      <TableCell className="text-left">
                         <Badge
                           variant={getStatusVariant(inspection.status)}
                           className="capitalize"
@@ -349,7 +342,7 @@ export default function InspectionsPage() {
                           {inspection.status}
                         </Badge>
                       </TableCell>
-                      <TableCell className="text-muted-foreground tabular-nums">
+                      <TableCell className="text-muted-foreground tabular-nums text-left">
                         {safeFormatDate(inspection.scheduledDate)}
                       </TableCell>
                       <TableCell className="text-right pr-6">
