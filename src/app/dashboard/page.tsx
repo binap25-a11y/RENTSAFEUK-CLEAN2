@@ -16,8 +16,7 @@ import {
   List, 
   Eye, 
   Bed, 
-  Bath, 
-  RefreshCw
+  Bath
 } from 'lucide-react';
 import Link from 'next/link';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
@@ -62,7 +61,7 @@ export default function DashboardPage() {
       setUserRole(role);
       setIsLoadingProfile(false);
 
-      // IMMEDIATE REDIRECTION: If the role is explicitly 'tenant', skip further discovery
+      // IMMEDIATE REDIRECTION: If the role is explicitly 'tenant', route them to the portal
       if (role === 'tenant') {
         router.replace('/tenant/dashboard');
       }
