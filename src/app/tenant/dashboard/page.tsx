@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -48,6 +49,7 @@ export default function TenantDashboard() {
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isHandshaking, setIsHandshaking] = useState(false);
+  
   const handshakeAttempted = useRef(false);
   const retryCount = useRef(0);
 
@@ -62,7 +64,7 @@ export default function TenantDashboard() {
     
     const userEmail = user.email.toLowerCase().trim();
 
-    // Forced Case-Insensitive Discovery via Collection Group query
+    // identity discovery via Collection Group query
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         or(
@@ -121,10 +123,11 @@ export default function TenantDashboard() {
                                 verified: true
                             }).then(() => {
                                 setIsHandshaking(false);
-                                toast({ title: "Resident Identity Linked", description: "Verification handshake successful." });
+                                toast({ title: "Identity Handshake Successful", description: "Your account is now securely linked to your tenancy record." });
                             }).catch(err => {
-                                console.warn("Handshake attempt failed:", err.message);
+                                console.warn("Handshake permission issue:", err.message);
                                 setIsHandshaking(false);
+                                // Reset attempt ref to allow retry on next change or interaction
                                 handshakeAttempted.current = false;
                             });
                         }
@@ -132,16 +135,16 @@ export default function TenantDashboard() {
 
                     setError(null);
                 } else {
-                    setError("Identity linked but property profile is currently inaccessible.");
+                    setError("Record found but property metadata is currently restricted.");
                 }
                 setIsLoading(false);
                 setIsIndexBuilding(false);
             }, (err) => {
-                setError("Property profile synchronization failed. Access may be restricted.");
+                setError("Tenant identified, but could not synchronize property profile.");
                 setIsLoading(false);
             });
         } else {
-            setError("Tenancy record mapping error.");
+            setError("Tenancy mapping mismatch.");
             setIsLoading(false);
         }
     }, (err) => {
@@ -149,15 +152,16 @@ export default function TenantDashboard() {
         // Detect index building status
         if (msg.includes('index') || err.code === 'failed-precondition') {
             setIsIndexBuilding(true);
-            if (retryCount.current < 12) { // 3 minutes total retry
+            // Auto-retry discovery while index builds
+            if (retryCount.current < 20) { 
                 setTimeout(() => {
                     retryCount.current += 1;
                     performDiscovery();
-                }, 15000);
+                }, 10000);
             }
         } else {
-            console.error("Discovery critical failure:", err);
-            setError("Identity handshake failed due to cloud connection issues.");
+            console.error("Discovery error:", err);
+            setError("Handshake failed due to database connectivity issues.");
         }
         setIsLoading(false);
     });
@@ -178,7 +182,7 @@ export default function TenantDashboard() {
     return (
         <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4 bg-background">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground animate-pulse text-center">
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">
                 Resolving Resident Identity...
             </p>
         </div>
@@ -192,20 +196,20 @@ export default function TenantDashboard() {
                 <Sparkles className="h-12 w-12 text-primary animate-pulse" />
             </div>
             <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Resident Portal Setup</h2>
+                <h2 className="font-headline text-2xl font-bold text-primary">Portal Setup in Progress</h2>
                 <p className="text-muted-foreground font-medium text-sm leading-relaxed">
-                    The platform is currently initializing high-speed identity discovery for your account.
+                    The platform is currently initializing high-speed identity discovery.
                 </p>
                 <div className="p-4 rounded-xl bg-muted/50 border border-dashed text-xs text-muted-foreground mt-4 text-left">
-                    <p className="font-bold uppercase text-[9px] tracking-widest mb-1 text-primary">Status: Indexing Registry</p>
-                    <p>This cloud task typically takes 2-3 minutes. Verification will resolve automatically upon completion.</p>
+                    <p className="font-bold uppercase text-[9px] tracking-widest mb-1 text-primary">Status: Building Discovery Index</p>
+                    <p>This is a one-time cloud initialization that typically takes 2-3 minutes. Verification will resolve automatically.</p>
                 </div>
             </div>
             <div className="flex flex-col gap-2">
                 <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-sm" onClick={() => window.location.reload()}>
-                    <RefreshCw className="mr-2 h-4 w-4" /> Check Progress
+                    <RefreshCw className="mr-2 h-4 w-4" /> Check Status
                 </Button>
-                <p className="text-[10px] text-muted-foreground italic">Handshake Attempt {retryCount.current + 1}</p>
+                <p className="text-[10px] text-muted-foreground italic">Attempt {retryCount.current + 1}</p>
             </div>
         </div>
     );
@@ -225,18 +229,18 @@ export default function TenantDashboard() {
             </CardHeader>
             <CardContent className="pt-6 space-y-4">
                 <div className="space-y-2">
-                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Verification Steps</p>
+                    <p className="text-xs font-bold uppercase text-muted-foreground tracking-widest">Next Steps</p>
                     <ul className="text-xs text-muted-foreground space-y-2">
-                        <li className="flex items-start gap-2"><div className="h-1 w-1 rounded-full bg-primary mt-1.5 shrink-0" /> Verify with your landlord that your email is recorded correctly.</li>
-                        <li className="flex items-start gap-2"><div className="h-1 w-1 rounded-full bg-primary mt-1.5 shrink-0" /> Ensure you are using the same email address your landlord used for the agreement.</li>
+                        <li className="flex items-start gap-2"><div className="h-1 w-1 rounded-full bg-primary mt-1.5 shrink-0" /> Contact your landlord to verify your registered email.</li>
+                        <li className="flex items-start gap-2"><div className="h-1 w-1 rounded-full bg-primary mt-1.5 shrink-0" /> Ensure you are logged in with your portal account.</li>
                     </ul>
                 </div>
             </CardContent>
             <CardFooter className="pt-6 flex flex-col gap-3 bg-muted/5 border-t">
-                <Button className="w-full font-bold h-11 shadow-lg uppercase tracking-widest text-xs" onClick={() => router.push('/dashboard')}>Portfolio Dashboard</Button>
-                <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={() => { retryCount.current = 0; performDiscovery(); }}>
-                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Handshake
+                <Button variant="outline" className="w-full h-11 rounded-xl font-bold uppercase tracking-widest text-[10px]" onClick={() => { retryCount.current = 0; performDiscovery(); }}>
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Force Handshake Retry
                 </Button>
+                <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={() => router.push('/dashboard')}>Portfolio View</Button>
             </CardFooter>
         </Card>
     );

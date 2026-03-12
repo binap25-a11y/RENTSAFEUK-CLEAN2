@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -25,7 +26,7 @@ service cloud.firestore {
       );
       
       // Verification Handshake: Allow the resident to link their unique UID and join the portal.
-      // We restrict updates to ONLY these three fields to prevent residents from modifying contract data.
+      // We restrict updates to ONLY these specific fields to prevent residents from modifying contract data.
       allow update: if isSignedIn() && (
         (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
         resource.data.userId == request.auth.uid
