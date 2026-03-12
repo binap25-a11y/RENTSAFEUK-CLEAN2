@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -152,8 +151,6 @@ export default function TenantDashboard() {
         setIsIndexBuilding(false);
         discoveryRef.current = false;
     } catch (err: any) {
-        console.error("Discovery Engine Status:", err.message);
-        
         // Catch index-building or permission failures during the initial cloud indexing phase
         const isTransientError = err.code === 'failed-precondition' || 
                                 err.code === 'permission-denied' ||
@@ -162,6 +159,7 @@ export default function TenantDashboard() {
         if (isTransientError) {
             setIsIndexBuilding(true);
         } else {
+            console.error("Discovery Engine Status:", err.message);
             setError("Identification registry service error.");
         }
         setIsLoading(false);
