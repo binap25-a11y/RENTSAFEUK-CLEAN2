@@ -107,7 +107,10 @@ export default function EditPropertyPage() {
   useEffect(() => {
     if (property) {
       form.reset({
-        address: property.address,
+        address: {
+          ...property.address,
+          county: property.address.county || '',
+        },
         propertyType: property.propertyType,
         status: property.status,
         bedrooms: property.bedrooms,
@@ -271,10 +274,13 @@ export default function EditPropertyPage() {
                             <FormField control={form.control} name="address.city" render={({ field }) => (
                               <FormItem><FormLabel>City</FormLabel><FormControl><Input className="h-11 bg-background" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
-                            <FormField control={form.control} name="address.postcode" render={({ field }) => (
-                              <FormItem><FormLabel>Postcode</FormLabel><FormControl><Input className="uppercase h-11 bg-background" {...field} /></FormControl><FormMessage /></FormItem>
+                            <FormField control={form.control} name="address.county" render={({ field }) => (
+                              <FormItem><FormLabel>County</FormLabel><FormControl><Input className="h-11 bg-background" {...field} /></FormControl><FormMessage /></FormItem>
                             )} />
                         </div>
+                        <FormField control={form.control} name="address.postcode" render={({ field }) => (
+                          <FormItem><FormLabel>Postcode</FormLabel><FormControl><Input className="uppercase h-11 bg-background" {...field} /></FormControl><FormMessage /></FormItem>
+                        )} />
                     </CardContent>
                 </Card>
                 <div className="aspect-square rounded-2xl overflow-hidden border-2 bg-muted relative">

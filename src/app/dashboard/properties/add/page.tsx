@@ -184,10 +184,13 @@ export default function AddPropertyPage() {
                     <FormField control={form.control} name="address.city" render={({ field }) => (
                       <FormItem><FormLabel>City</FormLabel><FormControl><Input id="prop-city" name="city" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
                     )} />
-                    <FormField control={form.control} name="address.postcode" render={({ field }) => (
-                      <FormItem><FormLabel>Postcode</FormLabel><FormControl><Input id="prop-postcode" name="postcode" className="uppercase h-11" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormField control={form.control} name="address.county" render={({ field }) => (
+                      <FormItem><FormLabel>County</FormLabel><FormControl><Input id="prop-county" name="county" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
                     )} />
                   </div>
+                  <FormField control={form.control} name="address.postcode" render={({ field }) => (
+                    <FormItem><FormLabel>Postcode</FormLabel><FormControl><Input id="prop-postcode" name="postcode" className="uppercase h-11" {...field} /></FormControl><FormMessage /></FormItem>
+                  )} />
                 </div>
                 <div className="aspect-square rounded-2xl overflow-hidden border-2 bg-muted relative">
                   {mapUrl ? <iframe src={mapUrl} width="100%" height="100%" style={{ border: 0 }} title="Map Preview" /> : <div className="flex items-center justify-center h-full"><MapPin className="h-12 w-12 text-muted-foreground/40" /></div>}
