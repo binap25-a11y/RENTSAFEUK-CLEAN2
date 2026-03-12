@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useEffect, useState, useCallback } from 'react';
+import { useEffect, useState, useCallback, useRef } from 'react';
 import Link from 'next/link';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -45,6 +44,7 @@ export default function TenantDashboard() {
   const [isIndexBuilding, setIsIndexBuilding] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [isHandshaking, setIsHandshaking] = useState(false);
+  const retryCount = useRef(0);
 
   const performDiscovery = useCallback(() => {
     if (!user || !firestore || !user.email) {
@@ -54,12 +54,10 @@ export default function TenantDashboard() {
 
     setIsLoading(true);
     setError(null);
-    setIsIndexBuilding(false);
     
     const userEmail = user.email.toLowerCase().trim();
 
-    // 1. Robust Discovery Handshake via Collection Group
-    // We search by email OR by previously linked userId for maximum speed
+    // High-speed identity discovery via Collection Group
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         or(
@@ -76,6 +74,7 @@ export default function TenantDashboard() {
 
         if (snap.empty) {
             setIsLoading(false);
+            setIsIndexBuilding(false);
             setContext(null);
             return;
         }
@@ -137,6 +136,13 @@ export default function TenantDashboard() {
         const msg = err.message.toLowerCase();
         if (msg.includes('index') || err.code === 'failed-precondition') {
             setIsIndexBuilding(true);
+            // Automatic smart retry: Attempt to re-establish the listener every 15 seconds if it failed due to index
+            if (retryCount.current < 10) {
+                setTimeout(() => {
+                    retryCount.current += 1;
+                    performDiscovery();
+                }, 15000);
+            }
         } else {
             console.error("Discovery error:", err);
             setError("Cloud identity handshake failed.");
@@ -183,9 +189,12 @@ export default function TenantDashboard() {
                     <p>This is a one-time cloud task that typically takes 2-3 minutes. Access will grant automatically upon completion.</p>
                 </div>
             </div>
-            <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-sm" onClick={() => window.location.reload()}>
-                <RefreshCw className="mr-2 h-4 w-4" /> Check Status
-            </Button>
+            <div className="flex flex-col gap-2">
+                <Button variant="outline" className="font-bold h-11 px-10 rounded-xl uppercase tracking-widest text-[10px] w-full shadow-sm" onClick={() => window.location.reload()}>
+                    <RefreshCw className="mr-2 h-4 w-4" /> Check Status
+                </Button>
+                <p className="text-[10px] text-muted-foreground italic">Last Attempt: {new Date().toLocaleTimeString()}</p>
+            </div>
         </div>
     );
   }
@@ -213,7 +222,7 @@ export default function TenantDashboard() {
             </CardContent>
             <CardFooter className="pt-6 flex flex-col gap-3 bg-muted/5 border-t">
                 <Button className="w-full font-bold h-11 shadow-lg uppercase tracking-widest text-xs" onClick={() => router.push('/dashboard')}>Go to Main Dashboard</Button>
-                <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={performDiscovery}>
+                <Button variant="ghost" className="w-full text-[10px] font-bold uppercase tracking-widest text-muted-foreground" onClick={() => { retryCount.current = 0; performDiscovery(); }}>
                     <RefreshCw className="mr-2 h-3.5 w-3.5" /> Re-trigger Handshake
                 </Button>
             </CardFooter>

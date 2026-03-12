@@ -17,17 +17,16 @@ service cloud.firestore {
     // --- TOP-LEVEL DISCOVERY RULES (CRITICAL FOR HANDSHAKE PERFORMANCE) ---
     
     match /{path=**}/tenants/{tenantId} {
-      // Allow any signed-in user to find a record matching their email
-      // This is the "Identity Handshake" discovery query
+      // Identity Discovery: Allow tenants to find their record by email or linked UID.
+      // We assume email is already normalized to lowercase in the database for performance.
       allow read: if isSignedIn() && (
-        (request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower()) ||
+        (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
         resource.data.userId == request.auth.uid
       );
       
-      // Allow the tenant to update their own verification status
-      // We allow updates if the email matches, or if they are already the assigned user.
+      // Verification Handshake: Allow the resident to link their UID and join the portal.
       allow update: if isSignedIn() && (
-        (request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower()) ||
+        (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
         resource.data.userId == request.auth.uid
       ) && request.resource.data.diff(resource.data).affectedKeys().hasAny(['joinedDate', 'userId', 'verified', 'lastSyncCheck']);
     }
@@ -55,29 +54,29 @@ service cloud.firestore {
         match /tenants/{tenantId} {
           allow read, write: if isOwner(userId);
           
-          // Duplicate path-based rules for the specific hierarchy
+          // Path-specific rules for deeper hierarchy
           allow get: if isSignedIn() && (
-            (request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower()) ||
+            (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
             resource.data.userId == request.auth.uid
           );
 
           allow update: if isSignedIn() && (
-            (request.auth.token.email != null && resource.data.email.lower() == request.auth.token.email.lower()) ||
+            (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
             resource.data.userId == request.auth.uid
           ) && request.resource.data.diff(resource.data).affectedKeys().hasAny(['joinedDate', 'userId', 'verified', 'lastSyncCheck']);
 
           match /messages/{messageId} {
-             allow read, write: if isOwner(userId) || (isSignedIn() && request.auth.token.email != null && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email.lower() == request.auth.token.email.lower());
+             allow read, write: if isOwner(userId) || (isSignedIn() && request.auth.token.email != null && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email.lower());
           }
 
           match /screenings/{screeningId} {
              allow read, write: if isOwner(userId);
-             allow get: if isSignedIn() && request.auth.token.email != null && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email.lower() == request.auth.token.email.lower();
+             allow get: if isSignedIn() && request.auth.token.email != null && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email.lower();
           }
           
           match /checklists/{checklistId} {
              allow read, write: if isOwner(userId);
-             allow get: if isSignedIn() && request.auth.token.email != null && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email.lower() == request.auth.token.email.lower();
+             allow get: if isSignedIn() && request.auth.token.email != null && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email.lower();
           }
         }
 
