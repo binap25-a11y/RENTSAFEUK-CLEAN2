@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -30,7 +31,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, Wrench, Upload, X, Sparkles, RefreshCw, AlertCircle } from 'lucide-react';
+import { Loader2, Wrench, Upload, X, AlertCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useUser, useFirestore } from '@/firebase';
 import { collectionGroup, query, where, limit, addDoc, collection, onSnapshot } from 'firebase/firestore';
@@ -46,7 +47,6 @@ const maintenanceSchema = z.object({
 
 type MaintenanceFormValues = z.infer<typeof maintenanceSchema>;
 
-// Utility to clean undefined values before Firestore writes
 const prepareForFirestore = (obj: any): any => {
     return JSON.parse(JSON.stringify(obj, (key, value) => {
         if (value === undefined) return null;
@@ -61,7 +61,6 @@ export default function TenantMaintenancePage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [tenantContext, setTenantContext] = useState<any>(null);
   const [isLoadingContext, setIsLoadingContext] = useState(true);
-  const [isIndexBuilding, setIsIndexBuilding] = useState(false);
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
 
@@ -89,26 +88,15 @@ export default function TenantMaintenancePage() {
         const activeTenant = snap.docs.find(d => d.data().status === 'Active');
         if (activeTenant) {
             const data = activeTenant.data();
-            const segments = activeTenant.ref.path.split('/');
-            
-            const landlordIdx = segments.indexOf('userProfiles');
-            const propertyIdx = segments.indexOf('properties');
-
-            if (landlordIdx !== -1 && propertyIdx !== -1) {
-                setTenantContext({ 
-                    landlordId: segments[landlordIdx + 1], 
-                    propertyId: segments[propertyIdx + 1], 
-                    tenantId: activeTenant.id,
-                    email: data.email 
-                });
-            }
+            setTenantContext({ 
+                landlordId: data.landlordId, 
+                propertyId: data.propertyId, 
+                tenantId: activeTenant.id,
+                email: data.email 
+            });
         }
         setIsLoadingContext(false);
-        setIsIndexBuilding(false);
     }, (error) => {
-        if (error.message.toLowerCase().includes('index') || error.code === 'failed-precondition') {
-            setIsIndexBuilding(true);
-        }
         console.warn("Tenant repair portal handshake error:", error.message);
         setIsLoadingContext(false);
     });
@@ -143,12 +131,13 @@ export default function TenantMaintenancePage() {
         photoUrls = uploads.filter((u): u is string => !!u);
       }
 
-      const logsCollection = collection(firestore, 'userProfiles', tenantContext.landlordId, 'properties', tenantContext.propertyId, 'maintenanceLogs');
+      const logsCollection = collection(firestore, 'repairs');
       
       const payload = prepareForFirestore({
         ...data,
-        userId: tenantContext.landlordId,
+        landlordId: tenantContext.landlordId,
         propertyId: tenantContext.propertyId,
+        tenantId: user.uid,
         reportedBy: user.uid,
         tenantEmail: tenantContext.email || user.email?.toLowerCase(),
         reportedDate: new Date().toISOString(),
@@ -158,11 +147,11 @@ export default function TenantMaintenancePage() {
 
       await addDoc(logsCollection, payload);
 
-      toast({ title: 'Repair Request Logged', description: 'Your landlord has been notified through the audit trail.' });
+      toast({ title: 'Repair Request Logged', description: 'Your landlord has been notified.' });
       router.push('/tenant/dashboard');
     } catch (error) {
       console.error(error);
-      toast({ variant: 'destructive', title: 'Sync Failed', description: 'There was an error logging your repair. Please try again.' });
+      toast({ variant: 'destructive', title: 'Sync Failed' });
     } finally {
       setIsSubmitting(false);
     }
@@ -177,25 +166,6 @@ export default function TenantMaintenancePage() {
     );
   }
 
-  if (isIndexBuilding) {
-    return (
-        <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in zoom-in-95 duration-700">
-            <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto relative z-10">
-                <Sparkles className="h-12 w-12 text-primary animate-pulse" />
-            </div>
-            <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Securing Connection</h2>
-                <p className="text-muted-foreground font-medium px-4 leading-relaxed">
-                    Our cloud database is currently synchronizing your records for private access.
-                </p>
-            </div>
-            <Button variant="outline" className="font-bold h-11 px-8 rounded-xl" onClick={() => window.location.reload()}>
-                <RefreshCw className="mr-2 h-4 w-4" /> Check Status
-            </Button>
-        </div>
-    );
-  }
-
   if (!tenantContext) {
     return (
       <Card className="max-w-md mx-auto mt-10 shadow-lg border-none text-center">
@@ -204,7 +174,7 @@ export default function TenantMaintenancePage() {
               <AlertCircle className="h-8 w-8 text-destructive" />
           </div>
           <CardTitle className="text-lg">Portal Access Restricted</CardTitle>
-          <CardDescription>We could not verify your active tenancy. Please contact your landlord to verify your portal email.</CardDescription>
+          <CardDescription>We could not verify your active tenancy.</CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
           <Button variant="outline" className="w-full font-bold h-11" onClick={() => router.push('/dashboard')}>Return to Dashboard</Button>
@@ -246,7 +216,7 @@ export default function TenantMaintenancePage() {
             </div>
 
             <FormField control={form.control} name="description" render={({ field }) => (
-              <FormItem><FormLabel className="font-bold">Detailed description</FormLabel><FormControl><Textarea rows={4} placeholder="Provide as much detail as possible to help the contractor diagnose the issue before visiting..." className="resize-none rounded-xl" {...field} /></FormControl><FormMessage /></FormItem>
+              <FormItem><FormLabel className="font-bold">Detailed description</FormLabel><FormControl><Textarea rows={4} placeholder="Provide details..." className="resize-none rounded-xl" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
 
             <div className="space-y-4">

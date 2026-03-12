@@ -57,14 +57,13 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-// Types
 interface Contractor {
   id: string;
   name: string;
   trade: string;
   phone: string;
   email?: string;
-  userId: string;
+  landlordId: string;
   status?: string;
 }
 
@@ -74,11 +73,11 @@ export default function ContractorsPage() {
   const [searchTerm, setSearchTerm] = useState('');
   const [contractorToArchive, setContractorToArchive] = useState<Contractor | null>(null);
 
-  // Fetch contractors nested under user profile - strictly hierarchical.
   const contractorsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
-      collection(firestore, 'userProfiles', user.uid, 'contractors'),
+      collection(firestore, 'contractors'),
+      where('landlordId', '==', user.uid),
       where('status', '==', 'Active')
     );
   }, [firestore, user]);
@@ -97,7 +96,7 @@ export default function ContractorsPage() {
   const handleArchiveConfirm = async () => {
     if (!firestore || !contractorToArchive || !user) return;
     try {
-      const ref = doc(firestore, 'userProfiles', user.uid, 'contractors', contractorToArchive.id);
+      const ref = doc(firestore, 'contractors', contractorToArchive.id);
       await updateDoc(ref, { status: 'Archived' });
       toast({
         title: 'Contractor Archived',
@@ -115,14 +114,12 @@ export default function ContractorsPage() {
   return (
     <>
       <div className="flex flex-col gap-8">
-        {/* Header Section */}
         <div className="space-y-2">
           <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Contractors</h1>
           <p className="text-muted-foreground font-medium text-lg">Manage your directory of trusted tradespeople.</p>
         </div>
         
         <Card className="border-none shadow-xl overflow-hidden">
-          {/* Card Header with Search */}
           <CardHeader className="bg-muted/30 border-b pb-6">
             <div className="flex flex-col md:flex-row md:items-center md:justify-between gap-4">
               <div>
@@ -237,7 +234,6 @@ export default function ContractorsPage() {
           </CardContent>
         </Card>
 
-        {/* Action Buttons Container - Repositioned below the main directory card */}
         <div className="flex items-center gap-3 w-full px-1">
             <Button asChild variant="outline" className="flex-1 font-bold shadow-sm h-11 px-6 border-primary/20 hover:bg-primary/5 transition-all">
                 <Link href="/dashboard/contractors/archived">

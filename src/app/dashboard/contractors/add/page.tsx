@@ -34,7 +34,6 @@ import { PlusCircle, Loader2 } from 'lucide-react';
 import { useState } from 'react';
 
 
-// Schema for the form
 const contractorSchema = z.object({
   name: z.string().min(2, 'Name is too short'),
   trade: z.string().min(2, 'Trade is too short'),
@@ -75,11 +74,10 @@ export default function AddContractorPage() {
         setIsSubmitting(true);
 
         try {
-            // DUPLICATE CHECK: Verify phone uniqueness for this user - strictly hierarchical
-            const contractorsCollection = collection(firestore, 'userProfiles', user.uid, 'contractors');
+            const contractorsCollection = collection(firestore, 'contractors');
             const phoneCheckQuery = query(
                 contractorsCollection,
-                where('userId', '==', user.uid),
+                where('landlordId', '==', user.uid),
                 where('phone', '==', data.phone),
                 where('status', '==', 'Active'),
                 limit(1)
@@ -98,7 +96,7 @@ export default function AddContractorPage() {
 
             const newContractor = {
                 ...data,
-                userId: user.uid,
+                landlordId: user.uid,
                 status: 'Active'
             };
             

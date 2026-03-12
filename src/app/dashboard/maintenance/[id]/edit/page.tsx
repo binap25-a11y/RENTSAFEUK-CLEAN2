@@ -42,8 +42,6 @@ import {
   useCollection,
   useDoc,
   useMemoFirebase,
-  errorEmitter,
-  FirestorePermissionError,
 } from '@/firebase';
 import { collection, query, where, doc, updateDoc, Timestamp } from 'firebase/firestore';
 
@@ -107,15 +105,15 @@ export default function EditMaintenancePage() {
     const watchCategory = form.watch('category');
 
     const maintenanceLogRef = useMemoFirebase(() => {
-        if (!firestore || !propertyId || !logId || !user) return null;
-        return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'maintenanceLogs', logId);
-    }, [firestore, propertyId, logId, user]);
+        if (!firestore || !logId || !user) return null;
+        return doc(firestore, 'repairs', logId);
+    }, [firestore, logId, user]);
 
     const { data: maintenanceLog, isLoading: isLoadingLog } = useDoc<MaintenanceLog>(maintenanceLogRef);
 
     const contractorsQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
-        return query(collection(firestore, 'userProfiles', user.uid, 'contractors'), where('userId', '==', user.uid));
+        return query(collection(firestore, 'contractors'), where('landlordId', '==', user.uid));
     }, [firestore, user]);
     const { data: contractors } = useCollection<Contractor>(contractorsQuery);
 
@@ -138,7 +136,6 @@ export default function EditMaintenancePage() {
         }
         setIsSaving(true);
 
-        // Sanitize data to remove undefined values
         const cleanedData = JSON.parse(JSON.stringify(data));
 
         try {
@@ -148,9 +145,7 @@ export default function EditMaintenancePage() {
             router.push(`/dashboard/maintenance/${logId}?propertyId=${propertyId}`);
         } catch (error) {
             console.error('Failed to update maintenance log', error);
-             const permissionError = new FirestorePermissionError({ path: maintenanceLogRef.path, operation: 'update', requestResourceData: cleanedData });
-             errorEmitter.emit('permission-error', permissionError);
-            toast({ variant: 'destructive', title: 'Update Failed', description: (error as Error).message || 'There was an error updating the log.' });
+            toast({ variant: 'destructive', title: 'Update Failed' });
         } finally {
             setIsSaving(false);
         }

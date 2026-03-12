@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -7,7 +8,7 @@ import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { Loader2, ArrowLeft, Save } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { useDoc, useFirestore, useMemoFirebase, useUser, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -19,7 +20,6 @@ import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
 
-// Common components for both forms
 const ChecklistItem = ({ form, name, label }: { form: any, name: any, label: string }) => (
     <FormField
         control={form.control}
@@ -53,7 +53,6 @@ const NotesField = ({ form, name, placeholder }: { form: any, name: any, placeho
     />
 );
 
-// Helper to remove non-serializable fields
 const prepareForFirestore = (obj: any): any => {
     return JSON.parse(JSON.stringify(obj, (key, value) => {
         if (value === undefined) return null;
@@ -73,19 +72,16 @@ export default function EditInspectionPage() {
   const [isSaving, setIsSaving] = useState(false);
 
   const inspectionRef = useMemoFirebase(() => {
-    if (!firestore || !propertyId || !id || !user) return null;
-    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'inspections', id);
-  }, [firestore, propertyId, id, user]);
+    if (!firestore || !id || !user) return null;
+    return doc(firestore, 'inspections', id);
+  }, [firestore, id, user]);
 
   const { data: inspection, isLoading } = useDoc(inspectionRef);
 
-  const form = useForm({
-    // Dynamic resolver based on type
-  });
+  const form = useForm();
 
   useEffect(() => {
     if (inspection) {
-      // Safely convert dates
       const data = { ...inspection };
       if (data.scheduledDate?.seconds) data.scheduledDate = new Date(data.scheduledDate.seconds * 1000);
       if (data.completedDate?.seconds) data.completedDate = new Date(data.completedDate.seconds * 1000);
@@ -107,13 +103,7 @@ export default function EditInspectionPage() {
       router.push(`/dashboard/inspections/${id}?propertyId=${propertyId}`);
     } catch (error) {
       console.error('Failed to update inspection:', error);
-      const permissionError = new FirestorePermissionError({
-        path: inspectionRef.path,
-        operation: 'update',
-        requestResourceData: data,
-      });
-      errorEmitter.emit('permission-error', permissionError);
-      toast({ variant: 'destructive', title: 'Update Failed', description: 'Could not save changes. Please check your permissions.' });
+      toast({ variant: 'destructive', title: 'Update Failed' });
     } finally {
       setIsSaving(false);
     }

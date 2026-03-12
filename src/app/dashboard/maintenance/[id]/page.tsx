@@ -26,7 +26,6 @@ import {
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuSeparator, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
 
-// Main interface for a Maintenance Log document from Firestore
 interface MaintenanceLog {
     title: string;
     description?: string;
@@ -42,9 +41,9 @@ interface MaintenanceLog {
     estimatedCost?: number;
     photoUrls?: string[];
     notes?: string;
+    propertyId: string;
 }
 
-// Interface for a Property document from Firestore
 interface Property {
     address: {
       nameOrNumber?: string;
@@ -69,15 +68,15 @@ export default function MaintenanceDetailPage() {
   const firestore = useFirestore();
 
   const maintenanceLogRef = useMemoFirebase(() => {
-    if (!firestore || !propertyId || !id || !user) return null;
-    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'maintenanceLogs', id);
-  }, [firestore, propertyId, id, user]);
+    if (!firestore || !id || !user) return null;
+    return doc(firestore, 'repairs', id);
+  }, [firestore, id, user]);
 
   const { data: maintenanceLog, isLoading: isLoadingLog, error } = useDoc<MaintenanceLog>(maintenanceLogRef);
   
   const propertyRef = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
-    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId);
+    return doc(firestore, 'properties', propertyId);
   }, [firestore, propertyId, user]);
   const { data: property, isLoading: isLoadingProperty } = useDoc<Property>(propertyRef);
   
@@ -114,7 +113,7 @@ export default function MaintenanceDetailPage() {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-sm text-muted-foreground animate-pulse">Loading maintenance record...</p>
+        <p className="text-sm text-muted-foreground animate-pulse font-medium">Loading maintenance record...</p>
       </div>
     );
   }

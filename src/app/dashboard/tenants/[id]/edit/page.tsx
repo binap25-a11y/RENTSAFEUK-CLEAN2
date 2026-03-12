@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -41,7 +42,7 @@ import {
   useMemoFirebase,
   useDoc,
 } from '@/firebase';
-import { collection, query, where, doc, updateDoc, collectionGroup } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
 
 const ukPhoneRegex = /^(((\+44\s?\d{4}|\(?0\d{4}\)?)\s?\d{3}\s?\d{3})|((\+44\s?\d{3}|\(?0\d{3}\)?)\s?\d{3}\s?\d{4})|((\+44\s?\d{2}|\(?0\d{2}\)?)\s?\d{4}\s?\d{4}))(\s?\#(\d{4}|\d{3}))?$/;
 
@@ -81,7 +82,8 @@ interface Tenant {
     tenancyStartDate: { seconds: number, nanoseconds: number } | Date;
     tenancyEndDate?: { seconds: number, nanoseconds: number } | Date;
     notes?: string;
-    userId?: string; // Tenant's UID
+    userId?: string;
+    landlordId: string;
 }
 
 const formatDateForInput = (value: any) => {
@@ -98,9 +100,7 @@ const formatDateForInput = (value: any) => {
 export default function EditTenantPage() {
   const router = useRouter();
   const params = useParams();
-  const searchParams = useSearchParams();
   const tenantId = params.id as string;
-  const urlPropertyId = searchParams.get('propertyId');
 
   const { user } = useUser();
   const firestore = useFirestore();
@@ -110,28 +110,17 @@ export default function EditTenantPage() {
     resolver: zodResolver(tenantSchema),
   });
   
-  const directTenantRef = useMemoFirebase(() => {
-    if (!firestore || !tenantId || !urlPropertyId || !user) return null;
-    return doc(firestore, 'userProfiles', user.uid, 'properties', urlPropertyId, 'tenants', tenantId);
-  }, [firestore, tenantId, urlPropertyId, user]);
-  const { data: directTenant, isLoading: isLoadingDirect } = useDoc<Tenant>(directTenantRef);
-
-  const tenantSearchQuery = useMemoFirebase(() => {
-    if (!firestore || !tenantId || !user || urlPropertyId) return null;
-    return query(
-      collectionGroup(firestore, 'tenants'),
-      where('id', '==', tenantId)
-    );
-  }, [firestore, tenantId, user, urlPropertyId]);
-  const { data: searchResults, isLoading: isLoadingSearch } = useCollection<Tenant>(tenantSearchQuery);
-
-  const tenant = useMemo(() => directTenant || searchResults?.[0] || null, [directTenant, searchResults]);
-  const isLoadingTenant = isLoadingDirect || isLoadingSearch;
+  const tenantRef = useMemoFirebase(() => {
+    if (!firestore || !tenantId || !user) return null;
+    return doc(firestore, 'tenants', tenantId);
+  }, [firestore, tenantId, user]);
+  const { data: tenant, isLoading: isLoadingTenant } = useDoc<Tenant>(tenantRef);
 
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
-      collection(firestore, 'userProfiles', user.uid, 'properties'),
+      collection(firestore, 'properties'),
+      where('landlordId', '==', user.uid),
       where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
     );
   }, [firestore, user]);
@@ -152,7 +141,7 @@ export default function EditTenantPage() {
   }, [tenant, form]);
 
   async function onSubmit(data: TenantFormValues) {
-    if (!user || !firestore || !tenant) {
+    if (!user || !firestore || !tenant || !tenantRef) {
       toast({
         variant: 'destructive',
         title: 'Error',
@@ -164,17 +153,15 @@ export default function EditTenantPage() {
     
     try {
       const normalizedEmail = data.email.toLowerCase().trim();
-      const tenantDocRef = doc(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId, 'tenants', tenant.id);
       
       const updateData = { 
         ...data, 
         email: normalizedEmail,
-        // PRESERVE IDENTITY KEY: Do not overwrite the tenant's userId with the Landlord's UID.
         userId: tenant.userId || ''
       };
       const cleanedUpdateData = JSON.parse(JSON.stringify(updateData));
 
-      await updateDoc(tenantDocRef, cleanedUpdateData);
+      await updateDoc(tenantRef, cleanedUpdateData);
 
       toast({
         title: 'Registry Updated',

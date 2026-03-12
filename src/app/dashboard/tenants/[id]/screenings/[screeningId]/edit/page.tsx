@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -33,8 +34,6 @@ import {
   useFirestore,
   useDoc,
   useMemoFirebase,
-  errorEmitter,
-  FirestorePermissionError,
 } from '@/firebase';
 import { doc, updateDoc, Timestamp } from 'firebase/firestore';
 
@@ -100,10 +99,6 @@ const screeningEditSchema = z.object({
 
 type ScreeningEditFormValues = z.infer<typeof screeningEditSchema>;
 
-/**
- * Recursive utility to strictly strip 'undefined' values from objects before Firestore writes.
- * Prevents "Unsupported field value: undefined" runtime errors.
- */
 const prepareForFirestore = (obj: any): any => {
   if (obj === undefined) return null;
   if (obj === null || typeof obj !== 'object') return obj;
@@ -147,7 +142,7 @@ const NotesField = ({ form, name, placeholder }: { form: any, name: any, placeho
             <FormItem className="mt-4">
                 <FormLabel>Notes</FormLabel>
                 <FormControl>
-                    <Textarea placeholder={placeholder} {...field} value={field.value ?? ''}/>
+                    <Textarea placeholder={placeholder} {...field} value={field.value ?? ''} />
                 </FormControl>
                 <FormMessage />
             </FormItem>
@@ -186,15 +181,15 @@ export default function EditTenantScreeningPage() {
     });
 
     const screeningRef = useMemoFirebase(() => {
-        if (!firestore || !user || !tenantId || !screeningId || !propertyId) return null;
-        return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'tenants', tenantId, 'screenings', screeningId);
-    }, [firestore, user, tenantId, screeningId, propertyId]);
+        if (!firestore || !user || !screeningId) return null;
+        return doc(firestore, 'screenings', screeningId);
+    }, [firestore, user, screeningId]);
     const { data: screening, isLoading: isLoadingScreening, error: screeningError } = useDoc(screeningRef);
 
     const tenantRef = useMemoFirebase(() => {
-        if (!firestore || !user || !tenantId || !propertyId) return null;
-        return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'tenants', tenantId);
-    }, [firestore, user, tenantId, propertyId]);
+        if (!firestore || !user || !tenantId) return null;
+        return doc(firestore, 'tenants', tenantId);
+    }, [firestore, user, tenantId]);
     const { data: tenant, isLoading: isLoadingTenant } = useDoc(tenantRef);
 
     useEffect(() => {
@@ -228,13 +223,7 @@ export default function EditTenantScreeningPage() {
             });
             router.push(`/dashboard/tenants/${tenantId}?propertyId=${propertyId}`);
           })
-          .catch(async (serverError) => {
-             const permissionError = new FirestorePermissionError({
-                path: screeningRef.path,
-                operation: 'update',
-                requestResourceData: cleanedData,
-            });
-            errorEmitter.emit('permission-error', permissionError);
+          .catch((serverError) => {
              toast({
                 variant: 'destructive',
                 title: 'Update Failed',
@@ -249,12 +238,12 @@ export default function EditTenantScreeningPage() {
         return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
     }
 
-    if (screeningError || !propertyId) {
+    if (screeningError) {
         return (
             <div className="flex flex-col items-center justify-center h-64 gap-4 p-6 text-center">
                 <AlertCircle className="h-12 w-12 text-destructive opacity-20" />
                 <h2 className="text-lg font-bold">Access Error</h2>
-                <p className="text-sm text-muted-foreground max-w-xs">There was an error accessing the screening record. Property context might be missing.</p>
+                <p className="text-sm text-muted-foreground max-w-xs">There was an error accessing the screening record.</p>
                 <Button asChild variant="outline"><Link href="/dashboard/tenants">Return to Tenants</Link></Button>
             </div>
         );

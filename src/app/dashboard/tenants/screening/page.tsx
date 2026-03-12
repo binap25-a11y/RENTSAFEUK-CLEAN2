@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -38,8 +39,6 @@ import {
   useUser,
   useFirestore,
   useMemoFirebase,
-  errorEmitter,
-  FirestorePermissionError,
   useDoc,
 } from '@/firebase';
 import { collection, addDoc, doc } from 'firebase/firestore';
@@ -117,9 +116,6 @@ interface Tenant {
   propertyId: string;
 }
 
-/**
- * Robust recursive sanitization utility to ensure no 'undefined' values reach Firestore.
- */
 const prepareForFirestore = (obj: any): any => {
   if (obj === undefined) return null;
   if (obj === null || typeof obj !== 'object') return obj;
@@ -168,12 +164,11 @@ const NotesField = ({ form, name, placeholder }: { form: any, name: any, placeho
 export default function TenantScreeningPageWrapper() {
   const searchParams = useSearchParams();
   const tenantIdFromUrl = searchParams.get('tenantId');
-  const propertyIdFromUrl = searchParams.get('propertyId');
 
-  return <TenantScreeningPage key={tenantIdFromUrl} tenantIdFromUrl={tenantIdFromUrl} propertyIdFromUrl={propertyIdFromUrl} />;
+  return <TenantScreeningPage key={tenantIdFromUrl} tenantIdFromUrl={tenantIdFromUrl} />;
 }
 
-function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdFromUrl: string | null, propertyIdFromUrl: string | null }) {
+function TenantScreeningPage({ tenantIdFromUrl }: { tenantIdFromUrl: string | null }) {
     const router = useRouter();
     const { user } = useUser();
     const firestore = useFirestore();
@@ -183,7 +178,6 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
         resolver: zodResolver(screeningSchema),
         defaultValues: {
             tenantId: tenantIdFromUrl || '',
-            propertyId: propertyIdFromUrl || '',
             monthlyIncome: undefined,
         }
     });
@@ -195,9 +189,9 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
     }, [form]);
 
     const tenantRef = useMemoFirebase(() => {
-        if (!firestore || !user || !tenantIdFromUrl || !propertyIdFromUrl) return null;
-        return doc(firestore, 'userProfiles', user.uid, 'properties', propertyIdFromUrl, 'tenants', tenantIdFromUrl);
-    }, [firestore, user, tenantIdFromUrl, propertyIdFromUrl]);
+        if (!firestore || !user || !tenantIdFromUrl) return null;
+        return doc(firestore, 'tenants', tenantIdFromUrl);
+    }, [firestore, user, tenantIdFromUrl]);
     const { data: selectedTenant, isLoading: isLoadingSelectedTenant } = useDoc<Tenant>(tenantRef);
 
     useEffect(() => {
@@ -231,16 +225,12 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
         }
         setIsSubmitting(true);
 
-        const { tenantId, propertyId, ...screeningData } = data;
-
         const cleanedSubmission = prepareForFirestore({
-            ...screeningData,
-            userId: user.uid,
-            tenantId: tenantId,
-            propertyId: propertyId,
+            ...data,
+            landlordId: user.uid,
         });
 
-        const screeningsCollection = collection(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'tenants', tenantId, 'screenings');
+        const screeningsCollection = collection(firestore, 'screenings');
 
         addDoc(screeningsCollection, cleanedSubmission)
           .then(() => {
@@ -248,15 +238,9 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
                 title: 'Screening Audit Saved',
                 description: 'The tenant vetting checklist has been successfully recorded.',
             });
-            router.push(`/dashboard/tenants/${tenantId}?propertyId=${propertyId}`);
+            router.push(`/dashboard/tenants/${data.tenantId}?propertyId=${data.propertyId}`);
           })
-          .catch(async (serverError) => {
-             const permissionError = new FirestorePermissionError({
-                path: screeningsCollection.path,
-                operation: 'create',
-                requestResourceData: cleanedSubmission,
-            });
-            errorEmitter.emit('permission-error', permissionError);
+          .catch((serverError) => {
             toast({
                 variant: "destructive",
                 title: "Save Failed",
@@ -266,7 +250,7 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
           .finally(() => setIsSubmitting(false));
     }
 
-    if (!tenantIdFromUrl || !propertyIdFromUrl) {
+    if (!tenantIdFromUrl) {
         return (
             <div className="text-center py-20">
                 <p className="text-muted-foreground">Tenant selection required. Please start screening from a tenant's profile.</p>
@@ -474,7 +458,7 @@ function TenantScreeningPage({ tenantIdFromUrl, propertyIdFromUrl }: { tenantIdF
                         />
                         <div className="flex justify-end gap-3 pt-4 border-t">
                             <Button type="button" variant="ghost" className="font-bold uppercase tracking-widest text-[10px] h-11" asChild>
-                                <Link href={`/dashboard/tenants/${tenantIdFromUrl}?propertyId=${propertyIdFromUrl}`}>Cancel Audit</Link>
+                                <Link href={`/dashboard/tenants/${tenantIdFromUrl}?propertyId=${selectedTenant?.propertyId}`}>Cancel Audit</Link>
                             </Button>
                             <Button type="submit" disabled={isSubmitting} className="font-bold uppercase tracking-widest text-[10px] h-11 px-10 shadow-lg bg-primary hover:bg-primary/90">
                                 {isSubmitting ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : 'Save Vetting Audit'}

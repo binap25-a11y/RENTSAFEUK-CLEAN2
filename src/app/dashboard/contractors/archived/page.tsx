@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -51,9 +52,9 @@ export default function ArchivedContractorsPage() {
 
     const archivedContractorsQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
-        // Strictly hierarchical. Redundant ownerId filter removed.
         return query(
-            collection(firestore, 'userProfiles', user.uid, 'contractors'),
+            collection(firestore, 'contractors'),
+            where('landlordId', '==', user.uid),
             where('status', '==', 'Archived')
         );
     }, [firestore, user]);
@@ -63,7 +64,7 @@ export default function ArchivedContractorsPage() {
     const handleRestore = async (contractorId: string, name: string) => {
         if (!firestore || !user) return;
         try {
-            const docRef = doc(firestore, 'userProfiles', user.uid, 'contractors', contractorId);
+            const docRef = doc(firestore, 'contractors', contractorId);
             await updateDoc(docRef, { status: 'Active' });
             toast({
                 title: 'Contractor Restored',
@@ -83,7 +84,7 @@ export default function ArchivedContractorsPage() {
         if (!firestore || !contractorToDelete || !user) return;
         setIsDeleting(true);
         try {
-            const docRef = doc(firestore, 'userProfiles', user.uid, 'contractors', contractorToDelete.id);
+            const docRef = doc(firestore, 'contractors', contractorToDelete.id);
             await deleteDoc(docRef);
             toast({
                 title: 'Contractor Deleted Permanently',
@@ -135,7 +136,6 @@ export default function ArchivedContractorsPage() {
                     </div>
                 ) : (
                 <>
-                    {/* Desktop Table View */}
                     <div className="hidden rounded-md border md:block overflow-hidden">
                         <Table>
                             <TableHeader className="bg-muted/50">
@@ -164,7 +164,6 @@ export default function ArchivedContractorsPage() {
                         </Table>
                     </div>
 
-                    {/* Mobile Card View */}
                     <div className="grid gap-4 md:hidden">
                         {archivedContractors.map((contractor) => (
                             <Card key={contractor.id} className="shadow-none border-muted/60">

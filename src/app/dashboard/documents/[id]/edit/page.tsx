@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -38,8 +39,6 @@ import {
   useFirestore,
   useDoc,
   useMemoFirebase,
-  errorEmitter,
-  FirestorePermissionError,
 } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { uploadPropertyDocument } from '@/lib/upload-document';
@@ -90,9 +89,9 @@ export default function EditDocumentPage() {
   });
 
   const docRef = useMemoFirebase(() => {
-    if (!firestore || !user || !id || !propertyId) return null;
-    return doc(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'documents', id);
-  }, [firestore, user, id, propertyId]);
+    if (!firestore || !user || !id) return null;
+    return doc(firestore, 'documents', id);
+  }, [firestore, user, id]);
 
   const { data: documentRecord, isLoading } = useDoc<DocumentRecord>(docRef);
 

@@ -22,9 +22,9 @@ import {
 } from '@/components/ui/table';
 import { ArrowLeft, RefreshCw, Loader2, Mail, Phone, Trash2 } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
-import { useUser, useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { collection, query, where, doc, updateDoc, deleteDoc, onSnapshot } from 'firebase/firestore';
-import { useMemo, useState, useEffect } from 'react';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { collection, query, where, doc, updateDoc, deleteDoc } from 'firebase/firestore';
+import { useMemo, useState } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -36,7 +36,6 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 
-// Types
 interface Tenant {
   id: string;
   name: string;
@@ -59,54 +58,25 @@ interface Property {
 
 export default function ArchivedTenantsPage() {
     const { toast } = useToast();
-    const router = useRouter();
     const { user } = useUser();
     const firestore = useFirestore();
     const [tenantToDelete, setTenantToDelete] = useState<Tenant | null>(null);
-    const [portfolioTenants, setPortfolioTenants] = useState<Tenant[]>([]);
-    const [isAggregating, setIsAggregating] = useState(false);
 
-    // Fetch properties - strictly hierarchical. Used to aggregate tenants without collectionGroup index requirements.
     const propertiesQuery = useMemoFirebase(() => {
         if(!user || !firestore) return null;
-        return query(
-            collection(firestore, 'userProfiles', user.uid, 'properties')
-        );
+        return query(collection(firestore, 'properties'), where('landlordId', '==', user.uid));
       }, [firestore, user]);
-    const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
+    const { data: properties } = useCollection<Property>(propertiesQuery);
     
-    // Aggregated Tenants Listener
-    useEffect(() => {
-        if (!user || !firestore || !properties || properties.length === 0) {
-            setPortfolioTenants([]);
-            return;
-        }
-
-        setIsAggregating(true);
-        const unsubs: (() => void)[] = [];
-        const tenantsMap: Record<string, Tenant[]> = {};
-
-        const updateState = () => {
-            setPortfolioTenants(Object.values(tenantsMap).flat().filter(t => t.status === 'Archived'));
-            setIsAggregating(false);
-        };
-
-        properties.forEach(p => {
-            const q = collection(firestore, 'userProfiles', user.uid, 'properties', p.id, 'tenants');
-            const unsub = onSnapshot(q, (snap) => {
-                tenantsMap[p.id] = snap.docs.map(d => ({ id: d.id, ...d.data() } as Tenant));
-                updateState();
-            }, (error) => {
-                errorEmitter.emit('permission-error', new FirestorePermissionError({
-                    path: q.path,
-                    operation: 'list',
-                }));
-            });
-            unsubs.push(unsub);
-        });
-
-        return () => unsubs.forEach(u => u());
-    }, [user, properties, firestore]);
+    const tenantsQuery = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
+        return query(
+            collection(firestore, 'tenants'),
+            where('landlordId', '==', user.uid),
+            where('status', '==', 'Archived')
+        );
+    }, [user, firestore]);
+    const { data: archivedTenants, isLoading } = useCollection<Tenant>(tenantsQuery);
 
     const propertyMap = useMemo(() => {
         if (!properties) return {};
@@ -116,10 +86,10 @@ export default function ArchivedTenantsPage() {
         }, {} as Record<string, string>);
     }, [properties]);
 
-    const handleRestore = async (tenantId: string, tenantName: string, propertyId: string) => {
+    const handleRestore = async (tenantId: string, tenantName: string) => {
         if (!firestore || !user) return;
         try {
-            const docRef = doc(firestore, 'userProfiles', user.uid, 'properties', propertyId, 'tenants', tenantId);
+            const docRef = doc(firestore, 'tenants', tenantId);
             await updateDoc(docRef, { status: 'Active' });
             toast({
                 title: 'Tenant Restored',
@@ -138,7 +108,7 @@ export default function ArchivedTenantsPage() {
     const handleDeletePermanently = async () => {
         if (!firestore || !user || !tenantToDelete) return;
         try {
-            const docRef = doc(firestore, 'userProfiles', user.uid, 'properties', tenantToDelete.propertyId, 'tenants', tenantToDelete.id);
+            const docRef = doc(firestore, 'tenants', tenantToDelete.id);
             await deleteDoc(docRef);
             toast({
                 title: 'Tenant Permanently Deleted',
@@ -155,8 +125,6 @@ export default function ArchivedTenantsPage() {
             setTenantToDelete(null);
         }
     };
-    
-    const isLoading = isLoadingProperties || isAggregating;
 
   return (
     <>
@@ -184,13 +152,12 @@ export default function ArchivedTenantsPage() {
                         <div className="flex justify-center items-center h-64">
                             <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
                         </div>
-                    ) : !portfolioTenants?.length ? (
+                    ) : !archivedTenants?.length ? (
                         <div className="text-center py-10 text-muted-foreground italic">
                             No archived tenants found.
                         </div>
                     ) : (
                     <>
-                        {/* Desktop Table View */}
                         <div className="hidden rounded-md border md:block overflow-hidden">
                             <Table>
                                 <TableHeader className="bg-muted/50">
@@ -202,13 +169,13 @@ export default function ArchivedTenantsPage() {
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
-                                    {portfolioTenants.map((tenant) => (
+                                    {archivedTenants.map((tenant) => (
                                     <TableRow key={tenant.id} className="hover:bg-muted/30 transition-colors">
                                         <TableCell className="font-medium">{tenant.name}</TableCell>
                                         <TableCell className="text-xs">{tenant.email}</TableCell>
                                         <TableCell className="text-xs text-muted-foreground">{propertyMap[tenant.propertyId] || 'N/A'}</TableCell>
                                         <TableCell className="text-right pr-6 space-x-2">
-                                            <Button size="sm" variant="outline" className="h-8 text-xs px-4" onClick={() => handleRestore(tenant.id, tenant.name, tenant.propertyId)}>
+                                            <Button size="sm" variant="outline" className="h-8 text-xs px-4" onClick={() => handleRestore(tenant.id, tenant.name)}>
                                                 <RefreshCw className="mr-2 h-3.5 w-3.5" /> Restore
                                             </Button>
                                             <Button size="sm" variant="destructive" className="h-8 text-xs px-4" onClick={() => setTenantToDelete(tenant)}>
@@ -221,9 +188,8 @@ export default function ArchivedTenantsPage() {
                             </Table>
                         </div>
 
-                        {/* Mobile Card View */}
                         <div className="grid gap-4 md:hidden">
-                            {portfolioTenants.map((tenant) => (
+                            {archivedTenants.map((tenant) => (
                                 <Card key={tenant.id} className="shadow-none border-muted/60">
                                     <CardHeader className="pb-3">
                                         <CardTitle className="text-base font-bold">{tenant.name}</CardTitle>
@@ -242,7 +208,7 @@ export default function ArchivedTenantsPage() {
                                         )}
                                     </CardContent>
                                     <CardFooter className="grid grid-cols-2 gap-2 pt-0">
-                                        <Button size="sm" variant="outline" className="h-9 font-bold" onClick={() => handleRestore(tenant.id, tenant.name, tenant.propertyId)}>
+                                        <Button size="sm" variant="outline" className="h-9 font-bold" onClick={() => handleRestore(tenant.id, tenant.name)}>
                                             <RefreshCw className="mr-2 h-3.5 w-3.5" /> Restore
                                         </Button>
                                         <Button size="sm" variant="destructive" className="h-9 font-bold" onClick={() => setTenantToDelete(tenant)}>

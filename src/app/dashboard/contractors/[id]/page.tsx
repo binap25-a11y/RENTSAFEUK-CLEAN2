@@ -22,7 +22,6 @@ import {
 } from '@/components/ui/alert-dialog';
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from '@/components/ui/dropdown-menu';
 
-// Type for contractor from firestore
 interface Contractor {
     id: string;
     name: string;
@@ -31,7 +30,7 @@ interface Contractor {
     phone: string;
     notes?: string;
     status?: string;
-    userId: string;
+    landlordId: string;
 }
 
 
@@ -46,7 +45,7 @@ export default function ContractorDetailPage() {
 
   const contractorRef = useMemoFirebase(() => {
     if (!firestore || !id || !user) return null;
-    return doc(firestore, 'userProfiles', user.uid, 'contractors', id);
+    return doc(firestore, 'contractors', id);
   }, [firestore, id, user]);
 
   const { data: contractor, isLoading, error } = useDoc<Contractor>(contractorRef);

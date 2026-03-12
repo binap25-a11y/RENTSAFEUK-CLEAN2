@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -35,7 +36,6 @@ import { useEffect } from 'react';
 import { Loader2 } from 'lucide-react';
 
 
-// Schema for the form
 const contractorSchema = z.object({
   name: z.string().min(2, 'Name is too short'),
   trade: z.string().min(2, 'Trade is too short'),
@@ -75,7 +75,7 @@ export default function EditContractorPage() {
 
     const contractorRef = useMemoFirebase(() => {
         if (!firestore || !contractorId || !user) return null;
-        return doc(firestore, 'userProfiles', user.uid, 'contractors', contractorId);
+        return doc(firestore, 'contractors', contractorId);
     }, [firestore, contractorId, user]);
 
     const { data: contractor, isLoading } = useDoc<Contractor>(contractorRef);
@@ -92,7 +92,7 @@ export default function EditContractorPage() {
 
 
     async function onSubmit(data: ContractorFormValues) {
-        if (!user || !firestore || !contractorId) {
+        if (!user || !firestore || !contractorId || !contractorRef) {
         toast({
             variant: 'destructive',
             title: 'Error',
@@ -102,8 +102,7 @@ export default function EditContractorPage() {
         }
 
         try {
-            const contractorDocRef = doc(firestore, 'userProfiles', user.uid, 'contractors', contractorId);
-            await updateDoc(contractorDocRef, { ...data });
+            await updateDoc(contractorRef, { ...data });
             
             toast({
                 title: 'Contractor Updated',

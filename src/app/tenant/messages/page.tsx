@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -11,7 +12,6 @@ import {
   Loader2, 
   User,
   ShieldCheck,
-  Sparkles,
   RefreshCw,
   AlertCircle
 } from 'lucide-react';
@@ -33,7 +33,6 @@ export default function TenantMessagesPage() {
   const firestore = useFirestore();
   const [tenantContext, setTenantContext] = useState<any>(null);
   const [isLoadingContext, setIsLoadingContext] = useState(true);
-  const [isIndexBuilding, setIsIndexBuilding] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
@@ -47,7 +46,6 @@ export default function TenantMessagesPage() {
     
     const userEmail = user.email.toLowerCase().trim();
 
-    // Search for tenants linked to this email. Forced normalization.
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
@@ -56,24 +54,15 @@ export default function TenantMessagesPage() {
     const unsub = onSnapshot(q, (snap) => {
         const activeTenant = snap.docs.find(d => d.data().status === 'Active');
         if (activeTenant) {
-            const pathSegments = activeTenant.ref.path.split('/');
-            const landlordIdx = pathSegments.indexOf('userProfiles');
-            const propertyIdx = pathSegments.indexOf('properties');
-            
-            if (landlordIdx !== -1 && propertyIdx !== -1) {
-                setTenantContext({ 
-                    landlordId: pathSegments[landlordIdx + 1], 
-                    propertyId: pathSegments[propertyIdx + 1], 
-                    tenantId: activeTenant.id 
-                });
-            }
+            const data = activeTenant.data();
+            setTenantContext({ 
+                landlordId: data.landlordId, 
+                propertyId: data.propertyId, 
+                tenantId: activeTenant.id 
+            });
         }
         setIsLoadingContext(false);
-        setIsIndexBuilding(false);
     }, (error) => {
-        if (error.message.toLowerCase().includes('index')) {
-            setIsIndexBuilding(true);
-        }
         console.warn("Messenger discovery issue:", error.message);
         setIsLoadingContext(false);
     });
@@ -83,7 +72,8 @@ export default function TenantMessagesPage() {
   const messagesQuery = useMemoFirebase(() => {
     if (!tenantContext || !user || !firestore) return null;
     return query(
-        collection(firestore, 'userProfiles', tenantContext.landlordId, 'properties', tenantContext.propertyId, 'tenants', tenantContext.tenantId, 'messages'),
+        collection(firestore, 'messages'),
+        where('tenantId', '==', tenantContext.tenantId),
         orderBy('timestamp', 'asc'),
         limit(100)
     );
@@ -103,8 +93,11 @@ export default function TenantMessagesPage() {
 
     setIsSending(true);
     try {
-        const msgCol = collection(firestore, 'userProfiles', tenantContext.landlordId, 'properties', tenantContext.propertyId, 'tenants', tenantContext.tenantId, 'messages');
+        const msgCol = collection(firestore, 'messages');
         await addDoc(msgCol, {
+            landlordId: tenantContext.landlordId,
+            propertyId: tenantContext.propertyId,
+            tenantId: tenantContext.tenantId,
             senderId: user.uid,
             senderName: user.displayName || 'Tenant',
             content: newMessage.trim(),
@@ -127,25 +120,6 @@ export default function TenantMessagesPage() {
     );
   }
 
-  if (isIndexBuilding) {
-    return (
-        <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in zoom-in-95 duration-700">
-            <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto relative z-10">
-                <Sparkles className="h-12 w-12 text-primary animate-pulse" />
-            </div>
-            <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Securing Messenger Channel</h2>
-                <p className="text-muted-foreground font-medium px-4 leading-relaxed">
-                    Our cloud database is currently synchronizing your tenant records for private communication.
-                </p>
-            </div>
-            <Button variant="outline" className="font-bold h-11 px-8 rounded-xl" onClick={() => window.location.reload()}>
-                <RefreshCw className="mr-2 h-4 w-4" /> Check Connection
-            </Button>
-        </div>
-    );
-  }
-
   if (!tenantContext) {
     return (
       <Card className="max-w-md mx-auto mt-10 shadow-lg border-none text-center">
@@ -154,7 +128,7 @@ export default function TenantMessagesPage() {
               <AlertCircle className="h-8 w-8 text-destructive" />
           </div>
           <CardTitle className="text-lg">Portal Access Limited</CardTitle>
-          <CardDescription>We could not find an active tenancy associated with this account. Please contact your landlord.</CardDescription>
+          <CardDescription>We could not verify your identity association.</CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
           <Button variant="outline" className="w-full font-bold h-11" asChild><Link href="/dashboard">Return to Dashboard</Link></Button>
@@ -195,7 +169,7 @@ export default function TenantMessagesPage() {
                     ) : !messages?.length ? (
                         <div className="py-20 text-center px-10">
                             <MessageSquare className="h-12 w-12 text-muted-foreground/10 mx-auto mb-4" />
-                            <p className="text-sm text-muted-foreground italic">No messages yet. Send a message to start communicating with your landlord.</p>
+                            <p className="text-sm text-muted-foreground italic">No messages yet.</p>
                         </div>
                     ) : (
                         messages.map((msg) => {

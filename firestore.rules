@@ -13,7 +13,7 @@ service cloud.firestore {
 
     // Check if the current user is the landlord of the record
     function isLandlordOf(data) {
-      return isSignedIn() && data.landlordId == request.auth.uid;
+      return isSignedIn() && (data.landlordId == request.auth.uid || data.userId == request.auth.uid);
     }
 
     // Check if the current user is the tenant linked to the record
@@ -45,12 +45,35 @@ service cloud.firestore {
       allow delete: if isLandlordOf(resource.data);
     }
 
-    // --- 4. Portfolio Shared Ledger Data ---
-    // (Repairs, Documents, Messages, Expenses, Inspections, Contractors, RentPayments, Checklists, Screenings)
+    // --- 4. Repairs (Maintenance) ---
+    match /repairs/{id} {
+      allow create: if isSignedIn();
+      allow read: if isLandlordOf(resource.data) || isTenantOf(resource.data);
+      allow update: if isLandlordOf(resource.data) || isTenantOf(resource.data);
+      allow delete: if isLandlordOf(resource.data);
+    }
+
+    // --- 5. Documents & Compliance ---
+    match /documents/{id} {
+      allow create: if isSignedIn();
+      allow read: if isLandlordOf(resource.data) || isTenantOf(resource.data);
+      allow update: if isLandlordOf(resource.data);
+      allow delete: if isLandlordOf(resource.data);
+    }
+
+    // --- 6. Secure Messaging ---
+    match /messages/{id} {
+      allow create: if isSignedIn();
+      allow read: if isLandlordOf(resource.data) || isTenantOf(resource.data) || resource.data.senderId == request.auth.uid;
+      allow update: if isLandlordOf(resource.data) || isTenantOf(resource.data);
+      allow delete: if isLandlordOf(resource.data);
+    }
+
+    // --- 7. Generic Ledger Access (Expenses, Inspections, Contractors, Screenings, etc) ---
     match /{collectionName}/{id} {
       allow create: if isSignedIn();
-      allow read: if isLandlordOf(resource.data) || isTenantOf(resource.data) || resource.data.userId == request.auth.uid;
-      allow update: if isLandlordOf(resource.data) || isTenantOf(resource.data) || resource.data.userId == request.auth.uid;
+      allow read: if isLandlordOf(resource.data) || isTenantOf(resource.data);
+      allow update: if isLandlordOf(resource.data);
       allow delete: if isLandlordOf(resource.data);
     }
   }

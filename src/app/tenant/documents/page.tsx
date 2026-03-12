@@ -34,7 +34,6 @@ export default function TenantDocumentsPage() {
   const firestore = useFirestore();
   const [tenantContext, setTenantContext] = useState<any>(null);
   const [isLoadingContext, setIsLoadingContext] = useState(true);
-  const [isIndexBuilding, setIsIndexBuilding] = useState(false);
 
   useEffect(() => {
     if (isUserLoading) return;
@@ -46,7 +45,6 @@ export default function TenantDocumentsPage() {
     
     const userEmail = user.email.toLowerCase().trim();
 
-    // Forced lowercase matching for security and robustness
     const q = query(
         collectionGroup(firestore, 'tenants'), 
         where('email', '==', userEmail),
@@ -56,23 +54,14 @@ export default function TenantDocumentsPage() {
     const unsub = onSnapshot(q, (snap) => {
         const activeTenant = snap.docs.find(d => d.data().status === 'Active');
         if (activeTenant) {
-            const pathSegments = activeTenant.ref.path.split('/');
-            const landlordIdx = pathSegments.indexOf('userProfiles');
-            const propertyIdx = pathSegments.indexOf('properties');
-            
-            if (landlordIdx !== -1 && propertyIdx !== -1) {
-                setTenantContext({ 
-                    landlordId: pathSegments[landlordIdx + 1], 
-                    propertyId: pathSegments[propertyIdx + 1] 
-                });
-            }
+            const data = activeTenant.data();
+            setTenantContext({ 
+                landlordId: data.landlordId, 
+                propertyId: data.propertyId 
+            });
         }
         setIsLoadingContext(false);
-        setIsIndexBuilding(false);
     }, (error) => {
-        if (error.message.toLowerCase().includes('index')) {
-            setIsIndexBuilding(true);
-        }
         console.warn("Tenant documents portal discovery issue:", error.message);
         setIsLoadingContext(false);
     });
@@ -83,7 +72,8 @@ export default function TenantDocumentsPage() {
   const docsQuery = useMemoFirebase(() => {
     if (!tenantContext || !user || !firestore) return null;
     return query(
-        collection(firestore, 'userProfiles', tenantContext.landlordId, 'properties', tenantContext.propertyId, 'documents'),
+        collection(firestore, 'documents'),
+        where('propertyId', '==', tenantContext.propertyId),
         limit(50)
     );
   }, [tenantContext, user, firestore]);
@@ -102,25 +92,6 @@ export default function TenantDocumentsPage() {
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Portal Files...</p>
       </div>
-    );
-  }
-
-  if (isIndexBuilding) {
-    return (
-        <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in zoom-in-95 duration-700">
-            <div className="bg-primary/10 p-8 rounded-full w-fit mx-auto relative z-10">
-                <Sparkles className="h-12 w-12 text-primary animate-pulse" />
-            </div>
-            <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Scanning Document Vault</h2>
-                <p className="text-muted-foreground font-medium px-4 leading-relaxed">
-                    Our secure system is currently mapping your tenant records. Your documents will appear here automatically.
-                </p>
-            </div>
-            <Button variant="outline" className="font-bold h-11 px-8 rounded-xl" onClick={() => window.location.reload()}>
-                <RefreshCw className="mr-2 h-4 w-4" /> Refresh Vault
-            </Button>
-        </div>
     );
   }
 

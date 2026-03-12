@@ -1,8 +1,8 @@
+
 'use client';
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
-import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { Button } from '@/components/ui/button';
@@ -62,6 +62,7 @@ interface Tenant {
     email: string;
     telephone: string;
     propertyId: string;
+    landlordId: string;
     monthlyRent?: number;
     rentDueDay?: number;
     tenancyStartDate: any;
@@ -87,7 +88,6 @@ export default function TenantDetailPage() {
   const params = useParams();
   const searchParams = useSearchParams();
   const id = params.id as string;
-  const urlPropertyId = searchParams.get('propertyId');
   const firestore = useFirestore();
   const router = useRouter();
   const { toast } = useToast();
@@ -98,21 +98,21 @@ export default function TenantDetailPage() {
   const [isUpdatingInvite, setIsUpdatingInvite] = useState(false);
   const [isSyncing, setIsSyncing] = useState(false);
 
-  const directTenantRef = useMemoFirebase(() => {
-    if (!firestore || !id || !urlPropertyId || !user) return null;
-    return doc(firestore, 'userProfiles', user.uid, 'properties', urlPropertyId, 'tenants', id);
-  }, [firestore, id, urlPropertyId, user]);
+  const tenantRef = useMemoFirebase(() => {
+    if (!firestore || !id || !user) return null;
+    return doc(firestore, 'tenants', id);
+  }, [firestore, id, user]);
   
-  const { data: tenant, isLoading: isLoadingTenant } = useDoc<Tenant>(directTenantRef);
+  const { data: tenant, isLoading: isLoadingTenant } = useDoc<Tenant>(tenantRef);
 
   const propertyRef = useMemoFirebase(() => {
     if (!firestore || !tenant?.propertyId || !user) return null;
-    return doc(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId);
+    return doc(firestore, 'properties', tenant.propertyId);
   }, [firestore, tenant?.propertyId, user]);
   const { data: property } = useDoc<Property>(propertyRef);
   
   const handleSendInvite = async () => {
-    if (!tenant || !property || !user || !firestore) return;
+    if (!tenant || !property || !user || !firestore || !tenantRef) return;
     setIsUpdatingInvite(true);
     
     try {
@@ -126,8 +126,7 @@ export default function TenantDetailPage() {
         
         window.location.href = mailtoUrl;
         
-        const tRef = doc(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId, 'tenants', tenant.id);
-        await updateDoc(tRef, { inviteSentDate: new Date().toISOString() });
+        await updateDoc(tenantRef, { inviteSentDate: new Date().toISOString() });
         
         toast({ title: 'Portal Invite Sent', description: 'Opening email client...' });
     } catch (e) {
@@ -139,18 +138,17 @@ export default function TenantDetailPage() {
   };
 
   const handleSyncIdentity = async () => {
-      if (!directTenantRef) return;
+      if (!tenantRef) return;
       setIsSyncing(true);
       toast({ title: "Synchronizing Registry", description: "Fetching latest verification state..." });
-      // Minor metadata update to trigger a re-sync of the document
-      updateDoc(directTenantRef, { lastSyncCheck: new Date().toISOString() })
+      updateDoc(tenantRef, { lastSyncCheck: new Date().toISOString() })
         .finally(() => {
             setTimeout(() => setIsSyncing(false), 800);
         });
   };
 
   const handleSendReminder = async () => {
-    if (!tenant || !property || !user || !firestore) return;
+    if (!tenant || !property || !user || !firestore || !tenantRef) return;
     
     const propertyAddr = property.address.street || 'Assigned Property';
     const subject = encodeURIComponent(`Rent Reminder: ${propertyAddr}`);
@@ -158,22 +156,21 @@ export default function TenantDetailPage() {
     
     window.location.href = `mailto:${tenant.email}?subject=${subject}&body=${body}`;
     
-    const tRef = doc(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId, 'tenants', tenant.id);
-    updateDoc(tRef, { lastReminderSent: new Date().toISOString() });
+    updateDoc(tenantRef, { lastReminderSent: new Date().toISOString() });
     
     toast({ title: 'Reminder Prepared', description: 'Email client opened.' });
   };
 
   const handleDeleteConfirm = async () => {
-    if (!firestore || !user || !tenant || !propertyRef) return;
+    if (!firestore || !user || !tenant || !propertyRef || !tenantRef) return;
     setIsArchiving(true);
 
     try {
-        const ref = doc(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId, 'tenants', tenant.id);
-        await updateDoc(ref, { status: 'Archived' });
+        await updateDoc(tenantRef, { status: 'Archived' });
 
         const activeTenantsQuery = query(
-            collection(firestore, 'userProfiles', user.uid, 'properties', tenant.propertyId, 'tenants'),
+            collection(firestore, 'tenants'),
+            where('propertyId', '==', tenant.propertyId),
             where('status', '==', 'Active'),
             limit(2)
         );
@@ -208,7 +205,7 @@ export default function TenantDetailPage() {
         <div className="bg-muted p-6 rounded-full"><AlertCircle className="h-12 w-12 text-muted-foreground opacity-20" /></div>
         <div className="text-center space-y-2">
           <h2 className="text-xl font-bold">Record Not Found</h2>
-          <p className="text-muted-foreground max-w-xs mx-auto">This record may have been deleted, or property context is missing.</p>
+          <p className="text-muted-foreground max-w-xs mx-auto">This record may have been deleted.</p>
         </div>
         <Button asChild variant="outline"><Link href="/dashboard/tenants">Return to Tenants</Link></Button>
       </div>
@@ -217,7 +214,6 @@ export default function TenantDetailPage() {
 
   const propertyAddress = [property?.address.nameOrNumber, property?.address.street, property?.address.city, property?.address.postcode].filter(Boolean).join(', ') || 'N/A';
   
-  // VERIFICATION LOGIC: A tenant is verified if explicitly flagged true OR if they have joinedDate linked via handshake
   const isVerified = tenant.verified === true || !!tenant.joinedDate;
 
   return (
@@ -252,7 +248,7 @@ export default function TenantDetailPage() {
                     <BellRing className="h-3.5 w-3.5 text-primary" /> Send Rent Nudge
                 </Button>
                 <Button variant="outline" asChild className="h-10 px-6 font-bold uppercase tracking-widest text-[10px] shadow-sm border-primary/20 hover:bg-primary/5">
-                    <Link href={`/dashboard/tenants/${id}/edit?propertyId=${tenant.propertyId}`}>
+                    <Link href={`/dashboard/tenants/${id}/edit`}>
                         <Edit className="mr-2 h-3.5 w-3.5 text-primary" /> Edit Profile
                     </Link>
                 </Button>
