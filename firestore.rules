@@ -15,20 +15,21 @@ service cloud.firestore {
     }
 
     // --- TOP-LEVEL DISCOVERY RULES (CRITICAL FOR HANDSHAKE PERFORMANCE) ---
+    // These rules allow tenants to find their records across the entire database via collectionGroup queries.
     
     match /{path=**}/tenants/{tenantId} {
-      // Identity Discovery: Allow tenants to find their record by email or linked UID.
-      // We assume email is already normalized to lowercase in the database for performance.
+      // Identity Discovery: Allow tenants to find their record by email or their own linked UID.
       allow read: if isSignedIn() && (
         (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
         resource.data.userId == request.auth.uid
       );
       
-      // Verification Handshake: Allow the resident to link their UID and join the portal.
+      // Verification Handshake: Allow the resident to link their unique UID and join the portal.
+      // We restrict updates to ONLY these three fields to prevent residents from modifying contract data.
       allow update: if isSignedIn() && (
         (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
         resource.data.userId == request.auth.uid
-      ) && request.resource.data.diff(resource.data).affectedKeys().hasAny(['joinedDate', 'userId', 'verified', 'lastSyncCheck']);
+      ) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['joinedDate', 'userId', 'verified', 'lastSyncCheck']);
     }
 
     match /{path=**}/messages/{messageId} {
@@ -54,7 +55,7 @@ service cloud.firestore {
         match /tenants/{tenantId} {
           allow read, write: if isOwner(userId);
           
-          // Path-specific rules for deeper hierarchy
+          // Path-specific rules for deeper hierarchy (Parity with discovery rules)
           allow get: if isSignedIn() && (
             (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
             resource.data.userId == request.auth.uid
@@ -63,7 +64,7 @@ service cloud.firestore {
           allow update: if isSignedIn() && (
             (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower()) ||
             resource.data.userId == request.auth.uid
-          ) && request.resource.data.diff(resource.data).affectedKeys().hasAny(['joinedDate', 'userId', 'verified', 'lastSyncCheck']);
+          ) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['joinedDate', 'userId', 'verified', 'lastSyncCheck']);
 
           match /messages/{messageId} {
              allow read, write: if isOwner(userId) || (isSignedIn() && request.auth.token.email != null && get(/databases/$(database)/documents/userProfiles/$(userId)/properties/$(propertyId)/tenants/$(tenantId)).data.email == request.auth.token.email.lower());
