@@ -152,6 +152,7 @@ export default function EditTenantPage() {
     setIsSaving(true);
     
     try {
+      // Normalize email for consistent handshake
       const normalizedEmail = data.email.toLowerCase().trim();
       
       const updateData = { 

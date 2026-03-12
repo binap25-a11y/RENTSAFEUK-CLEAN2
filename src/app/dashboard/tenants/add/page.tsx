@@ -158,7 +158,7 @@ export default function AddTenantPage() {
     setIsSubmitting(true);
 
     const tenantsCollection = collection(firestore, 'tenants');
-    // Normalize email for discovery Handshake
+    // Force lowercase and trim for identity discovery
     const normalizedEmail = data.email.toLowerCase().trim();
     
     const newTenant = {

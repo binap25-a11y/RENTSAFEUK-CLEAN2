@@ -49,23 +49,24 @@ export default function TenantDashboard() {
     setIsLoading(true);
     setDiscoveryStatus('searching');
 
+    // Always normalize email for reliable searching
     const userEmail = user.email.toLowerCase().trim();
 
     try {
         const tenantsCol = collection(firestore, 'tenants');
         
-        // STAGE 1: Discovery by existing UID link (Verified State)
+        // STAGE 1: Priority discovery by existing UID link
         const qByUid = query(tenantsCol, where('userId', '==', user.uid), limit(1));
         let snap = await getDocs(qByUid);
 
-        // STAGE 2: Discovery by normalized email (New Handshake State)
+        // STAGE 2: Fallback discovery by normalized email
         if (snap.empty) {
             const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
             snap = await getDocs(qByEmail);
         }
 
         if (snap.empty) {
-            console.warn("Tenant Discovery: No record found for", userEmail);
+            console.warn("Tenant Discovery: No record found for normalized email", userEmail);
             setIsLoading(false);
             setDiscoveryStatus('failed');
             discoveryRef.current = false;
@@ -75,7 +76,7 @@ export default function TenantDashboard() {
         const tenantDoc = snap.docs[0];
         const tenantData = tenantDoc.data();
         
-        // VERIFICATION HANDSHAKE: Link account atomically
+        // HANDSHAKE: Linking identity if first time or mismatched
         if (!tenantData.userId || tenantData.userId !== user.uid || !tenantData.verified) {
             setIsHandshaking(true);
             setDiscoveryStatus('handshaking');
@@ -88,12 +89,12 @@ export default function TenantDashboard() {
             
             toast({ 
                 title: "Portal Verified", 
-                description: "You are now connected to your resident dashboard." 
+                description: "Your identity has been successfully linked to this property." 
             });
             setIsHandshaking(false);
         }
 
-        // RESOLVE CONTEXT
+        // RESOLVE PROPERTY CONTEXT
         const propSnap = await getDoc(doc(firestore, 'properties', tenantData.propertyId));
         
         if (propSnap.exists()) {
@@ -156,7 +157,7 @@ export default function TenantDashboard() {
                 </CardDescription>
             </CardHeader>
             <CardContent className="pt-6 text-sm text-muted-foreground">
-                <p className="leading-relaxed text-center">Please ask your landlord to verify that they have registered your email <strong>{user?.email}</strong> correctly.</p>
+                <p className="leading-relaxed text-center">Please ask your landlord to verify that they have registered your email <strong>{user?.email}</strong> correctly in the RentSafeUK portal.</p>
             </CardContent>
             <CardFooter className="pt-6 bg-muted/5 border-t">
                 <Button variant="outline" className="w-full h-11 rounded-xl font-bold uppercase tracking-widest text-[10px]" onClick={() => { discoveryRef.current = false; performDiscovery(); }}>
