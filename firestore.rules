@@ -17,14 +17,14 @@ service cloud.firestore {
     }
 
     // Check if the current user is the tenant linked to the record
-    // Using .lower() ensures casing mismatches between auth token and DB don't block access
+    // We now assume emails are normalized to lowercase in the database to support optimized queries
     function isTenantOf(data) {
       let userEmail = request.auth.token.email;
       return isSignedIn() && (
         data.tenantId == request.auth.uid || 
         data.userId == request.auth.uid || 
-        (data.email != null && data.email.lower() == userEmail.lower()) ||
-        (data.tenantEmail != null && data.tenantEmail.lower() == userEmail.lower())
+        (data.email != null && data.email == userEmail) ||
+        (data.tenantEmail != null && data.tenantEmail == userEmail)
       );
     }
 

@@ -66,6 +66,7 @@ export default function LoginPage() {
           const snap = await getDoc(userRef);
           
           let role: string | null = null;
+          // Always use normalized lowercase email for discovery
           const userEmail = user.email?.toLowerCase().trim();
 
           if (snap.exists()) {
@@ -76,6 +77,7 @@ export default function LoginPage() {
                 const q = query(tenantsCol, where('email', '==', userEmail), limit(1));
                 const tenantSnap = await getDocs(q);
                 if (!tenantSnap.empty) {
+                    console.log("LoginPage: Self-healing role to 'tenant'");
                     role = 'tenant';
                     await updateDoc(userRef, { role: 'tenant' });
                 }
@@ -88,6 +90,7 @@ export default function LoginPage() {
                 const tenantSnap = await getDocs(q);
                 
                 if (!tenantSnap.empty) {
+                  console.log("LoginPage: Identity handshake discovered tenant record");
                   role = 'tenant';
                   await setDoc(userRef, {
                     id: user.uid,

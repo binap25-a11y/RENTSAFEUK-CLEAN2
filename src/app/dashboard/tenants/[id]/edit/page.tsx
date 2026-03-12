@@ -226,7 +226,7 @@ export default function EditTenantPage() {
                  <FormItem>
                    <FormLabel className="font-bold">Email Address</FormLabel>
                    <FormControl><Input className="h-11" type="email" {...field} /></FormControl>
-                   <FormDescription className="text-[10px]">Verification uses this normalized email.</FormDescription>
+                   <FormDescription className="text-[10px]">Verification uses this normalized lowercase email.</FormDescription>
                    <FormMessage />
                  </FormItem>
                )} />
@@ -251,7 +251,7 @@ export default function EditTenantPage() {
                             </FormControl>
                             <SelectContent>
                                 {Array.from({ length: 31 }, (_, i) => (i + 1)).map(day => (
-                                    <SelectItem key={day} value={String(day)}>{day}{[1, 21, 31].includes(day) ? 'st' : [2, 22].includes(day) ? 'nd' : [3, 23].includes(day) ? 'rd' : 'th'} of month</SelectItem>
+                                    <SelectItem key={day} value={String(day)}>{day} of month</SelectItem>
                                 ))}
                             </SelectContent>
                         </Select>

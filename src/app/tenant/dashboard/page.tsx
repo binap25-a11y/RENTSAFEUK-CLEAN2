@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -61,6 +60,7 @@ export default function TenantDashboard() {
 
         // STAGE 2: Fallback discovery by normalized email
         if (snap.empty) {
+            console.log("Tenant Discovery: Falling back to email check for", userEmail);
             const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
             snap = await getDocs(qByEmail);
         }
@@ -84,7 +84,8 @@ export default function TenantDashboard() {
             await updateDoc(tenantDoc.ref, { 
                 userId: user.uid,
                 verified: true,
-                joinedDate: new Date().toISOString()
+                joinedDate: new Date().toISOString(),
+                status: 'Active' // Ensure they are marked active
             });
             
             toast({ 

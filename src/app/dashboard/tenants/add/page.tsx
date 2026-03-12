@@ -158,7 +158,7 @@ export default function AddTenantPage() {
     setIsSubmitting(true);
 
     const tenantsCollection = collection(firestore, 'tenants');
-    // Force lowercase and trim for identity discovery
+    // CRITICAL: Force lowercase and trim for reliable identity discovery
     const normalizedEmail = data.email.toLowerCase().trim();
     
     const newTenant = {
@@ -256,7 +256,7 @@ export default function AddTenantPage() {
                  <FormItem>
                    <FormLabel className="font-bold">Resident Portal Email</FormLabel>
                    <FormControl><Input type="email" placeholder="tenant@example.com" className="h-11" {...field} /></FormControl>
-                   <FormDescription className="text-[10px] leading-tight">This email is used for portal verification.</FormDescription>
+                   <FormDescription className="text-[10px] leading-tight">This email is used for portal verification and MUST be lowercase.</FormDescription>
                    <FormMessage />
                  </FormItem>
                )} />
