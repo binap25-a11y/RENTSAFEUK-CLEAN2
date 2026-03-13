@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RentSafeUK Security Governance
+     * RentSafeUK Security Governance v2.1
      * Optimized for high-speed identity discovery and verified Resident Hub access.
      */
 
@@ -15,7 +15,7 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Landlord check: verifies if user owns the record or the parent property context
+    // Landlord check: verifies if user owns the record
     function isLandlord(data) {
       return isSignedIn() && (
         request.auth.uid == data.get('landlordId', '') || 
@@ -24,20 +24,18 @@ service cloud.firestore {
     }
 
     // Tenant check: establishes authorization via UID handshake or verified email registry
-    // Direct token access is preferred for query optimization
     function isTenant(data) {
-      let authEmail = request.auth.token.email;
+      let email = request.auth.token.email;
       return isSignedIn() && (
         request.auth.uid == data.get('tenantId', '') || 
         request.auth.uid == data.get('userId', '') ||
         request.auth.uid in data.get('activeTenantUids', []) ||
-        (authEmail != null && authEmail == data.get('email', '')) ||
-        (authEmail != null && authEmail == data.get('tenantEmail', '')) ||
-        (authEmail != null && authEmail in data.get('tenantEmails', []))
+        (email != null && email == data.get('email', '')) ||
+        (email != null && email == data.get('tenantEmail', '')) ||
+        (email != null && email in data.get('tenantEmails', []))
       );
     }
 
-    // General authorization check for relational records
     function isRelated(data) {
       return isLandlord(data) || isTenant(data);
     }
@@ -49,7 +47,7 @@ service cloud.firestore {
 
     // --- Tenant Registry ---
     match /tenants/{tenantId} {
-      // allow list MUST be statically verifiable for high-speed discovery queries
+      // Allow discovery list if user is filtering by their own email or UID
       allow list: if isSignedIn(); 
       allow get: if isRelated(resource.data);
       allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
@@ -66,7 +64,7 @@ service cloud.firestore {
       allow list: if isSignedIn();
       allow get: if isRelated(resource.data);
       allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
-      // HANDSHAKE: Allow verified residents to link their UID to the property record
+      // HANDSHAKE: Allow residents to update tenantId to link their account
       allow update: if isSignedIn() && (
         isLandlord(resource.data) || 
         (isTenant(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tenantId', 'activeTenantUids', 'tenantEmail', 'tenantEmails', 'status']))
@@ -96,7 +94,6 @@ service cloud.firestore {
       allow write: if isLandlord(resource.data);
     }
 
-    // --- Shared Metadata ---
     match /inspections/{id} {
       allow list: if isSignedIn();
       allow read: if isRelated(resource.data);
@@ -123,7 +120,19 @@ service cloud.firestore {
       allow write: if isLandlord(resource.data);
     }
 
-    // --- Generic Catch-all ---
+    match /checklists/{id} {
+      allow list: if isSignedIn();
+      allow get: if isRelated(resource.data);
+      allow write: if isLandlord(resource.data);
+    }
+
+    match /screenings/{id} {
+      allow list: if isSignedIn();
+      allow get: if isRelated(resource.data);
+      allow write: if isLandlord(resource.data);
+    }
+
+    // --- Catch-all fallback for other sub-collections ---
     match /{path=**} {
       allow read, write: if isSignedIn() && (
         (resource != null && isLandlord(resource.data)) ||

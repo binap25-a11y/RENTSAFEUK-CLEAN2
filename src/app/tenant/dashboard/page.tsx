@@ -52,12 +52,13 @@ export default function TenantDashboard() {
         const tenantsCol = collection(firestore, 'tenants');
         
         // STAGE 1: Identity Link Search (By UID)
+        // High-speed authorized search once handshake is complete
         const qByUid = query(tenantsCol, where('userId', '==', user.uid), limit(1));
         let snap = await getDocs(qByUid);
 
         // STAGE 2: Registry Bridge Fallback (By Email)
         if (snap.empty) {
-            // Note: Rules are optimized for this search
+            // First visit discovery via registered email
             const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
             snap = await getDocs(qByEmail);
         }
@@ -86,6 +87,7 @@ export default function TenantDashboard() {
             });
             
             // 2. Update Property registry with UID handshake
+            // The security rules explicitly permit this field-level update for verified emails
             const propertyRef = doc(firestore, 'properties', tenantData.propertyId);
             await updateDoc(propertyRef, { 
                 tenantId: user.uid,
@@ -113,14 +115,14 @@ export default function TenantDashboard() {
         setIsLoading(false);
         discoveryRef.current = false;
     } catch (err: any) {
-        console.error("Resident Hub Discovery Error:", err.message);
-        
         // Emit rich error for developer oversight if discovery is blocked by rules
         if (err.code === 'permission-denied') {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: 'tenants',
                 operation: 'list'
             }));
+        } else {
+            console.error("Resident Hub Discovery Error:", err.message);
         }
         
         setIsLoading(false);
