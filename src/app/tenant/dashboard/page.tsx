@@ -39,14 +39,12 @@ export default function TenantDashboard() {
   const [context, setContext] = useState<TenantContext | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isHandshaking, setIsHandshaking] = useState(false);
-  const [discoveryStatus, setDiscoveryStatus] = useState<'searching' | 'failed' | 'handshaking'>('searching');
   const discoveryRef = useRef(false);
 
   const performDiscovery = useCallback(async () => {
     if (!user || !firestore || !user.email || discoveryRef.current) return;
     discoveryRef.current = true;
     setIsLoading(true);
-    setDiscoveryStatus('searching');
 
     const userEmail = user.email.toLowerCase().trim();
 
@@ -54,20 +52,18 @@ export default function TenantDashboard() {
         const tenantsCol = collection(firestore, 'tenants');
         
         // STAGE 1: Identity Link Search (By UID)
-        // This query matches optimized security rules for fast discovery.
         const qByUid = query(tenantsCol, where('userId', '==', user.uid), limit(1));
         let snap = await getDocs(qByUid);
 
         // STAGE 2: Registry Bridge Fallback (By Email)
-        // If no UID link exists, we search the landlord registry by verified email.
         if (snap.empty) {
             const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
             snap = await getDocs(qByEmail);
         }
 
         if (snap.empty) {
+            console.warn("Resident Hub: Email registry mapping not found for", userEmail);
             setIsLoading(false);
-            setDiscoveryStatus('failed');
             discoveryRef.current = false;
             return;
         }
@@ -76,10 +72,9 @@ export default function TenantDashboard() {
         const tenantData = tenantDoc.data();
         
         // STAGE 3: Secure Identity Handshake
-        // If the tenant document doesn't have the user's UID, we perform an authorized link.
+        // If the tenant document doesn't have the user's UID, we link it now.
         if (!tenantData.userId || tenantData.userId !== user.uid || !tenantData.verified) {
             setIsHandshaking(true);
-            setDiscoveryStatus('handshaking');
             
             // 1. Link account UID to Tenant registry
             await updateDoc(tenantDoc.ref, { 
@@ -95,10 +90,10 @@ export default function TenantDashboard() {
             const propertyRef = doc(firestore, 'properties', tenantData.propertyId);
             await updateDoc(propertyRef, { tenantId: user.uid })
                 .catch(e => {
-                    console.warn("Resident Hub: Property sync deferred. Access remains active via registry bridge.");
+                    console.warn("Resident Hub: Property sync deferred. Access remains active via email bridge.");
                 });
 
-            toast({ title: "Portal Connection Established", description: "Identity verification complete." });
+            toast({ title: "Portal Connected", description: "Identity verification complete." });
             setIsHandshaking(false);
         }
 
@@ -116,24 +111,22 @@ export default function TenantDashboard() {
             });
         } else {
             console.error("Resident Hub: Linked property document missing.");
-            setDiscoveryStatus('failed');
         }
         
         setIsLoading(false);
         discoveryRef.current = false;
     } catch (err: any) {
-        // Surface rich error for developer oversight if discovery is blocked by rules
+        console.error("Resident Hub Discovery Error:", err.message);
+        
+        // Emit rich error for developer oversight if discovery is blocked by rules
         if (err.code === 'permission-denied') {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: 'tenants',
                 operation: 'list'
             }));
-        } else {
-            console.error("Resident Hub Discovery Error:", err.message);
         }
         
         setIsLoading(false);
-        setDiscoveryStatus('failed');
         discoveryRef.current = false;
     }
   }, [user, firestore]);
@@ -154,8 +147,8 @@ export default function TenantDashboard() {
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/5 rounded-full animate-ping" />
             </div>
             <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary tracking-tight text-center">Syncing Portal...</h2>
-                <p className="text-muted-foreground font-medium text-center">Establishing secure connection to your property records.</p>
+                <h2 className="font-headline text-2xl font-bold text-primary tracking-tight text-center">Establishing Portal...</h2>
+                <p className="text-muted-foreground font-medium text-center">Syncing secure connection to your property records.</p>
             </div>
         </div>
     );
@@ -222,7 +215,7 @@ export default function TenantDashboard() {
                         ? format(new Date(context.tenantData.tenancyStartDate.seconds * 1000), 'dd MMM yyyy') 
                         : 'Active Agreement'}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1 font-medium italic">Handshake Verified</p>
+                <p className="text-xs text-muted-foreground mt-1 font-medium italic">Registry Verified</p>
             </CardContent>
         </Card>
 

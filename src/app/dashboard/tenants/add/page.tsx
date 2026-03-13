@@ -173,16 +173,19 @@ export default function AddTenantPage() {
         await addDoc(tenantsCollection, prepareForFirestore(newTenant));
         
         const propertyDocRef = doc(firestore, 'properties', data.propertyId);
-        // Sync email to property for security rule authorization
+        
+        // SYNC REGISTRY: Update property metadata to authorize this email for discovery.
+        // This arrayUnion is critical for the query-compatible security rules.
         await updateDoc(propertyDocRef, { 
             status: 'Occupied',
-            tenantEmails: arrayUnion(normalizedEmail)
+            tenantEmail: normalizedEmail, // Legacy support
+            tenantEmails: arrayUnion(normalizedEmail) // Specialized registry bridge
         });
 
-        toast({ title: 'Tenant Assigned' });
+        toast({ title: 'Tenant Assigned', description: 'Registry bridge established.' });
         router.push(`/dashboard/properties/${data.propertyId}`);
     } catch (err) {
-        console.error(err);
+        console.error("Tenant assignment failed:", err);
         toast({ variant: 'destructive', title: 'Sync Failed' });
     } finally {
         setIsSubmitting(false);

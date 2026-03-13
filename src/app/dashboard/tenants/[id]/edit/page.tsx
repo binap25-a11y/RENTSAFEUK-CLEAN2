@@ -141,11 +141,7 @@ export default function EditTenantPage() {
 
   async function onSubmit(data: TenantFormValues) {
     if (!user || !firestore || !tenant || !tenantRef) {
-      toast({
-        variant: 'destructive',
-        title: 'Error',
-        description: 'Tenant record context missing.',
-      });
+      toast({ variant: 'destructive', title: 'Error', description: 'Tenant record context missing.' });
       return;
     }
     setIsSaving(true);
@@ -161,34 +157,32 @@ export default function EditTenantPage() {
 
       await updateDoc(tenantRef, cleanedUpdateData);
 
-      // CRITICAL: Manage property identity registry for security rule authorization
+      // CRITICAL: Manage property identity registry bridge for security rule authorization.
+      // This synchronization ensures that verified residents can always identify their home during discovery.
       if (tenant.propertyId !== data.propertyId) {
           const oldPropRef = doc(firestore, 'properties', tenant.propertyId);
           await updateDoc(oldPropRef, { 
-              tenantEmails: arrayRemove(tenant.email),
-              tenantEmail: '' // Clear legacy field
+              tenantEmails: arrayRemove(tenant.email)
           });
           
           const newPropRef = doc(firestore, 'properties', data.propertyId);
           await updateDoc(newPropRef, { 
-              tenantEmails: arrayUnion(normalizedEmail),
-              tenantEmail: normalizedEmail // Sync legacy field for compatibility
+              status: 'Occupied',
+              tenantEmail: normalizedEmail,
+              tenantEmails: arrayUnion(normalizedEmail)
           });
       } else if (tenant.email !== normalizedEmail) {
           const propRef = doc(firestore, 'properties', data.propertyId);
           await updateDoc(propRef, { 
-              tenantEmails: arrayRemove(tenant.email),
-              tenantEmail: normalizedEmail, // Sync legacy field
-              tenantEmails_update: arrayUnion(normalizedEmail)
+              tenantEmails: arrayRemove(tenant.email)
           });
-          // Ensure the array union happens
-          await updateDoc(propRef, { tenantEmails: arrayUnion(normalizedEmail) });
+          await updateDoc(propRef, { 
+              tenantEmail: normalizedEmail,
+              tenantEmails: arrayUnion(normalizedEmail)
+          });
       }
 
-      toast({
-        title: 'Registry Updated',
-        description: 'Identity mappings preserved.',
-      });
+      toast({ title: 'Registry Updated', description: 'Identity handshake preserved.' });
       router.push(`/dashboard/tenants/${tenant.id}?propertyId=${tenant.propertyId}`);
     } catch (error) {
       console.error('Registry sync failed:', error);

@@ -71,8 +71,8 @@ export default function LoginPage() {
           
           let role: string | null = null;
 
-          // 1. DISCOVERY HANDSHAKE: Check residency registry by normalized email
-          // Using optimized query that aligns with Firestore security rules.
+          // 1. DISCOVERY HANDSHAKE: Check residency registry by normalized email.
+          // This query matches the optimized rules for high-speed identity verification.
           const tenantsCol = collection(firestore, 'tenants');
           const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
           const tenantSnap = await getDocs(qByEmail);
@@ -80,13 +80,13 @@ export default function LoginPage() {
 
           if (snap.exists()) {
             role = snap.data().role;
-            // SELF-HEALING: If account was created as landlord but registry shows tenant, fix role.
+            // SELF-HEALING: If previously misidentified, sync role to resident portal.
             if (role !== 'tenant' && isTenantInRegistry) {
                 role = 'tenant';
                 await updateDoc(userRef, { role: 'tenant' });
             }
           } else {
-            // PROVISIONING: Initialize profile based on discovery result.
+            // PROVISIONING: Initialize profile based on registry discovery.
             role = isTenantInRegistry ? 'tenant' : (mode === 'signup' ? form.getValues('role') : 'landlord');
             await setDoc(userRef, {
               id: user.uid,
@@ -97,15 +97,14 @@ export default function LoginPage() {
             });
           }
           
-          // FINAL ROUTING: Route to correct portal based on discovered role.
+          // ROUTING: Redirect to discovered portal context.
           if (role === 'tenant') {
             router.replace('/tenant/dashboard');
           } else {
             router.replace('/dashboard');
           }
         } catch (error: any) {
-          console.error("Login Redirection Error:", error.message);
-          // Fallback to dashboard if discovery is blocked.
+          console.error("Login Handshake Deferred:", error.message);
           router.replace('/dashboard');
         }
       };
@@ -171,7 +170,7 @@ export default function LoginPage() {
          <div className="flex flex-col items-center gap-4">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">
-                Establishing Secure Session...
+                Resolving Identity Hub...
             </p>
          </div>
       </div>

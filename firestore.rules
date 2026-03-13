@@ -7,17 +7,17 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    // Optimized email retrieval for query analysis.
-    // Using direct token access aligns with Firestore's static query optimizer.
+    // Optimized email retrieval for high-speed query analysis.
+    // Directly accessing the email property is critical for rule-query optimization.
     function authEmail() {
-      return isSignedIn() ? request.auth.token.get('email', '') : '';
+      return isSignedIn() && request.auth.token.email != null ? request.auth.token.email : "";
     }
 
     // Helper: Validates if the authenticated user is the registered resident.
-    // Performs direct string comparisons to ensure 100% query compatibility.
+    // Performs direct comparisons to ensure 100% query compatibility.
     function isRegisteredResident(data) {
       let email = authEmail();
-      return email != '' && (
+      return email != "" && (
         data.get('tenantEmail', '') == email ||
         data.get('email', '') == email ||
         email in data.get('tenantEmails', [])
@@ -59,20 +59,21 @@ service cloud.firestore {
     match /tenants/{id} {
       allow create: if isSignedIn();
       
-      // Authorized Read: Direct UID or Email matches.
+      // Authorized Read: Direct UID or Email matches for static verification.
       allow get, list: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.userId == request.auth.uid || 
-        (authEmail() != '' && resource.data.email == authEmail())
+        (authEmail() != "" && resource.data.email == authEmail())
       );
       
       // Handshake Authorization: Link verified UID to record.
       allow update: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         (
-          authEmail() != '' && 
+          authEmail() != "" && 
           resource.data.email == authEmail() && 
-          request.resource.data.userId == request.auth.uid
+          request.resource.data.userId == request.auth.uid &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['userId', 'verified', 'joinedDate', 'status'])
         )
       );
       
@@ -96,7 +97,7 @@ service cloud.firestore {
       allow list: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.tenantId == request.auth.uid || 
-        (authEmail() != '' && resource.data.get('tenantEmail', '') == authEmail())
+        (authEmail() != "" && resource.data.get('tenantEmail', '') == authEmail())
       );
       allow get, update, delete: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
