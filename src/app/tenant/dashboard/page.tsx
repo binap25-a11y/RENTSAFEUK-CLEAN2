@@ -54,20 +54,17 @@ export default function TenantDashboard() {
         const tenantsCol = collection(firestore, 'tenants');
         
         // STAGE 1: Check existing identity link by UID
-        console.log("Resident Hub: Resolving identity link...");
         const qByUid = query(tenantsCol, where('userId', '==', user.uid), limit(1));
         let snap = await getDocs(qByUid);
 
         // STAGE 2: Fallback to normalized email discovery for first-time handshake
         if (snap.empty) {
-            console.log("Resident Hub: Registry search for:", userEmail);
-            // Rules allow this query if the email matches the auth token
+            // Rules allow this query if the email matches the auth token exactly (query-optimized)
             const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
             snap = await getDocs(qByEmail);
         }
 
         if (snap.empty) {
-            console.warn("Resident Hub: No tenancy found for:", userEmail);
             setIsLoading(false);
             setDiscoveryStatus('failed');
             discoveryRef.current = false;
@@ -80,7 +77,6 @@ export default function TenantDashboard() {
         // STAGE 3: ATOMIC HANDSHAKE - Establish secure UID link if missing
         // This process transitions the tenant from email-based access to permanent UID-based access
         if (!tenantData.userId || tenantData.userId !== user.uid || !tenantData.verified) {
-            console.log("Resident Hub: Finalizing identity handshake...");
             setIsHandshaking(true);
             setDiscoveryStatus('handshaking');
             
@@ -106,7 +102,6 @@ export default function TenantDashboard() {
         }
 
         // STAGE 4: RESOLVE AUTHORIZED CONTEXT
-        console.log("Resident Hub: Resolving property access...");
         const propRef = doc(firestore, 'properties', tenantData.propertyId);
         const propSnap = await getDoc(propRef);
         
@@ -119,21 +114,20 @@ export default function TenantDashboard() {
                 propertyData: propSnap.data()
             });
         } else {
-            console.error("Resident Hub: Property registry bridge failed.");
             setDiscoveryStatus('failed');
         }
         
         setIsLoading(false);
         discoveryRef.current = false;
     } catch (err: any) {
-        console.error("Resident Hub Discovery Error:", err.message);
-        
-        // Surface rich error for developer oversight if discovery is blocked by rules
+        // Emit rich error for developer oversight if discovery is blocked by rules
         if (err.code === 'permission-denied') {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: 'tenants',
                 operation: 'list'
             }));
+        } else {
+            console.error("Resident Hub Discovery Error:", err.message);
         }
         
         setIsLoading(false);

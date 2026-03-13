@@ -14,12 +14,13 @@ service cloud.firestore {
     }
 
     // Helper: Validates if the authenticated user is the registered resident.
-    // Relies on database fields being normalized to lowercase.
+    // Relies on database fields being normalized to lowercase on write.
+    // Removed transformations from data fields to ensure high-performance query compatibility.
     function isRegisteredResident(data) {
       let email = authEmail();
       return email != '' && (
-        data.get('tenantEmail', '').lower() == email ||
-        data.get('email', '').lower() == email ||
+        data.get('tenantEmail', '') == email ||
+        data.get('email', '') == email ||
         email in data.get('tenantEmails', [])
       );
     }
@@ -34,7 +35,6 @@ service cloud.firestore {
       allow create: if isSignedIn();
       
       // Authorized Read: Direct UID match OR Verified Email Registry.
-      // Split to ensure query optimization.
       allow get, list: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.tenantId == request.auth.uid ||
@@ -42,7 +42,7 @@ service cloud.firestore {
       );
       
       // Handshake Authorization: Allow verified residents to link their UID once.
-      // Restricted to exactly the tenantId field.
+      // Restricted specifically to the tenantId field for security integrity.
       allow update: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         (
@@ -63,7 +63,7 @@ service cloud.firestore {
       allow get, list: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.userId == request.auth.uid || 
-        (authEmail() != '' && resource.data.email.lower() == authEmail())
+        (authEmail() != '' && resource.data.email == authEmail())
       );
       
       // Handshake Authorization: Link verified UID to record.
@@ -71,7 +71,7 @@ service cloud.firestore {
         resource.data.landlordId == request.auth.uid || 
         (
           authEmail() != '' && 
-          resource.data.email.lower() == authEmail() && 
+          resource.data.email == authEmail() && 
           request.resource.data.userId == request.auth.uid
         )
       );
@@ -97,7 +97,7 @@ service cloud.firestore {
       allow list: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.tenantId == request.auth.uid || 
-        (authEmail() != '' && resource.data.get('tenantEmail', '').lower() == authEmail())
+        (authEmail() != '' && resource.data.get('tenantEmail', '') == authEmail())
       );
       allow get, update, delete: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
