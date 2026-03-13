@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -73,7 +72,7 @@ export default function TenantDashboard() {
         const tenantData = tenantDoc.data();
         
         // STAGE 3: Secure Identity Handshake
-        // Establish permanent UID link on first visit
+        // Establish permanent UID link on first visit to transition to high-speed authorization
         if (!tenantData.userId || tenantData.userId !== user.uid || !tenantData.verified) {
             setIsHandshaking(true);
             
@@ -85,7 +84,7 @@ export default function TenantDashboard() {
                 status: 'Active' 
             });
             
-            // 2. Update Property registry with UID handshake (authorized by QAP rules)
+            // 2. Update Property registry with UID handshake
             const propertyRef = doc(firestore, 'properties', tenantData.propertyId);
             await updateDoc(propertyRef, { 
                 tenantId: user.uid,
@@ -113,13 +112,16 @@ export default function TenantDashboard() {
         setIsLoading(false);
         discoveryRef.current = false;
     } catch (err: any) {
-        console.error("Resident Hub Discovery Error:", err.message);
+        console.warn("Resident Hub Discovery Deferred:", err.message);
+        
+        // Emit rich error for developer oversight if discovery is blocked by rules
         if (err.code === 'permission-denied') {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: 'tenants',
                 operation: 'list'
             }));
         }
+        
         setIsLoading(false);
         discoveryRef.current = false;
     }
@@ -157,7 +159,7 @@ export default function TenantDashboard() {
                 </div>
                 <CardTitle className="font-headline text-xl text-primary">Tenancy Not Linked</CardTitle>
                 <CardDescription className="text-sm font-medium px-4">
-                    The account <strong>{user?.email}</strong> is not currently mapped to an active tenancy.
+                    The account <strong>{user?.email}</strong> is not currently mapped to an active tenancy in our registry.
                 </CardDescription>
             </CardHeader>
             <CardContent className="pt-6 text-sm text-muted-foreground">
@@ -165,7 +167,7 @@ export default function TenantDashboard() {
             </CardContent>
             <CardFooter className="pt-6 bg-muted/5 border-t">
                 <Button variant="outline" className="w-full h-11 font-bold" onClick={() => { discoveryRef.current = false; performDiscovery(); }}>
-                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Handshake
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Identity Sync
                 </Button>
             </CardFooter>
         </Card>

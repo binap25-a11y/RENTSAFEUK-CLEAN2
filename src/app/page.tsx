@@ -72,7 +72,7 @@ export default function LoginPage() {
           let role: string | null = null;
 
           // 1. DISCOVERY HANDSHAKE: Check residency registry by normalized email.
-          // This query matches the optimized rules for high-speed identity verification.
+          // This query is optimized for the updated high-speed security rules.
           const tenantsCol = collection(firestore, 'tenants');
           const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
           const tenantSnap = await getDocs(qByEmail);
@@ -104,7 +104,7 @@ export default function LoginPage() {
             router.replace('/dashboard');
           }
         } catch (error: any) {
-          console.error("Login Handshake Deferred:", error.message);
+          console.warn("Login Handshake Deferred:", error.message);
           router.replace('/dashboard');
         }
       };

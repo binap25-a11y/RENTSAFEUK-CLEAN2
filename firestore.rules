@@ -1,4 +1,3 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -16,8 +15,9 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
+    // Direct token access is preferred for query optimization
     function authEmail() {
-      return request.auth.token.get('email', '').lower();
+      return (request.auth.token.email != null) ? request.auth.token.email.lower() : '';
     }
 
     // Landlord check: verifies if user owns the record or the parent property context
@@ -30,13 +30,14 @@ service cloud.firestore {
 
     // Tenant check: establishes authorization via UID handshake or verified email registry
     function isTenant(data) {
+      let email = authEmail();
       return isSignedIn() && (
         request.auth.uid == data.get('tenantId', '') || 
         request.auth.uid == data.get('userId', '') ||
         request.auth.uid in data.get('activeTenantUids', []) ||
-        (authEmail() != '' && authEmail() == data.get('email', '').lower()) ||
-        (authEmail() != '' && authEmail() == data.get('tenantEmail', '').lower()) ||
-        (authEmail() != '' && authEmail() in data.get('tenantEmails', []))
+        (email != '' && email == data.get('email', '').lower()) ||
+        (email != '' && email == data.get('tenantEmail', '').lower()) ||
+        (email != '' && email in data.get('tenantEmails', []))
       );
     }
 
@@ -56,21 +57,23 @@ service cloud.firestore {
 
     // --- Tenant Registry ---
     match /tenants/{tenantId} {
+      // allow list MUST be statically verifiable for high-speed discovery queries
+      allow list: if isSignedIn(); 
       allow get: if isRelated(resource.data);
-      allow list: if isSignedIn(); // QAP: Search results are restricted by resource data checks
       allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
       allow update: if isSignedIn() && (
         isLandlord(resource.data) || 
-        (isTenant(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['userId', 'verified', 'joinedDate', 'status']))
+        (isTenant(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['userId', 'verified', 'joinedDate', 'status', 'lastSyncCheck']))
       );
       allow delete: if isLandlord(resource.data);
     }
 
     // --- Property Portfolio ---
     match /properties/{propertyId} {
+      allow list: if isSignedIn();
       allow get: if isRelated(resource.data);
-      allow list: if isSignedIn(); // QAP: Registry discovery is performed via explicit filters
       allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
+      // HANDSHAKE: Allow verified residents to link their UID to the property record
       allow update: if isSignedIn() && (
         isLandlord(resource.data) || 
         (isTenant(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tenantId', 'activeTenantUids', 'tenantEmail', 'tenantEmails']))
@@ -78,33 +81,61 @@ service cloud.firestore {
       allow delete: if isLandlord(resource.data);
     }
 
-    // --- Repairs & Shared Ledgers ---
+    // --- Shared Portals & Audit Trails ---
     match /repairs/{id} {
+      allow list: if isSignedIn();
       allow get: if isRelated(resource.data);
-      allow list: if isSignedIn(); // QAP
       allow create: if isSignedIn();
       allow update: if isRelated(resource.data);
       allow delete: if isLandlord(resource.data);
     }
 
     match /messages/{id} {
-      allow get: if isSignedIn() && (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.landlordId || request.auth.uid == resource.data.tenantId);
-      allow list: if isSignedIn(); // QAP
+      allow list: if isSignedIn();
+      allow get: if isSignedIn() && (request.auth.uid == resource.data.senderId || isRelated(resource.data));
       allow create: if isSignedIn();
       allow update, delete: if false;
     }
 
     match /documents/{id} {
+      allow list: if isSignedIn();
       allow read: if isRelated(resource.data);
       allow write: if isLandlord(resource.data);
     }
 
     match /inspections/{id} {
+      allow list: if isSignedIn();
       allow read: if isRelated(resource.data);
       allow write: if isLandlord(resource.data);
     }
 
-    // --- Generic Catch-all for App Services ---
+    match /checklists/{id} {
+      allow list: if isSignedIn();
+      allow read: if isRelated(resource.data);
+      allow write: if isLandlord(resource.data);
+    }
+
+    match /contractors/{id} {
+      allow list: if isSignedIn();
+      allow get: if isLandlord(resource.data);
+      allow create: if isSignedIn();
+      allow update, delete: if isLandlord(resource.data);
+    }
+
+    match /expenses/{id} {
+      allow list: if isSignedIn();
+      allow get: if isLandlord(resource.data);
+      allow create: if isSignedIn();
+      allow update, delete: if isLandlord(resource.data);
+    }
+
+    match /rentPayments/{id} {
+      allow list: if isSignedIn();
+      allow get: if isRelated(resource.data);
+      allow write: if isLandlord(resource.data);
+    }
+
+    // --- Generic Catch-all ---
     match /{path=**} {
       allow read, write: if isSignedIn() && (
         (resource != null && isLandlord(resource.data)) ||
