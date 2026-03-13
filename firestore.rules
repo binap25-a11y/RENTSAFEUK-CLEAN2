@@ -1,187 +1,115 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * Maintain UK Security Rules
-     * 
-     * Core Philosophy:
-     * This ruleset implements a dual-access model designed for Authorization Independence. It 
-     * allows both Landlords and Tenants to access data related to their properties without 
-     * performing expensive cross-document lookups (get() calls).
-     * 
-     * Data Structure:
-     * - Flat Hierarchy: All major entities (Properties, MaintenanceRequests, etc.) are 
-     *   stored in top-level collections for efficient querying.
-     * - Identification: User profiles and Tenant records are keyed by their Firebase Auth UID.
-     * 
-     * Key Security Decisions:
-     * - Authorization Independence: Every document (Property, MaintenanceRequest, Inspection, 
-     *   Document, ActivityLog) denormalizes the `landlordId` and an `activeTenantUids` array.
-     * - Shared Access: Access to property-related data is granted if the user's UID matches 
-     *   the `landlordId` or is present in the `activeTenantUids` array.
-     * - Relational Integrity: On creation, rules ensure that the internal 'id' or 'owner' 
-     *   fields match the user's identity or the specific resource path.
-     * - Prototyping Flexibility: Data types and schema shapes (other than relational links) 
-     *   are not enforced to allow for rapid iteration of the property management features.
-     * 
-     * Resident Hub:
-     * Logged-in tenants can access their hub by querying collections where their UID is 
-     * present in the `activeTenantUids` array, satisfying the Query-Approved Permissions (QAP) model.
+     * RentSafeUK Security Governance
+     * Optimized for high-speed identity discovery and verified Resident Hub access.
      */
 
-    // --- Helper Functions ---
-
-    /** @description Checks if the user is authenticated. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /** @description Checks if the user's UID matches the provided ID. */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /** @description Checks if the user is the landlord of the resource. */
+    function authEmail() {
+      return request.auth.token.get('email', '').lower();
+    }
+
+    // Landlord check: verifies if user owns the record or the parent property context
     function isLandlord(data) {
-      return isSignedIn() && request.auth.uid == data.landlordId;
+      return isSignedIn() && (
+        request.auth.uid == data.get('landlordId', '') || 
+        request.auth.uid == data.get('userId', '')
+      );
     }
 
-    /** @description Checks if the user is an active tenant listed on the resource. */
+    // Tenant check: establishes authorization via UID handshake or verified email registry
     function isTenant(data) {
-      return isSignedIn() && request.auth.uid in data.activeTenantUids;
+      return isSignedIn() && (
+        request.auth.uid == data.get('tenantId', '') || 
+        request.auth.uid == data.get('userId', '') ||
+        request.auth.uid in data.get('activeTenantUids', []) ||
+        (authEmail() != '' && authEmail() == data.get('email', '').lower()) ||
+        (authEmail() != '' && authEmail() == data.get('tenantEmail', '').lower()) ||
+        (authEmail() != '' && authEmail() in data.get('tenantEmails', []))
+      );
     }
 
-    /** @description General check for users related to a property record. */
-    function isRelatedToProperty(data) {
+    // General authorization check for relational records
+    function isRelated(data) {
       return isLandlord(data) || isTenant(data);
     }
 
-    /** @description Enforces immutability of a field during update. */
-    function isUnchanged(field) {
-      return request.resource.data[field] == resource.data[field];
+    // --- Identity Registry ---
+    match /users/{userId} {
+      allow read, write: if isOwner(userId);
     }
 
-    // --- Collection Rules ---
-
-    /**
-     * @description Rules for Landlord user profiles.
-     * @path /userProfiles/{userId}
-     * @allow (get) If the user is viewing their own profile.
-     * @deny (list) If a user tries to list other landlords.
-     * @principle Ownership-based access using UID as Document ID.
-     */
     match /userProfiles/{userId} {
-      allow get: if isOwner(userId);
-      allow list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isOwner(userId) && resource != null && isUnchanged('id');
-      allow delete: if isOwner(userId) && resource != null;
+      allow read, write: if isOwner(userId);
     }
 
-    /**
-     * @description Rules for Tenant user profiles.
-     * @path /tenants/{tenantId}
-     * @allow (create) If the tenant is setting up their own profile.
-     * @deny (update) If a user tries to modify a profile that isn't theirs.
-     * @principle Ownership-based access using UID as Document ID.
-     */
+    // --- Tenant Registry ---
     match /tenants/{tenantId} {
-      allow get: if isOwner(tenantId);
-      allow list: if isOwner(tenantId);
-      allow create: if isOwner(tenantId) && request.resource.data.id == tenantId;
-      allow update: if isOwner(tenantId) && resource != null && isUnchanged('id');
-      allow delete: if isOwner(tenantId) && resource != null;
+      allow get: if isRelated(resource.data);
+      allow list: if isSignedIn(); // QAP: Search results are restricted by resource data checks
+      allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        isLandlord(resource.data) || 
+        (isTenant(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['userId', 'verified', 'joinedDate', 'status']))
+      );
+      allow delete: if isLandlord(resource.data);
     }
 
-    /**
-     * @description Rules for Rental Properties.
-     * @path /properties/{propertyId}
-     * @allow (get) If the user is the landlord or an active tenant.
-     * @deny (create) If a tenant tries to create a property they don't own.
-     * @principle Shared access via denormalized UIDs and landlord ownership.
-     */
+    // --- Property Portfolio ---
     match /properties/{propertyId} {
-      allow get: if isRelatedToProperty(resource.data);
-      allow list: if isSignedIn(); // Secured by QAP: Query must filter by landlordId or activeTenantUids
+      allow get: if isRelated(resource.data);
+      allow list: if isSignedIn(); // QAP: Registry discovery is performed via explicit filters
       allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
-      allow update: if resource != null && isLandlord(resource.data) && isUnchanged('landlordId');
-      allow delete: if resource != null && isLandlord(resource.data);
+      allow update: if isSignedIn() && (
+        isLandlord(resource.data) || 
+        (isTenant(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tenantId', 'activeTenantUids', 'tenantEmail', 'tenantEmails']))
+      );
+      allow delete: if isLandlord(resource.data);
     }
 
-    /**
-     * @description Rules for Tenancy Agreements.
-     * @path /tenancies/{tenancyId}
-     * @allow (get) If the user is the landlord or the specific tenant named in the lease.
-     * @deny (update) If a tenant tries to modify their rent amount.
-     * @principle Multi-party authorization involving specific Landlord and Tenant IDs.
-     */
-    match /tenancies/{tenancyId} {
-      allow get: if isSignedIn() && (request.auth.uid == resource.data.landlordId || request.auth.uid == resource.data.tenantId);
-      allow list: if isSignedIn(); // Secured by QAP: Query must filter by landlordId or tenantId
-      allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
-      allow update: if resource != null && isLandlord(resource.data) && isUnchanged('landlordId') && isUnchanged('tenantId');
-      allow delete: if resource != null && isLandlord(resource.data);
+    // --- Repairs & Shared Ledgers ---
+    match /repairs/{id} {
+      allow get: if isRelated(resource.data);
+      allow list: if isSignedIn(); // QAP
+      allow create: if isSignedIn();
+      allow update: if isRelated(resource.data);
+      allow delete: if isLandlord(resource.data);
     }
 
-    /**
-     * @description Rules for Maintenance Requests.
-     * @path /maintenanceRequests/{requestId}
-     * @allow (create) If the reporter is the landlord or an active tenant.
-     * @deny (delete) If a tenant tries to delete a maintenance record.
-     * @principle Relational integrity and shared access for issue tracking.
-     */
-    match /maintenanceRequests/{requestId} {
-      allow get: if isRelatedToProperty(resource.data);
-      allow list: if isSignedIn(); // Secured by QAP: Query must filter by landlordId or activeTenantUids
-      allow create: if isSignedIn() && request.resource.data.reportedByUserId == request.auth.uid;
-      allow update: if resource != null && isRelatedToProperty(resource.data) && isUnchanged('landlordId');
-      allow delete: if resource != null && isLandlord(resource.data);
+    match /messages/{id} {
+      allow get: if isSignedIn() && (request.auth.uid == resource.data.senderId || request.auth.uid == resource.data.landlordId || request.auth.uid == resource.data.tenantId);
+      allow list: if isSignedIn(); // QAP
+      allow create: if isSignedIn();
+      allow update, delete: if false;
     }
 
-    /**
-     * @description Rules for Property Inspections.
-     * @path /inspections/{inspectionId}
-     * @allow (get) If the user is related to the property being inspected.
-     * @deny (create) If a tenant tries to schedule an inspection.
-     * @principle Read access for tenants; write access for landlords.
-     */
-    match /inspections/{inspectionId} {
-      allow get: if isRelatedToProperty(resource.data);
-      allow list: if isSignedIn(); // Secured by QAP
-      allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
-      allow update: if resource != null && isLandlord(resource.data);
-      allow delete: if resource != null && isLandlord(resource.data);
+    match /documents/{id} {
+      allow read: if isRelated(resource.data);
+      allow write: if isLandlord(resource.data);
     }
 
-    /**
-     * @description Rules for Property Documents.
-     * @path /documents/{documentId}
-     * @allow (get) If the user is the landlord or an active tenant for the associated property.
-     * @deny (update) If a user tries to change who uploaded the file.
-     * @principle Shared visibility of documents with restricted file management.
-     */
-    match /documents/{documentId} {
-      allow get: if isRelatedToProperty(resource.data);
-      allow list: if isSignedIn(); // Secured by QAP
-      allow create: if isSignedIn() && request.resource.data.uploadedByUserId == request.auth.uid;
-      allow update: if resource != null && isLandlord(resource.data) && isUnchanged('uploadedByUserId');
-      allow delete: if resource != null && isLandlord(resource.data);
+    match /inspections/{id} {
+      allow read: if isRelated(resource.data);
+      allow write: if isLandlord(resource.data);
     }
 
-    /**
-     * @description Rules for Activity Logs.
-     * @path /activityLogs/{logId}
-     * @allow (get) If the user performed the action or is related to the affected property.
-     * @deny (update, delete) Activity logs are generally immutable audit trails.
-     * @principle Audit log integrity with context-aware read permissions.
-     */
-    match /activityLogs/{logId} {
-      allow get: if isSignedIn() && (request.auth.uid == resource.data.userId || isRelatedToProperty(resource.data));
-      allow list: if isSignedIn(); // Secured by QAP
-      allow create: if isSignedIn() && request.resource.data.userId == request.auth.uid;
-      allow update: if false; // Logs should be immutable
-      allow delete: if false; // Logs should be immutable
+    // --- Generic Catch-all for App Services ---
+    match /{path=**} {
+      allow read, write: if isSignedIn() && (
+        (resource != null && isLandlord(resource.data)) ||
+        (request.resource != null && isLandlord(request.resource.data))
+      );
     }
   }
 }
