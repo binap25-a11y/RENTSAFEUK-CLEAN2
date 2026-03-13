@@ -57,6 +57,7 @@ export default function TenantDashboard() {
 
         // STAGE 2: Registry Bridge Fallback (By Email)
         if (snap.empty) {
+            // Note: Rules are optimized for this search
             const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
             snap = await getDocs(qByEmail);
         }
@@ -112,7 +113,7 @@ export default function TenantDashboard() {
         setIsLoading(false);
         discoveryRef.current = false;
     } catch (err: any) {
-        console.warn("Resident Hub Discovery Deferred:", err.message);
+        console.error("Resident Hub Discovery Error:", err.message);
         
         // Emit rich error for developer oversight if discovery is blocked by rules
         if (err.code === 'permission-denied') {
@@ -133,7 +134,7 @@ export default function TenantDashboard() {
     }
   }, [isUserLoading, user, context, performDiscovery]);
 
-  if (isUserLoading || isLoading || isHandshaking) {
+  if (isUserLoading || (isLoading && !context) || isHandshaking) {
     return (
         <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6">
             <div className="relative">

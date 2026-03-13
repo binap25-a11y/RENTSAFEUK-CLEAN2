@@ -15,11 +15,6 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Direct token access is preferred for query optimization
-    function authEmail() {
-      return (request.auth.token.email != null) ? request.auth.token.email.lower() : '';
-    }
-
     // Landlord check: verifies if user owns the record or the parent property context
     function isLandlord(data) {
       return isSignedIn() && (
@@ -29,15 +24,16 @@ service cloud.firestore {
     }
 
     // Tenant check: establishes authorization via UID handshake or verified email registry
+    // Direct token access is preferred for query optimization
     function isTenant(data) {
-      let email = authEmail();
+      let authEmail = request.auth.token.email;
       return isSignedIn() && (
         request.auth.uid == data.get('tenantId', '') || 
         request.auth.uid == data.get('userId', '') ||
         request.auth.uid in data.get('activeTenantUids', []) ||
-        (email != '' && email == data.get('email', '').lower()) ||
-        (email != '' && email == data.get('tenantEmail', '').lower()) ||
-        (email != '' && email in data.get('tenantEmails', []))
+        (authEmail != null && authEmail == data.get('email', '')) ||
+        (authEmail != null && authEmail == data.get('tenantEmail', '')) ||
+        (authEmail != null && authEmail in data.get('tenantEmails', []))
       );
     }
 
@@ -51,16 +47,13 @@ service cloud.firestore {
       allow read, write: if isOwner(userId);
     }
 
-    match /userProfiles/{userId} {
-      allow read, write: if isOwner(userId);
-    }
-
     // --- Tenant Registry ---
     match /tenants/{tenantId} {
       // allow list MUST be statically verifiable for high-speed discovery queries
       allow list: if isSignedIn(); 
       allow get: if isRelated(resource.data);
       allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
+      // HANDSHAKE: Allow verified residents to link their UID to the registry record
       allow update: if isSignedIn() && (
         isLandlord(resource.data) || 
         (isTenant(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['userId', 'verified', 'joinedDate', 'status', 'lastSyncCheck']))
@@ -76,7 +69,7 @@ service cloud.firestore {
       // HANDSHAKE: Allow verified residents to link their UID to the property record
       allow update: if isSignedIn() && (
         isLandlord(resource.data) || 
-        (isTenant(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tenantId', 'activeTenantUids', 'tenantEmail', 'tenantEmails']))
+        (isTenant(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tenantId', 'activeTenantUids', 'tenantEmail', 'tenantEmails', 'status']))
       );
       allow delete: if isLandlord(resource.data);
     }
@@ -103,13 +96,8 @@ service cloud.firestore {
       allow write: if isLandlord(resource.data);
     }
 
+    // --- Shared Metadata ---
     match /inspections/{id} {
-      allow list: if isSignedIn();
-      allow read: if isRelated(resource.data);
-      allow write: if isLandlord(resource.data);
-    }
-
-    match /checklists/{id} {
       allow list: if isSignedIn();
       allow read: if isRelated(resource.data);
       allow write: if isLandlord(resource.data);
