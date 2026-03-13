@@ -99,6 +99,26 @@
     "/tenants/{tenantId}": {
       "schema": "Tenant",
       "description": "Tenant identity registry for discovery."
+    },
+    "/repairs/{id}": {
+      "schema": "object",
+      "description": "Shared maintenance tracking ledger."
+    },
+    "/messages/{id}": {
+      "schema": "object",
+      "description": "Secure resident-landlord messaging."
+    },
+    "/documents/{id}": {
+      "schema": "object",
+      "description": "Compliance document vault."
+    },
+    "/inspections/{id}": {
+      "schema": "object",
+      "description": "Property inspection audit reports."
+    },
+    "/rentPayments/{id}": {
+      "schema": "object",
+      "description": "Rental collection ledger."
     }
   }
 }

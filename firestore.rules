@@ -3,16 +3,12 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RentSafeUK Security Governance v6.0
+     * RentSafeUK Security Governance v7.0
      * Optimized for high-speed identity discovery and query-compatible authorization.
      */
 
     function isSignedIn() {
       return request.auth != null;
-    }
-
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
     }
 
     // Landlord check: verifies if user owns the record or is the landlord of the linked asset
@@ -31,9 +27,11 @@ service cloud.firestore {
         uid == data.get('tenantId', '') || 
         uid == data.get('userId', '') ||
         uid in data.get('activeTenantUids', []) ||
-        (email != null && email == data.get('email', '')) ||
-        (email != null && email == data.get('tenantEmail', '')) ||
-        (email != null && (email in data.get('tenantEmails', [])))
+        (email != null && (
+          email == data.get('email', '') || 
+          email == data.get('tenantEmail', '') || 
+          email in data.get('tenantEmails', [])
+        ))
       );
     }
 
@@ -43,13 +41,13 @@ service cloud.firestore {
 
     // --- Identity Registry ---
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
 
     // --- Tenant Registry ---
     match /tenants/{tenantId} {
-      // IDENTITY DISCOVERY: Allow any signed-in user to query the registry by their own identity.
-      // High-speed list access is authorized for all authenticated users to facilitate the portal handshake.
+      // IDENTITY DISCOVERY: Allow signed-in users to query the registry.
+      // Essential for the initial portal handshake and self-discovery.
       allow list: if isSignedIn(); 
       allow get: if isRelated(resource.data);
       allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
@@ -63,12 +61,12 @@ service cloud.firestore {
 
     // --- Property Portfolio ---
     match /properties/{propertyId} {
-      // QUERY OPTIMIZATION: Allow high-speed listing for landlords and portal discovery.
+      // QUERY OPTIMIZATION: Allow listing for all signed-in users to support portal discovery.
       allow list: if isSignedIn();
       allow get: if isRelated(resource.data);
       allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
       // HANDSHAKE: Allow residents to link their account to the property asset.
-      // Critically allows the atomic transition from email-auth to UID-auth.
+      // Critically allows the transition from email-auth to permanent UID-auth.
       allow update: if isSignedIn() && (
         isLandlord(resource.data) || 
         (isTenant(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasAny(['tenantId', 'activeTenantUids', 'status']))
@@ -77,6 +75,8 @@ service cloud.firestore {
     }
 
     // --- Shared Ledger Collections ---
+    // Root-level collections optimized for high-speed denormalized lookups.
+
     match /repairs/{id} {
       allow list: if isSignedIn();
       allow get: if isRelated(resource.data);
@@ -104,26 +104,22 @@ service cloud.firestore {
       allow write: if isLandlord(resource.data);
     }
 
-    // --- Rent Ledger ---
     match /rentPayments/{id} {
       allow list: if isSignedIn();
       allow read: if isRelated(resource.data);
       allow write: if isLandlord(resource.data);
     }
 
-    // --- Contractor Directory ---
     match /contractors/{id} {
       allow list: if isSignedIn();
       allow read, write: if isLandlord(resource.data) || (request.resource != null && isLandlord(request.resource.data));
     }
 
-    // --- Global Fallback ---
-    // Specifically scopes to landlord authorization for unhandled paths.
-    match /{path=**} {
-      allow read, write: if isSignedIn() && (
-        (resource != null && isLandlord(resource.data)) ||
-        (request.resource != null && isLandlord(request.resource.data))
-      );
+    match /expenses/{id} {
+      allow list: if isSignedIn();
+      allow read, write: if isLandlord(resource.data) || (request.resource != null && isLandlord(request.resource.data));
     }
+    
+    // Explicit deny for unmatched paths to preserve query optimizer performance.
   }
 }
