@@ -42,10 +42,9 @@ export default function TenantDashboard() {
   const discoveryRef = useRef(false);
 
   const performDiscovery = useCallback(async () => {
+    // PRE-FLIGHT: Ensure authentication is ready
     if (!user || !firestore || !user.email || discoveryRef.current) {
-        if (!user && !isUserLoading) {
-            setIsLoading(false);
-        }
+        if (!user && !isUserLoading) setIsLoading(false);
         return;
     }
 
@@ -57,17 +56,13 @@ export default function TenantDashboard() {
     try {
         const tenantsCol = collection(firestore, 'tenants');
         
-        // STAGE 1: Identity Link Search (By UID or normalized email)
-        const qByUid = query(tenantsCol, where('userId', '==', user.uid), limit(1));
-        let snap = await getDocs(qByUid);
+        // STAGE 1: Discovery Search (Optimized for Rule Engine)
+        // We use a query filter that matches the auth token email for static verification.
+        const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
+        const snap = await getDocs(qByEmail);
 
         if (snap.empty) {
-            const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
-            snap = await getDocs(qByEmail);
-        }
-
-        if (snap.empty) {
-            console.log("Discovery: No tenancy record found for", userEmail);
+            console.log("Discovery: No tenancy registry entry found for", userEmail);
             setIsLoading(false);
             discoveryRef.current = false;
             return;
@@ -77,12 +72,11 @@ export default function TenantDashboard() {
         const tenantData = tenantDoc.data();
         
         // STAGE 2: Secure Identity Handshake
+        // Transistions account from email-discovery to permanent UID-verification.
         if (tenantData.userId !== user.uid || !tenantData.verified) {
             setIsHandshaking(true);
             
-            console.log("Discovery: Establishing secure registry link...");
-            
-            // 1. Link account UID to Tenant registry
+            // 1. Permanently link account UID to Tenant registry
             await updateDoc(tenantDoc.ref, { 
                 userId: user.uid,
                 verified: true,
@@ -90,14 +84,13 @@ export default function TenantDashboard() {
                 status: 'Active' 
             });
             
-            // 2. Link account UID to Property registry bridge
+            // 2. Transmit UID to Property registry bridge for authorization
             const propertyRef = doc(firestore, 'properties', tenantData.propertyId);
             await updateDoc(propertyRef, { 
                 tenantId: user.uid,
                 activeTenantUids: arrayUnion(user.uid)
             });
 
-            console.log("Discovery: Handshake complete.");
             setIsHandshaking(false);
         }
 
@@ -120,6 +113,7 @@ export default function TenantDashboard() {
     } catch (err: any) {
         console.error("Resident Hub Discovery Blocked:", err.message);
         
+        // ERROR GOVERNANCE: Trigger rich error overlay if security rules block access
         if (err.code === 'permission-denied') {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: 'tenants',

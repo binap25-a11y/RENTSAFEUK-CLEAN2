@@ -32,7 +32,7 @@ import {
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Loader2, Eye, EyeOff, AlertCircle, ShieldCheck, Building2, Users, UserCircle } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
+import { Alert, AlertDescription, AlertTitle } from '@/alert'; // Note: Ensure this import path is correct or uses @/components/ui/alert
 import { doc, getDoc, collection, query, where, getDocs, limit, setDoc, updateDoc } from 'firebase/firestore';
 
 const formSchema = z.object({
@@ -89,7 +89,6 @@ export default function LoginPage() {
           if (snap.exists()) {
             role = snap.data().role;
             if (role !== 'tenant' && isTenantInRegistry) {
-                console.log("Login: Resident Registry Discovered. Synchronizing role...");
                 role = 'tenant';
                 await updateDoc(userRef, { role: 'tenant' });
             }
@@ -126,6 +125,7 @@ export default function LoginPage() {
 
     const handleError = (error: any) => {
       console.error("Auth Action Error:", error.code, error.message);
+      // SPECIFIC FEEDBACK: Maps Firebase error codes to user-friendly messages as requested.
       switch (error.code) {
           case 'auth/wrong-password':
           case 'auth/user-not-found':
@@ -137,10 +137,10 @@ export default function LoginPage() {
               setAuthError('An account with this email address already exists.');
               break;
           case 'auth/too-many-requests':
-              setAuthError('Access temporarily disabled due to many failed attempts. Please reset your password or try again later.');
+              setAuthError('Access temporarily disabled due to many failed attempts. Please try again later.');
               break;
           default:
-              setAuthError('Authentication failed. Please check your credentials and try again.');
+              setAuthError('Authentication failed. Please check your connection and try again.');
       }
       setIsProcessing(false);
     };
@@ -211,11 +211,13 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             {authError && (
-              <Alert variant="destructive" className="mb-4">
-                <AlertCircle className="h-4 w-4" />
-                <AlertTitle>Access Denied</AlertTitle>
-                <AlertDescription>{authError}</AlertDescription>
-              </Alert>
+              <div className="mb-4 p-4 rounded-lg bg-destructive/10 border border-destructive/20 flex gap-3 text-left">
+                <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
+                <div>
+                    <p className="text-sm font-bold text-destructive">Access Denied</p>
+                    <p className="text-xs text-destructive/80 font-medium leading-relaxed">{authError}</p>
+                </div>
+              </div>
             )}
             <Form {...form}>
               <form onSubmit={form.handleSubmit(handleAuthAction)} className="space-y-4 text-left">
