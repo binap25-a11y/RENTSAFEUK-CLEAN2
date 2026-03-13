@@ -82,20 +82,20 @@ export default function TenantDashboard() {
             setIsHandshaking(true);
             setDiscoveryStatus('handshaking');
             
-            // 1. Link UID to Tenant Record (Catch internally to prevent discovery crash)
+            // 1. Link UID to Tenant Record (Authorized by query-optimized rules)
             await updateDoc(tenantDoc.ref, { 
                 userId: user.uid,
                 verified: true,
                 joinedDate: new Date().toISOString(),
                 status: 'Active' 
-            }).catch(e => console.warn("Resident Hub: Tenant UID sync deferred:", e.message));
+            }).catch(e => console.warn("Resident Hub: Tenant record sync deferred:", e.message));
             
-            // 2. Link UID to Property Record (Authorized by specialized security rule)
+            // 2. Link UID to Property Record (Authorized by specialized field-level rule)
             const propertyRef = doc(firestore, 'properties', tenantData.propertyId);
             await updateDoc(propertyRef, { tenantId: user.uid })
-                .catch(e => console.warn("Resident Hub: Property UID sync deferred. Access relies on email registry."));
+                .catch(e => console.warn("Resident Hub: Property identity sync deferred. Access relies on registry bridge."));
 
-            toast({ title: "Identity Handshake", description: "Permanent portal link active." });
+            toast({ title: "Portal Connection Active", description: "Identity verification complete." });
             setIsHandshaking(false);
         }
 
@@ -113,7 +113,7 @@ export default function TenantDashboard() {
                 propertyData: propSnap.data()
             });
         } else {
-            console.error("Resident Hub: Property document missing or unauthorized.");
+            console.error("Resident Hub: Property registry bridge failed.");
             setDiscoveryStatus('failed');
         }
         
@@ -152,7 +152,7 @@ export default function TenantDashboard() {
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/5 rounded-full animate-ping" />
             </div>
             <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Identity Sync</h2>
+                <h2 className="font-headline text-2xl font-bold text-primary tracking-tight">Identity Sync</h2>
                 <p className="text-muted-foreground font-medium">Establishing secure portal connection...</p>
             </div>
         </div>
@@ -168,15 +168,15 @@ export default function TenantDashboard() {
                 </div>
                 <CardTitle className="font-headline text-xl text-primary">Tenancy Not Linked</CardTitle>
                 <CardDescription className="text-sm font-medium px-4">
-                    The email <strong>{user?.email}</strong> is not associated with an active tenancy in our registry.
+                    The email <strong>{user?.email}</strong> is not currently mapped to an active tenancy in our registry.
                 </CardDescription>
             </CardHeader>
             <CardContent className="pt-6 text-sm text-muted-foreground">
-                <p className="text-center leading-relaxed">Please ask your landlord to verify that they have registered your email <strong>{user?.email}</strong> correctly in the portal.</p>
+                <p className="text-center leading-relaxed">Please ask your landlord to verify that they have registered your account email correctly in the management portal.</p>
             </CardContent>
             <CardFooter className="pt-6 bg-muted/5 border-t">
                 <Button variant="outline" className="w-full h-11 font-bold" onClick={() => { discoveryRef.current = false; performDiscovery(); }}>
-                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Sync
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Handshake
                 </Button>
             </CardFooter>
         </Card>
@@ -229,7 +229,7 @@ export default function TenantDashboard() {
                 <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] opacity-80 flex items-center gap-2 text-primary-foreground"><MessageSquare className="h-3.5 w-3.5" /> Support</CardTitle>
             </CardHeader>
             <CardContent className="space-y-4 px-6 pb-6 text-left">
-                <p className="text-xs font-medium">Message your landlord directly about any issues.</p>
+                <p className="text-xs font-medium">Message your landlord directly about any issues or queries.</p>
                 <Button variant="secondary" size="sm" className="w-full font-bold h-9 shadow-md rounded-xl uppercase tracking-widest text-[10px]" asChild><Link href="/tenant/messages">Open Inbox <ChevronRight className="ml-1 h-3 w-3"/></Link></Button>
             </CardContent>
         </Card>

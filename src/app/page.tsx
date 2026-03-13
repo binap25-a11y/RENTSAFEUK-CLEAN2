@@ -71,7 +71,8 @@ export default function LoginPage() {
           
           let role: string | null = null;
 
-          // 1. DISCOVERY: Check registry by normalized email
+          // 1. DISCOVERY HANDSHAKE: Check residency registry by normalized email
+          // Direct equality search aligns with optimized security rules
           const tenantsCol = collection(firestore, 'tenants');
           const q = query(tenantsCol, where('email', '==', userEmail), limit(1));
           const tenantSnap = await getDocs(q);
@@ -79,14 +80,14 @@ export default function LoginPage() {
 
           if (snap.exists()) {
             role = snap.data().role;
-            // SELF-HEALING: Upgrade to tenant if registry match found
+            // SELF-HEALING: If registry match found but role is wrong, prioritize portal access
             if (role !== 'tenant' && isTenantInRegistry) {
-                console.log("Login: Identified resident via registry handshake.");
+                console.log("Login Handshake: Identity verified via registry bridge.");
                 role = 'tenant';
                 await updateDoc(userRef, { role: 'tenant' });
             }
           } else {
-            // PROVISIONING: Create profile based on discovery
+            // PROVISIONING: Create profile with role derived from registry discovery
             role = isTenantInRegistry ? 'tenant' : (mode === 'signup' ? form.getValues('role') : 'landlord');
             await setDoc(userRef, {
               id: user.uid,
@@ -97,14 +98,15 @@ export default function LoginPage() {
             });
           }
           
-          // FINAL ROUTING
+          // FINAL ROUTING: Residents are sent to specialized portal
           if (role === 'tenant') {
             router.replace('/tenant/dashboard');
           } else {
             router.replace('/dashboard');
           }
         } catch (error: any) {
-          console.error("Login Redirection Error:", error.message);
+          console.error("Login Handshake Error:", error.message);
+          // Fallback to dashboard if discovery is blocked or fails
           router.replace('/dashboard');
         }
       };
