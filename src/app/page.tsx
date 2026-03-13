@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -61,6 +60,7 @@ export default function LoginPage() {
     if (!isUserLoading && user && firestore) {
       const checkRoleAndRedirect = async () => {
         try {
+          // REGISTRY NORMALIZATION: strictly lowercase for robust security match
           const userEmail = user.email?.toLowerCase().trim();
           if (!userEmail) {
               router.replace('/dashboard');

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -158,7 +157,7 @@ export default function AddTenantPage() {
     setIsSubmitting(true);
 
     const tenantsCollection = collection(firestore, 'tenants');
-    // NORMALIZE EMAIL: strictly enforce lowercase for query-compatible security.
+    // NORMALIZE EMAIL: strictly enforce lowercase for query-compatible security match.
     const normalizedEmail = data.email.toLowerCase().trim();
     
     const newTenant = {

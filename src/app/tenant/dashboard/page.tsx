@@ -58,6 +58,7 @@ export default function TenantDashboard() {
     discoveryRef.current = true;
     setIsLoading(true);
 
+    // REGISTRY NORMALIZATION: strictly lowercase for robust security match
     const userEmail = currentUser.email.toLowerCase().trim();
 
     try {
@@ -91,19 +92,37 @@ export default function TenantDashboard() {
             setIsHandshaking(true);
             
             // 1. Update Tenant registry with account UID and verification state.
-            await updateDoc(tenantDoc.ref, { 
+            const tenantUpdateData = { 
                 userId: currentUser.uid,
                 verified: true,
                 joinedDate: new Date().toISOString(),
                 status: 'Active' 
-            });
+            };
+            
+            updateDoc(tenantDoc.ref, tenantUpdateData)
+              .catch(async (serverError) => {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                  path: tenantDoc.ref.path,
+                  operation: 'update',
+                  requestResourceData: tenantUpdateData
+                }));
+              });
             
             // 2. Update Property registry with UID handshake for relational security.
             const propertyRef = doc(firestore, 'properties', tenantData.propertyId);
-            await updateDoc(propertyRef, { 
+            const propertyUpdateData = { 
                 tenantId: currentUser.uid,
                 activeTenantUids: arrayUnion(currentUser.uid)
-            });
+            };
+
+            updateDoc(propertyRef, propertyUpdateData)
+              .catch(async (serverError) => {
+                errorEmitter.emit('permission-error', new FirestorePermissionError({
+                  path: propertyRef.path,
+                  operation: 'update',
+                  requestResourceData: propertyUpdateData
+                }));
+              });
 
             toast({ title: "Hub Connected", description: "Identity registry synchronized." });
             setIsHandshaking(false);
