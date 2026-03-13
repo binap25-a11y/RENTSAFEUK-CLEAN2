@@ -3,8 +3,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RentSafeUK Security Governance v4.0
-     * Optimized for high-speed identity discovery and verified Resident Hub handshakes.
+     * RentSafeUK Security Governance v5.0
+     * Optimized for high-speed identity discovery and query-compatible authorization.
      */
 
     function isSignedIn() {
@@ -23,15 +23,17 @@ service cloud.firestore {
     }
 
     // Tenant check: authorizes access via UID or verified email handshake
+    // Uses .lower() for robust cross-provider identity mapping
     function isTenant(data) {
       let email = request.auth.token.email;
+      let uid = request.auth.uid;
       return isSignedIn() && (
-        request.auth.uid == data.get('tenantId', '') || 
-        request.auth.uid == data.get('userId', '') ||
-        request.auth.uid in data.get('activeTenantUids', []) ||
-        (email != null && email == data.get('email', '')) ||
-        (email != null && email == data.get('tenantEmail', '')) ||
-        (email != null && (email in data.get('tenantEmails', [])))
+        uid == data.get('tenantId', '') || 
+        uid == data.get('userId', '') ||
+        uid in data.get('activeTenantUids', []) ||
+        (email != null && email.lower() == data.get('email', '').lower()) ||
+        (email != null && email.lower() == data.get('tenantEmail', '').lower()) ||
+        (email != null && (email.lower() in data.get('tenantEmails', [])))
       );
     }
 
@@ -46,11 +48,12 @@ service cloud.firestore {
 
     // --- Tenant Registry ---
     match /tenants/{tenantId} {
-      // IDENTITY DISCOVERY: Allow any signed-in user to query the registry for their own record
+      // IDENTITY DISCOVERY: Allow any signed-in user to query the registry.
+      // High-speed list access is authorized for all authenticated users to facilitate the handshake.
       allow list: if isSignedIn(); 
       allow get: if isRelated(resource.data);
       allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
-      // HANDSHAKE: Allow verified residents to link their UID to the registry record
+      // HANDSHAKE: Allow verified residents to link their UID to the registry record.
       allow update: if isSignedIn() && (
         isLandlord(resource.data) || 
         (isTenant(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['userId', 'verified', 'joinedDate', 'status', 'lastSyncCheck']))
@@ -60,13 +63,15 @@ service cloud.firestore {
 
     // --- Property Portfolio ---
     match /properties/{propertyId} {
+      // QUERY OPTIMIZATION: Allow high-speed listing for landlords and portal discovery.
       allow list: if isSignedIn();
       allow get: if isRelated(resource.data);
       allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
-      // HANDSHAKE: Allow residents to link their account to the property asset
+      // HANDSHAKE: Allow residents to link their account to the property asset.
+      // Critically allows the atomic transition from email-auth to UID-auth.
       allow update: if isSignedIn() && (
         isLandlord(resource.data) || 
-        (isTenant(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tenantId', 'activeTenantUids', 'tenantEmail', 'tenantEmails', 'status']))
+        (isTenant(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasAny(['tenantId', 'activeTenantUids', 'status']))
       );
       allow delete: if isLandlord(resource.data);
     }

@@ -52,20 +52,18 @@ export default function TenantDashboard() {
         const tenantsCol = collection(firestore, 'tenants');
         
         // STAGE 1: Identity Link Search (By UID)
-        // High-speed authorized search once handshake is complete
-        console.log("Resident Hub: Initializing UID Discovery...");
+        // Check if this account is already linked to a verified tenancy record.
         const qByUid = query(tenantsCol, where('userId', '==', user.uid), limit(1));
         let snap = await getDocs(qByUid);
 
         // STAGE 2: Registry Bridge Fallback (By Email)
+        // If no UID link exists, look for a record with matching email (normalized).
         if (snap.empty) {
-            console.log("Resident Hub: Falling back to Email Discovery...");
             const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
             snap = await getDocs(qByEmail);
         }
 
         if (snap.empty) {
-            console.warn("Resident Hub: No verified tenancy found for:", userEmail);
             setIsLoading(false);
             discoveryRef.current = false;
             return;
@@ -75,12 +73,11 @@ export default function TenantDashboard() {
         const tenantData = tenantDoc.data();
         
         // STAGE 3: Secure Identity Handshake
-        // Establish permanent UID link on first visit to transition to high-speed authorization
+        // Establish permanent UID link on first visit to facilitate high-speed authorized access.
         if (!tenantData.userId || tenantData.userId !== user.uid || !tenantData.verified) {
             setIsHandshaking(true);
-            console.log("Resident Hub: Establishing Secure Handshake...");
             
-            // 1. Update Tenant registry with account UID
+            // 1. Update Tenant registry with account UID and verification state.
             await updateDoc(tenantDoc.ref, { 
                 userId: user.uid,
                 verified: true,
@@ -88,14 +85,14 @@ export default function TenantDashboard() {
                 status: 'Active' 
             });
             
-            // 2. Update Property registry with UID handshake
+            // 2. Update Property registry with UID handshake for relational security.
             const propertyRef = doc(firestore, 'properties', tenantData.propertyId);
             await updateDoc(propertyRef, { 
                 tenantId: user.uid,
                 activeTenantUids: arrayUnion(user.uid)
             });
 
-            toast({ title: "Portal Connected", description: "Identity registry synchronized." });
+            toast({ title: "Hub Connected", description: "Identity registry synchronized." });
             setIsHandshaking(false);
         }
 
@@ -116,8 +113,7 @@ export default function TenantDashboard() {
         setIsLoading(false);
         discoveryRef.current = false;
     } catch (err: any) {
-        console.error("Resident Hub Discovery Blocked:", err.message);
-        
+        // ERROR GOVERNANCE: Handle permission blocks gracefully.
         if (err.code === 'permission-denied') {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: 'tenants',
