@@ -103,6 +103,7 @@ export default function TenantDashboard() {
         }
 
         // STAGE 4: RESOLVE AUTHORIZED CONTEXT
+        console.log("Resident Hub: Resolving property access...");
         const propRef = doc(firestore, 'properties', tenantData.propertyId);
         const propSnap = await getDoc(propRef);
         
