@@ -6,6 +6,7 @@ service cloud.firestore {
       return request.auth != null;
     }
 
+    // Helper to get lowercased email for comparison
     function authEmail() {
       return request.auth.token.email == null ? "" : request.auth.token.email.lower();
     }
@@ -15,7 +16,7 @@ service cloud.firestore {
       return isSignedIn() && data.landlordId == request.auth.uid;
     }
 
-    // Helper to check if user is the tenant of a property
+    // Helper to check if user is an authorized tenant of a property
     function isTenantOfProperty(propertyId) {
       let property = get(/databases/$(database)/documents/properties/$(propertyId)).data;
       return isSignedIn() && (
@@ -37,7 +38,7 @@ service cloud.firestore {
         resource.data.tenantId == request.auth.uid ||
         (request.auth.token.email != null && "tenantEmails" in resource.data && authEmail() in resource.data.tenantEmails)
       );
-      // Allow landlords full update, and allow verified tenants to link their UID to the property
+      // Allow tenants to update their tenantId link during handshake
       allow update: if isLandlord(resource.data) || (
         isSignedIn() && 
         request.auth.token.email != null && 
@@ -52,12 +53,12 @@ service cloud.firestore {
     // --- 3. Tenants Collection ---
     match /tenants/{id} {
       allow create: if isSignedIn();
+      // Allow searching by email for first-time handshake
       allow read: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.userId == request.auth.uid || 
         (request.auth.token.email != null && resource.data.email == authEmail())
       );
-      // Allow tenants to update their own registry record during verification handshake
       allow update: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         (request.auth.token.email != null && resource.data.email == authEmail())
@@ -65,7 +66,7 @@ service cloud.firestore {
       allow delete: if isLandlord(resource.data);
     }
 
-    // --- 4. Repairs, Documents, Messages, and other ledgers ---
+    // --- 4. Ledger Collections (Repairs, Documents, Messages, etc) ---
     match /{collectionName}/{id} {
       allow create: if isSignedIn();
       allow read: if isSignedIn() && (

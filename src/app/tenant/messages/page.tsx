@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -68,7 +67,7 @@ export default function TenantMessagesPage() {
     if (!tenantContext || !user || !firestore) return null;
     return query(
         collection(firestore, 'messages'),
-        where('tenantId', '==', tenantContext.tenantId),
+        where('tenantId', '==', user.uid), // Authorized via UID
         orderBy('timestamp', 'asc'),
         limit(100)
     );
@@ -92,7 +91,7 @@ export default function TenantMessagesPage() {
         await addDoc(msgCol, {
             landlordId: tenantContext.landlordId,
             propertyId: tenantContext.propertyId,
-            tenantId: tenantContext.tenantId,
+            tenantId: user.uid, // Use UID for consistency
             senderId: user.uid,
             senderName: user.displayName || 'Tenant',
             content: newMessage.trim(),
