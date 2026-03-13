@@ -61,6 +61,7 @@ export default function TenantDashboard() {
         // STAGE 2: Fallback to normalized email discovery for first-time handshake
         if (snap.empty) {
             console.log("Resident Hub: Registry search for:", userEmail);
+            // DIRECT MATCH REQUIRED FOR RULE OPTIMIZATION
             const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
             snap = await getDocs(qByEmail);
         }
@@ -90,12 +91,12 @@ export default function TenantDashboard() {
                 status: 'Active' 
             });
             
-            // 2. Link UID to Property Record (Field-level update authorized)
+            // 2. Link UID to Property Record (Authorized by email array lookup)
             const propertyRef = doc(firestore, 'properties', tenantData.propertyId);
             try {
                 await updateDoc(propertyRef, { tenantId: user.uid });
             } catch (propSyncErr) {
-                console.warn("Resident Hub: Property UID sync deferred (Authorized via email array fallback).");
+                console.warn("Resident Hub: Property UID sync deferred.");
             }
 
             toast({ title: "Identity Verified", description: "Access active." });

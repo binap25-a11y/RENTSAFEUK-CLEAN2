@@ -2,81 +2,111 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- Core Helper Functions ---
-    function isSignedIn() {
-      return request.auth != null;
-    }
-
-    // Standardized normalized email helper for query-compatible rules
-    function authEmail() {
-      return request.auth.token.email == null ? "" : request.auth.token.email.lower();
-    }
-
-    function isLandlord(data) {
-      return isSignedIn() && data.landlordId == request.auth.uid;
-    }
-
-    // Helper to check if user is a verified tenant of a property
-    function isTenantOfProperty(propertyId) {
-      let property = get(/databases/$(database)/documents/properties/$(propertyId)).data;
-      return isSignedIn() && (
-        property.tenantId == request.auth.uid ||
-        (request.auth.token.email != null && "tenantEmails" in property && authEmail() in property.tenantEmails)
-      );
-    }
-
-    // --- 1. Users Collection ---
+    // --- 1. Identity Collections (High-Performance Discovery) ---
+    
+    // Global User Registry
     match /users/{userId} {
-      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      allow read, write: if request.auth != null && request.auth.uid == userId;
     }
 
-    // --- 2. Properties Collection ---
+    // Property Registry (Portfolio Assets)
     match /properties/{id} {
-      allow create: if isSignedIn();
-      allow read: if isSignedIn() && (
+      allow create: if request.auth != null;
+      // Allow read if landlord OR assigned tenant (via UID or verified Email)
+      allow read: if request.auth != null && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.tenantId == request.auth.uid ||
-        (request.auth.token.email != null && "tenantEmails" in resource.data && authEmail() in resource.data.tenantEmails)
+        (request.auth.token.email != null && "tenantEmails" in resource.data && request.auth.token.email.lower() in resource.data.tenantEmails)
       );
-      // Allow tenants to sync their tenantId link once during discovery
-      allow update: if isLandlord(resource.data) || (
-        isSignedIn() && 
-        "tenantEmails" in resource.data && 
-        authEmail() in resource.data.tenantEmails && 
-        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tenantId']) &&
-        request.resource.data.tenantId == request.auth.uid
+      // Handshake Authorization: Allow tenants to sync their UID once if verified by email
+      allow update: if request.auth != null && (
+        resource.data.landlordId == request.auth.uid || 
+        (
+          request.auth.token.email != null && 
+          "tenantEmails" in resource.data && 
+          request.auth.token.email.lower() in resource.data.tenantEmails &&
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tenantId']) &&
+          request.resource.data.tenantId == request.auth.uid
+        )
       );
-      allow delete: if isLandlord(resource.data);
+      allow delete: if request.auth != null && resource.data.landlordId == request.auth.uid;
     }
 
-    // --- 3. Tenants Collection ---
+    // Tenant Registry (Lease Mappings)
     match /tenants/{id} {
-      allow create: if isSignedIn();
+      allow create: if request.auth != null;
       // Optimized for high-speed discovery queries
-      allow read: if isSignedIn() && (
+      allow read: if request.auth != null && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.userId == request.auth.uid || 
-        resource.data.email == authEmail()
+        resource.data.email == request.auth.token.email.lower()
       );
-      // Allow self-link during handshake
-      allow update: if isSignedIn() && (
+      // Handshake Authorization: Allow self-link
+      allow update: if request.auth != null && (
         resource.data.landlordId == request.auth.uid || 
-        resource.data.userId == request.auth.uid || 
-        resource.data.email == authEmail()
+        (resource.data.email == request.auth.token.email.lower() && request.resource.data.userId == request.auth.uid)
       );
-      allow delete: if isLandlord(resource.data);
+      allow delete: if request.auth != null && resource.data.landlordId == request.auth.uid;
     }
 
-    // --- 4. Ledger Collections (Repairs, Documents, Messages, etc) ---
-    // Specifically defined to avoid query-block conflicts
-    match /repairs/{id} { allow read, write: if isSignedIn() && (isLandlord(resource.data) || resource.data.tenantId == request.auth.uid || resource.data.email == authEmail() || resource.data.tenantEmail == authEmail() || ("propertyId" in resource.data && isTenantOfProperty(resource.data.propertyId))); }
-    match /documents/{id} { allow read, write: if isSignedIn() && (isLandlord(resource.data) || resource.data.tenantId == request.auth.uid || ("propertyId" in resource.data && isTenantOfProperty(resource.data.propertyId))); }
-    match /messages/{id} { allow read, write: if isSignedIn() && (isLandlord(resource.data) || resource.data.tenantId == request.auth.uid || resource.data.email == authEmail() || ("propertyId" in resource.data && isTenantOfProperty(resource.data.propertyId))); }
-    match /expenses/{id} { allow read, write: if isLandlord(resource.data); }
-    match /inspections/{id} { allow read, write: if isLandlord(resource.data) || ("propertyId" in resource.data && isTenantOfProperty(resource.data.propertyId)); }
-    match /contractors/{id} { allow read, write: if isLandlord(resource.data); }
-    match /rentPayments/{id} { allow read, write: if isLandlord(resource.data) || resource.data.tenantId == request.auth.uid || ("propertyId" in resource.data && isTenantOfProperty(resource.data.propertyId)); }
-    match /checklists/{id} { allow read, write: if isLandlord(resource.data); }
-    match /screenings/{id} { allow read, write: if isLandlord(resource.data); }
+    // --- 2. Shared Ledger Collections (Authorized by Context) ---
+    
+    // Professional Audit Trail Helper
+    function isTenantOfProperty(propertyId) {
+      let property = get(/databases/$(database)/documents/properties/$(propertyId)).data;
+      return request.auth != null && (
+        property.tenantId == request.auth.uid ||
+        (request.auth.token.email != null && "tenantEmails" in property && request.auth.token.email.lower() in property.tenantEmails)
+      );
+    }
+
+    match /repairs/{id} {
+      allow read, write: if request.auth != null && (
+        resource.data.landlordId == request.auth.uid || 
+        resource.data.tenantId == request.auth.uid || 
+        ("propertyId" in resource.data && isTenantOfProperty(resource.data.propertyId))
+      );
+    }
+
+    match /documents/{id} {
+      allow read, write: if request.auth != null && (
+        resource.data.landlordId == request.auth.uid || 
+        resource.data.tenantId == request.auth.uid || 
+        ("propertyId" in resource.data && isTenantOfProperty(resource.data.propertyId))
+      );
+    }
+
+    match /messages/{id} {
+      allow read, write: if request.auth != null && (
+        resource.data.landlordId == request.auth.uid || 
+        resource.data.tenantId == request.auth.uid || 
+        ("propertyId" in resource.data && isTenantOfProperty(resource.data.propertyId))
+      );
+    }
+
+    // --- 3. Private Landlord Outgoings ---
+    match /expenses/{id} { allow read, write: if request.auth != null && resource.data.landlordId == request.auth.uid; }
+    match /contractors/{id} { allow read, write: if request.auth != null && resource.data.landlordId == request.auth.uid; }
+    match /checklists/{id} { allow read, write: if request.auth != null && resource.data.landlordId == request.auth.uid; }
+    match /screenings/{id} { allow read, write: if request.auth != null && resource.data.landlordId == request.auth.uid; }
+    
+    // Inspections (Shared Read for tenants)
+    match /inspections/{id} {
+      allow write: if request.auth != null && resource.data.landlordId == request.auth.uid;
+      allow read: if request.auth != null && (
+        resource.data.landlordId == request.auth.uid || 
+        ("propertyId" in resource.data && isTenantOfProperty(resource.data.propertyId))
+      );
+    }
+    
+    // Rent Ledger (Shared Read for tenants)
+    match /rentPayments/{id} {
+      allow write: if request.auth != null && resource.data.landlordId == request.auth.uid;
+      allow read: if request.auth != null && (
+        resource.data.landlordId == request.auth.uid || 
+        resource.data.tenantId == request.auth.uid || 
+        ("propertyId" in resource.data && isTenantOfProperty(resource.data.propertyId))
+      );
+    }
   }
 }
