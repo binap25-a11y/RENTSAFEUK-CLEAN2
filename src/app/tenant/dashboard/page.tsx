@@ -44,7 +44,6 @@ export default function TenantDashboard() {
   const performDiscovery = useCallback(async () => {
     if (!user || !firestore || !user.email || discoveryRef.current) {
         if (!user && !isUserLoading) {
-            console.warn("Discovery: User not authenticated.");
             setIsLoading(false);
         }
         return;
@@ -53,19 +52,16 @@ export default function TenantDashboard() {
     discoveryRef.current = true;
     setIsLoading(true);
 
-    // REGISTRY NORMALIZATION: strictly lowercase for robust security match
     const userEmail = user.email.toLowerCase().trim();
 
     try {
         const tenantsCol = collection(firestore, 'tenants');
         
-        // STAGE 1: Identity Link Search (By UID)
+        // STAGE 1: Identity Link Search (By UID or normalized email)
         const qByUid = query(tenantsCol, where('userId', '==', user.uid), limit(1));
         let snap = await getDocs(qByUid);
 
-        // STAGE 2: Registry Bridge Fallback (By Email)
         if (snap.empty) {
-            console.log("Discovery: Searching registry by email:", userEmail);
             const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
             snap = await getDocs(qByEmail);
         }
@@ -80,13 +76,13 @@ export default function TenantDashboard() {
         const tenantDoc = snap.docs[0];
         const tenantData = tenantDoc.data();
         
-        // STAGE 3: Secure Identity Handshake
+        // STAGE 2: Secure Identity Handshake
         if (tenantData.userId !== user.uid || !tenantData.verified) {
             setIsHandshaking(true);
             
-            console.log("Discovery: Initiating Identity Handshake...");
+            console.log("Discovery: Establishing secure registry link...");
             
-            // 1. Update Tenant registry
+            // 1. Link account UID to Tenant registry
             await updateDoc(tenantDoc.ref, { 
                 userId: user.uid,
                 verified: true,
@@ -94,18 +90,18 @@ export default function TenantDashboard() {
                 status: 'Active' 
             });
             
-            // 2. Update Property registry
+            // 2. Link account UID to Property registry bridge
             const propertyRef = doc(firestore, 'properties', tenantData.propertyId);
             await updateDoc(propertyRef, { 
                 tenantId: user.uid,
                 activeTenantUids: arrayUnion(user.uid)
             });
 
-            console.log("Discovery: Handshake successful.");
+            console.log("Discovery: Handshake complete.");
             setIsHandshaking(false);
         }
 
-        // STAGE 4: Context Resolution
+        // STAGE 3: Context Resolution
         const propRef = doc(firestore, 'properties', tenantData.propertyId);
         const propSnap = await getDoc(propRef);
         
@@ -122,7 +118,7 @@ export default function TenantDashboard() {
         setIsLoading(false);
         discoveryRef.current = false;
     } catch (err: any) {
-        console.error("Resident Hub Discovery Error:", err.message);
+        console.error("Resident Hub Discovery Blocked:", err.message);
         
         if (err.code === 'permission-denied') {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
@@ -174,7 +170,7 @@ export default function TenantDashboard() {
                 </CardDescription>
             </CardHeader>
             <CardContent className="pt-6 text-sm text-muted-foreground">
-                <p className="text-center leading-relaxed italic">"Please ask your landlord to verify that they have registered your account email correctly in the management portal."</p>
+                <p className="text-center leading-relaxed italic">"Please contact your landlord to verify that they have registered your account email correctly in the management portal."</p>
             </CardContent>
             <CardFooter className="pt-6 bg-muted/5 border-t">
                 <Button variant="outline" className="w-full h-11 font-bold" onClick={() => { discoveryRef.current = false; performDiscovery(); }}>

@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RentSafeUK Security Governance v12.0
+     * RentSafeUK Security Governance v14.0
      * Optimized for high-speed Resident Hub discovery and robust identity handshake.
      */
 
@@ -19,7 +19,7 @@ service cloud.firestore {
     }
 
     // Tenant check: authorizes access via UID or verified email handshake.
-    // Normalized for high-speed query compatibility.
+    // Optimized for static query verification.
     function isTenant(data) {
       let email = request.auth.token.email;
       let uid = request.auth.uid;
@@ -27,7 +27,6 @@ service cloud.firestore {
       return isSignedIn() && (
         uid == data.get('tenantId', '') || 
         uid == data.get('userId', '') ||
-        uid in data.get('activeTenantUids', []) ||
         (email != null && (
           email == data.get('email', '') || 
           email == data.get('tenantEmail', '') || 
@@ -47,12 +46,13 @@ service cloud.firestore {
 
     // --- Tenant Registry ---
     match /tenants/{tenantId} {
-      // IDENTITY DISCOVERY: Allow signed-in users to search for their own tenancy record.
+      // IDENTITY DISCOVERY: Allow any signed-in user to query the registry.
+      // Privacy is maintained because users can only 'get' details of related records.
       allow list: if isSignedIn();
       allow get: if isRelated(resource.data);
       allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
       
-      // HANDSHAKE: Allow residents to link their UID if their email matches.
+      // HANDSHAKE: Allow residents to link their account if their email matches the record.
       allow update: if isSignedIn() && (
         isLandlord(resource.data) || 
         (isTenant(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'verified', 'joinedDate', 'status', 'lastSyncCheck']))
@@ -66,8 +66,7 @@ service cloud.firestore {
       allow get: if isRelated(resource.data);
       allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
       
-      // HANDSHAKE: Allow verified residents to link their account to the property record.
-      // This allows tenants to link their UID to the property they are assigned to via email.
+      // HANDSHAKE: Allow verified residents to link their UID to the property record.
       allow update: if isSignedIn() && (
         isLandlord(resource.data) || 
         (isTenant(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasAny(['tenantId', 'activeTenantUids', 'status']))

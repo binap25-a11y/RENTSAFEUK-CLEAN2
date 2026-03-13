@@ -36,7 +36,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { doc, getDoc, collection, query, where, getDocs, limit, setDoc, updateDoc } from 'firebase/firestore';
 
 const formSchema = z.object({
-  email: z.string().email({ message: 'Please enter a valid email address.' }),
+  email: z.string().email({ message: 'Please enter a valid email address.' }).trim().toLowerCase(),
   password: z.string().min(6, { message: 'Password must be at least 6 characters.' }),
   role: z.enum(['landlord', 'agent', 'tenant']).default('landlord'),
 });
@@ -71,7 +71,7 @@ export default function LoginPage() {
           
           let role: string | null = null;
 
-          // 1. DISCOVERY HANDSHAKE: Check residency registry by normalized email or current UID.
+          // DISCOVERY HANDSHAKE: Check residency registry by normalized email or current UID.
           const tenantsCol = collection(firestore, 'tenants');
           
           // Try UID link first
@@ -89,7 +89,7 @@ export default function LoginPage() {
           if (snap.exists()) {
             role = snap.data().role;
             if (role !== 'tenant' && isTenantInRegistry) {
-                console.log("Login: Resident Registry Discovered. Updating role...");
+                console.log("Login: Resident Registry Discovered. Synchronizing role...");
                 role = 'tenant';
                 await updateDoc(userRef, { role: 'tenant' });
             }
@@ -125,14 +125,22 @@ export default function LoginPage() {
     setAuthError(null);
 
     const handleError = (error: any) => {
+      console.error("Auth Action Error:", error.code, error.message);
       switch (error.code) {
           case 'auth/wrong-password':
           case 'auth/user-not-found':
           case 'auth/invalid-credential':
-              setAuthError('Invalid email or password.');
+          case 'auth/invalid-email':
+              setAuthError('The email or password you entered is incorrect. Please try again.');
+              break;
+          case 'auth/email-already-in-use':
+              setAuthError('An account with this email address already exists.');
+              break;
+          case 'auth/too-many-requests':
+              setAuthError('Access temporarily disabled due to many failed attempts. Please reset your password or try again later.');
               break;
           default:
-              setAuthError(error.message || 'Authentication failed.');
+              setAuthError('Authentication failed. Please check your credentials and try again.');
       }
       setIsProcessing(false);
     };
@@ -147,6 +155,7 @@ export default function LoginPage() {
   const handleGoogleSignIn = () => {
     if (auth) {
       setIsProcessing(true);
+      setAuthError(null);
       const provider = new GoogleAuthProvider();
       signInWithRedirect(auth, provider).catch((error) => {
           toast({ variant: 'destructive', title: 'Sign-In Failed', description: error.message });
