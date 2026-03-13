@@ -4,7 +4,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RentSafeUK Security Governance v8.0
+     * RentSafeUK Security Governance v9.0
      * Optimized for high-speed discovery and robust identity handshake.
      */
 
@@ -12,7 +12,7 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    // Landlord check: verifies if user owns the record or is the landlord of the linked asset
+    // Landlord check: verifies if user owns the record
     function isLandlord(data) {
       return isSignedIn() && (
         request.auth.uid == data.get('landlordId', '')
