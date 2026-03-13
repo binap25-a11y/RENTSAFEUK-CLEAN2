@@ -7,15 +7,14 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    // Safely retrieves lowercased email from auth token. 
-    // Using .get() prevents execution errors if the field is missing.
+    // Optimized email retrieval for query analysis.
+    // Using direct token access aligns with Firestore's static query optimizer.
     function authEmail() {
-      return isSignedIn() ? request.auth.token.get('email', '').lower() : '';
+      return isSignedIn() ? request.auth.token.get('email', '') : '';
     }
 
     // Helper: Validates if the authenticated user is the registered resident.
-    // Relies on database fields being normalized to lowercase on write.
-    // Removed transformations from data fields to ensure high-performance query compatibility.
+    // Performs direct string comparisons to ensure 100% query compatibility.
     function isRegisteredResident(data) {
       let email = authEmail();
       return email != '' && (
@@ -34,15 +33,16 @@ service cloud.firestore {
     match /properties/{id} {
       allow create: if isSignedIn();
       
-      // Authorized Read: Direct UID match OR Verified Email Registry.
+      // Authorized Read: Query-compatible matches.
+      // Tenants can read properties where their UID is linked OR their email is registered.
       allow get, list: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.tenantId == request.auth.uid ||
         isRegisteredResident(resource.data)
       );
       
-      // Handshake Authorization: Allow verified residents to link their UID once.
-      // Restricted specifically to the tenantId field for security integrity.
+      // Handshake Authorization: Allow residents to link their UID once.
+      // This rule is critical for the transition from email-based discovery to permanent UID access.
       allow update: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         (
@@ -59,7 +59,7 @@ service cloud.firestore {
     match /tenants/{id} {
       allow create: if isSignedIn();
       
-      // Authorized Read: Query-compatible direct matches.
+      // Authorized Read: Direct UID or Email matches.
       allow get, list: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.userId == request.auth.uid || 
@@ -79,7 +79,7 @@ service cloud.firestore {
       allow delete: if isSignedIn() && resource.data.landlordId == request.auth.uid;
     }
 
-    // --- Shared Ledger Collections (Optimized for Tenant Access) ---
+    // Shared Ledger Collections (Optimized for Tenant Access)
     
     function isAuthorizedForProperty(propertyId) {
       if (propertyId == null) { return false; }
@@ -91,7 +91,6 @@ service cloud.firestore {
       );
     }
 
-    // Optimized Repairs: Allow list by UID or Email, allow get by Property lookup
     match /repairs/{id} {
       allow create: if isSignedIn();
       allow list: if isSignedIn() && (
@@ -110,7 +109,8 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow list: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid ||
-        resource.data.tenantId == request.auth.uid
+        resource.data.tenantId == request.auth.uid ||
+        isAuthorizedForProperty(resource.data.propertyId)
       );
       allow get, update, delete: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
@@ -134,7 +134,7 @@ service cloud.firestore {
       );
     }
 
-    // --- Private Landlord Collections ---
+    // Private Landlord Collections
     match /expenses/{id} { allow read, write: if isSignedIn() && resource.data.landlordId == request.auth.uid; }
     match /contractors/{id} { allow read, write: if isSignedIn() && resource.data.landlordId == request.auth.uid; }
     match /checklists/{id} { allow read, write: if isSignedIn() && resource.data.landlordId == request.auth.uid; }

@@ -53,13 +53,14 @@ export default function TenantDashboard() {
     try {
         const tenantsCol = collection(firestore, 'tenants');
         
-        // STAGE 1: Check existing identity link by UID
+        // STAGE 1: Identity Link Search (By UID)
+        // This query matches optimized security rules for fast discovery.
         const qByUid = query(tenantsCol, where('userId', '==', user.uid), limit(1));
         let snap = await getDocs(qByUid);
 
-        // STAGE 2: Fallback to normalized email discovery for first-time handshake
+        // STAGE 2: Registry Bridge Fallback (By Email)
+        // If no UID link exists, we search the landlord registry by verified email.
         if (snap.empty) {
-            // Rules allow this query if the email matches the auth token exactly (query-optimized)
             const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
             snap = await getDocs(qByEmail);
         }
@@ -74,34 +75,34 @@ export default function TenantDashboard() {
         const tenantDoc = snap.docs[0];
         const tenantData = tenantDoc.data();
         
-        // STAGE 3: ATOMIC HANDSHAKE - Establish secure UID link if missing
-        // This process transitions the tenant from email-based access to permanent UID-based access
+        // STAGE 3: Secure Identity Handshake
+        // If the tenant document doesn't have the user's UID, we perform an authorized link.
         if (!tenantData.userId || tenantData.userId !== user.uid || !tenantData.verified) {
             setIsHandshaking(true);
             setDiscoveryStatus('handshaking');
             
-            // 1. Link UID to Tenant Record (Authorized by query-optimized rules)
+            // 1. Link account UID to Tenant registry
             await updateDoc(tenantDoc.ref, { 
                 userId: user.uid,
                 verified: true,
                 joinedDate: new Date().toISOString(),
                 status: 'Active' 
             }).catch(e => {
-                console.warn("Resident Hub: Tenant identity sync deferred:", e.message);
+                console.warn("Resident Hub: Identity sync deferred.", e.message);
             });
             
-            // 2. Link UID to Property Record (Authorized by specialized field-level handshake rule)
+            // 2. Link account UID to Property registry (authorized by specialized update rule)
             const propertyRef = doc(firestore, 'properties', tenantData.propertyId);
             await updateDoc(propertyRef, { tenantId: user.uid })
                 .catch(e => {
-                    console.warn("Resident Hub: Property identity sync deferred. Access relies on registry bridge.");
+                    console.warn("Resident Hub: Property sync deferred. Access remains active via registry bridge.");
                 });
 
-            toast({ title: "Portal Connection Active", description: "Identity verification complete." });
+            toast({ title: "Portal Connection Established", description: "Identity verification complete." });
             setIsHandshaking(false);
         }
 
-        // STAGE 4: RESOLVE AUTHORIZED CONTEXT
+        // STAGE 4: Authorized Context Resolution
         const propRef = doc(firestore, 'properties', tenantData.propertyId);
         const propSnap = await getDoc(propRef);
         
@@ -114,13 +115,14 @@ export default function TenantDashboard() {
                 propertyData: propSnap.data()
             });
         } else {
+            console.error("Resident Hub: Linked property document missing.");
             setDiscoveryStatus('failed');
         }
         
         setIsLoading(false);
         discoveryRef.current = false;
     } catch (err: any) {
-        // Emit rich error for developer oversight if discovery is blocked by rules
+        // Surface rich error for developer oversight if discovery is blocked by rules
         if (err.code === 'permission-denied') {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: 'tenants',
@@ -152,8 +154,8 @@ export default function TenantDashboard() {
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/5 rounded-full animate-ping" />
             </div>
             <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary tracking-tight">Identity Sync</h2>
-                <p className="text-muted-foreground font-medium">Establishing secure portal connection...</p>
+                <h2 className="font-headline text-2xl font-bold text-primary tracking-tight text-center">Syncing Portal...</h2>
+                <p className="text-muted-foreground font-medium text-center">Establishing secure connection to your property records.</p>
             </div>
         </div>
     );
@@ -166,9 +168,9 @@ export default function TenantDashboard() {
                 <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 border shadow-sm text-muted-foreground/20">
                     <Search className="h-10 w-10" />
                 </div>
-                <CardTitle className="font-headline text-xl text-primary">Tenancy Not Linked</CardTitle>
+                <CardTitle className="font-headline text-xl text-primary">Registry Not Linked</CardTitle>
                 <CardDescription className="text-sm font-medium px-4">
-                    The email <strong>{user?.email}</strong> is not currently mapped to an active tenancy in our registry.
+                    The email <strong>{user?.email}</strong> is not currently mapped to an active tenancy in our portfolio registry.
                 </CardDescription>
             </CardHeader>
             <CardContent className="pt-6 text-sm text-muted-foreground">
@@ -176,7 +178,7 @@ export default function TenantDashboard() {
             </CardContent>
             <CardFooter className="pt-6 bg-muted/5 border-t">
                 <Button variant="outline" className="w-full h-11 font-bold" onClick={() => { discoveryRef.current = false; performDiscovery(); }}>
-                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Handshake
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Sync
                 </Button>
             </CardFooter>
         </Card>
@@ -212,15 +214,15 @@ export default function TenantDashboard() {
 
         <Card className="shadow-lg border-none hover:bg-muted/5 transition-all text-left">
             <CardHeader className="pb-2 px-6 text-left">
-                <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2"><Calendar className="h-3.5 w-3.5 text-primary" /> Contract Start</CardTitle>
+                <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2"><Calendar className="h-3.5 w-3.5 text-primary" /> Lease Status</CardTitle>
             </CardHeader>
             <CardContent className="px-6 pb-6 text-left">
                 <div className="text-xl font-bold text-foreground">
                     {context.tenantData.tenancyStartDate?.seconds 
                         ? format(new Date(context.tenantData.tenancyStartDate.seconds * 1000), 'dd MMM yyyy') 
-                        : 'Active'}
+                        : 'Active Agreement'}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1 font-medium italic">Lease Terms Verified</p>
+                <p className="text-xs text-muted-foreground mt-1 font-medium italic">Handshake Verified</p>
             </CardContent>
         </Card>
 
@@ -237,7 +239,7 @@ export default function TenantDashboard() {
 
       <div className="grid gap-6 lg:grid-cols-2 mt-8">
         <Card className="border-none shadow-md overflow-hidden group text-left">
-            <CardHeader className="bg-muted/30 border-b px-6 text-left"><CardTitle className="text-lg flex items-center gap-2 font-headline text-foreground"><Wrench className="h-5 w-5 text-primary" /> Repairs</CardTitle></CardHeader>
+            <CardHeader className="bg-muted/30 border-b px-6 text-left"><CardTitle className="text-lg flex items-center gap-2 font-headline text-foreground"><Wrench className="h-5 w-5 text-primary" /> Maintenance</CardTitle></CardHeader>
             <CardContent className="pt-6 px-6 pb-6 text-left">
                 <div className="flex items-center justify-between p-5 rounded-2xl bg-muted/20 border border-transparent group-hover:border-primary/10 transition-all">
                     <div className="space-y-1 text-left">
@@ -250,14 +252,14 @@ export default function TenantDashboard() {
         </Card>
 
         <Card className="border-none shadow-md overflow-hidden group text-left">
-            <CardHeader className="bg-muted/30 border-b px-6 text-left"><CardTitle className="text-lg flex items-center gap-2 font-headline text-foreground"><FileText className="h-5 w-5 text-primary" /> Shared Vault</CardTitle></CardHeader>
+            <CardHeader className="bg-muted/30 border-b px-6 text-left"><CardTitle className="text-lg flex items-center gap-2 font-headline text-foreground"><FileText className="h-5 w-5 text-primary" /> Document Vault</CardTitle></CardHeader>
             <CardContent className="pt-6 px-6 pb-6 text-left">
                 <div className="flex items-center justify-between p-5 rounded-2xl bg-muted/20 border border-transparent group-hover:border-primary/10 transition-all">
                     <div className="space-y-1 text-left">
-                        <p className="text-sm font-bold">Certificates</p>
+                        <p className="text-sm font-bold">Legal Files</p>
                         <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">EPC, Gas & Agreements</p>
                     </div>
-                    <Button variant="outline" size="sm" className="h-10 font-bold px-8 border-primary/20 hover:bg-primary/5 rounded-xl uppercase tracking-widest text-[9px]" asChild><Link href="/tenant/documents">View Vault</Link></Button>
+                    <Button variant="outline" size="sm" className="h-10 font-bold px-8 border-primary/20 hover:bg-primary/5 rounded-xl uppercase tracking-widest text-[9px]" asChild><Link href="/tenant/documents">View Files</Link></Button>
                 </div>
             </CardContent>
         </Card>

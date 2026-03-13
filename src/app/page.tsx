@@ -72,22 +72,21 @@ export default function LoginPage() {
           let role: string | null = null;
 
           // 1. DISCOVERY HANDSHAKE: Check residency registry by normalized email
-          // Direct equality search aligns with optimized security rules
+          // Using optimized query that aligns with Firestore security rules.
           const tenantsCol = collection(firestore, 'tenants');
-          const q = query(tenantsCol, where('email', '==', userEmail), limit(1));
-          const tenantSnap = await getDocs(q);
+          const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
+          const tenantSnap = await getDocs(qByEmail);
           const isTenantInRegistry = !tenantSnap.empty;
 
           if (snap.exists()) {
             role = snap.data().role;
-            // SELF-HEALING: If registry match found but role is wrong, prioritize portal access
+            // SELF-HEALING: If account was created as landlord but registry shows tenant, fix role.
             if (role !== 'tenant' && isTenantInRegistry) {
-                console.log("Login Handshake: Identity verified via registry bridge.");
                 role = 'tenant';
                 await updateDoc(userRef, { role: 'tenant' });
             }
           } else {
-            // PROVISIONING: Create profile with role derived from registry discovery
+            // PROVISIONING: Initialize profile based on discovery result.
             role = isTenantInRegistry ? 'tenant' : (mode === 'signup' ? form.getValues('role') : 'landlord');
             await setDoc(userRef, {
               id: user.uid,
@@ -98,15 +97,15 @@ export default function LoginPage() {
             });
           }
           
-          // FINAL ROUTING: Residents are sent to specialized portal
+          // FINAL ROUTING: Route to correct portal based on discovered role.
           if (role === 'tenant') {
             router.replace('/tenant/dashboard');
           } else {
             router.replace('/dashboard');
           }
         } catch (error: any) {
-          console.error("Login Handshake Error:", error.message);
-          // Fallback to dashboard if discovery is blocked or fails
+          console.error("Login Redirection Error:", error.message);
+          // Fallback to dashboard if discovery is blocked.
           router.replace('/dashboard');
         }
       };
@@ -116,10 +115,7 @@ export default function LoginPage() {
   }, [user, isUserLoading, firestore, router, mode]);
 
   const handleAuthAction = (data: FormValues) => {
-    if (!auth) {
-      setAuthError("Authentication service is not available.");
-      return;
-    }
+    if (!auth) return;
     setIsProcessing(true);
     setAuthError(null);
 
@@ -129,9 +125,6 @@ export default function LoginPage() {
           case 'auth/user-not-found':
           case 'auth/invalid-credential':
               setAuthError('Invalid email or password.');
-              break;
-          case 'auth/email-already-in-use':
-              setAuthError('An account with this email already exists.');
               break;
           default:
               setAuthError(error.message || 'Authentication failed.');
@@ -178,7 +171,7 @@ export default function LoginPage() {
          <div className="flex flex-col items-center gap-4">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">
-                Verifying Session Integrity...
+                Establishing Secure Session...
             </p>
          </div>
       </div>
@@ -198,7 +191,7 @@ export default function LoginPage() {
                 RentSafeUK
               </CardTitle>
               <CardDescription className="text-sm font-medium">
-                {mode === 'login' ? 'Access your landlord or tenant portal' : 'Join the RentSafeUK platform'}
+                {mode === 'login' ? 'Access your portal' : 'Create a management profile'}
               </CardDescription>
             </div>
           </CardHeader>
@@ -218,7 +211,7 @@ export default function LoginPage() {
                     name="role"
                     render={({ field }) => (
                       <FormItem className="space-y-3 pb-2">
-                        <FormLabel className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Select Your Role</FormLabel>
+                        <FormLabel className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Account Type</FormLabel>
                         <FormControl>
                           <RadioGroup
                             onValueChange={field.onChange}
@@ -318,9 +311,9 @@ export default function LoginPage() {
           <CardFooter className="flex flex-col gap-4 pt-2">
             <div className="text-center text-sm">
               {mode === 'login' ? (
-                <><span className="text-muted-foreground">New to RentSafeUK?</span>{' '}<Button variant="link" className="p-0 h-auto font-bold" onClick={() => toggleMode('signup')}>Sign up</Button></>
+                <><span className="text-muted-foreground">New user?</span>{' '}<Button variant="link" className="p-0 h-auto font-bold" onClick={() => toggleMode('signup')}>Sign up</Button></>
               ) : (
-                <><span className="text-muted-foreground">Already have an account?</span>{' '}<Button variant="link" className="p-0 h-auto font-bold" onClick={() => toggleMode('login')}>Log in</Button></>
+                <><span className="text-muted-foreground">Have an account?</span>{' '}<Button variant="link" className="p-0 h-auto font-bold" onClick={() => toggleMode('login')}>Log in</Button></>
               )}
             </div>
             <div className="flex items-center justify-center gap-2 text-[10px] text-muted-foreground font-bold uppercase tracking-wider">
