@@ -11,7 +11,8 @@
         "lastName": { "type": "string" },
         "email": { "type": "string", "format": "email" },
         "role": { "type": "string", "enum": ["landlord", "agent", "tenant"] },
-        "createdAt": { "type": "string", "format": "date-time" }
+        "createdAt": { "type": "string", "format": "date-time" },
+        "idleTimeoutMinutes": { "type": "number" }
       },
       "required": ["id", "email", "createdAt"]
     },
@@ -33,6 +34,7 @@
             "nameOrNumber": { "type": "string" },
             "street": { "type": "string" },
             "city": { "type": "string" },
+            "county": { "type": "string" },
             "postcode": { "type": "string" }
           }
         },
@@ -41,7 +43,18 @@
         "bedrooms": { "type": "number" },
         "bathrooms": { "type": "number" },
         "imageUrl": { "type": "string" },
-        "additionalImageUrls": { "type": "array", "items": { "type": "string" } }
+        "additionalImageUrls": { "type": "array", "items": { "type": "string" } },
+        "notes": { "type": "string" },
+        "purchasePrice": { "type": "number" },
+        "currentValuation": { "type": "number" },
+        "tenancy": {
+          "type": "object",
+          "properties": {
+            "monthlyRent": { "type": "number" },
+            "depositAmount": { "type": "number" },
+            "depositScheme": { "type": "string" }
+          }
+        }
       },
       "required": ["id", "landlordId", "address", "status"]
     },
@@ -60,7 +73,13 @@
         "telephone": { "type": "string" },
         "verified": { "type": "boolean" },
         "status": { "type": "string", "enum": ["Active", "Archived"] },
-        "joinedDate": { "type": "string", "format": "date-time" }
+        "joinedDate": { "type": "string", "format": "date-time" },
+        "monthlyRent": { "type": "number" },
+        "rentDueDay": { "type": "number" },
+        "tenancyStartDate": { "type": "string", "format": "date-time" },
+        "tenancyEndDate": { "type": "string", "format": "date-time" },
+        "inviteSentDate": { "type": "string", "format": "date-time" },
+        "lastSyncCheck": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "landlordId", "propertyId", "email"]
     }

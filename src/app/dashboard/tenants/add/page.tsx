@@ -199,12 +199,12 @@ export default function AddTenantPage() {
   };
 
   return (
-    <Card className="max-w-2xl mx-auto shadow-lg border-none overflow-hidden">
+    <Card className="max-w-2xl mx-auto shadow-lg border-none overflow-hidden text-left">
       <CardHeader className="bg-primary/5 border-b border-primary/10">
         <CardTitle className="text-2xl font-headline text-primary">Assign New Tenant</CardTitle>
         <CardDescription>Establishing identity mapping via verified email for resident portal access.</CardDescription>
       </CardHeader>
-      <CardContent className="pt-8">
+      <CardContent className="pt-8 text-left">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 text-left">
             <FormField

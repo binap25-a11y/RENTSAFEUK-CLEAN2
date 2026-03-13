@@ -208,9 +208,9 @@ export default function EditTenantPage() {
         <CardTitle className="text-2xl font-headline text-primary">Edit Tenant Profile</CardTitle>
         <CardDescription>Update identity and contract details for {tenant?.name}.</CardDescription>
       </CardHeader>
-      <CardContent className="pt-6">
+      <CardContent className="pt-6 text-left">
         <Form {...form}>
-          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+          <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 text-left">
             <FormField
               control={form.control}
               name="propertyId"

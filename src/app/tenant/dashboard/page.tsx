@@ -121,8 +121,6 @@ export default function TenantDashboard() {
                 path: 'tenants',
                 operation: 'list'
             }));
-        } else {
-            console.error("Resident Hub Discovery Error:", err.message);
         }
         
         setIsLoading(false);
