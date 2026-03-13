@@ -26,7 +26,7 @@ service cloud.firestore {
         resource.data.landlordId == request.auth.uid || 
         resource.data.tenantId == request.auth.uid ||
         authEmail() in resource.data.get('tenantEmails', []) ||
-        authEmail() == resource.data.get('tenantEmail', '')
+        authEmail() == resource.data.get('tenantEmail', '').lower()
       );
       
       // Handshake Authorization: Allow verified tenants to link their UID once.
@@ -34,7 +34,7 @@ service cloud.firestore {
       allow update: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         (
-          (authEmail() in resource.data.get('tenantEmails', []) || authEmail() == resource.data.get('tenantEmail', '')) &&
+          (authEmail() in resource.data.get('tenantEmails', []) || authEmail() == resource.data.get('tenantEmail', '').lower()) &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tenantId']) &&
           request.resource.data.tenantId == request.auth.uid
         )
@@ -51,14 +51,14 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.userId == request.auth.uid || 
-        resource.data.email == authEmail()
+        resource.data.email.lower() == authEmail()
       );
       
       // Handshake Authorization: Link verified UID to record
       allow update: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         (
-          resource.data.email == authEmail() && 
+          resource.data.email.lower() == authEmail() && 
           request.resource.data.userId == request.auth.uid
         )
       );
