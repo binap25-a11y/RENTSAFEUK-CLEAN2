@@ -7,10 +7,9 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    // Returns the user's email in lowercase for rule comparison.
     // Normalized comparison ensures 100% match with high-speed query indexes.
     function authEmail() {
-      return request.auth.token.get('email', "").lower();
+      return request.auth.token.email.lower();
     }
 
     // Global User Registry
@@ -25,7 +24,7 @@ service cloud.firestore {
       // Allow read if: Landlord OR Assigned Tenant (via UID) OR Registered Tenant (via Email List)
       allow read: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
-        resource.data.get('tenantId', '') == request.auth.uid ||
+        resource.data.tenantId == request.auth.uid ||
         authEmail() in resource.data.get('tenantEmails', []) ||
         authEmail() == resource.data.get('tenantEmail', '')
       );
@@ -49,9 +48,10 @@ service cloud.firestore {
       allow create: if isSignedIn();
       
       // Allow read if: Landlord OR Matching UID OR Matching Email (for portal discovery)
+      // Optimized for direct field comparison queries
       allow read: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
-        resource.data.get('userId', '') == request.auth.uid || 
+        resource.data.userId == request.auth.uid || 
         resource.data.email == authEmail()
       );
       
@@ -74,7 +74,7 @@ service cloud.firestore {
       let property = get(/databases/$(database)/documents/properties/$(propertyId)).data;
       return isSignedIn() && (
         property.landlordId == request.auth.uid ||
-        property.get('tenantId', '') == request.auth.uid ||
+        property.tenantId == request.auth.uid ||
         authEmail() in property.get('tenantEmails', [])
       );
     }
@@ -83,7 +83,7 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow read, update, delete: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
-        resource.data.get('tenantId', '') == request.auth.uid || 
+        resource.data.tenantId == request.auth.uid || 
         isAuthorizedResident(resource.data.propertyId)
       );
     }
@@ -100,8 +100,8 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow read, update, delete: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
-        resource.data.get('senderId', '') == request.auth.uid ||
-        resource.data.get('tenantId', '') == request.auth.uid || 
+        resource.data.senderId == request.auth.uid ||
+        resource.data.tenantId == request.auth.uid || 
         isAuthorizedResident(resource.data.propertyId)
       );
     }
@@ -124,7 +124,7 @@ service cloud.firestore {
       allow write: if isSignedIn() && resource.data.landlordId == request.auth.uid;
       allow read: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
-        resource.data.get('tenantId', '') == request.auth.uid || 
+        resource.data.tenantId == request.auth.uid || 
         isAuthorizedResident(resource.data.propertyId)
       );
     }
