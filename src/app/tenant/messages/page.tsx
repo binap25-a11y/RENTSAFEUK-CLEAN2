@@ -12,11 +12,10 @@ import {
   Loader2, 
   User,
   ShieldCheck,
-  RefreshCw,
   AlertCircle
 } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collectionGroup, query, where, limit, addDoc, collection, onSnapshot, orderBy, serverTimestamp } from 'firebase/firestore';
+import { query, where, limit, addDoc, collection, onSnapshot, orderBy, serverTimestamp } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { cn } from '@/lib/utils';
 
@@ -38,27 +37,23 @@ export default function TenantMessagesPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
-    if (isUserLoading) return;
-    if (!user || !firestore || !user.email) {
+    if (isUserLoading || !user || !firestore || !user.email) {
       setIsLoadingContext(false);
       return;
     }
     
     const userEmail = user.email.toLowerCase().trim();
+    // Deterministic root collection query
+    const tenantsCol = collection(firestore, 'tenants');
+    const q = query(tenantsCol, where('email', '==', userEmail), limit(1));
 
-    const q = query(
-        collectionGroup(firestore, 'tenants'), 
-        where('email', '==', userEmail),
-        limit(5)
-    );
     const unsub = onSnapshot(q, (snap) => {
-        const activeTenant = snap.docs.find(d => d.data().status === 'Active');
-        if (activeTenant) {
-            const data = activeTenant.data();
+        if (!snap.empty) {
+            const data = snap.docs[0].data();
             setTenantContext({ 
                 landlordId: data.landlordId, 
                 propertyId: data.propertyId, 
-                tenantId: activeTenant.id 
+                tenantId: snap.docs[0].id 
             });
         }
         setIsLoadingContext(false);
@@ -115,7 +110,7 @@ export default function TenantMessagesPage() {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Secure Portal...</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Portal Messenger...</p>
       </div>
     );
   }
@@ -127,26 +122,24 @@ export default function TenantMessagesPage() {
           <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 border shadow-sm">
               <AlertCircle className="h-8 w-8 text-destructive" />
           </div>
-          <CardTitle className="text-lg">Portal Access Limited</CardTitle>
-          <CardDescription>We could not verify your identity association.</CardDescription>
+          <CardTitle className="text-lg">Chat Disabled</CardTitle>
+          <CardDescription>Verified registry link required for messaging.</CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
-          <Button variant="outline" className="w-full font-bold h-11" asChild><Link href="/dashboard">Return to Dashboard</Link></Button>
+          <Button variant="outline" className="w-full font-bold h-11" asChild><Link href="/dashboard">Return Home</Link></Button>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <div className="h-[calc(100vh-12rem)] flex flex-col gap-4">
-      <div className="flex items-center justify-between">
-        <div>
-            <h1 className="text-2xl font-bold font-headline text-primary">Direct Messaging</h1>
-            <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest flex items-center gap-1.5 mt-1">
-                <ShieldCheck className="h-3.5 w-3.5 text-green-600" />
-                Secure Encrypted Channel
-            </p>
-        </div>
+    <div className="h-[calc(100vh-12rem)] flex flex-col gap-4 text-left">
+      <div>
+          <h1 className="text-2xl font-bold font-headline text-primary">Resident Portal Chat</h1>
+          <p className="text-xs text-muted-foreground font-medium uppercase tracking-widest flex items-center gap-1.5 mt-1">
+              <ShieldCheck className="h-3.5 w-3.5 text-green-600" />
+              Secure Property Channel
+          </p>
       </div>
 
       <Card className="flex-1 overflow-hidden shadow-2xl border-none flex flex-col bg-card">
@@ -169,7 +162,7 @@ export default function TenantMessagesPage() {
                     ) : !messages?.length ? (
                         <div className="py-20 text-center px-10">
                             <MessageSquare className="h-12 w-12 text-muted-foreground/10 mx-auto mb-4" />
-                            <p className="text-sm text-muted-foreground italic">No messages yet.</p>
+                            <p className="text-sm text-muted-foreground italic">No messages found.</p>
                         </div>
                     ) : (
                         messages.map((msg) => {
@@ -196,7 +189,7 @@ export default function TenantMessagesPage() {
         <CardFooter className="border-t p-4 bg-muted/5">
             <form onSubmit={handleSendMessage} className="flex w-full gap-2">
                 <Input 
-                    placeholder="Type your message..." 
+                    placeholder="Message landlord..." 
                     className="h-12 rounded-xl bg-background border-2 shadow-none focus-visible:ring-primary"
                     value={newMessage}
                     onChange={(e) => setNewMessage(e.target.value)}

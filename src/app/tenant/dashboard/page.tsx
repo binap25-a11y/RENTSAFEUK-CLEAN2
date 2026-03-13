@@ -49,26 +49,25 @@ export default function TenantDashboard() {
     setIsLoading(true);
     setDiscoveryStatus('searching');
 
-    // Always normalize email for reliable searching
     const userEmail = user.email.toLowerCase().trim();
 
     try {
         const tenantsCol = collection(firestore, 'tenants');
         
-        // STAGE 1: Priority discovery by existing UID link
-        console.log("Tenant Discovery: Searching by UID...");
+        // STAGE 1: Check existing identity link
+        console.log("Tenant Discovery: Searching UID link...");
         const qByUid = query(tenantsCol, where('userId', '==', user.uid), limit(1));
         let snap = await getDocs(qByUid);
 
-        // STAGE 2: Fallback discovery by normalized email
+        // STAGE 2: Fallback to normalized email discovery
         if (snap.empty) {
-            console.log("Tenant Discovery: Falling back to email check for", userEmail);
+            console.log("Tenant Discovery: Searching email registry...");
             const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
             snap = await getDocs(qByEmail);
         }
 
         if (snap.empty) {
-            console.warn("Tenant Discovery: No record found for normalized email", userEmail);
+            console.warn("Tenant Discovery: Identity not found in registry.");
             setIsLoading(false);
             setDiscoveryStatus('failed');
             discoveryRef.current = false;
@@ -78,7 +77,7 @@ export default function TenantDashboard() {
         const tenantDoc = snap.docs[0];
         const tenantData = tenantDoc.data();
         
-        // HANDSHAKE: Linking identity if first time or mismatched
+        // ATOMIC HANDSHAKE: Establish secure link
         if (!tenantData.userId || tenantData.userId !== user.uid || !tenantData.verified) {
             setIsHandshaking(true);
             setDiscoveryStatus('handshaking');
@@ -91,13 +90,13 @@ export default function TenantDashboard() {
             });
             
             toast({ 
-                title: "Portal Verified", 
-                description: "Your identity has been successfully linked to this property." 
+                title: "Identity Verified", 
+                description: "Secure property connection established." 
             });
             setIsHandshaking(false);
         }
 
-        // RESOLVE PROPERTY CONTEXT
+        // RESOLVE AUTHORIZED CONTEXT
         const propSnap = await getDoc(doc(firestore, 'properties', tenantData.propertyId));
         
         if (propSnap.exists()) {
@@ -114,15 +113,12 @@ export default function TenantDashboard() {
         discoveryRef.current = false;
     } catch (err: any) {
         console.error("Resident Hub Discovery Error:", err.message);
-        
-        // Emit rich error for developer oversight
         if (err.code === 'permission-denied') {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: 'tenants',
                 operation: 'list'
             }));
         }
-
         setIsLoading(false);
         setDiscoveryStatus('failed');
         discoveryRef.current = false;
@@ -137,7 +133,7 @@ export default function TenantDashboard() {
 
   if (isUserLoading || isLoading || isHandshaking) {
     return (
-        <div className="max-w-md mx-auto mt-20 text-center space-y-8 animate-in fade-in duration-700 px-6">
+        <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6">
             <div className="relative">
                 <div className="bg-primary/10 p-10 rounded-full w-fit mx-auto relative z-10">
                     <Loader2 className="h-12 w-12 text-primary animate-spin" />
@@ -145,11 +141,11 @@ export default function TenantDashboard() {
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/5 rounded-full animate-ping" />
             </div>
             <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Resident Identity Sync</h2>
+                <h2 className="font-headline text-2xl font-bold text-primary">Identity Syncing</h2>
                 <p className="text-muted-foreground font-medium leading-relaxed">
                     {discoveryStatus === 'handshaking' 
-                        ? 'Finalizing your secure connection...' 
-                        : 'Searching the property registry...'}
+                        ? 'Finalizing portal connection...' 
+                        : 'Resolving property registry...'}
                 </p>
             </div>
         </div>
@@ -158,21 +154,21 @@ export default function TenantDashboard() {
 
   if (!context) {
     return (
-        <Card className="max-w-md mx-auto mt-20 shadow-2xl border-none overflow-hidden text-left animate-in fade-in zoom-in-95 duration-500">
+        <Card className="max-w-md mx-auto mt-20 shadow-2xl border-none overflow-hidden text-left">
             <CardHeader className="text-center bg-muted/20 pb-8 border-b">
                 <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 shadow-sm border text-muted-foreground/20">
                     <Search className="h-10 w-10" />
                 </div>
-                <CardTitle className="font-headline text-xl text-primary text-center">Tenancy Not Linked</CardTitle>
-                <CardDescription className="text-sm font-medium text-center px-4">
-                    The email <strong>{user?.email}</strong> is not associated with an active tenancy in our registry.
+                <CardTitle className="font-headline text-xl text-primary">Tenancy Not Found</CardTitle>
+                <CardDescription className="text-sm font-medium px-4">
+                    The email <strong>{user?.email}</strong> is not associated with an active record.
                 </CardDescription>
             </CardHeader>
             <CardContent className="pt-6 text-sm text-muted-foreground">
-                <p className="leading-relaxed text-center">Please ask your landlord to verify that they have registered your email <strong>{user?.email}</strong> correctly in the RentSafeUK portal.</p>
+                <p className="text-center leading-relaxed">Ask your landlord to verify your email registry entry in the management portal.</p>
             </CardContent>
             <CardFooter className="pt-6 bg-muted/5 border-t">
-                <Button variant="outline" className="w-full h-11 rounded-xl font-bold uppercase tracking-widest text-[10px]" onClick={() => { discoveryRef.current = false; performDiscovery(); }}>
+                <Button variant="outline" className="w-full h-11 font-bold" onClick={() => { discoveryRef.current = false; performDiscovery(); }}>
                     <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Discovery
                 </Button>
             </CardFooter>
@@ -203,13 +199,13 @@ export default function TenantDashboard() {
             </CardHeader>
             <CardContent className="px-6 pb-6 text-left">
                 <div className="text-3xl font-bold text-foreground">£{context.tenantData.monthlyRent?.toLocaleString() || '0'}</div>
-                <p className="text-xs text-muted-foreground mt-1 font-semibold">Due on the {context.tenantData.rentDueDay || '1st'} of month</p>
+                <p className="text-xs text-muted-foreground mt-1 font-semibold">Due on the {context.tenantData.rentDueDay || '1st'}</p>
             </CardContent>
         </Card>
 
         <Card className="shadow-lg border-none hover:bg-muted/5 transition-all text-left">
             <CardHeader className="pb-2 px-6">
-                <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2"><Calendar className="h-3.5 w-3.5 text-primary" /> Tenancy Date</CardTitle>
+                <CardTitle className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2"><Calendar className="h-3.5 w-3.5 text-primary" /> Contract Start</CardTitle>
             </CardHeader>
             <CardContent className="px-6 pb-6 text-left">
                 <div className="text-xl font-bold text-foreground">
@@ -217,7 +213,7 @@ export default function TenantDashboard() {
                         ? format(new Date(context.tenantData.tenancyStartDate.seconds * 1000), 'dd MMM yyyy') 
                         : 'Active'}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1 font-medium italic">Lease Active</p>
+                <p className="text-xs text-muted-foreground mt-1 font-medium italic">Lease Terms Verified</p>
             </CardContent>
         </Card>
 

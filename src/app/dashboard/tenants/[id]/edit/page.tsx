@@ -4,7 +4,7 @@
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
-import { useRouter, useParams, useSearchParams } from 'next/navigation';
+import { useRouter, useParams } from 'next/navigation';
 import Link from 'next/link';
 import { useEffect, useMemo, useState } from 'react';
 import {
@@ -42,9 +42,9 @@ import {
   useMemoFirebase,
   useDoc,
 } from '@/firebase';
-import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
 
-const ukPhoneRegex = /^(((\+44\s?\d{4}|\(?0\d{4}\)?)\s?\d{3}\s?\d{3})|((\+44\s?\d{3}|\(?0\d{3}\)?)\s?\d{3}\s?\d{4})|((\+44\s?\d{2}|\(?0\d{2}\)?)\s?\d{4}\s?\d{4}))(\s?\#(\d{4}|\d{3}))?$/;
+const ukPhoneRegex = /^(((\+44\s?\d{4}|\(?0\d{4}\)?)\s?\d{3}\s?\d{3})|((\+44\s?\d{3}|\(?0\d{3}\)?)\s?\d{3}\s?\d{3})|((\+44\s?\d{2}|\(?0\d{2}\)?)\s?\d{4}\s?\d{4}))(\s?\#(\d{4}|\d{3}))?$/;
 
 const tenantSchema = z.object({
   name: z.string().min(2, 'Name is too short'),
@@ -152,9 +152,7 @@ export default function EditTenantPage() {
     setIsSaving(true);
     
     try {
-      // Normalize email for consistent handshake
       const normalizedEmail = data.email.toLowerCase().trim();
-      
       const updateData = { 
         ...data, 
         email: normalizedEmail,
@@ -163,6 +161,21 @@ export default function EditTenantPage() {
       const cleanedUpdateData = JSON.parse(JSON.stringify(updateData));
 
       await updateDoc(tenantRef, cleanedUpdateData);
+
+      // Manage property tenant mapping for security authorization
+      if (tenant.propertyId !== data.propertyId) {
+          const oldPropRef = doc(firestore, 'properties', tenant.propertyId);
+          await updateDoc(oldPropRef, { tenantEmails: arrayRemove(tenant.email) });
+          
+          const newPropRef = doc(firestore, 'properties', data.propertyId);
+          await updateDoc(newPropRef, { tenantEmails: arrayUnion(normalizedEmail) });
+      } else if (tenant.email !== normalizedEmail) {
+          const propRef = doc(firestore, 'properties', data.propertyId);
+          await updateDoc(propRef, { 
+              tenantEmails: arrayRemove(tenant.email),
+              tenantEmail: arrayUnion(normalizedEmail)
+          });
+      }
 
       toast({
         title: 'Registry Updated',

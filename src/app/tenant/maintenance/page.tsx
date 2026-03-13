@@ -34,7 +34,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Wrench, Upload, X, AlertCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useUser, useFirestore } from '@/firebase';
-import { collectionGroup, query, where, limit, addDoc, collection, onSnapshot } from 'firebase/firestore';
+import { query, where, limit, addDoc, collection, onSnapshot } from 'firebase/firestore';
 import { uploadPropertyImage } from '@/lib/upload-image';
 import Image from 'next/image';
 
@@ -70,28 +70,23 @@ export default function TenantMaintenancePage() {
   });
 
   useEffect(() => {
-    if (isUserLoading) return;
-
-    if (!user || !firestore || !user.email) {
+    if (isUserLoading || !user || !firestore || !user.email) {
       setIsLoadingContext(false);
       return;
     }
     
     const userEmail = user.email.toLowerCase().trim();
-
-    const q = query(
-        collectionGroup(firestore, 'tenants'), 
-        where('email', '==', userEmail)
-    );
+    // Deterministic root collection query
+    const tenantsCol = collection(firestore, 'tenants');
+    const q = query(tenantsCol, where('email', '==', userEmail), limit(1));
 
     const unsub = onSnapshot(q, (snap) => {
-        const activeTenant = snap.docs.find(d => d.data().status === 'Active');
-        if (activeTenant) {
-            const data = activeTenant.data();
+        if (!snap.empty) {
+            const data = snap.docs[0].data();
             setTenantContext({ 
                 landlordId: data.landlordId, 
                 propertyId: data.propertyId, 
-                tenantId: activeTenant.id,
+                tenantId: snap.docs[0].id,
                 email: data.email 
             });
         }
@@ -119,7 +114,7 @@ export default function TenantMaintenancePage() {
 
   async function onSubmit(data: MaintenanceFormValues) {
     if (!tenantContext || !user) {
-      toast({ variant: 'destructive', title: 'Identity Error', description: 'Could not resolve your tenancy record.' });
+      toast({ variant: 'destructive', title: 'Identity Error', description: 'Tenancy registry link missing.' });
       return;
     }
     setIsSubmitting(true);
@@ -147,7 +142,7 @@ export default function TenantMaintenancePage() {
 
       await addDoc(logsCollection, payload);
 
-      toast({ title: 'Repair Request Logged', description: 'Your landlord has been notified.' });
+      toast({ title: 'Repair Request Logged', description: 'Landlord notified.' });
       router.push('/tenant/dashboard');
     } catch (error) {
       console.error(error);
@@ -161,7 +156,7 @@ export default function TenantMaintenancePage() {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Repair Hub...</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Repair Registry...</p>
       </div>
     );
   }
@@ -173,34 +168,34 @@ export default function TenantMaintenancePage() {
           <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 border shadow-sm">
               <AlertCircle className="h-8 w-8 text-destructive" />
           </div>
-          <CardTitle className="text-lg">Portal Access Restricted</CardTitle>
-          <CardDescription>We could not verify your active tenancy.</CardDescription>
+          <CardTitle className="text-lg">Permission Denied</CardTitle>
+          <CardDescription>Verified tenancy required to log repairs.</CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
-          <Button variant="outline" className="w-full font-bold h-11" onClick={() => router.push('/dashboard')}>Return to Dashboard</Button>
+          <Button variant="outline" className="w-full font-bold h-11" onClick={() => router.push('/dashboard')}>Return Home</Button>
         </CardContent>
       </Card>
     );
   }
 
   return (
-    <Card className="max-w-2xl mx-auto shadow-xl border-none">
+    <Card className="max-w-2xl mx-auto shadow-xl border-none text-left">
       <CardHeader className="bg-primary/5 border-b">
         <CardTitle className="flex items-center gap-2 font-headline"><Wrench className="h-5 w-5 text-primary" /> Log Repair Issue</CardTitle>
-        <CardDescription>Tell us about the issue and we'll notify the landlord to arrange a fix.</CardDescription>
+        <CardDescription>Detailed information helps us resolve issues quickly.</CardDescription>
       </CardHeader>
       <CardContent className="pt-8">
         <Form {...form}>
           <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
             <FormField control={form.control} name="title" render={({ field }) => (
-              <FormItem><FormLabel className="font-bold">Summary of issue</FormLabel><FormControl><Input placeholder="e.g. Toilet not flushing" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
+              <FormItem><FormLabel className="font-bold">Issue Title</FormLabel><FormControl><Input placeholder="e.g. Boiler leak" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
             
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                 <FormField control={form.control} name="category" render={({ field }) => (
-                  <FormItem><FormLabel className="font-bold">Trade Category</FormLabel>
+                  <FormItem><FormLabel className="font-bold">Category</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select category" /></SelectTrigger></FormControl>
+                      <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
                       <SelectContent>{['Plumbing', 'Electrical', 'Heating', 'Structural', 'Appliances', 'Garden', 'Other'].map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent>
                     </Select>
                   <FormMessage /></FormItem>
@@ -208,19 +203,19 @@ export default function TenantMaintenancePage() {
                 <FormField control={form.control} name="priority" render={({ field }) => (
                   <FormItem><FormLabel className="font-bold">Urgency</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl><SelectTrigger className="h-11"><SelectValue /></SelectTrigger></FormControl>
-                      <SelectContent><SelectItem value="Emergency">Emergency (Safety Risk)</SelectItem><SelectItem value="Urgent">Urgent (Needs fix today)</SelectItem><SelectItem value="Routine">Routine (General maintenance)</SelectItem></SelectContent>
+                      <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select priority" /></SelectTrigger></FormControl>
+                      <SelectContent><SelectItem value="Emergency">Emergency</SelectItem><SelectItem value="Urgent">Urgent</SelectItem><SelectItem value="Routine">Routine</SelectItem></SelectContent>
                     </Select>
                   <FormMessage /></FormItem>
                 )} />
             </div>
 
             <FormField control={form.control} name="description" render={({ field }) => (
-              <FormItem><FormLabel className="font-bold">Detailed description</FormLabel><FormControl><Textarea rows={4} placeholder="Provide details..." className="resize-none rounded-xl" {...field} /></FormControl><FormMessage /></FormItem>
+              <FormItem><FormLabel className="font-bold">Details</FormLabel><FormControl><Textarea rows={4} placeholder="Description..." className="resize-none rounded-xl" {...field} /></FormControl><FormMessage /></FormItem>
             )} />
 
             <div className="space-y-4">
-                <FormLabel className="font-bold">Photo Evidence (Optional)</FormLabel>
+                <FormLabel className="font-bold">Photos</FormLabel>
                 <div className="grid grid-cols-3 gap-4">
                     {photoPreviews.map((url, idx) => (
                         <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border group shadow-sm">
@@ -230,16 +225,16 @@ export default function TenantMaintenancePage() {
                     ))}
                     <div className="border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 bg-muted/5 cursor-pointer aspect-square hover:bg-muted/10 transition-colors" onClick={() => document.getElementById('tenant-photo-upload')?.click()}>
                         <Upload className="h-6 w-6 text-muted-foreground" />
-                        <span className="text-[10px] font-bold uppercase tracking-tighter">Add Photo</span>
+                        <span className="text-[10px] font-bold uppercase">Add Photo</span>
                     </div>
                 </div>
                 <input id="tenant-photo-upload" type="file" multiple className="hidden" accept="image/*" onChange={handlePhotoChange} />
             </div>
 
             <div className="flex justify-end gap-3 pt-4 border-t">
-                <Button type="button" variant="ghost" className="font-bold uppercase tracking-widest text-xs h-11" onClick={() => router.push('/tenant/dashboard')}>Cancel</Button>
-                <Button type="submit" disabled={isSubmitting} className="h-11 px-10 shadow-lg font-bold uppercase tracking-widest text-xs bg-primary hover:bg-primary/90">
-                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Report Issue'}
+                <Button type="button" variant="ghost" className="font-bold uppercase text-xs h-11" onClick={() => router.push('/tenant/dashboard')}>Cancel</Button>
+                <Button type="submit" disabled={isSubmitting} className="h-11 px-10 shadow-lg font-bold uppercase text-xs">
+                  {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Log Issue'}
                 </Button>
             </div>
           </form>

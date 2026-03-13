@@ -40,7 +40,7 @@ import {
   useCollection,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, doc, updateDoc, addDoc, limit, where } from 'firebase/firestore';
+import { collection, query, doc, updateDoc, addDoc, limit, where, arrayUnion } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -158,7 +158,6 @@ export default function AddTenantPage() {
     setIsSubmitting(true);
 
     const tenantsCollection = collection(firestore, 'tenants');
-    // CRITICAL: Force lowercase and trim for reliable identity discovery
     const normalizedEmail = data.email.toLowerCase().trim();
     
     const newTenant = {
@@ -175,7 +174,11 @@ export default function AddTenantPage() {
         await addDoc(tenantsCollection, prepareForFirestore(newTenant));
         
         const propertyDocRef = doc(firestore, 'properties', data.propertyId);
-        await updateDoc(propertyDocRef, { status: 'Occupied' });
+        // Sync email to property for security rule authorization
+        await updateDoc(propertyDocRef, { 
+            status: 'Occupied',
+            tenantEmails: arrayUnion(normalizedEmail)
+        });
 
         toast({ title: 'Tenant Assigned' });
         router.push(`/dashboard/properties/${data.propertyId}`);
