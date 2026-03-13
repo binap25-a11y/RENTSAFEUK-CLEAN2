@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -24,6 +23,7 @@ import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@
 import { collection, query, where, limit, getDocs, doc, updateDoc, getDoc, arrayUnion } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
+import { getAuth } from 'firebase/auth';
 
 interface TenantContext {
     landlordId: string;
@@ -43,18 +43,29 @@ export default function TenantDashboard() {
   const discoveryRef = useRef(false);
 
   const performDiscovery = useCallback(async () => {
-    if (!user || !firestore || !user.email || discoveryRef.current) return;
+    // PRE-FLIGHT AUTH CHECK: Ensure user is fully initialized before querying
+    const auth = getAuth();
+    const currentUser = auth.currentUser;
+    
+    if (!currentUser || !firestore || !currentUser.email || discoveryRef.current) {
+        if (!currentUser && !isUserLoading) {
+            console.warn("Discovery: User not authenticated.");
+            setIsLoading(false);
+        }
+        return;
+    }
+
     discoveryRef.current = true;
     setIsLoading(true);
 
-    const userEmail = user.email.toLowerCase().trim();
+    const userEmail = currentUser.email.toLowerCase().trim();
 
     try {
         const tenantsCol = collection(firestore, 'tenants');
         
         // STAGE 1: Identity Link Search (By UID)
         // High-speed lookup for returning verified residents.
-        const qByUid = query(tenantsCol, where('userId', '==', user.uid), limit(1));
+        const qByUid = query(tenantsCol, where('userId', '==', currentUser.uid), limit(1));
         let snap = await getDocs(qByUid);
 
         // STAGE 2: Registry Bridge Fallback (By Email)
@@ -75,13 +86,13 @@ export default function TenantDashboard() {
         const tenantData = tenantDoc.data();
         
         // STAGE 3: Secure Identity Handshake
-        // Establish permanent UID link on first visit to facilitate high-speed authorized access.
-        if (!tenantData.userId || tenantData.userId !== user.uid || !tenantData.verified) {
+        // Establish permanent UID link on first visit to facilitate authorized access.
+        if (!tenantData.userId || tenantData.userId !== currentUser.uid || !tenantData.verified) {
             setIsHandshaking(true);
             
             // 1. Update Tenant registry with account UID and verification state.
             await updateDoc(tenantDoc.ref, { 
-                userId: user.uid,
+                userId: currentUser.uid,
                 verified: true,
                 joinedDate: new Date().toISOString(),
                 status: 'Active' 
@@ -90,8 +101,8 @@ export default function TenantDashboard() {
             // 2. Update Property registry with UID handshake for relational security.
             const propertyRef = doc(firestore, 'properties', tenantData.propertyId);
             await updateDoc(propertyRef, { 
-                tenantId: user.uid,
-                activeTenantUids: arrayUnion(user.uid)
+                tenantId: currentUser.uid,
+                activeTenantUids: arrayUnion(currentUser.uid)
             });
 
             toast({ title: "Hub Connected", description: "Identity registry synchronized." });
@@ -107,7 +118,7 @@ export default function TenantDashboard() {
                 landlordId: tenantData.landlordId,
                 propertyId: tenantData.propertyId,
                 tenantId: tenantDoc.id,
-                tenantData: { ...tenantData, verified: true, userId: user.uid },
+                tenantData: { ...tenantData, verified: true, userId: currentUser.uid },
                 propertyData: propSnap.data()
             });
         } else {
@@ -117,7 +128,7 @@ export default function TenantDashboard() {
         setIsLoading(false);
         discoveryRef.current = false;
     } catch (err: any) {
-        console.error("Resident Discovery Error:", err.message);
+        console.error("Resident Hub Discovery Error:", err.message);
         
         // ERROR GOVERNANCE: Emit rich error for developer oversight if discovery is blocked by rules
         if (err.code === 'permission-denied') {
@@ -130,7 +141,7 @@ export default function TenantDashboard() {
         setIsLoading(false);
         discoveryRef.current = false;
     }
-  }, [user, firestore]);
+  }, [firestore, isUserLoading]);
 
   useEffect(() => {
     if (!isUserLoading && user && !context) {
