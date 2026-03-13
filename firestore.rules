@@ -7,9 +7,9 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    // Normalized comparison ensures 100% match with high-speed query indexes.
+    // Defensive access to email token to prevent crashes if not present
     function authEmail() {
-      return request.auth.token.email.lower();
+      return request.auth.token.get('email', '').lower();
     }
 
     // Global User Registry
@@ -48,7 +48,6 @@ service cloud.firestore {
       allow create: if isSignedIn();
       
       // Allow read if: Landlord OR Matching UID OR Matching Email (for portal discovery)
-      // Optimized for direct field comparison queries
       allow read: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.userId == request.auth.uid || 

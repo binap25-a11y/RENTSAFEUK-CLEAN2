@@ -104,7 +104,8 @@ export default function TenantDashboard() {
         }
 
         // STAGE 4: RESOLVE AUTHORIZED CONTEXT
-        const propSnap = await getDoc(doc(firestore, 'properties', tenantData.propertyId));
+        const propRef = doc(firestore, 'properties', tenantData.propertyId);
+        const propSnap = await getDoc(propRef);
         
         if (propSnap.exists()) {
             setContext({
@@ -124,6 +125,7 @@ export default function TenantDashboard() {
     } catch (err: any) {
         console.error("Resident Hub Discovery Error:", err.message);
         
+        // Surface rich error for developer oversight if discovery is blocked by rules
         if (err.code === 'permission-denied') {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: 'tenants',
