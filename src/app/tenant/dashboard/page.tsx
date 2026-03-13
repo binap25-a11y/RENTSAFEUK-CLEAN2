@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -52,16 +53,19 @@ export default function TenantDashboard() {
         const tenantsCol = collection(firestore, 'tenants');
         
         // STAGE 1: Identity Link Search (By UID)
+        // High-speed lookup for returning verified residents.
         const qByUid = query(tenantsCol, where('userId', '==', user.uid), limit(1));
         let snap = await getDocs(qByUid);
 
         // STAGE 2: Registry Bridge Fallback (By Email)
+        // Discovery mechanism for first-time portal access.
         if (snap.empty) {
             const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
             snap = await getDocs(qByEmail);
         }
 
         if (snap.empty) {
+            console.log("Discovery: No tenancy record found for", userEmail);
             setIsLoading(false);
             discoveryRef.current = false;
             return;
@@ -106,11 +110,15 @@ export default function TenantDashboard() {
                 tenantData: { ...tenantData, verified: true, userId: user.uid },
                 propertyData: propSnap.data()
             });
+        } else {
+            console.error("Discovery: Linked property record missing.");
         }
         
         setIsLoading(false);
         discoveryRef.current = false;
     } catch (err: any) {
+        console.error("Resident Discovery Error:", err.message);
+        
         // ERROR GOVERNANCE: Emit rich error for developer oversight if discovery is blocked by rules
         if (err.code === 'permission-denied') {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
@@ -140,7 +148,9 @@ export default function TenantDashboard() {
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/5 rounded-full animate-ping" />
             </div>
             <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary tracking-tight">Syncing Resident Hub...</h2>
+                <h2 className="font-headline text-2xl font-bold text-primary tracking-tight">
+                    {isHandshaking ? "Verifying Tenancy..." : "Syncing Resident Hub..."}
+                </h2>
                 <p className="text-muted-foreground font-medium">Establishing secure connection to your property vault.</p>
             </div>
         </div>

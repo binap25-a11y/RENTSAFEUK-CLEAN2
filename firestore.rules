@@ -1,10 +1,11 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RentSafeUK Security Governance v7.0
-     * Optimized for high-speed identity discovery and query-compatible authorization.
+     * RentSafeUK Security Governance v8.0
+     * Optimized for high-speed discovery and robust identity handshake.
      */
 
     function isSignedIn() {
@@ -19,7 +20,6 @@ service cloud.firestore {
     }
 
     // Tenant check: authorizes access via UID or verified email handshake
-    // Optimized for direct string comparison to facilitate query optimizer permission grants.
     function isTenant(data) {
       let email = request.auth.token.email;
       let uid = request.auth.uid;
@@ -46,12 +46,13 @@ service cloud.firestore {
 
     // --- Tenant Registry ---
     match /tenants/{tenantId} {
-      // IDENTITY DISCOVERY: Allow signed-in users to query the registry.
-      // Essential for the initial portal handshake and self-discovery.
+      // IDENTITY DISCOVERY: Allow all signed-in users to list for handshake discovery.
+      // This is query-compatible because it doesn't depend on resource.data.
       allow list: if isSignedIn(); 
       allow get: if isRelated(resource.data);
       allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
-      // HANDSHAKE: Allow verified residents to link their UID to the registry record.
+      
+      // HANDSHAKE: Allow residents to link their UID if their email matches.
       allow update: if isSignedIn() && (
         isLandlord(resource.data) || 
         (isTenant(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['userId', 'verified', 'joinedDate', 'status', 'lastSyncCheck']))
@@ -65,8 +66,9 @@ service cloud.firestore {
       allow list: if isSignedIn();
       allow get: if isRelated(resource.data);
       allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
+      
       // HANDSHAKE: Allow residents to link their account to the property asset.
-      // Critically allows the transition from email-auth to permanent UID-auth.
+      // This explicitly allows the critical email -> UID transition.
       allow update: if isSignedIn() && (
         isLandlord(resource.data) || 
         (isTenant(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasAny(['tenantId', 'activeTenantUids', 'status']))
@@ -75,8 +77,7 @@ service cloud.firestore {
     }
 
     // --- Shared Ledger Collections ---
-    // Root-level collections optimized for high-speed denormalized lookups.
-
+    
     match /repairs/{id} {
       allow list: if isSignedIn();
       allow get: if isRelated(resource.data);
@@ -119,7 +120,5 @@ service cloud.firestore {
       allow list: if isSignedIn();
       allow read, write: if isLandlord(resource.data) || (request.resource != null && isLandlord(request.resource.data));
     }
-    
-    // Explicit deny for unmatched paths to preserve query optimizer performance.
   }
 }

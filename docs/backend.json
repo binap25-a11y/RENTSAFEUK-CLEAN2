@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "UserProfile": {
@@ -77,11 +78,34 @@
         "monthlyRent": { "type": "number" },
         "rentDueDay": { "type": "number" },
         "tenancyStartDate": { "type": "string", "format": "date-time" },
-        "tenancyEndDate": { "type": "string", "format": "date-time" },
-        "inviteSentDate": { "type": "string", "format": "date-time" },
-        "lastSyncCheck": { "type": "string", "format": "date-time" }
+        "tenancyEndDate": { "type": "string", "format": "date-time" }
       },
       "required": ["id", "landlordId", "propertyId", "email"]
+    },
+    "Contractor": {
+      "title": "Contractor",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "landlordId": { "type": "string" },
+        "name": { "type": "string" },
+        "trade": { "type": "string" },
+        "phone": { "type": "string" },
+        "email": { "type": "string" },
+        "status": { "type": "string", "enum": ["Active", "Archived"] }
+      }
+    },
+    "Expense": {
+      "title": "Expense",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "landlordId": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "amount": { "type": "number" },
+        "date": { "type": "string", "format": "date-time" },
+        "expenseType": { "type": "string" }
+      }
     }
   },
   "auth": {
@@ -119,6 +143,14 @@
     "/rentPayments/{id}": {
       "schema": "object",
       "description": "Rental collection ledger."
+    },
+    "/contractors/{id}": {
+      "schema": "Contractor",
+      "description": "Saved tradesperson directory."
+    },
+    "/expenses/{id}": {
+      "schema": "Expense",
+      "description": "Financial outgoing ledger."
     }
   }
 }
