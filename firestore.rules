@@ -7,7 +7,7 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    // Defensive access to email token to prevent crashes if not present
+    // Safely retrieves lowercased email from auth token
     function authEmail() {
       return request.auth.token.get('email', '').lower();
     }
@@ -22,7 +22,7 @@ service cloud.firestore {
       allow create: if isSignedIn();
       
       // Allow read if: Landlord OR Assigned Tenant (via UID) OR Registered Tenant (via Email List)
-      // Optimized for direct string matches to support query filters
+      // Optimized for direct string matches to support high-speed discovery
       allow read: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.tenantId == request.auth.uid ||
@@ -70,7 +70,7 @@ service cloud.firestore {
     // --- Shared Ledger Collections (Authorized by Context) ---
     
     // Helper: Verifies user is an authorized resident of the specific property
-    function isAuthorizedResident(propertyId) {
+    function isTenantOfProperty(propertyId) {
       if (propertyId == null) { return false; }
       let property = get(/databases/$(database)/documents/properties/$(propertyId)).data;
       return isSignedIn() && (
@@ -86,7 +86,7 @@ service cloud.firestore {
       allow read, update, delete: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.tenantId == request.auth.uid || 
-        isAuthorizedResident(resource.data.propertyId)
+        isTenantOfProperty(resource.data.propertyId)
       );
     }
 
@@ -94,7 +94,7 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow read, update, delete: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
-        isAuthorizedResident(resource.data.propertyId)
+        isTenantOfProperty(resource.data.propertyId)
       );
     }
 
@@ -104,7 +104,7 @@ service cloud.firestore {
         resource.data.landlordId == request.auth.uid || 
         resource.data.senderId == request.auth.uid ||
         resource.data.tenantId == request.auth.uid || 
-        isAuthorizedResident(resource.data.propertyId)
+        isTenantOfProperty(resource.data.propertyId)
       );
     }
 
@@ -118,7 +118,7 @@ service cloud.firestore {
       allow write: if isSignedIn() && resource.data.landlordId == request.auth.uid;
       allow read: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
-        isAuthorizedResident(resource.data.propertyId)
+        isTenantOfProperty(resource.data.propertyId)
       );
     }
     
@@ -127,7 +127,7 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.tenantId == request.auth.uid || 
-        isAuthorizedResident(resource.data.propertyId)
+        isTenantOfProperty(resource.data.propertyId)
       );
     }
   }

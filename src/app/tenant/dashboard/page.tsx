@@ -61,7 +61,6 @@ export default function TenantDashboard() {
         // STAGE 2: Fallback to normalized email discovery for first-time handshake
         if (snap.empty) {
             console.log("Resident Hub: Registry search for:", userEmail);
-            // Rules allow this if userEmail matches authEmail()
             const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
             snap = await getDocs(qByEmail);
         }
@@ -125,7 +124,6 @@ export default function TenantDashboard() {
     } catch (err: any) {
         console.error("Resident Hub Discovery Error:", err.message);
         
-        // Surface rich error for developer oversight if discovery is blocked by rules
         if (err.code === 'permission-denied') {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: 'tenants',
