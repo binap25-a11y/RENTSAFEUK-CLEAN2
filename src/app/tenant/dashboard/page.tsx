@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -55,19 +54,19 @@ export default function TenantDashboard() {
         const tenantsCol = collection(firestore, 'tenants');
         
         // STAGE 1: Check existing identity link
-        console.log("Tenant Discovery: Searching UID link...");
+        console.log("Resident Hub: Searching UID link...");
         const qByUid = query(tenantsCol, where('userId', '==', user.uid), limit(1));
         let snap = await getDocs(qByUid);
 
         // STAGE 2: Fallback to normalized email discovery
         if (snap.empty) {
-            console.log("Tenant Discovery: Searching email registry...");
+            console.log("Resident Hub: Searching registry by email:", userEmail);
             const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
             snap = await getDocs(qByEmail);
         }
 
         if (snap.empty) {
-            console.warn("Tenant Discovery: Identity not found in registry.");
+            console.warn("Resident Hub: Identity not found in registry.");
             setIsLoading(false);
             setDiscoveryStatus('failed');
             discoveryRef.current = false;
@@ -79,6 +78,7 @@ export default function TenantDashboard() {
         
         // ATOMIC HANDSHAKE: Establish secure link
         if (!tenantData.userId || tenantData.userId !== user.uid || !tenantData.verified) {
+            console.log("Resident Hub: Establishing atomic handshake...");
             setIsHandshaking(true);
             setDiscoveryStatus('handshaking');
             
@@ -89,9 +89,13 @@ export default function TenantDashboard() {
                 status: 'Active' 
             });
             
+            // Also sync UID to property for secondary authorization branch
+            const propertyRef = doc(firestore, 'properties', tenantData.propertyId);
+            await updateDoc(propertyRef, { tenantId: user.uid });
+
             toast({ 
-                title: "Identity Verified", 
-                description: "Secure property connection established." 
+                title: "Identity Handshake Complete", 
+                description: "Secure property connection verified." 
             });
             setIsHandshaking(false);
         }
@@ -113,12 +117,14 @@ export default function TenantDashboard() {
         discoveryRef.current = false;
     } catch (err: any) {
         console.error("Resident Hub Discovery Error:", err.message);
+        
         if (err.code === 'permission-denied') {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: 'tenants',
                 operation: 'list'
             }));
         }
+        
         setIsLoading(false);
         setDiscoveryStatus('failed');
         discoveryRef.current = false;
@@ -141,11 +147,11 @@ export default function TenantDashboard() {
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/5 rounded-full animate-ping" />
             </div>
             <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Identity Syncing</h2>
+                <h2 className="font-headline text-2xl font-bold text-primary">Resident Identity Sync</h2>
                 <p className="text-muted-foreground font-medium leading-relaxed">
                     {discoveryStatus === 'handshaking' 
-                        ? 'Finalizing portal connection...' 
-                        : 'Resolving property registry...'}
+                        ? 'Finalizing portal handshake...' 
+                        : 'Authenticating registry credentials...'}
                 </p>
             </div>
         </div>
@@ -159,13 +165,13 @@ export default function TenantDashboard() {
                 <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 shadow-sm border text-muted-foreground/20">
                     <Search className="h-10 w-10" />
                 </div>
-                <CardTitle className="font-headline text-xl text-primary">Tenancy Not Found</CardTitle>
+                <CardTitle className="font-headline text-xl text-primary">Tenancy Not Linked</CardTitle>
                 <CardDescription className="text-sm font-medium px-4">
-                    The email <strong>{user?.email}</strong> is not associated with an active record.
+                    The email <strong>{user?.email}</strong> is not associated with an active record in our registry.
                 </CardDescription>
             </CardHeader>
             <CardContent className="pt-6 text-sm text-muted-foreground">
-                <p className="text-center leading-relaxed">Ask your landlord to verify your email registry entry in the management portal.</p>
+                <p className="text-center leading-relaxed">Please ask your landlord to verify that your email is registered correctly in the RentSafeUK portal.</p>
             </CardContent>
             <CardFooter className="pt-6 bg-muted/5 border-t">
                 <Button variant="outline" className="w-full h-11 font-bold" onClick={() => { discoveryRef.current = false; performDiscovery(); }}>

@@ -1,4 +1,3 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -7,79 +6,72 @@ service cloud.firestore {
       return request.auth != null;
     }
 
-    function isOwner(userId) {
-      return isSignedIn() && request.auth.uid == userId;
+    function authEmail() {
+      return request.auth.token.email == null ? "" : request.auth.token.email.lower();
     }
 
-    // Check if the current user is the landlord of the record via relational key
-    function isLandlordOf(data) {
-      return isSignedIn() && (data.landlordId == request.auth.uid || data.userId == request.auth.uid);
+    // Helper to check if user is the landlord of a document
+    function isLandlord(data) {
+      return isSignedIn() && data.landlordId == request.auth.uid;
     }
 
-    // Check if the current user is the tenant linked to the record
-    // Optimized for deterministic query verification
-    function isTenantOf(data) {
-      let authEmail = request.auth.token.email;
-      let userEmail = authEmail == null ? "" : authEmail.lower();
+    // Helper to check if user is the tenant of a property
+    function isTenantOfProperty(propertyId) {
+      let property = get(/databases/$(database)/documents/properties/$(propertyId)).data;
       return isSignedIn() && (
-        data.tenantId == request.auth.uid || 
-        data.userId == request.auth.uid || 
-        (authEmail != null && data.email == userEmail) ||
-        (authEmail != null && data.tenantEmail == userEmail) ||
-        (authEmail != null && "tenantEmails" in data && userEmail in data.tenantEmails)
+        property.tenantId == request.auth.uid ||
+        (request.auth.token.email != null && authEmail() in property.tenantEmails)
       );
     }
 
     // --- 1. Users Collection ---
     match /users/{userId} {
-      allow read, write: if isOwner(userId);
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
 
     // --- 2. Properties Collection ---
     match /properties/{id} {
       allow create: if isSignedIn();
-      allow read: if isLandlordOf(resource.data) || isTenantOf(resource.data);
-      allow update, delete: if isLandlordOf(resource.data);
+      allow read: if isSignedIn() && (
+        resource.data.landlordId == request.auth.uid || 
+        resource.data.tenantId == request.auth.uid ||
+        (request.auth.token.email != null && "tenantEmails" in resource.data && authEmail() in resource.data.tenantEmails)
+      );
+      allow update, delete: if isLandlord(resource.data);
     }
 
     // --- 3. Tenants Collection ---
     match /tenants/{id} {
       allow create: if isSignedIn();
-      allow read: if isLandlordOf(resource.data) || isTenantOf(resource.data);
-      allow update: if isLandlordOf(resource.data) || isTenantOf(resource.data);
-      allow delete: if isLandlordOf(resource.data);
+      allow read: if isSignedIn() && (
+        resource.data.landlordId == request.auth.uid || 
+        resource.data.userId == request.auth.uid || 
+        (request.auth.token.email != null && resource.data.email == authEmail())
+      );
+      allow update: if isSignedIn() && (
+        resource.data.landlordId == request.auth.uid || 
+        (request.auth.token.email != null && resource.data.email == authEmail())
+      );
+      allow delete: if isLandlord(resource.data);
     }
 
-    // --- 4. Repairs (Maintenance) ---
-    match /repairs/{id} {
-      allow create: if isSignedIn();
-      allow read: if isLandlordOf(resource.data) || isTenantOf(resource.data);
-      allow update: if isLandlordOf(resource.data) || isTenantOf(resource.data);
-      allow delete: if isLandlordOf(resource.data);
-    }
-
-    // --- 5. Documents & Compliance ---
-    match /documents/{id} {
-      allow create: if isSignedIn();
-      allow read: if isLandlordOf(resource.data) || isTenantOf(resource.data);
-      allow update: if isLandlordOf(resource.data);
-      allow delete: if isLandlordOf(resource.data);
-    }
-
-    // --- 6. Secure Messaging ---
-    match /messages/{id} {
-      allow create: if isSignedIn();
-      allow read: if isLandlordOf(resource.data) || isTenantOf(resource.data) || (isSignedIn() && resource.data.senderId == request.auth.uid);
-      allow update: if isLandlordOf(resource.data) || isTenantOf(resource.data);
-      allow delete: if isLandlordOf(resource.data);
-    }
-
-    // --- 7. Generic Ledger Access (Expenses, Inspections, Contractors, Screenings, checklists etc) ---
+    // --- 4. Repairs, Documents, Messages, and other ledgers ---
+    // Using a more robust catch-all for relational data
     match /{collectionName}/{id} {
       allow create: if isSignedIn();
-      allow read: if isLandlordOf(resource.data) || isTenantOf(resource.data);
-      allow update: if isLandlordOf(resource.data);
-      allow delete: if isLandlordOf(resource.data);
+      allow read: if isSignedIn() && (
+        resource.data.landlordId == request.auth.uid || 
+        resource.data.tenantId == request.auth.uid ||
+        (request.auth.token.email != null && "email" in resource.data && resource.data.email == authEmail()) ||
+        (request.auth.token.email != null && "tenantEmail" in resource.data && resource.data.tenantEmail == authEmail()) ||
+        ("propertyId" in resource.data && isTenantOfProperty(resource.data.propertyId))
+      );
+      allow update: if isSignedIn() && (
+        resource.data.landlordId == request.auth.uid || 
+        resource.data.tenantId == request.auth.uid ||
+        ("propertyId" in resource.data && isTenantOfProperty(resource.data.propertyId))
+      );
+      allow delete: if isLandlord(resource.data);
     }
   }
 }

@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -34,7 +33,6 @@ import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Loader2, Eye, EyeOff, AlertCircle, ShieldCheck, Building2, Users, UserCircle } from 'lucide-react';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
-import { Label } from '@/components/ui/label';
 import { doc, getDoc, collection, query, where, getDocs, limit, setDoc, updateDoc } from 'firebase/firestore';
 
 const formSchema = z.object({
@@ -66,71 +64,67 @@ export default function LoginPage() {
           const snap = await getDoc(userRef);
           
           let role: string | null = null;
-          // Always use normalized lowercase email for discovery
+          // Always use normalized lowercase email for high-performance discovery
           const userEmail = user.email?.toLowerCase().trim();
 
           if (snap.exists()) {
             role = snap.data().role;
-            // SELF-HEALING: If user is logged in as landlord but exists in tenants registry, correct it immediately
+            
+            // SELF-HEALING: If account exists as 'landlord' but email matches a registry tenant, repair it.
             if (role === 'landlord' && userEmail) {
                 const tenantsCol = collection(firestore, 'tenants');
-                // Use optimized query that exactly matches normalized case
                 const q = query(tenantsCol, where('email', '==', userEmail), limit(1));
                 const tenantSnap = await getDocs(q);
                 if (!tenantSnap.empty) {
-                    console.log("LoginPage: Self-healing role to 'tenant'");
+                    console.log("Login: Re-routing misidentified resident to hub...");
                     role = 'tenant';
                     await updateDoc(userRef, { role: 'tenant' });
                 }
             }
-          } else {
-            // SMART DISCOVERY: Identity Handshake for new users
-            if (userEmail) {
-                const tenantsCol = collection(firestore, 'tenants');
-                const q = query(tenantsCol, where('email', '==', userEmail), limit(1));
-                const tenantSnap = await getDocs(q);
-                
-                if (!tenantSnap.empty) {
-                  console.log("LoginPage: Identity handshake discovered tenant record");
-                  role = 'tenant';
-                  await setDoc(userRef, {
-                    id: user.uid,
-                    email: userEmail,
-                    role: 'tenant',
-                    createdAt: new Date().toISOString(),
-                    idleTimeoutMinutes: 30
-                  });
-                } else if (mode === 'login') {
-                  // Default to landlord only if no tenancy exists in the registry
-                  role = 'landlord';
-                  await setDoc(userRef, {
-                    id: user.uid,
-                    email: userEmail,
-                    role: 'landlord',
-                    createdAt: new Date().toISOString(),
-                    idleTimeoutMinutes: 30
-                  });
-                }
+          } else if (userEmail) {
+            // DISCOVERY HANDSHAKE: Identify first-time logins against the property registry
+            const tenantsCol = collection(firestore, 'tenants');
+            const q = query(tenantsCol, where('email', '==', userEmail), limit(1));
+            const tenantSnap = await getDocs(q);
+            
+            if (!tenantSnap.empty) {
+              console.log("Login: Identified resident via registry handshake.");
+              role = 'tenant';
+              await setDoc(userRef, {
+                id: user.uid,
+                email: userEmail,
+                role: 'tenant',
+                createdAt: new Date().toISOString(),
+                idleTimeoutMinutes: 30
+              });
+            } else {
+              role = mode === 'signup' ? form.getValues('role') : 'landlord';
+              await setDoc(userRef, {
+                id: user.uid,
+                email: userEmail,
+                role: role,
+                createdAt: new Date().toISOString(),
+                idleTimeoutMinutes: 30
+              });
             }
           }
           
-          // Final Navigation
+          // FINAL ROUTING
           if (role === 'tenant') {
             router.replace('/tenant/dashboard');
           } else {
             router.replace('/dashboard');
           }
-        } catch (error) {
-          console.error("Redirection engine error:", error);
-          // Safety fallback: if discovery fails due to rules, we can't definitively route
-          // But with fixed rules, this shouldn't happen for verified residents.
+        } catch (error: any) {
+          console.error("Critical Redirection Error:", error.message);
+          // Fallback to primary dashboard if discovery encounters a temporary rule block
           router.replace('/dashboard');
         }
       };
       
       checkRoleAndRedirect();
     }
-  }, [user, isUserLoading, router, firestore, mode]);
+  }, [user, isUserLoading, firestore]);
 
   const handleAuthAction = (data: FormValues) => {
     if (!auth) {
@@ -195,7 +189,7 @@ export default function LoginPage() {
          <div className="flex flex-col items-center gap-4">
             <Loader2 className="h-8 w-8 animate-spin text-primary" />
             <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">
-                Verifying Session...
+                Verifying Session Integrity...
             </p>
          </div>
       </div>
