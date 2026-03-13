@@ -33,7 +33,6 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Loader2, CalendarDays } from 'lucide-react';
-import { toast } from '@/hooks/use-toast';
 import {
   useUser,
   useFirestore,
@@ -42,6 +41,7 @@ import {
   useDoc,
 } from '@/firebase';
 import { collection, query, where, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { toast } from '@/hooks/use-toast';
 
 const ukPhoneRegex = /^(((\+44\s?\d{4}|\(?0\d{4}\)?)\s?\d{3}\s?\d{3})|((\+44\s?\d{3}|\(?0\d{3}\)?)\s?\d{3}\s?\d{3})|((\+44\s?\d{2}|\(?0\d{2}\)?)\s?\d{4}\s?\d{4}))(\s?\#(\d{4}|\d{3}))?$/;
 
@@ -147,6 +147,7 @@ export default function EditTenantPage() {
     setIsSaving(true);
     
     try {
+      // Normalize email to lowercase
       const normalizedEmail = data.email.toLowerCase().trim();
       const updateData = { 
         ...data, 
@@ -158,7 +159,6 @@ export default function EditTenantPage() {
       await updateDoc(tenantRef, cleanedUpdateData);
 
       // CRITICAL: Manage property identity registry bridge for security rule authorization.
-      // This synchronization ensures that verified residents can always identify their home during discovery.
       if (tenant.propertyId !== data.propertyId) {
           const oldPropRef = doc(firestore, 'properties', tenant.propertyId);
           await updateDoc(oldPropRef, { 

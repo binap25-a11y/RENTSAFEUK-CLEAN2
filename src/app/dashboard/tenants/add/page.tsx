@@ -157,6 +157,7 @@ export default function AddTenantPage() {
     setIsSubmitting(true);
 
     const tenantsCollection = collection(firestore, 'tenants');
+    // Normalize email to lowercase for security rule compliance
     const normalizedEmail = data.email.toLowerCase().trim();
     
     const newTenant = {
@@ -178,8 +179,8 @@ export default function AddTenantPage() {
         // This arrayUnion is critical for the query-compatible security rules.
         await updateDoc(propertyDocRef, { 
             status: 'Occupied',
-            tenantEmail: normalizedEmail, // Legacy support
-            tenantEmails: arrayUnion(normalizedEmail) // Specialized registry bridge
+            tenantEmail: normalizedEmail,
+            tenantEmails: arrayUnion(normalizedEmail)
         });
 
         toast({ title: 'Tenant Assigned', description: 'Registry bridge established.' });
