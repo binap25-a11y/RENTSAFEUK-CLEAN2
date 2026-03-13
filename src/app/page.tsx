@@ -72,7 +72,7 @@ export default function LoginPage() {
           let role: string | null = null;
 
           // 1. DISCOVERY HANDSHAKE: Check residency registry by normalized email.
-          // This query is optimized for the updated high-speed security rules.
+          // This query is now fully authorized by the optimized security rules.
           const tenantsCol = collection(firestore, 'tenants');
           const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
           const tenantSnap = await getDocs(qByEmail);
@@ -80,8 +80,9 @@ export default function LoginPage() {
 
           if (snap.exists()) {
             role = snap.data().role;
-            // SELF-HEALING: If previously misidentified, sync role to resident portal.
+            // SELF-HEALING: If registry discovery confirms tenancy, force update the role.
             if (role !== 'tenant' && isTenantInRegistry) {
+                console.log("Login: Resident Registry Discovered. Updating user role...");
                 role = 'tenant';
                 await updateDoc(userRef, { role: 'tenant' });
             }
@@ -97,7 +98,7 @@ export default function LoginPage() {
             });
           }
           
-          // ROUTING: Redirect to discovered portal context.
+          // ROUTING: Redirect to identified dashboard.
           if (role === 'tenant') {
             router.replace('/tenant/dashboard');
           } else {

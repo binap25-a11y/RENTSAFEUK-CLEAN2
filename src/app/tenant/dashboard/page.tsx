@@ -53,12 +53,13 @@ export default function TenantDashboard() {
         
         // STAGE 1: Identity Link Search (By UID)
         // High-speed authorized search once handshake is complete
+        console.log("Resident Hub: Initializing UID Discovery...");
         const qByUid = query(tenantsCol, where('userId', '==', user.uid), limit(1));
         let snap = await getDocs(qByUid);
 
         // STAGE 2: Registry Bridge Fallback (By Email)
         if (snap.empty) {
-            // First visit discovery via registered email
+            console.log("Resident Hub: Falling back to Email Discovery...");
             const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
             snap = await getDocs(qByEmail);
         }
@@ -77,6 +78,7 @@ export default function TenantDashboard() {
         // Establish permanent UID link on first visit to transition to high-speed authorization
         if (!tenantData.userId || tenantData.userId !== user.uid || !tenantData.verified) {
             setIsHandshaking(true);
+            console.log("Resident Hub: Establishing Secure Handshake...");
             
             // 1. Update Tenant registry with account UID
             await updateDoc(tenantDoc.ref, { 
@@ -87,7 +89,6 @@ export default function TenantDashboard() {
             });
             
             // 2. Update Property registry with UID handshake
-            // The security rules explicitly permit this field-level update for verified emails
             const propertyRef = doc(firestore, 'properties', tenantData.propertyId);
             await updateDoc(propertyRef, { 
                 tenantId: user.uid,
@@ -115,7 +116,8 @@ export default function TenantDashboard() {
         setIsLoading(false);
         discoveryRef.current = false;
     } catch (err: any) {
-        // Emit rich error for developer oversight if discovery is blocked by rules
+        console.error("Resident Hub Discovery Blocked:", err.message);
+        
         if (err.code === 'permission-denied') {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: 'tenants',

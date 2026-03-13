@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RentSafeUK Security Governance v3.0
+     * RentSafeUK Security Governance v4.0
      * Optimized for high-speed identity discovery and verified Resident Hub handshakes.
      */
 
@@ -15,11 +15,10 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    // Landlord check: verifies if user owns the record or is the landlord of the linked property
+    // Landlord check: verifies if user owns the record or is the landlord of the linked asset
     function isLandlord(data) {
       return isSignedIn() && (
-        request.auth.uid == data.get('landlordId', '') || 
-        request.auth.uid == data.get('userId', '')
+        request.auth.uid == data.get('landlordId', '')
       );
     }
 
@@ -47,7 +46,7 @@ service cloud.firestore {
 
     // --- Tenant Registry ---
     match /tenants/{tenantId} {
-      // IDENTITY DISCOVERY: Allow residents to find their own records via email/UID filter
+      // IDENTITY DISCOVERY: Allow any signed-in user to query the registry for their own record
       allow list: if isSignedIn(); 
       allow get: if isRelated(resource.data);
       allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
@@ -72,7 +71,7 @@ service cloud.firestore {
       allow delete: if isLandlord(resource.data);
     }
 
-    // --- Shared Portals & Audit Trails ---
+    // --- Shared Ledger Collections ---
     match /repairs/{id} {
       allow list: if isSignedIn();
       allow get: if isRelated(resource.data);
@@ -100,39 +99,7 @@ service cloud.firestore {
       allow write: if isLandlord(resource.data);
     }
 
-    match /contractors/{id} {
-      allow list: if isSignedIn();
-      allow get: if isLandlord(resource.data);
-      allow create: if isSignedIn();
-      allow update, delete: if isLandlord(resource.data);
-    }
-
-    match /expenses/{id} {
-      allow list: if isSignedIn();
-      allow get: if isLandlord(resource.data);
-      allow create: if isSignedIn();
-      allow update, delete: if isLandlord(resource.data);
-    }
-
-    match /rentPayments/{id} {
-      allow list: if isSignedIn();
-      allow get: if isRelated(resource.data);
-      allow write: if isLandlord(resource.data);
-    }
-
-    match /checklists/{id} {
-      allow list: if isSignedIn();
-      allow get: if isRelated(resource.data);
-      allow write: if isLandlord(resource.data);
-    }
-
-    match /screenings/{id} {
-      allow list: if isSignedIn();
-      allow get: if isRelated(resource.data);
-      allow write: if isLandlord(resource.data);
-    }
-
-    // --- Catch-all fallback for other sub-collections ---
+    // --- Global Fallback ---
     match /{path=**} {
       allow read, write: if isSignedIn() && (
         (resource != null && isLandlord(resource.data)) ||
