@@ -2,66 +2,73 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    // --- 1. Identity Collections (High-Performance Discovery) ---
+    // --- Core Authorization Helpers ---
+    function isSignedIn() {
+      return request.auth != null;
+    }
     
+    // Returns the user's email in lowercase for rule comparison
+    function authEmail() {
+      return request.auth.token.email.lower();
+    }
+
     // Global User Registry
     match /users/{userId} {
-      allow read, write: if request.auth != null && request.auth.uid == userId;
+      allow read, write: if isSignedIn() && request.auth.uid == userId;
     }
 
     // Property Registry (Portfolio Assets)
     match /properties/{id} {
-      allow create: if request.auth != null;
-      // Allow read if landlord OR assigned tenant (via UID or verified Email)
-      allow read: if request.auth != null && (
+      allow create: if isSignedIn();
+      // Allow read if landlord OR assigned tenant (via UID or verified Email array)
+      allow read: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.tenantId == request.auth.uid ||
-        (request.auth.token.email != null && "tenantEmails" in resource.data && request.auth.token.email.lower() in resource.data.tenantEmails)
+        ("tenantEmails" in resource.data && authEmail() in resource.data.tenantEmails)
       );
-      // Handshake Authorization: Allow tenants to sync their UID once if verified by email
-      allow update: if request.auth != null && (
+      // Handshake Authorization: Allow verified tenants to link their UID once
+      allow update: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         (
-          request.auth.token.email != null && 
           "tenantEmails" in resource.data && 
-          request.auth.token.email.lower() in resource.data.tenantEmails &&
+          authEmail() in resource.data.tenantEmails &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tenantId']) &&
           request.resource.data.tenantId == request.auth.uid
         )
       );
-      allow delete: if request.auth != null && resource.data.landlordId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.landlordId == request.auth.uid;
     }
 
     // Tenant Registry (Lease Mappings)
     match /tenants/{id} {
-      allow create: if request.auth != null;
-      // Optimized for high-speed discovery queries
-      allow read: if request.auth != null && (
+      allow create: if isSignedIn();
+      // Optimized for high-speed discovery queries by email or UID
+      allow read: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.userId == request.auth.uid || 
-        resource.data.email == request.auth.token.email.lower()
+        resource.data.email == authEmail()
       );
-      // Handshake Authorization: Allow self-link
-      allow update: if request.auth != null && (
+      // Handshake Authorization: Allow self-link of UID to registry record
+      allow update: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
-        (resource.data.email == request.auth.token.email.lower() && request.resource.data.userId == request.auth.uid)
+        (resource.data.email == authEmail() && request.resource.data.userId == request.auth.uid)
       );
-      allow delete: if request.auth != null && resource.data.landlordId == request.auth.uid;
+      allow delete: if isSignedIn() && resource.data.landlordId == request.auth.uid;
     }
 
-    // --- 2. Shared Ledger Collections (Authorized by Context) ---
+    // --- Shared Ledger Collections (Authorized by Context) ---
     
-    // Professional Audit Trail Helper
+    // Professional Audit Trail Helper: Verifies residency via Property Document
     function isTenantOfProperty(propertyId) {
       let property = get(/databases/$(database)/documents/properties/$(propertyId)).data;
-      return request.auth != null && (
+      return isSignedIn() && (
         property.tenantId == request.auth.uid ||
-        (request.auth.token.email != null && "tenantEmails" in property && request.auth.token.email.lower() in property.tenantEmails)
+        ("tenantEmails" in property && authEmail() in property.tenantEmails)
       );
     }
 
     match /repairs/{id} {
-      allow read, write: if request.auth != null && (
+      allow read, write: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.tenantId == request.auth.uid || 
         ("propertyId" in resource.data && isTenantOfProperty(resource.data.propertyId))
@@ -69,7 +76,7 @@ service cloud.firestore {
     }
 
     match /documents/{id} {
-      allow read, write: if request.auth != null && (
+      allow read, write: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.tenantId == request.auth.uid || 
         ("propertyId" in resource.data && isTenantOfProperty(resource.data.propertyId))
@@ -77,23 +84,23 @@ service cloud.firestore {
     }
 
     match /messages/{id} {
-      allow read, write: if request.auth != null && (
+      allow read, write: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.tenantId == request.auth.uid || 
         ("propertyId" in resource.data && isTenantOfProperty(resource.data.propertyId))
       );
     }
 
-    // --- 3. Private Landlord Outgoings ---
-    match /expenses/{id} { allow read, write: if request.auth != null && resource.data.landlordId == request.auth.uid; }
-    match /contractors/{id} { allow read, write: if request.auth != null && resource.data.landlordId == request.auth.uid; }
-    match /checklists/{id} { allow read, write: if request.auth != null && resource.data.landlordId == request.auth.uid; }
-    match /screenings/{id} { allow read, write: if request.auth != null && resource.data.landlordId == request.auth.uid; }
+    // --- Private Landlord Collections ---
+    match /expenses/{id} { allow read, write: if isSignedIn() && resource.data.landlordId == request.auth.uid; }
+    match /contractors/{id} { allow read, write: if isSignedIn() && resource.data.landlordId == request.auth.uid; }
+    match /checklists/{id} { allow read, write: if isSignedIn() && resource.data.landlordId == request.auth.uid; }
+    match /screenings/{id} { allow read, write: if isSignedIn() && resource.data.landlordId == request.auth.uid; }
     
     // Inspections (Shared Read for tenants)
     match /inspections/{id} {
-      allow write: if request.auth != null && resource.data.landlordId == request.auth.uid;
-      allow read: if request.auth != null && (
+      allow write: if isSignedIn() && resource.data.landlordId == request.auth.uid;
+      allow read: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         ("propertyId" in resource.data && isTenantOfProperty(resource.data.propertyId))
       );
@@ -101,8 +108,8 @@ service cloud.firestore {
     
     // Rent Ledger (Shared Read for tenants)
     match /rentPayments/{id} {
-      allow write: if request.auth != null && resource.data.landlordId == request.auth.uid;
-      allow read: if request.auth != null && (
+      allow write: if isSignedIn() && resource.data.landlordId == request.auth.uid;
+      allow read: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.tenantId == request.auth.uid || 
         ("propertyId" in resource.data && isTenantOfProperty(resource.data.propertyId))

@@ -91,9 +91,10 @@ export default function TenantDashboard() {
                 status: 'Active' 
             });
             
-            // 2. Link UID to Property Record (Authorized by email array lookup)
+            // 2. Link UID to Property Record (Authorized by email registry check)
             const propertyRef = doc(firestore, 'properties', tenantData.propertyId);
             try {
+                // Verified Residents are allowed to sync their own UID to the Property Record
                 await updateDoc(propertyRef, { tenantId: user.uid });
             } catch (propSyncErr) {
                 console.warn("Resident Hub: Property UID sync deferred.");
