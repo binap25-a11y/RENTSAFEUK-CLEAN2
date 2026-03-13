@@ -54,19 +54,19 @@ export default function TenantDashboard() {
         const tenantsCol = collection(firestore, 'tenants');
         
         // STAGE 1: Check existing identity link by UID
-        console.log("Resident Hub: Searching UID link...");
+        console.log("Resident Hub: Resolving identity link...");
         const qByUid = query(tenantsCol, where('userId', '==', user.uid), limit(1));
         let snap = await getDocs(qByUid);
 
         // STAGE 2: Fallback to normalized email discovery for first-time handshake
         if (snap.empty) {
-            console.log("Resident Hub: Searching registry by email:", userEmail);
+            console.log("Resident Hub: Registry search for:", userEmail);
             const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
             snap = await getDocs(qByEmail);
         }
 
         if (snap.empty) {
-            console.warn("Resident Hub: Identity not found in registry for:", userEmail);
+            console.warn("Resident Hub: No tenancy found for:", userEmail);
             setIsLoading(false);
             setDiscoveryStatus('failed');
             discoveryRef.current = false;
@@ -76,9 +76,9 @@ export default function TenantDashboard() {
         const tenantDoc = snap.docs[0];
         const tenantData = tenantDoc.data();
         
-        // STAGE 3: ATOMIC HANDSHAKE - Establish secure UID link if missing or unverified
+        // STAGE 3: ATOMIC HANDSHAKE - Establish secure UID link if missing
         if (!tenantData.userId || tenantData.userId !== user.uid || !tenantData.verified) {
-            console.log("Resident Hub: Finalizing atomic identity handshake...");
+            console.log("Resident Hub: Finalizing identity handshake...");
             setIsHandshaking(true);
             setDiscoveryStatus('handshaking');
             
@@ -90,18 +90,15 @@ export default function TenantDashboard() {
                 status: 'Active' 
             });
             
-            // 2. Link UID to Property Record (Authorized by new rules)
+            // 2. Link UID to Property Record (Field-level update authorized)
             const propertyRef = doc(firestore, 'properties', tenantData.propertyId);
             try {
                 await updateDoc(propertyRef, { tenantId: user.uid });
             } catch (propSyncErr) {
-                console.warn("Resident Hub: Property UID sync deferred (Authorized via email array).");
+                console.warn("Resident Hub: Property UID sync deferred (Authorized via email array fallback).");
             }
 
-            toast({ 
-                title: "Identity Verified", 
-                description: "Your secure portal access is now active." 
-            });
+            toast({ title: "Identity Verified", description: "Access active." });
             setIsHandshaking(false);
         }
 
@@ -117,7 +114,7 @@ export default function TenantDashboard() {
                 propertyData: propSnap.data()
             });
         } else {
-            console.error("Resident Hub: Property document missing for verified tenant.");
+            console.error("Resident Hub: Property document missing.");
             setDiscoveryStatus('failed');
         }
         
@@ -127,7 +124,6 @@ export default function TenantDashboard() {
         console.error("Resident Hub Discovery Error:", err.message);
         
         if (err.code === 'permission-denied') {
-            // Surface rich error for developer oversight
             errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: 'tenants',
                 operation: 'list'
@@ -156,12 +152,8 @@ export default function TenantDashboard() {
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/5 rounded-full animate-ping" />
             </div>
             <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary">Resident Identity Sync</h2>
-                <p className="text-muted-foreground font-medium leading-relaxed">
-                    {discoveryStatus === 'handshaking' 
-                        ? 'Establishing secure property handshake...' 
-                        : 'Verifying your tenancy credentials...'}
-                </p>
+                <h2 className="font-headline text-2xl font-bold text-primary">Identity Sync</h2>
+                <p className="text-muted-foreground font-medium">Establishing secure portal connection...</p>
             </div>
         </div>
     );
@@ -171,7 +163,7 @@ export default function TenantDashboard() {
     return (
         <Card className="max-w-md mx-auto mt-20 shadow-2xl border-none overflow-hidden text-left">
             <CardHeader className="text-center bg-muted/20 pb-8 border-b">
-                <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 shadow-sm border text-muted-foreground/20">
+                <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 border shadow-sm text-muted-foreground/20">
                     <Search className="h-10 w-10" />
                 </div>
                 <CardTitle className="font-headline text-xl text-primary">Tenancy Not Linked</CardTitle>
@@ -180,11 +172,11 @@ export default function TenantDashboard() {
                 </CardDescription>
             </CardHeader>
             <CardContent className="pt-6 text-sm text-muted-foreground">
-                <p className="text-center leading-relaxed">Please ask your landlord to verify that your email is registered correctly in the RentSafeUK portal.</p>
+                <p className="text-center leading-relaxed">Please ask your landlord to verify that they have registered your email <strong>{user?.email}</strong> correctly in the portal.</p>
             </CardContent>
             <CardFooter className="pt-6 bg-muted/5 border-t">
                 <Button variant="outline" className="w-full h-11 font-bold" onClick={() => { discoveryRef.current = false; performDiscovery(); }}>
-                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Discovery
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Sync
                 </Button>
             </CardFooter>
         </Card>

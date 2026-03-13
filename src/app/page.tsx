@@ -60,53 +60,41 @@ export default function LoginPage() {
     if (!isUserLoading && user && firestore) {
       const checkRoleAndRedirect = async () => {
         try {
+          const userEmail = user.email?.toLowerCase().trim();
+          if (!userEmail) {
+              router.replace('/dashboard');
+              return;
+          }
+
           const userRef = doc(firestore, 'users', user.uid);
           const snap = await getDoc(userRef);
           
           let role: string | null = null;
-          // Normalized lowercase email for high-performance discovery
-          const userEmail = user.email?.toLowerCase().trim();
+
+          // 1. DISCOVERY: Check registry by normalized email
+          const tenantsCol = collection(firestore, 'tenants');
+          const q = query(tenantsCol, where('email', '==', userEmail), limit(1));
+          const tenantSnap = await getDocs(q);
+          const isTenantInRegistry = !tenantSnap.empty;
 
           if (snap.exists()) {
             role = snap.data().role;
-            
-            // SELF-HEALING: If account exists as 'landlord' but email matches a registry tenant, repair it.
-            if (role === 'landlord' && userEmail) {
-                const tenantsCol = collection(firestore, 'tenants');
-                const q = query(tenantsCol, where('email', '==', userEmail), limit(1));
-                const tenantSnap = await getDocs(q);
-                if (!tenantSnap.empty) {
-                    console.log("Login: Re-routing misidentified resident to hub...");
-                    role = 'tenant';
-                    await updateDoc(userRef, { role: 'tenant' });
-                }
+            // SELF-HEALING: Upgrade to tenant if registry match found
+            if (role !== 'tenant' && isTenantInRegistry) {
+                console.log("Login: Identified resident via registry handshake.");
+                role = 'tenant';
+                await updateDoc(userRef, { role: 'tenant' });
             }
-          } else if (userEmail) {
-            // DISCOVERY HANDSHAKE: Identify first-time logins against the property registry
-            const tenantsCol = collection(firestore, 'tenants');
-            const q = query(tenantsCol, where('email', '==', userEmail), limit(1));
-            const tenantSnap = await getDocs(q);
-            
-            if (!tenantSnap.empty) {
-              console.log("Login: Identified resident via registry handshake.");
-              role = 'tenant';
-              await setDoc(userRef, {
-                id: user.uid,
-                email: userEmail,
-                role: 'tenant',
-                createdAt: new Date().toISOString(),
-                idleTimeoutMinutes: 30
-              });
-            } else {
-              role = mode === 'signup' ? form.getValues('role') : 'landlord';
-              await setDoc(userRef, {
-                id: user.uid,
-                email: userEmail,
-                role: role,
-                createdAt: new Date().toISOString(),
-                idleTimeoutMinutes: 30
-              });
-            }
+          } else {
+            // PROVISIONING: Create profile based on discovery
+            role = isTenantInRegistry ? 'tenant' : (mode === 'signup' ? form.getValues('role') : 'landlord');
+            await setDoc(userRef, {
+              id: user.uid,
+              email: userEmail,
+              role: role,
+              createdAt: new Date().toISOString(),
+              idleTimeoutMinutes: 30
+            });
           }
           
           // FINAL ROUTING
@@ -116,15 +104,14 @@ export default function LoginPage() {
             router.replace('/dashboard');
           }
         } catch (error: any) {
-          console.error("Critical Redirection Error:", error.message);
-          // Fallback to primary dashboard if discovery encounters a temporary rule block
+          console.error("Login Redirection Error:", error.message);
           router.replace('/dashboard');
         }
       };
       
       checkRoleAndRedirect();
     }
-  }, [user, isUserLoading, firestore]);
+  }, [user, isUserLoading, firestore, router, mode]);
 
   const handleAuthAction = (data: FormValues) => {
     if (!auth) {
