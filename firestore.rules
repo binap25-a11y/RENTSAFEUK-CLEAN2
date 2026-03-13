@@ -8,8 +8,9 @@ service cloud.firestore {
     }
     
     // Returns the user's email in lowercase for rule comparison
+    // Uses .get() to handle cases where email might be missing from the token safely
     function authEmail() {
-      return request.auth.token.email.lower();
+      return request.auth.token.get('email', "").lower();
     }
 
     // Global User Registry
@@ -24,14 +25,13 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.tenantId == request.auth.uid ||
-        ("tenantEmails" in resource.data && authEmail() in resource.data.tenantEmails)
+        (resource.data.get('tenantEmails', [])).hasAny([authEmail()])
       );
       // Handshake Authorization: Allow verified tenants to link their UID once
       allow update: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         (
-          "tenantEmails" in resource.data && 
-          authEmail() in resource.data.tenantEmails &&
+          (resource.data.get('tenantEmails', [])).hasAny([authEmail()]) &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tenantId']) &&
           request.resource.data.tenantId == request.auth.uid
         )
@@ -51,7 +51,10 @@ service cloud.firestore {
       // Handshake Authorization: Allow self-link of UID to registry record
       allow update: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
-        (resource.data.email == authEmail() && request.resource.data.userId == request.auth.uid)
+        (
+          resource.data.email == authEmail() && 
+          request.resource.data.userId == request.auth.uid
+        )
       );
       allow delete: if isSignedIn() && resource.data.landlordId == request.auth.uid;
     }
@@ -63,7 +66,7 @@ service cloud.firestore {
       let property = get(/databases/$(database)/documents/properties/$(propertyId)).data;
       return isSignedIn() && (
         property.tenantId == request.auth.uid ||
-        ("tenantEmails" in property && authEmail() in property.tenantEmails)
+        (property.get('tenantEmails', [])).hasAny([authEmail()])
       );
     }
 
