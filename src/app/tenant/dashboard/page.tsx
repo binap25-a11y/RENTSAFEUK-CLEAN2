@@ -82,23 +82,20 @@ export default function TenantDashboard() {
             setIsHandshaking(true);
             setDiscoveryStatus('handshaking');
             
-            // 1. Link UID to Tenant Record
+            // 1. Link UID to Tenant Record (Catch internally to prevent discovery crash)
             await updateDoc(tenantDoc.ref, { 
                 userId: user.uid,
                 verified: true,
                 joinedDate: new Date().toISOString(),
                 status: 'Active' 
-            }).catch(e => console.warn("Tenant UID sync deferred:", e.message));
+            }).catch(e => console.warn("Resident Hub: Tenant UID sync deferred:", e.message));
             
             // 2. Link UID to Property Record (Authorized by specialized security rule)
             const propertyRef = doc(firestore, 'properties', tenantData.propertyId);
-            try {
-                await updateDoc(propertyRef, { tenantId: user.uid });
-            } catch (propSyncErr) {
-                console.warn("Resident Hub: Property UID sync deferred. Access relies on email registry.");
-            }
+            await updateDoc(propertyRef, { tenantId: user.uid })
+                .catch(e => console.warn("Resident Hub: Property UID sync deferred. Access relies on email registry."));
 
-            toast({ title: "Identity Verified", description: "Permanent link active." });
+            toast({ title: "Identity Handshake", description: "Permanent portal link active." });
             setIsHandshaking(false);
         }
 
@@ -125,6 +122,7 @@ export default function TenantDashboard() {
     } catch (err: any) {
         console.error("Resident Hub Discovery Error:", err.message);
         
+        // Emit rich error for developer oversight if discovery is blocked by rules
         if (err.code === 'permission-denied') {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: 'tenants',
