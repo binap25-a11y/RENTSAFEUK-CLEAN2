@@ -175,7 +175,7 @@ export default function AddTenantPage() {
         
         const propertyDocRef = doc(firestore, 'properties', data.propertyId);
         
-        // REGISTRY SYNCHRONIZATION: Established verified bridge between tenant and asset.
+        // REGISTRY SYNCHRONIZATION: Establish verified bridge between tenant and asset.
         await updateDoc(propertyDocRef, { 
             status: 'Occupied',
             tenantEmail: normalizedEmail,

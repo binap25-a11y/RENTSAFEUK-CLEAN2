@@ -52,12 +52,10 @@ export default function TenantDashboard() {
         const tenantsCol = collection(firestore, 'tenants');
         
         // STAGE 1: Identity Link Search (By UID)
-        // Check if this account is already linked to a verified tenancy record.
         const qByUid = query(tenantsCol, where('userId', '==', user.uid), limit(1));
         let snap = await getDocs(qByUid);
 
         // STAGE 2: Registry Bridge Fallback (By Email)
-        // If no UID link exists, look for a record with matching email (normalized).
         if (snap.empty) {
             const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
             snap = await getDocs(qByEmail);
@@ -113,7 +111,7 @@ export default function TenantDashboard() {
         setIsLoading(false);
         discoveryRef.current = false;
     } catch (err: any) {
-        // ERROR GOVERNANCE: Handle permission blocks gracefully.
+        // ERROR GOVERNANCE: Emit rich error for developer oversight if discovery is blocked by rules
         if (err.code === 'permission-denied') {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: 'tenants',
