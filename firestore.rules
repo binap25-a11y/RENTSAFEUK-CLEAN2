@@ -22,11 +22,12 @@ service cloud.firestore {
       allow create: if isSignedIn();
       
       // Allow read if: Landlord OR Assigned Tenant (via UID) OR Registered Tenant (via Email List)
+      // Optimized for direct string matches to support query filters
       allow read: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.tenantId == request.auth.uid ||
         authEmail() in resource.data.get('tenantEmails', []) ||
-        authEmail() == resource.data.get('tenantEmail', '').lower()
+        authEmail() == resource.data.get('tenantEmail', '')
       );
       
       // Handshake Authorization: Allow verified tenants to link their UID once.
@@ -34,7 +35,7 @@ service cloud.firestore {
       allow update: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         (
-          (authEmail() in resource.data.get('tenantEmails', []) || authEmail() == resource.data.get('tenantEmail', '').lower()) &&
+          (authEmail() in resource.data.get('tenantEmails', []) || authEmail() == resource.data.get('tenantEmail', '')) &&
           request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tenantId']) &&
           request.resource.data.tenantId == request.auth.uid
         )
@@ -51,14 +52,14 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.userId == request.auth.uid || 
-        resource.data.email.lower() == authEmail()
+        resource.data.email == authEmail()
       );
       
       // Handshake Authorization: Link verified UID to record
       allow update: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         (
-          resource.data.email.lower() == authEmail() && 
+          resource.data.email == authEmail() && 
           request.resource.data.userId == request.auth.uid
         )
       );
@@ -70,11 +71,13 @@ service cloud.firestore {
     
     // Helper: Verifies user is an authorized resident of the specific property
     function isAuthorizedResident(propertyId) {
+      if (propertyId == null) { return false; }
       let property = get(/databases/$(database)/documents/properties/$(propertyId)).data;
       return isSignedIn() && (
         property.landlordId == request.auth.uid ||
         property.tenantId == request.auth.uid ||
-        authEmail() in property.get('tenantEmails', [])
+        authEmail() in property.get('tenantEmails', []) ||
+        authEmail() == property.get('tenantEmail', '')
       );
     }
 
