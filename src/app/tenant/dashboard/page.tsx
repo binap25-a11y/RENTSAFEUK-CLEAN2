@@ -53,12 +53,12 @@ export default function TenantDashboard() {
     try {
         const tenantsCol = collection(firestore, 'tenants');
         
-        // STAGE 1: Check existing identity link
+        // STAGE 1: Check existing identity link by UID
         console.log("Resident Hub: Searching UID link...");
         const qByUid = query(tenantsCol, where('userId', '==', user.uid), limit(1));
         let snap = await getDocs(qByUid);
 
-        // STAGE 2: Fallback to normalized email discovery
+        // STAGE 2: Fallback to normalized email discovery for first-time handshake
         if (snap.empty) {
             console.log("Resident Hub: Searching registry by email:", userEmail);
             const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
@@ -66,7 +66,7 @@ export default function TenantDashboard() {
         }
 
         if (snap.empty) {
-            console.warn("Resident Hub: Identity not found in registry.");
+            console.warn("Resident Hub: Identity not found in registry for:", userEmail);
             setIsLoading(false);
             setDiscoveryStatus('failed');
             discoveryRef.current = false;
@@ -76,12 +76,13 @@ export default function TenantDashboard() {
         const tenantDoc = snap.docs[0];
         const tenantData = tenantDoc.data();
         
-        // ATOMIC HANDSHAKE: Establish secure link
+        // STAGE 3: ATOMIC HANDSHAKE - Establish secure UID link if missing
         if (!tenantData.userId || tenantData.userId !== user.uid || !tenantData.verified) {
-            console.log("Resident Hub: Establishing atomic handshake...");
+            console.log("Resident Hub: Finalizing atomic identity handshake...");
             setIsHandshaking(true);
             setDiscoveryStatus('handshaking');
             
+            // Link UID to Tenant Record
             await updateDoc(tenantDoc.ref, { 
                 userId: user.uid,
                 verified: true,
@@ -89,18 +90,22 @@ export default function TenantDashboard() {
                 status: 'Active' 
             });
             
-            // Also sync UID to property for secondary authorization branch
+            // Link UID to Property Record (Authorized by new rules)
             const propertyRef = doc(firestore, 'properties', tenantData.propertyId);
-            await updateDoc(propertyRef, { tenantId: user.uid });
+            try {
+                await updateDoc(propertyRef, { tenantId: user.uid });
+            } catch (propSyncErr) {
+                console.warn("Resident Hub: Property UID sync deferred (Authorized via email array).");
+            }
 
             toast({ 
-                title: "Identity Handshake Complete", 
-                description: "Secure property connection verified." 
+                title: "Identity Verified", 
+                description: "Your secure portal access is now active." 
             });
             setIsHandshaking(false);
         }
 
-        // RESOLVE AUTHORIZED CONTEXT
+        // STAGE 4: RESOLVE AUTHORIZED CONTEXT
         const propSnap = await getDoc(doc(firestore, 'properties', tenantData.propertyId));
         
         if (propSnap.exists()) {
@@ -111,6 +116,9 @@ export default function TenantDashboard() {
                 tenantData: { ...tenantData, verified: true, userId: user.uid },
                 propertyData: propSnap.data()
             });
+        } else {
+            console.error("Resident Hub: Property document missing for verified tenant.");
+            setDiscoveryStatus('failed');
         }
         
         setIsLoading(false);
@@ -119,6 +127,7 @@ export default function TenantDashboard() {
         console.error("Resident Hub Discovery Error:", err.message);
         
         if (err.code === 'permission-denied') {
+            // Surface rich error for developer oversight if discovery is blocked
             errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: 'tenants',
                 operation: 'list'
@@ -150,8 +159,8 @@ export default function TenantDashboard() {
                 <h2 className="font-headline text-2xl font-bold text-primary">Resident Identity Sync</h2>
                 <p className="text-muted-foreground font-medium leading-relaxed">
                     {discoveryStatus === 'handshaking' 
-                        ? 'Finalizing portal handshake...' 
-                        : 'Authenticating registry credentials...'}
+                        ? 'Establishing secure property handshake...' 
+                        : 'Verifying your tenancy credentials...'}
                 </p>
             </div>
         </div>
@@ -167,7 +176,7 @@ export default function TenantDashboard() {
                 </div>
                 <CardTitle className="font-headline text-xl text-primary">Tenancy Not Linked</CardTitle>
                 <CardDescription className="text-sm font-medium px-4">
-                    The email <strong>{user?.email}</strong> is not associated with an active record in our registry.
+                    The email <strong>{user?.email}</strong> is not associated with an active tenancy in our registry.
                 </CardDescription>
             </CardHeader>
             <CardContent className="pt-6 text-sm text-muted-foreground">

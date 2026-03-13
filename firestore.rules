@@ -20,7 +20,7 @@ service cloud.firestore {
       let property = get(/databases/$(database)/documents/properties/$(propertyId)).data;
       return isSignedIn() && (
         property.tenantId == request.auth.uid ||
-        (request.auth.token.email != null && authEmail() in property.tenantEmails)
+        (request.auth.token.email != null && "tenantEmails" in property && authEmail() in property.tenantEmails)
       );
     }
 
@@ -37,7 +37,16 @@ service cloud.firestore {
         resource.data.tenantId == request.auth.uid ||
         (request.auth.token.email != null && "tenantEmails" in resource.data && authEmail() in resource.data.tenantEmails)
       );
-      allow update, delete: if isLandlord(resource.data);
+      // Allow landlords full update, and allow verified tenants to link their UID to the property
+      allow update: if isLandlord(resource.data) || (
+        isSignedIn() && 
+        request.auth.token.email != null && 
+        "tenantEmails" in resource.data && 
+        authEmail() in resource.data.tenantEmails && 
+        request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tenantId']) &&
+        request.resource.data.tenantId == request.auth.uid
+      );
+      allow delete: if isLandlord(resource.data);
     }
 
     // --- 3. Tenants Collection ---
@@ -48,6 +57,7 @@ service cloud.firestore {
         resource.data.userId == request.auth.uid || 
         (request.auth.token.email != null && resource.data.email == authEmail())
       );
+      // Allow tenants to update their own registry record during verification handshake
       allow update: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         (request.auth.token.email != null && resource.data.email == authEmail())
@@ -56,7 +66,6 @@ service cloud.firestore {
     }
 
     // --- 4. Repairs, Documents, Messages, and other ledgers ---
-    // Using a more robust catch-all for relational data
     match /{collectionName}/{id} {
       allow create: if isSignedIn();
       allow read: if isSignedIn() && (
