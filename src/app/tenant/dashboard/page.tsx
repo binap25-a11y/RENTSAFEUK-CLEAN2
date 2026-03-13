@@ -52,17 +52,20 @@ export default function TenantDashboard() {
         const tenantsCol = collection(firestore, 'tenants');
         
         // STAGE 1: Identity Link Search (By UID)
+        // This is the fastest lookup for returning users.
         const qByUid = query(tenantsCol, where('userId', '==', user.uid), limit(1));
         let snap = await getDocs(qByUid);
 
         // STAGE 2: Registry Bridge Fallback (By Email)
+        // This handles new users logging in via the email invite bridge.
         if (snap.empty) {
+            console.log("Resident Hub: Attempting email discovery for", userEmail);
             const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
             snap = await getDocs(qByEmail);
         }
 
         if (snap.empty) {
-            console.warn("Resident Hub: Email registry mapping not found for", userEmail);
+            console.warn("Resident Hub: No tenancy found in registry for email:", userEmail);
             setIsLoading(false);
             discoveryRef.current = false;
             return;
@@ -72,9 +75,10 @@ export default function TenantDashboard() {
         const tenantData = tenantDoc.data();
         
         // STAGE 3: Secure Identity Handshake
-        // If the tenant document doesn't have the user's UID, we link it now.
+        // If this is the first visit, link the account UID to the registry records.
         if (!tenantData.userId || tenantData.userId !== user.uid || !tenantData.verified) {
             setIsHandshaking(true);
+            console.log("Resident Hub: Establishing secure identity handshake...");
             
             // 1. Link account UID to Tenant registry
             await updateDoc(tenantDoc.ref, { 
@@ -83,17 +87,17 @@ export default function TenantDashboard() {
                 joinedDate: new Date().toISOString(),
                 status: 'Active' 
             }).catch(e => {
-                console.warn("Resident Hub: Identity sync deferred.", e.message);
+                console.warn("Resident Hub: Tenant identity sync deferred.", e.message);
             });
             
             // 2. Link account UID to Property registry (authorized by specialized update rule)
             const propertyRef = doc(firestore, 'properties', tenantData.propertyId);
             await updateDoc(propertyRef, { tenantId: user.uid })
                 .catch(e => {
-                    console.warn("Resident Hub: Property sync deferred. Access remains active via email bridge.");
+                    console.warn("Resident Hub: Property identity sync deferred. Access remains active via email bridge.");
                 });
 
-            toast({ title: "Portal Connected", description: "Identity verification complete." });
+            toast({ title: "Hub Connected", description: "Your resident identity has been verified." });
             setIsHandshaking(false);
         }
 
@@ -110,7 +114,7 @@ export default function TenantDashboard() {
                 propertyData: propSnap.data()
             });
         } else {
-            console.error("Resident Hub: Linked property document missing.");
+            console.error("Resident Hub: Assigned property record is missing.");
         }
         
         setIsLoading(false);
@@ -118,7 +122,7 @@ export default function TenantDashboard() {
     } catch (err: any) {
         console.error("Resident Hub Discovery Error:", err.message);
         
-        // Emit rich error for developer oversight if discovery is blocked by rules
+        // Surface rich error for developer oversight if discovery is blocked by rules
         if (err.code === 'permission-denied') {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: 'tenants',
@@ -147,7 +151,7 @@ export default function TenantDashboard() {
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/5 rounded-full animate-ping" />
             </div>
             <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary tracking-tight text-center">Establishing Portal...</h2>
+                <h2 className="font-headline text-2xl font-bold text-primary tracking-tight text-center">Establishing Portal Hub...</h2>
                 <p className="text-muted-foreground font-medium text-center">Syncing secure connection to your property records.</p>
             </div>
         </div>
@@ -161,7 +165,7 @@ export default function TenantDashboard() {
                 <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 border shadow-sm text-muted-foreground/20">
                     <Search className="h-10 w-10" />
                 </div>
-                <CardTitle className="font-headline text-xl text-primary">Registry Not Linked</CardTitle>
+                <CardTitle className="font-headline text-xl text-primary">Tenancy Not Linked</CardTitle>
                 <CardDescription className="text-sm font-medium px-4">
                     The email <strong>{user?.email}</strong> is not currently mapped to an active tenancy in our portfolio registry.
                 </CardDescription>
@@ -171,7 +175,7 @@ export default function TenantDashboard() {
             </CardContent>
             <CardFooter className="pt-6 bg-muted/5 border-t">
                 <Button variant="outline" className="w-full h-11 font-bold" onClick={() => { discoveryRef.current = false; performDiscovery(); }}>
-                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Sync
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Handshake
                 </Button>
             </CardFooter>
         </Card>

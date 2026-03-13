@@ -7,19 +7,19 @@ service cloud.firestore {
       return request.auth != null;
     }
     
-    // Optimized email retrieval for high-speed query analysis.
-    // Directly accessing the email property is critical for rule-query optimization.
+    // Optimized email retrieval. 
+    // We use .lower() to ensure casing variations between providers (e.g. Hotmail) 
+    // do not block authorized users.
     function authEmail() {
-      return isSignedIn() && request.auth.token.email != null ? request.auth.token.email : "";
+      return isSignedIn() && request.auth.token.email != null ? request.auth.token.email.lower() : "";
     }
 
     // Helper: Validates if the authenticated user is the registered resident.
-    // Performs direct comparisons to ensure 100% query compatibility.
     function isRegisteredResident(data) {
       let email = authEmail();
       return email != "" && (
-        data.get('tenantEmail', '') == email ||
-        data.get('email', '') == email ||
+        data.get('tenantEmail', '').lower() == email ||
+        data.get('email', '').lower() == email ||
         email in data.get('tenantEmails', [])
       );
     }
@@ -33,16 +33,15 @@ service cloud.firestore {
     match /properties/{id} {
       allow create: if isSignedIn();
       
-      // Authorized Read: Query-compatible matches.
-      // Tenants can read properties where their UID is linked OR their email is registered.
+      // Authorized Read: Tenants can identify their property by UID or by registered email.
       allow get, list: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.tenantId == request.auth.uid ||
         isRegisteredResident(resource.data)
       );
       
-      // Handshake Authorization: Allow residents to link their UID once.
-      // This rule is critical for the transition from email-based discovery to permanent UID access.
+      // Handshake Authorization: Allow verified residents to link their UID once.
+      // This is critical for transitioning from email-based discovery to high-speed UID access.
       allow update: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         (
@@ -63,7 +62,7 @@ service cloud.firestore {
       allow get, list: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.userId == request.auth.uid || 
-        (authEmail() != "" && resource.data.email == authEmail())
+        (authEmail() != "" && resource.data.email.lower() == authEmail())
       );
       
       // Handshake Authorization: Link verified UID to record.
@@ -71,16 +70,16 @@ service cloud.firestore {
         resource.data.landlordId == request.auth.uid || 
         (
           authEmail() != "" && 
-          resource.data.email == authEmail() && 
+          resource.data.email.lower() == authEmail() && 
           request.resource.data.userId == request.auth.uid &&
-          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['userId', 'verified', 'joinedDate', 'status'])
+          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['userId', 'verified', 'joinedDate', 'status', 'lastSyncCheck'])
         )
       );
       
       allow delete: if isSignedIn() && resource.data.landlordId == request.auth.uid;
     }
 
-    // Shared Ledger Collections (Optimized for Tenant Access)
+    // Shared Ledger Collections (Optimized for Resident Access)
     
     function isAuthorizedForProperty(propertyId) {
       if (propertyId == null) { return false; }
@@ -97,7 +96,7 @@ service cloud.firestore {
       allow list: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.tenantId == request.auth.uid || 
-        (authEmail() != "" && resource.data.get('tenantEmail', '') == authEmail())
+        (authEmail() != "" && resource.data.get('tenantEmail', '').lower() == authEmail())
       );
       allow get, update, delete: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
