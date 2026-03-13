@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RentSafeUK Security Governance v11.0
+     * RentSafeUK Security Governance v12.0
      * Optimized for high-speed Resident Hub discovery and robust identity handshake.
      */
 
@@ -19,7 +19,7 @@ service cloud.firestore {
     }
 
     // Tenant check: authorizes access via UID or verified email handshake.
-    // Note: We use direct string comparisons for optimal query compatibility.
+    // Normalized for high-speed query compatibility.
     function isTenant(data) {
       let email = request.auth.token.email;
       let uid = request.auth.uid;
@@ -48,13 +48,11 @@ service cloud.firestore {
     // --- Tenant Registry ---
     match /tenants/{tenantId} {
       // IDENTITY DISCOVERY: Allow signed-in users to search for their own tenancy record.
-      // We allow listing so discovery queries (by email or UID) can resolve.
       allow list: if isSignedIn();
       allow get: if isRelated(resource.data);
       allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
       
       // HANDSHAKE: Allow residents to link their UID if their email matches.
-      // Verified residents can update identity-linking fields to complete verification.
       allow update: if isSignedIn() && (
         isLandlord(resource.data) || 
         (isTenant(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'verified', 'joinedDate', 'status', 'lastSyncCheck']))
@@ -69,7 +67,7 @@ service cloud.firestore {
       allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
       
       // HANDSHAKE: Allow verified residents to link their account to the property record.
-      // This is critical for establishing the secure bridge on first portal login.
+      // This allows tenants to link their UID to the property they are assigned to via email.
       allow update: if isSignedIn() && (
         isLandlord(resource.data) || 
         (isTenant(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasAny(['tenantId', 'activeTenantUids', 'status']))
@@ -120,6 +118,18 @@ service cloud.firestore {
     match /expenses/{id} {
       allow list: if isSignedIn();
       allow read, write: if isLandlord(resource.data) || (request.resource != null && isLandlord(request.resource.data));
+    }
+    
+    match /screenings/{id} {
+      allow list: if isSignedIn();
+      allow read: if isLandlord(resource.data);
+      allow write: if isLandlord(resource.data);
+    }
+
+    match /checklists/{id} {
+      allow list: if isSignedIn();
+      allow read: if isLandlord(resource.data);
+      allow write: if isLandlord(resource.data);
     }
     
     // Explicit deny for all other paths

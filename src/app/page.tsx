@@ -60,7 +60,6 @@ export default function LoginPage() {
     if (!isUserLoading && user && firestore) {
       const checkRoleAndRedirect = async () => {
         try {
-          // REGISTRY NORMALIZATION: strictly lowercase for robust security match
           const userEmail = user.email?.toLowerCase().trim();
           if (!userEmail) {
               router.replace('/dashboard');
@@ -72,23 +71,29 @@ export default function LoginPage() {
           
           let role: string | null = null;
 
-          // 1. DISCOVERY HANDSHAKE: Check residency registry by normalized email.
-          // This query is now fully authorized by the optimized security rules.
+          // 1. DISCOVERY HANDSHAKE: Check residency registry by normalized email or current UID.
           const tenantsCol = collection(firestore, 'tenants');
-          const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
-          const tenantSnap = await getDocs(qByEmail);
+          
+          // Try UID link first
+          const qByUid = query(tenantsCol, where('userId', '==', user.uid), limit(1));
+          let tenantSnap = await getDocs(qByUid);
+          
+          // Fallback to normalized email
+          if (tenantSnap.empty) {
+              const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
+              tenantSnap = await getDocs(qByEmail);
+          }
+          
           const isTenantInRegistry = !tenantSnap.empty;
 
           if (snap.exists()) {
             role = snap.data().role;
-            // SELF-HEALING: If registry discovery confirms tenancy, force update the role.
             if (role !== 'tenant' && isTenantInRegistry) {
-                console.log("Login: Resident Registry Discovered. Updating user role...");
+                console.log("Login: Resident Registry Discovered. Updating role...");
                 role = 'tenant';
                 await updateDoc(userRef, { role: 'tenant' });
             }
           } else {
-            // PROVISIONING: Initialize profile based on registry discovery.
             role = isTenantInRegistry ? 'tenant' : (mode === 'signup' ? form.getValues('role') : 'landlord');
             await setDoc(userRef, {
               id: user.uid,
@@ -99,7 +104,6 @@ export default function LoginPage() {
             });
           }
           
-          // ROUTING: Redirect to identified dashboard.
           if (role === 'tenant') {
             router.replace('/tenant/dashboard');
           } else {
