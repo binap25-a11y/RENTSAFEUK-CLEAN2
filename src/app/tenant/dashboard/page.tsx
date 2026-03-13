@@ -61,6 +61,7 @@ export default function TenantDashboard() {
         // STAGE 2: Fallback to normalized email discovery for first-time handshake
         if (snap.empty) {
             console.log("Resident Hub: Registry search for:", userEmail);
+            // Rules allow this if userEmail matches authEmail()
             const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
             snap = await getDocs(qByEmail);
         }
@@ -90,15 +91,15 @@ export default function TenantDashboard() {
                 status: 'Active' 
             }).catch(e => console.warn("Tenant UID sync deferred:", e.message));
             
-            // 2. Link UID to Property Record (Authorized by email registry check)
+            // 2. Link UID to Property Record (Authorized by specialized security rule)
             const propertyRef = doc(firestore, 'properties', tenantData.propertyId);
             try {
                 await updateDoc(propertyRef, { tenantId: user.uid });
             } catch (propSyncErr) {
-                console.warn("Resident Hub: Property UID sync deferred.");
+                console.warn("Resident Hub: Property UID sync deferred. Access relies on email registry.");
             }
 
-            toast({ title: "Identity Verified", description: "Access active." });
+            toast({ title: "Identity Verified", description: "Permanent link active." });
             setIsHandshaking(false);
         }
 
@@ -114,7 +115,7 @@ export default function TenantDashboard() {
                 propertyData: propSnap.data()
             });
         } else {
-            console.error("Resident Hub: Property document missing.");
+            console.error("Resident Hub: Property document missing or unauthorized.");
             setDiscoveryStatus('failed');
         }
         

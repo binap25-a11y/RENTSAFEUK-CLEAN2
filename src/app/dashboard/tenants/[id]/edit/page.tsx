@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -162,19 +161,28 @@ export default function EditTenantPage() {
 
       await updateDoc(tenantRef, cleanedUpdateData);
 
-      // Manage property tenant mapping for security authorization
+      // CRITICAL: Manage property identity registry for security rule authorization
       if (tenant.propertyId !== data.propertyId) {
           const oldPropRef = doc(firestore, 'properties', tenant.propertyId);
-          await updateDoc(oldPropRef, { tenantEmails: arrayRemove(tenant.email) });
+          await updateDoc(oldPropRef, { 
+              tenantEmails: arrayRemove(tenant.email),
+              tenantEmail: '' // Clear legacy field
+          });
           
           const newPropRef = doc(firestore, 'properties', data.propertyId);
-          await updateDoc(newPropRef, { tenantEmails: arrayUnion(normalizedEmail) });
+          await updateDoc(newPropRef, { 
+              tenantEmails: arrayUnion(normalizedEmail),
+              tenantEmail: normalizedEmail // Sync legacy field for compatibility
+          });
       } else if (tenant.email !== normalizedEmail) {
           const propRef = doc(firestore, 'properties', data.propertyId);
           await updateDoc(propRef, { 
               tenantEmails: arrayRemove(tenant.email),
-              tenantEmail: arrayUnion(normalizedEmail)
+              tenantEmail: normalizedEmail, // Sync legacy field
+              tenantEmails_update: arrayUnion(normalizedEmail)
           });
+          // Ensure the array union happens
+          await updateDoc(propRef, { tenantEmails: arrayUnion(normalizedEmail) });
       }
 
       toast({
