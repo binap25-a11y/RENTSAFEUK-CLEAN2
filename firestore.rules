@@ -2,13 +2,9 @@ rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
+    // --- Core Helper Functions ---
     function isSignedIn() {
       return request.auth != null;
-    }
-
-    // Helper to get lowercased email for comparison
-    function authEmail() {
-      return request.auth.token.email == null ? "" : request.auth.token.email.lower();
     }
 
     // Helper to check if user is the landlord of a document
@@ -16,12 +12,14 @@ service cloud.firestore {
       return isSignedIn() && data.landlordId == request.auth.uid;
     }
 
-    // Helper to check if user is an authorized tenant of a property
+    // Helper to check if user is a tenant of a specific property
+    // Optimized for GET calls only
     function isTenantOfProperty(propertyId) {
       let property = get(/databases/$(database)/documents/properties/$(propertyId)).data;
+      let email = request.auth.token.email == null ? "" : request.auth.token.email.lower();
       return isSignedIn() && (
         property.tenantId == request.auth.uid ||
-        (request.auth.token.email != null && "tenantEmails" in property && authEmail() in property.tenantEmails)
+        (request.auth.token.email != null && "tenantEmails" in property && email in property.tenantEmails)
       );
     }
 
@@ -36,14 +34,14 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.tenantId == request.auth.uid ||
-        (request.auth.token.email != null && "tenantEmails" in resource.data && authEmail() in resource.data.tenantEmails)
+        (request.auth.token.email != null && "tenantEmails" in resource.data && request.auth.token.email.lower() in resource.data.tenantEmails)
       );
-      // Allow tenants to update their tenantId link during handshake
+      // Allow tenants to update their tenantId link during discovery handshake
       allow update: if isLandlord(resource.data) || (
         isSignedIn() && 
         request.auth.token.email != null && 
         "tenantEmails" in resource.data && 
-        authEmail() in resource.data.tenantEmails && 
+        request.auth.token.email.lower() in resource.data.tenantEmails && 
         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tenantId']) &&
         request.resource.data.tenantId == request.auth.uid
       );
@@ -53,27 +51,28 @@ service cloud.firestore {
     // --- 3. Tenants Collection ---
     match /tenants/{id} {
       allow create: if isSignedIn();
-      // Allow searching by email for first-time handshake
+      // Authorized identity discovery: Landlord OR Self (via UID) OR Self (via Email matching)
       allow read: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.userId == request.auth.uid || 
-        (request.auth.token.email != null && resource.data.email == authEmail())
+        (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower())
       );
+      // Allow self-verification handshake
       allow update: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
-        (request.auth.token.email != null && resource.data.email == authEmail())
+        (request.auth.token.email != null && resource.data.email == request.auth.token.email.lower())
       );
       allow delete: if isLandlord(resource.data);
     }
 
-    // --- 4. Ledger Collections (Repairs, Documents, Messages, etc) ---
+    // --- 4. Ledger Collections (Repairs, Documents, Messages, Expenses, etc) ---
     match /{collectionName}/{id} {
       allow create: if isSignedIn();
       allow read: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.tenantId == request.auth.uid ||
-        (request.auth.token.email != null && "email" in resource.data && resource.data.email == authEmail()) ||
-        (request.auth.token.email != null && "tenantEmail" in resource.data && resource.data.tenantEmail == authEmail()) ||
+        (request.auth.token.email != null && "email" in resource.data && resource.data.email == request.auth.token.email.lower()) ||
+        (request.auth.token.email != null && "tenantEmail" in resource.data && resource.data.tenantEmail == request.auth.token.email.lower()) ||
         ("propertyId" in resource.data && isTenantOfProperty(resource.data.propertyId))
       );
       allow update: if isSignedIn() && (

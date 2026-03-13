@@ -76,13 +76,13 @@ export default function TenantDashboard() {
         const tenantDoc = snap.docs[0];
         const tenantData = tenantDoc.data();
         
-        // STAGE 3: ATOMIC HANDSHAKE - Establish secure UID link if missing
+        // STAGE 3: ATOMIC HANDSHAKE - Establish secure UID link if missing or unverified
         if (!tenantData.userId || tenantData.userId !== user.uid || !tenantData.verified) {
             console.log("Resident Hub: Finalizing atomic identity handshake...");
             setIsHandshaking(true);
             setDiscoveryStatus('handshaking');
             
-            // Link UID to Tenant Record
+            // 1. Link UID to Tenant Record
             await updateDoc(tenantDoc.ref, { 
                 userId: user.uid,
                 verified: true,
@@ -90,7 +90,7 @@ export default function TenantDashboard() {
                 status: 'Active' 
             });
             
-            // Link UID to Property Record (Authorized by new rules)
+            // 2. Link UID to Property Record (Authorized by new rules)
             const propertyRef = doc(firestore, 'properties', tenantData.propertyId);
             try {
                 await updateDoc(propertyRef, { tenantId: user.uid });
@@ -127,7 +127,7 @@ export default function TenantDashboard() {
         console.error("Resident Hub Discovery Error:", err.message);
         
         if (err.code === 'permission-denied') {
-            // Surface rich error for developer oversight if discovery is blocked
+            // Surface rich error for developer oversight
             errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: 'tenants',
                 operation: 'list'

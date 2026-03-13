@@ -64,7 +64,7 @@ export default function LoginPage() {
           const snap = await getDoc(userRef);
           
           let role: string | null = null;
-          // Always use normalized lowercase email for high-performance discovery
+          // Normalized lowercase email for high-performance discovery
           const userEmail = user.email?.toLowerCase().trim();
 
           if (snap.exists()) {
