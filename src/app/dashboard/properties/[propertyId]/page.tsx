@@ -113,6 +113,7 @@ interface Message {
     timestamp: any;
     tenantId: string;
     landlordId: string;
+    propertyId: string;
 }
 
 export default function PropertyDetailPage() {
@@ -149,29 +150,9 @@ export default function PropertyDetailPage() {
   }, [firestore, user, propertyId]);
   const { data: activeTenants } = useCollection<Tenant>(tenantsQuery);
 
-  const repairsQuery = useMemoFirebase(() => {
-    if (!firestore || !propertyId || !user) return null;
-    return query(
-        collection(firestore, 'repairs'), 
-        where('landlordId', '==', user.uid),
-        where('propertyId', '==', propertyId)
-    );
-  }, [firestore, propertyId, user]);
-  const { data: repairs } = useCollection<Repair>(repairsQuery);
-
-  const inspectionQuery = useMemoFirebase(() => {
-    if (!firestore || !propertyId || !user) return null;
-    return query(
-        collection(firestore, 'inspections'), 
-        where('landlordId', '==', user.uid),
-        where('propertyId', '==', propertyId)
-    );
-  }, [firestore, propertyId, user]);
-  const { data: inspections } = useCollection<Inspection>(inspectionQuery);
-
   const messagesQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
-    // SECURE REGISTRY SYNC: Added landlordId filter to satisfy statically provable security rules.
+    // SECURE REGISTRY SYNC: Mandatory landlordId filter for static verification.
     return query(
         collection(firestore, 'messages'),
         where('propertyId', '==', propertyId),
@@ -181,7 +162,7 @@ export default function PropertyDetailPage() {
     );
   }, [firestore, propertyId, user]);
 
-  const { data: messages } = useCollection<Message>(messagesQuery);
+  const { data: messages, isLoading: isLoadingMessages } = useCollection<Message>(messagesQuery);
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -191,10 +172,10 @@ export default function PropertyDetailPage() {
 
   const handleSendReply = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!newReply.trim() || !user || !property || !messages || isSendingReply) return;
+    if (!newReply.trim() || !user || !property || isSendingReply) return;
 
-    // Definitively find the tenantId from the registry or the last message
-    const targetTenantId = messages.find(m => m.senderId !== user.uid)?.tenantId || (activeTenants?.[0]?.userId);
+    // Definitively find the tenantId from the registry or existing thread
+    const targetTenantId = messages?.find(m => m.senderId !== user.uid)?.tenantId || (activeTenants?.[0]?.userId);
     
     if (!targetTenantId) {
         toast({ variant: 'destructive', title: 'Reply Forbidden', description: 'No active resident handshake found for this asset.' });
@@ -280,10 +261,14 @@ export default function PropertyDetailPage() {
     return new Date(timestamp);
   };
 
-  const safeFormatDate = (date: any, formatStr: string) => {
-    const d = getMessageDate(date);
-    if (isNaN(d.getTime())) return 'N/A';
-    return format(d, formatStr);
+  const formatDateDivider = (date: Date) => {
+    try {
+        if (isToday(date)) return 'Today';
+        if (isYesterday(date)) return 'Yesterday';
+        return format(date, 'EEEE, d MMMM yyyy');
+    } catch (e) {
+        return 'Previous Messages';
+    }
   };
 
   if (isLoadingProperty) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
@@ -373,7 +358,7 @@ export default function PropertyDetailPage() {
                     <TabsTrigger value="overview" className="px-6 py-2 rounded-lg font-bold uppercase tracking-widest text-[10px]">Overview</TabsTrigger>
                     <TabsTrigger value="messages" className="px-6 py-2 rounded-lg font-bold uppercase tracking-widest text-[10px] gap-2">
                         <MessageSquare className="h-3 w-3" />
-                        Resident Registry
+                        Resident Messages
                     </TabsTrigger>
                 </TabsList>
                 <TabsContent value="overview" className="space-y-6 pt-4">
@@ -402,32 +387,34 @@ export default function PropertyDetailPage() {
                         <CardHeader className="bg-muted/30 border-b py-4">
                             <CardTitle className="text-lg font-headline flex items-center gap-2">
                                 <MessageSquare className="h-5 w-5 text-primary" />
-                                Resident Communication Registry
+                                Resident Chat Registry
                             </CardTitle>
                             <CardDescription>Verified message trail for this property.</CardDescription>
                         </CardHeader>
                         <CardContent className="flex-1 overflow-hidden p-0 relative bg-muted/5">
                             <ScrollArea className="h-full p-6">
                                 <div className="space-y-6">
-                                    {!messages?.length ? (
+                                    {isLoadingMessages ? (
+                                        <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary/20" /></div>
+                                    ) : !messages?.length ? (
                                         <div className="text-center py-20 italic text-muted-foreground">No message history available.</div>
                                     ) : (
                                         messages.map((msg, idx) => {
                                             const isLandlord = msg.senderId === user?.uid;
                                             const date = getMessageDate(msg.timestamp);
                                             const prevMsg = messages[idx - 1];
-                                            const showDate = !prevMsg || !isSameDay(date, getMessageDate(prevMsg.timestamp));
+                                            const showDateDivider = !prevMsg || !isSameDay(date, getMessageDate(prevMsg.timestamp));
                                             
                                             return (
                                                 <div key={msg.id} className="space-y-4">
-                                                    {showDate && (
+                                                    {showDateDivider && (
                                                         <div className="flex items-center gap-4 py-4">
                                                             <div className="h-px flex-1 bg-border" />
-                                                            <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground bg-background border px-3 py-1 rounded-full">{format(date, 'PPPP')}</span>
+                                                            <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground bg-background border px-3 py-1 rounded-full shadow-sm">{formatDateDivider(date)}</span>
                                                             <div className="h-px flex-1 bg-border" />
                                                         </div>
                                                     )}
-                                                    <div className={cn("flex flex-col gap-1 max-w-[85%]", isLandlord ? "ml-auto items-end" : "mr-auto items-start")}>
+                                                    <div className={cn("flex flex-col gap-1.5 max-w-[85%]", isLandlord ? "ml-auto items-end" : "mr-auto items-start")}>
                                                         <div className={cn(
                                                             "p-3 rounded-2xl text-sm font-medium shadow-sm",
                                                             isLandlord ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-white text-foreground rounded-tl-none border"
@@ -451,9 +438,9 @@ export default function PropertyDetailPage() {
                         <CardFooter className="p-4 border-t bg-background">
                             <form onSubmit={handleSendReply} className="flex w-full gap-2">
                                 <Input 
-                                    placeholder="Type a response to the resident..." 
+                                    placeholder="Type a secure response..." 
                                     value={newReply}
-                                    onChange={(e) => setNewMessage(e.target.value)}
+                                    onChange={(e) => setNewReply(e.target.value)}
                                     className="flex-1 rounded-xl h-11 bg-muted/20 border-2"
                                     disabled={isSendingReply || (!messages?.length && !activeTenants?.length)}
                                 />

@@ -33,8 +33,7 @@ import Link from 'next/link';
 /**
  * @fileOverview Resident Portal Chat
  * Secure real-time chat with audit-ready timestamps and date dividers.
- * Expanded full-viewport layout for maximum visibility.
- * Hardened with static query verification for security compliance.
+ * Fully visible viewport layout.
  */
 
 interface Message {
@@ -44,6 +43,8 @@ interface Message {
     content: string;
     timestamp: any;
     tenantId: string;
+    propertyId: string;
+    landlordId: string;
 }
 
 export default function TenantMessagesPage() {

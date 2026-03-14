@@ -4,10 +4,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RENTSAFEUK SECURITY GOVERNANCE v4.0
+     * RENTSAFEUK SECURITY GOVERNANCE v5.0
      * Optimized for Static Query Prove-ability.
-     * Uses discrete list branches to ensure the Firestore Query Engine
-     * can instantly authorize filtered requests.
      */
 
     function isSignedIn() {
@@ -36,15 +34,16 @@ service cloud.firestore {
       );
       
       // Proof-optimized list branches
-      allow list: if isSignedIn() && resource.data.landlordId == request.auth.uid;
-      allow list: if isSignedIn() && request.auth.uid in resource.data.get('activeTenantUids', []);
-      allow list: if isSignedIn() && resource.data.get('tenantEmail', "").lower() == userEmail();
+      allow list: if isSignedIn() && (
+        resource.data.landlordId == request.auth.uid ||
+        request.auth.uid in resource.data.get('activeTenantUids', []) ||
+        resource.data.get('tenantEmail', "").lower() == userEmail()
+      );
       
       allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
       
       allow update: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid ||
-        // Identity Handshake Bridge: Permits verified residents to link their UID
         (userEmail() != "" && resource.data.get("tenantEmail", "").lower() == userEmail())
       );
       
@@ -60,9 +59,11 @@ service cloud.firestore {
         resource.data.email.lower() == userEmail()
       );
       
-      allow list: if isSignedIn() && resource.data.landlordId == request.auth.uid;
-      allow list: if isSignedIn() && resource.data.userId == request.auth.uid;
-      allow list: if isSignedIn() && resource.data.email.lower() == userEmail();
+      allow list: if isSignedIn() && (
+        resource.data.landlordId == request.auth.uid ||
+        resource.data.userId == request.auth.uid ||
+        resource.data.email.lower() == userEmail()
+      );
       
       allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
       
@@ -83,9 +84,11 @@ service cloud.firestore {
         resource.data.reportedBy == request.auth.uid
       );
       
-      allow list: if isSignedIn() && resource.data.landlordId == request.auth.uid;
-      allow list: if isSignedIn() && resource.data.tenantId == request.auth.uid;
-      allow list: if isSignedIn() && resource.data.reportedBy == request.auth.uid;
+      allow list: if isSignedIn() && (
+        resource.data.landlordId == request.auth.uid ||
+        resource.data.tenantId == request.auth.uid ||
+        resource.data.reportedBy == request.auth.uid
+      );
       
       allow create: if isSignedIn();
       
@@ -102,9 +105,11 @@ service cloud.firestore {
         resource.data.landlordId == request.auth.uid
       );
       
-      // Strict ownership-based listing for static verification
-      allow list: if isSignedIn() && resource.data.tenantId == request.auth.uid;
-      allow list: if isSignedIn() && resource.data.landlordId == request.auth.uid;
+      // Actor-based listing for static query verification
+      allow list: if isSignedIn() && (
+        resource.data.tenantId == request.auth.uid ||
+        resource.data.landlordId == request.auth.uid
+      );
       
       allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
     }
@@ -117,8 +122,10 @@ service cloud.firestore {
         resource.data.propertyId != null
       );
       
-      allow list: if isSignedIn() && resource.data.landlordId == request.auth.uid;
-      allow list: if isSignedIn() && resource.data.propertyId != null;
+      allow list: if isSignedIn() && (
+        resource.data.landlordId == request.auth.uid ||
+        resource.data.propertyId != null
+      );
       
       allow create, update, delete: if isSignedIn() && (resource == null || resource.data.landlordId == request.auth.uid);
     }
