@@ -3,16 +3,15 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RentSafeUK Security Governance v25.0
-     * Optimized for high-speed Discovery, atomic Identity Handshake, and Secure Messaging.
+     * RentSafeUK Security Governance v26.0
+     * Optimized for high-speed Discovery, Query-Compatible Messaging, and atomic Identity Handshake.
      */
 
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // DISCOVERY: Validates identity bridge via normalized email or account UID.
-    // Optimized for direct string comparison to satisfy the Firestore query engine.
+    // Check if the user is related to the data via UID or Normalized Email
     function isRelated(data) {
       let email = request.auth.token.email;
       let uid = request.auth.uid;
@@ -29,10 +28,6 @@ service cloud.firestore {
       );
     }
 
-    function isLandlord(data) {
-      return isSignedIn() && request.auth.uid == data.get('landlordId', '');
-    }
-
     // --- Identity Registry ---
     match /users/{userId} {
       allow read, write: if isSignedIn() && request.auth.uid == userId;
@@ -40,38 +35,48 @@ service cloud.firestore {
 
     // --- Tenant Registry ---
     match /tenants/{tenantId} {
-      // Allow discovery list for all signed-in users (query will be filtered by email or landlordId)
-      allow list: if isSignedIn(); 
+      // Rule-Query Optimization: Allow listing ONLY if filtering by own ID or email
+      allow list: if isSignedIn() && (
+        request.auth.uid == resource.data.landlordId || 
+        request.auth.uid == resource.data.userId || 
+        request.auth.token.email == resource.data.email
+      );
       allow get: if isRelated(resource.data);
-      allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
+      allow create: if isSignedIn();
       
       // HANDSHAKE: Allow residents to update their own verification status if they match the registry email.
       allow update: if isSignedIn() && (
-        isLandlord(resource.data) || 
+        request.auth.uid == resource.data.landlordId || 
         (request.auth.token.email == resource.data.email && request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'verified', 'joinedDate', 'status', 'lastSyncCheck']))
       );
-      allow delete: if isLandlord(resource.data);
+      allow delete: if isSignedIn() && request.auth.uid == resource.data.landlordId;
     }
 
     // --- Property Portfolio ---
     match /properties/{propertyId} {
-      // Allow discovery list for all signed-in users (query will be filtered by landlordId or tenantEmail)
-      allow list: if isSignedIn();
+      // Rule-Query Optimization: Allow listing ONLY if filtering by own ID or tenant email
+      allow list: if isSignedIn() && (
+        request.auth.uid == resource.data.landlordId || 
+        request.auth.token.email == resource.data.tenantEmail
+      );
       allow get: if isRelated(resource.data);
-      allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
+      allow create: if isSignedIn();
       
       // HANDSHAKE: Allow residents to link their account to the property bridge if they match the registry email.
       allow update: if isSignedIn() && (
-        isLandlord(resource.data) || 
+        request.auth.uid == resource.data.landlordId || 
         (request.auth.token.email == resource.data.tenantEmail && request.resource.data.diff(resource.data).affectedKeys().hasAny(['tenantId', 'activeTenantUids', 'status']))
       );
-      allow delete: if isLandlord(resource.data);
+      allow delete: if isSignedIn() && request.auth.uid == resource.data.landlordId;
     }
 
     // --- Secure Messaging Ledger ---
     match /messages/{id} {
-      // Explicitly allow list if the user is a participant in the conversation (indexed query check)
-      allow list: if isSignedIn();
+      // Optimized for indexed chat queries
+      allow list: if isSignedIn() && (
+        request.auth.uid == resource.data.tenantId || 
+        request.auth.uid == resource.data.landlordId
+      );
       allow get: if isSignedIn() && (
         request.auth.uid == resource.data.senderId || 
         request.auth.uid == resource.data.tenantId || 
@@ -84,51 +89,49 @@ service cloud.firestore {
     // --- Shared Ledger Collections ---
     
     match /repairs/{id} {
-      allow list: if isSignedIn();
+      allow list: if isSignedIn() && (request.auth.uid == resource.data.landlordId || request.auth.uid == resource.data.tenantId);
       allow get: if isRelated(resource.data);
       allow create: if isSignedIn();
       allow update: if isRelated(resource.data);
-      allow delete: if isLandlord(resource.data);
+      allow delete: if isSignedIn() && request.auth.uid == resource.data.landlordId;
     }
 
     match /documents/{id} {
-      allow list: if isSignedIn();
-      allow read: if isRelated(resource.data);
-      allow write: if isLandlord(resource.data);
+      allow list: if isSignedIn() && (request.auth.uid == resource.data.landlordId || request.auth.uid == resource.data.tenantId);
+      allow get: if isRelated(resource.data);
+      allow write: if isSignedIn() && request.auth.uid == resource.data.landlordId;
     }
 
     match /inspections/{id} {
-      allow list: if isSignedIn();
+      allow list: if isSignedIn() && request.auth.uid == resource.data.landlordId;
       allow read: if isRelated(resource.data);
-      allow write: if isLandlord(resource.data);
+      allow write: if isSignedIn() && request.auth.uid == resource.data.landlordId;
     }
 
     match /rentPayments/{id} {
-      allow list: if isSignedIn();
-      allow read: if isRelated(resource.data);
-      allow write: if isLandlord(resource.data);
+      allow list: if isSignedIn() && (request.auth.uid == resource.data.landlordId || request.auth.uid == resource.data.tenantId);
+      allow get: if isRelated(resource.data);
+      allow write: if isSignedIn() && request.auth.uid == resource.data.landlordId;
     }
 
     match /contractors/{id} {
-      allow list: if isSignedIn();
-      allow read, write: if isLandlord(resource.data) || (request.resource != null && isLandlord(request.resource.data));
+      allow list: if isSignedIn() && request.auth.uid == resource.data.landlordId;
+      allow read, write: if isSignedIn() && request.auth.uid == resource.data.landlordId;
     }
 
     match /expenses/{id} {
-      allow list: if isSignedIn();
-      allow read, write: if isLandlord(resource.data) || (request.resource != null && isLandlord(request.resource.data));
+      allow list: if isSignedIn() && request.auth.uid == resource.data.landlordId;
+      allow read, write: if isSignedIn() && request.auth.uid == resource.data.landlordId;
     }
     
     match /screenings/{id} {
-      allow list: if isSignedIn();
-      allow read: if isLandlord(resource.data);
-      allow write: if isLandlord(resource.data);
+      allow list: if isSignedIn() && request.auth.uid == resource.data.landlordId;
+      allow read, write: if isSignedIn() && request.auth.uid == resource.data.landlordId;
     }
 
     match /checklists/{id} {
-      allow list: if isSignedIn();
-      allow read: if isLandlord(resource.data);
-      allow write: if isLandlord(resource.data);
+      allow list: if isSignedIn() && request.auth.uid == resource.data.landlordId;
+      allow read, write: if isSignedIn() && request.auth.uid == resource.data.landlordId;
     }
   }
 }
