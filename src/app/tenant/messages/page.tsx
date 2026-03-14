@@ -41,9 +41,10 @@ export default function TenantMessagesPage() {
       return;
     }
     
+    // CASE NORMALIZATION: Strict lowercase matching for query compatibility
     const userEmail = user.email.toLowerCase().trim();
     
-    // Deterministic root collection discovery: Find the tenant registry entry by verified email
+    // STAGE 1: Registry Discovery
     const tenantsCol = collection(firestore, 'tenants');
     const q = query(tenantsCol, where('email', '==', userEmail), limit(1));
 
