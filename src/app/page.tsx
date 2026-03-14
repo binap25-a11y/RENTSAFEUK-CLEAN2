@@ -100,6 +100,7 @@ export default function LoginPage() {
             router.replace('/dashboard');
           }
         } catch (error: any) {
+          console.warn("Redirection context sync issue:", error.message);
           router.replace('/dashboard');
         }
       };
@@ -114,7 +115,6 @@ export default function LoginPage() {
     setAuthError(null);
 
     const handleError = (error: any) => {
-      // Professional UI Alerts: Silently map credential failures
       switch (error.code) {
           case 'auth/wrong-password':
           case 'auth/user-not-found':

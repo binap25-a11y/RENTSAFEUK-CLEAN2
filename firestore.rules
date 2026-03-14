@@ -4,7 +4,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RENTSAFEUK SECURITY GOVERNANCE v10.0
+     * RENTSAFEUK SECURITY GOVERNANCE v11.0
      * Optimized for Static Rule-Query Verification and Actor-Based Determinism.
      */
 
@@ -30,18 +30,19 @@ service cloud.firestore {
 
     // --- Properties Registry ---
     match /properties/{propertyId} {
-      // LANDLORD LIST: Provable path for the dashboard query
-      allow list: if isSignedIn() && request.query.filters.landlordId[0] == request.auth.uid;
-      
-      // TENANT LIST: Provable path for resident hub discovery
-      allow list: if isSignedIn() && request.auth.uid in request.query.filters.activeTenantUids;
-      allow list: if isSignedIn() && userEmail() != "" && userEmail() in request.query.filters.tenantEmail;
+      // Consolidated List: Statically verifiable for both Landlords and Residents
+      allow list: if isSignedIn() && (
+        (request.query.filters.has('landlordId') && request.query.filters.landlordId[0] == request.auth.uid) ||
+        (request.query.filters.has('activeTenantUids') && request.auth.uid in request.query.filters.activeTenantUids) ||
+        (request.query.filters.has('tenantEmail') && userEmail() != "" && userEmail() in request.query.filters.tenantEmail)
+      );
       
       allow get: if isSignedIn() && (
         resource == null || 
         resource.data.landlordId == request.auth.uid ||
         request.auth.uid in resource.data.get("activeTenantUids", []) ||
-        resource.data.get("tenantEmail", "").lower() == userEmail()
+        resource.data.get("tenantEmail", "").lower() == userEmail() ||
+        userEmail() in resource.data.get("tenantEmails", [])
       );
       
       allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
@@ -49,7 +50,7 @@ service cloud.firestore {
       allow update: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid ||
         // HANDSHAKE BRIDGE: Authorizes Residents to link UID on first login
-        (resource.data.get("tenantEmail", "").lower() == userEmail() && 
+        (userEmail() != "" && resource.data.get("tenantEmail", "").lower() == userEmail() && 
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tenantId', 'activeTenantUids', 'status']))
       );
       
@@ -58,9 +59,11 @@ service cloud.firestore {
 
     // --- Tenants Registry ---
     match /tenants/{tenantId} {
-      allow list: if isSignedIn() && request.query.filters.landlordId[0] == request.auth.uid;
-      allow list: if isSignedIn() && request.query.filters.userId[0] == request.auth.uid;
-      allow list: if isSignedIn() && userEmail() != "" && request.query.filters.email[0] == userEmail();
+      allow list: if isSignedIn() && (
+        (request.query.filters.has('landlordId') && request.query.filters.landlordId[0] == request.auth.uid) ||
+        (request.query.filters.has('userId') && request.query.filters.userId[0] == request.auth.uid) ||
+        (request.query.filters.has('email') && userEmail() != "" && request.query.filters.email[0] == userEmail())
+      );
       
       allow get: if isSignedIn() && (
         resource == null ||
@@ -74,7 +77,7 @@ service cloud.firestore {
       allow update: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid ||
         // HANDSHAKE BRIDGE: Authorizes UID linking
-        (resource.data.get("email", "").lower() == userEmail() && 
+        (userEmail() != "" && resource.data.get("email", "").lower() == userEmail() && 
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['userId', 'verified', 'joinedDate', 'status', 'lastSyncCheck']))
       );
       
@@ -83,12 +86,21 @@ service cloud.firestore {
 
     // --- Maintenance (Repairs) ---
     match /repairs/{repairId} {
-      allow list: if isSignedIn() && request.query.filters.landlordId[0] == request.auth.uid;
-      allow list: if isSignedIn() && request.query.filters.tenantId[0] == request.auth.uid;
-      allow list: if isSignedIn() && request.query.filters.reportedBy[0] == request.auth.uid;
+      allow list: if isSignedIn() && (
+        (request.query.filters.has('landlordId') && request.query.filters.landlordId[0] == request.auth.uid) ||
+        (request.query.filters.has('tenantId') && request.query.filters.tenantId[0] == request.auth.uid) ||
+        (request.query.filters.has('reportedBy') && request.query.filters.reportedBy[0] == request.auth.uid)
+      );
       
-      allow get: if isSignedIn();
+      allow get: if isSignedIn() && (
+        resource == null ||
+        resource.data.landlordId == request.auth.uid ||
+        resource.data.tenantId == request.auth.uid ||
+        resource.data.get('reportedBy', '') == request.auth.uid
+      );
+      
       allow create: if isSignedIn();
+      
       allow update, delete: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
         resource.data.get("reportedBy", "") == request.auth.uid
@@ -97,8 +109,10 @@ service cloud.firestore {
 
     // --- Communication (Messages) ---
     match /messages/{messageId} {
-      allow list: if isSignedIn() && request.query.filters.tenantId[0] == request.auth.uid;
-      allow list: if isSignedIn() && request.query.filters.landlordId[0] == request.auth.uid;
+      allow list: if isSignedIn() && (
+        (request.query.filters.has('tenantId') && request.query.filters.tenantId[0] == request.auth.uid) ||
+        (request.query.filters.has('landlordId') && request.query.filters.landlordId[0] == request.auth.uid)
+      );
       
       allow read: if isSignedIn() && (
         resource.data.tenantId == request.auth.uid || 
@@ -109,10 +123,17 @@ service cloud.firestore {
 
     // --- Documents ---
     match /documents/{id} {
-      allow list: if isSignedIn() && request.query.filters.landlordId[0] == request.auth.uid;
-      allow list: if isSignedIn() && request.query.filters.has('propertyId');
+      allow list: if isSignedIn() && (
+        (request.query.filters.has('landlordId') && request.query.filters.landlordId[0] == request.auth.uid) ||
+        (request.query.filters.has('propertyId'))
+      );
       
-      allow get: if isSignedIn();
+      allow get: if isSignedIn() && (
+        resource == null ||
+        resource.data.landlordId == request.auth.uid ||
+        (request.query.filters.has('propertyId'))
+      );
+      
       allow create, update, delete: if isSignedIn() && (resource == null || resource.data.landlordId == request.auth.uid);
     }
 
