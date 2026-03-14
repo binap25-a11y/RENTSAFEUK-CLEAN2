@@ -27,9 +27,9 @@
     },
     {
       "collectionGroup": "messages",
-      "queryScope": "COLLECTION_GROUP",
+      "queryScope": "COLLECTION",
       "fields": [
-        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "propertyId", "order": "ASCENDING" },
         { "fieldPath": "timestamp", "order": "ASCENDING" }
       ]
     },
@@ -39,14 +39,6 @@
       "fields": [
         { "fieldPath": "landlordId", "order": "ASCENDING" },
         { "fieldPath": "propertyId", "order": "ASCENDING" },
-        { "fieldPath": "status", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "repairs",
-      "queryScope": "COLLECTION",
-      "fields": [
-        { "fieldPath": "landlordId", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" }
       ]
     }

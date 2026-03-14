@@ -19,17 +19,18 @@ import {
   Loader2, 
   User,
   ShieldCheck,
-  AlertCircle
+  AlertCircle,
+  Clock
 } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { query, where, limit, addDoc, collection, onSnapshot, orderBy, serverTimestamp } from 'firebase/firestore';
-import { format } from 'date-fns';
+import { format, isToday, isYesterday, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 
 /**
  * @fileOverview Resident Portal Chat
- * Definitive restoration of message portal logic with real-time sync.
+ * Secure real-time chat with audit-ready timestamps and date dividers.
  */
 
 interface Message {
@@ -118,6 +119,23 @@ export default function TenantMessagesPage() {
     }
   };
 
+  const getMessageDate = (timestamp: any) => {
+    if (!timestamp) return new Date(); // Optimistic fallback
+    if (timestamp.toDate) return timestamp.toDate();
+    if (timestamp.seconds) return new Date(timestamp.seconds * 1000);
+    return new Date(timestamp);
+  };
+
+  const formatMessageTime = (date: Date) => {
+    return format(date, 'HH:mm');
+  };
+
+  const formatDateDivider = (date: Date) => {
+    if (isToday(date)) return 'Today';
+    if (isYesterday(date)) return 'Yesterday';
+    return format(date, 'PPPP');
+  };
+
   if (isLoadingContext || isUserLoading) {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-4 text-center">
@@ -177,19 +195,34 @@ export default function TenantMessagesPage() {
                             <p className="text-sm text-muted-foreground italic font-medium">Your chat history is private and encrypted.</p>
                         </div>
                     ) : (
-                        messages.map((msg) => {
+                        messages.map((msg, idx) => {
                             const isMe = msg.senderId === user?.uid;
-                            const date = msg.timestamp?.seconds ? new Date(msg.timestamp.seconds * 1000) : new Date();
+                            const date = getMessageDate(msg.timestamp);
+                            
+                            const prevMsg = messages[idx - 1];
+                            const showDateDivider = !prevMsg || !isSameDay(date, getMessageDate(prevMsg.timestamp));
                             
                             return (
-                                <div key={msg.id} className={cn("flex flex-col gap-1 max-w-[85%] sm:max-w-[70%]", isMe ? "ml-auto items-end" : "mr-auto items-start")}>
-                                    <div className={cn(
-                                        "p-4 rounded-2xl text-sm font-medium shadow-sm leading-relaxed",
-                                        isMe ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-muted text-foreground rounded-tl-none border"
-                                    )}>
-                                        {msg.content}
+                                <div key={msg.id} className="space-y-4">
+                                    {showDateDivider && (
+                                        <div className="flex items-center gap-4 my-6">
+                                            <div className="h-px flex-1 bg-border" />
+                                            <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground bg-muted/50 px-3 py-1 rounded-full">{formatDateDivider(date)}</span>
+                                            <div className="h-px flex-1 bg-border" />
+                                        </div>
+                                    )}
+                                    <div className={cn("flex flex-col gap-1 max-w-[85%] sm:max-w-[70%]", isMe ? "ml-auto items-end" : "mr-auto items-start")}>
+                                        <div className={cn(
+                                            "p-4 rounded-2xl text-sm font-medium shadow-sm leading-relaxed",
+                                            isMe ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-muted text-foreground rounded-tl-none border"
+                                        )}>
+                                            {msg.content}
+                                        </div>
+                                        <div className="flex items-center gap-1 text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1">
+                                            <Clock className="h-2.5 w-2.5" />
+                                            {formatMessageTime(date)}
+                                        </div>
                                     </div>
-                                    <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1">{format(date, 'HH:mm')}</span>
                                 </div>
                             );
                         })
