@@ -147,6 +147,7 @@ export default function PropertyDetailPage() {
 
   const messagesQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
+    // Standardize query to match provisioned composite index
     return query(
         collection(firestore, 'messages'),
         where('propertyId', '==', propertyId),
@@ -286,7 +287,7 @@ export default function PropertyDetailPage() {
       <div className="flex flex-col gap-6 text-left animate-in fade-in duration-500">
         <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-4 overflow-hidden text-left">
-                <Button variant="outline" size="icon" asChild className="shrink-0"><Link href="/dashboard/properties"><ArrowLeft className="h-4" /></Link></Button>
+                <Button variant="outline" size="icon" asChild className="shrink-0"><Link href="/dashboard/properties"><ArrowLeft className="h-4 w-4" /></Link></Button>
                 <div className="min-w-0 text-left">
                     <h1 className="text-2xl font-bold font-headline leading-tight break-words">{propertyAddressTitle}</h1>
                     <p className="text-muted-foreground text-sm font-medium mt-1">{propertyAddressSubtitle}</p>
