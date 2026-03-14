@@ -22,7 +22,8 @@ import {
   AlertCircle, 
   Clock, 
   Calendar, 
-  Building2 
+  Building2,
+  History
 } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { query, where, limit, addDoc, collection, onSnapshot, orderBy, serverTimestamp } from 'firebase/firestore';
@@ -33,7 +34,7 @@ import { useToast } from '@/hooks/use-toast';
 
 /**
  * @fileOverview Resident Portal Messaging interface.
- * Fixed: Uses Tenant Document ID for stable cross-identity handshake.
+ * Refactored for professional full-viewport history and real-time sync.
  */
 
 interface Message {
@@ -89,7 +90,7 @@ export default function TenantMessagesPage() {
     return query(
         collection(firestore, 'messages'),
         where('propertyId', '==', tenantContext.propertyId),
-        where('tenantId', '==', tenantContext.tenantId), // Stable Doc ID
+        where('tenantId', '==', tenantContext.tenantId),
         orderBy('timestamp', 'asc'),
         limit(100)
     );
@@ -113,8 +114,8 @@ export default function TenantMessagesPage() {
         await addDoc(msgCol, {
             landlordId: tenantContext.landlordId,
             propertyId: tenantContext.propertyId,
-            tenantId: tenantContext.tenantId, // Stable Doc ID
-            tenantUid: user.uid, // Auth UID for rule validation
+            tenantId: tenantContext.tenantId, 
+            tenantUid: user.uid, 
             senderId: user.uid,
             senderName: user.displayName || 'Resident',
             content: newMessage.trim(),
@@ -178,12 +179,17 @@ export default function TenantMessagesPage() {
 
   return (
     <div className="h-[calc(100vh-10rem)] flex flex-col gap-4 text-left max-w-7xl mx-auto animate-in fade-in duration-500">
-      <div className="flex flex-col gap-1 text-left shrink-0">
-          <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Resident Chat</h1>
-          <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.3em] flex items-center gap-1.5">
-              <ShieldCheck className="h-3.5 w-3.5 text-green-600" />
-              Secure Audit Trail Active
-          </p>
+      <div className="flex items-center justify-between shrink-0">
+          <div className="flex flex-col gap-1 text-left">
+              <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Resident Chat</h1>
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.3em] flex items-center gap-1.5">
+                  <ShieldCheck className="h-3.5 w-3.5 text-green-600" />
+                  Secure Audit Trail Active
+              </p>
+          </div>
+          <Button variant="outline" size="sm" className="font-bold uppercase tracking-widest text-[9px] h-9 px-4 gap-2 border-primary/20 bg-background shadow-sm">
+              <History className="h-3.5 w-3.5" /> Full History View
+          </Button>
       </div>
 
       <Card className="flex-1 overflow-hidden shadow-2xl border-none flex flex-col bg-card">
@@ -200,7 +206,7 @@ export default function TenantMessagesPage() {
                     </p>
                 </div>
             </div>
-            <Badge variant="outline" className="h-6 text-[8px] uppercase font-bold tracking-widest bg-background border-2 shadow-sm">Audit-Ready</Badge>
+            <Badge variant="outline" className="h-6 text-[8px] uppercase font-bold tracking-widest bg-background border-2 shadow-sm">Real-Time Sync</Badge>
         </CardHeader>
         
         <CardContent className="flex-1 p-0 overflow-hidden relative bg-muted/5">

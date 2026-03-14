@@ -28,7 +28,8 @@ import {
   X,
   CheckCircle2,
   AlertCircle,
-  Calendar
+  Calendar,
+  History
 } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, collection, query, where, getDocs, limit, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -115,6 +116,7 @@ export default function PropertyDetailPage() {
   const [isMediaUpdating, setIsMediaUpdating] = useState(false);
   const [newReply, setNewReply] = useState('');
   const [isSendingReply, setIsSendingReply] = useState(false);
+  const [activeTab, setActiveTab] = useState('overview');
   const scrollRef = useRef<HTMLDivElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const identityInputRef = useRef<HTMLInputElement>(null);
@@ -154,7 +156,7 @@ export default function PropertyDetailPage() {
     if (scrollRef.current) {
         scrollRef.current.scrollIntoView({ behavior: 'smooth' });
     }
-  }, [messages]);
+  }, [messages, activeTab]);
 
   const handleSendReply = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -176,18 +178,18 @@ export default function PropertyDetailPage() {
         await addDoc(msgCol, {
             landlordId: user.uid,
             propertyId: property.id,
-            tenantId: targetTenantId, // Document ID for stability
-            tenantUid: targetTenantUid, // Auth UID for security rules if available
+            tenantId: targetTenantId, 
+            tenantUid: targetTenantUid, 
             senderId: user.uid,
             senderName: user.displayName || 'Property Management',
             content: newReply.trim(),
             timestamp: serverTimestamp()
         });
         setNewReply('');
-        toast({ title: 'Message Sent', description: 'Communication synchronized with the audit trail.' });
+        toast({ title: 'Message Sent', description: 'Communication recorded in the audit trail.' });
     } catch (error) {
         console.error("Sync failure:", error);
-        toast({ variant: 'destructive', title: 'Send Failed', description: 'Check your internet connection and try again.' });
+        toast({ variant: 'destructive', title: 'Send Failed', description: 'Check your internet connection.' });
     } finally {
         setIsSendingReply(false);
     }
@@ -347,7 +349,7 @@ export default function PropertyDetailPage() {
               </CardContent>
             </Card>
 
-            <Tabs defaultValue="overview" className="w-full">
+            <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full">
                 <TabsList className="bg-muted/50 p-1 rounded-xl h-auto">
                     <TabsTrigger value="overview" className="px-6 py-2 rounded-lg font-bold uppercase tracking-widest text-[10px]">Overview</TabsTrigger>
                     <TabsTrigger value="messages" className="px-6 py-2 rounded-lg font-bold uppercase tracking-widest text-[10px] gap-2">
@@ -358,7 +360,12 @@ export default function PropertyDetailPage() {
                 <TabsContent value="overview" className="space-y-6 pt-4">
                     {property.tenancy && (
                     <Card className="shadow-md border-none overflow-hidden text-left">
-                        <CardHeader className="pb-4 bg-muted/5 border-b"><CardTitle className="font-headline text-lg">Lease Financials</CardTitle></CardHeader>
+                        <CardHeader className="pb-4 bg-muted/5 border-b flex flex-row items-center justify-between">
+                            <CardTitle className="font-headline text-lg">Lease Financials</CardTitle>
+                            <Button variant="outline" size="sm" onClick={() => setActiveTab('messages')} className="font-bold uppercase tracking-widest text-[9px] h-8 px-4 gap-2">
+                                <History className="h-3 w-3" /> View Message History
+                            </Button>
+                        </CardHeader>
                         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 px-8 pb-8">
                             {property.tenancy.monthlyRent && (
                                 <div className="flex items-start gap-4">
@@ -388,7 +395,7 @@ export default function PropertyDetailPage() {
                                     <CardDescription>Verified chronological message trail for this asset.</CardDescription>
                                 </div>
                             </div>
-                            <Badge variant="outline" className="h-6 text-[8px] uppercase font-bold tracking-widest bg-background border-2 shadow-sm">Audit-Ready</Badge>
+                            <Badge variant="outline" className="h-6 text-[8px] uppercase font-bold tracking-widest bg-background border-2 shadow-sm">Audit-Ready History</Badge>
                         </CardHeader>
                         <CardContent className="flex-1 overflow-hidden p-0 relative bg-muted/5">
                             <ScrollArea className="h-full p-6">

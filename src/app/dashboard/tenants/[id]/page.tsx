@@ -27,7 +27,8 @@ import {
   Send,
   ShieldCheck,
   RefreshCw,
-  CheckCircle2
+  History,
+  MessageSquare
 } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useCollection, useUser } from '@/firebase';
@@ -166,10 +167,8 @@ export default function TenantDetailPage() {
     setIsArchiving(true);
 
     try {
-        // 1. Mark Tenant as Archived
         await updateDoc(tenantRef, { status: 'Archived' });
 
-        // 2. Atomic Status Sync: Check for remaining active residents
         const activeTenantsQuery = query(
             collection(firestore, 'tenants'),
             where('propertyId', '==', tenant.propertyId),
@@ -178,7 +177,6 @@ export default function TenantDetailPage() {
         );
         const activeTenantsSnap = await getDocs(activeTenantsQuery);
         
-        // If this was the last active tenant, transition property to Vacant
         if (activeTenantsSnap.empty) {
             await updateDoc(propertyRef, { status: 'Vacant' });
         }
@@ -247,6 +245,11 @@ export default function TenantDetailPage() {
                     {isSyncing ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : isVerified ? <RefreshCw className="h-3.5 w-3.5" /> : <Send className="h-3.5 w-3.5" />}
                     {isVerified ? 'Sync Identity' : (tenant.inviteSentDate ? 'Resend Portal Invite' : 'Send Verification Invite')}
                 </Button>
+                <Button variant="outline" asChild className="gap-2 font-bold uppercase tracking-widest text-[10px] h-10 px-6 shadow-sm border-primary/20 hover:bg-primary/5">
+                    <Link href={`/dashboard/properties/${tenant.propertyId}?tab=messages`}>
+                        <History className="h-3.5 w-3.5 text-primary" /> View Communication History
+                    </Link>
+                </Button>
                 <Button variant="outline" onClick={handleSendReminder} className="gap-2 font-bold uppercase tracking-widest text-[10px] h-10 px-6 shadow-sm border-primary/20 hover:bg-primary/5">
                     <BellRing className="h-3.5 w-3.5 text-primary" /> Send Rent Nudge
                 </Button>
@@ -277,7 +280,7 @@ export default function TenantDetailPage() {
                         <div className="p-2.5 rounded-full bg-primary/10 text-primary shrink-0"><AlertCircle className="h-5 w-5" /></div>
                         <div className="flex-1 text-left">
                             <p className="text-sm font-bold text-primary">Verification Handshake Required</p>
-                            <p className="text-xs text-muted-foreground leading-relaxed">This tenant has not yet accessed the Resident Hub. Shared maintenance tracking and document sync will be inactive until verified.</p>
+                            <p className="text-xs text-muted-foreground leading-relaxed">This tenant has not yet accessed the Resident Hub. Communication registry will be finalized upon verification.</p>
                         </div>
                         <Button size="sm" onClick={handleSendInvite} className="font-bold text-[10px] uppercase shadow-sm">Send Invite</Button>
                     </CardContent>
@@ -350,7 +353,14 @@ export default function TenantDetailPage() {
             </Card>
             
             <Card className="shadow-lg border-none overflow-hidden text-left">
-                <CardHeader className="pb-4 bg-muted/20 border-b text-left"><CardTitle className="text-lg font-headline">Assigned Asset</CardTitle></CardHeader>
+                <CardHeader className="pb-4 bg-muted/20 border-b flex flex-row items-center justify-between">
+                    <CardTitle className="text-lg font-headline">Assigned Asset Registry</CardTitle>
+                    <Button variant="outline" size="sm" asChild className="font-bold uppercase tracking-widest text-[9px] h-8 px-4 gap-2">
+                        <Link href={`/dashboard/properties/${tenant.propertyId}?tab=messages`}>
+                            <MessageSquare className="h-3 w-3" /> View Chat History
+                        </Link>
+                    </Button>
+                </CardHeader>
                 <CardContent className="pt-6 text-left">
                     <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-4 rounded-xl bg-background border shadow-sm text-left">
                         <div className="flex items-start gap-4 flex-1 min-w-0 text-left">
