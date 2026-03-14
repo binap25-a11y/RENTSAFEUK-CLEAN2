@@ -43,8 +43,9 @@ import {
   useFirestore,
   useCollection,
   useMemoFirebase,
+  updateDocumentNonBlocking
 } from '@/firebase';
-import { collection, query, where, doc, getDocs, limit, updateDoc } from 'firebase/firestore';
+import { collection, query, where, doc, getDocs, limit } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
@@ -140,7 +141,7 @@ export default function TenantsPage() {
       const tenantRef = doc(firestore, 'tenants', tenantToArchive.id);
       
       // 1. Mark Tenant as Archived (Reactive via useCollection)
-      await updateDoc(tenantRef, { status: 'Archived' });
+      updateDocumentNonBlocking(tenantRef, { status: 'Archived' });
 
       // 2. Atomic Status Sync: Scan for remaining active tenants on this property
       const activeTenantsQuery = query(
@@ -151,10 +152,11 @@ export default function TenantsPage() {
       );
       const snap = await getDocs(activeTenantsQuery);
       
-      // If no other tenants are active, mark property as vacant atomically
-      if (snap.empty) {
+      // If this was the last active tenant (count including current is handled by the reactive nature of the query engine), 
+      // mark property as vacant atomically. Note: snapshot checks against live data.
+      if (snap.docs.filter(d => d.id !== tenantToArchive.id).length === 0) {
           const propRef = doc(firestore, 'properties', tenantToArchive.propertyId);
-          await updateDoc(propRef, { status: 'Vacant' });
+          updateDocumentNonBlocking(propRef, { status: 'Vacant' });
       }
 
       toast({
