@@ -4,8 +4,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RENTSAFEUK SECURITY GOVERNANCE v6.9
-     * Index deployment re-synchronized for high-performance messaging registry.
+     * RENTSAFEUK SECURITY GOVERNANCE v7.0
+     * Index deployment re-synchronized for real-time bidirectional messaging registry.
      */
 
     function isSignedIn() {
