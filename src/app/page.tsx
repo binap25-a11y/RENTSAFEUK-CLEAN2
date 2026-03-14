@@ -125,6 +125,7 @@ export default function LoginPage() {
 
     const handleError = (error: any) => {
       // Professional feedback mapping for authentication credentials
+      // We handle these via UI state to prevent tech-heavy dev overlays
       switch (error.code) {
           case 'auth/wrong-password':
           case 'auth/user-not-found':
@@ -157,7 +158,7 @@ export default function LoginPage() {
       setAuthError(null);
       const provider = new GoogleAuthProvider();
       signInWithRedirect(auth, provider).catch((error) => {
-          toast({ variant: 'destructive', title: 'Sign-In Failed', description: error.message });
+          setAuthError('Unable to connect with Google. Please try again.');
           setIsProcessing(false);
       });
     }

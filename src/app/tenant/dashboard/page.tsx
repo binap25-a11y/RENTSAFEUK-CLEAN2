@@ -102,7 +102,7 @@ export default function TenantDashboard() {
             });
             
             // 2. Authorize UID on Property Asset
-            // Note: firestore.rules v16 allows this specific update for authorized emails
+            // Note: firestore.rules allows this specific field update for verified residents
             const propertyRef = doc(firestore, 'properties', tenantData.propertyId);
             await updateDoc(propertyRef, { 
                 tenantId: user.uid,
@@ -132,12 +132,12 @@ export default function TenantDashboard() {
         setIsLoading(false);
         discoveryRef.current = false;
     } catch (err: any) {
-        console.error("Resident Hub Discovery Error:", err.message);
+        console.warn("Resident Hub Discovery Error:", err.message);
         
         if (err.code === 'permission-denied') {
-            setErrorState("Access Denied: Please ensure your account email matches your tenancy registry.");
+            setErrorState("Registry access denied. Ensure your account email matches your tenancy record.");
         } else {
-            setErrorState(err.message || "Identity handshake failed.");
+            setErrorState("Portal handshake failed. Please retry.");
         }
         
         setIsLoading(false);
