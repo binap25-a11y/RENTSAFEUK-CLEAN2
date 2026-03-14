@@ -88,12 +88,15 @@ export default function TenantMessagesPage() {
   }, [user, isUserLoading, firestore]);
 
   // Real-time chronological message ledger keyed by stable tenant doc ID
+  // Alignment: Added tenantEmail filter to satisfy Firestore Security Rules for 'list' operations.
   const messagesQuery = useMemoFirebase(() => {
-    if (!tenantContext || !user || !firestore) return null;
+    if (!tenantContext || !user || !firestore || !user.email) return null;
+    const userEmail = user.email.toLowerCase().trim();
     return query(
         collection(firestore, 'messages'),
         where('propertyId', '==', tenantContext.propertyId),
         where('tenantId', '==', tenantContext.tenantId),
+        where('tenantEmail', '==', userEmail),
         orderBy('timestamp', 'asc'),
         limit(100)
     );

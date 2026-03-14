@@ -4,8 +4,9 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RENTSAFEUK SECURITY GOVERNANCE v19.0
+     * RENTSAFEUK SECURITY GOVERNANCE v20.1
      * Optimized for high-performance chronological messaging and index alignment.
+     * Fixed list permissions for Resident Hub by requiring tenantEmail filter alignment.
      */
 
     function isSignedIn() {
