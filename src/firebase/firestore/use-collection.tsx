@@ -59,8 +59,13 @@ export function useCollection<T = any>(
         const path = (memoizedTargetRefOrQuery as any).path || (memoizedTargetRefOrQuery as any)._query?.path?.canonicalString() || 'unknown';
 
         if (firestoreError.code === 'permission-denied') {
-            const internal = memoizedTargetRefOrQuery as any;
-            const queryFilters = internal?._query?.filters || [];
+            let queryFilters = [];
+            try {
+                // Defensive extraction of query filters for contextual reporting
+                const internal = memoizedTargetRefOrQuery as any;
+                queryFilters = internal?._query?.filters || [];
+            } catch (e) {}
+
             const contextualError = new FirestorePermissionError({
                 operation: 'list',
                 path,

@@ -1,5 +1,6 @@
+
 {
   "storage": {
-    "rules": "firebase use rentsafeuk---final"
+    "rules": "storage.rules"
   }
 }
