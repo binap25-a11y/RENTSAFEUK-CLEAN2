@@ -117,11 +117,11 @@ export default function TenantMessagesPage() {
         setNewMessage('');
         toast({
             title: 'Message Sent',
-            description: 'Communication recorded in registry.',
+            description: 'Your communication has been recorded in the secure ledger.',
         });
     } catch (error) {
         console.error("Sync failure:", error);
-        toast({ variant: 'destructive', title: 'Send Failed' });
+        toast({ variant: 'destructive', title: 'Send Failed', description: 'Ensure you have a stable connection.' });
     } finally {
         setIsSending(false);
     }
@@ -171,7 +171,7 @@ export default function TenantMessagesPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-10rem)] flex flex-col gap-4 text-left max-w-7xl mx-auto px-4">
+    <div className="h-[calc(100vh-10rem)] flex flex-col gap-4 text-left max-w-7xl mx-auto">
       <div className="flex flex-col gap-1 text-left shrink-0">
           <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Resident Chat</h1>
           <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.3em] flex items-center gap-1.5">

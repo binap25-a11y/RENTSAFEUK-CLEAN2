@@ -176,7 +176,7 @@ export default function PropertyDetailPage() {
             timestamp: serverTimestamp()
         });
         setNewReply('');
-        toast({ title: 'Reply Sent', description: 'Communication recorded in registry.' });
+        toast({ title: 'Reply Sent', description: 'The communication has been logged successfully.' });
     } catch (error) {
         console.error("Sync failure:", error);
         toast({ variant: 'destructive', title: 'Send Failed' });
@@ -264,10 +264,10 @@ export default function PropertyDetailPage() {
     <>
       <div className="flex flex-col gap-6 text-left">
         <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4 overflow-hidden text-left">
+            <div className="flex items-center gap-4 overflow-hidden">
                 <Button variant="outline" size="icon" asChild className="shrink-0"><Link href="/dashboard/properties"><ArrowLeft className="h-4" /></Link></Button>
-                <div className="min-w-0 text-left">
-                    <h1 className="text-2xl font-bold font-headline leading-tight break-words text-left">{propertyAddressTitle}</h1>
+                <div className="min-w-0">
+                    <h1 className="text-2xl font-bold font-headline leading-tight break-words">{propertyAddressTitle}</h1>
                     <p className="text-muted-foreground text-sm font-medium mt-1">{propertyAddressSubtitle}</p>
                 </div>
             </div>
@@ -345,19 +345,19 @@ export default function PropertyDetailPage() {
                 </TabsList>
                 <TabsContent value="overview" className="space-y-6 pt-4">
                     {property.tenancy && (
-                    <Card className="shadow-md border-none overflow-hidden text-left">
-                        <CardHeader className="pb-4 bg-muted/5 border-b text-left"><CardTitle className="font-headline text-lg">Financial Overview</CardTitle></CardHeader>
-                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 px-8 pb-8 text-left">
+                    <Card className="shadow-md border-none overflow-hidden">
+                        <CardHeader className="pb-4 bg-muted/5 border-b"><CardTitle className="font-headline text-lg">Financial Overview</CardTitle></CardHeader>
+                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 px-8 pb-8">
                             {property.tenancy.monthlyRent && (
                                 <div className="flex items-start gap-4">
                                     <div className="p-3 rounded-2xl bg-primary/5 shrink-0"><Banknote className="h-6 w-6 text-primary" /></div>
-                                    <div className="text-left"><p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Monthly Rent</p><p className="text-xl font-bold">£{property.tenancy.monthlyRent.toLocaleString()}</p></div>
+                                    <div><p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Monthly Rent</p><p className="text-xl font-bold">£{property.tenancy.monthlyRent.toLocaleString()}</p></div>
                                 </div>
                             )}
                             {property.tenancy.depositAmount && (
                                 <div className="flex items-start gap-4">
                                     <div className="p-3 rounded-2xl bg-primary/5 shrink-0"><Shield className="h-6 w-6 text-primary" /></div>
-                                    <div className="text-left"><p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Deposit Held</p><p className="text-xl font-bold">£{property.tenancy.depositAmount.toLocaleString()}</p></div>
+                                    <div><p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Deposit Held</p><p className="text-xl font-bold">£{property.tenancy.depositAmount.toLocaleString()}</p></div>
                                 </div>
                             )}
                         </CardContent>
@@ -446,7 +446,7 @@ export default function PropertyDetailPage() {
           </div>
           
           <div className="space-y-6">
-            <Card className="shadow-md border-none overflow-hidden text-left bg-muted/5">
+            <Card className="shadow-md border-none overflow-hidden bg-muted/5">
               <CardHeader className="flex flex-row items-center justify-between pb-4 bg-muted/20 border-b">
                 <CardTitle className="font-headline text-lg">Active Residents</CardTitle>
                 <Button variant="ghost" size="icon" asChild className="text-primary"><Link href={`/dashboard/tenants/add?propertyId=${propertyId}`}><PlusCircle className="h-5 w-5" /></Link></Button>
@@ -468,7 +468,7 @@ export default function PropertyDetailPage() {
               </CardContent>
             </Card>
             
-            <Card className="shadow-md border-none overflow-hidden text-left bg-muted/5">
+            <Card className="shadow-md border-none overflow-hidden bg-muted/5">
               <CardHeader className="pb-4 bg-muted/20 border-b"><CardTitle className="font-headline text-lg">Asset Location</CardTitle></CardHeader>
               <CardContent className="p-0">
                   <div className="aspect-square w-full shadow-inner relative bg-muted/20">
