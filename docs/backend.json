@@ -66,6 +66,20 @@
         "status": { "type": "string" },
         "priority": { "type": "string" }
       }
+    },
+    "Document": {
+      "title": "Document",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "landlordId": { "type": "string" },
+        "documentType": { "type": "string" },
+        "issueDate": { "type": "string", "format": "date" },
+        "expiryDate": { "type": "string", "format": "date" },
+        "fileUrl": { "type": "string" }
+      }
     }
   },
   "auth": {
@@ -78,11 +92,6 @@
     "/tenants/{tenantId}": { "schema": { "$ref": "#/backend/entities/Tenancy" }, "description": "Resident registry" },
     "/messages/{messageId}": { "schema": { "$ref": "#/backend/entities/Message" }, "description": "Private communication channel" },
     "/repairs/{repairId}": { "schema": { "$ref": "#/backend/entities/Repair" }, "description": "Maintenance audit trail" },
-    "/expenses/{expenseId}": { "description": "Financial ledger" },
-    "/rentPayments/{paymentId}": { "description": "Rent tracking" },
-    "/documents/{documentId}": { "description": "Compliance vault" },
-    "/contractors/{contractorId}": { "description": "Tradespeople directory" },
-    "/inspections/{inspectionId}": { "description": "Safety reports" },
-    "/screenings/{screeningId}": { "description": "Vetting reports" }
+    "/documents/{documentId}": { "schema": { "$ref": "#/backend/entities/Document" }, "description": "Compliance vault" }
   }
 }
