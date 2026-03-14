@@ -1,6 +1,6 @@
 'use client';
 
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -22,21 +22,17 @@ import {
   Images,
   Banknote,
   Shield,
-  FileText,
-  User,
-  Mail,
-  Phone,
-  Upload,
-  X,
-  CheckCircle2,
   MessageSquare,
   Send,
   Clock,
   Calendar,
-  Building2
+  Building2,
+  Upload,
+  X,
+  CheckCircle2
 } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
-import { doc, updateDoc, collection, query, where, getDocs, limit, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, getDocs, limit, orderBy, addDoc, serverTimestamp, deleteDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useMemo, useRef, useEffect } from 'react';
 import {
@@ -138,7 +134,6 @@ export default function PropertyDetailPage() {
 
   const messagesQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
-    // SECURE REGISTRY SYNC: Mandatory propertyId and landlordId filters for static verification.
     return query(
         collection(firestore, 'messages'),
         where('propertyId', '==', propertyId),
@@ -160,7 +155,6 @@ export default function PropertyDetailPage() {
     e.preventDefault();
     if (!newReply.trim() || !user || !property || isSendingReply) return;
 
-    // Definitively find the tenantId from the registry or existing thread
     const targetTenantId = messages?.find(m => m.senderId !== user.uid)?.tenantId || (activeTenants?.[0]?.userId);
     
     if (!targetTenantId) {
@@ -184,6 +178,7 @@ export default function PropertyDetailPage() {
         toast({ title: 'Reply Sent', description: 'Resident notified via portal.' });
     } catch (error) {
         console.error("Sync failure:", error);
+        toast({ variant: 'destructive', title: 'Send Failed', description: 'Message could not be synchronized.' });
     } finally {
         setIsSendingReply(false);
     }
@@ -490,7 +485,7 @@ export default function PropertyDetailPage() {
               <AlertDialogTitle className="text-xl font-headline">Archive Property?</AlertDialogTitle>
               <AlertDialogDescription className="text-base font-medium">Move record at <strong className='text-foreground'>{property.address.street}</strong> to archives.</AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter className="gap-3 mt-4">
+          <AlertDialogFooter>
             <AlertDialogCancel className="rounded-xl font-bold uppercase text-xs h-11">Cancel</AlertDialogCancel>
             <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold uppercase text-xs h-11 px-8 shadow-lg" onClick={handleDeleteConfirm}>Archive Asset</AlertDialogAction>
           </AlertDialogFooter>

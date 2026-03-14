@@ -28,11 +28,12 @@ import { query, where, limit, addDoc, collection, onSnapshot, orderBy, serverTim
 import { format, isToday, isYesterday, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
+import { useToast } from '@/hooks/use-toast';
 
 /**
  * @fileOverview Resident Portal Chat
  * Secure real-time chat with audit-ready timestamps and date dividers.
- * Optimized for full-viewport visibility and professional audit trail management.
+ * Maximized viewport visibility for ease of use.
  */
 
 interface Message {
@@ -49,6 +50,7 @@ interface Message {
 export default function TenantMessagesPage() {
   const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
+  const { toast } = useToast();
   const [tenantContext, setTenantContext] = useState<any>(null);
   const [isLoadingContext, setIsLoadingContext] = useState(true);
   const [newMessage, setNewMessage] = useState('');
@@ -84,7 +86,6 @@ export default function TenantMessagesPage() {
 
   const messagesQuery = useMemoFirebase(() => {
     if (!tenantContext || !user || !firestore) return null;
-    // SECURE REGISTRY SYNC: Mandatory propertyId and tenantId filters for static verification.
     return query(
         collection(firestore, 'messages'),
         where('propertyId', '==', tenantContext.propertyId),
@@ -119,8 +120,17 @@ export default function TenantMessagesPage() {
             timestamp: serverTimestamp()
         });
         setNewMessage('');
+        toast({
+            title: 'Message Sent',
+            description: 'Your communication has been synchronized with the management ledger.',
+        });
     } catch (error) {
         console.error("Message sync failure:", error);
+        toast({
+            variant: 'destructive',
+            title: 'Sync Failed',
+            description: 'Could not deliver message. Please check your connection.',
+        });
     } finally {
         setIsSending(false);
     }
@@ -180,7 +190,7 @@ export default function TenantMessagesPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col gap-4 text-left max-w-7xl mx-auto px-4 animate-in fade-in duration-500">
+    <div className="h-[calc(100vh-10rem)] flex flex-col gap-4 text-left max-w-7xl mx-auto px-4 animate-in fade-in duration-500">
       <div className="flex items-center justify-between px-1 shrink-0">
           <div className="flex flex-col gap-1 text-left">
               <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Resident Chat</h1>
