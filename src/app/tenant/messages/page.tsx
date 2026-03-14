@@ -180,7 +180,7 @@ export default function TenantMessagesPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-10rem)] flex flex-col gap-4 text-left max-w-5xl mx-auto px-4 animate-in fade-in duration-500">
+    <div className="h-[calc(100vh-8rem)] flex flex-col gap-4 text-left max-w-6xl mx-auto px-4 animate-in fade-in duration-500">
       <div className="flex items-center justify-between px-1 shrink-0">
           <div className="flex flex-col gap-1">
               <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Resident Chat</h1>
