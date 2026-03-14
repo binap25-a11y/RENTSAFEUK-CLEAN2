@@ -23,7 +23,7 @@
         "tenantEmail": { "type": "string" },
         "activeTenantUids": { "type": "array", "items": { "type": "string" } },
         "address": { "type": "object" },
-        "status": { "type": "string", "enum": ["Vacant", "Occupied", "Under Maintenance"] },
+        "status": { "type": "string", "enum": ["Vacant", "Occupied", "Under Maintenance", "Deleted"] },
         "imageUrl": { "type": "string" },
         "additionalImageUrls": { "type": "array", "items": { "type": "string" } }
       }
@@ -54,6 +54,30 @@
         "content": { "type": "string" },
         "timestamp": { "type": "string", "format": "date-time" }
       }
+    },
+    "Repair": {
+      "title": "Repair",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "landlordId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "title": { "type": "string" },
+        "status": { "type": "string" },
+        "priority": { "type": "string" }
+      }
+    },
+    "Document": {
+      "title": "Document",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "landlordId": { "type": "string" },
+        "title": { "type": "string" },
+        "fileUrl": { "type": "string" }
+      }
     }
   },
   "auth": {
@@ -64,10 +88,10 @@
     "/properties/{propertyId}": { "schema": { "$ref": "#/backend/entities/Property" }, "description": "Asset registry" },
     "/tenants/{tenantId}": { "schema": { "$ref": "#/backend/entities/Tenancy" }, "description": "Resident registry" },
     "/messages/{messageId}": { "schema": { "$ref": "#/backend/entities/Message" }, "description": "Private chat history" },
-    "/repairs/{repairId}": { "description": "Maintenance requests" },
+    "/repairs/{repairId}": { "schema": { "$ref": "#/backend/entities/Repair" }, "description": "Maintenance requests" },
     "/expenses/{expenseId}": { "description": "Financial ledger" },
     "/rentPayments/{paymentId}": { "description": "Rent tracking" },
-    "/documents/{documentId}": { "description": "Compliance vault" },
+    "/documents/{documentId}": { "schema": { "$ref": "#/backend/entities/Document" }, "description": "Compliance vault" },
     "/contractors/{contractorId}": { "description": "Tradespeople directory" },
     "/inspections/{inspectionId}": { "description": "Safety reports" },
     "/screenings/{screeningId}": { "description": "Vetting reports" }

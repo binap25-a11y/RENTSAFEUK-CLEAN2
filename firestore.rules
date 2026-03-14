@@ -27,7 +27,7 @@ service cloud.firestore {
 
     // --- Properties Registry ---
     match /properties/{propertyId} {
-      // Split list rules into discrete branches for static query proof
+      // Discrete branches for static query proof
       allow list: if isSignedIn() && request.auth.uid in request.query.filters.landlordId;
       allow list: if isSignedIn() && request.auth.uid in request.query.filters.activeTenantUids;
       allow list: if isSignedIn() && userEmail() in request.query.filters.tenantEmail;
@@ -106,7 +106,7 @@ service cloud.firestore {
     // --- Compliance & Safety ---
     match /documents/{id} {
       allow list: if isSignedIn() && request.auth.uid in request.query.filters.landlordId;
-      allow list: if isSignedIn() && request.query.filters.propertyId != null;
+      allow list: if isSignedIn() && request.query.filters.get("propertyId", null) != null;
       
       allow get: if isSignedIn() && (resource.data.landlordId == request.auth.uid || resource.data.propertyId != null);
       allow create, update, delete: if isSignedIn() && (resource == null || resource.data.landlordId == request.auth.uid);
@@ -117,7 +117,7 @@ service cloud.firestore {
     }
     match /inspections/{id} {
       allow list: if isSignedIn() && request.auth.uid in request.query.filters.landlordId;
-      allow list: if isSignedIn() && request.query.filters.propertyId != null;
+      allow list: if isSignedIn() && request.query.filters.get("propertyId", null) != null;
       allow read, write: if isSignedIn() && (resource == null || resource.data.landlordId == request.auth.uid);
     }
     match /screenings/{id} {

@@ -1,3 +1,4 @@
+
 'use client';
 /** 
  * @fileOverview Deprecated module. All logic has been consolidated into auth-utilities.ts 

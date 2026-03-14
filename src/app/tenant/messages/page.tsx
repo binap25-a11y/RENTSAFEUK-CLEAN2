@@ -134,7 +134,7 @@ export default function TenantMessagesPage() {
               <AlertCircle className="h-8 w-8 text-destructive" />
           </div>
           <CardTitle className="text-lg text-primary font-headline">Messaging Blocked</CardTitle>
-          <CardDescription className='font-medium'>A verified residency handshake is required to access property chat.</CardDescription>
+          <CardDescription className='font-medium text-muted-foreground'>A verified residency handshake is required to access property chat.</CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
           <Button variant="outline" className="w-full font-bold h-11" asChild><Link href="/tenant/dashboard">Return to Hub</Link></Button>
