@@ -23,13 +23,11 @@ import {
   MessageSquare,
   Send,
   Clock,
-  Calendar,
   Building2,
   Upload,
   X,
   CheckCircle2,
-  AlertCircle,
-  Archive
+  AlertCircle
 } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, collection, query, where, getDocs, limit, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -55,7 +53,7 @@ import { cn } from '@/lib/utils';
 
 /**
  * @fileOverview Comprehensive Landlord Property View.
- * Fully restored to fix previous source truncation and integrated with audit-ready bidirectional messaging.
+ * Restored from truncation and enhanced with audit-ready bidirectional messaging registry.
  */
 
 interface Property {
@@ -112,7 +110,7 @@ export default function PropertyDetailPage() {
   const { toast } = useToast();
   
   const [isDeleting, setIsDeleting] = useState(false);
-  const [isArchiving, setIsArchiving] = useState(false); // Added for completeness
+  const [isArchiving, setIsArchiving] = useState(false);
   const [isMediaUpdating, setIsMediaUpdating] = useState(false);
   const [newReply, setNewReply] = useState('');
   const [isSendingReply, setIsSendingReply] = useState(false);
@@ -161,7 +159,6 @@ export default function PropertyDetailPage() {
     e.preventDefault();
     if (!newReply.trim() || !user || !property || isSendingReply) return;
 
-    // Discovery Logic: Target the first verified resident UID if history is empty
     const targetTenantId = messages?.find(m => m.senderId !== user.uid)?.tenantId || (activeTenants?.[0]?.userId);
     
     if (!targetTenantId) {
@@ -182,7 +179,7 @@ export default function PropertyDetailPage() {
             timestamp: serverTimestamp()
         });
         setNewReply('');
-        toast({ title: 'Reply Sent', description: 'Resident notified via the audit registry.' });
+        toast({ title: 'Reply Sent', description: 'Message synchronized with the audit registry.' });
     } catch (error) {
         console.error("Sync failure:", error);
         toast({ variant: 'destructive', title: 'Send Failed' });
@@ -236,13 +233,13 @@ export default function PropertyDetailPage() {
     setIsArchiving(true);
     try {
       await updateDoc(doc(firestore, 'properties', propertyId), { status: 'Deleted' });
-      toast({ title: 'Property Archived' });
+      toast({ title: 'Asset Archived', description: 'Record moved to history archives.' });
       router.push('/dashboard/properties');
     } catch (e) {
       toast({ variant: 'destructive', title: 'Action Failed' });
     } finally { 
-      setIsDeleting(false); 
       setIsArchiving(false);
+      setIsDeleting(false);
     }
   };
   
@@ -494,7 +491,7 @@ export default function PropertyDetailPage() {
         <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
           <AlertDialogHeader>
               <AlertDialogTitle className="text-xl font-headline">Archive Asset?</AlertDialogTitle>
-              <AlertDialogDescription className="text-base font-medium">This will move the record for <strong className='text-foreground'>{property.address.street}</strong> to history archives.</AlertDialogDescription>
+              <AlertDialogDescription className="text-base font-medium">Move record at <strong className='text-foreground'>{property.address.street}</strong> to archives.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-xl font-bold uppercase text-xs h-11">Cancel</AlertDialogCancel>
