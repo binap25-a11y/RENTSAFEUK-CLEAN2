@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -111,6 +112,7 @@ interface Message {
     content: string;
     timestamp: any;
     tenantId: string;
+    landlordId: string;
 }
 
 export default function PropertyDetailPage() {
@@ -169,13 +171,16 @@ export default function PropertyDetailPage() {
 
   const messagesQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
+    // SECURE REGISTRY SYNC: Added landlordId filter to satisfy statically provable security rules.
     return query(
         collection(firestore, 'messages'),
         where('propertyId', '==', propertyId),
+        where('landlordId', '==', user.uid),
         orderBy('timestamp', 'asc'),
         limit(100)
     );
   }, [firestore, propertyId, user]);
+
   const { data: messages } = useCollection<Message>(messagesQuery);
 
   useEffect(() => {
@@ -448,7 +453,7 @@ export default function PropertyDetailPage() {
                                 <Input 
                                     placeholder="Type a response to the resident..." 
                                     value={newReply}
-                                    onChange={(e) => setNewReply(e.target.value)}
+                                    onChange={(e) => setNewMessage(e.target.value)}
                                     className="flex-1 rounded-xl h-11 bg-muted/20 border-2"
                                     disabled={isSendingReply || (!messages?.length && !activeTenants?.length)}
                                 />

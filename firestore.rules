@@ -4,7 +4,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RENTSAFEUK SECURITY GOVERNANCE v3.0
+     * RENTSAFEUK SECURITY GOVERNANCE v4.0
      * Optimized for Static Query Prove-ability.
      * Uses discrete list branches to ensure the Firestore Query Engine
      * can instantly authorize filtered requests.
@@ -102,6 +102,7 @@ service cloud.firestore {
         resource.data.landlordId == request.auth.uid
       );
       
+      // Strict ownership-based listing for static verification
       allow list: if isSignedIn() && resource.data.tenantId == request.auth.uid;
       allow list: if isSignedIn() && resource.data.landlordId == request.auth.uid;
       

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -33,6 +34,7 @@ import Link from 'next/link';
  * @fileOverview Resident Portal Chat
  * Secure real-time chat with audit-ready timestamps and date dividers.
  * Expanded full-viewport layout for maximum visibility.
+ * Hardened with static query verification for security compliance.
  */
 
 interface Message {
@@ -41,6 +43,7 @@ interface Message {
     senderName: string;
     content: string;
     timestamp: any;
+    tenantId: string;
 }
 
 export default function TenantMessagesPage() {
@@ -81,9 +84,11 @@ export default function TenantMessagesPage() {
 
   const messagesQuery = useMemoFirebase(() => {
     if (!tenantContext || !user || !firestore) return null;
+    // SECURE REGISTRY SYNC: Added tenantId filter to satisfy statically provable security rules.
     return query(
         collection(firestore, 'messages'),
         where('propertyId', '==', tenantContext.propertyId),
+        where('tenantId', '==', user.uid),
         orderBy('timestamp', 'asc'),
         limit(100)
     );
