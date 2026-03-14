@@ -4,8 +4,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RentSafeUK Security Governance v14.0
-     * Optimized for high-speed query-compatible identity discovery and atomic handshakes.
+     * RentSafeUK Security Governance v15.0
+     * Optimized for high-speed query compatibility and atomic resident handshakes.
      */
 
     function isSignedIn() {
@@ -25,30 +25,29 @@ service cloud.firestore {
       return isSignedIn() && getUid() == data.get('landlordId', '');
     }
 
-    // Helper to check if the user is the tenant of the record (Case-Insensitive Handshake)
+    // Helper to check if the user is the tenant of the record (Handshaked UID)
     function isTenant(data) {
-      let email = getEmail();
-      let uid = getUid();
       return isSignedIn() && (
-        uid == data.get('tenantId', '') || 
-        uid == data.get('userId', '') ||
-        (email != "" && (
-          email == data.get('email', '').lower() || 
-          email == data.get('tenantEmail', '').lower()
-        ))
+        getUid() == data.get('tenantId', '') || 
+        getUid() == data.get('userId', '')
       );
     }
 
     // --- Identity Registry ---
     match /users/{userId} {
-      allow read, write: if isSignedIn() && request.auth.uid == userId;
+      allow read, write: if isSignedIn() && getUid() == userId;
     }
 
     // --- Tenant Registry ---
     match /tenants/{tenantId} {
-      // Discovery: Authorized for query-based scans matching identity keys
-      allow list: if isSignedIn();
-      allow get: if isLandlord(resource.data) || isTenant(resource.data);
+      // DISCOVERY: Explicitly authorized for query-based scans matching identity keys
+      allow list: if isSignedIn() && (
+        getUid() == resource.data.get('landlordId', '') ||
+        getUid() == resource.data.get('userId', '') ||
+        getEmail() == resource.data.get('email', '').lower()
+      );
+      
+      allow get: if isLandlord(resource.data) || isTenant(resource.data) || getEmail() == resource.data.get('email', '').lower();
       allow create: if isSignedIn();
       
       // HANDSHAKE: Allow residents to link their UID if they match the registry email
@@ -61,9 +60,15 @@ service cloud.firestore {
 
     // --- Property Portfolio ---
     match /properties/{propertyId} {
-      // Discovery: Authorized for query-based scans matching identity keys
-      allow list: if isSignedIn();
-      allow get: if isLandlord(resource.data) || isTenant(resource.data);
+      // DISCOVERY: Optimized for collection scans
+      allow list: if isSignedIn() && (
+        getUid() == resource.data.get('landlordId', '') ||
+        getUid() == resource.data.get('tenantId', '') ||
+        resource.data.get('activeTenantUids', []).hasAny([getUid()]) ||
+        getEmail() == resource.data.get('tenantEmail', '').lower()
+      );
+
+      allow get: if isLandlord(resource.data) || isTenant(resource.data) || getEmail() == resource.data.get('tenantEmail', '').lower();
       allow create: if isSignedIn();
       
       // HANDSHAKE: Allow residents to link their UID to the property bridge
@@ -79,15 +84,16 @@ service cloud.firestore {
       // Optimized for high-speed query compatibility (matches where filters)
       allow list: if isSignedIn() && (
         getUid() == resource.data.get('tenantId', '') || 
-        getUid() == resource.data.get('landlordId', '') ||
-        getUid() == resource.data.get('senderId', '')
+        getUid() == resource.data.get('landlordId', '')
       );
       allow get: if isSignedIn() && (
         getUid() == resource.data.get('tenantId', '') || 
-        getUid() == resource.data.get('landlordId', '') ||
-        getUid() == resource.data.get('senderId', '')
+        getUid() == resource.data.get('landlordId', '')
       );
-      allow create: if isSignedIn() && (request.resource.data.get('senderId', '') == getUid());
+      allow create: if isSignedIn() && (
+        request.resource.data.get('senderId', '') == getUid() &&
+        (getUid() == request.resource.data.get('tenantId', '') || getUid() == request.resource.data.get('landlordId', ''))
+      );
       allow update, delete: if false;
     }
 

@@ -166,8 +166,10 @@ export default function TenantDetailPage() {
     setIsArchiving(true);
 
     try {
+        // 1. Mark Tenant as Archived
         await updateDoc(tenantRef, { status: 'Archived' });
 
+        // 2. Atomic Status Sync: Check for remaining active residents
         const activeTenantsQuery = query(
             collection(firestore, 'tenants'),
             where('propertyId', '==', tenant.propertyId),
@@ -176,11 +178,12 @@ export default function TenantDetailPage() {
         );
         const activeTenantsSnap = await getDocs(activeTenantsQuery);
         
+        // If this was the last active tenant, transition property to Vacant
         if (activeTenantsSnap.empty) {
             await updateDoc(propertyRef, { status: 'Vacant' });
         }
 
-        toast({ title: 'Tenant Archived', description: 'Identity record moved to history.' });
+        toast({ title: 'Tenant Archived', description: 'Identity record moved to history and asset status updated.' });
         router.push('/dashboard/tenants');
     } catch (e) {
         toast({ variant: 'destructive', title: 'Action Failed' });
