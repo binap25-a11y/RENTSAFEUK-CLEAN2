@@ -159,6 +159,7 @@ export default function PropertyDetailPage() {
     e.preventDefault();
     if (!newReply.trim() || !user || !property || isSendingReply) return;
 
+    // Find the first tenant associated with this property to message
     const targetTenantId = messages?.find(m => m.senderId !== user.uid)?.tenantId || (activeTenants?.[0]?.userId);
     
     if (!targetTenantId) {
@@ -443,7 +444,7 @@ export default function PropertyDetailPage() {
                                     disabled={isSendingReply || (!messages?.length && !activeTenants?.length)}
                                 />
                                 <Button type="submit" size="icon" className="h-11 w-11 rounded-xl shadow-lg" disabled={!newReply.trim() || isSendingReply}>
-                                    {isSendingReply ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                                    {isSendingReply ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                                 </Button>
                             </form>
                         </CardFooter>
@@ -464,7 +465,7 @@ export default function PropertyDetailPage() {
                 ) : (
                   activeTenants.map((t) => (
                     <div key={t.id} className="p-4 rounded-xl bg-background border shadow-sm flex items-center justify-between group">
-                        <div className="min-w-0">
+                        <div className="min-w-0 text-left">
                             <p className="font-bold truncate text-sm">{t.name}</p>
                             <p className="text-[10px] text-muted-foreground truncate">{t.email}</p>
                         </div>
@@ -476,7 +477,7 @@ export default function PropertyDetailPage() {
             </Card>
             
             <Card className="shadow-md border-none overflow-hidden bg-muted/5">
-              <CardHeader className="pb-4 bg-muted/20 border-b"><CardTitle className="font-headline text-lg">Asset Location</CardTitle></CardHeader>
+              <CardHeader className="pb-4 bg-muted/20 border-b text-left"><CardTitle className="font-headline text-lg">Asset Location</CardTitle></CardHeader>
               <CardContent className="p-0">
                   <div className="aspect-square w-full shadow-inner relative bg-muted/20">
                       <iframe width="100%" height="100%" style={{ border: 0 }} title="Map" loading="lazy" src={`https://maps.google.com/maps?q=${encodeURIComponent([property.address.street, property.address.city, property.address.postcode].filter(Boolean).join(', '))}&output=embed`}></iframe>
@@ -488,7 +489,7 @@ export default function PropertyDetailPage() {
       </div>
 
       <AlertDialog open={isDeleting} onOpenChange={(open) => setIsDeleting(open)}>
-        <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
+        <AlertDialogContent className="rounded-2xl border-none shadow-2xl text-left">
           <AlertDialogHeader>
               <AlertDialogTitle className="text-xl font-headline">Archive Asset?</AlertDialogTitle>
               <AlertDialogDescription className="text-base font-medium">Move record at <strong className='text-foreground'>{property.address.street}</strong> to archives.</AlertDialogDescription>
