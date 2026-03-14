@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -179,7 +180,7 @@ export default function TenantDetailPage() {
             await updateDoc(propertyRef, { status: 'Vacant' });
         }
 
-        toast({ title: 'Tenant Archived' });
+        toast({ title: 'Tenant Archived', description: 'Identity record moved to history.' });
         router.push('/dashboard/tenants');
     } catch (e) {
         toast({ variant: 'destructive', title: 'Action Failed' });
