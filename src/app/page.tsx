@@ -125,7 +125,6 @@ export default function LoginPage() {
 
     const handleError = (error: any) => {
       // Professional feedback mapping for authentication credentials
-      // Prevents technical console logging from triggering developer overlays
       switch (error.code) {
           case 'auth/wrong-password':
           case 'auth/user-not-found':

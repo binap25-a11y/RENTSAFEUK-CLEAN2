@@ -30,6 +30,11 @@ import { useEffect, useState } from 'react';
 import { Logo } from '@/components/icons';
 import { UserNav } from '@/components/dashboard/user-nav';
 
+/**
+ * @fileOverview Resident Portal Layout
+ * Handles mounting states and secure role verification for verified residents.
+ */
+
 export default function TenantLayout({ children }: { children: React.ReactNode }) {
   const { user, isUserLoading } = useUser();
   const auth = useAuth();
@@ -41,7 +46,6 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
     setIsMounted(true); 
   }, []);
 
-  // Secure Navigation: Moved to useEffect to comply with React rendering standards
   useEffect(() => {
     if (isMounted && !isUserLoading && !user) {
       router.push('/');
@@ -78,7 +82,7 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
               <SidebarMenuItem key={item.href}>
                 <SidebarMenuButton asChild isActive={pathname === item.href} tooltip={item.label}>
                   <Link href={item.href}>
-                    <item.icon />
+                    <item.icon className="h-4 w-4" />
                     <span>{item.label}</span>
                   </Link>
                 </SidebarMenuButton>
