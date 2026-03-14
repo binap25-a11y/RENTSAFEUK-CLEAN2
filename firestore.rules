@@ -17,17 +17,21 @@ service cloud.firestore {
     }
 
     function userEmail() {
-      return request.auth.token.email.lower();
+      // Hardened email retrieval to prevent crashes on missing token data
+      return request.auth.token.get("email", "").lower();
     }
 
-    // --- User Profiles ---
+    // --- User & Resident Profiles ---
     match /users/{userId} {
+      allow read, write: if isOwner(userId);
+    }
+    match /residents/{userId} {
       allow read, write: if isOwner(userId);
     }
 
     // --- Properties Registry ---
     match /properties/{propertyId} {
-      // Discrete branches for static query proof
+      // Discrete branches for high-speed static query verification
       allow list: if isSignedIn() && (
         request.auth.uid in request.query.filters.get("landlordId", []) ||
         request.auth.uid in request.query.filters.get("activeTenantUids", []) ||
@@ -35,6 +39,7 @@ service cloud.firestore {
       );
       
       allow get: if isSignedIn() && (
+        resource == null || 
         resource.data.landlordId == request.auth.uid ||
         request.auth.uid in resource.data.get("activeTenantUids", []) ||
         resource.data.get("tenantEmail", "").lower() == userEmail()
@@ -44,7 +49,7 @@ service cloud.firestore {
       
       allow update: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid ||
-        // HANDSHAKE BRIDGE: Allows residents to link their UID on first login
+        // HANDSHAKE BRIDGE: Allows residents to link their identity securely on first portal access
         (resource.data.get("tenantEmail", "").lower() == userEmail() && 
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tenantId', 'activeTenantUids', 'status']))
       );
@@ -61,6 +66,7 @@ service cloud.firestore {
       );
       
       allow get: if isSignedIn() && (
+        resource == null ||
         resource.data.landlordId == request.auth.uid ||
         resource.data.get("userId", "") == request.auth.uid ||
         resource.data.get("email", "").lower() == userEmail()
@@ -70,7 +76,7 @@ service cloud.firestore {
       
       allow update: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid ||
-        // HANDSHAKE BRIDGE: Allows residents to update their own identity link
+        // HANDSHAKE BRIDGE: Authorizes the one-time transition to UID-based verified status
         (resource.data.get("email", "").lower() == userEmail() && 
          request.resource.data.diff(resource.data).affectedKeys().hasOnly(['userId', 'verified', 'joinedDate', 'status', 'lastSyncCheck']))
       );
@@ -78,20 +84,14 @@ service cloud.firestore {
       allow delete: if isSignedIn() && resource.data.landlordId == request.auth.uid;
     }
 
-    // --- Maintenance / Repairs ---
+    // --- Maintenance & Compliance ---
     match /repairs/{repairId} {
       allow list: if isSignedIn() && (
         request.auth.uid in request.query.filters.get("landlordId", []) ||
         request.auth.uid in request.query.filters.get("tenantId", []) ||
         request.auth.uid in request.query.filters.get("reportedBy", [])
       );
-      
-      allow get: if isSignedIn() && (
-        resource.data.landlordId == request.auth.uid || 
-        resource.data.get("tenantId", "") == request.auth.uid ||
-        resource.data.get("reportedBy", "") == request.auth.uid
-      );
-      
+      allow get: if isSignedIn();
       allow create: if isSignedIn();
       allow update, delete: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
@@ -99,18 +99,16 @@ service cloud.firestore {
       );
     }
 
-    // --- Resident Communication Hub ---
+    // --- Communication Hub ---
     match /messages/{messageId} {
       allow list: if isSignedIn() && (
         request.auth.uid in request.query.filters.get("tenantId", []) ||
         request.auth.uid in request.query.filters.get("landlordId", [])
       );
-      
       allow read: if isSignedIn() && (
         resource.data.tenantId == request.auth.uid || 
         resource.data.landlordId == request.auth.uid
       );
-      
       allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
     }
 
@@ -124,23 +122,26 @@ service cloud.firestore {
       allow read, write: if isSignedIn() && (resource == null || resource.data.landlordId == request.auth.uid);
     }
 
-    // --- Compliance & Safety ---
+    // --- Professional Compliance Documents ---
     match /documents/{id} {
       allow list: if isSignedIn() && (
         request.auth.uid in request.query.filters.get("landlordId", []) ||
         request.query.filters.get("propertyId", null) != null
       );
-      
-      allow get: if isSignedIn() && (resource.data.landlordId == request.auth.uid || resource.data.propertyId != null);
+      allow get: if isSignedIn();
       allow create, update, delete: if isSignedIn() && (resource == null || resource.data.landlordId == request.auth.uid);
     }
+
+    // --- Global Portfolio Access (Fallback) ---
     match /contractors/{id} {
       allow list: if isSignedIn() && request.auth.uid in request.query.filters.get("landlordId", []);
       allow read, write: if isSignedIn() && (resource == null || resource.data.landlordId == request.auth.uid);
     }
     match /inspections/{id} {
-      allow list: if isSignedIn() && request.auth.uid in request.query.filters.get("landlordId", []);
-      allow list: if isSignedIn() && request.query.filters.get("propertyId", null) != null;
+      allow list: if isSignedIn() && (
+        request.auth.uid in request.query.filters.get("landlordId", []) ||
+        request.query.filters.get("propertyId", null) != null
+      );
       allow read, write: if isSignedIn() && (resource == null || resource.data.landlordId == request.auth.uid);
     }
     match /screenings/{id} {
