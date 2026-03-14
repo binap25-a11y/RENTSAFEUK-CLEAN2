@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -23,10 +24,13 @@ import {
   Bell,
   Users,
   HardHat,
+  MessageSquare,
 } from 'lucide-react';
 import * as React from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-
+import { useUser, useFirestore } from '@/firebase';
+import { collection, query, where, onSnapshot, limit } from 'firebase/firestore';
+import { Badge } from '@/components/ui/badge';
 
 const menuItems = [
   { href: '/dashboard', label: 'Dashboard', icon: LayoutDashboard },
@@ -58,6 +62,7 @@ const menuItems = [
         { href: '/dashboard/contractors/add', label: 'Add Contractor' },
     ],
   },
+  { href: '/dashboard/messages', label: 'Messages', icon: MessageSquare },
   { href: '/dashboard/maintenance', label: 'Maintenance', icon: Wrench },
   { 
     href: '/dashboard/inspections', 
@@ -85,7 +90,10 @@ const menuItems = [
 export function MainNav() {
   const pathname = usePathname();
   const { isMobile, setOpenMobile } = useSidebar();
+  const { user } = useUser();
+  const firestore = useFirestore();
   const [openItems, setOpenItems] = React.useState<string[]>([]);
+  const [unreadCount, setUnreadCount] = React.useState(0);
 
   React.useEffect(() => {
     // Open the parent menu if a sub-item is active
@@ -93,8 +101,28 @@ export function MainNav() {
     if (activeParent && !openItems.includes(activeParent.href)) {
       setOpenItems(prev => [...prev, activeParent.href]);
     }
-  // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [pathname]);
+
+  // Real-time unread count listener for Landlord Messages
+  React.useEffect(() => {
+    if (!user || !firestore) return;
+    
+    // We filter messages that aren't from the landlord (senderId != user.uid)
+    // Note: To truly have "unread", we'd need an 'isRead' field. 
+    // For now, we'll just badge if there are recent messages from tenants.
+    const q = query(
+        collection(firestore, 'messages'),
+        where('landlordId', '==', user.uid),
+        limit(50)
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
+        const fromTenants = snap.docs.filter(d => d.data().senderId !== user.uid);
+        setUnreadCount(fromTenants.length > 0 ? fromTenants.length : 0);
+    });
+
+    return () => unsub();
+  }, [user, firestore]);
 
   const handleToggle = (href: string) => {
     setOpenItems(prev => prev.includes(href) ? prev.filter(item => item !== href) : [...prev, href]);
@@ -105,7 +133,6 @@ export function MainNav() {
       setOpenMobile(false);
     }
   };
-
 
   return (
     <SidebarMenu>
@@ -148,9 +175,16 @@ export function MainNav() {
               }
               tooltip={label}
             >
-              <Link href={href} onClick={handleLinkClick}>
-                <Icon />
-                <span>{label}</span>
+              <Link href={href} onClick={handleLinkClick} className="flex items-center justify-between w-full">
+                <div className="flex items-center gap-2">
+                    <Icon />
+                    <span>{label}</span>
+                </div>
+                {label === 'Messages' && unreadCount > 0 && (
+                    <Badge className="h-5 px-1.5 min-w-[20px] justify-center bg-primary text-primary-foreground font-bold text-[10px] rounded-full">
+                        {unreadCount}
+                    </Badge>
+                )}
               </Link>
             </SidebarMenuButton>
           )}

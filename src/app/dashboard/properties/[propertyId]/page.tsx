@@ -31,7 +31,7 @@ import {
   Calendar,
   History
 } from 'lucide-react';
-import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useAuth, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, collection, query, where, getDocs, limit, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useRef, useEffect } from 'react';
@@ -169,11 +169,11 @@ export default function PropertyDetailPage() {
     e.preventDefault();
     if (!newReply.trim() || !user || !property || isSendingReply) return;
 
-    // Use established resident doc ID for chronological context
-    const targetTenant = messages?.find(m => m.senderId !== user.uid) || activeTenants?.[0];
-    const targetTenantId = targetTenant?.tenantId || targetTenant?.id;
-    const targetTenantUid = (targetTenant as any)?.senderId !== user.uid ? (targetTenant as any)?.senderId : (activeTenants?.[0]?.userId || '');
-    const targetTenantEmail = targetTenant?.email || activeTenants?.[0]?.email || '';
+    // Use established resident doc ID for thread stability
+    const targetTenant = activeTenants?.[0];
+    const targetTenantId = targetTenant?.id;
+    const targetTenantUid = targetTenant?.userId || '';
+    const targetTenantEmail = targetTenant?.email || '';
     
     if (!targetTenantId) {
         toast({ variant: 'destructive', title: 'Resident Required', description: 'Assign an active resident to start communication audit.' });
@@ -194,7 +194,7 @@ export default function PropertyDetailPage() {
             timestamp: serverTimestamp()
         });
         setNewReply('');
-        toast({ title: 'Response Recorded' });
+        toast({ title: 'Message Sent' });
     } catch (error) {
         console.error("Registry write error:", error);
         toast({ variant: 'destructive', title: 'Sync Failed' });
@@ -419,7 +419,7 @@ export default function PropertyDetailPage() {
                                                         <div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
                                                             <Clock className="h-2.5 w-2.5" />
                                                             {format(date, 'HH:mm')}
-                                                            {!isLandlord && <span className="ml-1 text-primary">Resident: {msg.senderName}</span>}
+                                                            {!isLandlord && <span className="ml-1 text-primary font-bold">Resident: {msg.senderName}</span>}
                                                         </div>
                                                     </div>
                                                 </div>

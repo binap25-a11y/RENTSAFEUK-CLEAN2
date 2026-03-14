@@ -4,7 +4,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RENTSAFEUK SECURITY GOVERNANCE v15.0
+     * RENTSAFEUK SECURITY GOVERNANCE v16.0
      * High-integrity messaging rules with robust email-fallback for unmapped residents.
      * Prevents registry lockout during initial tenant handshake.
      */

@@ -31,6 +31,15 @@
       "collectionGroup": "messages",
       "queryScope": "COLLECTION",
       "fields": [
+        { "fieldPath": "landlordId", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "DESCENDING" },
+        { "fieldPath": "__name__", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "messages",
+      "queryScope": "COLLECTION",
+      "fields": [
         { "fieldPath": "propertyId", "order": "ASCENDING" },
         { "fieldPath": "landlordId", "order": "ASCENDING" },
         { "fieldPath": "timestamp", "order": "ASCENDING" },

@@ -86,7 +86,7 @@ export default function TenantMessagesPage() {
     return () => unsub();
   }, [user, isUserLoading, firestore]);
 
-  // Real-time chronological message ledger
+  // Real-time chronological message ledger keyed by stable tenant doc ID
   const messagesQuery = useMemoFirebase(() => {
     if (!tenantContext || !user || !firestore) return null;
     return query(
