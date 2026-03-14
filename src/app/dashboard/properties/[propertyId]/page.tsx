@@ -29,9 +29,11 @@ import {
   CheckCircle2,
   AlertCircle,
   Calendar,
-  History
+  History,
+  ChevronDown,
+  RefreshCw
 } from 'lucide-react';
-import { useUser, useAuth, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, collection, query, where, getDocs, limit, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useRef, useEffect } from 'react';
@@ -148,6 +150,7 @@ export default function PropertyDetailPage() {
 
   const messagesQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
+    // We filter by property and landlord context for the secure thread
     return query(
         collection(firestore, 'messages'),
         where('propertyId', '==', propertyId),
@@ -384,8 +387,9 @@ export default function PropertyDetailPage() {
                                     ) : messagesError ? (
                                         <div className="py-20 text-center px-10 border-2 border-dashed border-destructive/20 rounded-[2rem] bg-destructive/5 mx-4">
                                             <AlertCircle className="h-12 w-12 text-destructive/20 mx-auto mb-4" />
-                                            <p className="text-sm font-bold text-destructive">Index Synchronization Required</p>
-                                            <p className="text-xs text-muted-foreground mt-1 max-w-[240px] mx-auto font-medium">The chronological audit trail is building its search cache. Please try again in 2 minutes.</p>
+                                            <p className="text-sm font-bold text-destructive">Sync Standby</p>
+                                            <p className="text-xs text-muted-foreground mt-1 max-w-[240px] mx-auto font-medium">The chronological audit trail is temporarily establishing high-performance indexes. Please wait 2 minutes.</p>
+                                            <Button variant="outline" className="mt-6 h-9" onClick={() => window.location.reload()}><RefreshCw className="mr-2 h-3 w-3" /> Retry Sync</Button>
                                         </div>
                                     ) : !messages?.length ? (
                                         <div className="py-20 text-center px-10 border-2 border-dashed rounded-[2rem] bg-muted/10 mx-4">

@@ -16,7 +16,8 @@ import {
   Building2,
   Clock,
   ShieldCheck,
-  AlertCircle
+  AlertCircle,
+  RefreshCw
 } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, orderBy, limit } from 'firebase/firestore';
@@ -66,6 +67,7 @@ export default function LandlordInboxPage() {
     const threadMap = new Map<string, Thread>();
     
     allMessages.forEach(msg => {
+        // We ensure we only group by unique conversations
         const threadKey = `${msg.propertyId}-${msg.tenantId}`;
         if (!threadMap.has(threadKey)) {
             threadMap.set(threadKey, {
@@ -119,8 +121,14 @@ export default function LandlordInboxPage() {
       ) : error ? (
         <div className="py-20 text-center px-10 border-2 border-dashed border-destructive/20 rounded-[2rem] bg-destructive/5">
             <AlertCircle className="h-12 w-12 text-destructive/20 mx-auto mb-4" />
-            <p className="text-sm font-bold text-destructive">Registry Link Standby</p>
-            <p className="text-xs text-muted-foreground mt-1 max-w-[240px] mx-auto font-medium">Communication indexes are being established. Please wait 2 minutes for initial sync.</p>
+            <p className="text-sm font-bold text-destructive">Sync Standby</p>
+            <p className="text-xs text-muted-foreground mt-1 max-w-[320px] mx-auto font-medium">
+                Indexes are being established or you may have a permission issue. 
+                If this persists, verify your landlord profile is correctly configured.
+            </p>
+            <Button variant="outline" className="mt-6 h-9" onClick={() => window.location.reload()}>
+                <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Sync
+            </Button>
         </div>
       ) : filteredThreads.length === 0 ? (
         <div className="text-center py-32 border-2 border-dashed rounded-[3rem] bg-muted/5">

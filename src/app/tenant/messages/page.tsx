@@ -24,7 +24,8 @@ import {
   Calendar, 
   Building2,
   History,
-  ChevronDown
+  ChevronDown,
+  RefreshCw
 } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { query, where, limit, addDoc, collection, onSnapshot, orderBy, serverTimestamp } from 'firebase/firestore';
@@ -135,13 +136,8 @@ export default function TenantMessagesPage() {
     }
   };
 
-  const scrollToTop = () => {
-    topRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
-
-  const scrollToBottom = () => {
-    scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
-  };
+  const scrollToTop = () => topRef.current?.scrollIntoView({ behavior: 'smooth' });
+  const scrollToBottom = () => scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
 
   const getMessageDate = (timestamp: any) => {
     if (!timestamp) return new Date();
@@ -155,9 +151,7 @@ export default function TenantMessagesPage() {
         if (isToday(date)) return 'Today';
         if (isYesterday(date)) return 'Yesterday';
         return format(date, 'EEEE, d MMMM yyyy');
-    } catch (e) {
-        return 'Audit History';
-    }
+    } catch (e) { return 'Audit History'; }
   };
 
   if (isLoadingContext || isUserLoading) {
@@ -243,8 +237,9 @@ export default function TenantMessagesPage() {
                         ) : messagesError ? (
                             <div className="py-24 text-center px-10 border-2 border-dashed border-destructive/20 rounded-[2rem] bg-destructive/5 mx-4">
                                 <AlertCircle className="h-12 w-12 text-destructive/20 mx-auto mb-4" />
-                                <p className="text-sm font-bold text-destructive">Sync Interrupted</p>
-                                <p className="text-xs text-muted-foreground mt-1 max-w-[240px] mx-auto font-medium">The chronological audit trail is temporarily unavailable due to a security index update. Please try again in 2-3 minutes.</p>
+                                <p className="text-sm font-bold text-destructive">Registry Standby</p>
+                                <p className="text-xs text-muted-foreground mt-1 max-w-[320px] mx-auto font-medium">The chronological communication audit is temporarily establishing high-performance indexes. Please wait 2 minutes.</p>
+                                <Button variant="outline" className="mt-6 h-9" onClick={() => window.location.reload()}><RefreshCw className="mr-2 h-3 w-3" /> Retry Sync</Button>
                             </div>
                         ) : !messages?.length ? (
                             <div className="py-24 text-center px-10 border-2 border-dashed rounded-[2rem] bg-muted/10 mx-4">
