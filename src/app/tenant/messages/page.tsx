@@ -32,6 +32,7 @@ import Link from 'next/link';
 /**
  * @fileOverview Resident Portal Chat
  * Secure real-time chat with audit-ready timestamps and date dividers.
+ * Expanded full-viewport layout for maximum visibility.
  */
 
 interface Message {
@@ -172,8 +173,8 @@ export default function TenantMessagesPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-10rem)] flex flex-col gap-4 text-left">
-      <div className="flex items-center justify-between">
+    <div className="h-[calc(100vh-8rem)] flex flex-col gap-4 text-left max-w-5xl mx-auto">
+      <div className="flex items-center justify-between px-1">
           <div>
               <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Resident Chat</h1>
               <p className="text-xs text-muted-foreground font-medium uppercase tracking-[0.2em] flex items-center gap-1.5 mt-1">
@@ -202,7 +203,7 @@ export default function TenantMessagesPage() {
         
         <CardContent className="flex-1 p-0 overflow-hidden relative bg-muted/5">
             <ScrollArea className="h-full p-6">
-                <div className="space-y-6 max-w-4xl mx-auto">
+                <div className="space-y-6">
                     {isLoadingMessages ? (
                         <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary/20" /></div>
                     ) : !messages?.length ? (
@@ -254,7 +255,7 @@ export default function TenantMessagesPage() {
         </CardContent>
 
         <CardFooter className="p-4 border-t bg-background shadow-inner shrink-0">
-            <form onSubmit={handleSendMessage} className="flex w-full items-center gap-3 max-w-4xl mx-auto">
+            <form onSubmit={handleSendMessage} className="flex w-full items-center gap-3">
                 <Input 
                     placeholder="Type a secure message to management..." 
                     value={newMessage} 

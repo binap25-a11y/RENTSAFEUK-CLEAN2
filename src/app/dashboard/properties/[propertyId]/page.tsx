@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -394,7 +393,7 @@ export default function PropertyDetailPage() {
                     )}
                 </TabsContent>
                 <TabsContent value="messages" className="pt-4 space-y-4">
-                    <Card className="shadow-lg border-none overflow-hidden flex flex-col h-[500px]">
+                    <Card className="shadow-lg border-none overflow-hidden flex flex-col h-[600px]">
                         <CardHeader className="bg-muted/30 border-b py-4">
                             <CardTitle className="text-lg font-headline flex items-center gap-2">
                                 <MessageSquare className="h-5 w-5 text-primary" />
@@ -449,7 +448,7 @@ export default function PropertyDetailPage() {
                                 <Input 
                                     placeholder="Type a response to the resident..." 
                                     value={newReply}
-                                    onChange={(e) => setNewReply(e.target.value)}
+                                    onChange={(e) => setNewMessage(e.target.value)}
                                     className="flex-1 rounded-xl h-11 bg-muted/20 border-2"
                                     disabled={isSendingReply || !messages?.length && !activeTenants?.length}
                                 />
