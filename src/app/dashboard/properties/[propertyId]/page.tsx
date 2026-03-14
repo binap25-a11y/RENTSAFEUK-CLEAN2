@@ -368,7 +368,7 @@ export default function PropertyDetailPage() {
                     )}
                 </TabsContent>
                 <TabsContent value="messages" className="pt-4 space-y-4">
-                    <Card className="shadow-lg border-none overflow-hidden flex flex-col h-[600px]">
+                    <Card className="shadow-lg border-none overflow-hidden flex flex-col h-[650px]">
                         <CardHeader className="bg-muted/30 border-b py-4">
                             <CardTitle className="text-lg font-headline flex items-center gap-2">
                                 <MessageSquare className="h-5 w-5 text-primary" />

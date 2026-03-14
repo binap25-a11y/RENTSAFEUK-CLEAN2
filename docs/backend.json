@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "User": {
@@ -51,7 +50,9 @@
         "id": { "type": "string" },
         "tenantId": { "type": "string" },
         "landlordId": { "type": "string" },
+        "propertyId": { "type": "string" },
         "senderId": { "type": "string" },
+        "senderName": { "type": "string" },
         "content": { "type": "string" },
         "timestamp": { "type": "string", "format": "date-time" }
       }
@@ -90,7 +91,7 @@
     "/residents/{userId}": { "schema": { "$ref": "#/backend/entities/User" }, "description": "Resident Identity Cache" },
     "/properties/{propertyId}": { "schema": { "$ref": "#/backend/entities/Property" }, "description": "Asset Registry" },
     "/tenants/{tenantId}": { "schema": { "$ref": "#/backend/entities/Tenancy" }, "description": "Tenancy Registry" },
-    "/messages/{messageId}": { "schema": { "$ref": "#/backend/entities/Message" }, "description": "Secure Chat" },
+    "/messages/{messageId}": { "schema": { "$ref": "#/backend/entities/Message" }, "description": "Secure Chat Registry" },
     "/repairs/{repairId}": { "schema": { "$ref": "#/backend/entities/Repair" }, "description": "Maintenance History" },
     "/documents/{documentId}": { "schema": { "$ref": "#/backend/entities/Document" }, "description": "Compliance Audit Trail" },
     "/rentPayments/{id}": { "schema": { "type": "object" }, "description": "Rental Ledger" },

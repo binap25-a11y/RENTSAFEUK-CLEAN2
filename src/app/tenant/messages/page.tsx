@@ -21,7 +21,8 @@ import {
   ShieldCheck,
   AlertCircle,
   Clock,
-  Calendar
+  Calendar,
+  Building2
 } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { query, where, limit, addDoc, collection, onSnapshot, orderBy, serverTimestamp } from 'firebase/firestore';
@@ -32,7 +33,7 @@ import Link from 'next/link';
 /**
  * @fileOverview Resident Portal Chat
  * Secure real-time chat with audit-ready timestamps and date dividers.
- * Optimized for full-viewport visibility.
+ * Optimized for full-viewport visibility and professional audit trail management.
  */
 
 interface Message {
@@ -178,13 +179,13 @@ export default function TenantMessagesPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col gap-4 text-left max-w-6xl mx-auto px-4">
+    <div className="h-[calc(100vh-8rem)] flex flex-col gap-4 text-left max-w-6xl mx-auto px-4 animate-in fade-in duration-500">
       <div className="flex items-center justify-between px-1 shrink-0">
-          <div>
+          <div className="flex flex-col gap-1">
               <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Resident Chat</h1>
-              <p className="text-xs text-muted-foreground font-medium uppercase tracking-[0.2em] flex items-center gap-1.5 mt-1">
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.3em] flex items-center gap-1.5">
                   <ShieldCheck className="h-3.5 w-3.5 text-green-600" />
-                  Verified Audit Trail
+                  Verified Management Trail
               </p>
           </div>
       </div>
@@ -192,18 +193,18 @@ export default function TenantMessagesPage() {
       <Card className="flex-1 overflow-hidden shadow-2xl border-none flex flex-col bg-card">
         <CardHeader className="border-b bg-muted/10 py-4 px-6 flex flex-row items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
-                    <User className="h-5 w-5" />
+                <div className="h-10 w-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-lg">
+                    <Building2 className="h-5 w-5" />
                 </div>
                 <div>
                     <CardTitle className="text-sm font-bold">Property Management</CardTitle>
                     <p className="text-[9px] text-green-600 font-bold uppercase tracking-widest flex items-center gap-1">
                         <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-                        Verified Active Channel
+                        Secure Encrypted Channel
                     </p>
                 </div>
             </div>
-            <Badge variant="outline" className="h-6 text-[8px] uppercase font-bold tracking-widest bg-background">AES-256 Encrypted</Badge>
+            <Badge variant="outline" className="h-6 text-[8px] uppercase font-bold tracking-widest bg-background border-2 shadow-sm">Verified Audit-Ready</Badge>
         </CardHeader>
         
         <CardContent className="flex-1 p-0 overflow-hidden relative bg-muted/5">
@@ -214,8 +215,8 @@ export default function TenantMessagesPage() {
                     ) : !messages?.length ? (
                         <div className="py-24 text-center px-10 border-2 border-dashed rounded-[2rem] bg-muted/10">
                             <MessageSquare className="h-12 w-12 text-muted-foreground/10 mx-auto mb-4" />
-                            <p className="text-sm font-bold text-foreground">Secure Channel Initialized</p>
-                            <p className="text-xs text-muted-foreground mt-1 max-w-[200px] mx-auto font-medium">Your chat history is private, archived, and accessible by you and your landlord for audit review.</p>
+                            <p className="text-sm font-bold text-foreground">Registry Handshake Established</p>
+                            <p className="text-xs text-muted-foreground mt-1 max-w-[240px] mx-auto font-medium">Your chat history is private, archived, and accessible by you and management for audit review.</p>
                         </div>
                     ) : (
                         messages.map((msg, idx) => {
@@ -247,7 +248,7 @@ export default function TenantMessagesPage() {
                                         <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
                                             <Clock className="h-2.5 w-2.5" />
                                             {formatMessageTime(date)}
-                                            {!isMe && <span className="ml-1 opacity-40 font-bold text-primary">Management: {msg.senderName}</span>}
+                                            {!isMe && <span className="ml-1 opacity-60 font-bold text-primary">From: {msg.senderName}</span>}
                                         </div>
                                     </div>
                                 </div>
