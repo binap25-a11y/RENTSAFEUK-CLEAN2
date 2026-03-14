@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -39,10 +40,15 @@ export function UserNav() {
     document.documentElement.classList.toggle('dark', newTheme === 'dark');
   };
 
+  /**
+   * DEFINITIVE REFRESH SIGN-OUT
+   * Ensures that logging out reloads the root page to prevent any memory-resident
+   * landlord data from persisting in a potential frozen state.
+   */
   const handleSignOut = () => {
     if (auth) {
       signOut(auth).then(() => {
-        router.push('/');
+        window.location.href = '/';
       });
     }
   };

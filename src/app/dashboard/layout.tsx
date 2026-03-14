@@ -14,7 +14,7 @@ import {
 import { MainNav } from '@/components/dashboard/main-nav';
 import { UserNav } from '@/components/dashboard/user-nav';
 import { Logo } from '@/components/icons';
-import { Loader2, Search, Share2 } from 'lucide-react';
+import { Loader2, Search, Share2, RefreshCw } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
@@ -41,6 +41,15 @@ function DashboardHeader() {
     return () => document.removeEventListener('keydown', down);
   }, []);
 
+  /**
+   * GLOBAL PORTFOLIO SYNC
+   * Provides a definitive way for the landlord to refresh the entire app state
+   * to prevent frozen UI or state crashes.
+   */
+  const handleGlobalSync = () => {
+    window.location.reload();
+  };
+
   return (
     <header className="sticky top-0 z-30 flex h-14 items-center gap-2 border-b bg-background/95 backdrop-blur supports-[backdrop-filter]:bg-background/60 px-4 lg:h-[60px] lg:px-6">
       <SidebarTrigger className="md:hidden shrink-0" />
@@ -60,6 +69,16 @@ function DashboardHeader() {
         <GlobalSearchDialog isOpen={isSearchOpen} onOpenChange={setIsSearchOpen} />
       </div>
       <div className="flex items-center gap-1 shrink-0 ml-auto">
+        <Button 
+          variant="ghost" 
+          size="icon" 
+          onClick={handleGlobalSync}
+          className="text-muted-foreground hover:text-primary h-9 w-9 hidden sm:flex"
+          title="Refresh Portfolio"
+        >
+          <RefreshCw className="h-4 w-4" />
+          <span className="sr-only">Sync</span>
+        </Button>
         <Button 
           variant="ghost" 
           size="icon" 

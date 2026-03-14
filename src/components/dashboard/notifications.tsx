@@ -2,7 +2,6 @@
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
-import Link from 'next/link';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -13,7 +12,7 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Bell, FileWarning, CalendarClock, Loader2, Banknote, MessageSquare, Wrench } from 'lucide-react';
+import { Bell, FileWarning, CalendarClock, Loader2, Banknote, MessageSquare, Wrench, RefreshCw } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
 import { collection, query, where, onSnapshot, limit, orderBy } from 'firebase/firestore';
 import { format, isBefore, addDays, setDate, startOfMonth, isPast, isFuture } from 'date-fns';
@@ -167,6 +166,14 @@ export function Notifications() {
 
   const notificationCount = allReminders.length;
 
+  /**
+   * DEFINITIVE REFRESH HANDLER
+   * Triggers a full browser reload to prevent state freezing and ensure audit-ready sync.
+   */
+  const handleNotificationClick = (href: string) => {
+    window.location.href = href;
+  };
+
   return (
     <DropdownMenu>
       <DropdownMenuTrigger asChild>
@@ -183,9 +190,9 @@ export function Notifications() {
         <DropdownMenuLabel className="font-normal">
           <div className="flex items-center justify-between">
             <p className="text-sm font-bold leading-none">Portfolio Alerts</p>
-            <Link href="/dashboard/reminders" className="text-xs text-primary hover:underline">
-              View all
-            </Link>
+            <Button variant="ghost" size="sm" className="h-7 text-[10px] font-bold uppercase tracking-widest text-primary gap-1" onClick={() => window.location.reload()}>
+                <RefreshCw className="h-3 w-3" /> Sync
+            </Button>
           </div>
         </DropdownMenuLabel>
         <DropdownMenuSeparator />
@@ -197,8 +204,8 @@ export function Notifications() {
               </div>
             ) : (
               allReminders.slice(0, 10).map((reminder) => (
-                <DropdownMenuItem key={reminder.id} asChild className="cursor-pointer focus:bg-accent p-0">
-                    <Link href={reminder.href} className="flex flex-col items-start gap-1 p-3 w-full border-b last:border-0">
+                <DropdownMenuItem key={reminder.id} className="cursor-pointer focus:bg-accent p-0" onClick={() => handleNotificationClick(reminder.href)}>
+                    <div className="flex flex-col items-start gap-1 p-3 w-full border-b last:border-0">
                         <div className="flex items-center gap-2 w-full text-left">
                             <reminder.icon className={`h-4 w-4 shrink-0 ${reminder.status === 'Expired' || reminder.status === 'Overdue' || reminder.status === 'Emergency' ? 'text-destructive' : 'text-yellow-500'}`}/>
                             <p className="font-semibold text-sm truncate flex-1">{reminder.description}</p>
@@ -207,7 +214,7 @@ export function Notifications() {
                         <div className="pl-6 space-y-0.5 text-left">
                             <p className="text-[10px] text-muted-foreground/70">Ref: {format(reminder.dueDate, 'PP')}</p>
                         </div>
-                    </Link>
+                    </div>
                 </DropdownMenuItem>
               ))
             )}

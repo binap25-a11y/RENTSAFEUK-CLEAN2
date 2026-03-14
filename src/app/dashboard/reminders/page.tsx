@@ -20,7 +20,7 @@ import {
   TableRow,
 } from '@/components/ui/table';
 import { Badge } from '@/components/ui/badge';
-import { Download, Loader2, FileWarning, CalendarClock, Banknote } from 'lucide-react';
+import { Download, Loader2, FileWarning, CalendarClock, Banknote, RefreshCw } from 'lucide-react';
 import { format, isBefore, addDays, isFuture, setDate, isPast, startOfMonth } from 'date-fns';
 import {
   useUser,
@@ -153,11 +153,24 @@ export default function RemindersPage() {
 
   const isLoading = isLoadingDocs || isLoadingInsp || isLoadingTenants || !today;
 
+  /**
+   * DEFINITIVE REFRESH HANDLER
+   * Navigates with a full browser reload to prevent application freezing.
+   */
+  const handleReminderClick = (href: string) => {
+    window.location.href = href;
+  };
+
   return (
     <div className="flex flex-col gap-6">
-      <div className="flex flex-col gap-2 p-6 rounded-3xl bg-primary/5 border border-primary/10">
-        <h1 className="text-3xl font-bold font-headline text-primary">Portfolio Registry</h1>
-        <p className="text-muted-foreground font-medium">Automated tracking of rent due dates, compliance, and tasks.</p>
+      <div className="flex items-center justify-between p-6 rounded-3xl bg-primary/5 border border-primary/10">
+        <div className="text-left">
+            <h1 className="text-3xl font-bold font-headline text-primary">Portfolio Registry</h1>
+            <p className="text-muted-foreground font-medium">Automated tracking of rent due dates, compliance, and tasks.</p>
+        </div>
+        <Button variant="outline" size="sm" className="font-bold uppercase tracking-widest text-[10px] h-10 px-6 gap-2 bg-background shadow-sm" onClick={() => window.location.reload()}>
+            <RefreshCw className="h-3.5 w-3.5" /> Force Sync
+        </Button>
       </div>
 
       <Card className="border-none shadow-xl overflow-hidden">
@@ -180,10 +193,10 @@ export default function RemindersPage() {
                     </TableHeader>
                     <TableBody>
                         {allReminders.map((reminder) => (
-                            <TableRow key={reminder.id} className="hover:bg-muted/30 transition-colors">
+                            <TableRow key={reminder.id} className="hover:bg-muted/30 transition-colors cursor-pointer" onClick={() => handleReminderClick(reminder.href)}>
                                 <TableCell className="pl-6 text-[10px] font-bold uppercase">{reminder.type}</TableCell>
                                 <TableCell className="font-bold py-4">
-                                    <Link href={reminder.href} className="hover:underline text-primary">{reminder.description}</Link>
+                                    <span className="text-primary hover:underline">{reminder.description}</span>
                                     <div className="text-[10px] text-muted-foreground font-medium uppercase">{reminder.category}</div>
                                 </TableCell>
                                 <TableCell className="text-xs font-medium text-muted-foreground truncate max-w-[200px]">{reminder.property}</TableCell>
