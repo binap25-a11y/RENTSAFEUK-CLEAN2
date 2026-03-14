@@ -4,20 +4,24 @@
       "collectionGroup": "tenants",
       "queryScope": "COLLECTION_GROUP",
       "fields": [
-        {
-          "fieldPath": "email",
-          "order": "ASCENDING"
-        }
+        { "fieldPath": "email", "order": "ASCENDING" }
       ]
     },
     {
-      "collectionGroup": "tenants",
-      "queryScope": "COLLECTION_GROUP",
+      "collectionGroup": "messages",
+      "queryScope": "COLLECTION",
       "fields": [
-        {
-          "fieldPath": "userId",
-          "order": "ASCENDING"
-        }
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "repairs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "landlordId", "order": "ASCENDING" },
+        { "fieldPath": "propertyId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
       ]
     }
   ],

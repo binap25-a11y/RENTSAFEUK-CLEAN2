@@ -44,7 +44,7 @@ import {
   useMemoFirebase,
   updateDocumentNonBlocking,
 } from '@/firebase';
-import { collection, query, where, doc, getDocs, limit } from 'firebase/firestore';
+import { collection, query, where, doc, getDocs, limit, updateDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
@@ -139,33 +139,30 @@ export default function TenantsPage() {
     try {
       const tenantRef = doc(firestore, 'tenants', tenantToArchive.id);
       
-      // 1. Mark Tenant as Archived
-      updateDocumentNonBlocking(tenantRef, { status: 'Archived' });
+      // 1. Mark Tenant as Archived (Reactive via useCollection)
+      await updateDoc(tenantRef, { status: 'Archived' });
 
-      // 2. Scan for remaining active tenants on this property to sync status
+      // 2. Atomic Status Sync: Scan for remaining active tenants on this property
       const activeTenantsQuery = query(
           collection(firestore, 'tenants'),
           where('propertyId', '==', tenantToArchive.propertyId),
           where('status', '==', 'Active'),
-          limit(2) // We only need to know if there's > 1 (the one we just archived is still 'Active' in local cache usually)
+          limit(5)
       );
       const snap = await getDocs(activeTenantsQuery);
       
-      // If only 1 tenant was active (the one we are archiving), set property to Vacant
-      // Note: snap.size might still be 1 if the Firestore write is pending, but usually the UI is reactive
-      // We check if there are NO OTHER tenants
-      const otherActiveTenants = snap.docs.filter(d => d.id !== tenantToArchive.id);
-      
-      if (otherActiveTenants.length === 0) {
+      // If no other tenants are active, mark property as vacant
+      if (snap.empty) {
           const propRef = doc(firestore, 'properties', tenantToArchive.propertyId);
-          updateDocumentNonBlocking(propRef, { status: 'Vacant' });
+          await updateDoc(propRef, { status: 'Vacant' });
       }
 
       toast({
         title: 'Tenant Archived',
-        description: `${tenantToArchive.name} has been moved to the archives and portfolio status updated.`,
+        description: `${tenantToArchive.name} has been moved to the archives and property status updated.`,
       });
       
+      // Soft-refresh the router to ensure all server components align if any
       router.refresh();
     } catch (e) {
       console.error('Error archiving tenant:', e);

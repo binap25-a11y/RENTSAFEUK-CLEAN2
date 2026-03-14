@@ -37,12 +37,13 @@ export default function TenantMessagesPage() {
 
   useEffect(() => {
     if (isUserLoading || !user || !firestore || !user.email) {
-      setIsLoadingContext(false);
+      if (!user && !isUserLoading) setIsLoadingContext(false);
       return;
     }
     
     const userEmail = user.email.toLowerCase().trim();
-    // Deterministic root collection discovery
+    
+    // Deterministic root collection discovery: Find the tenant registry entry by verified email
     const tenantsCol = collection(firestore, 'tenants');
     const q = query(tenantsCol, where('email', '==', userEmail), limit(1));
 
@@ -65,9 +66,10 @@ export default function TenantMessagesPage() {
 
   const messagesQuery = useMemoFirebase(() => {
     if (!tenantContext || !user || !firestore) return null;
+    // Authorized via Handshake UID: Every message is tagged with the user's permanent UID
     return query(
         collection(firestore, 'messages'),
-        where('tenantId', '==', user.uid), // Authorized via Handshake UID
+        where('tenantId', '==', user.uid),
         orderBy('timestamp', 'asc'),
         limit(100)
     );
@@ -125,7 +127,7 @@ export default function TenantMessagesPage() {
           <CardDescription className='font-medium'>A verified residency handshake is required to access property chat.</CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
-          <Button variant="outline" className="w-full font-bold h-11" asChild><Link href="/tenant/dashboard">Refresh Dashboard</Link></Button>
+          <Button variant="outline" className="w-full font-bold h-11" asChild><Link href="/tenant/dashboard">Return to Hub</Link></Button>
         </CardContent>
       </Card>
     );

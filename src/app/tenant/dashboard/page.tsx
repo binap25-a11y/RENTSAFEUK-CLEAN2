@@ -64,6 +64,7 @@ export default function TenantDashboard() {
         const tenantsCol = collection(firestore, 'tenants');
         
         // STAGE 1: Discovery Search (Optimized for Rule Engine string matching)
+        // We filter exactly by the normalized email to match the query-compatible security rule
         const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
         const snap = await getDocs(qByEmail);
 
@@ -129,7 +130,7 @@ export default function TenantDashboard() {
                 path: 'tenants',
                 operation: 'list'
             }));
-            setErrorState("Access Denied: Security rules blocked your identity discovery.");
+            setErrorState("Access Denied: Security rules blocked your identity discovery. Please check your credentials.");
         } else {
             setErrorState(err.message || "An unexpected error occurred during identity handshake.");
         }
