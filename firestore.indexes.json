@@ -31,8 +31,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "propertyId", "order": "ASCENDING" },
-        { "fieldPath": "tenantId", "order": "ASCENDING" },
-        { "fieldPath": "tenantEmail", "order": "ASCENDING" },
+        { "fieldPath": "landlordId", "order": "ASCENDING" },
         { "fieldPath": "timestamp", "order": "ASCENDING" },
         { "fieldPath": "__name__", "order": "ASCENDING" }
       ]
@@ -42,7 +41,8 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "propertyId", "order": "ASCENDING" },
-        { "fieldPath": "landlordId", "order": "ASCENDING" },
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "tenantEmail", "order": "ASCENDING" },
         { "fieldPath": "timestamp", "order": "ASCENDING" },
         { "fieldPath": "__name__", "order": "ASCENDING" }
       ]
@@ -54,6 +54,17 @@
         { "fieldPath": "landlordId", "order": "ASCENDING" },
         { "fieldPath": "timestamp", "order": "DESCENDING" },
         { "fieldPath": "__name__", "order": "DESCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "messages",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "propertyId", "order": "ASCENDING" },
+        { "fieldPath": "tenantId", "order": "ASCENDING" },
+        { "fieldPath": "tenantEmail", "order": "ASCENDING" },
+        { "fieldPath": "timestamp", "order": "ASCENDING" },
+        { "fieldPath": "__name__", "order": "ASCENDING" }
       ]
     },
     {
