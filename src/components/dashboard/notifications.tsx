@@ -117,8 +117,9 @@ export function Notifications() {
           href: `/dashboard/inspections`
         }));
 
+    // Alert only on unread incoming messages
     const messageAlerts = allMessages
-        .filter(msg => msg.senderId !== user?.uid)
+        .filter(msg => msg.senderId !== user?.uid && msg.read !== true)
         .map((msg) => ({
             id: `msg-${msg.id}`,
             description: `Message from ${msg.senderName}`,

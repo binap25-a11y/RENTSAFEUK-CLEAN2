@@ -107,16 +107,19 @@ export function MainNav() {
   React.useEffect(() => {
     if (!user || !firestore) return;
     
-    // We listen for any message in the landlord's portfolio not sent by the landlord
+    // We listen for unread messages sent by tenants to the landlord
     const q = query(
         collection(firestore, 'messages'),
         where('landlordId', '==', user.uid),
-        limit(50)
+        limit(100)
     );
 
     const unsub = onSnapshot(q, (snap) => {
-        const fromTenants = snap.docs.filter(d => d.data().senderId !== user.uid);
-        setUnreadCount(fromTenants.length > 0 ? fromTenants.length : 0);
+        const unreadFromTenants = snap.docs.filter(d => {
+            const data = d.data();
+            return data.senderId !== user.uid && data.read !== true;
+        });
+        setUnreadCount(unreadFromTenants.length);
     });
 
     return () => unsub();

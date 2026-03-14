@@ -27,8 +27,8 @@ import {
   ChevronDown,
   RefreshCw
 } from 'lucide-react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { query, where, limit, addDoc, collection, onSnapshot, orderBy, serverTimestamp } from 'firebase/firestore';
+import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
+import { query, where, limit, addDoc, collection, onSnapshot, orderBy, serverTimestamp, doc } from 'firebase/firestore';
 import { format, isToday, isYesterday, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
@@ -43,6 +43,7 @@ interface Message {
     tenantId: string;
     propertyId: string;
     landlordId: string;
+    read?: boolean;
 }
 
 export default function TenantMessagesPage() {
@@ -88,7 +89,6 @@ export default function TenantMessagesPage() {
   }, [user, isUserLoading, firestore]);
 
   // Real-time chronological message ledger keyed by stable tenant doc ID
-  // Alignment: Added tenantEmail filter to satisfy Firestore Security Rules for 'list' operations.
   const messagesQuery = useMemoFirebase(() => {
     if (!tenantContext || !user || !firestore || !user.email) return null;
     const userEmail = user.email.toLowerCase().trim();
@@ -103,6 +103,19 @@ export default function TenantMessagesPage() {
   }, [tenantContext, user, firestore]);
 
   const { data: messages, isLoading: isLoadingMessages, error: messagesError } = useCollection<Message>(messagesQuery);
+
+  // Mark messages as read when viewing the thread
+  useEffect(() => {
+    if (messages && user) {
+      const unreadIncoming = messages.filter(m => m.senderId !== user.uid && m.read !== true);
+      if (unreadIncoming.length > 0) {
+        unreadIncoming.forEach(msg => {
+          const msgRef = doc(firestore, 'messages', msg.id);
+          updateDocumentNonBlocking(msgRef, { read: true });
+        });
+      }
+    }
+  }, [messages, user, firestore]);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -127,7 +140,8 @@ export default function TenantMessagesPage() {
             senderId: user.uid,
             senderName: user.displayName || 'Resident',
             content: newMessage.trim(),
-            timestamp: serverTimestamp()
+            timestamp: serverTimestamp(),
+            read: false
         });
         setNewMessage('');
         toast({ title: 'Message Sent' });

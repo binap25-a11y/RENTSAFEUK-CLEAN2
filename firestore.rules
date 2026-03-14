@@ -4,9 +4,9 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RENTSAFEUK SECURITY GOVERNANCE v20.7
-     * Optimized for high-performance chronological messaging and index alignment.
-     * Hardened list permissions for messaging registry to prevent data leakage.
+     * RENTSAFEUK SECURITY GOVERNANCE v20.8
+     * Hardened messaging registry with read-receipt update permissions.
+     * Synchronized with high-performance composite indexes.
      */
 
     function isSignedIn() {
@@ -83,6 +83,12 @@ service cloud.firestore {
       allow create: if isSignedIn() && (
         request.resource.data.senderId == request.auth.uid
       );
+
+      // Hardened Update: Only allow recipients to mark messages as read.
+      allow update: if isSignedIn() && (
+        request.auth.uid == resource.data.landlordId || 
+        resource.data.get('tenantEmail', '').lower() == userEmail()
+      ) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
     }
 
     // --- Maintenance (Repairs) ---

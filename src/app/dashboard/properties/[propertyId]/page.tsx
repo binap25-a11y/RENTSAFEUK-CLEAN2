@@ -33,7 +33,7 @@ import {
   ChevronDown,
   RefreshCw
 } from 'lucide-react';
-import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
 import { doc, updateDoc, collection, query, where, getDocs, limit, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useRef, useEffect } from 'react';
@@ -98,6 +98,7 @@ interface Message {
     tenantId: string;
     landlordId: string;
     propertyId: string;
+    read?: boolean;
 }
 
 export default function PropertyDetailPage() {
@@ -150,7 +151,6 @@ export default function PropertyDetailPage() {
 
   const messagesQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
-    // We filter by property and landlord context for the secure thread
     return query(
         collection(firestore, 'messages'),
         where('propertyId', '==', propertyId),
@@ -161,6 +161,19 @@ export default function PropertyDetailPage() {
   }, [firestore, propertyId, user]);
 
   const { data: messages, isLoading: isLoadingMessages, error: messagesError } = useCollection<Message>(messagesQuery);
+
+  // Mark messages as read when viewing the messages tab
+  useEffect(() => {
+    if (activeTab === 'messages' && messages && user) {
+      const unreadIncoming = messages.filter(m => m.senderId !== user.uid && m.read !== true);
+      if (unreadIncoming.length > 0) {
+        unreadIncoming.forEach(msg => {
+          const msgRef = doc(firestore, 'messages', msg.id);
+          updateDocumentNonBlocking(msgRef, { read: true });
+        });
+      }
+    }
+  }, [activeTab, messages, user, firestore]);
 
   useEffect(() => {
     if (scrollRef.current && activeTab === 'messages') {
@@ -194,7 +207,8 @@ export default function PropertyDetailPage() {
             senderId: user.uid,
             senderName: user.displayName || 'Property Management',
             content: newReply.trim(),
-            timestamp: serverTimestamp()
+            timestamp: serverTimestamp(),
+            read: false
         });
         setNewReply('');
         toast({ title: 'Message Sent' });

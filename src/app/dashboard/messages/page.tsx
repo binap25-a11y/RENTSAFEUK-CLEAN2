@@ -33,6 +33,7 @@ interface Message {
     tenantId: string;
     propertyId: string;
     landlordId: string;
+    read?: boolean;
 }
 
 interface Thread {
@@ -40,6 +41,7 @@ interface Thread {
     tenantId: string;
     propertyId: string;
     lastMessage: Message;
+    unreadCount: number;
 }
 
 export default function LandlordInboxPage() {
@@ -60,27 +62,34 @@ export default function LandlordInboxPage() {
 
   const { data: allMessages, isLoading, error } = useCollection<Message>(messagesQuery);
 
-  // Group messages into threads by propertyId + tenantId
+  // Group messages into threads and calculate unread status
   const threads = useMemo(() => {
     if (!allMessages) return [];
     
     const threadMap = new Map<string, Thread>();
     
     allMessages.forEach(msg => {
-        // We ensure we only group by unique conversations
         const threadKey = `${msg.propertyId}-${msg.tenantId}`;
+        const isIncomingUnread = msg.senderId !== user?.uid && msg.read !== true;
+
         if (!threadMap.has(threadKey)) {
             threadMap.set(threadKey, {
                 id: threadKey,
                 tenantId: msg.tenantId,
                 propertyId: msg.propertyId,
-                lastMessage: msg
+                lastMessage: msg,
+                unreadCount: isIncomingUnread ? 1 : 0
             });
+        } else {
+            const thread = threadMap.get(threadKey)!;
+            if (isIncomingUnread) {
+                thread.unreadCount += 1;
+            }
         }
     });
     
     return Array.from(threadMap.values());
-  }, [allMessages]);
+  }, [allMessages, user]);
 
   const filteredThreads = useMemo(() => {
     if (!searchTerm) return threads;
@@ -144,17 +153,28 @@ export default function LandlordInboxPage() {
                 <Link key={thread.id} href={`/dashboard/properties/${thread.propertyId}?tab=messages`}>
                     <Card className="shadow-md border-none overflow-hidden transition-all hover:shadow-xl hover:translate-x-1 group">
                         <div className="flex items-center gap-4 p-5">
-                            <div className="h-12 w-12 rounded-2xl bg-primary/5 text-primary flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors shadow-sm">
-                                <User className="h-6 w-6" />
+                            <div className="relative">
+                                <div className="h-12 w-12 rounded-2xl bg-primary/5 text-primary flex items-center justify-center shrink-0 group-hover:bg-primary group-hover:text-primary-foreground transition-colors shadow-sm">
+                                    <User className="h-6 w-6" />
+                                </div>
+                                {thread.unreadCount > 0 && (
+                                    <Badge className="absolute -top-2 -right-2 h-5 min-w-[20px] px-1 bg-destructive text-destructive-foreground font-bold text-[10px] rounded-full border-2 border-background">
+                                        {thread.unreadCount}
+                                    </Badge>
+                                )}
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between mb-1">
-                                    <p className="font-bold text-base truncate">{thread.lastMessage.senderName}</p>
+                                    <p className={cn("font-bold text-base truncate", thread.unreadCount > 0 && "text-primary")}>
+                                        {thread.lastMessage.senderName}
+                                    </p>
                                     <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
                                         {thread.lastMessage.timestamp?.seconds ? format(new Date(thread.lastMessage.timestamp.seconds * 1000), 'HH:mm • d MMM') : 'Just now'}
                                     </span>
                                 </div>
-                                <p className="text-sm text-muted-foreground line-clamp-1 italic">"{thread.lastMessage.content}"</p>
+                                <p className={cn("text-sm line-clamp-1 italic", thread.unreadCount > 0 ? "text-foreground font-bold" : "text-muted-foreground")}>
+                                    "{thread.lastMessage.content}"
+                                </p>
                                 <div className="flex items-center gap-3 mt-2">
                                     <Badge variant="outline" className="text-[8px] uppercase font-bold tracking-widest bg-background py-0 h-5 border-primary/20">
                                         <Home className="h-2.5 w-2.5 mr-1" /> Linked Asset
