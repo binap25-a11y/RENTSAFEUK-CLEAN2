@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -148,7 +147,6 @@ export default function EditTenantPage() {
     setIsSaving(true);
     
     try {
-      // Normalize email to lowercase
       const normalizedEmail = data.email.toLowerCase().trim();
       const updateData = { 
         ...data, 
@@ -159,7 +157,7 @@ export default function EditTenantPage() {
 
       await updateDoc(tenantRef, cleanedUpdateData);
 
-      // CRITICAL: Manage property identity registry bridge for security rule authorization.
+      // REGISTRY BRIDGE SYNC: Update property linked identities.
       if (tenant.propertyId !== data.propertyId) {
           const oldPropRef = doc(firestore, 'properties', tenant.propertyId);
           await updateDoc(oldPropRef, { 

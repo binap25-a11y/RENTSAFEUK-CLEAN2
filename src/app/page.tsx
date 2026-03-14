@@ -73,11 +73,9 @@ export default function LoginPage() {
           // DISCOVERY HANDSHAKE: Check residency registry by normalized email or current UID.
           const tenantsCol = collection(firestore, 'tenants');
           
-          // Try UID link first
           const qByUid = query(tenantsCol, where('userId', '==', user.uid), limit(1));
           let tenantSnap = await getDocs(qByUid);
           
-          // Fallback to normalized email
           if (tenantSnap.empty) {
               const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
               tenantSnap = await getDocs(qByEmail);
@@ -123,7 +121,7 @@ export default function LoginPage() {
     setAuthError(null);
 
     const handleError = (error: any) => {
-      // Map Firebase error codes to user-friendly messages for immediate feedback.
+      // Maps Firebase error codes to user-friendly messages for immediate feedback.
       switch (error.code) {
           case 'auth/wrong-password':
           case 'auth/user-not-found':

@@ -157,7 +157,6 @@ export default function AddTenantPage() {
     setIsSubmitting(true);
 
     const tenantsCollection = collection(firestore, 'tenants');
-    // NORMALIZE EMAIL: strictly enforce lowercase for query-compatible security match.
     const normalizedEmail = data.email.toLowerCase().trim();
     
     const newTenant = {
@@ -175,7 +174,6 @@ export default function AddTenantPage() {
         
         const propertyDocRef = doc(firestore, 'properties', data.propertyId);
         
-        // REGISTRY SYNCHRONIZATION: Establish verified bridge between tenant and asset.
         await updateDoc(propertyDocRef, { 
             status: 'Occupied',
             tenantEmail: normalizedEmail,
