@@ -28,7 +28,7 @@ import Link from 'next/link';
 
 /**
  * @fileOverview Resident Portal Chat
- * Resolves ReferenceError for UI components and establishes secure messaging handshake.
+ * Synchronizes UI registry and establishes secure messaging handshake.
  */
 
 interface Message {
