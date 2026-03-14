@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -19,9 +20,12 @@
         "id": { "type": "string" },
         "landlordId": { "type": "string" },
         "tenantId": { "type": "string" },
+        "tenantEmail": { "type": "string" },
+        "activeTenantUids": { "type": "array", "items": { "type": "string" } },
         "address": { "type": "object" },
-        "status": { "type": "string" },
-        "imageUrl": { "type": "string" }
+        "status": { "type": "string", "enum": ["Vacant", "Occupied", "Under Maintenance"] },
+        "imageUrl": { "type": "string" },
+        "additionalImageUrls": { "type": "array", "items": { "type": "string" } }
       }
     },
     "Tenancy": {
@@ -31,8 +35,12 @@
         "id": { "type": "string" },
         "landlordId": { "type": "string" },
         "propertyId": { "type": "string" },
-        "email": { "type": "string" },
-        "verified": { "type": "boolean" }
+        "userId": { "type": "string" },
+        "email": { "type": "string", "format": "email" },
+        "verified": { "type": "boolean" },
+        "name": { "type": "string" },
+        "telephone": { "type": "string" },
+        "status": { "type": "string" }
       }
     },
     "Message": {
@@ -52,16 +60,16 @@
     "providers": ["password", "google"]
   },
   "firestore": {
-    "structure": [
-      { "path": "/users/{userId}", "definition": { "entityName": "User" } },
-      { "path": "/properties/{propertyId}", "definition": { "entityName": "Property" } },
-      { "path": "/tenants/{tenantId}", "definition": { "entityName": "Tenancy" } },
-      { "path": "/messages/{messageId}", "definition": { "entityName": "Message" } },
-      { "path": "/repairs/{repairId}", "definition": { "description": "Maintenance requests" } },
-      { "path": "/expenses/{expenseId}", "definition": { "description": "Financial outgoings" } },
-      { "path": "/rentPayments/{paymentId}", "definition": { "description": "Income ledger" } },
-      { "path": "/documents/{documentId}", "definition": { "description": "Compliance vault" } },
-      { "path": "/contractors/{contractorId}", "definition": { "description": "Tradespeople directory" } }
-    ]
+    "/users/{userId}": { "schema": { "$ref": "#/backend/entities/User" }, "description": "Profiles" },
+    "/properties/{propertyId}": { "schema": { "$ref": "#/backend/entities/Property" }, "description": "Asset registry" },
+    "/tenants/{tenantId}": { "schema": { "$ref": "#/backend/entities/Tenancy" }, "description": "Resident registry" },
+    "/messages/{messageId}": { "schema": { "$ref": "#/backend/entities/Message" }, "description": "Private chat history" },
+    "/repairs/{repairId}": { "description": "Maintenance requests" },
+    "/expenses/{expenseId}": { "description": "Financial ledger" },
+    "/rentPayments/{paymentId}": { "description": "Rent tracking" },
+    "/documents/{documentId}": { "description": "Compliance vault" },
+    "/contractors/{contractorId}": { "description": "Tradespeople directory" },
+    "/inspections/{inspectionId}": { "description": "Safety reports" },
+    "/screenings/{screeningId}": { "description": "Vetting reports" }
   }
 }

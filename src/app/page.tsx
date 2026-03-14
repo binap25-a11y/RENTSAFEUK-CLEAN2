@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -68,17 +69,10 @@ export default function LoginPage() {
           
           let role: string | null = null;
 
-          // DISCOVERY HANDSHAKE: Check residency registry by normalized email or current UID.
+          // DISCOVERY HANDSHAKE: Check residency registry by normalized email.
           const tenantsCol = collection(firestore, 'tenants');
-          
-          const qByUid = query(tenantsCol, where('userId', '==', user.uid), limit(1));
-          let tenantSnap = await getDocs(qByUid);
-          
-          if (tenantSnap.empty) {
-              const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
-              tenantSnap = await getDocs(qByEmail);
-          }
-          
+          const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
+          const tenantSnap = await getDocs(qByEmail);
           const isTenantInRegistry = !tenantSnap.empty;
 
           if (snap.exists()) {
@@ -106,7 +100,6 @@ export default function LoginPage() {
             router.replace('/dashboard');
           }
         } catch (error: any) {
-          // Silent fallback for handshake deferral
           router.replace('/dashboard');
         }
       };
@@ -121,22 +114,18 @@ export default function LoginPage() {
     setAuthError(null);
 
     const handleError = (error: any) => {
-      // Professional Error Feedback: Silently map credential failures to UI alerts
+      // Professional UI Alerts: Silently map credential failures
       switch (error.code) {
           case 'auth/wrong-password':
           case 'auth/user-not-found':
           case 'auth/invalid-credential':
-          case 'auth/invalid-email':
-              setAuthError('The email or password you entered is incorrect. Please check your details and try again.');
+              setAuthError('Invalid email or password. Please try again.');
               break;
           case 'auth/email-already-in-use':
-              setAuthError('An account with this email address already exists. Please log in instead.');
-              break;
-          case 'auth/too-many-requests':
-              setAuthError('Access temporarily disabled due to many failed attempts. Please try again later.');
+              setAuthError('An account with this email already exists.');
               break;
           default:
-              setAuthError('Authentication failed. Please check your details or try again later.');
+              setAuthError('Authentication failed. Please check your connection.');
       }
       setIsProcessing(false);
     };
@@ -154,7 +143,7 @@ export default function LoginPage() {
       setAuthError(null);
       const provider = new GoogleAuthProvider();
       signInWithRedirect(auth, provider).catch(() => {
-          setAuthError('Unable to connect with Google. Please try again.');
+          setAuthError('Unable to connect with Google.');
           setIsProcessing(false);
       });
     }
@@ -211,7 +200,7 @@ export default function LoginPage() {
                 <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
                 <div>
                     <p className="text-sm font-bold text-destructive">Sign-in Error</p>
-                    <p className="text-xs text-destructive/80 font-medium leading-relaxed">{authError}</p>
+                    <p className="text-xs text-destructive/80 font-medium">{authError}</p>
                 </div>
               </div>
             )}
@@ -295,7 +284,7 @@ export default function LoginPage() {
                             type="button"
                             variant="ghost"
                             size="icon"
-                            className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground hover:bg-transparent"
+                            className="absolute right-1 top-1/2 h-8 w-8 -translate-y-1/2 text-muted-foreground"
                             onClick={() => setShowPassword((prev) => !prev)}
                           >
                             {showPassword ? <EyeOff className="h-4 w-4" /> : <Eye className="h-4 w-4" />}
@@ -314,7 +303,7 @@ export default function LoginPage() {
             </Form>
             <div className="relative my-6">
               <div className="absolute inset-0 flex items-center"><span className="w-full border-t" /></div>
-              <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-widest"><span className="bg-card px-3 text-muted-foreground">Or continue with</span></div>
+              <div className="relative flex justify-center text-[10px] uppercase font-bold tracking-widest"><span className="bg-card px-3 text-muted-foreground">Or</span></div>
             </div>
             <Button variant="outline" className="w-full h-11 border-muted-foreground/20" onClick={handleGoogleSignIn} disabled={isProcessing}>
               <GoogleIcon className="mr-2 h-4 w-4" /> Sign in with Google
