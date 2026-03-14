@@ -9,8 +9,8 @@ import {
   QuerySnapshot,
   CollectionReference,
 } from 'firebase/firestore';
-import { errorEmitter } from '@/firebase/error-emitter';
-import { FirestorePermissionError } from '@/firebase/errors';
+import { errorEmitter } from '../error-emitter';
+import { FirestorePermissionError } from '../errors';
 
 /** Utility type to add an 'id' field to a given type T. */
 export type WithId<T> = T & { id: string };
@@ -83,7 +83,6 @@ export function useCollection<T = any>(
             setError(contextualError);
             errorEmitter.emit('permission-error', contextualError);
         } else {
-            // Report actual errors (missing indexes, etc.) to help debugging
             console.error(`Firestore Error [${firestoreError.code}]:`, firestoreError.message);
             setError(firestoreError);
         }
