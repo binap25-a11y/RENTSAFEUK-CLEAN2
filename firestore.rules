@@ -4,7 +4,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RENTSAFEUK SECURITY GOVERNANCE v6.4
+     * RENTSAFEUK SECURITY GOVERNANCE v6.5
      * Index deployment re-synchronized for high-performance messaging registry.
      */
 
