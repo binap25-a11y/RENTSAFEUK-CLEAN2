@@ -13,10 +13,10 @@ import {
 } from '@/components/ui/dropdown-menu';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { Bell, FileWarning, CalendarClock, Loader2, Banknote, MessageSquare } from 'lucide-react';
-import { useUser, useFirestore, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { Bell, FileWarning, CalendarClock, Loader2, Banknote, MessageSquare, Wrench } from 'lucide-react';
+import { useUser, useFirestore } from '@/firebase';
 import { collection, query, where, onSnapshot, limit, orderBy } from 'firebase/firestore';
-import { format, isBefore, addDays, isFuture, setDate, startOfMonth, isPast } from 'date-fns';
+import { format, isBefore, addDays, setDate, startOfMonth, isPast, isFuture } from 'date-fns';
 
 interface NotificationItem {
   id: string;
@@ -44,6 +44,7 @@ export function Notifications() {
   const [allTenants, setAllTenants] = useState<any[]>([]);
   const [allRentPayments, setAllRentPayments] = useState<any[]>([]);
   const [allMessages, setAllMessages] = useState<any[]>([]);
+  const [allRepairs, setAllRepairs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(false);
 
   useEffect(() => {
@@ -57,12 +58,14 @@ export function Notifications() {
     const qTenants = query(collection(firestore, 'tenants'), where('landlordId', '==', user.uid), where('status', '==', 'Active'));
     const qRent = query(collection(firestore, 'rentPayments'), where('landlordId', '==', user.uid), limit(50));
     const qMsgs = query(collection(firestore, 'messages'), where('landlordId', '==', user.uid), orderBy('timestamp', 'desc'), limit(20));
+    const qRepairs = query(collection(firestore, 'repairs'), where('landlordId', '==', user.uid), where('status', '==', 'Open'), limit(20));
 
     const unsubDocs = onSnapshot(qDocs, (snap) => setAllDocuments(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
     const unsubInsp = onSnapshot(qInsp, (snap) => setAllInspections(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
     const unsubTenants = onSnapshot(qTenants, (snap) => setAllTenants(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
     const unsubRent = onSnapshot(qRent, (snap) => setAllRentPayments(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
     const unsubMsgs = onSnapshot(qMsgs, (snap) => setAllMessages(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    const unsubRepairs = onSnapshot(qRepairs, (snap) => setAllRepairs(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
 
     setIsLoading(false);
 
@@ -72,6 +75,7 @@ export function Notifications() {
         unsubTenants();
         unsubRent();
         unsubMsgs();
+        unsubRepairs();
     };
   }, [user, firestore]);
 
@@ -125,6 +129,15 @@ export function Notifications() {
             href: `/dashboard/properties/${msg.propertyId}?tab=messages`
         }));
 
+    const repairAlerts = allRepairs.map((repair) => ({
+        id: `repair-${repair.id}`,
+        description: `New Request: ${repair.title}`,
+        dueDate: toDate(repair.reportedDate) || today,
+        status: repair.priority,
+        icon: Wrench,
+        href: `/dashboard/maintenance/${repair.id}?propertyId=${repair.propertyId}`
+    }));
+
     const rentReminders = allTenants
         .filter(t => t.status === 'Active' && t.rentDueDay)
         .map((tenant) => {
@@ -149,8 +162,8 @@ export function Notifications() {
         })
         .filter((r): r is NonNullable<typeof r> => r !== null);
 
-    return [...documentReminders, ...inspectionReminders, ...rentReminders, ...messageAlerts].sort((a, b) => b.dueDate.getTime() - a.dueDate.getTime());
-  }, [allDocuments, allInspections, allTenants, allRentPayments, allMessages, user]);
+    return [...documentReminders, ...inspectionReminders, ...rentReminders, ...messageAlerts, ...repairAlerts].sort((a, b) => b.dueDate.getTime() - a.dueDate.getTime());
+  }, [allDocuments, allInspections, allTenants, allRentPayments, allMessages, allRepairs, user]);
 
   const notificationCount = allReminders.length;
 
@@ -187,9 +200,9 @@ export function Notifications() {
                 <DropdownMenuItem key={reminder.id} asChild className="cursor-pointer focus:bg-accent p-0">
                     <Link href={reminder.href} className="flex flex-col items-start gap-1 p-3 w-full border-b last:border-0">
                         <div className="flex items-center gap-2 w-full text-left">
-                            <reminder.icon className={`h-4 w-4 shrink-0 ${reminder.status === 'Expired' || reminder.status === 'Overdue' ? 'text-destructive' : 'text-yellow-500'}`}/>
+                            <reminder.icon className={`h-4 w-4 shrink-0 ${reminder.status === 'Expired' || reminder.status === 'Overdue' || reminder.status === 'Emergency' ? 'text-destructive' : 'text-yellow-500'}`}/>
                             <p className="font-semibold text-sm truncate flex-1">{reminder.description}</p>
-                            <Badge variant={reminder.status === 'Expired' || reminder.status === 'Overdue' ? 'destructive' : 'secondary'} className="text-[10px] h-5">{reminder.status}</Badge>
+                            <Badge variant={reminder.status === 'Expired' || reminder.status === 'Overdue' || reminder.status === 'Emergency' ? 'destructive' : 'secondary'} className="text-[10px] h-5">{reminder.status}</Badge>
                         </div>
                         <div className="pl-6 space-y-0.5 text-left">
                             <p className="text-[10px] text-muted-foreground/70">Ref: {format(reminder.dueDate, 'PP')}</p>

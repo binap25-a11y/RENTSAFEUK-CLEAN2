@@ -18,10 +18,12 @@ import {
   ChevronRight,
   ShieldCheck,
   RefreshCw,
-  Search
+  Search,
+  Clock,
+  CheckCircle2
 } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, query, where, limit, getDocs, doc, updateDoc, getDoc, arrayUnion } from 'firebase/firestore';
+import { collection, query, where, limit, getDocs, doc, updateDoc, getDoc, arrayUnion, onSnapshot } from 'firebase/firestore';
 import { format } from 'date-fns';
 
 /**
@@ -42,7 +44,9 @@ export default function TenantDashboard() {
   const firestore = useFirestore();
   
   const [context, setContext] = useState<TenantContext | null>(null);
+  const [activeRepairs, setActiveRepairs] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
+  const [isLoadingRepairs, setIsLoadingRepairs] = useState(false);
   const [isHandshaking, setIsHandshaking] = useState(false);
   const [errorState, setErrorState] = useState<string | null>(null);
   const discoveryRef = useRef(false);
@@ -139,6 +143,26 @@ export default function TenantDashboard() {
         discoveryRef.current = false;
     }
   }, [firestore, user, isUserLoading]);
+
+  // Real-time Repair Tracker
+  useEffect(() => {
+    if (!context || !firestore) return;
+    
+    setIsLoadingRepairs(true);
+    const q = query(
+        collection(firestore, 'repairs'),
+        where('propertyId', '==', context.propertyId),
+        where('status', 'in', ['Open', 'In Progress']),
+        limit(5)
+    );
+
+    const unsub = onSnapshot(q, (snap) => {
+        setActiveRepairs(snap.docs.map(d => ({ id: d.id, ...d.data() })));
+        setIsLoadingRepairs(false);
+    });
+
+    return () => unsub();
+  }, [context, firestore]);
 
   useEffect(() => {
     if (!isUserLoading && user && !context) {
@@ -269,27 +293,64 @@ export default function TenantDashboard() {
       </div>
 
       <div className="grid gap-6 lg:grid-cols-2 mt-8">
-        <Card className="border-none shadow-md overflow-hidden group text-left">
-            <CardHeader className="bg-muted/30 border-b px-6">
-                <CardTitle className="text-lg flex items-center gap-2 font-headline text-foreground">
-                    <Wrench className="h-5 w-5 text-primary" /> 
-                    Report Maintenance
-                </CardTitle>
-            </CardHeader>
-            <CardContent className="pt-6 px-6 pb-6">
-                <div className="flex items-center justify-between p-5 rounded-2xl bg-muted/20 border border-transparent group-hover:border-primary/10 transition-all">
-                    <div className="space-y-1">
-                        <p className="text-sm font-bold text-left">Log New Issue</p>
-                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest text-left">Submit photos and details</p>
+        <div className="space-y-6">
+            <Card className="border-none shadow-md overflow-hidden group text-left">
+                <CardHeader className="bg-muted/30 border-b px-6">
+                    <CardTitle className="text-lg flex items-center gap-2 font-headline text-foreground">
+                        <Wrench className="h-5 w-5 text-primary" /> 
+                        Report Maintenance
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="pt-6 px-6 pb-6">
+                    <div className="flex items-center justify-between p-5 rounded-2xl bg-muted/20 border border-transparent group-hover:border-primary/10 transition-all">
+                        <div className="space-y-1 text-left">
+                            <p className="text-sm font-bold">Log New Issue</p>
+                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">Submit photos and details</p>
+                        </div>
+                        <Button size="sm" className="h-10 font-bold px-8 shadow-md rounded-xl uppercase tracking-widest text-[9px]" asChild>
+                            <Link href="/tenant/maintenance">Record Request</Link>
+                        </Button>
                     </div>
-                    <Button size="sm" className="h-10 font-bold px-8 shadow-md rounded-xl uppercase tracking-widest text-[9px]" asChild>
-                        <Link href="/tenant/maintenance">Record Request</Link>
-                    </Button>
-                </div>
-            </CardContent>
-        </Card>
+                </CardContent>
+            </Card>
 
-        <Card className="border-none shadow-md overflow-hidden group text-left">
+            <Card className="border-none shadow-md overflow-hidden text-left">
+                <CardHeader className="bg-muted/30 border-b px-6">
+                    <CardTitle className="text-sm font-bold flex items-center justify-between">
+                        Active Repair Tracking
+                        <Wrench className="h-4 w-4 text-primary opacity-20" />
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="p-0">
+                    {isLoadingRepairs ? (
+                        <div className="flex justify-center p-8"><Loader2 className="h-6 w-6 animate-spin text-primary/20" /></div>
+                    ) : activeRepairs.length === 0 ? (
+                        <div className="p-8 text-center text-xs text-muted-foreground italic">No active maintenance requests.</div>
+                    ) : (
+                        <div className="divide-y">
+                            {activeRepairs.map((r) => (
+                                <div key={r.id} className="p-4 flex items-center justify-between hover:bg-muted/5 transition-colors">
+                                    <div className="min-w-0 text-left">
+                                        <p className="font-bold text-sm truncate">{r.title}</p>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <Badge variant={r.status === 'In Progress' ? 'default' : 'secondary'} className="text-[8px] uppercase font-bold px-1.5 h-4">
+                                                {r.status}
+                                            </Badge>
+                                            <span className="text-[9px] text-muted-foreground font-medium">
+                                                {r.reportedDate ? format(new Date(r.reportedDate), 'd MMM') : 'Recently'}
+                                            </span>
+                                        </div>
+                                    </div>
+                                    {r.status === 'In Progress' ? <Clock className="h-4 w-4 text-primary animate-pulse" /> : <CheckCircle2 className="h-4 w-4 text-green-500 opacity-40" />}
+                                </div>
+                            ))}
+                        </div>
+                    )}
+                </CardContent>
+            </Card>
+        </div>
+
+        <Card className="border-none shadow-md overflow-hidden group text-left self-start">
             <CardHeader className="bg-muted/30 border-b px-6">
                 <CardTitle className="text-lg flex items-center gap-2 font-headline text-foreground">
                     <FileText className="h-5 w-5 text-primary" /> 
@@ -298,9 +359,9 @@ export default function TenantDashboard() {
             </CardHeader>
             <CardContent className="pt-6 px-6 pb-6">
                 <div className="flex items-center justify-between p-5 rounded-2xl bg-muted/20 border border-transparent group-hover:border-primary/10 transition-all">
-                    <div className="space-y-1">
-                        <p className="text-sm font-bold text-left">Shared Documents</p>
-                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest text-left">View contracts and certificates</p>
+                    <div className="space-y-1 text-left">
+                        <p className="text-sm font-bold">Shared Documents</p>
+                        <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">View contracts and certificates</p>
                     </div>
                     <Button variant="outline" size="sm" className="h-10 font-bold px-8 border-primary/20 hover:bg-primary/5 rounded-xl uppercase tracking-widest text-[9px]" asChild>
                         <Link href="/tenant/documents">Access Vault</Link>
