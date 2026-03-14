@@ -62,7 +62,6 @@ const menuItems = [
         { href: '/dashboard/contractors/add', label: 'Add Contractor' },
     ],
   },
-  { href: '/dashboard/messages', label: 'Messages', icon: MessageSquare },
   { href: '/dashboard/maintenance', label: 'Maintenance', icon: Wrench },
   { 
     href: '/dashboard/inspections', 
@@ -85,6 +84,7 @@ const menuItems = [
   },
   { href: '/dashboard/expenses', label: 'Financials', icon: CreditCard },
   { href: '/dashboard/reminders', label: 'Reminders', icon: Bell },
+  { href: '/dashboard/messages', label: 'Messages', icon: MessageSquare }, // Messages moved below Reminders
 ];
 
 export function MainNav() {
@@ -107,9 +107,7 @@ export function MainNav() {
   React.useEffect(() => {
     if (!user || !firestore) return;
     
-    // We filter messages that aren't from the landlord (senderId != user.uid)
-    // Note: To truly have "unread", we'd need an 'isRead' field. 
-    // For now, we'll just badge if there are recent messages from tenants.
+    // We listen for any message in the landlord's portfolio not sent by the landlord
     const q = query(
         collection(firestore, 'messages'),
         where('landlordId', '==', user.uid),
@@ -181,7 +179,7 @@ export function MainNav() {
                     <span>{label}</span>
                 </div>
                 {label === 'Messages' && unreadCount > 0 && (
-                    <Badge className="h-5 px-1.5 min-w-[20px] justify-center bg-primary text-primary-foreground font-bold text-[10px] rounded-full">
+                    <Badge className="h-5 px-1.5 min-w-[20px] justify-center bg-primary text-primary-foreground font-bold text-[10px] rounded-full shadow-sm animate-in fade-in zoom-in duration-300">
                         {unreadCount}
                     </Badge>
                 )}
@@ -190,7 +188,7 @@ export function MainNav() {
           )}
         </SidebarMenuItem>
       ))}
-       <SidebarMenuItem className="mt-auto">
+       <SidebarMenuItem className="mt-auto pt-4">
           <SidebarMenuButton asChild isActive={pathname.startsWith('/dashboard/settings')} tooltip="Settings">
               <Link href="/dashboard/settings" onClick={handleLinkClick}>
                 <Settings />
