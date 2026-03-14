@@ -8,6 +8,7 @@
         "id": { "type": "string" },
         "email": { "type": "string", "format": "email" },
         "role": { "type": "string", "enum": ["landlord", "agent", "tenant"] },
+        "displayName": { "type": "string" },
         "idleTimeoutMinutes": { "type": "number" },
         "createdAt": { "type": "string", "format": "date-time" }
       },
@@ -24,7 +25,8 @@
         "activeTenantUids": { "type": "array", "items": { "type": "string" } },
         "address": { "type": "object" },
         "status": { "type": "string", "enum": ["Vacant", "Occupied", "Under Maintenance", "Deleted"] },
-        "imageUrl": { "type": "string" }
+        "imageUrl": { "type": "string" },
+        "additionalImageUrls": { "type": "array", "items": { "type": "string" } }
       }
     },
     "Tenancy": {
@@ -62,7 +64,8 @@
         "landlordId": { "type": "string" },
         "propertyId": { "type": "string" },
         "status": { "type": "string" },
-        "priority": { "type": "string" }
+        "priority": { "type": "string" },
+        "reportedDate": { "type": "string", "format": "date-time" }
       }
     },
     "Document": {
@@ -89,6 +92,10 @@
     "/messages/{messageId}": { "schema": { "$ref": "#/backend/entities/Message" }, "description": "Secure Chat" },
     "/repairs/{repairId}": { "schema": { "$ref": "#/backend/entities/Repair" }, "description": "Maintenance Records" },
     "/documents/{documentId}": { "schema": { "$ref": "#/backend/entities/Document" }, "description": "Compliance Records" },
-    "/rentPayments/{id}": { "schema": { "type": "object" }, "description": "Income Ledger" }
+    "/rentPayments/{id}": { "schema": { "type": "object" }, "description": "Income Ledger" },
+    "/expenses/{id}": { "schema": { "type": "object" }, "description": "Expense Ledger" },
+    "/contractors/{id}": { "schema": { "type": "object" }, "description": "Trades Directory" },
+    "/inspections/{id}": { "schema": { "type": "object" }, "description": "Inspection Audits" },
+    "/screenings/{id}": { "schema": { "type": "object" }, "description": "Tenant Vetting" }
   }
 }
