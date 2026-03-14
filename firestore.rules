@@ -4,9 +4,9 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RENTSAFEUK SECURITY GOVERNANCE v20.8
-     * Hardened messaging registry with read-receipt update permissions.
-     * Synchronized with high-performance composite indexes.
+     * RENTSAFEUK SECURITY GOVERNANCE v20.9
+     * Synchronized with high-performance composite indexes for messaging and audit trails.
+     * Definitively hardening the read-receipt update permissions.
      */
 
     function isSignedIn() {
