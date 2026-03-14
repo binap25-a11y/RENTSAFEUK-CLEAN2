@@ -45,9 +45,10 @@ import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/fireb
 import { updateProfile, deleteUser } from 'firebase/auth';
 import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { Loader2, ShieldCheck, Clock, Lock, Key, AlertTriangle, UserCircle } from 'lucide-react';
+import { Loader2, ShieldCheck, Clock, Lock, Key, AlertTriangle, UserCircle, Gavel, FileShield, FileText, ExternalLink } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
+import Link from 'next/link';
 
 const profileSchema = z.object({
   displayName: z.string().min(2, 'Display name must be at least 2 characters.'),
@@ -157,7 +158,7 @@ export default function SettingsPage() {
       router.push('/');
     } catch (error: any) {
       console.error('Failed to delete account:', error);
-      if (error.code === 'auth/requires-recent-login') {
+      if (error.code === 'requires-recent-login') {
         toast({
           variant: 'destructive',
           title: 'Security Requirement',
@@ -190,15 +191,15 @@ export default function SettingsPage() {
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
        <div>
-        <h1 className="text-3xl font-bold font-headline">Settings</h1>
-        <p className="text-muted-foreground">
+        <h1 className="text-3xl font-bold font-headline text-left">Settings</h1>
+        <p className="text-muted-foreground text-left">
           Manage your account security and profile preferences.
         </p>
       </div>
 
       <div className="grid gap-8">
-        <Card className="shadow-sm">
-          <CardHeader className="border-b bg-muted/10">
+        <Card className="shadow-sm border-none">
+          <CardHeader className="border-b bg-muted/10 text-left">
             <div className="flex items-center justify-between">
                 <CardTitle className="text-lg">Profile Details</CardTitle>
                 <Badge variant="outline" className="bg-primary/10 text-primary border-primary/20 font-bold uppercase text-[9px] tracking-widest px-3">
@@ -212,7 +213,7 @@ export default function SettingsPage() {
           </CardHeader>
           <CardContent className="pt-6">
             <Form {...form}>
-              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 max-w-lg">
+              <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 max-w-lg text-left">
                 <FormField
                   control={form.control}
                   name="displayName"
@@ -235,7 +236,7 @@ export default function SettingsPage() {
                       <FormControl>
                         <Input placeholder="Your Email" {...field} disabled />
                       </FormControl>
-                       <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mt-1">Your email address is managed via your identity provider.</p>
+                       <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-wider mt-1 text-left">Your email address is managed via your identity provider.</p>
                       <FormMessage />
                     </FormItem>
                   )}
@@ -261,7 +262,7 @@ export default function SettingsPage() {
                                         <SelectItem value="120">2 Hours</SelectItem>
                                     </SelectContent>
                                 </Select>
-                                <FormDescription>
+                                <FormDescription className="text-left">
                                     Set how long the application should wait during inactivity before logging you out.
                                 </FormDescription>
                                 <FormMessage />
@@ -270,7 +271,7 @@ export default function SettingsPage() {
                     />
                 </div>
 
-                <Button type="submit" disabled={isUpdating}>
+                <Button type="submit" disabled={isUpdating} className="font-bold">
                   {isUpdating && <Loader2 className="mr-2 h-4 w-4 animate-spin" />}
                   Save All Changes
                 </Button>
@@ -279,8 +280,8 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
-        <Card className="shadow-sm border-primary/20">
-          <CardHeader className="border-b bg-primary/5">
+        <Card className="shadow-sm border-none">
+          <CardHeader className="border-b bg-primary/5 text-left">
             <div className="flex items-center justify-between">
                 <div>
                     <CardTitle className="text-lg flex items-center gap-2">
@@ -295,7 +296,7 @@ export default function SettingsPage() {
             </div>
           </CardHeader>
           <CardContent className="pt-6 space-y-6">
-            <div className="grid gap-6 sm:grid-cols-2">
+            <div className="grid gap-6 sm:grid-cols-2 text-left">
                 <div className="flex items-start gap-4 p-4 rounded-xl border bg-muted/30">
                     <Clock className="h-5 w-5 text-primary mt-1 shrink-0" />
                     <div className="space-y-1">
@@ -326,8 +327,44 @@ export default function SettingsPage() {
           </CardContent>
         </Card>
 
+        <Card className="shadow-sm border-none">
+          <CardHeader className="border-b bg-muted/5 text-left">
+            <div className="flex items-center gap-2">
+              <Gavel className="h-5 w-5 text-primary" />
+              <CardTitle className="text-lg">Legal & Compliance</CardTitle>
+            </div>
+            <CardDescription>
+              Review the terms and policies governing your use of RentSafeUK.
+            </CardDescription>
+          </CardHeader>
+          <CardContent className="pt-6">
+            <div className="grid gap-4 sm:grid-cols-2">
+                <Button variant="outline" asChild className="h-16 justify-start gap-4 px-4 border-2 hover:bg-primary/5 transition-all">
+                    <Link href="/privacy-policy">
+                        <FileShield className="h-6 w-6 text-primary shrink-0" />
+                        <div className="text-left">
+                            <p className="text-sm font-bold">Privacy Policy</p>
+                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">Data protection standards</p>
+                        </div>
+                        <ExternalLink className="ml-auto h-4 w-4 opacity-20" />
+                    </Link>
+                </Button>
+                <Button variant="outline" asChild className="h-16 justify-start gap-4 px-4 border-2 hover:bg-primary/5 transition-all">
+                    <Link href="/terms-of-service">
+                        <FileText className="h-6 w-6 text-primary shrink-0" />
+                        <div className="text-left">
+                            <p className="text-sm font-bold">Terms of Service</p>
+                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">Legal usage agreement</p>
+                        </div>
+                        <ExternalLink className="ml-auto h-4 w-4 opacity-20" />
+                    </Link>
+                </Button>
+            </div>
+          </CardContent>
+        </Card>
+
         <Card className="shadow-sm border-destructive/20 mt-4 bg-destructive/[0.02]">
-          <CardHeader className="border-b bg-destructive/5">
+          <CardHeader className="border-b bg-destructive/5 text-left">
             <div className="flex items-center gap-2 text-destructive">
               <AlertTriangle className="h-5 w-5" />
               <CardTitle className="text-lg">Danger Zone</CardTitle>
@@ -336,7 +373,7 @@ export default function SettingsPage() {
               Permanently delete your account and all associated management data.
             </CardDescription>
           </CardHeader>
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 text-left">
             <p className="text-sm text-muted-foreground mb-6">
               Deleting your account is permanent and cannot be undone. All your property records, tenant contacts, maintenance logs, and financial history will be inaccessible.
             </p>
@@ -344,19 +381,19 @@ export default function SettingsPage() {
               <AlertDialogTrigger asChild>
                 <Button variant="destructive" className="font-bold">Delete Account & Data</Button>
               </AlertDialogTrigger>
-              <AlertDialogContent>
-                <AlertDialogHeader>
+              <AlertDialogContent className="text-left">
+                <AlertDialogHeader className="text-left">
                   <AlertDialogTitle>Are you absolutely sure?</AlertDialogTitle>
                   <AlertDialogDescription>
                     This action is irreversible. It will permanently delete your account, 
                     associated profile data, and all access keys.
                   </AlertDialogDescription>
                 </AlertDialogHeader>
-                <AlertDialogFooter>
-                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                <AlertDialogFooter className="gap-2">
+                  <AlertDialogCancel className="font-bold">Cancel</AlertDialogCancel>
                   <AlertDialogAction 
                     onClick={handleDeleteAccount} 
-                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90 font-bold"
                   >
                     {isUpdating ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null}
                     Confirm Permanent Deletion
