@@ -53,7 +53,7 @@ import { cn } from '@/lib/utils';
 
 /**
  * @fileOverview Comprehensive Landlord Property View.
- * Resolved from truncation and enhanced with audit-ready bidirectional messaging registry.
+ * Enhanced with audit-ready bidirectional messaging registry.
  */
 
 interface Property {
@@ -159,6 +159,7 @@ export default function PropertyDetailPage() {
     e.preventDefault();
     if (!newReply.trim() || !user || !property || isSendingReply) return;
 
+    // Use the tenant identity linked to existing messages or the first active resident
     const targetTenantId = messages?.find(m => m.senderId !== user.uid)?.tenantId || (activeTenants?.[0]?.userId);
     
     if (!targetTenantId) {
@@ -179,7 +180,7 @@ export default function PropertyDetailPage() {
             timestamp: serverTimestamp()
         });
         setNewReply('');
-        toast({ title: 'Reply Sent', description: 'Message synchronized with the audit registry.' });
+        toast({ title: 'Reply Sent', description: 'Communication synchronized with the audit trail.' });
     } catch (error) {
         console.error("Sync failure:", error);
         toast({ variant: 'destructive', title: 'Send Failed' });
