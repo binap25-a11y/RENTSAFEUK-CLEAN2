@@ -5,81 +5,155 @@ import { Button } from '@/components/ui/button';
 
 export default function PrivacyPolicyPage() {
   return (
-    <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl">
+    <div className="container mx-auto p-4 sm:p-6 lg:p-8 max-w-4xl text-left">
        <div className="flex items-center gap-4 mb-6">
         <Button variant="outline" size="icon" asChild>
           <Link href="/">
             <ArrowLeft className="h-4 w-4" />
           </Link>
         </Button>
-        <h1 className="text-2xl font-bold">Privacy Policy</h1>
+        <h1 className="text-2xl font-bold font-headline">Privacy Policy</h1>
       </div>
-      <Card>
-        <CardHeader>
-          <CardTitle>Privacy Policy</CardTitle>
+      <Card className="border-none shadow-lg">
+        <CardHeader className="bg-primary/5 border-b">
+          <CardTitle className="text-xl">RentSafeUK Privacy Policy</CardTitle>
         </CardHeader>
-        <CardContent className="space-y-4 pt-6">
-          <p>Last updated: July 22, 2024</p>
+        <CardContent className="space-y-6 pt-8 pb-10">
+          <p className="text-sm text-muted-foreground font-medium">Last updated: March 2026</p>
 
-          <p className="font-bold text-destructive">
-            Disclaimer: This is a template Privacy Policy. You should consult with a legal professional to ensure it meets the specific needs and legal requirements of your business.
-          </p>
-
-          <h2 className="font-semibold text-lg pt-4">1. Introduction</h2>
-          <p>
-            Welcome to RentSafeUK. We are committed to protecting your privacy. This Privacy Policy explains how we collect, use, disclose, and safeguard your information when you use our application. Please read this privacy policy carefully. If you do not agree with the terms of this privacy policy, please do not access the application.
-          </p>
-
-          <h2 className="font-semibold text-lg pt-4">2. Collection of Your Information</h2>
-          <p>
-            We may collect information about you in a variety of ways. The information we may collect via the Application depends on the content and materials you use, and includes:
-          </p>
-          <ul className="list-disc list-inside space-y-2">
-            <li>
-              <strong>Personal Data:</strong> Personally identifiable information, such as your name, email address, and telephone number, and other data that you voluntarily give to us when you register with the Application.
-            </li>
-            <li>
-              <strong>Data from Your Use of the App:</strong> We collect information about the properties, maintenance requests, inspections, and documents you manage through the app.
-            </li>
-            <li>
-              <strong>Device Information:</strong> We may collect information about your mobile device, including, for example, the hardware model, operating system and version, and unique device identifiers.
-            </li>
-          </ul>
-
-          <h2 className="font-semibold text-lg pt-4">3. Use of Your Information</h2>
-          <p>
-            Having accurate information about you permits us to provide you with a smooth, efficient, and customized experience. Specifically, we may use information collected about you via the Application to:
-          </p>
-          <ul className="list-disc list-inside space-y-2">
-            <li>Create and manage your account.</li>
-            <li>Provide and manage our services, such as property, maintenance, and document management.</li>
-            <li>Communicate with you about your account or services.</li>
-            <li>Monitor and analyze usage and trends to improve your experience with the Application.</li>
-            <li>Comply with legal obligations.</li>
-          </ul>
-
-          <h2 className="font-semibold text-lg pt-4">4. Disclosure of Your Information</h2>
-          <p>
-            We may share information we have collected about you in certain situations. Your information may be disclosed as follows:
-          </p>
-          <ul className="list-disc list-inside space-y-2">
-            <li>
-              <strong>By Law or to Protect Rights:</strong> If we believe the release of information about you is necessary to respond to legal process, to investigate or remedy potential violations of our policies, or to protect the rights, property, and safety of others, we may share your information as permitted or required by any applicable law, rule, or regulation.
-            </li>
-            <li>
-              <strong>Third-Party Service Providers:</strong> We may share your information with third parties that perform services for us or on our behalf, including data storage, hosting services, and customer service. We use Firebase services (Google) for backend infrastructure, and your data is stored on their servers.
-            </li>
-          </ul>
-
-          <h2 className="font-semibold text-lg pt-4">5. Security of Your Information</h2>
-          <p>
-            We use administrative, technical, and physical security measures to help protect your personal information. While we have taken reasonable steps to secure the personal information you provide to us, please be aware that despite our efforts, no security measures are perfect or impenetrable, and no method of data transmission can be guaranteed against any interception or other type of misuse.
-          </p>
-          
-          <h2 className="font-semibold text-lg pt-4">6. Contact Us</h2>
-            <p>
-                If you have questions or comments about this Privacy Policy, please contact us at: [Your Contact Email/Address Here]
+          <section className="space-y-3">
+            <h2 className="font-bold text-lg text-primary">1. Introduction</h2>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Welcome to RentSafeUK. Your privacy is important to us. This Privacy Policy explains how we collect, use, and protect your information when you use our application and related services.
             </p>
+            <p className="text-sm leading-relaxed text-muted-foreground font-medium italic">
+              By using the app, you agree to the collection and use of information in accordance with this policy.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-bold text-lg text-primary">2. Information We Collect</h2>
+            <div className="space-y-4">
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-widest text-foreground mb-2">Personal Information</h3>
+                <p className="text-sm text-muted-foreground mb-2">When you use the app we may collect the following information:</p>
+                <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 ml-2">
+                  <li>Name</li>
+                  <li>Email address</li>
+                  <li>Account login information</li>
+                  <li>Property information</li>
+                  <li>Tenant and landlord details</li>
+                  <li>Messages sent within the platform</li>
+                  <li>Maintenance requests</li>
+                  <li>Uploaded documents or photos</li>
+                </ul>
+              </div>
+              <div>
+                <h3 className="text-sm font-bold uppercase tracking-widest text-foreground mb-2">Technical Information</h3>
+                <p className="text-sm text-muted-foreground mb-2">We may also collect technical data including:</p>
+                <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 ml-2">
+                  <li>Device information</li>
+                  <li>IP address</li>
+                  <li>Browser type</li>
+                  <li>Usage data</li>
+                  <li>Log data</li>
+                </ul>
+              </div>
+            </div>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-bold text-lg text-primary">3. How We Use Your Information</h2>
+            <p className="text-sm text-muted-foreground mb-2">We use the collected data to:</p>
+            <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 ml-2">
+              <li>Provide and maintain the service</li>
+              <li>Manage landlord and tenant accounts</li>
+              <li>Enable messaging between users</li>
+              <li>Manage property information</li>
+              <li>Process maintenance requests</li>
+              <li>Improve platform performance</li>
+              <li>Detect fraud, abuse, or security issues</li>
+            </ul>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-bold text-lg text-primary">4. Third-Party Services</h2>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              Our app uses third-party services to operate effectively. These services may collect limited information necessary to perform their functions.
+            </p>
+            <p className="text-sm text-muted-foreground mt-2">Examples include:</p>
+            <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 ml-2">
+              <li>Cloud database and authentication services</li>
+              <li>Hosting and infrastructure services</li>
+              <li>Analytics and error monitoring tools</li>
+            </ul>
+            <p className="text-sm italic text-muted-foreground mt-2">These services process data only as required to operate the platform.</p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-bold text-lg text-primary">5. Data Storage and Security</h2>
+            <p className="text-sm text-muted-foreground">We take reasonable measures to protect your personal information from:</p>
+            <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 ml-2">
+              <li>Unauthorized access</li>
+              <li>Disclosure</li>
+              <li>Alteration</li>
+              <li>Destruction</li>
+            </ul>
+            <p className="text-sm font-medium text-destructive mt-2">However, no internet-based service can be completely secure.</p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-bold text-lg text-primary">6. Data Sharing</h2>
+            <p className="text-sm text-muted-foreground">We do not sell your personal data. Information may be shared only:</p>
+            <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 ml-2">
+              <li>Between landlords and tenants within the platform</li>
+              <li>With service providers required to operate the app</li>
+              <li>When required by law or legal process</li>
+            </ul>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-bold text-lg text-primary">7. Data Retention</h2>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              We retain user data only as long as necessary to provide services and comply with legal obligations. Users may request account deletion which will remove associated personal information where possible.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-bold text-lg text-primary">8. Your Rights</h2>
+            <p className="text-sm text-muted-foreground">Depending on your location, you may have rights to:</p>
+            <ul className="list-disc list-inside text-sm text-muted-foreground space-y-1 ml-2">
+              <li>Access your personal data</li>
+              <li>Correct inaccurate data</li>
+              <li>Request deletion of your data</li>
+              <li>Withdraw consent for processing</li>
+            </ul>
+            <p className="text-sm text-muted-foreground">Requests can be made by contacting us.</p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-bold text-lg text-primary">9. Children's Privacy</h2>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              This application is not intended for individuals under the age of 18. We do not knowingly collect personal information from minors.
+            </p>
+          </section>
+
+          <section className="space-y-3">
+            <h2 className="font-bold text-lg text-primary">10. Changes to This Policy</h2>
+            <p className="text-sm leading-relaxed text-muted-foreground">
+              We may update this Privacy Policy periodically. Updates will be posted within the app or on our website.
+            </p>
+          </section>
+
+          <section className="space-y-3 border-t pt-6">
+            <h2 className="font-bold text-lg text-primary">11. Contact Us</h2>
+            <p className="text-sm text-muted-foreground">
+              If you have questions about this Privacy Policy, you may contact us at:
+            </p>
+            <Button variant="link" className="p-0 h-auto font-bold text-primary" asChild>
+              <a href="mailto:support@rentsafeuk.com">support@rentsafeuk.com</a>
+            </Button>
+          </section>
         </CardContent>
       </Card>
     </div>
