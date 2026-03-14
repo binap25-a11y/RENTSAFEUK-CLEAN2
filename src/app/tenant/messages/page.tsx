@@ -33,8 +33,8 @@ import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 
 /**
- * @fileOverview Resident Portal Messaging interface.
- * Refactored for professional full-viewport history and real-time sync.
+ * @fileOverview Professional Resident Messaging Hub.
+ * Optimized for full-viewport chronological history and real-time bidirectional sync.
  */
 
 interface Message {
@@ -159,7 +159,9 @@ export default function TenantMessagesPage() {
   if (isLoadingContext || isUserLoading) {
     return (
       <div className="flex h-[60vh] flex-col items-center justify-center gap-4 text-center">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <div className="bg-primary/5 p-8 rounded-full">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        </div>
         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Establishing Secure Connection...</p>
       </div>
     );
@@ -203,7 +205,7 @@ export default function TenantMessagesPage() {
                 <div className="h-10 w-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-lg">
                     <Building2 className="h-5 w-5" />
                 </div>
-                <div>
+                <div className="text-left">
                     <CardTitle className="text-sm font-bold">Management Support</CardTitle>
                     <p className="text-[9px] text-green-600 font-bold uppercase tracking-widest flex items-center gap-1">
                         <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
@@ -217,14 +219,14 @@ export default function TenantMessagesPage() {
         <CardContent className="flex-1 p-0 overflow-hidden relative bg-muted/5">
             <ScrollArea className="h-full p-6">
                 <div ref={topRef} className="h-1" />
-                <div className="space-y-6">
+                <div className="space-y-6 text-left">
                     {isLoadingMessages ? (
                         <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary/20" /></div>
                     ) : !messages?.length ? (
-                        <div className="py-24 text-center px-10 border-2 border-dashed rounded-[2rem] bg-muted/10">
+                        <div className="py-24 text-center px-10 border-2 border-dashed rounded-[2rem] bg-muted/10 mx-4">
                             <MessageSquare className="h-12 w-12 text-muted-foreground/10 mx-auto mb-4" />
-                            <p className="text-sm font-bold text-foreground">Registry Handshake Active</p>
-                            <p className="text-xs text-muted-foreground mt-1 max-w-[240px] mx-auto font-medium">Communication history is chronologically recorded for management audit.</p>
+                            <p className="text-sm font-bold text-foreground">Registry Handshake Established</p>
+                            <p className="text-xs text-muted-foreground mt-1 max-w-[240px] mx-auto font-medium">Your chat history is private and chronologically recorded for professional property management.</p>
                         </div>
                     ) : (
                         messages.map((msg, idx) => {
@@ -235,9 +237,9 @@ export default function TenantMessagesPage() {
                             const showDateDivider = !prevMsg || !isSameDay(date, getMessageDate(prevMsg.timestamp));
                             
                             return (
-                                <div key={msg.id} className="space-y-4">
+                                <div key={msg.id} className="space-y-4 text-left">
                                     {showDateDivider && (
-                                        <div className="flex items-center gap-4 py-4">
+                                        <div className="flex items-center gap-4 py-4 text-left">
                                             <div className="h-px flex-1 bg-border" />
                                             <span className="text-[9px] font-bold uppercase tracking-[0.2em] text-muted-foreground bg-background border px-4 py-1.5 rounded-full shadow-sm">
                                                 <Calendar className="h-3 w-3 inline-block mr-1.5 opacity-50" />

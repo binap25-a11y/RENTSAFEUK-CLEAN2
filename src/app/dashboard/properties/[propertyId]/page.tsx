@@ -54,8 +54,8 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
 /**
- * @fileOverview Comprehensive Landlord Property View.
- * Enhanced with professional full-viewport messaging registry and bidirectional real-time sync.
+ * @fileOverview Professional Landlord Property View.
+ * Enhanced with full-viewport real-time messaging registry and chronological audit headers.
  */
 
 interface Property {
@@ -404,8 +404,8 @@ export default function PropertyDetailPage() {
                                     <Building2 className="h-5 w-5" />
                                 </div>
                                 <div className="text-left">
-                                    <CardTitle className="text-lg font-headline">Secure Message History</CardTitle>
-                                    <CardDescription>Verified chronological registry for this asset.</CardDescription>
+                                    <CardTitle className="text-sm font-bold">Secure Message History</CardTitle>
+                                    <CardDescription className="text-[10px]">Verified chronological registry for this asset.</CardDescription>
                                 </div>
                             </div>
                             <Badge variant="outline" className="h-6 text-[8px] uppercase font-bold tracking-widest bg-background border-2 shadow-sm">Audit-Ready Ledger</Badge>
@@ -419,7 +419,7 @@ export default function PropertyDetailPage() {
                                         <div className="py-20 text-center px-10 border-2 border-dashed rounded-[2rem] bg-muted/10 mx-4">
                                             <MessageSquare className="h-12 w-12 text-muted-foreground/10 mx-auto mb-4" />
                                             <p className="text-sm font-bold text-foreground">Registry Trail Standby</p>
-                                            <p className="text-xs text-muted-foreground mt-1 max-w-[240px] mx-auto font-medium">Assign a verified resident to start the chronological communication audit trail.</p>
+                                            <p className="text-xs text-muted-foreground mt-1 max-w-[240px] mx-auto font-medium">Assign an active resident to start the chronological communication audit trail.</p>
                                         </div>
                                     ) : (
                                         messages.map((msg, idx) => {

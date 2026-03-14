@@ -4,8 +4,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RENTSAFEUK SECURITY GOVERNANCE v9.0
-     * Hardened identity mapping for multi-tenant messaging registry.
+     * RENTSAFEUK SECURITY GOVERNANCE v10.0
+     * Hardened identity mapping for real-time bidirectional messaging.
      */
 
     function isSignedIn() {
