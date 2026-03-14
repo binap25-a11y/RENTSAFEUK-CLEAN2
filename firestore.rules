@@ -1,10 +1,11 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RENTSAFEUK SECURITY GOVERNANCE v6.0
-     * Optimized for Static Query Prove-ability and Actor-Based Listing.
+     * RENTSAFEUK SECURITY GOVERNANCE v6.1
+     * Re-synchronized to authorize composite messaging indexes.
      */
 
     function isSignedIn() {
@@ -105,7 +106,6 @@ service cloud.firestore {
         resource.data.landlordId == request.auth.uid
       );
       
-      // Actor-based listing for static query verification
       allow list: if isSignedIn() && (
         resource.data.tenantId == request.auth.uid ||
         resource.data.landlordId == request.auth.uid
