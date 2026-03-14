@@ -34,7 +34,7 @@ import { useToast } from '@/hooks/use-toast';
 /**
  * @fileOverview Resident Portal Chat
  * Definitive full-viewport layout with real-time audit-ready messaging.
- * Includes sent confirmations and security-filtered queries.
+ * Includes transactional confirmations and security-filtered queries.
  */
 
 interface Message {
