@@ -17,12 +17,11 @@ import {
   MessageSquare, 
   Send, 
   Loader2, 
-  User,
-  ShieldCheck,
-  AlertCircle,
-  Clock,
-  Calendar,
-  Building2
+  ShieldCheck, 
+  AlertCircle, 
+  Clock, 
+  Calendar, 
+  Building2 
 } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { query, where, limit, addDoc, collection, onSnapshot, orderBy, serverTimestamp } from 'firebase/firestore';
@@ -85,7 +84,7 @@ export default function TenantMessagesPage() {
 
   const messagesQuery = useMemoFirebase(() => {
     if (!tenantContext || !user || !firestore) return null;
-    // SECURE REGISTRY SYNC: Added tenantId filter to satisfy statically provable security rules.
+    // SECURE REGISTRY SYNC: Mandatory propertyId and tenantId filters for static verification.
     return query(
         collection(firestore, 'messages'),
         where('propertyId', '==', tenantContext.propertyId),
@@ -155,7 +154,9 @@ export default function TenantMessagesPage() {
   if (isLoadingContext || isUserLoading) {
     return (
       <div className="flex h-[60vh] flex-col items-center justify-center gap-4 text-center">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <div className="bg-primary/5 p-8 rounded-full">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        </div>
         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Communication Registry...</p>
       </div>
     );
@@ -179,7 +180,7 @@ export default function TenantMessagesPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col gap-4 text-left max-w-6xl mx-auto px-4 animate-in fade-in duration-500">
+    <div className="h-[calc(100vh-10rem)] flex flex-col gap-4 text-left max-w-5xl mx-auto px-4 animate-in fade-in duration-500">
       <div className="flex items-center justify-between px-1 shrink-0">
           <div className="flex flex-col gap-1">
               <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Resident Chat</h1>

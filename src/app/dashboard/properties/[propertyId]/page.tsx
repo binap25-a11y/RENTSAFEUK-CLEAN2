@@ -32,7 +32,8 @@ import {
   MessageSquare,
   Send,
   Clock,
-  Calendar
+  Calendar,
+  Building2
 } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, collection, query, where, getDocs, limit, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -137,7 +138,7 @@ export default function PropertyDetailPage() {
 
   const messagesQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
-    // SECURE REGISTRY SYNC: Mandatory landlordId filter for static verification.
+    // SECURE REGISTRY SYNC: Mandatory propertyId and landlordId filters for static verification.
     return query(
         collection(firestore, 'messages'),
         where('propertyId', '==', propertyId),
@@ -368,13 +369,18 @@ export default function PropertyDetailPage() {
                     )}
                 </TabsContent>
                 <TabsContent value="messages" className="pt-4 space-y-4">
-                    <Card className="shadow-lg border-none overflow-hidden flex flex-col h-[650px]">
-                        <CardHeader className="bg-muted/30 border-b py-4">
-                            <CardTitle className="text-lg font-headline flex items-center gap-2">
-                                <MessageSquare className="h-5 w-5 text-primary" />
-                                Resident Chat Registry
-                            </CardTitle>
-                            <CardDescription>Verified message trail for this property.</CardDescription>
+                    <Card className="shadow-lg border-none overflow-hidden flex flex-col h-[600px]">
+                        <CardHeader className="bg-muted/30 border-b py-4 px-6 flex flex-row items-center justify-between">
+                            <div className="flex items-center gap-3">
+                                <div className="h-10 w-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-md">
+                                    <Building2 className="h-5 w-5" />
+                                </div>
+                                <div>
+                                    <CardTitle className="text-lg font-headline">Communication Registry</CardTitle>
+                                    <CardDescription>Verified message trail for this property.</CardDescription>
+                                </div>
+                            </div>
+                            <Badge variant="outline" className="h-6 text-[8px] uppercase font-bold tracking-widest bg-background border-2 shadow-sm">Verified Audit-Ready</Badge>
                         </CardHeader>
                         <CardContent className="flex-1 overflow-hidden p-0 relative bg-muted/5">
                             <ScrollArea className="h-full p-6">
@@ -382,7 +388,11 @@ export default function PropertyDetailPage() {
                                     {isLoadingMessages ? (
                                         <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary/20" /></div>
                                     ) : !messages?.length ? (
-                                        <div className="text-center py-20 italic text-muted-foreground">No message history available.</div>
+                                        <div className="py-20 text-center px-10 border-2 border-dashed rounded-[2rem] bg-muted/10 mx-4">
+                                            <MessageSquare className="h-12 w-12 text-muted-foreground/10 mx-auto mb-4" />
+                                            <p className="text-sm font-bold text-foreground">Registry Handshake Established</p>
+                                            <p className="text-xs text-muted-foreground mt-1 max-w-[240px] mx-auto font-medium">No messages found. Use the Resident Hub to start a secure conversation.</p>
+                                        </div>
                                     ) : (
                                         messages.map((msg, idx) => {
                                             const isLandlord = msg.senderId === user?.uid;
