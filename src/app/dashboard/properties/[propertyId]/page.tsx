@@ -27,7 +27,8 @@ import {
   Building2,
   Upload,
   X,
-  CheckCircle2
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, collection, query, where, getDocs, limit, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -434,7 +435,7 @@ export default function PropertyDetailPage() {
                                 <Input 
                                     placeholder="Type a secure registry response..." 
                                     value={newReply}
-                                    onChange={(e) => setNewReply(e.target.value)}
+                                    onChange={(e) => setNewMessage(e.target.value)}
                                     className="flex-1 rounded-xl h-11 bg-muted/20 border-2"
                                     disabled={isSendingReply || (!messages?.length && !activeTenants?.length)}
                                 />
