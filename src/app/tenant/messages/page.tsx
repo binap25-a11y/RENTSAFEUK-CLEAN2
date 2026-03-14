@@ -165,12 +165,12 @@ export default function TenantMessagesPage() {
   if (!tenantContext) {
     return (
       <Card className="max-w-md mx-auto mt-10 shadow-2xl border-none text-center overflow-hidden">
-        <CardHeader className="bg-muted/20 pb-8 border-b">
+        <CardHeader className="bg-muted/20 pb-8 border-b text-left">
           <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 border shadow-sm flex items-center justify-center">
               <AlertCircle className="h-8 w-8 text-destructive" />
           </div>
-          <CardTitle className="text-xl text-primary font-headline tracking-tight">Access Blocked</CardTitle>
-          <CardDescription className='font-medium text-muted-foreground'>A verified residency handshake is required to access the secure property chat channel.</CardDescription>
+          <CardTitle className="text-xl text-primary font-headline tracking-tight text-center">Access Blocked</CardTitle>
+          <CardDescription className='font-medium text-muted-foreground text-center'>A verified residency handshake is required to access the secure property chat channel.</CardDescription>
         </CardHeader>
         <CardContent className="pt-8">
           <Button variant="outline" className="w-full h-12 font-bold shadow-sm" asChild><Link href="/tenant/dashboard">Return to Resident Hub</Link></Button>
@@ -180,9 +180,9 @@ export default function TenantMessagesPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col gap-4 text-left max-w-6xl mx-auto px-4 animate-in fade-in duration-500">
+    <div className="h-[calc(100vh-8rem)] flex flex-col gap-4 text-left max-w-7xl mx-auto px-4 animate-in fade-in duration-500">
       <div className="flex items-center justify-between px-1 shrink-0">
-          <div className="flex flex-col gap-1">
+          <div className="flex flex-col gap-1 text-left">
               <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Resident Chat</h1>
               <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.3em] flex items-center gap-1.5">
                   <ShieldCheck className="h-3.5 w-3.5 text-green-600" />
@@ -197,7 +197,7 @@ export default function TenantMessagesPage() {
                 <div className="h-10 w-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-lg">
                     <Building2 className="h-5 w-5" />
                 </div>
-                <div>
+                <div className="text-left">
                     <CardTitle className="text-sm font-bold">Property Management</CardTitle>
                     <p className="text-[9px] text-green-600 font-bold uppercase tracking-widest flex items-center gap-1">
                         <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
