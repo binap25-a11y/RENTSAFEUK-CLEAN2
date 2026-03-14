@@ -32,11 +32,6 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 
-/**
- * @fileOverview Professional Resident Messaging Hub.
- * Optimized for full-viewport chronological history and real-time bidirectional sync.
- */
-
 interface Message {
     id: string;
     senderId: string;
@@ -59,6 +54,7 @@ export default function TenantMessagesPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
 
+  // Discover Tenancy Context
   useEffect(() => {
     if (isUserLoading || !user || !firestore || !user.email) {
       if (!user && !isUserLoading) setIsLoadingContext(false);
@@ -86,6 +82,7 @@ export default function TenantMessagesPage() {
     return () => unsub();
   }, [user, isUserLoading, firestore]);
 
+  // Real-time chronological message ledger
   const messagesQuery = useMemoFirebase(() => {
     if (!tenantContext || !user || !firestore) return null;
     return query(
@@ -99,6 +96,7 @@ export default function TenantMessagesPage() {
 
   const { data: messages, isLoading: isLoadingMessages } = useCollection<Message>(messagesQuery);
 
+  // Auto-scroll to bottom
   useEffect(() => {
     if (scrollRef.current) {
         scrollRef.current.scrollIntoView({ behavior: 'smooth' });

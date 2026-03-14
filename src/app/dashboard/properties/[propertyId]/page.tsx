@@ -53,11 +53,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
-/**
- * @fileOverview Professional Landlord Property View.
- * Enhanced with full-viewport real-time messaging registry and chronological audit headers.
- */
-
 interface Property {
     id: string;
     landlordId: string;
@@ -118,13 +113,13 @@ export default function PropertyDetailPage() {
   const [newReply, setNewReply] = useState('');
   const [isSendingReply, setIsSendingReply] = useState(false);
   
-  const initialTab = searchParams.get('tab') || 'overview';
-  const [activeTab, setActiveTab] = useState(initialTab);
+  const [activeTab, setActiveTab] = useState('overview');
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const identityInputRef = useRef<HTMLInputElement>(null);
 
+  // Synchronize Tab State with URL
   useEffect(() => {
     const tab = searchParams.get('tab');
     if (tab && ['overview', 'messages'].includes(tab)) {
@@ -163,6 +158,7 @@ export default function PropertyDetailPage() {
 
   const { data: messages, isLoading: isLoadingMessages } = useCollection<Message>(messagesQuery);
 
+  // Auto-scroll to bottom on new messages
   useEffect(() => {
     if (scrollRef.current && activeTab === 'messages') {
         scrollRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -173,6 +169,7 @@ export default function PropertyDetailPage() {
     e.preventDefault();
     if (!newReply.trim() || !user || !property || isSendingReply) return;
 
+    // Use established resident link for context
     const targetTenant = messages?.find(m => m.senderId !== user.uid) || activeTenants?.[0];
     const targetTenantId = targetTenant?.tenantId || targetTenant?.id;
     const targetTenantUid = targetTenant?.senderId !== user.uid ? (targetTenant as any)?.tenantUid : (activeTenants?.[0]?.userId || '');
