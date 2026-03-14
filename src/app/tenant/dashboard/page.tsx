@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -21,13 +20,12 @@ import {
   Search
 } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, query, where, limit, getDocs, doc, updateDoc, getDoc, arrayUnion, onSnapshot } from 'firebase/firestore';
+import { collection, query, where, limit, getDocs, doc, updateDoc, getDoc, arrayUnion } from 'firebase/firestore';
 import { format } from 'date-fns';
-import { toast } from '@/hooks/use-toast';
 
 /**
  * @fileOverview Resident Hub Dashboard
- * Manages the secure identity handshake and context resolution for verified residents.
+ * Definitively handles the secure identity handshake and context resolution for verified residents.
  */
 
 interface TenantContext {
@@ -58,7 +56,6 @@ export default function TenantDashboard() {
     setIsLoading(true);
     setErrorState(null);
 
-    // CASE NORMALIZATION: Strict lowercase matching for query engine deterministic scan
     const userEmail = user.email.toLowerCase().trim();
 
     try {
@@ -69,7 +66,7 @@ export default function TenantDashboard() {
 
         let tenantDoc = uidSnap.empty ? null : uidSnap.docs[0];
 
-        // STAGE 2: Email Discovery (Handshake needed)
+        // STAGE 2: Email Discovery (Handshake path)
         if (!tenantDoc) {
             const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
             const emailSnap = await getDocs(qByEmail);
@@ -79,7 +76,6 @@ export default function TenantDashboard() {
         }
 
         if (!tenantDoc) {
-            console.log("No registry entry found for", userEmail);
             setIsLoading(false);
             discoveryRef.current = false;
             return;
@@ -88,13 +84,11 @@ export default function TenantDashboard() {
         const tenantData = tenantDoc.data();
         
         // STAGE 3: Secure Identity Handshake
-        // Elevate email-authorized entry to permanent UID-based authorization
+        // Establish permanent UID mapping if only email verified.
         if (tenantData.userId !== user.uid || !tenantData.verified) {
             setIsHandshaking(true);
-            console.log("Initiating secure portal handshake for", userEmail);
-            
             try {
-                // 1. Permanent Identity Mapping
+                // 1. Map account UID to registry record
                 await updateDoc(tenantDoc.ref, { 
                     userId: user.uid,
                     verified: true,
@@ -103,23 +97,20 @@ export default function TenantDashboard() {
                     lastSyncCheck: new Date().toISOString()
                 });
                 
-                // 2. Asset Authorization Update
-                // Explicitly allowed by handshake rules in firestore.rules
+                // 2. Map account UID to asset record
                 const propertyRef = doc(firestore, 'properties', tenantData.propertyId);
                 await updateDoc(propertyRef, { 
                     tenantId: user.uid,
                     activeTenantUids: arrayUnion(user.uid),
                     status: 'Occupied'
                 });
-                console.log("Handshake complete.");
             } catch (syncErr: any) {
-                console.warn("Handshake sync warning (possibly already synced):", syncErr.message);
+                console.warn("Portal sync partial failure:", syncErr.message);
             }
-            
             setIsHandshaking(false);
         }
 
-        // STAGE 4: Resolution
+        // STAGE 4: Property Resolution
         const propRef = doc(firestore, 'properties', tenantData.propertyId);
         const propSnap = await getDoc(propRef);
         
@@ -138,10 +129,10 @@ export default function TenantDashboard() {
         setIsLoading(false);
         discoveryRef.current = false;
     } catch (err: any) {
-        console.error("Portal discovery sync error:", err);
+        console.error("Portal sync error:", err);
         setErrorState(err.code === 'permission-denied' 
-            ? "Registry access denied. Check email normalization or landlord setup." 
-            : `Handshake failed: ${err.message}`
+            ? "Access denied by registry. Please verify your email with your landlord." 
+            : `Handshake error: ${err.message}`
         );
         setIsLoading(false);
         discoveryRef.current = false;
@@ -157,17 +148,14 @@ export default function TenantDashboard() {
   if (isUserLoading || (isLoading && !context) || isHandshaking) {
     return (
         <div className="max-w-md mx-auto mt-20 text-center space-y-8 px-6">
-            <div className="relative">
-                <div className="bg-primary/10 p-10 rounded-full w-fit mx-auto relative z-10">
-                    <Loader2 className="h-12 w-12 text-primary animate-spin" />
-                </div>
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/5 rounded-full animate-ping" />
+            <div className="bg-primary/10 p-10 rounded-full w-fit mx-auto relative">
+                <Loader2 className="h-12 w-12 text-primary animate-spin" />
             </div>
             <div className="space-y-3">
                 <h2 className="font-headline text-2xl font-bold text-primary tracking-tight">
-                    {isHandshaking ? "Finalizing Handshake..." : "Syncing Portal..."}
+                    {isHandshaking ? "Securing Handshake..." : "Syncing Portal..."}
                 </h2>
-                <p className="text-muted-foreground font-medium text-center">Securing your property connection.</p>
+                <p className="text-muted-foreground font-medium text-center italic">Establishing verified property connection.</p>
             </div>
         </div>
     );
@@ -179,7 +167,7 @@ export default function TenantDashboard() {
             <CardHeader className="bg-destructive/10 pb-6 border-b border-destructive/20">
                 <div className="flex items-center gap-3">
                     <AlertCircle className="h-6 w-6 text-destructive" />
-                    <CardTitle className="font-headline text-lg text-destructive">Portal Sync Failed</CardTitle>
+                    <CardTitle className="font-headline text-lg text-destructive">Sync Interrupted</CardTitle>
                 </div>
             </CardHeader>
             <CardContent className="pt-6">
@@ -187,7 +175,7 @@ export default function TenantDashboard() {
             </CardContent>
             <CardFooter className="pt-6 bg-muted/5 border-t">
                 <Button variant="outline" className="w-full h-11 font-bold" onClick={() => { discoveryRef.current = false; performDiscovery(); }}>
-                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Force Retry Handshake
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Force Retry Discovery
                 </Button>
             </CardFooter>
         </Card>
@@ -201,13 +189,13 @@ export default function TenantDashboard() {
                 <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 border shadow-sm text-muted-foreground/20">
                     <Search className="h-10 w-10" />
                 </div>
-                <CardTitle className="font-headline text-xl text-primary">Registry Not Linked</CardTitle>
+                <CardTitle className="font-headline text-xl text-primary">Tenancy Not Found</CardTitle>
                 <CardDescription className="text-sm font-medium px-4">
-                    <strong>{user?.email}</strong> is not mapped to an active tenancy.
+                    <strong>{user?.email}</strong> is not currently mapped to an active registry entry.
                 </CardDescription>
             </CardHeader>
             <CardContent className="pt-6 text-sm text-muted-foreground text-center">
-                <p className="leading-relaxed italic">"Please ensure your landlord has registered this exact email address in the portal."</p>
+                <p className="leading-relaxed italic">"Please ask your landlord to verify your registered email in their RentSafeUK portal."</p>
             </CardContent>
             <CardFooter className="pt-6 bg-muted/5 border-t">
                 <Button variant="outline" className="w-full h-11 font-bold" onClick={() => { discoveryRef.current = false; performDiscovery(); }}>
@@ -257,9 +245,9 @@ export default function TenantDashboard() {
                 <div className="text-xl font-bold text-foreground">
                     {context.tenantData.tenancyStartDate?.seconds 
                         ? format(new Date(context.tenantData.tenancyStartDate.seconds * 1000), 'dd MMM yyyy') 
-                        : 'Active Registry'}
+                        : 'Verified Active'}
                 </div>
-                <p className="text-xs text-muted-foreground mt-1 font-medium italic">Sync Validated</p>
+                <p className="text-xs text-muted-foreground mt-1 font-medium italic">Handshake Valid</p>
             </CardContent>
         </Card>
 

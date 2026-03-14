@@ -1,34 +1,31 @@
 'use client';
 
-/**
- * @fileOverview singular entry point for Firebase SDK initialization.
- * Prevents circular dependencies and ensures singleton instances across the app.
- */
-
 import { firebaseConfig } from '@/firebase/config';
 import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore';
 import { getStorage } from 'firebase/storage';
 
-let firebaseApp: FirebaseApp;
+/**
+ * RentSafeUK Primary SDK Initialization.
+ * Centralized here to prevent circular dependencies in the barrel file.
+ */
+let app: FirebaseApp;
 
 try {
-  firebaseApp = getApps().length === 0 
-    ? initializeApp(firebaseConfig) 
-    : getApp();
+  app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 } catch (e) {
-  firebaseApp = getApp();
+  app = getApp();
 }
 
-export const app = firebaseApp;
+export const firebaseApp = app;
 export const auth = getAuth(app);
 export const firestore = getFirestore(app);
 export const storage = getStorage(app);
 
 export function initializeFirebase() {
   return {
-    firebaseApp: app,
+    firebaseApp,
     auth,
     firestore,
     storage
