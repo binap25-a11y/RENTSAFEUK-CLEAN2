@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -198,17 +197,17 @@ export default function TenantMessagesPage() {
                 </div>
             </ScrollArea>
         </CardContent>
-        <CardFooter className="border-t p-4 bg-muted/5">
-            <form onSubmit={handleSendMessage} className="flex w-full gap-2">
+        <CardFooter className="p-4 border-t bg-muted/5">
+            <form onSubmit={handleSendMessage} className="flex w-full items-center gap-2">
                 <Input 
-                    placeholder="Message landlord..." 
-                    className="h-12 rounded-xl bg-background border-2 shadow-none focus-visible:ring-primary"
-                    value={newMessage}
+                    placeholder="Type a message..." 
+                    value={newMessage} 
                     onChange={(e) => setNewMessage(e.target.value)}
+                    className="flex-1 h-11 bg-background border-2 focus-visible:ring-primary rounded-xl"
                     disabled={isSending}
                 />
-                <Button type="submit" size="icon" className="h-12 w-12 rounded-xl shrink-0 shadow-lg" disabled={!newMessage.trim() || isSending}>
-                    {isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
+                <Button type="submit" size="icon" className="h-11 w-11 rounded-xl shadow-lg" disabled={!newMessage.trim() || isSending}>
+                    {isSending ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                 </Button>
             </form>
         </CardFooter>
