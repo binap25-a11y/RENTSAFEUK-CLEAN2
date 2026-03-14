@@ -264,7 +264,7 @@ export default function PropertyDetailPage() {
       <div className="flex flex-col gap-6 text-left">
         <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-4 overflow-hidden text-left">
-                <Button variant="outline" size="icon" asChild className="shrink-0"><Link href="/dashboard/properties"><ArrowLeft className="h-4 w-4" /></Link></Button>
+                <Button variant="outline" size="icon" asChild className="shrink-0"><Link href="/dashboard/properties"><ArrowLeft className="h-4" /></Link></Button>
                 <div className="min-w-0 text-left">
                     <h1 className="text-2xl font-bold font-headline leading-tight break-words text-left">{propertyAddressTitle}</h1>
                     <p className="text-muted-foreground text-sm font-medium mt-1">{propertyAddressSubtitle}</p>
@@ -435,7 +435,7 @@ export default function PropertyDetailPage() {
                                     disabled={isSendingReply || (!messages?.length && !activeTenants?.length)}
                                 />
                                 <Button type="submit" size="icon" className="h-11 w-11 rounded-xl shadow-lg" disabled={!newReply.trim() || isSendingReply}>
-                                    {isSendingReply ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
+                                    {isSendingReply ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                                 </Button>
                             </form>
                         </CardFooter>
@@ -479,7 +479,7 @@ export default function PropertyDetailPage() {
         </div>
       </div>
 
-      <AlertDialog open={isDeleting} onOpenChange={setIsDeleting}>
+      <AlertDialog open={isDeleting} onOpenChange={(open) => setIsDeleting(open)}>
         <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
           <AlertDialogHeader>
               <AlertDialogTitle className="text-xl font-headline">Archive Property?</AlertDialogTitle>

@@ -33,7 +33,7 @@ import { useToast } from '@/hooks/use-toast';
 /**
  * @fileOverview Resident Portal Chat
  * Secure real-time chat with audit-ready timestamps and date dividers.
- * Maximized viewport visibility for ease of use.
+ * Refactored into a full-viewport unified interface for maximum visibility.
  */
 
 interface Message {
