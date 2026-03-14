@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -83,7 +84,7 @@ export function useCollection<T = any>(
             setError(contextualError);
             errorEmitter.emit('permission-error', contextualError);
         } else {
-            console.error(`Firestore Error [${firestoreError.code}]:`, firestoreError.message);
+            console.error(`Firestore [${firestoreError.code}]: ${firestoreError.message}`);
             setError(firestoreError);
         }
         

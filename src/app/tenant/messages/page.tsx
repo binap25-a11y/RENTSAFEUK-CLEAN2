@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -54,10 +55,7 @@ export default function TenantMessagesPage() {
       return;
     }
     
-    // CASE NORMALIZATION: Strict lowercase matching for query engine synchronicity
     const userEmail = user.email.toLowerCase().trim();
-    
-    // STAGE 1: Registry Discovery via exact email match
     const tenantsCol = collection(firestore, 'tenants');
     const q = query(tenantsCol, where('email', '==', userEmail), limit(1));
 
@@ -72,7 +70,7 @@ export default function TenantMessagesPage() {
         }
         setIsLoadingContext(false);
     }, (error) => {
-        console.warn("Tenant messages portal discovery issue:", error.message);
+        console.warn("Portal context sync issue:", error.message);
         setIsLoadingContext(false);
     });
     return () => unsub();
@@ -80,7 +78,6 @@ export default function TenantMessagesPage() {
 
   const messagesQuery = useMemoFirebase(() => {
     if (!tenantContext || !user || !firestore) return null;
-    // Authorized via Handshake UID: Every message is tagged with the user's permanent account UID
     return query(
         collection(firestore, 'messages'),
         where('tenantId', '==', user.uid),
@@ -115,7 +112,7 @@ export default function TenantMessagesPage() {
         });
         setNewMessage('');
     } catch (error) {
-        console.error("Message sync failed:", error);
+        console.error("Message sync failure:", error);
     } finally {
         setIsSending(false);
     }
@@ -164,7 +161,7 @@ export default function TenantMessagesPage() {
                     <User className="h-5 w-5" />
                 </div>
                 <div>
-                    <CardTitle className="text-sm font-bold">Property Landlord</CardTitle>
+                    <CardTitle className="text-sm font-bold">Property Management</CardTitle>
                     <p className="text-[10px] text-green-600 font-bold uppercase tracking-widest">Active Connection</p>
                 </div>
             </div>
