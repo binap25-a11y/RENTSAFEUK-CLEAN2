@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -173,19 +172,19 @@ export default function TenantMessagesPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-14rem)] flex flex-col gap-4 text-left">
+    <div className="h-[calc(100vh-10rem)] flex flex-col gap-4 text-left">
       <div className="flex items-center justify-between">
           <div>
               <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Resident Chat</h1>
               <p className="text-xs text-muted-foreground font-medium uppercase tracking-[0.2em] flex items-center gap-1.5 mt-1">
                   <ShieldCheck className="h-3.5 w-3.5 text-green-600" />
-                  Audit-Ready Registry
+                  Verified Audit Trail
               </p>
           </div>
       </div>
 
       <Card className="flex-1 overflow-hidden shadow-2xl border-none flex flex-col bg-card">
-        <CardHeader className="border-b bg-muted/10 py-4 px-6 flex flex-row items-center justify-between">
+        <CardHeader className="border-b bg-muted/10 py-4 px-6 flex flex-row items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-primary/10 flex items-center justify-center text-primary shadow-inner">
                     <User className="h-5 w-5" />
@@ -200,6 +199,7 @@ export default function TenantMessagesPage() {
             </div>
             <Badge variant="outline" className="h-6 text-[8px] uppercase font-bold tracking-widest bg-background">AES-256 Encrypted</Badge>
         </CardHeader>
+        
         <CardContent className="flex-1 p-0 overflow-hidden relative bg-muted/5">
             <ScrollArea className="h-full p-6">
                 <div className="space-y-6 max-w-4xl mx-auto">
@@ -231,17 +231,17 @@ export default function TenantMessagesPage() {
                                             <div className="h-px flex-1 bg-border" />
                                         </div>
                                     )}
-                                    <div className={cn("flex flex-col gap-1 max-w-[85%] sm:max-w-[70%]", isMe ? "ml-auto items-end" : "mr-auto items-start")}>
+                                    <div className={cn("flex flex-col gap-1.5 max-w-[85%] sm:max-w-[75%]", isMe ? "ml-auto items-end" : "mr-auto items-start")}>
                                         <div className={cn(
                                             "p-4 rounded-2xl text-sm font-medium shadow-md leading-relaxed",
                                             isMe ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-white text-foreground rounded-tl-none border-2 border-muted"
                                         )}>
                                             {msg.content}
                                         </div>
-                                        <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 px-1 mt-1">
+                                        <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
                                             <Clock className="h-2.5 w-2.5" />
                                             {formatMessageTime(date)}
-                                            {!isMe && <span className="ml-1 opacity-40">Sent by management</span>}
+                                            {!isMe && <span className="ml-1 opacity-40 font-bold text-primary">Management: {msg.senderName}</span>}
                                         </div>
                                     </div>
                                 </div>
@@ -252,10 +252,11 @@ export default function TenantMessagesPage() {
                 </div>
             </ScrollArea>
         </CardContent>
-        <CardFooter className="p-4 border-t bg-background shadow-inner">
+
+        <CardFooter className="p-4 border-t bg-background shadow-inner shrink-0">
             <form onSubmit={handleSendMessage} className="flex w-full items-center gap-3 max-w-4xl mx-auto">
                 <Input 
-                    placeholder="Type a secure message..." 
+                    placeholder="Type a secure message to management..." 
                     value={newMessage} 
                     onChange={(e) => setNewMessage(e.target.value)}
                     className="flex-1 h-12 bg-muted/20 border-2 focus-visible:ring-primary rounded-2xl font-medium shadow-none transition-all focus:bg-background"
