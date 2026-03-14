@@ -490,7 +490,7 @@ export default function PropertyDetailPage() {
 
       <AlertDialog open={isDeleting} onOpenChange={(open) => setIsDeleting(open)}>
         <AlertDialogContent className="rounded-2xl border-none shadow-2xl text-left">
-          <AlertDialogHeader>
+          <AlertDialogHeader className='text-left'>
               <AlertDialogTitle className="text-xl font-headline">Archive Asset?</AlertDialogTitle>
               <AlertDialogDescription className="text-base font-medium">Move record at <strong className='text-foreground'>{property.address.street}</strong> to archives.</AlertDialogDescription>
           </AlertDialogHeader>
