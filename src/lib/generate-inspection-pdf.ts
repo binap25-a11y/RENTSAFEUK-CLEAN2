@@ -67,7 +67,7 @@ const hmoTenantFields = [{ key: 'clean', label: 'Room kept clean' }, { key: 'noS
 const followUpFields = [{ key: 'repairsRequired', label: 'Repairs Required' }, { key: 'urgentSafetyIssues', label: 'Urgent Safety Issues' }, { key: 'maintenanceScheduled', label: 'Maintenance Scheduled' }];
 
 export const generateInspectionPDF = (inspection: any, property: any) => {
-  if (!inspection || !property) return;
+  if (!inspection || !property) return null;
 
   const doc = new jsPDF();
   const inspectionDate = safeFormatDate(inspection.scheduledDate || inspection.inspectionDate);
@@ -194,4 +194,6 @@ export const generateInspectionPDF = (inspection: any, property: any) => {
   
   const safeAddress = propertyAddress.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
   doc.save(`Audit-Report-${safeAddress}-${format(new Date(), 'yyyyMMdd')}.pdf`);
+  
+  return doc;
 };
