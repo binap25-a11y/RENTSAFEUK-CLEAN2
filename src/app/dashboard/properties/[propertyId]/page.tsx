@@ -1,7 +1,7 @@
 
 'use client';
 
-import { useParams, useRouter, useSearchParams } from 'next/navigation';
+import { useParams, useRouter } from 'next/navigation';
 import Link from 'next/link';
 import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -53,7 +53,7 @@ import { cn } from '@/lib/utils';
 
 /**
  * @fileOverview Comprehensive Landlord Property View.
- * Enhanced with audit-ready bidirectional messaging registry.
+ * Enhanced with real-time bidirectional messaging registry and full source restoration.
  */
 
 interface Property {
@@ -159,7 +159,6 @@ export default function PropertyDetailPage() {
     e.preventDefault();
     if (!newReply.trim() || !user || !property || isSendingReply) return;
 
-    // Use the tenant identity linked to existing messages or the first active resident
     const targetTenantId = messages?.find(m => m.senderId !== user.uid)?.tenantId || (activeTenants?.[0]?.userId);
     
     if (!targetTenantId) {
@@ -180,7 +179,7 @@ export default function PropertyDetailPage() {
             timestamp: serverTimestamp()
         });
         setNewReply('');
-        toast({ title: 'Reply Sent', description: 'Communication synchronized with the audit trail.' });
+        toast({ title: 'Message Sent', description: 'Communication synchronized with the audit trail.' });
     } catch (error) {
         console.error("Sync failure:", error);
         toast({ variant: 'destructive', title: 'Send Failed' });
