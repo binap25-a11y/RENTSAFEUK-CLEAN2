@@ -132,10 +132,11 @@ export default function TenantDashboard() {
     } catch (err: any) {
         console.error("Resident Hub Discovery Error:", err.message);
         
-        // ERROR GOVERNANCE: Trigger specific listener for developer oversight
+        // ERROR GOVERNANCE: Handle permission denial by surfacing developer overlay if needed
         if (err.code === 'permission-denied') {
+            const path: string = err.message.includes('tenants') ? 'tenants' : 'properties';
             errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: 'tenants',
+                path: path,
                 operation: 'list'
             }));
             setErrorState("Access Denied: Handshake blocked by security governance.");

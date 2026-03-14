@@ -161,9 +161,7 @@ export default function TenantsPage() {
         description: `${tenantToArchive.name} has been moved to the archives and property status updated.`,
       });
       
-      // Hard navigation to ensure state alignment if necessary
       setTenantToArchive(null);
-      router.refresh();
     } catch (e) {
       console.error('Error archiving tenant:', e);
       toast({
@@ -206,7 +204,7 @@ export default function TenantsPage() {
             <CardDescription>A list of active tenants and their Resident Hub status.</CardDescription>
           </CardHeader>
           <CardContent className="pt-6">
-            <div className="relative w-full max-w-sm mb-6">
+            <div className="relative w-full max-sm mb-6">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input
                 id="tenant-search-input"

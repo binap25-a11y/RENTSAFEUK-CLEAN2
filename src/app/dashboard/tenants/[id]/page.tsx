@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -172,7 +171,7 @@ export default function TenantDetailPage() {
             collection(firestore, 'tenants'),
             where('propertyId', '==', tenant.propertyId),
             where('status', '==', 'Active'),
-            limit(2)
+            limit(5)
         );
         const activeTenantsSnap = await getDocs(activeTenantsQuery);
         
@@ -223,20 +222,20 @@ export default function TenantDetailPage() {
                 <Button variant="outline" size="icon" asChild className="shrink-0">
                     <Link href="/dashboard/tenants"><ArrowLeft className="h-4 w-4" /></Link>
                 </Button>
-                <div className="min-w-0">
+                <div className="min-w-0 text-left">
                     <div className="flex items-center gap-2 flex-wrap">
                         <h1 className="text-2xl font-bold font-headline leading-tight break-words">{tenant.name}</h1>
                         {isVerified ? (
-                            <Badge className="bg-green-100 text-green-800 border-green-200 gap-1 font-bold uppercase text-[9px]">
+                            <Badge className="bg-green-100 text-green-800 border-green-200 gap-1.5 font-bold uppercase text-[9px]">
                                 <ShieldCheck className="h-3 w-3" /> Verified Resident
                             </Badge>
                         ) : (
-                            <Badge variant="secondary" className="gap-1 font-bold uppercase text-[9px]">
-                                <Loader2 className="h-3 w-3 animate-spin" /> Verification Pending
+                            <Badge variant="secondary" className="gap-1.5 font-bold uppercase text-[9px]">
+                                <Loader2 className="h-3 w-3 animate-spin" /> Handshake Pending
                             </Badge>
                         )}
                     </div>
-                    <p className="text-sm text-muted-foreground font-medium">Tenant Management Profile</p>
+                    <p className="text-sm text-muted-foreground font-medium">Registry Record</p>
                 </div>
             </div>
             <div className="flex flex-wrap items-center gap-3">
@@ -254,12 +253,12 @@ export default function TenantDetailPage() {
                 </Button>
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="ghost" size="icon" className="h-10 w-10 border">
+                        <Button variant="ghost" size="icon" className="h-10 w-10 border shadow-none">
                             <MoreVertical className="h-4 w-4" />
                         </Button>
                     </DropdownMenuTrigger>
-                    <DropdownMenuContent align="end">
-                        <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive font-bold">
+                    <DropdownMenuContent align="end" className="w-48">
+                        <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive font-bold cursor-pointer">
                             <Trash2 className="mr-2 h-4 w-4" /> Archive Tenant
                         </DropdownMenuItem>
                     </DropdownMenuContent>
@@ -271,12 +270,12 @@ export default function TenantDetailPage() {
             {!isVerified && (
                 <Card className="border-primary/20 bg-primary/5 shadow-inner">
                     <CardContent className="flex items-center gap-4 py-4">
-                        <div className="p-2 rounded-full bg-primary/10 text-primary shrink-0"><AlertCircle className="h-5 w-5" /></div>
+                        <div className="p-2.5 rounded-full bg-primary/10 text-primary shrink-0"><AlertCircle className="h-5 w-5" /></div>
                         <div className="flex-1 text-left">
                             <p className="text-sm font-bold text-primary">Verification Handshake Required</p>
-                            <p className="text-xs text-muted-foreground">This tenant has not yet accessed the Resident Hub. Shared maintenance tracking and document sync will be inactive until verified.</p>
+                            <p className="text-xs text-muted-foreground leading-relaxed">This tenant has not yet accessed the Resident Hub. Shared maintenance tracking and document sync will be inactive until verified.</p>
                         </div>
-                        <Button size="sm" onClick={handleSendInvite} className="font-bold text-[10px] uppercase">Send Invite</Button>
+                        <Button size="sm" onClick={handleSendInvite} className="font-bold text-[10px] uppercase shadow-sm">Send Invite</Button>
                     </CardContent>
                 </Card>
             )}
@@ -313,14 +312,14 @@ export default function TenantDetailPage() {
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                         <div className="p-4 rounded-xl bg-background border shadow-sm flex items-start gap-4">
                             <div className="p-2.5 rounded-lg bg-green-50 text-green-600 shrink-0"><Banknote className="h-5 w-5" /></div>
-                            <div>
+                            <div className="text-left">
                                 <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.2em] mb-0.5">Agreed Rent</p>
                                 <p className="font-bold text-xl">£{tenant.monthlyRent?.toLocaleString() || '0'}<span className="text-xs font-medium text-muted-foreground"> /mo</span></p>
                             </div>
                         </div>
                         <div className="p-4 rounded-xl bg-background border shadow-sm flex items-start gap-4">
                             <div className="p-2.5 rounded-lg bg-blue-50 text-blue-600 shrink-0"><CalendarDays className="h-5 w-5" /></div>
-                            <div>
+                            <div className="text-left">
                                 <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.2em] mb-0.5">Rent Due Date</p>
                                 <p className="font-bold text-xl">{tenant.rentDueDay || '1'}<span className="text-xs font-medium text-muted-foreground">{[1, 21, 31].includes(tenant.rentDueDay || 1) ? 'st' : [2, 22].includes(tenant.rentDueDay || 1) ? 'nd' : [3, 23].includes(tenant.rentDueDay || 1) ? 'rd' : 'th'} of month</span></p>
                             </div>
@@ -331,7 +330,7 @@ export default function TenantDetailPage() {
                             <CalendarDays className="h-3.5 w-3.5" />
                             Contract Timeline
                         </div>
-                        <div className="flex items-center gap-8">
+                        <div className="flex items-center gap-8 text-left">
                             <div className="flex-1">
                                 <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest mb-1">Effective Start</p>
                                 <p className="font-bold text-base">{safeCreateDate(tenant.tenancyStartDate) ? format(safeCreateDate(tenant.tenancyStartDate)!, 'dd MMM yyyy') : 'N/A'}</p>
