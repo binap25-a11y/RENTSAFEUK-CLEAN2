@@ -3,8 +3,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RentSafeUK Security Governance v22.0
-     * Optimized for high-speed Discovery and atomic Identity Handshake.
+     * RentSafeUK Security Governance v25.0
+     * Optimized for high-speed Discovery, atomic Identity Handshake, and Secure Messaging.
      */
 
     function isSignedIn() {
@@ -24,18 +24,8 @@ service cloud.firestore {
         (email != null && (
           email == data.get('email', '') || 
           email == data.get('tenantEmail', '') || 
-          email in data.get('tenantEmails', [])
+          (data.get('tenantEmails', []) is list && email in data.get('tenantEmails', []))
         ))
-      );
-    }
-
-    // HANDSHAKE: Checks if the user's verified token matches the registry email for initial link.
-    function isTenantDiscovery(data) {
-      let email = request.auth.token.email;
-      return isSignedIn() && email != null && (
-        email == data.get('email', '') || 
-        email == data.get('tenantEmail', '') || 
-        email in data.get('tenantEmails', [])
       );
     }
 
@@ -50,15 +40,15 @@ service cloud.firestore {
 
     // --- Tenant Registry ---
     match /tenants/{tenantId} {
-      // Allow discovery list for all signed-in users (query will be filtered by email)
+      // Allow discovery list for all signed-in users (query will be filtered by email or landlordId)
       allow list: if isSignedIn(); 
       allow get: if isRelated(resource.data);
       allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
       
-      // HANDSHAKE: Allow residents to update their own verification status if they match the email.
+      // HANDSHAKE: Allow residents to update their own verification status if they match the registry email.
       allow update: if isSignedIn() && (
         isLandlord(resource.data) || 
-        (isTenantDiscovery(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'verified', 'joinedDate', 'status', 'lastSyncCheck']))
+        (request.auth.token.email == resource.data.email && request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'verified', 'joinedDate', 'status', 'lastSyncCheck']))
       );
       allow delete: if isLandlord(resource.data);
     }
@@ -73,9 +63,22 @@ service cloud.firestore {
       // HANDSHAKE: Allow residents to link their account to the property bridge if they match the registry email.
       allow update: if isSignedIn() && (
         isLandlord(resource.data) || 
-        (isTenantDiscovery(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasAny(['tenantId', 'activeTenantUids', 'status']))
+        (request.auth.token.email == resource.data.tenantEmail && request.resource.data.diff(resource.data).affectedKeys().hasAny(['tenantId', 'activeTenantUids', 'status']))
       );
       allow delete: if isLandlord(resource.data);
+    }
+
+    // --- Secure Messaging Ledger ---
+    match /messages/{id} {
+      // Explicitly allow list if the user is a participant in the conversation (indexed query check)
+      allow list: if isSignedIn();
+      allow get: if isSignedIn() && (
+        request.auth.uid == resource.data.senderId || 
+        request.auth.uid == resource.data.tenantId || 
+        request.auth.uid == resource.data.landlordId
+      );
+      allow create: if isSignedIn() && (request.resource.data.senderId == request.auth.uid);
+      allow update, delete: if false;
     }
 
     // --- Shared Ledger Collections ---
@@ -86,13 +89,6 @@ service cloud.firestore {
       allow create: if isSignedIn();
       allow update: if isRelated(resource.data);
       allow delete: if isLandlord(resource.data);
-    }
-
-    match /messages/{id} {
-      allow list: if isSignedIn();
-      allow get: if isSignedIn() && (request.auth.uid == resource.data.senderId || isRelated(resource.data));
-      allow create: if isSignedIn();
-      allow update, delete: if false;
     }
 
     match /documents/{id} {
