@@ -448,9 +448,9 @@ export default function PropertyDetailPage() {
                                 <Input 
                                     placeholder="Type a response to the resident..." 
                                     value={newReply}
-                                    onChange={(e) => setNewMessage(e.target.value)}
+                                    onChange={(e) => setNewReply(e.target.value)}
                                     className="flex-1 rounded-xl h-11 bg-muted/20 border-2"
-                                    disabled={isSendingReply || !messages?.length && !activeTenants?.length}
+                                    disabled={isSendingReply || (!messages?.length && !activeTenants?.length)}
                                 />
                                 <Button type="submit" size="icon" className="h-11 w-11 rounded-xl shadow-lg" disabled={!newReply.trim() || isSendingReply}>
                                     {isSendingReply ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}

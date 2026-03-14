@@ -83,7 +83,7 @@ export default function TenantMessagesPage() {
     if (!tenantContext || !user || !firestore) return null;
     return query(
         collection(firestore, 'messages'),
-        where('tenantId', '==', user.uid),
+        where('propertyId', '==', tenantContext.propertyId),
         orderBy('timestamp', 'asc'),
         limit(100)
     );
@@ -109,7 +109,7 @@ export default function TenantMessagesPage() {
             propertyId: tenantContext.propertyId,
             tenantId: user.uid,
             senderId: user.uid,
-            senderName: user.displayName || 'Tenant',
+            senderName: user.displayName || 'Resident',
             content: newMessage.trim(),
             timestamp: serverTimestamp()
         });
