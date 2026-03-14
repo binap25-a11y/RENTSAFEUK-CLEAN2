@@ -160,11 +160,13 @@ export default function PropertyDetailPage() {
     e.preventDefault();
     if (!newReply.trim() || !user || !property || isSendingReply) return;
 
-    // Use existing message context or default to first active tenant
-    const targetTenantId = messages?.find(m => m.senderId !== user.uid)?.tenantId || (activeTenants?.[0]?.userId);
+    // Use existing message context or default to first active tenant's document ID
+    const targetTenant = messages?.find(m => m.senderId !== user.uid) || activeTenants?.[0];
+    const targetTenantId = targetTenant?.tenantId || targetTenant?.id;
+    const targetTenantUid = targetTenant?.senderId !== user.uid ? targetTenant?.senderId : (activeTenants?.[0]?.userId || '');
     
     if (!targetTenantId) {
-        toast({ variant: 'destructive', title: 'Resident Required', description: 'No active verified resident found to receive this message.' });
+        toast({ variant: 'destructive', title: 'Resident Required', description: 'No active resident found to receive this message.' });
         return;
     }
 
@@ -174,7 +176,8 @@ export default function PropertyDetailPage() {
         await addDoc(msgCol, {
             landlordId: user.uid,
             propertyId: property.id,
-            tenantId: targetTenantId,
+            tenantId: targetTenantId, // Document ID for stability
+            tenantUid: targetTenantUid, // Auth UID for security rules if available
             senderId: user.uid,
             senderName: user.displayName || 'Property Management',
             content: newReply.trim(),
@@ -184,7 +187,7 @@ export default function PropertyDetailPage() {
         toast({ title: 'Message Sent', description: 'Communication synchronized with the audit trail.' });
     } catch (error) {
         console.error("Sync failure:", error);
-        toast({ variant: 'destructive', title: 'Send Failed', description: 'Index creation or sync error detected.' });
+        toast({ variant: 'destructive', title: 'Send Failed', description: 'Check your internet connection and try again.' });
     } finally {
         setIsSendingReply(false);
     }

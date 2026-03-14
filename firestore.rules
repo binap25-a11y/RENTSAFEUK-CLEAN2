@@ -4,8 +4,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RENTSAFEUK SECURITY GOVERNANCE v7.0
-     * Index deployment re-synchronized for real-time bidirectional messaging registry.
+     * RENTSAFEUK SECURITY GOVERNANCE v8.0
+     * Optimized for Stable Identity Mapping in Messaging Registry.
      */
 
     function isSignedIn() {
@@ -100,14 +100,10 @@ service cloud.firestore {
 
     // --- Communication (Messages) ---
     match /messages/{messageId} {
-      allow read: if isSignedIn() && (
-        resource.data.tenantId == request.auth.uid || 
-        resource.data.landlordId == request.auth.uid
-      );
-      
-      allow list: if isSignedIn() && (
-        resource.data.tenantId == request.auth.uid ||
-        resource.data.landlordId == request.auth.uid
+      allow read, list: if isSignedIn() && (
+        resource.data.landlordId == request.auth.uid || 
+        resource.data.get('tenantUid', '') == request.auth.uid ||
+        get(/databases/$(database)/documents/tenants/$(resource.data.tenantId)).data.userId == request.auth.uid
       );
       
       allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;

@@ -33,7 +33,7 @@ import { useToast } from '@/hooks/use-toast';
 
 /**
  * @fileOverview Resident Portal Messaging interface.
- * Unified Architecture with professional full-viewport history trail and transactional confirmations.
+ * Fixed: Uses Tenant Document ID for stable cross-identity handshake.
  */
 
 interface Message {
@@ -89,7 +89,7 @@ export default function TenantMessagesPage() {
     return query(
         collection(firestore, 'messages'),
         where('propertyId', '==', tenantContext.propertyId),
-        where('tenantId', '==', user.uid),
+        where('tenantId', '==', tenantContext.tenantId), // Stable Doc ID
         orderBy('timestamp', 'asc'),
         limit(100)
     );
@@ -113,7 +113,8 @@ export default function TenantMessagesPage() {
         await addDoc(msgCol, {
             landlordId: tenantContext.landlordId,
             propertyId: tenantContext.propertyId,
-            tenantId: user.uid,
+            tenantId: tenantContext.tenantId, // Stable Doc ID
+            tenantUid: user.uid, // Auth UID for rule validation
             senderId: user.uid,
             senderName: user.displayName || 'Resident',
             content: newMessage.trim(),
