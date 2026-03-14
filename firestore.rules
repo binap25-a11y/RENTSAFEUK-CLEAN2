@@ -4,7 +4,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RentSafeUK Security Governance v19.0
+     * RentSafeUK Security Governance v20.0
      * Optimized for high-speed query prove-ability and atomic resident handshakes.
      */
 
@@ -29,8 +29,7 @@ service cloud.firestore {
     function isTenant(data) {
       return isSignedIn() && (
         getUid() == data.get('tenantId', '') || 
-        getUid() == data.get('userId', '') ||
-        getUid() == data.get('reportedBy', '')
+        getUid() == data.get('userId', '')
       );
     }
 
@@ -41,17 +40,17 @@ service cloud.firestore {
 
     // --- Tenant Registry ---
     match /tenants/{tenantId} {
-      // DISCOVERY: Consolidated for deterministic query authorization
+      // DISCOVERY: Optimized for deterministic query authorization
       allow list: if isSignedIn() && (
         getUid() == resource.data.get('landlordId', '') || 
         getUid() == resource.data.get('userId', '') || 
-        getEmail() == resource.data.get('email', '').lower()
+        getEmail() == resource.data.get('email', '')
       );
       
       allow get: if isSignedIn() && (
         isLandlord(resource.data) || 
         isTenant(resource.data) || 
-        getEmail() == resource.data.get('email', '').lower()
+        getEmail() == resource.data.get('email', '')
       );
       
       allow create: if isSignedIn();
@@ -59,7 +58,7 @@ service cloud.firestore {
       // HANDSHAKE: Allow residents to link their UID if they match the registry email
       allow update: if isSignedIn() && (
         isLandlord(resource.data) || 
-        (getEmail() == resource.data.get('email', '').lower() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'verified', 'joinedDate', 'status', 'lastSyncCheck']))
+        (getEmail() == resource.data.get('email', '') && request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'verified', 'joinedDate', 'status', 'lastSyncCheck']))
       );
       allow delete: if isLandlord(resource.data);
     }
@@ -71,13 +70,13 @@ service cloud.firestore {
         getUid() == resource.data.get('landlordId', '') || 
         getUid() == resource.data.get('tenantId', '') || 
         resource.data.get('activeTenantUids', []).hasAny([getUid()]) ||
-        getEmail() == resource.data.get('tenantEmail', '').lower()
+        getEmail() == resource.data.get('tenantEmail', '')
       );
 
       allow get: if isSignedIn() && (
         isLandlord(resource.data) || 
         isTenant(resource.data) || 
-        getEmail() == resource.data.get('tenantEmail', '').lower()
+        getEmail() == resource.data.get('tenantEmail', '')
       );
       
       allow create: if isSignedIn();
@@ -85,22 +84,20 @@ service cloud.firestore {
       // HANDSHAKE: Allow residents to link their UID to the property bridge if authorized by email
       allow update: if isSignedIn() && (
         isLandlord(resource.data) || 
-        (getEmail() == resource.data.get('tenantEmail', '').lower() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['tenantId', 'activeTenantUids', 'status']))
+        (getEmail() == resource.data.get('tenantEmail', '') && request.resource.data.diff(resource.data).affectedKeys().hasAny(['tenantId', 'activeTenantUids', 'status']))
       );
       allow delete: if isLandlord(resource.data);
     }
 
     // --- Secure Messaging Ledger ---
     match /messages/{id} {
-      // PROOF-OPTIMIZED: Combined branches for deterministic query proof
-      allow list: if isSignedIn() && (
-        getUid() == resource.data.get('tenantId', '') || 
-        getUid() == resource.data.get('landlordId', '')
-      );
+      // PROOF-OPTIMIZED: Discrete list branches for query determinism
+      allow list: if isSignedIn() && resource.data.get('tenantId', '') == getUid();
+      allow list: if isSignedIn() && resource.data.get('landlordId', '') == getUid();
       
       allow get: if isSignedIn() && (
-        getUid() == resource.data.get('tenantId', '') || 
-        getUid() == resource.data.get('landlordId', '')
+        resource.data.get('tenantId', '') == getUid() || 
+        resource.data.get('landlordId', '') == getUid()
       );
       
       allow create: if isSignedIn() && (
