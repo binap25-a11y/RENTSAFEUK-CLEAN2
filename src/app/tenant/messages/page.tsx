@@ -1,7 +1,14 @@
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
-import { Card, CardContent, CardHeader, CardTitle, CardFooter, CardDescription } from '@/components/ui/card';
+import { 
+  Card, 
+  CardContent, 
+  CardHeader, 
+  CardTitle, 
+  CardFooter, 
+  CardDescription 
+} from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
@@ -28,19 +35,13 @@ interface Message {
 }
 
 export default function TenantMessagesPage() {
-  const { user, isUserLoading } = userHook();
+  const { user, isUserLoading } = useUser();
   const firestore = useFirestore();
   const [tenantContext, setTenantContext] = useState<any>(null);
   const [isLoadingContext, setIsLoadingContext] = useState(true);
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
-
-  // Identity discovery wrapper
-  function userHook() {
-    const { user, isUserLoading } = useUser();
-    return { user, isUserLoading };
-  }
 
   useEffect(() => {
     if (isUserLoading || !user || !firestore || !user.email) {
@@ -117,7 +118,7 @@ export default function TenantMessagesPage() {
 
   if (isLoadingContext || isUserLoading) {
     return (
-      <div className="flex h-64 flex-col items-center justify-center gap-4">
+      <div className="flex h-64 flex-col items-center justify-center gap-4 text-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Establishing Secure Channel...</p>
       </div>

@@ -3,8 +3,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RENTSAFE UK - SECURITY GOVERNANCE v2.2
-     * Optimized for discrete rule-query prove-ability and secure resident handshakes.
+     * RENTSAFE UK - SECURITY GOVERNANCE v2.5
+     * Optimized for high-speed query verification and secure resident handshakes.
      */
 
     // --- GLOBAL HELPER FUNCTIONS ---
@@ -29,9 +29,11 @@ service cloud.firestore {
     // --- PROPERTIES (Asset Registry) ---
     match /properties/{propertyId} {
       // Discrete branches for static query verification
-      allow list: if isSignedIn() && request.query.filters.get('landlordId', '') == request.auth.uid;
-      allow list: if isSignedIn() && request.query.filters.get('tenantEmail', '') == getAuthEmail();
-      allow list: if isSignedIn() && request.query.filters.get('activeTenantUids', []) != [];
+      // Combined for optimizer prove-ability
+      allow list: if isSignedIn() && (
+        request.query.filters.get('landlordId', '') == request.auth.uid ||
+        request.query.filters.get('tenantEmail', '') == getAuthEmail()
+      );
 
       allow get: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
@@ -56,10 +58,12 @@ service cloud.firestore {
 
     // --- TENANTS (Identity Registry) ---
     match /tenants/{tenantId} {
-      // Proof-optimized discrete branches
-      allow list: if isSignedIn() && request.query.filters.get('landlordId', '') == request.auth.uid;
-      allow list: if isSignedIn() && request.query.filters.get('email', '') == getAuthEmail();
-      allow list: if isSignedIn() && request.query.filters.get('userId', '') == request.auth.uid;
+      // Unified query filter validation
+      allow list: if isSignedIn() && (
+        request.query.filters.get('landlordId', '') == request.auth.uid ||
+        request.query.filters.get('email', '') == getAuthEmail() ||
+        request.query.filters.get('userId', '') == request.auth.uid
+      );
 
       allow get: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid || 
@@ -80,9 +84,11 @@ service cloud.firestore {
 
     // --- MESSAGES (Secure Chat) ---
     match /messages/{messageId} {
-      // Proof-optimized discrete branches for high-speed chat sync
-      allow list: if isSignedIn() && request.query.filters.get('tenantId', '') == request.auth.uid;
-      allow list: if isSignedIn() && request.query.filters.get('landlordId', '') == request.auth.uid;
+      // Proof-optimized query validation
+      allow list: if isSignedIn() && (
+        request.query.filters.get('tenantId', '') == request.auth.uid ||
+        request.query.filters.get('landlordId', '') == request.auth.uid
+      );
 
       allow get: if isSignedIn() && (
         resource.data.tenantId == request.auth.uid || 
