@@ -18,6 +18,14 @@
       ]
     },
     {
+      "collectionGroup": "tenants",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "propertyId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "messages",
       "queryScope": "COLLECTION",
       "fields": [
@@ -61,16 +69,6 @@
       "queryScope": "COLLECTION_GROUP",
       "fields": [
         { "fieldPath": "propertyId", "order": "ASCENDING" },
-        { "fieldPath": "landlordId", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
-      "collectionGroup": "messages",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        { "fieldPath": "propertyId", "order": "ASCENDING" },
         { "fieldPath": "tenantId", "order": "ASCENDING" },
         { "fieldPath": "tenantEmail", "order": "ASCENDING" },
         { "fieldPath": "timestamp", "order": "ASCENDING" },
@@ -82,6 +80,14 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "landlordId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "repairs",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "landlordId", "order": "ASCENDING" },
         { "fieldPath": "propertyId", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" }
       ]
@@ -92,6 +98,30 @@
       "fields": [
         { "fieldPath": "propertyId", "order": "ASCENDING" },
         { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "inspections",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "landlordId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "inspections",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "landlordId", "order": "ASCENDING" },
+        { "fieldPath": "propertyId", "order": "ASCENDING" }
+      ]
+    },
+    {
+      "collectionGroup": "rentPayments",
+      "queryScope": "COLLECTION",
+      "fields": [
+        { "fieldPath": "landlordId", "order": "ASCENDING" },
+        { "fieldPath": "year", "order": "ASCENDING" }
       ]
     }
   ],
