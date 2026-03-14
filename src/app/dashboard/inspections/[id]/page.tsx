@@ -2,14 +2,16 @@
 
 import { useParams, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
+import Image from 'next/image';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
-import { ArrowLeft, Loader2, Calendar as CalendarIcon, User, Shield, AlertTriangle, Download, AlertCircle } from 'lucide-react';
+import { ArrowLeft, Loader2, Calendar as CalendarIcon, User, Shield, AlertTriangle, Download, AlertCircle, Images, FileVideo } from 'lucide-react';
 import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc } from 'firebase/firestore';
 import { generateInspectionPDF } from '@/lib/generate-inspection-pdf';
+import { useState } from 'react';
 
 interface Property {
     address: {
@@ -78,9 +80,6 @@ const singleLetSections = {
   bedrooms: { title: 'Bedrooms', fields: [{ key: 'windows', label: 'Windows and locks' }, { key: 'heating', label: 'Heating operational' }, { key: 'noDamp', label: 'No damp or mould' }, { key: 'flooring', label: 'Flooring and walls' }, { key: 'furniture', label: 'Furniture condition (if provided)' }] },
 };
 
-const tenantResponsibilitiesFields = [{ key: 'clean', label: 'Property kept clean' }, { key: 'noOccupants', label: 'No unauthorised occupants' }, { key: 'noPets', label: 'No unauthorised pets' }, { key: 'noSmoking', label: 'No evidence of smoking' }, { key: 'noAlterations', label: 'No unauthorised alterations' }];
-const followUpFields = [{ key: 'repairsRequired', label: 'Repairs Required' }, { key: 'urgentSafetyIssues', label: 'Urgent Safety Issues' }, { key: 'maintenanceScheduled', label: 'Maintenance Scheduled' }];
-
 const hmoSections = {
   fireSafety: { title: 'Fire Safety (HMO Specific)', fields: [ { key: 'interlinkedAlarms', label: 'Interlinked smoke alarms' }, { key: 'heatDetector', label: 'Heat detector in kitchen' }, { key: 'fireDoors', label: 'Fire doors self-closing' }, { key: 'doorSeals', label: 'Door intumescent strips intact' }, { key: 'extinguishers', label: 'Fire extinguishers serviced' }, { key: 'fireBlanket', label: 'Fire blanket in kitchen' }, { key: 'emergencyLighting', label: 'Emergency lighting operational' }, { key: 'clearRoutes', label: 'Fire escape routes clear' }, { key: 'signage', label: 'Fire safety signage displayed' }] },
   communal: { title: 'Communal Areas', fields: [{ key: 'clean', label: 'Clean and free from hazards' }, { key: 'lighting', label: 'Adequate lighting' }, { key: 'flooring', label: 'Flooring in good condition' }, { key: 'noDamp', label: 'No damp or mould' }, { key: 'windows', label: 'Windows and locks functioning' }, { key: 'wasteDisposal', label: 'Waste disposal area tidy' }] },
@@ -91,8 +90,9 @@ const hmoSections = {
   exterior: { title: 'Exterior', fields: [{ key: 'roof', label: 'Roof and gutters good' }, { key: 'pathways', label: 'Pathways safe and clear' }, { key: 'garden', label: 'Garden/yard maintained' }, { key: 'bins', label: 'Bins accessible' }, { key: 'securityLighting', label: 'Security lighting working' }] },
 };
 
+const tenantResponsibilitiesFields = [{ key: 'clean', label: 'Property kept clean' }, { key: 'noOccupants', label: 'No unauthorised occupants' }, { key: 'noPets', label: 'No unauthorised pets' }, { key: 'noSmoking', label: 'No evidence of smoking' }, { key: 'noAlterations', label: 'No unauthorised alterations' }];
 const hmoTenantFields = [{ key: 'clean', label: 'Room kept clean' }, { key: 'noSmoking', label: 'No evidence of smoking' }, { key: 'noPets', label: 'No unauthorised pets' }, { key: 'noTampering', label: 'No tampering with fire equipment' }];
-const hmoFollowUpFields = [{ key: 'repairsRequired', label: 'Repairs Required' }, { key: 'urgentSafetyIssues', label: 'Urgent Safety Issues' }, { key: 'maintenanceScheduled', label: 'Maintenance Scheduled' }];
+const followUpFields = [{ key: 'repairsRequired', label: 'Repairs Required' }, { key: 'urgentSafetyIssues', label: 'Urgent Safety Issues' }, { key: 'maintenanceScheduled', label: 'Maintenance Scheduled' }];
 
 export default function ViewInspectionPage() {
   const params = useParams();
@@ -101,6 +101,7 @@ export default function ViewInspectionPage() {
   const propertyId = searchParams.get('propertyId');
   const firestore = useFirestore();
   const { user } = useUser();
+  const [isExporting, setIsExporting] = useState(false);
 
   const inspectionRef = useMemoFirebase(() => {
     if (!firestore || !id || !user) return null;
@@ -115,6 +116,18 @@ export default function ViewInspectionPage() {
   const { data: property, isLoading: isLoadingProperty } = useDoc<Property>(propertyRef);
 
   const isLoading = isLoadingInspection || isLoadingProperty;
+
+  const handleExportPDF = async () => {
+    if (!inspection || !property) return;
+    setIsExporting(true);
+    try {
+        await generateInspectionPDF(inspection, property);
+    } catch (err) {
+        console.error("PDF Export failed:", err);
+    } finally {
+        setIsExporting(false);
+    }
+  };
 
   if (isLoading) {
     return (
@@ -168,8 +181,9 @@ export default function ViewInspectionPage() {
                 <p className="text-muted-foreground">{propertyAddress}</p>
             </div>
         </div>
-        <Button onClick={() => generateInspectionPDF(inspection, property)} disabled={!inspection || !property}>
-            <Download className="mr-2 h-4 w-4" /> Download PDF
+        <Button onClick={handleExportPDF} disabled={isExporting || !inspection || !property}>
+            {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+            Download PDF
         </Button>
       </div>
       
@@ -204,6 +218,50 @@ export default function ViewInspectionPage() {
             </div>
         </CardContent>
       </Card>
+
+      {/* Media Evidence Gallery */}
+      {(inspection.photoUrls?.length > 0 || inspection.videoUrls?.length > 0) && (
+        <Card>
+            <CardHeader>
+                <CardTitle className="flex items-center gap-2">
+                    <Images className="h-5 w-5 text-primary" />
+                    Media Evidence Gallery
+                </CardTitle>
+                <CardDescription>Visual audit records for the inspection finding.</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+                {inspection.photoUrls?.length > 0 && (
+                    <div className="space-y-3">
+                        <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                            <Images className="h-3 w-3" /> Photographic Evidence
+                        </h4>
+                        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                            {inspection.photoUrls.map((url: string, idx: number) => (
+                                <Link key={idx} href={url} target="_blank" className="relative aspect-square rounded-xl overflow-hidden border shadow-sm hover:scale-105 transition-transform group">
+                                    <Image src={url} alt={`Evidence ${idx + 1}`} fill className="object-cover" unoptimized />
+                                </Link>
+                            ))}
+                        </div>
+                    </div>
+                )}
+                {inspection.videoUrls?.length > 0 && (
+                    <div className="space-y-3 border-t pt-6">
+                        <h4 className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground flex items-center gap-2">
+                            <FileVideo className="h-3 w-3" /> Video Documentation
+                        </h4>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                            {inspection.videoUrls.map((url: string, idx: number) => (
+                                <div key={idx} className="space-y-2">
+                                    <video src={url} controls className="w-full rounded-xl shadow-sm border bg-black aspect-video" />
+                                    <p className="text-[10px] font-bold text-center text-muted-foreground uppercase">Evidence Video {idx + 1}</p>
+                                </div>
+                            ))}
+                        </div>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+      )}
       
       <div className="space-y-6">
         {inspection.type === 'Single-Let' && (

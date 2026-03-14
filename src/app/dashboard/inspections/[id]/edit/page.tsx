@@ -5,7 +5,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
 import { useEffect, useState, useMemo } from 'react';
-import { Loader2, ArrowLeft, Save, Download } from 'lucide-react';
+import { Loader2, ArrowLeft, Save, Download, X, Upload, Images, FileVideo } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useDoc, useFirestore, useMemoFirebase, useUser, useCollection } from '@/firebase';
 import { doc, updateDoc, collection, query, where, limit, addDoc } from 'firebase/firestore';
@@ -20,7 +20,9 @@ import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
 import { generateInspectionPDF } from '@/lib/generate-inspection-pdf';
 import { uploadPropertyDocument } from '@/lib/upload-document';
+import { uploadPropertyImage } from '@/lib/upload-image';
 import { format } from 'date-fns';
+import Image from 'next/image';
 
 const ChecklistItem = ({ form, name, label }: { form: any, name: any, label: string }) => (
     <FormField
@@ -72,6 +74,12 @@ export default function EditInspectionPage() {
   const firestore = useFirestore();
   const { user } = useUser();
   const [isSaving, setIsSaving] = useState(false);
+  
+  const [existingPhotos, setExistingPhotos] = useState<string[]>([]);
+  const [existingVideos, setExistingVideos] = useState<string[]>([]);
+  const [newPhotoFiles, setNewPhotoFiles] = useState<File[]>([]);
+  const [newVideoFiles, setNewVideoFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
 
   const inspectionRef = useMemoFirebase(() => {
     if (!firestore || !id || !user) return null;
@@ -96,20 +104,71 @@ export default function EditInspectionPage() {
       if (data.followUp?.nextInspectionDate?.seconds) data.followUp.nextInspectionDate = new Date(data.followUp.nextInspectionDate.seconds * 1000);
       
       form.reset(data);
+      setExistingPhotos(data.photoUrls || []);
+      setExistingVideos(data.videoUrls || []);
     }
   }, [inspection, form]);
+
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'photo' | 'video') => {
+    const files = Array.from(e.target.files || []);
+    if (type === 'photo') {
+      setNewPhotoFiles(prev => [...prev, ...files]);
+      const newPreviews = files.map(f => URL.createObjectURL(f));
+      setPreviews(prev => [...prev, ...newPreviews]);
+    } else {
+      setNewVideoFiles(prev => [...prev, ...files]);
+    }
+  };
+
+  const removeNewFile = (idx: number, type: 'photo' | 'video') => {
+    if (type === 'photo') {
+      const updatedFiles = [...newPhotoFiles];
+      updatedFiles.splice(idx, 1);
+      setNewPhotoFiles(updatedFiles);
+      
+      const updatedPreviews = [...previews];
+      URL.revokeObjectURL(updatedPreviews[idx]);
+      updatedPreviews.splice(idx, 1);
+      setPreviews(updatedPreviews);
+    } else {
+      const updatedFiles = [...newVideoFiles];
+      updatedFiles.splice(idx, 1);
+      setNewVideoFiles(updatedFiles);
+    }
+  };
+
+  const removeExistingFile = (url: string, type: 'photo' | 'video') => {
+    if (type === 'photo') {
+      setExistingPhotos(prev => prev.filter(u => u !== url));
+    } else {
+      setExistingVideos(prev => prev.filter(u => u !== url));
+    }
+  };
 
   async function onSubmit(data: any) {
     if (!user || !firestore || !inspectionRef || !property || !propertyId) return;
     setIsSaving(true);
 
     try {
-      const cleanedData = prepareForFirestore(data);
+      // Upload new media
+      const newPhotoUrls = await Promise.all(newPhotoFiles.map(f => uploadPropertyImage(f, user.uid, propertyId)));
+      const newVideoUrls = await Promise.all(newVideoFiles.map(f => uploadPropertyDocument(f, user.uid, propertyId)));
+
+      const finalPhotoUrls = [...existingPhotos, ...newPhotoUrls.filter(Boolean)];
+      const finalVideoUrls = [...existingVideos, ...newVideoUrls.filter(Boolean)];
+
+      const updatePayload = {
+        ...data,
+        photoUrls: finalPhotoUrls,
+        videoUrls: finalVideoUrls,
+      };
+
+      const cleanedData = prepareForFirestore(updatePayload);
       await updateDoc(inspectionRef, cleanedData);
       
       // AUTO-PDF GENERATION WORKFLOW
       toast({ title: 'Changes Saved', description: 'Generating updated PDF report...' });
-      const pdfDoc = generateInspectionPDF({ ...inspection, ...data }, property);
+      const pdfDoc = await generateInspectionPDF({ ...inspection, ...updatePayload }, property);
       
       // AUTO-UPLOAD TO RESIDENT HUB
       if (data.status === 'Completed' && pdfDoc) {
@@ -259,6 +318,62 @@ export default function EditInspectionPage() {
                 </AccordionItem>
               </>
             )}
+
+            <AccordionItem value="media" className='border rounded-lg px-4'>
+                <AccordionTrigger className='text-lg font-semibold'>Media Evidence Vault</AccordionTrigger>
+                <AccordionContent className='pt-4 space-y-6'>
+                    <div className="space-y-4">
+                        <FormLabel className="font-bold flex items-center gap-2"><Images className="h-4 w-4 text-primary" /> Photos</FormLabel>
+                        <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                            {existingPhotos.map((url, idx) => (
+                                <div key={`existing-${idx}`} className="relative aspect-square rounded-xl overflow-hidden border shadow-sm">
+                                    <Image src={url} alt="Existing Photo" fill className="object-cover" unoptimized />
+                                    <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeExistingFile(url, 'photo')}><X className="h-3 w-3" /></Button>
+                                </div>
+                            ))}
+                            {previews.map((url, idx) => (
+                                <div key={`new-${idx}`} className="relative aspect-square rounded-xl overflow-hidden border border-primary shadow-sm">
+                                    <Image src={url} alt="New Photo" fill className="object-cover" unoptimized />
+                                    <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeNewFile(idx, 'photo')}><X className="h-3 w-3" /></Button>
+                                </div>
+                            ))}
+                            <div className="border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 bg-muted/5 cursor-pointer aspect-square hover:bg-muted/10 transition-colors" onClick={() => document.getElementById('edit-photo-upload')?.click()}>
+                                <Upload className="h-6 w-6 text-muted-foreground" />
+                                <span className="text-[10px] font-bold uppercase">Add Photo</span>
+                            </div>
+                        </div>
+                        <input id="edit-photo-upload" type="file" multiple className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, 'photo')} />
+                    </div>
+
+                    <div className="space-y-4 border-t pt-6">
+                        <FormLabel className="font-bold flex items-center gap-2"><FileVideo className="h-4 w-4 text-primary" /> Videos</FormLabel>
+                        <div className="space-y-2">
+                            {existingVideos.map((url, idx) => (
+                                <div key={`ex-vid-${idx}`} className="flex items-center justify-between p-3 border rounded-xl bg-muted/30">
+                                    <div className="flex items-center gap-2 truncate">
+                                        <FileVideo className="h-4 w-4 text-muted-foreground" />
+                                        <span className="text-xs font-medium truncate">Uploaded Evidence {idx + 1}</span>
+                                    </div>
+                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeExistingFile(url, 'video')}><X className="h-4 w-4" /></Button>
+                                </div>
+                            ))}
+                            {newVideoFiles.map((file, idx) => (
+                                <div key={`new-vid-${idx}`} className="flex items-center justify-between p-3 border border-primary/20 rounded-xl bg-primary/5">
+                                    <div className="flex items-center gap-2 truncate">
+                                        <FileVideo className="h-4 w-4 text-primary" />
+                                        <span className="text-xs font-medium truncate">{file.name}</span>
+                                    </div>
+                                    <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeNewFile(idx, 'video')}><X className="h-4 w-4" /></Button>
+                                </div>
+                            ))}
+                            <Button type="button" variant="outline" className="w-full border-dashed h-11 font-bold uppercase tracking-widest text-[10px]" onClick={() => document.getElementById('edit-video-upload')?.click()}>
+                                <Upload className="mr-2 h-4 w-4" /> Upload Video Evidence
+                            </Button>
+                        </div>
+                        <input id="edit-video-upload" type="file" multiple className="hidden" accept="video/*" onChange={(e) => handleFileChange(e, 'video')} />
+                    </div>
+                </AccordionContent>
+            </AccordionItem>
           </Accordion>
 
           <div className="flex justify-end gap-4">

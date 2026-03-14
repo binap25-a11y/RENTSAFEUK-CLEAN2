@@ -6,7 +6,7 @@ import { format } from 'date-fns';
 
 /**
  * @fileOverview Professional Inspection PDF Generation Engine
- * Centralizes logic for Single-Let and HMO audit reports.
+ * Centralizes logic for Single-Let and HMO audit reports with visual evidence support.
  */
 
 interface Property {
@@ -42,6 +42,16 @@ const safeFormatDate = (dateValue: any) => {
   }
 };
 
+const toBase64 = (url: string): Promise<string> => 
+  fetch(url)
+    .then(response => response.blob())
+    .then(blob => new Promise((resolve, reject) => {
+      const reader = new FileReader();
+      reader.onloadend = () => resolve(reader.result as string);
+      reader.onerror = reject;
+      reader.readAsDataURL(blob);
+    }));
+
 const singleLetSections = {
   exterior: { title: 'Exterior', fields: [{ key: 'roofCondition', label: 'Roof condition' }, { key: 'walls', label: 'Walls, brickwork' }, { key: 'windowsAndDoors', label: 'Windows and external doors' }, { key: 'garden', label: 'Garden maintained' }, { key: 'pathways', label: 'Pathways safe and clear' }, { key: 'bins', label: 'Bins accessible' }] },
   safety: { title: 'Safety & Compliance', fields: [{ key: 'smokeAlarms', label: 'Smoke alarms tested' }, { key: 'coAlarm', label: 'CO alarm tested' }, { key: 'electricalSockets', label: 'Electrical sockets safe' }, { key: 'gasCert', label: 'Gas safety certificate valid' }, { key: 'eicr', label: 'EICR valid' }, { key: 'patCert', label: 'PAT Certificate valid' }, { key: 'noTampering', label: 'No tampering with safety equipment' }] },
@@ -63,10 +73,10 @@ const hmoSections = {
 };
 
 const tenantResponsibilitiesFields = [{ key: 'clean', label: 'Property kept clean' }, { key: 'noOccupants', label: 'No unauthorised occupants' }, { key: 'noPets', label: 'No unauthorised pets' }, { key: 'noSmoking', label: 'No evidence of smoking' }, { key: 'noAlterations', label: 'No unauthorised alterations' }];
-const hmoTenantFields = [{ key: 'clean', label: 'Room kept clean' }, { key: 'noSmoking', label: 'No evidence of smoking' }, { key: 'noPets', label: 'No unauthorised pets' }, { key: 'noTampering', label: 'No tampering with fire fire safety equipment' }];
+const hmoTenantFields = [{ key: 'clean', label: 'Room kept clean' }, { key: 'noSmoking', label: 'No evidence of smoking' }, { key: 'noPets', label: 'No unauthorised pets' }, { key: 'noTampering', label: 'No tampering with fire safety equipment' }];
 const followUpFields = [{ key: 'repairsRequired', label: 'Repairs Required' }, { key: 'urgentSafetyIssues', label: 'Urgent Safety Issues' }, { key: 'maintenanceScheduled', label: 'Maintenance Scheduled' }];
 
-export const generateInspectionPDF = (inspection: any, property: any) => {
+export const generateInspectionPDF = async (inspection: any, property: any) => {
   if (!inspection || !property) return null;
 
   const doc = new jsPDF();
@@ -78,7 +88,7 @@ export const generateInspectionPDF = (inspection: any, property: any) => {
 
   // --- HEADER ---
   doc.setFontSize(20);
-  doc.setTextColor(33, 114, 249); // Primary color theme
+  doc.setTextColor(33, 114, 249); 
   doc.text('RentSafeUK Inspection Report', 14, 22);
   doc.setFontSize(10);
   doc.setTextColor(100);
@@ -180,6 +190,35 @@ export const generateInspectionPDF = (inspection: any, property: any) => {
     });
     addSectionToPdf("Resident Responsibilities", inspection.tenantResponsibilities, hmoTenantFields, 'notes', inspection.tenantResponsibilities?.concerns);
     addSectionToPdf("Required Actions", inspection.followUp, followUpFields, 'notes');
+  }
+
+  // --- VISUAL EVIDENCE ---
+  if (inspection.photoUrls && inspection.photoUrls.length > 0) {
+    doc.addPage();
+    finalY = 20;
+    doc.setFontSize(16);
+    doc.setTextColor(33, 114, 249);
+    doc.text('Visual Evidence Registry', 14, finalY);
+    finalY += 15;
+
+    for (let i = 0; i < inspection.photoUrls.length; i++) {
+      try {
+        const base64 = await toBase64(inspection.photoUrls[i]);
+        if (finalY > pageHeight - 100) {
+          doc.addPage();
+          finalY = 20;
+        }
+        
+        // Add image (preserving aspect ratio roughly)
+        doc.addImage(base64, 'JPEG', 14, finalY, 180, 100, undefined, 'FAST');
+        doc.setFontSize(8);
+        doc.setTextColor(150);
+        doc.text(`Evidence Item ${i + 1}`, 14, finalY + 105);
+        finalY += 115;
+      } catch (err) {
+        console.error("Failed to add image to PDF:", err);
+      }
+    }
   }
 
   // --- FOOTER ---

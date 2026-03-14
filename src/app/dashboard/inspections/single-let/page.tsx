@@ -28,7 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Upload, Loader2, Download } from 'lucide-react';
+import { Upload, Loader2, Download, X, FileVideo, Images } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -54,7 +54,9 @@ import {
 } from '@/components/ui/alert-dialog';
 import { generateInspectionPDF } from '@/lib/generate-inspection-pdf';
 import { uploadPropertyDocument } from '@/lib/upload-document';
+import { uploadPropertyImage } from '@/lib/upload-image';
 import { format } from 'date-fns';
+import Image from 'next/image';
 
 
 const inspectionSchema = z.object({
@@ -216,6 +218,10 @@ export default function SingleLetInspectionPage() {
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isConfirmDialogOpen, setIsConfirmDialogOpen] = useState(false);
   const [formDataToSave, setFormDataToSave] = useState<InspectionFormValues | null>(null);
+  
+  const [photoFiles, setPhotoFiles] = useState<File[]>([]);
+  const [videoFiles, setVideoFiles] = useState<File[]>([]);
+  const [previews, setPreviews] = useState<string[]>([]);
 
   const form = useForm<InspectionFormValues>({
     resolver: zodResolver(inspectionSchema),
@@ -246,6 +252,34 @@ export default function SingleLetInspectionPage() {
     return allProperties?.filter(p => activeStatuses.includes(p.status || '')) ?? [];
   }, [allProperties]);
 
+  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>, type: 'photo' | 'video') => {
+    const files = Array.from(e.target.files || []);
+    if (type === 'photo') {
+      setPhotoFiles(prev => [...prev, ...files]);
+      const newPreviews = files.map(f => URL.createObjectURL(f));
+      setPreviews(prev => [...prev, ...newPreviews]);
+    } else {
+      setVideoFiles(prev => [...prev, ...files]);
+    }
+  };
+
+  const removeFile = (idx: number, type: 'photo' | 'video') => {
+    if (type === 'photo') {
+      const updatedFiles = [...photoFiles];
+      updatedFiles.splice(idx, 1);
+      setPhotoFiles(updatedFiles);
+      
+      const updatedPreviews = [...previews];
+      URL.revokeObjectURL(updatedPreviews[idx]);
+      updatedPreviews.splice(idx, 1);
+      setPreviews(updatedPreviews);
+    } else {
+      const updatedFiles = [...videoFiles];
+      updatedFiles.splice(idx, 1);
+      setVideoFiles(updatedFiles);
+    }
+  };
+
   const prepareForFirestore = (obj: any): any => {
     return JSON.parse(JSON.stringify(obj, (key, value) => {
         if (value === undefined) return null;
@@ -262,12 +296,18 @@ export default function SingleLetInspectionPage() {
       const { propertyId, report, ...inspectionData } = data;
       const selectedProperty = properties.find(p => p.id === propertyId);
       
+      // Upload media
+      const photoUrls = await Promise.all(photoFiles.map(f => uploadPropertyImage(f, user.uid, propertyId)));
+      const videoUrls = await Promise.all(videoFiles.map(f => uploadPropertyDocument(f, user.uid, propertyId)));
+
       const newInspection = {
         ...inspectionData,
         landlordId: user.uid,
         propertyId: propertyId,
         type: 'Single-Let',
         status: data.status || 'Completed',
+        photoUrls: photoUrls.filter(Boolean),
+        videoUrls: videoUrls.filter(Boolean),
       };
 
       const cleanedSubmission = prepareForFirestore(newInspection);
@@ -276,7 +316,7 @@ export default function SingleLetInspectionPage() {
       
       // AUTO-PDF GENERATION WORKFLOW
       toast({ title: 'Inspection Saved', description: 'Generating PDF audit record...' });
-      const pdfDoc = generateInspectionPDF(newInspection, selectedProperty);
+      const pdfDoc = await generateInspectionPDF(newInspection, selectedProperty);
       
       // AUTO-UPLOAD TO RESIDENT HUB (if completed)
       if (selectedProperty && data.status === 'Completed' && pdfDoc) {
@@ -362,7 +402,7 @@ export default function SingleLetInspectionPage() {
         <CardHeader>
           <CardTitle>Record Single-Let Inspection</CardTitle>
           <CardDescription>
-            Fill in the details to record a property inspection and generate an audit PDF.
+            Fill in the details to record a property inspection and generate an audit PDF with visual evidence.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -642,6 +682,47 @@ export default function SingleLetInspectionPage() {
                               )}
                           />
                           <NotesField form={form} name="tenantResponsibilities.notes" placeholder="General notes on tenant responsibilities..." />
+                      </div>
+                  </AccordionContent>
+                </AccordionItem>
+
+                <AccordionItem value="media" className='border rounded-lg px-4'>
+                  <AccordionTrigger className='text-lg font-semibold'>Media Evidence Vault</AccordionTrigger>
+                  <AccordionContent className='pt-4 space-y-6'>
+                      <div className="space-y-4">
+                          <FormLabel className="font-bold flex items-center gap-2"><Images className="h-4 w-4 text-primary" /> Photos (Included in PDF)</FormLabel>
+                          <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
+                              {previews.map((url, idx) => (
+                                  <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border group shadow-sm bg-background">
+                                      <Image src={url} alt="Preview" fill className="object-cover" unoptimized />
+                                      <Button type="button" variant="destructive" size="icon" className="absolute top-1.5 right-1.5 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg" onClick={() => removeFile(idx, 'photo')}><X className="h-4 w-4" /></Button>
+                                  </div>
+                              ))}
+                              <div className="border-2 border-dashed rounded-xl flex flex-col items-center justify-center gap-2 bg-muted/5 cursor-pointer aspect-square hover:bg-muted/10 transition-colors" onClick={() => document.getElementById('inspection-photo-upload')?.click()}>
+                                  <Upload className="h-6 w-6 text-muted-foreground" />
+                                  <span className="text-[10px] font-bold uppercase">Add Photo</span>
+                              </div>
+                          </div>
+                          <input id="inspection-photo-upload" type="file" multiple className="hidden" accept="image/*" onChange={(e) => handleFileChange(e, 'photo')} />
+                      </div>
+
+                      <div className="space-y-4 border-t pt-6">
+                          <FormLabel className="font-bold flex items-center gap-2"><FileVideo className="h-4 w-4 text-primary" /> Videos (Hub Access Only)</FormLabel>
+                          <div className="space-y-2">
+                              {videoFiles.map((file, idx) => (
+                                  <div key={idx} className="flex items-center justify-between p-3 border rounded-xl bg-muted/30">
+                                      <div className="flex items-center gap-2 truncate">
+                                          <FileVideo className="h-4 w-4 text-muted-foreground" />
+                                          <span className="text-xs font-medium truncate">{file.name}</span>
+                                      </div>
+                                      <Button type="button" variant="ghost" size="icon" className="h-8 w-8 text-destructive" onClick={() => removeFile(idx, 'video')}><X className="h-4 w-4" /></Button>
+                                  </div>
+                              ))}
+                              <Button type="button" variant="outline" className="w-full border-dashed h-11 font-bold uppercase tracking-widest text-[10px]" onClick={() => document.getElementById('inspection-video-upload')?.click()}>
+                                  <Upload className="mr-2 h-4 w-4" /> Upload Video Evidence
+                              </Button>
+                          </div>
+                          <input id="inspection-video-upload" type="file" multiple className="hidden" accept="video/*" onChange={(e) => handleFileChange(e, 'video')} />
                       </div>
                   </AccordionContent>
                 </AccordionItem>
