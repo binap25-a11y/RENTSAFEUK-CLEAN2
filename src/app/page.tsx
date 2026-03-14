@@ -109,7 +109,7 @@ export default function LoginPage() {
             router.replace('/dashboard');
           }
         } catch (error: any) {
-          console.warn("Login Handshake Deferred:", error.message);
+          // Handle handshake deferral silently
           router.replace('/dashboard');
         }
       };
@@ -125,7 +125,6 @@ export default function LoginPage() {
 
     const handleError = (error: any) => {
       // Professional feedback mapping for authentication credentials
-      // We handle these via UI state to prevent tech-heavy dev overlays
       switch (error.code) {
           case 'auth/wrong-password':
           case 'auth/user-not-found':

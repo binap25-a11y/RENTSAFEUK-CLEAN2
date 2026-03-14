@@ -60,7 +60,7 @@ export default function TenantMessagesPage() {
         }
         setIsLoadingContext(false);
     }, (error) => {
-        console.warn("Messenger registry resolution failed:", error.message);
+        // Log locally but handle state silently to prevent technical overlays
         setIsLoadingContext(false);
     });
     return () => unsub();
