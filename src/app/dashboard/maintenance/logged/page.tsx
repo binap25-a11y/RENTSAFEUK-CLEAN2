@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -72,6 +71,7 @@ import {
   useMemoFirebase,
 } from '@/firebase';
 import { collection, query, where, doc, updateDoc, deleteDoc, limit } from 'firebase/firestore';
+import { cn } from '@/lib/utils';
 
 interface Property {
   id: string;
@@ -92,6 +92,14 @@ interface MaintenanceLog {
     status: string;
     reportedBy: string;
     reportedDate: any;
+}
+
+function safeToDate(val: any): Date | null {
+  if (!val) return null;
+  if (val instanceof Date) return val;
+  if (typeof val === 'object' && 'seconds' in val) return new Date(val.seconds * 1000);
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? null : d;
 }
 
 export default function MaintenanceLoggedPage() {
@@ -145,8 +153,8 @@ export default function MaintenanceLoggedPage() {
             return matchesProperty && matchesTerm && isNotDeleted;
         })
         .sort((a, b) => {
-            const dateA = a.reportedDate?.seconds ? new Date(a.reportedDate.seconds * 1000) : new Date(a.reportedDate || 0);
-            const dateB = b.reportedDate?.seconds ? new Date(b.reportedDate.seconds * 1000) : new Date(b.reportedDate || 0);
+            const dateA = safeToDate(a.reportedDate) || new Date(0);
+            const dateB = safeToDate(b.reportedDate) || new Date(0);
             return dateB.getTime() - dateA.getTime();
         });
   }, [allLogs, searchTerm, selectedPropertyFilter]);
@@ -267,12 +275,15 @@ export default function MaintenanceLoggedPage() {
                         </Table>
                     </div>
                     <div className="space-y-4 md:hidden p-4">
-                        {filteredLogs.map(log => (
-                            <Card key={log.id} className="overflow-hidden shadow-sm border-muted/60 text-left">
-                                <CardHeader className="pb-3 text-left"><div className="flex justify-between items-start text-left"><div className="space-y-1 text-left"><Badge variant={getPriorityVariant(log.priority)} className="mb-1 text-[10px] font-bold uppercase">{log.priority}</Badge><CardTitle className="text-lg font-bold text-left"><Link href={`/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`} className="hover:underline">{log.title}</Link></CardTitle><CardDescription className="flex items-center gap-1.5 mt-1 text-xs font-medium text-left"><AlertCircle className="h-3 w-3 text-primary" />{propertyMap[log.propertyId] || 'Assigned Property'}</CardDescription></div><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 -mt-2"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-40"><DropdownMenuItem asChild><Link href={`/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`}><Eye className="mr-2 h-4 w-4" /> View Details</Link></DropdownMenuItem><DropdownMenuItem asChild><Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${log.propertyId}`}><Edit className="mr-2 h-4 w-4" /> Edit Log</Link></DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem onClick={() => setLogToCancel(log)}><XCircle className="mr-2 h-4 w-4" /> Cancel Log</DropdownMenuItem><DropdownMenuItem onClick={() => setLogToDelete(log)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete Permanently</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div></CardHeader>
-                                <CardContent className="pb-3 border-t pt-3 bg-muted/5 text-left"><div className="flex items-center justify-between text-sm mb-3"><span className="text-muted-foreground font-bold uppercase text-[10px] tracking-widest text-left">Status</span><Select value={log.status} onValueChange={(v) => handleStatusChange(log.id, v)}><SelectTrigger className="w-[140px] h-9 bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Open">Open</SelectItem><SelectItem value="In Progress">In Progress</SelectItem><SelectItem value="Completed">Completed</SelectItem><SelectItem value="Cancelled">Cancelled</SelectItem></SelectContent></Select></div><div className="flex items-center justify-between text-xs text-muted-foreground font-medium text-left"><span className="flex items-center gap-1.5 text-left"><Calendar className="h-3.5 w-3.5" />Reported</span><span className="font-bold text-foreground">{log.reportedDate?.seconds ? format(new Date(log.reportedDate.seconds * 1000), 'dd/MM/yyyy') : 'Recently'}</span></div></CardContent>
-                            </Card>
-                        ))}
+                        {filteredLogs.map(log => {
+                            const date = safeToDate(log.reportedDate);
+                            return (
+                                <Card key={log.id} className="overflow-hidden shadow-sm border-muted/60 text-left">
+                                    <CardHeader className="pb-3 text-left"><div className="flex justify-between items-start text-left"><div className="space-y-1 text-left"><Badge variant={getPriorityVariant(log.priority)} className="mb-1 text-[10px] font-bold uppercase">{log.priority}</Badge><CardTitle className="text-lg font-bold text-left"><Link href={`/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`} className="hover:underline">{log.title}</Link></CardTitle><CardDescription className="flex items-center gap-1.5 mt-1 text-xs font-medium text-left"><AlertCircle className="h-3 w-3 text-primary" />{propertyMap[log.propertyId] || 'Assigned Property'}</CardDescription></div><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 -mt-2"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-40"><DropdownMenuItem asChild><Link href={`/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`}><Eye className="mr-2 h-4 w-4" /> View Details</Link></DropdownMenuItem><DropdownMenuItem asChild><Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${log.propertyId}`}><Edit className="mr-2 h-4 w-4" /> Edit Log</Link></DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem onClick={() => setLogToCancel(log)}><XCircle className="mr-2 h-4 w-4" /> Cancel Log</DropdownMenuItem><DropdownMenuItem onClick={() => setLogToDelete(log)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete Permanently</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div></CardHeader>
+                                    <CardContent className="pb-3 border-t pt-3 bg-muted/5 text-left"><div className="flex items-center justify-between text-sm mb-3"><span className="text-muted-foreground font-bold uppercase text-[10px] tracking-widest text-left">Status</span><Select value={log.status} onValueChange={(v) => handleStatusChange(log.id, v)}><SelectTrigger className="w-[140px] h-9 bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Open">Open</SelectItem><SelectItem value="In Progress">In Progress</SelectItem><SelectItem value="Completed">Completed</SelectItem><SelectItem value="Cancelled">Cancelled</SelectItem></SelectContent></Select></div><div className="flex items-center justify-between text-xs text-muted-foreground font-medium text-left"><span className="flex items-center gap-1.5 text-left"><Calendar className="h-3.5 w-3.5" />Reported</span><span className="font-bold text-foreground">{date ? format(date, 'dd/MM/yyyy') : 'Recently'}</span></div></CardContent>
+                                </Card>
+                            );
+                        })}
                     </div>
                 </>
             )}

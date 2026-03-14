@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -71,10 +70,10 @@ interface MaintenanceLog {
   priority: string;
   status: string;
   reportedBy?: string;
-  reportedDate: Timestamp | Date;
+  reportedDate: any;
   contractorName?: string;
   contractorPhone?: string;
-  scheduledDate?: Timestamp | Date;
+  scheduledDate?: any;
   estimatedCost?: number;
   notes?: string;
 }
@@ -84,6 +83,14 @@ interface Contractor {
     name: string;
     phone: string;
     trade: string;
+}
+
+function safeToDate(val: any): Date | null {
+  if (!val) return null;
+  if (val instanceof Date) return val;
+  if (typeof val === 'object' && 'seconds' in val) return new Date(val.seconds * 1000);
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? null : d;
 }
 
 export default function EditMaintenancePage() {
@@ -121,8 +128,8 @@ export default function EditMaintenancePage() {
         if (maintenanceLog) {
             form.reset({
                 ...maintenanceLog,
-                reportedDate: maintenanceLog.reportedDate instanceof Date ? maintenanceLog.reportedDate : new Date((maintenanceLog.reportedDate as any).seconds * 1000),
-                scheduledDate: maintenanceLog.scheduledDate ? (maintenanceLog.scheduledDate instanceof Date ? maintenanceLog.scheduledDate : new Date((maintenanceLog.scheduledDate as any).seconds * 1000)) : undefined,
+                reportedDate: safeToDate(maintenanceLog.reportedDate) || new Date(),
+                scheduledDate: safeToDate(maintenanceLog.scheduledDate) || undefined,
                 otherCategoryDetails: maintenanceLog.otherCategoryDetails ?? '',
                 notes: maintenanceLog.notes ?? '',
             });

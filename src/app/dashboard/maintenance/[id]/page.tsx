@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useSearchParams, useRouter } from 'next/navigation';
@@ -34,10 +33,10 @@ interface MaintenanceLog {
     priority: string;
     status: string;
     reportedBy?: string;
-    reportedDate: { seconds: number; nanoseconds: number } | Date;
+    reportedDate: any;
     contractorName?: string;
     contractorPhone?: string;
-    scheduledDate?: { seconds: number; nanoseconds: number } | Date;
+    scheduledDate?: any;
     estimatedCost?: number;
     photoUrls?: string[];
     notes?: string;
@@ -52,6 +51,17 @@ interface Property {
       county?: string;
       postcode: string;
     };
+}
+
+/**
+ * Robust date conversion utility to prevent RangeError in date-fns
+ */
+function safeToDate(val: any): Date | null {
+  if (!val) return null;
+  if (val instanceof Date) return val;
+  if (typeof val === 'object' && 'seconds' in val) return new Date(val.seconds * 1000);
+  const d = new Date(val);
+  return isNaN(d.getTime()) ? null : d;
 }
 
 export default function MaintenanceDetailPage() {
@@ -146,8 +156,8 @@ export default function MaintenanceDetailPage() {
     );
   }
 
-  const reportedDate = maintenanceLog.reportedDate ? (maintenanceLog.reportedDate instanceof Date ? maintenanceLog.reportedDate : new Date(maintenanceLog.reportedDate.seconds * 1000)) : null;
-  const scheduledDate = maintenanceLog.scheduledDate ? (maintenanceLog.scheduledDate instanceof Date ? maintenanceLog.scheduledDate : new Date(maintenanceLog.scheduledDate.seconds * 1000)) : null;
+  const reportedDate = safeToDate(maintenanceLog.reportedDate);
+  const scheduledDate = safeToDate(maintenanceLog.scheduledDate);
   const propertyAddress = property?.address ? [property.address.nameOrNumber, property.address.street, property.address.city, property.address.postcode].filter(Boolean).join(', ') : 'Property Context Missing';
 
    const getPriorityVariant = (priority: string) => {
