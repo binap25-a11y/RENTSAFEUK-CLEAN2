@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -43,10 +42,9 @@ import {
   useFirestore,
   useCollection,
   useMemoFirebase,
-  errorEmitter,
-  FirestorePermissionError,
+  updateDocumentNonBlocking,
 } from '@/firebase';
-import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
+import { collection, query, where, doc, getDocs, limit } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { useMemo, useState } from 'react';
 import { Input } from '@/components/ui/input';
@@ -91,6 +89,7 @@ export default function TenantsPage() {
   const firestore = useFirestore();
   const [searchTerm, setSearchTerm] = useState('');
   const [tenantToArchive, setTenantToArchive] = useState<Tenant | null>(null);
+  const [isArchiving, setIsArchiving] = useState(false);
 
   // Fetch properties - strictly hierarchical for context
   const propertiesQuery = useMemoFirebase(() => {
@@ -135,21 +134,48 @@ export default function TenantsPage() {
 
   const handleArchiveConfirm = async () => {
     if (!firestore || !user || !tenantToArchive) return;
+    setIsArchiving(true);
+    
     try {
-      const docRef = doc(firestore, 'tenants', tenantToArchive.id);
-      await updateDoc(docRef, { status: 'Archived' });
+      const tenantRef = doc(firestore, 'tenants', tenantToArchive.id);
+      
+      // 1. Mark Tenant as Archived
+      updateDocumentNonBlocking(tenantRef, { status: 'Archived' });
+
+      // 2. Scan for remaining active tenants on this property to sync status
+      const activeTenantsQuery = query(
+          collection(firestore, 'tenants'),
+          where('propertyId', '==', tenantToArchive.propertyId),
+          where('status', '==', 'Active'),
+          limit(2) // We only need to know if there's > 1 (the one we just archived is still 'Active' in local cache usually)
+      );
+      const snap = await getDocs(activeTenantsQuery);
+      
+      // If only 1 tenant was active (the one we are archiving), set property to Vacant
+      // Note: snap.size might still be 1 if the Firestore write is pending, but usually the UI is reactive
+      // We check if there are NO OTHER tenants
+      const otherActiveTenants = snap.docs.filter(d => d.id !== tenantToArchive.id);
+      
+      if (otherActiveTenants.length === 0) {
+          const propRef = doc(firestore, 'properties', tenantToArchive.propertyId);
+          updateDocumentNonBlocking(propRef, { status: 'Vacant' });
+      }
+
       toast({
         title: 'Tenant Archived',
-        description: `${tenantToArchive.name} has been moved to the archives.`,
+        description: `${tenantToArchive.name} has been moved to the archives and portfolio status updated.`,
       });
+      
+      router.refresh();
     } catch (e) {
       console.error('Error archiving tenant:', e);
       toast({
         variant: 'destructive',
-        title: 'Error',
-        description: 'Could not archive the tenant.',
+        title: 'Sync Error',
+        description: 'Failed to update registry. Please try again.',
       });
     } finally {
+      setIsArchiving(false);
       setTenantToArchive(null);
     }
   };
@@ -335,7 +361,7 @@ export default function TenantsPage() {
             <div className="p-4 rounded-full bg-destructive/10 w-fit mx-auto mb-4"><Archive className="h-8 w-8 text-destructive" /></div>
             <AlertDialogTitle className="text-xl text-center">Archive tenant record?</AlertDialogTitle>
             <AlertDialogDescription className="text-base font-medium text-center">
-              This will move <strong className="text-foreground">{tenantToArchive?.name}</strong> to your archives. Access to the Resident Hub will be revoked.
+              This will move <strong className="text-foreground">{tenantToArchive?.name}</strong> to your archives and update the property availability. Access to the Resident Hub will be revoked.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-3 mt-6">
@@ -343,8 +369,9 @@ export default function TenantsPage() {
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-2xl font-bold uppercase text-[10px] h-12 flex-1 shadow-lg"
               onClick={handleArchiveConfirm}
+              disabled={isArchiving}
             >
-              Archive Tenant
+              {isArchiving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Archive Tenant
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>

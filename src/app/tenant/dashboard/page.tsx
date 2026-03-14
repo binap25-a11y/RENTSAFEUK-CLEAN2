@@ -48,7 +48,7 @@ export default function TenantDashboard() {
   const discoveryRef = useRef(false);
 
   const performDiscovery = useCallback(async () => {
-    // PRE-FLIGHT: Ensure authentication is ready
+    // PRE-FLIGHT: Ensure authentication is ready and normalized
     if (!user || !firestore || !user.email || discoveryRef.current) {
         if (!user && !isUserLoading) setIsLoading(false);
         return;
@@ -63,7 +63,7 @@ export default function TenantDashboard() {
     try {
         const tenantsCol = collection(firestore, 'tenants');
         
-        // STAGE 1: Discovery Search (Optimized for Rule Engine)
+        // STAGE 1: Discovery Search (Optimized for Rule Engine string matching)
         const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
         const snap = await getDocs(qByEmail);
 
@@ -78,6 +78,7 @@ export default function TenantDashboard() {
         const tenantData = tenantDoc.data();
         
         // STAGE 2: Secure Identity Handshake
+        // If the tenant record isn't linked to this UID yet, perform the handshake.
         if (tenantData.userId !== user.uid || !tenantData.verified) {
             setIsHandshaking(true);
             
@@ -114,7 +115,7 @@ export default function TenantDashboard() {
                 propertyData: propSnap.data()
             });
         } else {
-            setErrorState("Identity linked, but property asset details could not be resolved.");
+            setErrorState("Identity linked, but property asset details could not be resolved. Please contact your landlord.");
         }
         
         setIsLoading(false);
@@ -122,6 +123,7 @@ export default function TenantDashboard() {
     } catch (err: any) {
         console.warn("Resident Hub Discovery deferred:", err.message);
         
+        // ERROR GOVERNANCE: Handle permission denial by surfacing developer overlay if needed
         if (err.code === 'permission-denied') {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: 'tenants',
@@ -156,7 +158,7 @@ export default function TenantDashboard() {
                 <h2 className="font-headline text-2xl font-bold text-primary tracking-tight text-center">
                     {isHandshaking ? "Verifying Tenancy..." : "Syncing Resident Hub..."}
                 </h2>
-                <p className="text-muted-foreground font-medium text-center">Establishing secure connection to your property vault.</p>
+                <p className="text-muted-foreground font-medium text-center leading-relaxed">Establishing secure connection to your property records.</p>
             </div>
         </div>
     );

@@ -3,8 +3,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RentSafeUK Security Governance v17.0
-     * Optimized for high-speed Discovery and secure Identity Handshake.
+     * RentSafeUK Security Governance v18.0
+     * Optimized for high-speed Discovery and atomic Portfolio Synchronization.
      */
 
     function isSignedIn() {
@@ -51,6 +51,7 @@ service cloud.firestore {
     // --- Tenant Registry ---
     match /tenants/{tenantId} {
       // Discovery: Allow residents to search for their record by email.
+      // Explicitly allow list for signed-in users to enable the handshake query.
       allow list: if isSignedIn(); 
       allow get: if isRelated(resource.data);
       allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
