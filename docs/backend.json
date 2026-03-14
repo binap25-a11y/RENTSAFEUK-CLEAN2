@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "UserProfile": {
@@ -82,29 +81,29 @@
       },
       "required": ["id", "landlordId", "propertyId", "email"]
     },
-    "Contractor": {
-      "title": "Contractor",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "landlordId": { "type": "string" },
-        "name": { "type": "string" },
-        "trade": { "type": "string" },
-        "phone": { "type": "string" },
-        "email": { "type": "string" },
-        "status": { "type": "string", "enum": ["Active", "Archived"] }
-      }
-    },
-    "Expense": {
-      "title": "Expense",
+    "Repair": {
+      "title": "Repair",
       "type": "object",
       "properties": {
         "id": { "type": "string" },
         "landlordId": { "type": "string" },
         "propertyId": { "type": "string" },
-        "amount": { "type": "number" },
-        "date": { "type": "string", "format": "date-time" },
-        "expenseType": { "type": "string" }
+        "tenantId": { "type": "string" },
+        "title": { "type": "string" },
+        "status": { "type": "string" }
+      }
+    },
+    "Message": {
+      "title": "Message",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "landlordId": { "type": "string" },
+        "propertyId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "senderId": { "type": "string" },
+        "content": { "type": "string" },
+        "timestamp": { "type": "string", "format": "date-time" }
       }
     }
   },
@@ -125,11 +124,11 @@
       "description": "Tenant identity registry for discovery."
     },
     "/repairs/{id}": {
-      "schema": "object",
+      "schema": "Repair",
       "description": "Shared maintenance tracking ledger."
     },
     "/messages/{id}": {
-      "schema": "object",
+      "schema": "Message",
       "description": "Secure resident-landlord messaging."
     },
     "/documents/{id}": {
@@ -143,14 +142,6 @@
     "/rentPayments/{id}": {
       "schema": "object",
       "description": "Rental collection ledger."
-    },
-    "/contractors/{id}": {
-      "schema": "Contractor",
-      "description": "Saved tradesperson directory."
-    },
-    "/expenses/{id}": {
-      "schema": "Expense",
-      "description": "Financial outgoing ledger."
     }
   }
 }

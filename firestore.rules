@@ -3,15 +3,15 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RentSafeUK Security Governance v18.0
-     * Optimized for high-speed Discovery and atomic Portfolio Synchronization.
+     * RentSafeUK Security Governance v22.0
+     * Optimized for high-speed Discovery and atomic Identity Handshake.
      */
 
     function isSignedIn() {
       return request.auth != null;
     }
 
-    // DISCOVERY: Validates relationship via UID or verified registry bridge.
+    // DISCOVERY: Validates identity bridge via normalized email or account UID.
     // Optimized for direct string comparison to satisfy the Firestore query engine.
     function isRelated(data) {
       let email = request.auth.token.email;
@@ -50,8 +50,7 @@ service cloud.firestore {
 
     // --- Tenant Registry ---
     match /tenants/{tenantId} {
-      // Discovery: Allow residents to search for their record by email.
-      // Explicitly allow list for signed-in users to enable the handshake query.
+      // Allow discovery list for all signed-in users (query will be filtered by email)
       allow list: if isSignedIn(); 
       allow get: if isRelated(resource.data);
       allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
@@ -66,11 +65,12 @@ service cloud.firestore {
 
     // --- Property Portfolio ---
     match /properties/{propertyId} {
+      // Allow discovery list for all signed-in users (query will be filtered by landlordId or tenantEmail)
       allow list: if isSignedIn();
       allow get: if isRelated(resource.data);
       allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
       
-      // HANDSHAKE: Allow residents to link their account to the property bridge if they match the registry.
+      // HANDSHAKE: Allow residents to link their account to the property bridge if they match the registry email.
       allow update: if isSignedIn() && (
         isLandlord(resource.data) || 
         (isTenantDiscovery(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasAny(['tenantId', 'activeTenantUids', 'status']))

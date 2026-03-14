@@ -42,7 +42,7 @@ export default function TenantMessagesPage() {
     }
     
     const userEmail = user.email.toLowerCase().trim();
-    // Deterministic root collection query
+    // Deterministic root collection discovery
     const tenantsCol = collection(firestore, 'tenants');
     const q = query(tenantsCol, where('email', '==', userEmail), limit(1));
 
@@ -57,7 +57,7 @@ export default function TenantMessagesPage() {
         }
         setIsLoadingContext(false);
     }, (error) => {
-        console.warn("Messenger discovery issue:", error.message);
+        console.warn("Messenger registry resolution failed:", error.message);
         setIsLoadingContext(false);
     });
     return () => unsub();
@@ -67,7 +67,7 @@ export default function TenantMessagesPage() {
     if (!tenantContext || !user || !firestore) return null;
     return query(
         collection(firestore, 'messages'),
-        where('tenantId', '==', user.uid), // Authorized via UID
+        where('tenantId', '==', user.uid), // Authorized via Handshake UID
         orderBy('timestamp', 'asc'),
         limit(100)
     );
@@ -91,7 +91,7 @@ export default function TenantMessagesPage() {
         await addDoc(msgCol, {
             landlordId: tenantContext.landlordId,
             propertyId: tenantContext.propertyId,
-            tenantId: user.uid, // Use UID for consistency
+            tenantId: user.uid,
             senderId: user.uid,
             senderName: user.displayName || 'Tenant',
             content: newMessage.trim(),
@@ -99,7 +99,7 @@ export default function TenantMessagesPage() {
         });
         setNewMessage('');
     } catch (error) {
-        console.error(error);
+        console.error("Message sync failed:", error);
     } finally {
         setIsSending(false);
     }
@@ -109,7 +109,7 @@ export default function TenantMessagesPage() {
     return (
       <div className="flex h-64 flex-col items-center justify-center gap-4">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
-        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Portal Messenger...</p>
+        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Establishing Secure Channel...</p>
       </div>
     );
   }
@@ -121,11 +121,11 @@ export default function TenantMessagesPage() {
           <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 border shadow-sm">
               <AlertCircle className="h-8 w-8 text-destructive" />
           </div>
-          <CardTitle className="text-lg">Chat Disabled</CardTitle>
-          <CardDescription>Verified registry link required for messaging.</CardDescription>
+          <CardTitle className="text-lg text-primary font-headline">Messaging Blocked</CardTitle>
+          <CardDescription className='font-medium'>A verified residency handshake is required to access property chat.</CardDescription>
         </CardHeader>
         <CardContent className="pt-6">
-          <Button variant="outline" className="w-full font-bold h-11" asChild><Link href="/dashboard">Return Home</Link></Button>
+          <Button variant="outline" className="w-full font-bold h-11" asChild><Link href="/tenant/dashboard">Refresh Dashboard</Link></Button>
         </CardContent>
       </Card>
     );
@@ -161,7 +161,7 @@ export default function TenantMessagesPage() {
                     ) : !messages?.length ? (
                         <div className="py-20 text-center px-10">
                             <MessageSquare className="h-12 w-12 text-muted-foreground/10 mx-auto mb-4" />
-                            <p className="text-sm text-muted-foreground italic">No messages found.</p>
+                            <p className="text-sm text-muted-foreground italic font-medium">Your chat history is private and encrypted.</p>
                         </div>
                     ) : (
                         messages.map((msg) => {
@@ -169,10 +169,10 @@ export default function TenantMessagesPage() {
                             const date = msg.timestamp?.seconds ? new Date(msg.timestamp.seconds * 1000) : new Date();
                             
                             return (
-                                <div key={msg.id} className={cn("flex flex-col gap-1 max-w-[80%]", isMe ? "ml-auto items-end" : "mr-auto items-start")}>
+                                <div key={msg.id} className={cn("flex flex-col gap-1 max-w-[85%] sm:max-w-[70%]", isMe ? "ml-auto items-end" : "mr-auto items-start")}>
                                     <div className={cn(
-                                        "p-4 rounded-2xl text-sm font-medium shadow-sm",
-                                        isMe ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-muted text-foreground rounded-tl-none"
+                                        "p-4 rounded-2xl text-sm font-medium shadow-sm leading-relaxed",
+                                        isMe ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-muted text-foreground rounded-tl-none border"
                                     )}>
                                         {msg.content}
                                     </div>

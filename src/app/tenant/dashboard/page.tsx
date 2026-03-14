@@ -121,7 +121,7 @@ export default function TenantDashboard() {
         setIsLoading(false);
         discoveryRef.current = false;
     } catch (err: any) {
-        console.warn("Resident Hub Discovery deferred:", err.message);
+        console.warn("Resident Hub Discovery Deferred:", err.message);
         
         // ERROR GOVERNANCE: Handle permission denial by surfacing developer overlay if needed
         if (err.code === 'permission-denied') {
