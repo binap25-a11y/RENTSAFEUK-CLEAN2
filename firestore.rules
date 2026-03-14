@@ -4,7 +4,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RentSafeUK Security Governance v15.0
+     * RentSafeUK Security Governance v16.0
      * Optimized for high-speed query compatibility and atomic resident handshakes.
      */
 
@@ -29,7 +29,8 @@ service cloud.firestore {
     function isTenant(data) {
       return isSignedIn() && (
         getUid() == data.get('tenantId', '') || 
-        getUid() == data.get('userId', '')
+        getUid() == data.get('userId', '') ||
+        getUid() == data.get('reportedBy', '')
       );
     }
 
@@ -40,14 +41,19 @@ service cloud.firestore {
 
     // --- Tenant Registry ---
     match /tenants/{tenantId} {
-      // DISCOVERY: Explicitly authorized for query-based scans matching identity keys
+      // DISCOVERY: Optimized for collection scans matching identity keys
       allow list: if isSignedIn() && (
         getUid() == resource.data.get('landlordId', '') ||
         getUid() == resource.data.get('userId', '') ||
         getEmail() == resource.data.get('email', '').lower()
       );
       
-      allow get: if isLandlord(resource.data) || isTenant(resource.data) || getEmail() == resource.data.get('email', '').lower();
+      allow get: if isSignedIn() && (
+        isLandlord(resource.data) || 
+        isTenant(resource.data) || 
+        getEmail() == resource.data.get('email', '').lower()
+      );
+      
       allow create: if isSignedIn();
       
       // HANDSHAKE: Allow residents to link their UID if they match the registry email
@@ -60,7 +66,7 @@ service cloud.firestore {
 
     // --- Property Portfolio ---
     match /properties/{propertyId} {
-      // DISCOVERY: Optimized for collection scans
+      // DISCOVERY: Optimized for high-speed scans
       allow list: if isSignedIn() && (
         getUid() == resource.data.get('landlordId', '') ||
         getUid() == resource.data.get('tenantId', '') ||
@@ -68,10 +74,15 @@ service cloud.firestore {
         getEmail() == resource.data.get('tenantEmail', '').lower()
       );
 
-      allow get: if isLandlord(resource.data) || isTenant(resource.data) || getEmail() == resource.data.get('tenantEmail', '').lower();
+      allow get: if isSignedIn() && (
+        isLandlord(resource.data) || 
+        isTenant(resource.data) || 
+        getEmail() == resource.data.get('tenantEmail', '').lower()
+      );
+      
       allow create: if isSignedIn();
       
-      // HANDSHAKE: Allow residents to link their UID to the property bridge
+      // HANDSHAKE: Allow residents to link their UID to the property bridge if authorized by email
       allow update: if isSignedIn() && (
         isLandlord(resource.data) || 
         (getEmail() == resource.data.get('tenantEmail', '').lower() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['tenantId', 'activeTenantUids', 'status']))
@@ -81,7 +92,7 @@ service cloud.firestore {
 
     // --- Secure Messaging Ledger ---
     match /messages/{id} {
-      // Optimized for high-speed query compatibility (matches where filters)
+      // Optimized for high-speed filtered queries (matches where('tenantId', '==', uid))
       allow list: if isSignedIn() && (
         getUid() == resource.data.get('tenantId', '') || 
         getUid() == resource.data.get('landlordId', '')

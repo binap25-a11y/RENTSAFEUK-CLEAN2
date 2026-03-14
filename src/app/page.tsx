@@ -86,11 +86,13 @@ export default function LoginPage() {
 
           if (snap.exists()) {
             role = snap.data().role;
+            // Atomic Role Transition: If verified in registry, elevate to tenant role
             if (role !== 'tenant' && isTenantInRegistry) {
                 role = 'tenant';
                 await updateDoc(userRef, { role: 'tenant' });
             }
           } else {
+            // First time profile creation with normalized email
             role = isTenantInRegistry ? 'tenant' : (mode === 'signup' ? form.getValues('role') : 'landlord');
             await setDoc(userRef, {
               id: user.uid,
@@ -122,8 +124,7 @@ export default function LoginPage() {
     setAuthError(null);
 
     const handleError = (error: any) => {
-      // SPECIFIC FEEDBACK: Maps Firebase error codes to user-friendly messages.
-      // Removes console.error to prevent technical developer overlays.
+      // Professional feedback mapping for authentication credentials
       switch (error.code) {
           case 'auth/wrong-password':
           case 'auth/user-not-found':
@@ -136,9 +137,6 @@ export default function LoginPage() {
               break;
           case 'auth/too-many-requests':
               setAuthError('Access temporarily disabled due to many failed attempts. Please try again later.');
-              break;
-          case 'auth/network-request-failed':
-              setAuthError('Network error. Please check your internet connection.');
               break;
           default:
               setAuthError('Authentication failed. Please check your details or try again later.');

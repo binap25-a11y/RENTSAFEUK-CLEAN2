@@ -88,9 +88,9 @@ export default function TenantDashboard() {
         const tenantData = tenantDoc.data();
         
         // STAGE 3: Secure Identity Handshake
+        // We link the account UID to the registry if it's missing or unverified
         if (tenantData.userId !== user.uid || !tenantData.verified) {
             setIsHandshaking(true);
-            console.log("Handshake: Establishing secure registry bridge...");
             
             // 1. Link UID to Tenant Record
             await updateDoc(tenantDoc.ref, { 
@@ -102,6 +102,7 @@ export default function TenantDashboard() {
             });
             
             // 2. Authorize UID on Property Asset
+            // Note: firestore.rules v16 allows this specific update for authorized emails
             const propertyRef = doc(firestore, 'properties', tenantData.propertyId);
             await updateDoc(propertyRef, { 
                 tenantId: user.uid,
@@ -133,14 +134,8 @@ export default function TenantDashboard() {
     } catch (err: any) {
         console.error("Resident Hub Discovery Error:", err.message);
         
-        // ERROR GOVERNANCE: Handle permission denial by surfacing developer overlay if needed
         if (err.code === 'permission-denied') {
-            const path: string = err.message.includes('tenants') ? 'tenants' : 'properties';
-            errorEmitter.emit('permission-error', new FirestorePermissionError({
-                path: path,
-                operation: 'list'
-            }));
-            setErrorState("Access Denied: Handshake blocked by security governance.");
+            setErrorState("Access Denied: Please ensure your account email matches your tenancy registry.");
         } else {
             setErrorState(err.message || "Identity handshake failed.");
         }
@@ -165,11 +160,11 @@ export default function TenantDashboard() {
                 </div>
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/5 rounded-full animate-ping" />
             </div>
-            <div className="space-y-3 text-left">
-                <h2 className="font-headline text-2xl font-bold text-primary tracking-tight text-center">
-                    {isHandshaking ? "Finalizing Handshake..." : "Syncing Portal..."}
+            <div className="space-y-3">
+                <h2 className="font-headline text-2xl font-bold text-primary tracking-tight">
+                    {isHandshaking ? "Finalizing Handshake..." : "Syncing Hub..."}
                 </h2>
-                <p className="text-muted-foreground font-medium text-center leading-relaxed">Securing your property connection.</p>
+                <p className="text-muted-foreground font-medium">Securing your property connection.</p>
             </div>
         </div>
     );
@@ -177,14 +172,14 @@ export default function TenantDashboard() {
 
   if (errorState) {
       return (
-        <Card className="max-w-md mx-auto mt-20 shadow-2xl border-none overflow-hidden text-left">
+        <Card className="max-w-md mx-auto mt-20 shadow-2xl border-none overflow-hidden">
             <CardHeader className="bg-destructive/10 pb-6 border-b border-destructive/20">
-                <div className="flex items-center gap-3">
+                <div className="flex items-center gap-3 justify-center">
                     <AlertCircle className="h-6 w-6 text-destructive" />
                     <CardTitle className="font-headline text-lg text-destructive">Portal Handshake Failed</CardTitle>
                 </div>
             </CardHeader>
-            <CardContent className="pt-6">
+            <CardContent className="pt-6 text-center">
                 <p className="text-sm font-medium leading-relaxed">{errorState}</p>
             </CardContent>
             <CardFooter className="pt-6 bg-muted/5 border-t">
@@ -198,7 +193,7 @@ export default function TenantDashboard() {
 
   if (!context) {
     return (
-        <Card className="max-w-md mx-auto mt-20 shadow-2xl border-none overflow-hidden text-left">
+        <Card className="max-w-md mx-auto mt-20 shadow-2xl border-none overflow-hidden">
             <CardHeader className="text-center bg-muted/20 pb-8 border-b">
                 <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 border shadow-sm text-muted-foreground/20">
                     <Search className="h-10 w-10" />

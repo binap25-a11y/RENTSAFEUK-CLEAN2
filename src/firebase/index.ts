@@ -20,15 +20,17 @@ import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore'
 
+/**
+ * Initializes or retrieves the Firebase app and service instances.
+ * Note: Only production services are used; emulators are not supported in this environment.
+ */
 export function initializeFirebase() {
   if (!getApps().length) {
     let firebaseApp;
     try {
-      firebaseApp = initializeApp();
+      firebaseApp = initializeApp(firebaseConfig);
     } catch (e) {
-      if (process.env.NODE_ENV === "production") {
-        console.warn('Automatic initialization failed. Falling back to firebase config object.', e);
-      }
+      console.warn('Firebase initialization failed. Check config object.', e);
       firebaseApp = initializeApp(firebaseConfig);
     }
 
@@ -38,6 +40,9 @@ export function initializeFirebase() {
   return getSdks(getApp());
 }
 
+/**
+ * Returns service instances for a given Firebase app.
+ */
 export function getSdks(firebaseApp: FirebaseApp) {
   return {
     firebaseApp,
