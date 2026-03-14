@@ -10,7 +10,6 @@ import {
   GoogleAuthProvider,
 } from 'firebase/auth';
 import { useUser, useAuth, useFirestore, createUserNonBlocking, signInNonBlocking, type UserRole } from '@/firebase';
-import { useToast } from '@/hooks/use-toast';
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
@@ -50,7 +49,6 @@ export default function LoginPage() {
   const auth = useAuth();
   const firestore = useFirestore();
   const router = useRouter();
-  const { toast } = useToast();
   const [mode, setMode] = useState<AuthMode>('login');
   const [isProcessing, setIsProcessing] = useState(false);
   const [showPassword, setShowPassword] = useState(false);

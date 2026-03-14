@@ -4,7 +4,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RentSafeUK Security Governance v27.0
+     * RentSafeUK Security Governance v28.0
      * Optimized for high-speed query engine prove-ability and secure identity handshakes.
      */
 
@@ -27,12 +27,10 @@ service cloud.firestore {
 
     // --- Tenant Registry ---
     match /tenants/{tenantId} {
-      // Consolidated list rule for query optimizer provability
-      allow list: if isSignedIn() && (
-        resource.data.get('landlordId', '') == getUid() || 
-        resource.data.get('userId', '') == getUid() || 
-        resource.data.get('email', '') == getEmail()
-      );
+      // Discrete list rules for query optimizer provability
+      allow list: if isSignedIn() && resource.data.get('landlordId', '') == getUid();
+      allow list: if isSignedIn() && resource.data.get('userId', '') == getUid();
+      allow list: if isSignedIn() && resource.data.get('email', '') == getEmail();
       
       allow get: if isSignedIn() && (
         resource.data.get('landlordId', '') == getUid() || 
@@ -53,12 +51,10 @@ service cloud.firestore {
 
     // --- Property Portfolio ---
     match /properties/{propertyId} {
-      // Consolidated list rule for query engine optimization
-      allow list: if isSignedIn() && (
-        resource.data.get('landlordId', '') == getUid() || 
-        resource.data.get('tenantId', '') == getUid() || 
-        getEmail() in resource.data.get('tenantEmails', [])
-      );
+      // Discrete list rules for query optimizer provability
+      allow list: if isSignedIn() && resource.data.get('landlordId', '') == getUid();
+      allow list: if isSignedIn() && resource.data.get('tenantId', '') == getUid();
+      allow list: if isSignedIn() && getEmail() in resource.data.get('tenantEmails', []);
 
       allow get: if isSignedIn() && (
         resource.data.get('landlordId', '') == getUid() || 
@@ -80,11 +76,9 @@ service cloud.firestore {
 
     // --- Secure Messaging Ledger ---
     match /messages/{id} {
-      // Combined list rule for query engine optimization
-      allow list: if isSignedIn() && (
-        resource.data.get('tenantId', '') == getUid() || 
-        resource.data.get('landlordId', '') == getUid()
-      );
+      // Discrete list rules for query optimizer provability
+      allow list: if isSignedIn() && resource.data.get('tenantId', '') == getUid();
+      allow list: if isSignedIn() && resource.data.get('landlordId', '') == getUid();
       
       allow get: if isSignedIn() && (
         resource.data.get('tenantId', '') == getUid() || 
@@ -101,11 +95,9 @@ service cloud.firestore {
     // --- Shared Ledger Collections ---
     
     match /repairs/{id} {
-      allow list: if isSignedIn() && (
-        resource.data.get('landlordId', '') == getUid() || 
-        resource.data.get('tenantId', '') == getUid() || 
-        resource.data.get('reportedBy', '') == getUid()
-      );
+      allow list: if isSignedIn() && resource.data.get('landlordId', '') == getUid();
+      allow list: if isSignedIn() && resource.data.get('tenantId', '') == getUid();
+      allow list: if isSignedIn() && resource.data.get('reportedBy', '') == getUid();
       
       allow get: if isSignedIn() && (
         resource.data.get('landlordId', '') == getUid() || 
