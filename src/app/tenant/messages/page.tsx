@@ -31,12 +31,6 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 
-/**
- * @fileOverview Resident Portal Chat
- * Definitive full-viewport layout with real-time audit-ready messaging.
- * Includes transactional confirmations and security-filtered queries.
- */
-
 interface Message {
     id: string;
     senderId: string;
@@ -123,15 +117,11 @@ export default function TenantMessagesPage() {
         setNewMessage('');
         toast({
             title: 'Message Sent',
-            description: 'Your communication has been recorded in the audit trail.',
+            description: 'Communication recorded in registry.',
         });
     } catch (error) {
-        console.error("Message sync failure:", error);
-        toast({
-            variant: 'destructive',
-            title: 'Sync Failed',
-            description: 'Could not deliver message. Please check your connection.',
-        });
+        console.error("Sync failure:", error);
+        toast({ variant: 'destructive', title: 'Send Failed' });
     } finally {
         setIsSending(false);
     }
@@ -157,9 +147,7 @@ export default function TenantMessagesPage() {
   if (isLoadingContext || isUserLoading) {
     return (
       <div className="flex h-[60vh] flex-col items-center justify-center gap-4 text-center">
-        <div className="bg-primary/5 p-8 rounded-full">
-            <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        </div>
+        <Loader2 className="h-10 w-10 animate-spin text-primary" />
         <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Communication Registry...</p>
       </div>
     );
@@ -218,7 +206,7 @@ export default function TenantMessagesPage() {
                         <div className="py-24 text-center px-10 border-2 border-dashed rounded-[2rem] bg-muted/10">
                             <MessageSquare className="h-12 w-12 text-muted-foreground/10 mx-auto mb-4" />
                             <p className="text-sm font-bold text-foreground">Registry Handshake Established</p>
-                            <p className="text-xs text-muted-foreground mt-1 max-w-[240px] mx-auto font-medium">Your chat history is private, archived, and accessible by management for audit review.</p>
+                            <p className="text-xs text-muted-foreground mt-1 max-w-[240px] mx-auto font-medium">Your chat history is private and audit-ready.</p>
                         </div>
                     ) : (
                         messages.map((msg, idx) => {

@@ -54,11 +54,6 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
-/**
- * @fileOverview Landlord Asset View
- * Restored source integrity and established secure communication registry.
- */
-
 interface Property {
     id: string;
     landlordId: string;
@@ -161,11 +156,10 @@ export default function PropertyDetailPage() {
     e.preventDefault();
     if (!newReply.trim() || !user || !property || isSendingReply) return;
 
-    // Use the first active tenant found if no previous messages exist to establish targetTenantId
     const targetTenantId = messages?.find(m => m.senderId !== user.uid)?.tenantId || (activeTenants?.[0]?.userId);
     
     if (!targetTenantId) {
-        toast({ variant: 'destructive', title: 'Reply Forbidden', description: 'No active resident handshake found for this asset.' });
+        toast({ variant: 'destructive', title: 'Reply Forbidden', description: 'No active resident found for this asset.' });
         return;
     }
 
@@ -182,10 +176,10 @@ export default function PropertyDetailPage() {
             timestamp: serverTimestamp()
         });
         setNewReply('');
-        toast({ title: 'Reply Sent', description: 'Resident notified via portal.' });
+        toast({ title: 'Reply Sent', description: 'Communication recorded in registry.' });
     } catch (error) {
         console.error("Sync failure:", error);
-        toast({ variant: 'destructive', title: 'Send Failed', description: 'Message could not be synchronized.' });
+        toast({ variant: 'destructive', title: 'Send Failed' });
     } finally {
         setIsSendingReply(false);
     }
