@@ -53,6 +53,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
+/**
+ * @fileOverview Landlord Asset View
+ * Restored source integrity and established secure communication registry.
+ */
+
 interface Property {
     id: string;
     landlordId: string;
