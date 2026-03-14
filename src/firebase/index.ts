@@ -36,7 +36,7 @@ export function getSdks(firebaseApp: FirebaseApp) {
   };
 }
 
-// DEFINITIVE EXPORTS: Prioritize consolidated utility files
+// DEFINITIVE EXPORTS: Consolidated utility files
 export * from './provider';
 export * from './client-provider';
 export * from './firestore/use-collection';
