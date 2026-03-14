@@ -112,14 +112,13 @@ export default function PropertyDetailPage() {
   const [isMediaUpdating, setIsMediaUpdating] = useState(false);
   const [newReply, setNewReply] = useState('');
   const [isSendingReply, setIsSendingReply] = useState(false);
-  
   const [activeTab, setActiveTab] = useState('overview');
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const identityInputRef = useRef<HTMLInputElement>(null);
 
-  // Synchronize Tab State with URL
+  // Sync Tab State with URL parameters
   useEffect(() => {
     const tab = searchParams.get('tab');
     if (tab && ['overview', 'messages'].includes(tab)) {
@@ -140,14 +139,14 @@ export default function PropertyDetailPage() {
       collection(firestore, 'tenants'),
       where('landlordId', '==', user.uid),
       where('propertyId', '==', propertyId),
-      where('status', '==', 'Active')
+      where('status', '==', 'Active'),
+      limit(10)
     );
   }, [firestore, user, propertyId]);
   const { data: activeTenants } = useCollection<Tenant>(tenantsQuery);
 
   const messagesQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
-    // Standardize query to match provisioned composite index
     return query(
         collection(firestore, 'messages'),
         where('propertyId', '==', propertyId),
@@ -159,7 +158,6 @@ export default function PropertyDetailPage() {
 
   const { data: messages, isLoading: isLoadingMessages } = useCollection<Message>(messagesQuery);
 
-  // Auto-scroll to bottom on new messages
   useEffect(() => {
     if (scrollRef.current && activeTab === 'messages') {
         scrollRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -170,20 +168,19 @@ export default function PropertyDetailPage() {
     e.preventDefault();
     if (!newReply.trim() || !user || !property || isSendingReply) return;
 
-    // Use established resident link for context
+    // Use established resident doc ID for chronological context
     const targetTenant = messages?.find(m => m.senderId !== user.uid) || activeTenants?.[0];
     const targetTenantId = targetTenant?.tenantId || targetTenant?.id;
-    const targetTenantUid = targetTenant?.senderId !== user.uid ? (targetTenant as any)?.tenantUid : (activeTenants?.[0]?.userId || '');
+    const targetTenantUid = (targetTenant as any)?.senderId !== user.uid ? (targetTenant as any)?.senderId : (activeTenants?.[0]?.userId || '');
     
     if (!targetTenantId) {
-        toast({ variant: 'destructive', title: 'Registry Link Missing', description: 'Assign an active resident to this asset to enable messaging.' });
+        toast({ variant: 'destructive', title: 'Resident Required', description: 'Assign an active resident to start communication audit.' });
         return;
     }
 
     setIsSendingReply(true);
     try {
-        const msgCol = collection(firestore, 'messages');
-        await addDoc(msgCol, {
+        await addDoc(collection(firestore, 'messages'), {
             landlordId: user.uid,
             propertyId: property.id,
             tenantId: targetTenantId, 
@@ -194,10 +191,10 @@ export default function PropertyDetailPage() {
             timestamp: serverTimestamp()
         });
         setNewReply('');
-        toast({ title: 'Message Sent' });
+        toast({ title: 'Response Recorded' });
     } catch (error) {
-        console.error("Ledger sync failure:", error);
-        toast({ variant: 'destructive', title: 'Transmission Failed' });
+        console.error("Registry write error:", error);
+        toast({ variant: 'destructive', title: 'Sync Failed' });
     } finally {
         setIsSendingReply(false);
     }
@@ -206,41 +203,18 @@ export default function PropertyDetailPage() {
   const handleMediaAction = async (action: 'upload' | 'delete' | 'promote', url?: string, files?: FileList | null) => {
     if (!user || !property || !propertyRef) return;
     setIsMediaUpdating(true);
-
     try {
       let updatedImageUrl = property.imageUrl || '';
       let updatedGallery = property.additionalImageUrls || [];
-
       if (action === 'upload' && files) {
-        const fileArray = Array.from(files);
-        const uploadPromises = fileArray.map(file => uploadPropertyImage(file, user.uid, property.id));
-        const newUrls = await Promise.all(uploadPromises);
-        const validUrls = newUrls.filter((u): u is string => !!u);
-        updatedGallery = [...updatedGallery, ...validUrls];
-        toast({ title: 'Gallery Updated' });
+        const newUrls = await Promise.all(Array.from(files).map(f => uploadPropertyImage(f, user.uid, property.id)));
+        updatedGallery = [...updatedGallery, ...newUrls.filter(Boolean)];
       }
-
-      if (action === 'delete' && url) {
-        updatedGallery = updatedGallery.filter(u => u !== url);
-        if (updatedImageUrl === url) updatedImageUrl = updatedGallery[0] || '';
-        toast({ title: 'Media Purged' });
-      }
-
-      if (action === 'promote' && url) {
-        updatedImageUrl = url;
-        toast({ title: 'Asset Identity Updated' });
-      }
-
-      await updateDoc(propertyRef, {
-        imageUrl: updatedImageUrl,
-        additionalImageUrls: Array.from(new Set(updatedGallery))
-      });
-
-    } catch (err: any) {
-      toast({ variant: 'destructive', title: 'Media Sync Error' });
-    } finally {
-      setIsMediaUpdating(false);
-    }
+      if (action === 'delete' && url) updatedGallery = updatedGallery.filter(u => u !== url);
+      if (action === 'promote' && url) updatedImageUrl = url;
+      await updateDoc(propertyRef, { imageUrl: updatedImageUrl, additionalImageUrls: Array.from(new Set(updatedGallery)) });
+      toast({ title: 'Media Registry Updated' });
+    } catch (err) { toast({ variant: 'destructive', title: 'Sync Error' }); } finally { setIsMediaUpdating(false); }
   };
 
   const handleDeleteConfirm = async () => {
@@ -250,12 +224,7 @@ export default function PropertyDetailPage() {
       await updateDoc(doc(firestore, 'properties', propertyId), { status: 'Deleted' });
       toast({ title: 'Asset Archived' });
       router.push('/dashboard/properties');
-    } catch (e) {
-      toast({ variant: 'destructive', title: 'Action Failed' });
-    } finally { 
-      setIsArchiving(false);
-      setIsDeleting(false);
-    }
+    } catch (e) { toast({ variant: 'destructive', title: 'Action Failed' }); } finally { setIsArchiving(false); setIsDeleting(false); }
   };
   
   const getMessageDate = (timestamp: any) => {
@@ -270,13 +239,10 @@ export default function PropertyDetailPage() {
         if (isToday(date)) return 'Today';
         if (isYesterday(date)) return 'Yesterday';
         return format(date, 'EEEE, d MMMM yyyy');
-    } catch (e) {
-        return 'Audit History';
-    }
+    } catch (e) { return 'History'; }
   };
 
   if (isLoadingProperty) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
-
   if (propertyError || !property) return <div className="text-center py-20 italic">Asset resolution failed.</div>;
 
   const propertyAddressTitle = [property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ');
@@ -284,11 +250,11 @@ export default function PropertyDetailPage() {
 
   return (
     <>
-      <div className="flex flex-col gap-6 text-left animate-in fade-in duration-500">
+      <div className="flex flex-col gap-6 text-left animate-in fade-in duration-500 max-w-7xl mx-auto">
         <div className="flex items-center justify-between gap-4">
-            <div className="flex items-center gap-4 overflow-hidden text-left">
+            <div className="flex items-center gap-4 min-w-0">
                 <Button variant="outline" size="icon" asChild className="shrink-0"><Link href="/dashboard/properties"><ArrowLeft className="h-4 w-4" /></Link></Button>
-                <div className="min-w-0 text-left">
+                <div className="min-w-0">
                     <h1 className="text-2xl font-bold font-headline leading-tight break-words">{propertyAddressTitle}</h1>
                     <p className="text-muted-foreground text-sm font-medium mt-1">{propertyAddressSubtitle}</p>
                 </div>
@@ -296,22 +262,20 @@ export default function PropertyDetailPage() {
             <div className="flex items-center gap-2">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="gap-2 shrink-0 h-11 px-6 font-bold uppercase tracking-widest text-xs shadow-sm border-primary/20 hover:bg-primary/5">
+                        <Button variant="outline" className="gap-2 h-11 px-6 font-bold uppercase tracking-widest text-[10px] shadow-sm border-primary/20 hover:bg-primary/5">
                             <MoreVertical className="h-4 w-4" />
                             <span>Manage Asset</span>
                         </Button>
                     </DropdownMenuTrigger>
                     <DropdownMenuContent align="end" className="w-56 p-1">
                         <DropdownMenuItem asChild className="cursor-pointer">
-                            <Link href={`/dashboard/properties/${property.id}/edit`}>
-                                <Edit className="mr-2 h-4 w-4" /> Edit Record
-                            </Link>
+                            <Link href={`/dashboard/properties/${property.id}/edit`}><Edit className="mr-2 h-4 w-4" /> Edit Record</Link>
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => identityInputRef.current?.click()} disabled={isMediaUpdating} className="cursor-pointer">
                             <Upload className="mr-2 h-4 w-4" /> Update Identity
                         </DropdownMenuItem>
                         <DropdownMenuItem onClick={() => setIsDeleting(true)} className="text-destructive cursor-pointer font-bold">
-                            <Trash2 className="mr-2 h-4 w-4" /> Move to Archive
+                            <Trash2 className="mr-2 h-4 w-4" /> Archive Asset
                         </DropdownMenuItem>
                     </DropdownMenuContent>
                 </DropdownMenu>
@@ -322,8 +286,8 @@ export default function PropertyDetailPage() {
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
             <Card className="shadow-lg border-none overflow-hidden bg-card text-left">
-              <CardHeader className="pb-4 text-left"><CardTitle className="font-headline text-lg">Identity Registry</CardTitle></CardHeader>
-              <CardContent className="space-y-6 p-0 px-6 pb-8 text-left">
+              <CardHeader className="pb-4"><CardTitle className="font-headline text-lg">Identity Registry</CardTitle></CardHeader>
+              <CardContent className="space-y-6 px-6 pb-8">
                     <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-md border-2 bg-muted mb-6 group">
                         {property.imageUrl ? (
                             <Image src={property.imageUrl} alt="Asset" fill className="object-cover" priority unoptimized />
@@ -332,9 +296,8 @@ export default function PropertyDetailPage() {
                         )}
                         {isMediaUpdating && <div className="absolute inset-0 bg-black/40 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}
                     </div>
-
-                    <div className="space-y-4 text-left">
-                        <div className="flex items-center justify-between text-left">
+                    <div className="space-y-4">
+                        <div className="flex items-center justify-between">
                             <div className="flex items-center gap-2 text-[10px] font-bold text-muted-foreground uppercase tracking-[0.2em]"><Images className="h-3.5 w-3.5" />Photo Gallery</div>
                             <Button variant="ghost" size="sm" className="h-8 text-[10px] font-bold uppercase tracking-widest text-primary" onClick={() => galleryInputRef.current?.click()}>Add Photos</Button>
                             <input type="file" ref={galleryInputRef} className="hidden" multiple accept="image/*" onChange={(e) => handleMediaAction('upload', undefined, e.target.files)} />
@@ -361,28 +324,27 @@ export default function PropertyDetailPage() {
                 <TabsList className="bg-muted/50 p-1 rounded-xl h-auto">
                     <TabsTrigger value="overview" className="px-6 py-2 rounded-lg font-bold uppercase tracking-widest text-[10px]">Registry Overview</TabsTrigger>
                     <TabsTrigger value="messages" className="px-6 py-2 rounded-lg font-bold uppercase tracking-widest text-[10px] gap-2">
-                        <MessageSquare className="h-3 w-3" />
-                        Messaging Hub
+                        <MessageSquare className="h-3 w-3" /> Messaging Hub
                     </TabsTrigger>
                 </TabsList>
-                <TabsContent value="overview" className="space-y-6 pt-4 text-left">
+                <TabsContent value="overview" className="space-y-6 pt-4">
                     {property.tenancy && (
-                    <Card className="shadow-md border-none overflow-hidden text-left">
-                        <CardHeader className="pb-4 bg-muted/5 border-b flex flex-row items-center justify-between text-left">
+                    <Card className="shadow-md border-none overflow-hidden">
+                        <CardHeader className="pb-4 bg-muted/5 border-b flex flex-row items-center justify-between">
                             <CardTitle className="font-headline text-lg">Financial Audit</CardTitle>
-                            <Button variant="outline" size="sm" onClick={() => setActiveTab('messages')} className="font-bold uppercase tracking-widest text-[9px] h-8 px-4 gap-2 border-primary/20">
-                                <History className="h-3 w-3" /> Go to Messaging
+                            <Button variant="outline" size="sm" onClick={() => setActiveTab('messages')} className="font-bold uppercase tracking-widest text-[9px] h-8 px-4 gap-2 border-primary/20 bg-background">
+                                <History className="h-3 w-3" /> View Chat History
                             </Button>
                         </CardHeader>
-                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 px-8 pb-8 text-left">
+                        <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 px-8 pb-8">
                             {property.tenancy.monthlyRent && (
-                                <div className="flex items-start gap-4 text-left">
+                                <div className="flex items-start gap-4">
                                     <div className="p-3 rounded-2xl bg-primary/5 shrink-0"><Banknote className="h-6 w-6 text-primary" /></div>
                                     <div className="text-left"><p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Contracted Monthly Rent</p><p className="text-xl font-bold">£{property.tenancy.monthlyRent.toLocaleString()}</p></div>
                                 </div>
                             )}
                             {property.tenancy.depositAmount && (
-                                <div className="flex items-start gap-4 text-left">
+                                <div className="flex items-start gap-4">
                                     <div className="p-3 rounded-2xl bg-primary/5 shrink-0"><Shield className="h-6 w-6 text-primary" /></div>
                                     <div className="text-left"><p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Deposit Security</p><p className="text-xl font-bold">£{property.tenancy.depositAmount.toLocaleString()}</p></div>
                                 </div>
@@ -392,22 +354,22 @@ export default function PropertyDetailPage() {
                     )}
                 </TabsContent>
                 <TabsContent value="messages" className="pt-4 space-y-4">
-                    <Card className="shadow-lg border-none overflow-hidden flex flex-col h-[600px] text-left">
-                        <CardHeader className="bg-muted/30 border-b py-4 px-6 flex flex-row items-center justify-between text-left">
-                            <div className="flex items-center gap-3 text-left">
+                    <Card className="shadow-lg border-none overflow-hidden flex flex-col h-[calc(100vh-12rem)] min-h-[500px]">
+                        <CardHeader className="bg-muted/30 border-b py-4 px-6 flex flex-row items-center justify-between shrink-0">
+                            <div className="flex items-center gap-3">
                                 <div className="h-10 w-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-md">
                                     <Building2 className="h-5 w-5" />
                                 </div>
                                 <div className="text-left">
                                     <CardTitle className="text-sm font-bold">Secure Message History</CardTitle>
-                                    <CardDescription className="text-[10px]">Verified chronological registry for this asset.</CardDescription>
+                                    <p className="text-[9px] text-green-600 font-bold uppercase tracking-widest">Encrypted communication audit</p>
                                 </div>
                             </div>
-                            <Badge variant="outline" className="h-6 text-[8px] uppercase font-bold tracking-widest bg-background border-2 shadow-sm">Audit-Ready Ledger</Badge>
+                            <Badge variant="outline" className="h-6 text-[8px] uppercase font-bold tracking-widest bg-background border-2 shadow-sm px-3">Sync Online</Badge>
                         </CardHeader>
-                        <CardContent className="flex-1 overflow-hidden p-0 relative bg-muted/5 text-left">
-                            <ScrollArea className="h-full p-6">
-                                <div className="space-y-6 text-left">
+                        <CardContent className="flex-1 overflow-hidden p-0 relative bg-muted/5">
+                            <ScrollArea className="h-full">
+                                <div className="p-6 space-y-6">
                                     {isLoadingMessages ? (
                                         <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary/20" /></div>
                                     ) : !messages?.length ? (
@@ -424,7 +386,7 @@ export default function PropertyDetailPage() {
                                             const showDateDivider = !prevMsg || !isSameDay(date, getMessageDate(prevMsg.timestamp));
                                             
                                             return (
-                                                <div key={msg.id} className="space-y-4 text-left">
+                                                <div key={msg.id} className="space-y-4">
                                                     {showDateDivider && (
                                                         <div className="flex items-center gap-4 py-4 text-left">
                                                             <div className="h-px flex-1 bg-border" />
@@ -432,9 +394,9 @@ export default function PropertyDetailPage() {
                                                             <div className="h-px flex-1 bg-border" />
                                                         </div>
                                                     )}
-                                                    <div className={cn("flex flex-col gap-1.5 max-w-[85%]", isLandlord ? "ml-auto items-end" : "mr-auto items-start")}>
+                                                    <div className={cn("flex flex-col gap-1.5 max-w-[85%] sm:max-w-[70%]", isLandlord ? "ml-auto items-end" : "mr-auto items-start")}>
                                                         <div className={cn(
-                                                            "p-3 rounded-2xl text-sm font-medium shadow-sm",
+                                                            "p-3 rounded-2xl text-sm font-medium shadow-sm leading-relaxed",
                                                             isLandlord ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-white text-foreground rounded-tl-none border"
                                                         )}>
                                                             {msg.content}
@@ -453,16 +415,16 @@ export default function PropertyDetailPage() {
                                 </div>
                             </ScrollArea>
                         </CardContent>
-                        <CardFooter className="p-4 border-t bg-background">
+                        <CardFooter className="p-4 border-t bg-background shrink-0">
                             <form onSubmit={handleSendReply} className="flex w-full gap-2">
                                 <Input 
-                                    placeholder="Type a verified response to the resident..." 
+                                    placeholder="Type a response to the resident hub..." 
                                     value={newReply}
                                     onChange={(e) => setNewReply(e.target.value)}
                                     className="flex-1 rounded-xl h-11 bg-muted/20 border-2"
                                     disabled={isSendingReply || (!messages?.length && !activeTenants?.length)}
                                 />
-                                <Button type="submit" size="icon" className="h-11 w-11 rounded-xl shadow-lg" disabled={!newReply.trim() || isSendingReply}>
+                                <Button type="submit" size="icon" className="h-11 w-11 rounded-xl shadow-lg shrink-0" disabled={!newReply.trim() || isSendingReply}>
                                     {isSendingReply ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4" />}
                                 </Button>
                             </form>
@@ -474,19 +436,22 @@ export default function PropertyDetailPage() {
           
           <div className="space-y-6">
             <Card className="shadow-md border-none overflow-hidden bg-muted/5 text-left">
-              <CardHeader className="flex flex-row items-center justify-between pb-4 bg-muted/20 border-b text-left">
+              <CardHeader className="flex flex-row items-center justify-between pb-4 bg-muted/20 border-b">
                 <CardTitle className="font-headline text-lg">Active Residents</CardTitle>
                 <Button variant="ghost" size="icon" asChild className="text-primary"><Link href={`/dashboard/tenants/add?propertyId=${propertyId}`}><PlusCircle className="h-5 w-5" /></Link></Button>
               </CardHeader>
-              <CardContent className="space-y-4 pt-6 text-left">
+              <CardContent className="space-y-4 pt-6">
                 {!activeTenants?.length ? (
-                  <p className="text-xs text-muted-foreground italic text-center py-6">No residents assigned yet.</p>
+                  <div className="py-10 text-center border-2 border-dashed rounded-xl m-2">
+                      <AlertCircle className="h-8 w-8 text-muted-foreground/20 mx-auto mb-2" />
+                      <p className="text-xs text-muted-foreground font-bold uppercase tracking-widest">No residents assigned</p>
+                  </div>
                 ) : (
                   activeTenants.map((t) => (
-                    <div key={t.id} className="p-4 rounded-xl bg-background border shadow-sm flex items-center justify-between group text-left">
+                    <div key={t.id} className="p-4 rounded-xl bg-background border shadow-sm flex items-center justify-between group transition-all hover:border-primary/20">
                         <div className="min-w-0 text-left">
                             <p className="font-bold truncate text-sm">{t.name}</p>
-                            <p className="text-[10px] text-muted-foreground truncate">{t.email}</p>
+                            <p className="text-[10px] text-muted-foreground truncate uppercase font-bold tracking-tight">{t.email}</p>
                         </div>
                         <Button variant="ghost" size="icon" asChild className="opacity-0 group-hover:opacity-100 transition-opacity"><Link href={`/dashboard/tenants/${t.id}?propertyId=${propertyId}`}><ChevronRight className="h-4 w-4" /></Link></Button>
                     </div>
@@ -495,10 +460,10 @@ export default function PropertyDetailPage() {
               </CardContent>
             </Card>
             
-            <Card className="shadow-md border-none overflow-hidden bg-muted/5 text-left">
+            <Card className="shadow-md border-none overflow-hidden bg-muted/5">
               <CardHeader className="pb-4 bg-muted/20 border-b text-left"><CardTitle className="font-headline text-lg">Location Registry</CardTitle></CardHeader>
               <CardContent className="p-0">
-                  <div className="aspect-square w-full shadow-inner relative bg-muted/20">
+                  <div className="aspect-square w-full relative bg-muted/20">
                       <iframe width="100%" height="100%" style={{ border: 0 }} title="Asset Map" loading="lazy" src={`https://maps.google.com/maps?q=${encodeURIComponent([property.address.street, property.address.city, property.address.postcode].filter(Boolean).join(', '))}&output=embed`}></iframe>
                   </div>
               </CardContent>
@@ -508,14 +473,14 @@ export default function PropertyDetailPage() {
       </div>
 
       <AlertDialog open={isDeleting} onOpenChange={setIsDeleting}>
-        <AlertDialogContent className="rounded-2xl border-none shadow-2xl text-left">
-          <AlertDialogHeader className='text-left'>
+        <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
+          <AlertDialogHeader className="text-left">
               <AlertDialogTitle className="text-xl font-headline">Archive Property Asset?</AlertDialogTitle>
-              <AlertDialogDescription className="text-base font-medium">This will move the record at <strong className='text-foreground'>{property.address.street}</strong> to history archives. This cannot be easily undone.</AlertDialogDescription>
+              <AlertDialogDescription className="text-base font-medium">This will move the record at <strong className='text-foreground'>{property.address.street}</strong> to history archives. This action is definitive.</AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel className="rounded-xl font-bold uppercase text-xs h-11">Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold uppercase text-xs h-11 px-8 shadow-lg" onClick={handleDeleteConfirm} disabled={isArchiving}>
+          <AlertDialogFooter className="gap-3 mt-4">
+            <AlertDialogCancel className="rounded-xl font-bold uppercase tracking-widest text-[10px] h-11">Cancel</AlertDialogCancel>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold uppercase tracking-widest text-[10px] h-11 px-8 shadow-lg" onClick={handleDeleteConfirm} disabled={isArchiving}>
                 {isArchiving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Confirm Archive
             </AlertDialogAction>
           </AlertDialogFooter>

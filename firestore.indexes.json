@@ -38,16 +38,6 @@
       ]
     },
     {
-      "collectionGroup": "messages",
-      "queryScope": "COLLECTION_GROUP",
-      "fields": [
-        { "fieldPath": "propertyId", "order": "ASCENDING" },
-        { "fieldPath": "tenantId", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
-      ]
-    },
-    {
       "collectionGroup": "repairs",
       "queryScope": "COLLECTION",
       "fields": [
