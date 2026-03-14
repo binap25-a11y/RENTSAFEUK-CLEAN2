@@ -13,6 +13,7 @@ import {
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { ScrollArea } from '@/components/ui/scroll-area';
+import { Badge } from '@/components/ui/badge';
 import { 
   MessageSquare, 
   Send, 
@@ -121,7 +122,7 @@ export default function TenantMessagesPage() {
   };
 
   const getMessageDate = (timestamp: any) => {
-    if (!timestamp) return new Date(); // Optimistic fallback for local UI before server sync
+    if (!timestamp) return new Date();
     if (timestamp.toDate) return timestamp.toDate();
     if (timestamp.seconds) return new Date(timestamp.seconds * 1000);
     return new Date(timestamp);
