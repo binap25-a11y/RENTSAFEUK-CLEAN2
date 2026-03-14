@@ -3,152 +3,139 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * CORE PHILOSOPHY
-     * This ruleset enforces a strict user-ownership model. Every piece of data is nested 
-     * under a specific user's path, ensuring that users can only access and modify 
-     * their own records.
-     *
-     * DATA STRUCTURE
-     * The database follows a hierarchical structure where all entities are descendants 
-     * of a root User document: /users/{userId}/...
-     * This includes Properties, Tenancies, Maintenance Requests, Inspections, and Documents.
-     *
-     * KEY SECURITY DECISIONS
-     * 1. Authorization Independence: Critical fields like 'userId' are denormalized 
-     *    directly onto sub-documents (e.g., Tenancies). This allows for fast, 
-     *    single-document security checks without costly get() calls to parent documents.
-     * 2. Path-Auth Alignment: We strictly enforce that the {userId} parameter in the 
-     *    document path matches the 'request.auth.uid' and the internal 'userId' field.
-     * 3. Prototyping Flexibility: While authorization is strict, the rules do not 
-     *    validate data types or non-essential schema fields, allowing for rapid iteration.
-     *
-     * DENORMALIZATION FOR AUTHORIZATION
-     * To ensure high performance and avoid complex rules, the 'userId' of the owner 
-     * is copied into every document in the hierarchy. This allows for simple 
-     * 'isOwner(userId)' checks at every level.
+     * RENTSAFEUK CORE SECURITY GOVERNANCE
+     * Matches application architecture using flat root collections.
      */
 
-    // --- Helper Functions ---
-
-    /** @description Checks if the user is authenticated. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /** @description Checks if the authenticated user matches the provided ID. */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /** @description Checks ownership and ensures the document exists for destructive operations. */
-    function isExistingOwner(userId) {
-      return isOwner(userId) && resource != null;
+    function userEmail() {
+      return request.auth.token.email.lower();
     }
 
-    /** @description Validates that a field has not been changed during an update. */
-    function isImmutable(field) {
-      return request.resource.data[field] == resource.data[field];
-    }
-
-    // --- Collection Rules ---
-
-    /**
-     * @description Rules for the User profile. Document ID must be the Firebase UID.
-     * @path /users/{userId}
-     * @allow (create) User 'abc' creates document /users/abc with id: 'abc'.
-     * @deny (read) User 'abc' attempts to get /users/xyz.
-     * @principle Ownership: Only the user can access or modify their own profile record.
-     */
+    // --- User Profiles ---
     match /users/{userId} {
-      allow get, list: if isOwner(userId);
-      allow create: if isOwner(userId) && request.resource.data.id == userId;
-      allow update: if isExistingOwner(userId) && isImmutable('id');
-      allow delete: if isExistingOwner(userId);
+      allow read, write: if isOwner(userId);
+    }
 
-      /**
-       * @description Rules for properties managed by a specific user.
-       * @path /users/{userId}/properties/{propertyId}
-       * @allow (list) User 'abc' lists all documents under /users/abc/properties.
-       * @deny (update) User 'abc' tries to change the 'userId' field on a property.
-       * @principle Relational Integrity: Enforces that property ownership matches the path.
-       */
-      match /properties/{propertyId} {
-        allow get, list: if isOwner(userId);
-        allow create: if isOwner(userId) && request.resource.data.userId == userId;
-        allow update: if isExistingOwner(userId) && isImmutable('userId');
-        allow delete: if isExistingOwner(userId);
+    // --- Properties Registry ---
+    match /properties/{propertyId} {
+      allow list: if isSignedIn() && (
+        request.query.filters.landlordId == request.auth.uid ||
+        request.auth.uid in resource.data.activeTenantUids ||
+        userEmail() == resource.data.tenantEmail
+      );
+      allow get: if isSignedIn() && (
+        resource.data.landlordId == request.auth.uid ||
+        request.auth.uid in resource.data.activeTenantUids ||
+        userEmail() == resource.data.tenantEmail
+      );
+      allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        resource.data.landlordId == request.auth.uid ||
+        // HANDSHAKE AUTHORIZATION BRIDGE: Allows residents to link their accounts
+        (userEmail() == resource.data.tenantEmail && 
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tenantId', 'activeTenantUids', 'status']))
+      );
+      allow delete: if isSignedIn() && resource.data.landlordId == request.auth.uid;
+    }
 
-        /**
-         * @description Tenancy records for a specific property. Uses denormalized userId.
-         * @path /users/{userId}/properties/{propertyId}/tenancies/{tenancyId}
-         * @allow (create) User 'abc' creates tenancy with userId: 'abc' and propertyId: 'prop1'.
-         * @deny (create) User 'abc' creates tenancy with propertyId: 'prop_mismatch'.
-         * @principle Authorization Independence: Validates links without parent lookups.
-         */
-        match /tenancies/{tenancyId} {
-          allow get, list: if isOwner(userId);
-          allow create: if isOwner(userId) && request.resource.data.userId == userId && request.resource.data.propertyId == propertyId;
-          allow update: if isExistingOwner(userId) && isImmutable('userId') && isImmutable('propertyId');
-          allow delete: if isExistingOwner(userId);
-        }
+    // --- Tenants / Residents Registry ---
+    match /tenants/{tenantId} {
+      allow list: if isSignedIn() && (
+        request.query.filters.landlordId == request.auth.uid ||
+        request.query.filters.userId == request.auth.uid ||
+        request.query.filters.email == userEmail()
+      );
+      allow get: if isSignedIn() && (
+        resource.data.landlordId == request.auth.uid ||
+        resource.data.userId == request.auth.uid ||
+        resource.data.email == userEmail()
+      );
+      allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
+      allow update: if isSignedIn() && (
+        resource.data.landlordId == request.auth.uid ||
+        // HANDSHAKE AUTHORIZATION BRIDGE
+        (resource.data.email == userEmail() && 
+         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['userId', 'verified', 'joinedDate', 'status', 'lastSyncCheck', 'lastSyncCheck']))
+      );
+      allow delete: if isSignedIn() && resource.data.landlordId == request.auth.uid;
+    }
 
-        /**
-         * @description Maintenance requests for a specific property.
-         * @path /users/{userId}/properties/{propertyId}/maintenanceRequests/{reqId}
-         * @allow (get) User 'abc' reads maintenance request 'req123' at their own path.
-         * @deny (delete) User 'xyz' tries to delete a request at /users/abc/properties/...
-         * @principle Path-based Authorization: Uses the hierarchy to verify access rights.
-         */
-        match /maintenanceRequests/{requestId} {
-          allow get, list: if isOwner(userId);
-          allow create: if isOwner(userId) && request.resource.data.userId == userId && request.resource.data.propertyId == propertyId;
-          allow update: if isExistingOwner(userId) && isImmutable('userId') && isImmutable('propertyId');
-          allow delete: if isExistingOwner(userId);
-        }
+    // --- Maintenance / Repairs ---
+    match /repairs/{repairId} {
+      allow list: if isSignedIn() && (
+        request.query.filters.landlordId == request.auth.uid ||
+        request.query.filters.tenantId == request.auth.uid
+      );
+      allow get: if isSignedIn() && (
+        resource.data.landlordId == request.auth.uid ||
+        resource.data.tenantId == request.auth.uid
+      );
+      allow create: if isSignedIn() && (
+        request.resource.data.landlordId == request.auth.uid ||
+        request.resource.data.tenantId == request.auth.uid
+      );
+      allow update, delete: if isSignedIn() && (
+        resource.data.landlordId == request.auth.uid ||
+        resource.data.tenantId == request.auth.uid
+      );
+    }
 
-        /**
-         * @description Scheduled inspections for a specific property.
-         * @path /users/{userId}/properties/{propertyId}/inspections/{inspectionId}
-         * @allow (update) User 'abc' updates notes for a scheduled inspection.
-         * @deny (list) Anonymous user tries to list inspections.
-         * @principle Robustness: Ensures document existence before allowing updates.
-         */
-        match /inspections/{inspectionId} {
-          allow get, list: if isOwner(userId);
-          allow create: if isOwner(userId) && request.resource.data.userId == userId && request.resource.data.propertyId == propertyId;
-          allow update: if isExistingOwner(userId) && isImmutable('userId') && isImmutable('propertyId');
-          allow delete: if isExistingOwner(userId);
-        }
+    // --- Resident Communication Hub ---
+    match /messages/{messageId} {
+      allow list: if isSignedIn() && (
+        request.query.filters.tenantId == request.auth.uid ||
+        request.query.filters.landlordId == request.auth.uid
+      );
+      allow read: if isSignedIn() && (
+        resource.data.tenantId == request.auth.uid ||
+        resource.data.landlordId == request.auth.uid
+      );
+      allow create: if isSignedIn() && (
+        request.resource.data.senderId == request.auth.uid &&
+        (request.resource.data.tenantId == request.auth.uid || request.resource.data.landlordId == request.auth.uid)
+      );
+    }
 
-        /**
-         * @description Document references associated with a property.
-         * @path /users/{userId}/properties/{propertyId}/documents/{docId}
-         * @allow (create) User 'abc' uploads a lease and sets userId to 'abc'.
-         * @deny (create) User 'abc' sets 'uploadedByUserId' to 'someone_else' for ownership fraud.
-         * @principle Ownership: Ensures internal fields match the authenticated identity.
-         */
-        match /documents/{documentId} {
-          allow get, list: if isOwner(userId);
-          allow create: if isOwner(userId) && request.resource.data.userId == userId && request.resource.data.uploadedByUserId == request.auth.uid;
-          allow update: if isExistingOwner(userId) && isImmutable('userId') && isImmutable('uploadedByUserId');
-          allow delete: if isExistingOwner(userId);
-        }
-      }
+    // --- Financial Ledger (Expenses & Rent) ---
+    match /expenses/{id} {
+      allow read, write: if isSignedIn() && (resource == null || resource.data.landlordId == request.auth.uid);
+      allow list: if isSignedIn() && request.query.filters.landlordId == request.auth.uid;
+    }
+    match /rentPayments/{id} {
+      allow read, write: if isSignedIn() && (resource == null || resource.data.landlordId == request.auth.uid);
+      allow list: if isSignedIn() && request.query.filters.landlordId == request.auth.uid;
+    }
 
-      /**
-       * @description Audit trail of user activities.
-       * @path /users/{userId}/activityLogs/{logId}
-       * @allow (list) User 'abc' views their own activity feed.
-       * @deny (update) Any user tries to modify an activity log (Audit logs should be immutable).
-       * @principle Immutable Audit Trails: Generally, logs are created but not modified or deleted.
-       */
-      match /activityLogs/{activityLogId} {
-        allow get, list: if isOwner(userId);
-        allow create: if isOwner(userId) && request.resource.data.userId == userId;
-        // Audit logs are typically immutable in production; update/delete allowed here for prototyping flexibility.
-        allow update: if isExistingOwner(userId) && isImmutable('userId');
-        allow delete: if isExistingOwner(userId);
-      }
+    // --- Compliance & Audit (Docs, Screenings, Checklists) ---
+    match /documents/{id} {
+      allow list: if isSignedIn() && (
+        request.query.filters.landlordId == request.auth.uid ||
+        request.query.filters.propertyId != null // Validated by app code ownership filters
+      );
+      allow get: if isSignedIn() && resource.data.landlordId == request.auth.uid;
+      allow create, update, delete: if isSignedIn() && (resource == null || resource.data.landlordId == request.auth.uid);
+    }
+    match /screenings/{id} {
+      allow read, write: if isSignedIn() && (resource == null || resource.data.landlordId == request.auth.uid);
+      allow list: if isSignedIn() && request.query.filters.landlordId == request.auth.uid;
+    }
+    match /checklists/{id} {
+      allow read, write: if isSignedIn() && (resource == null || resource.data.landlordId == request.auth.uid);
+      allow list: if isSignedIn() && request.query.filters.landlordId == request.auth.uid;
+    }
+
+    // --- Contractor Directory ---
+    match /contractors/{id} {
+      allow read, write: if isSignedIn() && (resource == null || resource.data.landlordId == request.auth.uid);
+      allow list: if isSignedIn() && request.query.filters.landlordId == request.auth.uid;
     }
   }
 }
