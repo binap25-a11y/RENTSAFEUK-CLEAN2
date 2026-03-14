@@ -1,10 +1,11 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RentSafeUK Security Governance v8.0
-     * Optimized for Query-Compatible Static Verification.
+     * RentSafeUK Security Governance v9.0
+     * Optimized for high-speed query-compatible identity discovery.
      */
 
     function isSignedIn() {
@@ -43,8 +44,8 @@ service cloud.firestore {
     match /tenants/{tenantId} {
       // Discovery: Authorized for query-based scans matching identity keys
       allow list: if isSignedIn() && (
-        request.auth.uid == resource.data.landlordId ||
-        request.auth.uid == resource.data.userId ||
+        request.auth.uid == resource.data.get('landlordId', '') ||
+        request.auth.uid == resource.data.get('userId', '') ||
         getEmail() == resource.data.get('email', '').lower()
       );
       allow get: if isLandlord(resource.data) || isTenant(resource.data);
@@ -62,8 +63,8 @@ service cloud.firestore {
     match /properties/{propertyId} {
       // Discovery: Authorized for query-based scans matching identity keys
       allow list: if isSignedIn() && (
-        request.auth.uid == resource.data.landlordId ||
-        request.auth.uid == resource.data.tenantId ||
+        request.auth.uid == resource.data.get('landlordId', '') ||
+        request.auth.uid == resource.data.get('tenantId', '') ||
         getEmail() == resource.data.get('tenantEmail', '').lower()
       );
       allow get: if isLandlord(resource.data) || isTenant(resource.data);
@@ -81,16 +82,16 @@ service cloud.firestore {
     match /messages/{id} {
       // Optimized for high-speed indexed chat queries
       allow list: if isSignedIn() && (
-        request.auth.uid == resource.data.senderId ||
-        request.auth.uid == resource.data.tenantId ||
-        request.auth.uid == resource.data.landlordId
+        request.auth.uid == resource.data.get('senderId', '') ||
+        request.auth.uid == resource.data.get('tenantId', '') ||
+        request.auth.uid == resource.data.get('landlordId', '')
       );
       allow get: if isSignedIn() && (
         request.auth.uid == resource.data.get('senderId', '') || 
         request.auth.uid == resource.data.get('tenantId', '') || 
         request.auth.uid == resource.data.get('landlordId', '')
       );
-      allow create: if isSignedIn() && (request.resource.data.senderId == request.auth.uid);
+      allow create: if isSignedIn() && (request.resource.data.get('senderId', '') == request.auth.uid);
       allow update, delete: if false;
     }
 
@@ -98,8 +99,8 @@ service cloud.firestore {
     
     match /repairs/{id} {
       allow list: if isSignedIn() && (
-        request.auth.uid == resource.data.landlordId ||
-        request.auth.uid == resource.data.tenantId
+        request.auth.uid == resource.data.get('landlordId', '') ||
+        request.auth.uid == resource.data.get('tenantId', '')
       );
       allow get: if isLandlord(resource.data) || isTenant(resource.data);
       allow create: if isSignedIn();
@@ -109,7 +110,7 @@ service cloud.firestore {
 
     match /documents/{id} {
       allow list: if isSignedIn() && (
-        request.auth.uid == resource.data.landlordId ||
+        request.auth.uid == resource.data.get('landlordId', '') ||
         isTenant(resource.data)
       );
       allow read: if isLandlord(resource.data) || isTenant(resource.data);
@@ -118,7 +119,7 @@ service cloud.firestore {
 
     match /inspections/{id} {
       allow list: if isSignedIn() && (
-        request.auth.uid == resource.data.landlordId ||
+        request.auth.uid == resource.data.get('landlordId', '') ||
         isTenant(resource.data)
       );
       allow read: if isLandlord(resource.data) || isTenant(resource.data);
@@ -127,7 +128,7 @@ service cloud.firestore {
 
     match /rentPayments/{id} {
       allow list: if isSignedIn() && (
-        request.auth.uid == resource.data.landlordId ||
+        request.auth.uid == resource.data.get('landlordId', '') ||
         isTenant(resource.data)
       );
       allow get: if isLandlord(resource.data) || isTenant(resource.data);
@@ -140,18 +141,18 @@ service cloud.firestore {
     }
 
     match /expenses/{id} {
-      allow list: if isSignedIn() && request.auth.uid == resource.data.landlordId;
-      allow read, write: if isSignedIn() && request.auth.uid == resource.data.landlordId;
+      allow list: if isSignedIn() && request.auth.uid == resource.data.get('landlordId', '');
+      allow read, write: if isSignedIn() && request.auth.uid == resource.data.get('landlordId', '');
     }
     
     match /screenings/{id} {
-      allow list: if isSignedIn() && request.auth.uid == resource.data.landlordId;
-      allow read, write: if isSignedIn() && request.auth.uid == resource.data.landlordId;
+      allow list: if isSignedIn() && request.auth.uid == resource.data.get('landlordId', '');
+      allow read, write: if isSignedIn() && request.auth.uid == resource.data.get('landlordId', '');
     }
 
     match /checklists/{id} {
-      allow list: if isSignedIn() && request.auth.uid == resource.data.landlordId;
-      allow read, write: if isSignedIn() && request.auth.uid == resource.data.landlordId;
+      allow list: if isSignedIn() && request.auth.uid == resource.data.get('landlordId', '');
+      allow read, write: if isSignedIn() && request.auth.uid == resource.data.get('landlordId', '');
     }
   }
 }

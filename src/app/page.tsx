@@ -1,3 +1,4 @@
+
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -121,7 +122,7 @@ export default function LoginPage() {
     setAuthError(null);
 
     const handleError = (error: any) => {
-      // SPECIFIC FEEDBACK: Maps Firebase error codes to user-friendly messages.
+      // SILENT FEEDBACK: Prevent triggering technical developer overlays for credential failures.
       switch (error.code) {
           case 'auth/wrong-password':
           case 'auth/user-not-found':
