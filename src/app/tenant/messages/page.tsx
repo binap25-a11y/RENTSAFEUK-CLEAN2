@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -43,10 +42,10 @@ export default function TenantMessagesPage() {
       return;
     }
     
-    // CASE NORMALIZATION: Strict lowercase matching for query compatibility
+    // CASE NORMALIZATION: Strict lowercase matching for query engine synchronicity
     const userEmail = user.email.toLowerCase().trim();
     
-    // STAGE 1: Registry Discovery
+    // STAGE 1: Registry Discovery via exact email match
     const tenantsCol = collection(firestore, 'tenants');
     const q = query(tenantsCol, where('email', '==', userEmail), limit(1));
 
@@ -61,7 +60,7 @@ export default function TenantMessagesPage() {
         }
         setIsLoadingContext(false);
     }, (error) => {
-        // Log locally but handle state silently to prevent technical overlays
+        // Silent fallback for discovery phase
         setIsLoadingContext(false);
     });
     return () => unsub();
@@ -69,7 +68,7 @@ export default function TenantMessagesPage() {
 
   const messagesQuery = useMemoFirebase(() => {
     if (!tenantContext || !user || !firestore) return null;
-    // Authorized via Handshake UID: Every message is tagged with the user's permanent UID
+    // Authorized via Handshake UID: Every message is tagged with the user's permanent account UID
     return query(
         collection(firestore, 'messages'),
         where('tenantId', '==', user.uid),

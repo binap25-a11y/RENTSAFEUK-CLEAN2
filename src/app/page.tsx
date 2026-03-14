@@ -1,4 +1,3 @@
-
 'use client';
 
 import { Button } from '@/components/ui/button';
@@ -122,7 +121,7 @@ export default function LoginPage() {
     setAuthError(null);
 
     const handleError = (error: any) => {
-      // UI-only feedback mapping to prevent technical overlays
+      // Professional Error Feedback: Silently map credential failures to UI alerts
       switch (error.code) {
           case 'auth/wrong-password':
           case 'auth/user-not-found':
