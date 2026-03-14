@@ -4,8 +4,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RENTSAFEUK SECURITY GOVERNANCE v17.0
-     * High-integrity messaging rules optimized for Rules-as-Filters.
+     * RENTSAFEUK SECURITY GOVERNANCE v18.0
+     * Optimized for high-performance chronological messaging.
      */
 
     function isSignedIn() {
