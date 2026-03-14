@@ -29,7 +29,7 @@ import Link from 'next/link';
 
 /**
  * @fileOverview Resident Portal Chat
- * Synchronizes UI registry and establishes secure messaging handshake.
+ * Definitive restoration of message portal logic with real-time sync.
  */
 
 interface Message {
