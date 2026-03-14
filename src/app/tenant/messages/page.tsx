@@ -60,7 +60,7 @@ export default function TenantMessagesPage() {
         }
         setIsLoadingContext(false);
     }, (error) => {
-        // Silent fallback for discovery phase
+        console.warn("Tenant messages portal discovery issue:", error.message);
         setIsLoadingContext(false);
     });
     return () => unsub();
