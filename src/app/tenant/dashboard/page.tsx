@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -140,7 +141,7 @@ export default function TenantDashboard() {
         console.error("Portal discovery sync error:", err);
         setErrorState(err.code === 'permission-denied' 
             ? "Registry access denied. Check email normalization or landlord setup." 
-            : "Handshake failed. Check connection."
+            : `Handshake failed: ${err.message}`
         );
         setIsLoading(false);
         discoveryRef.current = false;
