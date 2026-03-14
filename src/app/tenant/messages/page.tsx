@@ -31,6 +31,11 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 
+/**
+ * @fileOverview Resident Portal Messaging interface.
+ * Provides a professional, full-viewport unified chat architecture with audit-ready message trails.
+ */
+
 interface Message {
     id: string;
     senderId: string;

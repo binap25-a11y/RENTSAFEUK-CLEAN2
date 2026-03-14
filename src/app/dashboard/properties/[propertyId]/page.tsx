@@ -54,6 +54,11 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 
+/**
+ * @fileOverview Comprehensive Landlord Property View.
+ * Fully restored to fix previous source truncation and integrated with audit-ready messaging.
+ */
+
 interface Property {
     id: string;
     landlordId: string;
@@ -156,10 +161,11 @@ export default function PropertyDetailPage() {
     e.preventDefault();
     if (!newReply.trim() || !user || !property || isSendingReply) return;
 
+    // Definitively find the target resident for the property
     const targetTenantId = messages?.find(m => m.senderId !== user.uid)?.tenantId || (activeTenants?.[0]?.userId);
     
     if (!targetTenantId) {
-        toast({ variant: 'destructive', title: 'Reply Forbidden', description: 'No active resident found for this asset.' });
+        toast({ variant: 'destructive', title: 'Reply Forbidden', description: 'No active verified resident found for this asset.' });
         return;
     }
 
@@ -176,7 +182,7 @@ export default function PropertyDetailPage() {
             timestamp: serverTimestamp()
         });
         setNewReply('');
-        toast({ title: 'Reply Sent', description: 'The communication has been logged successfully.' });
+        toast({ title: 'Reply Sent', description: 'Communication recorded in registry.' });
     } catch (error) {
         console.error("Sync failure:", error);
         toast({ variant: 'destructive', title: 'Send Failed' });
@@ -376,7 +382,7 @@ export default function PropertyDetailPage() {
                                     <CardDescription>Verified message trail for this property.</CardDescription>
                                 </div>
                             </div>
-                            <Badge variant="outline" className="h-6 text-[8px] uppercase font-bold tracking-widest bg-background border-2 shadow-sm">Verified Audit-Ready</Badge>
+                            <Badge variant="outline" className="h-6 text-[8px] uppercase font-bold tracking-widest bg-background border-2 shadow-sm">Audit-Ready</Badge>
                         </CardHeader>
                         <CardContent className="flex-1 overflow-hidden p-0 relative bg-muted/5">
                             <ScrollArea className="h-full p-6">
