@@ -40,6 +40,7 @@ export function getSdks(firebaseApp: FirebaseApp) {
   };
 }
 
+// CONSOLIDATED EXPORTS: Prevents ReferenceErrors and TypeErrors in bundler
 export * from './provider';
 export * from './client-provider';
 export * from './firestore/use-collection';
