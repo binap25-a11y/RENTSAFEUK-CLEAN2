@@ -121,7 +121,7 @@ export default function TenantMessagesPage() {
   if (!tenantContext) {
     return (
       <Card className="max-w-md mx-auto mt-10 shadow-lg border-none text-center">
-        <CardHeader className="bg-muted/20 pb-8">
+        <CardHeader className="bg-muted/20 pb-8 border-b">
           <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 border shadow-sm">
               <AlertCircle className="h-8 w-8 text-destructive" />
           </div>

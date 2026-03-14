@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState, useCallback, useRef } from 'react';
@@ -79,6 +78,7 @@ export default function TenantDashboard() {
         }
 
         if (!tenantDoc) {
+            console.log("No registry entry found for", userEmail);
             setIsLoading(false);
             discoveryRef.current = false;
             return;
@@ -131,10 +131,10 @@ export default function TenantDashboard() {
         setIsLoading(false);
         discoveryRef.current = false;
     } catch (err: any) {
-        console.warn("Resident portal handshake issues:", err.message);
+        console.error("Portal discovery sync error:", err);
         setErrorState(err.code === 'permission-denied' 
-            ? "Registry access denied. Check email normalization." 
-            : "Portal handshake failed. Please retry."
+            ? "Registry access denied. Check email normalization or landlord setup." 
+            : "Handshake failed. Check connection."
         );
         setIsLoading(false);
         discoveryRef.current = false;
