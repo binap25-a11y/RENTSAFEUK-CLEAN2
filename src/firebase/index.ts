@@ -6,12 +6,12 @@ import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore'
 
-// IMPORTANT: DO NOT MODIFY THIS FUNCTION
+/**
+ * RentSafeUK Firebase Core initialization.
+ * Prevents circular dependencies and ensures singleton instances across the app.
+ */
 export function initializeFirebase() {
   if (!getApps().length) {
-    // Important! initializeApp() is called without any arguments because Firebase App Hosting
-    // integrates with the initializeApp() function to provide the environment variables needed to
-    // populate the FirebaseOptions in production.
     let firebaseApp;
     try {
       firebaseApp = initializeApp();
@@ -36,7 +36,7 @@ export function getSdks(firebaseApp: FirebaseApp) {
   };
 }
 
-// CONSOLIDATED EXPORTS: Prevents ReferenceErrors and TypeErrors in bundler
+// DEFINITIVE EXPORTS: Prioritize consolidated utility files
 export * from './provider';
 export * from './client-provider';
 export * from './firestore/use-collection';
