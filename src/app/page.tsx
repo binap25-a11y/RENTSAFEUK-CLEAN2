@@ -109,7 +109,7 @@ export default function LoginPage() {
             router.replace('/dashboard');
           }
         } catch (error: any) {
-          // Handle handshake deferral silently to prevent technical distraction
+          // Silent fallback for handshake deferral
           router.replace('/dashboard');
         }
       };
@@ -124,7 +124,7 @@ export default function LoginPage() {
     setAuthError(null);
 
     const handleError = (error: any) => {
-      // Professional feedback mapping for authentication credentials
+      // UI-only feedback mapping to prevent technical overlays
       switch (error.code) {
           case 'auth/wrong-password':
           case 'auth/user-not-found':
@@ -156,7 +156,7 @@ export default function LoginPage() {
       setIsProcessing(true);
       setAuthError(null);
       const provider = new GoogleAuthProvider();
-      signInWithRedirect(auth, provider).catch((error) => {
+      signInWithRedirect(auth, provider).catch(() => {
           setAuthError('Unable to connect with Google. Please try again.');
           setIsProcessing(false);
       });

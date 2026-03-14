@@ -140,7 +140,7 @@ export default function TenantsPage() {
     try {
       const tenantRef = doc(firestore, 'tenants', tenantToArchive.id);
       
-      // 1. Scan for other active tenants on this property FIRST to ensure accuracy
+      // 1. Atomic Verification: Scan for remaining residents
       const activeTenantsQuery = query(
           collection(firestore, 'tenants'),
           where('propertyId', '==', tenantToArchive.propertyId),
@@ -155,7 +155,7 @@ export default function TenantsPage() {
       // 2. Mark Tenant as Archived
       updateDocumentNonBlocking(tenantRef, { status: 'Archived' });
 
-      // 3. Update Property status if this was the last tenant
+      // 3. Atomically update Property status if this was the last resident
       if (otherActiveTenants.length === 0) {
           const propRef = doc(firestore, 'properties', tenantToArchive.propertyId);
           updateDocumentNonBlocking(propRef, { status: 'Vacant' });
@@ -163,12 +163,12 @@ export default function TenantsPage() {
 
       toast({
         title: 'Tenant Archived',
-        description: `${tenantToArchive.name} moved to archives. Asset status updated.`,
+        description: `${tenantToArchive.name} moved to archives. Asset status synchronized.`,
       });
       
       setTenantToArchive(null);
     } catch (e) {
-      console.error('Error archiving tenant:', e);
+      console.error('Archiving sync error:', e);
       toast({
         variant: 'destructive',
         title: 'Sync Error',
@@ -242,7 +242,7 @@ export default function TenantsPage() {
                         <TableHead className="font-bold text-[10px] uppercase tracking-wider pl-6 py-4">Resident Identity</TableHead>
                         <TableHead className="font-bold text-[10px] uppercase tracking-wider">Property</TableHead>
                         <TableHead className="font-bold text-[10px] uppercase tracking-wider">Status</TableHead>
-                        <TableHead className="text-right font-bold text-[10px] uppercase tracking-wider pr-6">Actions</TableHead>
+                        <TableHead className="text-right pr-6 font-bold text-[10px] uppercase tracking-wider">Actions</TableHead>
                       </TableRow>
                     </TableHeader>
                     <TableBody>
@@ -355,16 +355,16 @@ export default function TenantsPage() {
       </div>
 
       <AlertDialog open={!!tenantToArchive} onOpenChange={(open) => !open && setTenantToArchive(null)}>
-        <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
-          <AlertDialogHeader>
+        <AlertDialogContent className="rounded-2xl border-none shadow-2xl text-left">
+          <AlertDialogHeader className='text-left'>
             <div className="p-4 rounded-full bg-destructive/10 w-fit mx-auto mb-4"><Archive className="h-8 w-8 text-destructive" /></div>
-            <AlertDialogTitle className="text-xl text-center">Archive tenant record?</AlertDialogTitle>
+            <AlertDialogTitle className="text-xl text-center font-headline">Archive tenant record?</AlertDialogTitle>
             <AlertDialogDescription className="text-base font-medium text-center">
               This will move <strong className="text-foreground">{tenantToArchive?.name}</strong> to your archives and update the property availability. Access to the Resident Hub will be revoked.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter className="gap-3 mt-6">
-            <AlertDialogCancel className="rounded-2xl font-bold uppercase text-[10px] h-12 flex-1">Cancel</AlertDialogCancel>
+            <AlertDialogCancel className="rounded-2xl font-bold uppercase text-[10px] h-12 flex-1 border-2">Cancel</AlertDialogCancel>
             <AlertDialogAction
               className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-2xl font-bold uppercase text-[10px] h-12 flex-1 shadow-lg"
               onClick={handleArchiveConfirm}

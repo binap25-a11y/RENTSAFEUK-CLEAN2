@@ -20,7 +20,7 @@ import {
   RefreshCw,
   Search
 } from 'lucide-react';
-import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useUser, useFirestore } from '@/firebase';
 import { collection, query, where, limit, getDocs, doc, updateDoc, getDoc, arrayUnion, onSnapshot } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -58,18 +58,18 @@ export default function TenantDashboard() {
     setIsLoading(true);
     setErrorState(null);
 
-    // CASE NORMALIZATION: Strict lowercase matching for security rules
+    // CASE NORMALIZATION: Strict lowercase matching for query engine deterministic scan
     const userEmail = user.email.toLowerCase().trim();
 
     try {
-        // STAGE 1: Fast UID Discovery (if already handshaked)
+        // STAGE 1: Fast UID Discovery
         const tenantsCol = collection(firestore, 'tenants');
         const qByUid = query(tenantsCol, where('userId', '==', user.uid), limit(1));
         const uidSnap = await getDocs(qByUid);
 
         let tenantDoc = uidSnap.empty ? null : uidSnap.docs[0];
 
-        // STAGE 2: Email Discovery (if handshake pending)
+        // STAGE 2: Email Discovery (Handshake needed)
         if (!tenantDoc) {
             const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
             const emailSnap = await getDocs(qByEmail);
@@ -87,11 +87,11 @@ export default function TenantDashboard() {
         const tenantData = tenantDoc.data();
         
         // STAGE 3: Secure Identity Handshake
-        // We link the account UID to the registry if it's missing or unverified
+        // Elevate email-authorized entry to permanent UID-based authorization
         if (tenantData.userId !== user.uid || !tenantData.verified) {
             setIsHandshaking(true);
             
-            // 1. Link UID to Tenant Record
+            // 1. Permanent Identity Mapping
             await updateDoc(tenantDoc.ref, { 
                 userId: user.uid,
                 verified: true,
@@ -100,8 +100,8 @@ export default function TenantDashboard() {
                 lastSyncCheck: new Date().toISOString()
             });
             
-            // 2. Authorize UID on Property Asset
-            // Note: firestore.rules explicitly allows this specific field update for verified residents via email match
+            // 2. Asset Authorization Update
+            // Explicitly allowed by handshake rules in firestore.rules
             const propertyRef = doc(firestore, 'properties', tenantData.propertyId);
             await updateDoc(propertyRef, { 
                 tenantId: user.uid,
@@ -112,7 +112,7 @@ export default function TenantDashboard() {
             setIsHandshaking(false);
         }
 
-        // STAGE 4: Context Resolution
+        // STAGE 4: Resolution
         const propRef = doc(firestore, 'properties', tenantData.propertyId);
         const propSnap = await getDoc(propRef);
         
@@ -125,20 +125,17 @@ export default function TenantDashboard() {
                 propertyData: propSnap.data()
             });
         } else {
-            setErrorState("Identity linked, but asset profile resolution failed. Contact landlord.");
+            setErrorState("Identity linked, but asset profile resolution failed.");
         }
         
         setIsLoading(false);
         discoveryRef.current = false;
     } catch (err: any) {
-        console.warn("Resident Hub Discovery Error:", err.message);
-        
-        if (err.code === 'permission-denied') {
-            setErrorState("Registry access denied. Ensure your account email matches your tenancy record.");
-        } else {
-            setErrorState("Portal handshake failed. Please retry.");
-        }
-        
+        console.warn("Resident portal handshake issues:", err.message);
+        setErrorState(err.code === 'permission-denied' 
+            ? "Registry access denied. Check email normalization." 
+            : "Portal handshake failed. Please retry."
+        );
         setIsLoading(false);
         discoveryRef.current = false;
     }
@@ -161,7 +158,7 @@ export default function TenantDashboard() {
             </div>
             <div className="space-y-3">
                 <h2 className="font-headline text-2xl font-bold text-primary tracking-tight">
-                    {isHandshaking ? "Finalizing Handshake..." : "Syncing Hub..."}
+                    {isHandshaking ? "Finalizing Handshake..." : "Syncing Portal..."}
                 </h2>
                 <p className="text-muted-foreground font-medium">Securing your property connection.</p>
             </div>
@@ -172,14 +169,14 @@ export default function TenantDashboard() {
   if (errorState) {
       return (
         <Card className="max-w-md mx-auto mt-20 shadow-2xl border-none overflow-hidden">
-            <CardHeader className="bg-destructive/10 pb-6 border-b border-destructive/20">
-                <div className="flex items-center gap-3 justify-center">
+            <CardHeader className="bg-destructive/10 pb-6 border-b border-destructive/20 text-left">
+                <div className="flex items-center gap-3">
                     <AlertCircle className="h-6 w-6 text-destructive" />
-                    <CardTitle className="font-headline text-lg text-destructive">Portal Handshake Failed</CardTitle>
+                    <CardTitle className="font-headline text-lg text-destructive">Portal Sync Failed</CardTitle>
                 </div>
             </CardHeader>
             <CardContent className="pt-6 text-center">
-                <p className="text-sm font-medium leading-relaxed">{errorState}</p>
+                <p className="text-sm font-medium leading-relaxed text-muted-foreground">{errorState}</p>
             </CardContent>
             <CardFooter className="pt-6 bg-muted/5 border-t">
                 <Button variant="outline" className="w-full h-11 font-bold" onClick={() => { discoveryRef.current = false; performDiscovery(); }}>
