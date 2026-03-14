@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -28,11 +27,12 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
-import { query, where, limit, addDoc, collection, onSnapshot, orderBy, serverTimestamp, doc } from 'firebase/firestore';
+import { query, where, limit, addDoc, collection, onSnapshot, orderBy, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { format, isToday, isYesterday, isSameDay } from 'date-fns';
 import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
+import { notifyLandlordOfMessage } from '@/app/actions/notifications';
 
 interface Message {
     id: string;
@@ -129,6 +129,9 @@ export default function TenantMessagesPage() {
     if (!newMessage.trim() || !tenantContext || !user || isSending) return;
 
     setIsSending(true);
+    const messageContent = newMessage.trim();
+    const senderName = user.displayName || 'Resident';
+
     try {
         const msgCol = collection(firestore, 'messages');
         await addDoc(msgCol, {
@@ -138,13 +141,38 @@ export default function TenantMessagesPage() {
             tenantUid: user.uid, 
             tenantEmail: tenantContext.email || user.email?.toLowerCase().trim(),
             senderId: user.uid,
-            senderName: user.displayName || 'Resident',
-            content: newMessage.trim(),
+            senderName: senderName,
+            content: messageContent,
             timestamp: serverTimestamp(),
             read: false
         });
+        
         setNewMessage('');
         toast({ title: 'Message Sent' });
+
+        // ASYNC NOTIFICATION HANDSHAKE
+        // Fetch landlord email and property address for the notification
+        try {
+            const [landlordSnap, propertySnap] = await Promise.all([
+                getDoc(doc(firestore, 'users', tenantContext.landlordId)),
+                getDoc(doc(firestore, 'properties', tenantContext.propertyId))
+            ]);
+
+            const landlordEmail = landlordSnap.data()?.email;
+            const propertyAddress = propertySnap.data()?.address?.street || 'your property';
+
+            if (landlordEmail) {
+                await notifyLandlordOfMessage(
+                    landlordEmail,
+                    senderName,
+                    messageContent,
+                    propertyAddress
+                );
+            }
+        } catch (notifErr) {
+            console.warn("Notification handshake failed:", notifErr);
+        }
+
     } catch (error) {
         console.error("Transmission failure:", error);
         toast({ variant: 'destructive', title: 'Transmission Failed' });
