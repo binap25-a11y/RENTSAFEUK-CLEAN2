@@ -132,6 +132,7 @@ export default function TenantDashboard() {
     } catch (err: any) {
         console.error("Resident Hub Discovery Error:", err.message);
         
+        // ERROR GOVERNANCE: Trigger specific listener for developer oversight
         if (err.code === 'permission-denied') {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: 'tenants',
