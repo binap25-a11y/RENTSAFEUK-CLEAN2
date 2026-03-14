@@ -4,8 +4,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RentSafeUK Security Governance v21.0
-     * Optimized for high-speed query prove-ability and atomic resident handshakes.
+     * RentSafeUK Security Governance v22.0
+     * Optimized for high-speed query prove-ability and query-rule alignment.
      */
 
     function isSignedIn() {
@@ -21,19 +21,6 @@ service cloud.firestore {
       return request.auth.uid;
     }
 
-    // Helper to check if the user is the landlord of the record
-    function isLandlord(data) {
-      return isSignedIn() && getUid() == data.get('landlordId', '');
-    }
-
-    // Helper to check if the user is the tenant of the record (Handshaked UID)
-    function isTenant(data) {
-      return isSignedIn() && (
-        getUid() == data.get('tenantId', '') || 
-        getUid() == data.get('userId', '')
-      );
-    }
-
     // --- Identity Registry ---
     match /users/{userId} {
       allow read, write: if isSignedIn() && getUid() == userId;
@@ -41,71 +28,66 @@ service cloud.firestore {
 
     // --- Tenant Registry ---
     match /tenants/{tenantId} {
-      // DISCOVERY: Optimized for deterministic query authorization by UID or Normalized Email
-      allow list: if isSignedIn() && (
-        getUid() == resource.data.get('landlordId', '') || 
-        getUid() == resource.data.get('userId', '') || 
-        getEmail() == resource.data.get('email', '').lower()
-      );
+      // Split list rules for query engine optimization
+      allow list: if isSignedIn() && resource.data.landlordId == getUid();
+      allow list: if isSignedIn() && resource.data.userId == getUid();
+      allow list: if isSignedIn() && resource.data.email == getEmail();
       
       allow get: if isSignedIn() && (
-        isLandlord(resource.data) || 
-        isTenant(resource.data) || 
-        getEmail() == resource.data.get('email', '').lower()
+        resource.data.landlordId == getUid() || 
+        resource.data.userId == getUid() || 
+        resource.data.email == getEmail()
       );
       
       allow create: if isSignedIn();
       
       // HANDSHAKE: Allow residents to link their UID if they match the registry email
       allow update: if isSignedIn() && (
-        isLandlord(resource.data) || 
-        (getEmail() == resource.data.get('email', '').lower() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'verified', 'joinedDate', 'status', 'lastSyncCheck']))
+        resource.data.landlordId == getUid() || 
+        (resource.data.email == getEmail() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'verified', 'joinedDate', 'status', 'lastSyncCheck']))
       );
-      allow delete: if isLandlord(resource.data);
+      allow delete: if isSignedIn() && resource.data.landlordId == getUid();
     }
 
     // --- Property Portfolio ---
     match /properties/{propertyId} {
-      // DISCOVERY: Optimized for high-speed collection scans by Landlord, Tenant, or Email bridge
-      allow list: if isSignedIn() && (
-        getUid() == resource.data.get('landlordId', '') || 
-        getUid() == resource.data.get('tenantId', '') || 
-        resource.data.get('activeTenantUids', []).hasAny([getUid()]) ||
-        getEmail() == resource.data.get('tenantEmail', '').lower()
-      );
+      // Split list rules for high-speed collection scans alignment
+      allow list: if isSignedIn() && resource.data.landlordId == getUid();
+      allow list: if isSignedIn() && resource.data.tenantId == getUid();
+      allow list: if isSignedIn() && getUid() in resource.data.get('activeTenantUids', []);
+      allow list: if isSignedIn() && resource.data.tenantEmail == getEmail();
 
       allow get: if isSignedIn() && (
-        isLandlord(resource.data) || 
-        isTenant(resource.data) || 
-        getEmail() == resource.data.get('tenantEmail', '').lower()
+        resource.data.landlordId == getUid() || 
+        resource.data.tenantId == getUid() || 
+        getUid() in resource.data.get('activeTenantUids', []) ||
+        resource.data.tenantEmail == getEmail()
       );
       
       allow create: if isSignedIn();
       
       // HANDSHAKE: Allow residents to link their UID to the property bridge if authorized by email
       allow update: if isSignedIn() && (
-        isLandlord(resource.data) || 
-        (getEmail() == resource.data.get('tenantEmail', '').lower() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['tenantId', 'activeTenantUids', 'status']))
+        resource.data.landlordId == getUid() || 
+        (resource.data.tenantEmail == getEmail() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['tenantId', 'activeTenantUids', 'status']))
       );
-      allow delete: if isLandlord(resource.data);
+      allow delete: if isSignedIn() && resource.data.landlordId == getUid();
     }
 
     // --- Secure Messaging Ledger ---
     match /messages/{id} {
-      // PROOF-OPTIMIZED: Single logical block for static query verification
-      allow list: if isSignedIn() && (
-        resource.data.get('tenantId', '') == getUid() || 
-        resource.data.get('landlordId', '') == getUid()
-      );
+      // Split list rules for query optimization
+      allow list: if isSignedIn() && resource.data.tenantId == getUid();
+      allow list: if isSignedIn() && resource.data.landlordId == getUid();
       
       allow get: if isSignedIn() && (
-        resource.data.get('tenantId', '') == getUid() || 
-        resource.data.get('landlordId', '') == getUid()
+        resource.data.tenantId == getUid() || 
+        resource.data.landlordId == getUid()
       );
       
       allow create: if isSignedIn() && (
-        request.resource.data.get('senderId', '') == getUid() &&
-        (getUid() == request.resource.data.get('tenantId', '') || getUid() == request.resource.data.get('landlordId', ''))
+        request.resource.data.senderId == getUid() &&
+        (request.resource.data.tenantId == getUid() || request.resource.data.landlordId == getUid())
       );
       allow update, delete: if false;
     }
@@ -113,62 +95,37 @@ service cloud.firestore {
     // --- Shared Ledger Collections ---
     
     match /repairs/{id} {
-      allow list: if isSignedIn() && (
-        getUid() == resource.data.get('landlordId', '') || 
-        getUid() == resource.data.get('tenantId', '') || 
-        getUid() == resource.data.get('reportedBy', '')
-      );
+      allow list: if isSignedIn() && resource.data.landlordId == getUid();
+      allow list: if isSignedIn() && resource.data.tenantId == getUid();
+      allow list: if isSignedIn() && resource.data.reportedBy == getUid();
       
       allow get: if isSignedIn() && (
-        getUid() == resource.data.get('landlordId', '') || 
-        getUid() == resource.data.get('tenantId', '') || 
-        getUid() == resource.data.get('reportedBy', '')
+        resource.data.landlordId == getUid() || 
+        resource.data.tenantId == getUid() || 
+        resource.data.reportedBy == getUid()
       );
       
       allow create: if isSignedIn();
-      allow update: if isLandlord(resource.data) || isTenant(resource.data);
-      allow delete: if isLandlord(resource.data);
+      allow update: if isSignedIn() && (resource.data.landlordId == getUid() || resource.data.tenantId == getUid());
+      allow delete: if isSignedIn() && resource.data.landlordId == getUid();
     }
 
     match /documents/{id} {
-      allow list: if isSignedIn() && (
-        getUid() == resource.data.get('landlordId', '') || 
-        getUid() == resource.data.get('tenantId', '') || 
-        getUid() == resource.data.get('propertyId', '')
-      );
-      
-      allow read: if isSignedIn() && (
-        getUid() == resource.data.get('landlordId', '') || 
-        getUid() == resource.data.get('tenantId', '') || 
-        getUid() == resource.data.get('propertyId', '')
-      );
-      allow write: if isLandlord(resource.data);
+      allow list: if isSignedIn() && (resource.data.landlordId == getUid() || resource.data.tenantId == getUid() || resource.data.propertyId != null);
+      allow read: if isSignedIn() && (resource.data.landlordId == getUid() || resource.data.tenantId == getUid() || resource.data.propertyId != null);
+      allow write: if isSignedIn() && resource.data.landlordId == getUid();
     }
 
     match /inspections/{id} {
-      allow list: if isSignedIn() && (
-        getUid() == resource.data.get('landlordId', '') || 
-        getUid() == resource.data.get('tenantId', '')
-      );
-      
-      allow read: if isSignedIn() && (
-        getUid() == resource.data.get('landlordId', '') || 
-        getUid() == resource.data.get('tenantId', '')
-      );
-      allow write: if isLandlord(resource.data);
+      allow list: if isSignedIn() && (resource.data.landlordId == getUid() || resource.data.tenantId == getUid());
+      allow read: if isSignedIn() && (resource.data.landlordId == getUid() || resource.data.tenantId == getUid());
+      allow write: if isSignedIn() && resource.data.landlordId == getUid();
     }
 
     match /rentPayments/{id} {
-      allow list: if isSignedIn() && (
-        getUid() == resource.data.get('landlordId', '') || 
-        getUid() == resource.data.get('tenantId', '')
-      );
-      
-      allow get: if isSignedIn() && (
-        getUid() == resource.data.get('landlordId', '') || 
-        getUid() == resource.data.get('tenantId', '')
-      );
-      allow write: if isLandlord(resource.data);
+      allow list: if isSignedIn() && (resource.data.landlordId == getUid() || resource.data.tenantId == getUid());
+      allow get: if isSignedIn() && (resource.data.landlordId == getUid() || resource.data.tenantId == getUid());
+      allow write: if isSignedIn() && resource.data.landlordId == getUid();
     }
 
     match /contractors/{id} {
@@ -177,18 +134,18 @@ service cloud.firestore {
     }
 
     match /expenses/{id} {
-      allow list: if isSignedIn() && getUid() == resource.data.get('landlordId', '');
-      allow read, write: if isSignedIn() && getUid() == resource.data.get('landlordId', '');
+      allow list: if isSignedIn() && getUid() == resource.data.landlordId;
+      allow read, write: if isSignedIn() && getUid() == resource.data.landlordId;
     }
     
     match /screenings/{id} {
-      allow list: if isSignedIn() && getUid() == resource.data.get('landlordId', '');
-      allow read, write: if isSignedIn() && getUid() == resource.data.get('landlordId', '');
+      allow list: if isSignedIn() && getUid() == resource.data.landlordId;
+      allow read, write: if isSignedIn() && getUid() == resource.data.landlordId;
     }
 
     match /checklists/{id} {
-      allow list: if isSignedIn() && getUid() == resource.data.get('landlordId', '');
-      allow read, write: if isSignedIn() && getUid() == resource.data.get('landlordId', '');
+      allow list: if isSignedIn() && getUid() == resource.data.landlordId;
+      allow read, write: if isSignedIn() && getUid() == resource.data.landlordId;
     }
   }
 }
