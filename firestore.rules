@@ -4,8 +4,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RENTSAFEUK SECURITY GOVERNANCE v10.0
-     * Hardened identity mapping for real-time bidirectional messaging.
+     * RENTSAFEUK SECURITY GOVERNANCE v11.0
+     * Optimized identity mapping for bidirectional messaging using stable tenant document IDs.
      */
 
     function isSignedIn() {
@@ -75,6 +75,17 @@ service cloud.firestore {
       allow delete: if isSignedIn() && resource.data.landlordId == request.auth.uid;
     }
 
+    // --- Communication (Messages) ---
+    match /messages/{messageId} {
+      allow read, list: if isSignedIn() && (
+        request.auth.uid == resource.data.landlordId || 
+        request.auth.uid == resource.data.get('tenantUid', '') ||
+        get(/databases/$(database)/documents/tenants/$(resource.data.tenantId)).data.userId == request.auth.uid
+      );
+      
+      allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
+    }
+
     // --- Maintenance (Repairs) ---
     match /repairs/{repairId} {
       allow get: if isSignedIn() && (
@@ -96,17 +107,6 @@ service cloud.firestore {
         resource.data.landlordId == request.auth.uid || 
         resource.data.reportedBy == request.auth.uid
       );
-    }
-
-    // --- Communication (Messages) ---
-    match /messages/{messageId} {
-      allow read, list: if isSignedIn() && (
-        resource.data.landlordId == request.auth.uid || 
-        resource.data.get('tenantUid', '') == request.auth.uid ||
-        get(/databases/$(database)/documents/tenants/$(resource.data.tenantId)).data.userId == request.auth.uid
-      );
-      
-      allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;
     }
 
     // --- Documents ---

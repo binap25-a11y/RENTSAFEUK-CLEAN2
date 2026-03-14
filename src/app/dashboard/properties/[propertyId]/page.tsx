@@ -178,7 +178,7 @@ export default function PropertyDetailPage() {
     // Discovery Handshake: Target first active tenant or context
     const targetTenant = messages?.find(m => m.senderId !== user.uid) || activeTenants?.[0];
     const targetTenantId = targetTenant?.tenantId || targetTenant?.id;
-    const targetTenantUid = targetTenant?.senderId !== user.uid ? targetTenant?.senderId : (activeTenants?.[0]?.userId || '');
+    const targetTenantUid = targetTenant?.senderId !== user.uid ? (targetTenant as any)?.tenantUid : (activeTenants?.[0]?.userId || '');
     
     if (!targetTenantId) {
         toast({ variant: 'destructive', title: 'Registry Link Missing', description: 'Assign an active resident to this asset to enable messaging.' });
