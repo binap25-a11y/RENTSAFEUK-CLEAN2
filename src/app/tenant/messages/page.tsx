@@ -133,7 +133,9 @@ export default function TenantMessagesPage() {
   };
 
   const scrollToTop = () => {
-    topRef.current?.scrollIntoView({ behavior: 'smooth' });
+    if (topRef.current) {
+        topRef.current.scrollIntoView({ behavior: 'smooth' });
+    }
   };
 
   const getMessageDate = (timestamp: any) => {

@@ -4,9 +4,10 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RENTSAFEUK SECURITY GOVERNANCE v12.0
+     * RENTSAFEUK SECURITY GOVERNANCE v12.1
      * Optimized identity mapping for bidirectional messaging using stable tenant document IDs.
      * Updated to support verified resident lookups via cross-collection get().
+     * Force re-deployment for messaging indexes.
      */
 
     function isSignedIn() {
