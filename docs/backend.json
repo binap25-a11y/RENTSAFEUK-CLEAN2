@@ -1,157 +1,599 @@
-
 {
   "entities": {
     "UserProfile": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "UserProfile",
       "type": "object",
-      "description": "Represents the profile of a landlord or property manager.",
+      "description": "Stores profile information for a user of the Maintain UK application. Authentication data is handled by an external system.",
       "properties": {
-        "id": { "type": "string" },
-        "firstName": { "type": "string" },
-        "lastName": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "role": { "type": "string", "enum": ["landlord", "agent", "tenant"] },
-        "createdAt": { "type": "string", "format": "date-time" },
-        "idleTimeoutMinutes": { "type": "number" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the UserProfile entity."
+        },
+        "email": {
+          "type": "string",
+          "description": "The user's email address.",
+          "format": "email"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The first name of the user."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The last name of the user."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the user profile was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the user profile was last updated.",
+          "format": "date-time"
+        }
       },
-      "required": ["id", "email", "createdAt"]
+      "required": [
+        "id",
+        "email",
+        "createdAt",
+        "updatedAt"
+      ]
     },
     "Property": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Property",
       "type": "object",
-      "description": "Represents a rental property asset with integrated identity registry.",
+      "description": "Represents a single rental property managed within the Maintain UK application.",
       "properties": {
-        "id": { "type": "string" },
-        "landlordId": { "type": "string" },
-        "tenantId": { "type": "string", "description": "UID of the primary verified tenant after portal handshake." },
-        "activeTenantUids": { "type": "array", "items": { "type": "string" }, "description": "Authorized UIDs for verified shared access." },
-        "tenantEmail": { "type": "string", "description": "Primary registered email for verification bridge." },
-        "tenantEmails": { "type": "array", "items": { "type": "string" }, "description": "Registry of authorized emails for high-speed discovery." },
-        "address": {
-          "type": "object",
-          "properties": {
-            "nameOrNumber": { "type": "string" },
-            "street": { "type": "string" },
-            "city": { "type": "string" },
-            "county": { "type": "string" },
-            "postcode": { "type": "string" }
-          }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Property entity."
         },
-        "status": { "type": "string", "enum": ["Vacant", "Occupied", "Under Maintenance", "Deleted"] },
-        "propertyType": { "type": "string" },
-        "bedrooms": { "type": "number" },
-        "bathrooms": { "type": "number" },
-        "imageUrl": { "type": "string" },
-        "additionalImageUrls": { "type": "array", "items": { "type": "string" } },
-        "notes": { "type": "string" },
-        "purchasePrice": { "type": "number" },
-        "currentValuation": { "type": "number" },
-        "tenancy": {
-          "type": "object",
-          "properties": {
-            "monthlyRent": { "type": "number" },
-            "depositAmount": { "type": "number" },
-            "depositScheme": { "type": "string" }
-          }
+        "ownerId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who owns/manages this property. (Relationship: UserProfile 1:N Property)"
+        },
+        "addressLine1": {
+          "type": "string",
+          "description": "The first line of the property's address."
+        },
+        "addressLine2": {
+          "type": "string",
+          "description": "The second line of the property's address (optional)."
+        },
+        "city": {
+          "type": "string",
+          "description": "The city where the property is located."
+        },
+        "postcode": {
+          "type": "string",
+          "description": "The postcode of the property."
+        },
+        "propertyType": {
+          "type": "string",
+          "description": "The type of property (e.g., flat, house, bungalow, maisonette, studio, HMO)."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the property (e.g., Vacant, Occupied, Under Maintenance)."
+        },
+        "numberOfBedrooms": {
+          "type": "number",
+          "description": "The number of bedrooms in the property."
+        },
+        "numberOfBathrooms": {
+          "type": "number",
+          "description": "The number of bathrooms in the property."
+        },
+        "notes": {
+          "type": "string",
+          "description": "General notes or comments about the property."
+        },
+        "mainImageUrl": {
+          "type": "string",
+          "description": "URL to the main image of the property.",
+          "format": "uri"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the property record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the property record was last updated.",
+          "format": "date-time"
         }
       },
-      "required": ["id", "landlordId", "address", "status"]
+      "required": [
+        "id",
+        "ownerId",
+        "addressLine1",
+        "city",
+        "postcode",
+        "propertyType",
+        "status",
+        "numberOfBedrooms",
+        "numberOfBathrooms",
+        "createdAt",
+        "updatedAt"
+      ]
     },
     "Tenant": {
       "$schema": "http://json-schema.org/draft-07/schema#",
       "title": "Tenant",
       "type": "object",
-      "description": "Represents a resident identity record.",
+      "description": "Represents a tenant associated with a rental property.",
       "properties": {
-        "id": { "type": "string" },
-        "userId": { "type": "string", "description": "Firebase UID linked after portal handshake." },
-        "landlordId": { "type": "string" },
-        "propertyId": { "type": "string" },
-        "name": { "type": "string" },
-        "email": { "type": "string", "format": "email" },
-        "telephone": { "type": "string" },
-        "verified": { "type": "boolean" },
-        "status": { "type": "string", "enum": ["Active", "Archived"] },
-        "joinedDate": { "type": "string", "format": "date-time" },
-        "monthlyRent": { "type": "number" },
-        "rentDueDay": { "type": "number" },
-        "tenancyStartDate": { "type": "string", "format": "date-time" },
-        "tenancyEndDate": { "type": "string", "format": "date-time" }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Tenant entity."
+        },
+        "propertyId": {
+          "type": "string",
+          "description": "Reference to the Property the tenant is occupying. (Relationship: Property 1:N Tenant)"
+        },
+        "firstName": {
+          "type": "string",
+          "description": "The first name of the tenant."
+        },
+        "lastName": {
+          "type": "string",
+          "description": "The last name of the tenant."
+        },
+        "email": {
+          "type": "string",
+          "description": "The tenant's email address.",
+          "format": "email"
+        },
+        "phoneNumber": {
+          "type": "string",
+          "description": "The tenant's telephone number."
+        },
+        "tenancyStartDate": {
+          "type": "string",
+          "description": "The start date of the tenancy agreement.",
+          "format": "date"
+        },
+        "tenancyEndDate": {
+          "type": "string",
+          "description": "The anticipated end date of the tenancy agreement.",
+          "format": "date"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Specific notes about the tenant or tenancy."
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the tenant record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the tenant record was last updated.",
+          "format": "date-time"
+        }
       },
-      "required": ["id", "landlordId", "propertyId", "email"]
+      "required": [
+        "id",
+        "propertyId",
+        "firstName",
+        "lastName",
+        "email",
+        "phoneNumber",
+        "tenancyStartDate",
+        "createdAt",
+        "updatedAt"
+      ]
     },
-    "Repair": {
-      "title": "Repair",
+    "MaintenanceRequest": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "MaintenanceRequest",
       "type": "object",
+      "description": "Represents a logged maintenance issue for a property.",
       "properties": {
-        "id": { "type": "string" },
-        "landlordId": { "type": "string" },
-        "propertyId": { "type": "string" },
-        "tenantId": { "type": "string" },
-        "reportedBy": { "type": "string" },
-        "title": { "type": "string" },
-        "status": { "type": "string" }
-      }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the MaintenanceRequest entity."
+        },
+        "propertyId": {
+          "type": "string",
+          "description": "Reference to the Property the maintenance request is for. (Relationship: Property 1:N MaintenanceRequest)"
+        },
+        "reportedByUserId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who reported the maintenance request. (Relationship: UserProfile 1:N MaintenanceRequest)"
+        },
+        "title": {
+          "type": "string",
+          "description": "A brief title for the maintenance issue."
+        },
+        "description": {
+          "type": "string",
+          "description": "Detailed description of the maintenance issue."
+        },
+        "urgencyLevel": {
+          "type": "string",
+          "description": "The urgency level of the request (e.g., Low, Medium, High, Emergency)."
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the request (e.g., Open, In Progress, Resolved, Closed, Pending Approval)."
+        },
+        "reportedAt": {
+          "type": "string",
+          "description": "Timestamp when the maintenance request was reported.",
+          "format": "date-time"
+        },
+        "resolvedAt": {
+          "type": "string",
+          "description": "Timestamp when the maintenance request was resolved (optional).",
+          "format": "date-time"
+        },
+        "notes": {
+          "type": "string",
+          "description": "Additional notes or updates on the maintenance request."
+        },
+        "assignedTo": {
+          "type": "string",
+          "description": "Name or identifier of the person/vendor assigned to the task."
+        },
+        "cost": {
+          "type": "number",
+          "description": "Estimated or actual cost of the maintenance."
+        }
+      },
+      "required": [
+        "id",
+        "propertyId",
+        "reportedByUserId",
+        "title",
+        "description",
+        "urgencyLevel",
+        "status",
+        "reportedAt"
+      ]
     },
-    "Message": {
-      "title": "Message",
+    "Inspection": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Inspection",
       "type": "object",
+      "description": "Represents a scheduled property inspection.",
       "properties": {
-        "id": { "type": "string" },
-        "landlordId": { "type": "string" },
-        "propertyId": { "type": "string" },
-        "tenantId": { "type": "string" },
-        "senderId": { "type": "string" },
-        "content": { "type": "string" },
-        "timestamp": { "type": "string", "format": "date-time" }
-      }
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Inspection entity."
+        },
+        "propertyId": {
+          "type": "string",
+          "description": "Reference to the Property the inspection is for. (Relationship: Property 1:N Inspection)"
+        },
+        "scheduledByUserId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who scheduled the inspection. (Relationship: UserProfile 1:N Inspection)"
+        },
+        "title": {
+          "type": "string",
+          "description": "A title for the inspection (e.g., 'Quarterly Check')."
+        },
+        "description": {
+          "type": "string",
+          "description": "Details about the inspection purpose or scope."
+        },
+        "scheduledDateTime": {
+          "type": "string",
+          "description": "The date and time when the inspection is scheduled.",
+          "format": "date-time"
+        },
+        "status": {
+          "type": "string",
+          "description": "The current status of the inspection (e.g., Scheduled, Completed, Cancelled)."
+        },
+        "outcomeNotes": {
+          "type": "string",
+          "description": "Notes on the outcome of the inspection after completion."
+        },
+        "nextInspectionDate": {
+          "type": "string",
+          "description": "Suggested date for the next inspection.",
+          "format": "date"
+        },
+        "createdAt": {
+          "type": "string",
+          "description": "Timestamp when the inspection record was created.",
+          "format": "date-time"
+        },
+        "updatedAt": {
+          "type": "string",
+          "description": "Timestamp when the inspection record was last updated.",
+          "format": "date-time"
+        }
+      },
+      "required": [
+        "id",
+        "propertyId",
+        "scheduledByUserId",
+        "title",
+        "scheduledDateTime",
+        "status",
+        "createdAt",
+        "updatedAt"
+      ]
+    },
+    "Document": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "Document",
+      "type": "object",
+      "description": "Represents a document uploaded and associated with a property or tenant.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the Document entity."
+        },
+        "propertyId": {
+          "type": "string",
+          "description": "Reference to the Property this document is associated with. (Relationship: Property 1:N Document)"
+        },
+        "tenantId": {
+          "type": "string",
+          "description": "Reference to the Tenant this document is associated with (optional). (Relationship: Tenant 0:N Document)"
+        },
+        "uploadedByUserId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who uploaded the document. (Relationship: UserProfile 1:N Document)"
+        },
+        "fileName": {
+          "type": "string",
+          "description": "The original name of the uploaded file."
+        },
+        "fileType": {
+          "type": "string",
+          "description": "The MIME type or extension of the file (e.g., 'application/pdf', 'image/jpeg')."
+        },
+        "fileUrl": {
+          "type": "string",
+          "description": "The URL where the document is stored.",
+          "format": "uri"
+        },
+        "documentType": {
+          "type": "string",
+          "description": "Categorization of the document (e.g., 'Tenancy Agreement', 'EPC', 'Gas Safety Certificate', 'Property Manual')."
+        },
+        "uploadDate": {
+          "type": "string",
+          "description": "Timestamp when the document was uploaded.",
+          "format": "date-time"
+        },
+        "expirationDate": {
+          "type": "string",
+          "description": "Optional expiration date for documents like certificates.",
+          "format": "date"
+        }
+      },
+      "required": [
+        "id",
+        "propertyId",
+        "uploadedByUserId",
+        "fileName",
+        "fileType",
+        "fileUrl",
+        "documentType",
+        "uploadDate"
+      ]
+    },
+    "ActivityLog": {
+      "$schema": "http://json-schema.org/draft-07/schema#",
+      "title": "ActivityLog",
+      "type": "object",
+      "description": "Records various activities within the application for display in a recent activity feed and for auditing purposes.",
+      "properties": {
+        "id": {
+          "type": "string",
+          "description": "Unique identifier for the ActivityLog entry."
+        },
+        "userId": {
+          "type": "string",
+          "description": "Reference to the UserProfile who performed the action. (Relationship: UserProfile 1:N ActivityLog)"
+        },
+        "propertyId": {
+          "type": "string",
+          "description": "Reference to the Property related to this activity (optional, but likely present for most activities). (Relationship: Property 0:N ActivityLog)"
+        },
+        "activityType": {
+          "type": "string",
+          "description": "The type of action performed (e.g., 'Property Added', 'Maintenance Logged', 'Inspection Scheduled', 'Document Uploaded', 'Tenant Added')."
+        },
+        "description": {
+          "type": "string",
+          "description": "A detailed description of the activity."
+        },
+        "timestamp": {
+          "type": "string",
+          "description": "The exact date and time the activity occurred.",
+          "format": "date-time"
+        },
+        "relatedEntityId": {
+          "type": "string",
+          "description": "ID of the entity primarily affected by this activity (e.g., Property ID, MaintenanceRequest ID, Inspection ID, Document ID)."
+        },
+        "relatedEntityType": {
+          "type": "string",
+          "description": "Type of the entity primarily affected (e.g., 'Property', 'MaintenanceRequest', 'Inspection', 'Document', 'Tenant')."
+        }
+      },
+      "required": [
+        "id",
+        "userId",
+        "activityType",
+        "description",
+        "timestamp"
+      ]
     }
   },
   "auth": {
-    "providers": ["password", "google.com"]
+    "providers": [
+      "password",
+      "anonymous"
+    ]
   },
   "firestore": {
-    "/users/{userId}": {
-      "schema": "UserProfile",
-      "description": "User profiles for all system roles."
-    },
-    "/properties/{propertyId}": {
-      "schema": "Property",
-      "description": "Central property asset registry."
-    },
-    "/tenants/{tenantId}": {
-      "schema": "Tenant",
-      "description": "Tenant identity registry for discovery."
-    },
-    "/repairs/{id}": {
-      "schema": "Repair",
-      "description": "Shared maintenance tracking ledger."
-    },
-    "/messages/{id}": {
-      "schema": "Message",
-      "description": "Secure resident-landlord messaging."
-    },
-    "/documents/{id}": {
-      "schema": "object",
-      "description": "Compliance document vault."
-    },
-    "/inspections/{id}": {
-      "schema": "object",
-      "description": "Property inspection audit reports."
-    },
-    "/rentPayments/{id}": {
-      "schema": "object",
-      "description": "Rental collection ledger."
-    },
-    "/checklists/{id}": {
-      "schema": "object",
-      "description": "Pre-tenancy audit logs."
-    },
-    "/screenings/{id}": {
-      "schema": "object",
-      "description": "Tenant vetting and reference reports."
-    }
+    "structure": [
+      {
+        "path": "/userProfiles/{userId}",
+        "definition": {
+          "entityName": "UserProfile",
+          "schema": {
+            "$ref": "#/backend/entities/UserProfile"
+          },
+          "description": "Stores individual user profile information. Access is restricted to the owner matching the '{userId}' path parameter. The 'id' field in the document must match '{userId}'.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user, matching 'request.auth.uid'."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/properties/{propertyId}",
+        "definition": {
+          "entityName": "Property",
+          "schema": {
+            "$ref": "#/backend/entities/Property"
+          },
+          "description": "Stores properties owned by a specific user. The 'ownerId' field in the document must match '{userId}' for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the property owner, matching 'request.auth.uid'."
+            },
+            {
+              "name": "propertyId",
+              "description": "The unique identifier for a specific property."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/properties/{propertyId}/tenants/{tenantId}",
+        "definition": {
+          "entityName": "Tenant",
+          "schema": {
+            "$ref": "#/backend/entities/Tenant"
+          },
+          "description": "Stores tenant information for a specific property. Documents MUST include a denormalized 'propertyOwnerId' field (matching '{userId}' from the path) for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the property owner, matching 'request.auth.uid'."
+            },
+            {
+              "name": "propertyId",
+              "description": "The unique identifier of the parent property."
+            },
+            {
+              "name": "tenantId",
+              "description": "The unique identifier for a specific tenant."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/properties/{propertyId}/maintenanceRequests/{maintenanceRequestId}",
+        "definition": {
+          "entityName": "MaintenanceRequest",
+          "schema": {
+            "$ref": "#/backend/entities/MaintenanceRequest"
+          },
+          "description": "Stores maintenance requests for a specific property. Documents MUST include a denormalized 'propertyOwnerId' field (matching '{userId}' from the path) for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the property owner, matching 'request.auth.uid'."
+            },
+            {
+              "name": "propertyId",
+              "description": "The unique identifier of the parent property."
+            },
+            {
+              "name": "maintenanceRequestId",
+              "description": "The unique identifier for a specific maintenance request."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/properties/{propertyId}/inspections/{inspectionId}",
+        "definition": {
+          "entityName": "Inspection",
+          "schema": {
+            "$ref": "#/backend/entities/Inspection"
+          },
+          "description": "Stores inspection records for a specific property. Documents MUST include a denormalized 'propertyOwnerId' field (matching '{userId}' from the path) for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the property owner, matching 'request.auth.uid'."
+            },
+            {
+              "name": "propertyId",
+              "description": "The unique identifier of the parent property."
+            },
+            {
+              "name": "inspectionId",
+              "description": "The unique identifier for a specific inspection."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/properties/{propertyId}/documents/{documentId}",
+        "definition": {
+          "entityName": "Document",
+          "schema": {
+            "$ref": "#/backend/entities/Document"
+          },
+          "description": "Stores documents associated with a specific property. Documents MUST include a denormalized 'propertyOwnerId' field (matching '{userId}' from the path) for authorization independence.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the property owner, matching 'request.auth.uid'."
+            },
+            {
+              "name": "propertyId",
+              "description": "The unique identifier of the parent property."
+            },
+            {
+              "name": "documentId",
+              "description": "The unique identifier for a specific document."
+            }
+          ]
+        }
+      },
+      {
+        "path": "/users/{userId}/activityLogs/{activityLogId}",
+        "definition": {
+          "entityName": "ActivityLog",
+          "schema": {
+            "$ref": "#/backend/entities/ActivityLog"
+          },
+          "description": "Stores activity logs for a specific user. The 'userId' field in the document must match '{userId}' for authorization independence and secure QAPs.",
+          "params": [
+            {
+              "name": "userId",
+              "description": "The unique identifier of the user whose activity is logged, matching 'request.auth.uid'."
+            },
+            {
+              "name": "activityLogId",
+              "description": "The unique identifier for a specific activity log entry."
+            }
+          ]
+        }
+      }
+    ],
+    "reasoning": "The recommended Firestore structure prioritizes secure, scalable, and debuggable access by strictly adhering to the core design principles:\n\n1.  **Authorization Independence via Denormalization:** This is the cornerstone of the design. For every subcollection document (e.g., `Tenant`, `MaintenanceRequest`, `Inspection`, `Document`) whose access is tied to a parent `Property`, the `propertyOwnerId` (the ID of the `UserProfile` who owns the parent `Property`) is explicitly denormalized and stored within each subcollection document. This eliminates the need for expensive and rule-breaking `get()` calls to parent documents for authorization checks. For instance, to check if a user can access a `MaintenanceRequest`, the rules will simply verify `request.auth.uid == resource.data.propertyOwnerId`, ensuring atomic operations and simplified rule logic.\n\n2.  **Structural Segregation (Homogeneous Security Posture):** All documents within a given collection path share the same security requirements. For example, all `Property` documents under `/users/{userId}/properties` are owned by `{userId}`. This prevents mixing different access levels within the same collection, making security rules straightforward and easier to reason about.\n\n3.  **Access Modeling & Hierarchical Paths:** The structure largely employs path-based ownership for user-specific and user-owned data. User profiles are stored at `/userProfiles/{userId}`. All entities belonging to a user (like `Properties`) or nested under a user's owned entity (like `Tenants`, `MaintenanceRequests`, `Inspections`, `Documents` under a `Property`) follow a consistent hierarchical pattern: `/users/{userId}/properties/{propertyId}/<subcollection>/{docId}`. This makes ownership explicit and naturally aligns with `request.auth.uid` for authorization.\n\n4.  **QAPs (Rules are not Filters):** The hierarchical path structure inherently supports secure `list` operations. When a user queries `/users/{request.auth.uid}/properties` or any of its subcollections (e.g., `/users/{request.auth.uid}/properties/{propertyId}/maintenanceRequests`), the query path itself constrains the results to only the data owned by the authenticated user. Combined with the denormalized `propertyOwnerId` in subcollection documents (e.g., `resource.data.propertyOwnerId == request.auth.uid`), security rules can efficiently ensure that only authorized data is returned, preventing accidental data exposure and supporting robust client-side queries without relying on client-enforced filtering. The `ActivityLog` also follows this for user-specific activity, providing secure `list` for recent activities at `/users/{userId}/activityLogs`.\n\n5.  **Data Clarity and Predictability:** Semantic naming conventions are used for paths and parameters (e.g., `{userId}`, `{propertyId}`). Standard fields like `ownerId`, `propertyOwnerId`, `createdAt`, `updatedAt`, and `status` ensure a predictable schema and clear intent. The `status` field in `Property`, `MaintenanceRequest`, and `Inspection` explicitly models the finite states of these entities."
   }
 }

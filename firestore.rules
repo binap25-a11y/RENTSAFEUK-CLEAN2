@@ -1,159 +1,154 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RentSafeUK Security Governance v28.0
-     * Optimized for high-speed query engine prove-ability and secure identity handshakes.
+     * MAINTAIN UK - SECURITY RULES DOCUMENTATION
+     *
+     * CORE PHILOSOPHY
+     * This ruleset enforces a strict user-ownership model. The application is designed such that 
+     * every piece of data (Properties, Tenants, Maintenance Requests, etc.) is explicitly owned 
+     * by a UserProfile. Access is restricted to the authenticated owner.
+     *
+     * DATA STRUCTURE
+     * Data is organized hierarchically under two main roots:
+     * 1. /userProfiles/{userId}: Global profile information.
+     * 2. /users/{userId}/...: A user-scoped data tree containing properties and all related sub-entities.
+     *
+     * KEY SECURITY DECISIONS
+     * - Authorization Independence: Sub-collection documents (like Tenants) denormalize the 
+     *   'propertyOwnerId'. This allows rules to verify ownership instantly without performing 
+     *   expensive 'get()' calls to parent documents.
+     * - Path-Based Security: The rules leverage the {userId} path parameter to ensure users 
+     *   can only list or access documents within their own designated data tree.
+     * - Defensive Writes: For all write operations, the rules verify that internal data fields 
+     *   (like 'ownerId') match the authenticated user's ID, preventing users from "spoofing" 
+     *   ownership or moving data between accounts.
+     * - Prototyping Flexibility: While authorization is strictly enforced, data types and 
+     *   object shapes are not strictly validated to allow for rapid UI/UX iteration.
      */
 
+    // --- GLOBAL HELPER FUNCTIONS ---
+
+    /** @description Checks if the request is from an authenticated user. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    function getUid() {
-      return request.auth.uid;
+    /** @description Checks if the authenticated user's UID matches the provided userId. */
+    function isOwner(userId) {
+      return isSignedIn() && request.auth.uid == userId;
     }
 
-    function getEmail() {
-      return request.auth.token.get('email', '').lower();
+    /** @description Verifies ownership and ensures the document exists for updates/deletes. */
+    function isExistingOwner(userId) {
+      return isOwner(userId) && resource != null;
     }
 
-    // --- Identity Registry ---
-    match /users/{userId} {
-      allow read, write: if isSignedIn() && getUid() == userId;
+    /** @description Validates that a field in the incoming data matches the expected userId. */
+    function isValidOwnership(field, userId) {
+      return request.resource.data[field] == userId;
     }
 
-    // --- Tenant Registry ---
-    match /tenants/{tenantId} {
-      // Discrete list rules for query optimizer provability
-      allow list: if isSignedIn() && resource.data.get('landlordId', '') == getUid();
-      allow list: if isSignedIn() && resource.data.get('userId', '') == getUid();
-      allow list: if isSignedIn() && resource.data.get('email', '') == getEmail();
-      
-      allow get: if isSignedIn() && (
-        resource.data.get('landlordId', '') == getUid() || 
-        resource.data.get('userId', '') == getUid() || 
-        resource.data.get('email', '') == getEmail()
-      );
-      
-      allow create: if isSignedIn();
-      
-      // HANDSHAKE: Allow residents to link their UID if they match the registry email
-      allow update: if isSignedIn() && (
-        resource.data.get('landlordId', '') == getUid() || 
-        (resource.data.get('email', '') == getEmail() && 
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['userId', 'verified', 'joinedDate', 'status', 'lastSyncCheck']))
-      );
-      allow delete: if isSignedIn() && resource.data.get('landlordId', '') == getUid();
+    /** @description Ensures a field remains unchanged during an update. */
+    function isImmutable(field) {
+      return request.resource.data[field] == resource.data[field];
     }
 
-    // --- Property Portfolio ---
-    match /properties/{propertyId} {
-      // Discrete list rules for query optimizer provability
-      allow list: if isSignedIn() && resource.data.get('landlordId', '') == getUid();
-      allow list: if isSignedIn() && resource.data.get('tenantId', '') == getUid();
-      allow list: if isSignedIn() && getEmail() in resource.data.get('tenantEmails', []);
+    // --- COLLECTION RULES ---
 
-      allow get: if isSignedIn() && (
-        resource.data.get('landlordId', '') == getUid() || 
-        resource.data.get('tenantId', '') == getUid() || 
-        getUid() in resource.data.get('activeTenantUids', []) ||
-        getEmail() in resource.data.get('tenantEmails', [])
-      );
-      
-      allow create: if isSignedIn();
-      
-      // HANDSHAKE: Allow residents to link their UID to the property bridge if authorized by email
-      allow update: if isSignedIn() && (
-        resource.data.get('landlordId', '') == getUid() || 
-        (getEmail() in resource.data.get('tenantEmails', []) && 
-         request.resource.data.diff(resource.data).affectedKeys().hasOnly(['tenantId', 'activeTenantUids', 'status']))
-      );
-      allow delete: if isSignedIn() && resource.data.get('landlordId', '') == getUid();
+    /**
+     * @description Rules for user profile documents. Restricted to the owner.
+     * @path /userProfiles/{userId}
+     * @allow (create) if auth.uid == "user123" and request.resource.data.id == "user123"
+     * @deny (list) if auth.uid != userId
+     * @principle Ownership and path-to-field consistency.
+     */
+    match /userProfiles/{userId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidOwnership('id', userId);
+      allow update: if isExistingOwner(userId) && isImmutable('id');
+      allow delete: if isExistingOwner(userId);
     }
 
-    // --- Secure Messaging Ledger ---
-    match /messages/{id} {
-      // Discrete list rules for query optimizer provability
-      allow list: if isSignedIn() && resource.data.get('tenantId', '') == getUid();
-      allow list: if isSignedIn() && resource.data.get('landlordId', '') == getUid();
-      
-      allow get: if isSignedIn() && (
-        resource.data.get('tenantId', '') == getUid() || 
-        resource.data.get('landlordId', '') == getUid()
-      );
-      
-      allow create: if isSignedIn() && (
-        request.resource.data.senderId == getUid() &&
-        (request.resource.data.tenantId == getUid() || request.resource.data.landlordId == getUid())
-      );
-      allow update, delete: if false;
+    /**
+     * @description Properties owned by a user.
+     * @path /users/{userId}/properties/{propertyId}
+     * @allow (get) if auth.uid == userId
+     * @deny (create) if request.resource.data.ownerId != auth.uid
+     * @principle Path-based authorization with denormalized ownership validation.
+     */
+    match /users/{userId}/properties/{propertyId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidOwnership('ownerId', userId);
+      allow update: if isExistingOwner(userId) && isImmutable('ownerId');
+      allow delete: if isExistingOwner(userId);
+
+      /**
+       * @description Tenants associated with a property. Requires propertyOwnerId denormalization.
+       * @path /users/{userId}/properties/{propertyId}/tenants/{tenantId}
+       */
+      match /tenants/{tenantId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidOwnership('propertyOwnerId', userId);
+        allow update: if isExistingOwner(userId) && isImmutable('propertyOwnerId');
+        allow delete: if isExistingOwner(userId);
+      }
+
+      /**
+       * @description Maintenance requests for a property.
+       * @path /users/{userId}/properties/{propertyId}/maintenanceRequests/{requestId}
+       */
+      match /maintenanceRequests/{requestId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidOwnership('propertyOwnerId', userId);
+        allow update: if isExistingOwner(userId) && isImmutable('propertyOwnerId');
+        allow delete: if isExistingOwner(userId);
+      }
+
+      /**
+       * @description Property inspection records.
+       * @path /users/{userId}/properties/{propertyId}/inspections/{inspectionId}
+       */
+      match /inspections/{inspectionId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidOwnership('propertyOwnerId', userId);
+        allow update: if isExistingOwner(userId) && isImmutable('propertyOwnerId');
+        allow delete: if isExistingOwner(userId);
+      }
+
+      /**
+       * @description Documents (PDFs, Images) associated with a property.
+       * @path /users/{userId}/properties/{propertyId}/documents/{docId}
+       */
+      match /documents/{docId} {
+        allow get, list: if isOwner(userId);
+        allow create: if isOwner(userId) && isValidOwnership('propertyOwnerId', userId);
+        allow update: if isExistingOwner(userId) && isImmutable('propertyOwnerId');
+        allow delete: if isExistingOwner(userId);
+      }
     }
 
-    // --- Shared Ledger Collections ---
-    
-    match /repairs/{id} {
-      allow list: if isSignedIn() && resource.data.get('landlordId', '') == getUid();
-      allow list: if isSignedIn() && resource.data.get('tenantId', '') == getUid();
-      allow list: if isSignedIn() && resource.data.get('reportedBy', '') == getUid();
-      
-      allow get: if isSignedIn() && (
-        resource.data.get('landlordId', '') == getUid() || 
-        resource.data.get('tenantId', '') == getUid() || 
-        resource.data.get('reportedBy', '') == getUid()
-      );
-      
-      allow create: if isSignedIn();
-      allow update: if isSignedIn() && (resource.data.get('landlordId', '') == getUid() || resource.data.get('tenantId', '') == getUid());
-      allow delete: if isSignedIn() && resource.data.get('landlordId', '') == getUid();
+    /**
+     * @description Audit trail of user activities.
+     * @path /users/{userId}/activityLogs/{logId}
+     * @allow (list) if auth.uid == userId
+     * @deny (update) if false (logs are usually append-only)
+     * @principle Restricts activity history to the specific user.
+     */
+    match /users/{userId}/activityLogs/{logId} {
+      allow get, list: if isOwner(userId);
+      allow create: if isOwner(userId) && isValidOwnership('userId', userId);
+      allow update, delete: if false; // Activity logs are immutable for audit integrity
     }
 
-    match /documents/{id} {
-      allow list: if isSignedIn() && (
-        resource.data.get('landlordId', '') == getUid() || 
-        resource.data.get('tenantId', '') == getUid() || 
-        resource.data.get('propertyId', '') != ''
-      );
-      allow read: if isSignedIn() && (
-        resource.data.get('landlordId', '') == getUid() || 
-        resource.data.get('tenantId', '') == getUid() || 
-        resource.data.get('propertyId', '') != ''
-      );
-      allow write: if isSignedIn() && resource.data.get('landlordId', '') == getUid();
-    }
-
-    match /inspections/{id} {
-      allow list: if isSignedIn() && (resource.data.get('landlordId', '') == getUid() || resource.data.get('tenantId', '') == getUid());
-      allow read: if isSignedIn() && (resource.data.get('landlordId', '') == getUid() || resource.data.get('tenantId', '') == getUid());
-      allow write: if isSignedIn() && resource.data.get('landlordId', '') == getUid();
-    }
-
-    match /rentPayments/{id} {
-      allow list: if isSignedIn() && (resource.data.get('landlordId', '') == getUid() || resource.data.get('tenantId', '') == getUid());
-      allow get: if isSignedIn() && (resource.data.get('landlordId', '') == getUid() || resource.data.get('tenantId', '') == getUid());
-      allow write: if isSignedIn() && resource.data.get('landlordId', '') == getUid();
-    }
-
-    match /contractors/{id} {
-      allow list: if isSignedIn();
-      allow read, write: if isSignedIn();
-    }
-
-    match /expenses/{id} {
-      allow list: if isSignedIn() && getUid() == resource.data.get('landlordId', '');
-      allow read, write: if isSignedIn() && getUid() == resource.data.get('landlordId', '');
-    }
-    
-    match /screenings/{id} {
-      allow list: if isSignedIn() && getUid() == resource.data.get('landlordId', '');
-      allow read, write: if isSignedIn() && getUid() == resource.data.get('landlordId', '');
-    }
-
-    match /checklists/{id} {
-      allow list: if isSignedIn() && getUid() == resource.data.get('landlordId', '');
-      allow read, write: if isSignedIn() && getUid() == resource.data.get('landlordId', '');
+    /**
+     * @description Catch-all for undefined collections. 
+     * Note: The error reported for '/messages' suggests a missing entity in the IR. 
+     * By default, all undocumented paths are denied.
+     */
+    match /{path=**} {
+      allow read, write: if false;
     }
   }
 }
