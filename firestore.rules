@@ -4,7 +4,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RENTSAFEUK SECURITY GOVERNANCE v20.5
+     * RENTSAFEUK SECURITY GOVERNANCE v20.6
      * Optimized for high-performance chronological messaging and index alignment.
      * Hardened list permissions for messaging registry to prevent data leakage.
      */
