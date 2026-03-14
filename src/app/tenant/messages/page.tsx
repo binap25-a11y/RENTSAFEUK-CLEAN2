@@ -57,6 +57,7 @@ export default function TenantMessagesPage() {
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+  const topRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     if (isUserLoading || !user || !firestore || !user.email) {
@@ -124,14 +125,18 @@ export default function TenantMessagesPage() {
         setNewMessage('');
         toast({
             title: 'Message Sent',
-            description: 'Your communication has been recorded in the secure audit trail.',
+            description: 'Communication recorded in the secure cloud ledger.',
         });
     } catch (error) {
         console.error("Sync failure:", error);
-        toast({ variant: 'destructive', title: 'Send Failed', description: 'Ensure you have a stable connection.' });
+        toast({ variant: 'destructive', title: 'Transmission Failed' });
     } finally {
         setIsSending(false);
     }
+  };
+
+  const scrollToTop = () => {
+    topRef.current?.scrollIntoView({ behavior: 'smooth' });
   };
 
   const getMessageDate = (timestamp: any) => {
@@ -147,7 +152,7 @@ export default function TenantMessagesPage() {
         if (isYesterday(date)) return 'Yesterday';
         return format(date, 'EEEE, d MMMM yyyy');
     } catch (e) {
-        return 'Previous Messages';
+        return 'Previous Audit History';
     }
   };
 
@@ -155,7 +160,7 @@ export default function TenantMessagesPage() {
     return (
       <div className="flex h-[60vh] flex-col items-center justify-center gap-4 text-center">
         <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Communication Registry...</p>
+        <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Establishing Secure Connection...</p>
       </div>
     );
   }
@@ -167,11 +172,11 @@ export default function TenantMessagesPage() {
           <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 border shadow-sm">
               <AlertCircle className="h-8 w-8 text-destructive" />
           </div>
-          <CardTitle className="text-xl text-primary font-headline tracking-tight">Access Restricted</CardTitle>
-          <CardDescription className='font-medium text-muted-foreground'>A verified residency handshake is required to access the secure chat channel.</CardDescription>
+          <CardTitle className="text-xl text-primary font-headline tracking-tight">Handshake Required</CardTitle>
+          <CardDescription className='font-medium text-muted-foreground'>A verified tenancy registry link is required to access this secure channel.</CardDescription>
         </CardHeader>
         <CardContent className="pt-8">
-          <Button variant="outline" className="w-full h-12 font-bold" asChild><Link href="/tenant/dashboard">Return to Resident Hub</Link></Button>
+          <Button variant="outline" className="w-full h-12 font-bold" asChild><Link href="/tenant/dashboard">Return to Hub</Link></Button>
         </CardContent>
       </Card>
     );
@@ -181,13 +186,13 @@ export default function TenantMessagesPage() {
     <div className="h-[calc(100vh-10rem)] flex flex-col gap-4 text-left max-w-7xl mx-auto animate-in fade-in duration-500">
       <div className="flex items-center justify-between shrink-0">
           <div className="flex flex-col gap-1 text-left">
-              <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Resident Chat</h1>
+              <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Resident Communication</h1>
               <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.3em] flex items-center gap-1.5">
                   <ShieldCheck className="h-3.5 w-3.5 text-green-600" />
-                  Secure Audit Trail Active
+                  Audit Registry Online
               </p>
           </div>
-          <Button variant="outline" size="sm" className="font-bold uppercase tracking-widest text-[9px] h-9 px-4 gap-2 border-primary/20 bg-background shadow-sm">
+          <Button variant="outline" size="sm" onClick={scrollToTop} className="font-bold uppercase tracking-widest text-[9px] h-9 px-4 gap-2 border-primary/20 bg-background shadow-sm">
               <History className="h-3.5 w-3.5" /> Full History View
           </Button>
       </div>
@@ -199,26 +204,27 @@ export default function TenantMessagesPage() {
                     <Building2 className="h-5 w-5" />
                 </div>
                 <div>
-                    <CardTitle className="text-sm font-bold">Property Management</CardTitle>
+                    <CardTitle className="text-sm font-bold">Management Support</CardTitle>
                     <p className="text-[9px] text-green-600 font-bold uppercase tracking-widest flex items-center gap-1">
                         <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-                        Verified Registry Link
+                        Live Registry Link
                     </p>
                 </div>
             </div>
-            <Badge variant="outline" className="h-6 text-[8px] uppercase font-bold tracking-widest bg-background border-2 shadow-sm">Real-Time Sync</Badge>
+            <Badge variant="outline" className="h-6 text-[8px] uppercase font-bold tracking-widest bg-background border-2 shadow-sm">Audit trail</Badge>
         </CardHeader>
         
         <CardContent className="flex-1 p-0 overflow-hidden relative bg-muted/5">
             <ScrollArea className="h-full p-6">
+                <div ref={topRef} className="h-1" />
                 <div className="space-y-6">
                     {isLoadingMessages ? (
                         <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary/20" /></div>
                     ) : !messages?.length ? (
                         <div className="py-24 text-center px-10 border-2 border-dashed rounded-[2rem] bg-muted/10">
                             <MessageSquare className="h-12 w-12 text-muted-foreground/10 mx-auto mb-4" />
-                            <p className="text-sm font-bold text-foreground">Registry Handshake Established</p>
-                            <p className="text-xs text-muted-foreground mt-1 max-w-[240px] mx-auto font-medium">Your chat history is private and chronologically recorded for professional property management.</p>
+                            <p className="text-sm font-bold text-foreground">Registry Handshake Active</p>
+                            <p className="text-xs text-muted-foreground mt-1 max-w-[240px] mx-auto font-medium">Communication history is chronologically recorded for management audit.</p>
                         </div>
                     ) : (
                         messages.map((msg, idx) => {
@@ -265,7 +271,7 @@ export default function TenantMessagesPage() {
         <CardFooter className="p-4 border-t bg-background shadow-inner shrink-0">
             <form onSubmit={handleSendMessage} className="flex w-full items-center gap-3">
                 <Input 
-                    placeholder="Type a secure message to your landlord..." 
+                    placeholder="Type a verified message to management..." 
                     value={newMessage} 
                     onChange={(e) => setNewMessage(e.target.value)}
                     className="flex-1 h-12 bg-muted/20 border-2 focus-visible:ring-primary rounded-2xl font-medium shadow-none transition-all focus:bg-background"
