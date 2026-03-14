@@ -102,7 +102,7 @@ export default function TenantDashboard() {
             });
             
             // 2. Authorize UID on Property Asset
-            // Note: firestore.rules allows this specific field update for verified residents
+            // Note: firestore.rules explicitly allows this specific field update for verified residents via email match
             const propertyRef = doc(firestore, 'properties', tenantData.propertyId);
             await updateDoc(propertyRef, { 
                 tenantId: user.uid,

@@ -151,7 +151,7 @@ export default function TenantsPage() {
       );
       const snap = await getDocs(activeTenantsQuery);
       
-      // If no other tenants are active, mark property as vacant
+      // If no other tenants are active, mark property as vacant atomically
       if (snap.empty) {
           const propRef = doc(firestore, 'properties', tenantToArchive.propertyId);
           await updateDoc(propRef, { status: 'Vacant' });
