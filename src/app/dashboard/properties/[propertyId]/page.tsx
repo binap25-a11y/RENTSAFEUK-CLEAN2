@@ -53,7 +53,7 @@ import { cn } from '@/lib/utils';
 
 /**
  * @fileOverview Comprehensive Landlord Property View.
- * Fully restored to fix previous source truncation and integrated with audit-ready messaging.
+ * Fully restored to fix previous source truncation and integrated with audit-ready bidirectional messaging.
  */
 
 interface Property {
@@ -158,10 +158,11 @@ export default function PropertyDetailPage() {
     e.preventDefault();
     if (!newReply.trim() || !user || !property || isSendingReply) return;
 
+    // Discovery Logic: Target the first verified resident UID if history is empty
     const targetTenantId = messages?.find(m => m.senderId !== user.uid)?.tenantId || (activeTenants?.[0]?.userId);
     
     if (!targetTenantId) {
-        toast({ variant: 'destructive', title: 'Reply Forbidden', description: 'No active verified resident found for this asset.' });
+        toast({ variant: 'destructive', title: 'Resident Required', description: 'No active verified resident found to receive this message.' });
         return;
     }
 
@@ -173,12 +174,12 @@ export default function PropertyDetailPage() {
             propertyId: property.id,
             tenantId: targetTenantId,
             senderId: user.uid,
-            senderName: user.displayName || 'Management',
+            senderName: user.displayName || 'Property Management',
             content: newReply.trim(),
             timestamp: serverTimestamp()
         });
         setNewReply('');
-        toast({ title: 'Reply Sent', description: 'Communication recorded in registry.' });
+        toast({ title: 'Reply Logged', description: 'Resident notified via the audit registry.' });
     } catch (error) {
         console.error("Sync failure:", error);
         toast({ variant: 'destructive', title: 'Send Failed' });
@@ -257,14 +258,14 @@ export default function PropertyDetailPage() {
 
   if (isLoadingProperty) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
 
-  if (propertyError || !property) return <div className="text-center py-20 italic">Asset not found.</div>;
+  if (propertyError || !property) return <div className="text-center py-20 italic">Asset context missing or inaccessible.</div>;
 
   const propertyAddressTitle = [property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ');
   const propertyAddressSubtitle = [property.address.city, property.address.county, property.address.postcode].filter(Boolean).join(', ');
 
   return (
     <>
-      <div className="flex flex-col gap-6 text-left">
+      <div className="flex flex-col gap-6 text-left animate-in fade-in duration-500">
         <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-4 overflow-hidden">
                 <Button variant="outline" size="icon" asChild className="shrink-0"><Link href="/dashboard/properties"><ArrowLeft className="h-4" /></Link></Button>
@@ -302,7 +303,7 @@ export default function PropertyDetailPage() {
         <div className="grid gap-6 lg:grid-cols-3">
           <div className="lg:col-span-2 space-y-6">
             <Card className="shadow-lg overflow-hidden border-none bg-card">
-              <CardHeader className="pb-4"><CardTitle className="font-headline text-lg">Property Profile</CardTitle></CardHeader>
+              <CardHeader className="pb-4"><CardTitle className="font-headline text-lg">Asset Profile</CardTitle></CardHeader>
               <CardContent className="space-y-6 p-0 px-6 pb-8">
                     <div className="relative w-full aspect-video rounded-2xl overflow-hidden shadow-md border-2 bg-muted mb-6 group">
                         {property.imageUrl ? (
@@ -342,24 +343,24 @@ export default function PropertyDetailPage() {
                     <TabsTrigger value="overview" className="px-6 py-2 rounded-lg font-bold uppercase tracking-widest text-[10px]">Overview</TabsTrigger>
                     <TabsTrigger value="messages" className="px-6 py-2 rounded-lg font-bold uppercase tracking-widest text-[10px] gap-2">
                         <MessageSquare className="h-3 w-3" />
-                        Resident Messages
+                        Secure Chat Registry
                     </TabsTrigger>
                 </TabsList>
                 <TabsContent value="overview" className="space-y-6 pt-4">
                     {property.tenancy && (
                     <Card className="shadow-md border-none overflow-hidden">
-                        <CardHeader className="pb-4 bg-muted/5 border-b"><CardTitle className="font-headline text-lg">Financial Overview</CardTitle></CardHeader>
+                        <CardHeader className="pb-4 bg-muted/5 border-b"><CardTitle className="font-headline text-lg">Lease Financials</CardTitle></CardHeader>
                         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 px-8 pb-8">
                             {property.tenancy.monthlyRent && (
                                 <div className="flex items-start gap-4">
                                     <div className="p-3 rounded-2xl bg-primary/5 shrink-0"><Banknote className="h-6 w-6 text-primary" /></div>
-                                    <div><p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Monthly Rent</p><p className="text-xl font-bold">£{property.tenancy.monthlyRent.toLocaleString()}</p></div>
+                                    <div><p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Contracted Rent</p><p className="text-xl font-bold">£{property.tenancy.monthlyRent.toLocaleString()}</p></div>
                                 </div>
                             )}
                             {property.tenancy.depositAmount && (
                                 <div className="flex items-start gap-4">
                                     <div className="p-3 rounded-2xl bg-primary/5 shrink-0"><Shield className="h-6 w-6 text-primary" /></div>
-                                    <div><p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Deposit Held</p><p className="text-xl font-bold">£{property.tenancy.depositAmount.toLocaleString()}</p></div>
+                                    <div><p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-1">Deposit Security</p><p className="text-xl font-bold">£{property.tenancy.depositAmount.toLocaleString()}</p></div>
                                 </div>
                             )}
                         </CardContent>
@@ -375,7 +376,7 @@ export default function PropertyDetailPage() {
                                 </div>
                                 <div>
                                     <CardTitle className="text-lg font-headline">Communication Registry</CardTitle>
-                                    <CardDescription>Verified message trail for this property.</CardDescription>
+                                    <CardDescription>Verified chronological message trail for this asset.</CardDescription>
                                 </div>
                             </div>
                             <Badge variant="outline" className="h-6 text-[8px] uppercase font-bold tracking-widest bg-background border-2 shadow-sm">Audit-Ready</Badge>
@@ -388,8 +389,8 @@ export default function PropertyDetailPage() {
                                     ) : !messages?.length ? (
                                         <div className="py-20 text-center px-10 border-2 border-dashed rounded-[2rem] bg-muted/10 mx-4">
                                             <MessageSquare className="h-12 w-12 text-muted-foreground/10 mx-auto mb-4" />
-                                            <p className="text-sm font-bold text-foreground">Registry Handshake Established</p>
-                                            <p className="text-xs text-muted-foreground mt-1 max-w-[240px] mx-auto font-medium">No messages found. Use the Resident Hub to start a secure conversation.</p>
+                                            <p className="text-sm font-bold text-foreground">Registry Trail Initialized</p>
+                                            <p className="text-xs text-muted-foreground mt-1 max-w-[240px] mx-auto font-medium">No shared communication history found for this property.</p>
                                         </div>
                                     ) : (
                                         messages.map((msg, idx) => {
@@ -431,7 +432,7 @@ export default function PropertyDetailPage() {
                         <CardFooter className="p-4 border-t bg-background">
                             <form onSubmit={handleSendReply} className="flex w-full gap-2">
                                 <Input 
-                                    placeholder="Type a secure response..." 
+                                    placeholder="Type a secure registry response..." 
                                     value={newReply}
                                     onChange={(e) => setNewReply(e.target.value)}
                                     className="flex-1 rounded-xl h-11 bg-muted/20 border-2"
@@ -455,7 +456,7 @@ export default function PropertyDetailPage() {
               </CardHeader>
               <CardContent className="space-y-4 pt-6">
                 {!activeTenants?.length ? (
-                  <p className="text-xs text-muted-foreground italic text-center py-6">No active residents recorded.</p>
+                  <p className="text-xs text-muted-foreground italic text-center py-6">No active residents onboarded.</p>
                 ) : (
                   activeTenants.map((t) => (
                     <div key={t.id} className="p-4 rounded-xl bg-background border shadow-sm flex items-center justify-between group">
@@ -485,8 +486,8 @@ export default function PropertyDetailPage() {
       <AlertDialog open={isDeleting} onOpenChange={(open) => setIsDeleting(open)}>
         <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
           <AlertDialogHeader>
-              <AlertDialogTitle className="text-xl font-headline">Archive Property?</AlertDialogTitle>
-              <AlertDialogDescription className="text-base font-medium">Move record at <strong className='text-foreground'>{property.address.street}</strong> to archives.</AlertDialogDescription>
+              <AlertDialogTitle className="text-xl font-headline">Archive Asset?</AlertDialogTitle>
+              <AlertDialogDescription className="text-base font-medium">This will move the record for <strong className='text-foreground'>{property.address.street}</strong> to history archives.</AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-xl font-bold uppercase text-xs h-11">Cancel</AlertDialogCancel>

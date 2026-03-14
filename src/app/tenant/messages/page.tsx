@@ -33,7 +33,7 @@ import { useToast } from '@/hooks/use-toast';
 
 /**
  * @fileOverview Resident Portal Messaging interface.
- * Provides a professional, full-viewport unified chat architecture with audit-ready message trails.
+ * Provides a professional, full-viewport unified chat architecture with audit-ready message trails and sent confirmations.
  */
 
 interface Message {
@@ -122,7 +122,7 @@ export default function TenantMessagesPage() {
         setNewMessage('');
         toast({
             title: 'Message Sent',
-            description: 'Your communication has been recorded in the secure ledger.',
+            description: 'Your communication has been recorded in the secure audit trail.',
         });
     } catch (error) {
         console.error("Sync failure:", error);
@@ -165,7 +165,7 @@ export default function TenantMessagesPage() {
           <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 border shadow-sm">
               <AlertCircle className="h-8 w-8 text-destructive" />
           </div>
-          <CardTitle className="text-xl text-primary font-headline tracking-tight">Access Blocked</CardTitle>
+          <CardTitle className="text-xl text-primary font-headline tracking-tight">Access Restricted</CardTitle>
           <CardDescription className='font-medium text-muted-foreground'>A verified residency handshake is required to access the secure chat channel.</CardDescription>
         </CardHeader>
         <CardContent className="pt-8">
@@ -176,7 +176,7 @@ export default function TenantMessagesPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-10rem)] flex flex-col gap-4 text-left max-w-7xl mx-auto">
+    <div className="h-[calc(100vh-10rem)] flex flex-col gap-4 text-left max-w-7xl mx-auto animate-in fade-in duration-500">
       <div className="flex flex-col gap-1 text-left shrink-0">
           <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Resident Chat</h1>
           <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.3em] flex items-center gap-1.5">
@@ -195,7 +195,7 @@ export default function TenantMessagesPage() {
                     <CardTitle className="text-sm font-bold">Property Management</CardTitle>
                     <p className="text-[9px] text-green-600 font-bold uppercase tracking-widest flex items-center gap-1">
                         <span className="h-1.5 w-1.5 rounded-full bg-green-500 animate-pulse" />
-                        Verified Handshake
+                        Verified Registry Link
                     </p>
                 </div>
             </div>
@@ -211,7 +211,7 @@ export default function TenantMessagesPage() {
                         <div className="py-24 text-center px-10 border-2 border-dashed rounded-[2rem] bg-muted/10">
                             <MessageSquare className="h-12 w-12 text-muted-foreground/10 mx-auto mb-4" />
                             <p className="text-sm font-bold text-foreground">Registry Handshake Established</p>
-                            <p className="text-xs text-muted-foreground mt-1 max-w-[240px] mx-auto font-medium">Your chat history is private and audit-ready.</p>
+                            <p className="text-xs text-muted-foreground mt-1 max-w-[240px] mx-auto font-medium">Your chat history is private and chronologically recorded for professional property management.</p>
                         </div>
                     ) : (
                         messages.map((msg, idx) => {
@@ -243,7 +243,7 @@ export default function TenantMessagesPage() {
                                         <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
                                             <Clock className="h-2.5 w-2.5" />
                                             {format(date, 'HH:mm')}
-                                            {!isMe && <span className="ml-1 opacity-60 font-bold text-primary">From: {msg.senderName}</span>}
+                                            {!isMe && <span className="ml-1 opacity-60 font-bold text-primary">From: Management</span>}
                                         </div>
                                     </div>
                                 </div>
@@ -258,7 +258,7 @@ export default function TenantMessagesPage() {
         <CardFooter className="p-4 border-t bg-background shadow-inner shrink-0">
             <form onSubmit={handleSendMessage} className="flex w-full items-center gap-3">
                 <Input 
-                    placeholder="Type a secure message to management..." 
+                    placeholder="Type a secure message to your landlord..." 
                     value={newMessage} 
                     onChange={(e) => setNewMessage(e.target.value)}
                     className="flex-1 h-12 bg-muted/20 border-2 focus-visible:ring-primary rounded-2xl font-medium shadow-none transition-all focus:bg-background"
