@@ -74,7 +74,8 @@ export default function TenantMessagesPage() {
             setTenantContext({ 
                 landlordId: data.landlordId, 
                 propertyId: data.propertyId, 
-                tenantId: snap.docs[0].id 
+                tenantId: snap.docs[0].id,
+                email: data.email
             });
         }
         setIsLoadingContext(false);
@@ -97,7 +98,7 @@ export default function TenantMessagesPage() {
     );
   }, [tenantContext, user, firestore]);
 
-  const { data: messages, isLoading: isLoadingMessages } = useCollection<Message>(messagesQuery);
+  const { data: messages, isLoading: isLoadingMessages, error: messagesError } = useCollection<Message>(messagesQuery);
 
   // Auto-scroll to bottom
   useEffect(() => {
@@ -118,6 +119,7 @@ export default function TenantMessagesPage() {
             propertyId: tenantContext.propertyId,
             tenantId: tenantContext.tenantId, 
             tenantUid: user.uid, 
+            tenantEmail: tenantContext.email || user.email?.toLowerCase().trim(),
             senderId: user.uid,
             senderName: user.displayName || 'Resident',
             content: newMessage.trim(),
@@ -222,7 +224,13 @@ export default function TenantMessagesPage() {
                     </p>
                 </div>
             </div>
-            <Badge variant="outline" className="h-6 text-[8px] uppercase font-bold tracking-widest bg-background border-2 shadow-sm px-3">Private audit</Badge>
+            {messagesError ? (
+                <Badge variant="destructive" className="h-6 text-[8px] uppercase font-bold tracking-widest px-3 gap-1">
+                    <AlertCircle className="h-2.5 w-2.5" /> Sync Error
+                </Badge>
+            ) : (
+                <Badge variant="outline" className="h-6 text-[8px] uppercase font-bold tracking-widest bg-background border-2 shadow-sm px-3">Private audit</Badge>
+            )}
         </CardHeader>
         
         <CardContent className="flex-1 p-0 overflow-hidden relative bg-muted/5">
@@ -232,6 +240,12 @@ export default function TenantMessagesPage() {
                     <div className="space-y-6 text-left">
                         {isLoadingMessages ? (
                             <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary/20" /></div>
+                        ) : messagesError ? (
+                            <div className="py-24 text-center px-10 border-2 border-dashed border-destructive/20 rounded-[2rem] bg-destructive/5 mx-4">
+                                <AlertCircle className="h-12 w-12 text-destructive/20 mx-auto mb-4" />
+                                <p className="text-sm font-bold text-destructive">Sync Interrupted</p>
+                                <p className="text-xs text-muted-foreground mt-1 max-w-[240px] mx-auto font-medium">The chronological audit trail is temporarily unavailable due to a security index update. Please try again in 2-3 minutes.</p>
+                            </div>
                         ) : !messages?.length ? (
                             <div className="py-24 text-center px-10 border-2 border-dashed rounded-[2rem] bg-muted/10 mx-4">
                                 <MessageSquare className="h-12 w-12 text-muted-foreground/10 mx-auto mb-4" />
@@ -288,9 +302,9 @@ export default function TenantMessagesPage() {
                     value={newMessage} 
                     onChange={(e) => setNewMessage(e.target.value)}
                     className="flex-1 h-12 bg-muted/20 border-2 focus-visible:ring-primary rounded-2xl font-medium shadow-none transition-all focus:bg-background"
-                    disabled={isSending}
+                    disabled={isSending || isLoadingMessages}
                 />
-                <Button type="submit" size="icon" className="h-12 w-12 rounded-2xl shadow-xl transition-all hover:scale-105 active:scale-95 shrink-0" disabled={!newMessage.trim() || isSending}>
+                <Button type="submit" size="icon" className="h-12 w-12 rounded-2xl shadow-xl transition-all hover:scale-105 active:scale-95 shrink-0" disabled={!newMessage.trim() || isSending || isLoadingMessages}>
                     {isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                 </Button>
             </form>

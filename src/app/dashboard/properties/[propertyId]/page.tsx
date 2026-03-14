@@ -115,6 +115,7 @@ export default function PropertyDetailPage() {
   const [activeTab, setActiveTab] = useState('overview');
 
   const scrollRef = useRef<HTMLDivElement>(null);
+  const topRef = useRef<HTMLDivElement>(null);
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const identityInputRef = useRef<HTMLInputElement>(null);
 
@@ -156,7 +157,7 @@ export default function PropertyDetailPage() {
     );
   }, [firestore, propertyId, user]);
 
-  const { data: messages, isLoading: isLoadingMessages } = useCollection<Message>(messagesQuery);
+  const { data: messages, isLoading: isLoadingMessages, error: messagesError } = useCollection<Message>(messagesQuery);
 
   useEffect(() => {
     if (scrollRef.current && activeTab === 'messages') {
@@ -172,6 +173,7 @@ export default function PropertyDetailPage() {
     const targetTenant = messages?.find(m => m.senderId !== user.uid) || activeTenants?.[0];
     const targetTenantId = targetTenant?.tenantId || targetTenant?.id;
     const targetTenantUid = (targetTenant as any)?.senderId !== user.uid ? (targetTenant as any)?.senderId : (activeTenants?.[0]?.userId || '');
+    const targetTenantEmail = targetTenant?.email || activeTenants?.[0]?.email || '';
     
     if (!targetTenantId) {
         toast({ variant: 'destructive', title: 'Resident Required', description: 'Assign an active resident to start communication audit.' });
@@ -185,6 +187,7 @@ export default function PropertyDetailPage() {
             propertyId: property.id,
             tenantId: targetTenantId, 
             tenantUid: targetTenantUid, 
+            tenantEmail: targetTenantEmail.toLowerCase().trim(),
             senderId: user.uid,
             senderName: user.displayName || 'Property Management',
             content: newReply.trim(),
@@ -216,6 +219,8 @@ export default function PropertyDetailPage() {
       toast({ title: 'Media Registry Updated' });
     } catch (err) { toast({ variant: 'destructive', title: 'Sync Error' }); } finally { setIsMediaUpdating(false); }
   };
+
+  const scrollToTop = () => topRef.current?.scrollIntoView({ behavior: 'smooth' });
 
   const handleDeleteConfirm = async () => {
     if (!firestore || !user || !property) return;
@@ -365,13 +370,23 @@ export default function PropertyDetailPage() {
                                     <p className="text-[9px] text-green-600 font-bold uppercase tracking-widest">Encrypted communication audit</p>
                                 </div>
                             </div>
-                            <Badge variant="outline" className="h-6 text-[8px] uppercase font-bold tracking-widest bg-background border-2 shadow-sm px-3">Sync Online</Badge>
+                            <div className='flex items-center gap-2'>
+                                <Button variant="outline" size="sm" onClick={scrollToTop} className="font-bold uppercase tracking-widest text-[8px] h-7 px-3 border-2">Full History</Button>
+                                <Badge variant="outline" className="h-6 text-[8px] uppercase font-bold tracking-widest bg-background border-2 shadow-sm px-3">Sync Online</Badge>
+                            </div>
                         </CardHeader>
                         <CardContent className="flex-1 overflow-hidden p-0 relative bg-muted/5">
                             <ScrollArea className="h-full">
                                 <div className="p-6 space-y-6">
+                                    <div ref={topRef} className="h-1" />
                                     {isLoadingMessages ? (
                                         <div className="flex justify-center py-20"><Loader2 className="h-8 w-8 animate-spin text-primary/20" /></div>
+                                    ) : messagesError ? (
+                                        <div className="py-20 text-center px-10 border-2 border-dashed border-destructive/20 rounded-[2rem] bg-destructive/5 mx-4">
+                                            <AlertCircle className="h-12 w-12 text-destructive/20 mx-auto mb-4" />
+                                            <p className="text-sm font-bold text-destructive">Index Synchronization Required</p>
+                                            <p className="text-xs text-muted-foreground mt-1 max-w-[240px] mx-auto font-medium">The chronological audit trail is building its search cache. Please try again in 2 minutes.</p>
+                                        </div>
                                     ) : !messages?.length ? (
                                         <div className="py-20 text-center px-10 border-2 border-dashed rounded-[2rem] bg-muted/10 mx-4">
                                             <MessageSquare className="h-12 w-12 text-muted-foreground/10 mx-auto mb-4" />
@@ -473,7 +488,7 @@ export default function PropertyDetailPage() {
       </div>
 
       <AlertDialog open={isDeleting} onOpenChange={setIsDeleting}>
-        <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
+        <AlertDialogContent className="rounded-2xl border-none shadow-2xl text-left">
           <AlertDialogHeader className="text-left">
               <AlertDialogTitle className="text-xl font-headline">Archive Property Asset?</AlertDialogTitle>
               <AlertDialogDescription className="text-base font-medium">This will move the record at <strong className='text-foreground'>{property.address.street}</strong> to history archives. This action is definitive.</AlertDialogDescription>
