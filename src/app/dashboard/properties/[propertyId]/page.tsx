@@ -53,7 +53,7 @@ import { cn } from '@/lib/utils';
 
 /**
  * @fileOverview Comprehensive Landlord Property View.
- * Restored from truncation and enhanced with audit-ready bidirectional messaging registry.
+ * Resolved from truncation and enhanced with audit-ready bidirectional messaging registry.
  */
 
 interface Property {
