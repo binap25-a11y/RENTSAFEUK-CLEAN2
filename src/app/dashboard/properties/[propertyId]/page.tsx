@@ -90,20 +90,6 @@ interface Tenant {
     status?: string;
 }
 
-interface Repair {
-    id: string;
-    title: string;
-    status: string;
-    reportedDate: any;
-}
-
-interface Inspection {
-    id: string;
-    type: string;
-    status: string;
-    scheduledDate: any;
-}
-
 interface Message {
     id: string;
     senderId: string;
@@ -291,7 +277,7 @@ export default function PropertyDetailPage() {
             <div className="flex items-center gap-2">
                 <DropdownMenu>
                     <DropdownMenuTrigger asChild>
-                        <Button variant="outline" className="gap-2 shrink-0 h-11 px-6 font-bold uppercase tracking-widest text-xs shadow-sm">
+                        <Button variant="outline" className="gap-2 shrink-0 h-11 px-6 font-bold uppercase tracking-widest text-xs shadow-sm border-primary/20 hover:bg-primary/5">
                             <MoreVertical className="h-4 w-4" />
                             <span>Manage Asset</span>
                         </Button>
@@ -439,7 +425,7 @@ export default function PropertyDetailPage() {
                                 <Input 
                                     placeholder="Type a secure response..." 
                                     value={newReply}
-                                    onChange={(e) => setNewMessage(e.target.value)}
+                                    onChange={(e) => setNewReply(e.target.value)}
                                     className="flex-1 rounded-xl h-11 bg-muted/20 border-2"
                                     disabled={isSendingReply || (!messages?.length && !activeTenants?.length)}
                                 />
