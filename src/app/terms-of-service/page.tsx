@@ -118,20 +118,14 @@ export default function TermsOfServicePage() {
           <section className="space-y-3">
             <h2 className="font-bold text-lg text-foreground">9. Termination</h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              We reserve the right to suspend or terminate accounts that violate these terms.
-            </p>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              Users may also stop using the service at any time.
+              We reserve the right to suspend or terminate accounts that violate these terms. Users may also stop using the service at any time.
             </p>
           </section>
 
           <section className="space-y-3">
             <h2 className="font-bold text-lg text-foreground">10. Changes to Terms</h2>
             <p className="text-sm leading-relaxed text-muted-foreground">
-              We may update these Terms and Conditions periodically.
-            </p>
-            <p className="text-sm leading-relaxed text-muted-foreground">
-              Continued use of the platform after updates means you accept the revised terms.
+              We may update these Terms and Conditions periodically. Continued use of the platform after updates means you accept the revised terms.
             </p>
           </section>
 
