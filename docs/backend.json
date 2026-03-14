@@ -23,6 +23,7 @@
         "tenantId": { "type": "string" },
         "tenantEmail": { "type": "string" },
         "activeTenantUids": { "type": "array", "items": { "type": "string" } },
+        "tenantEmails": { "type": "array", "items": { "type": "string" } },
         "address": { "type": "object" },
         "status": { "type": "string", "enum": ["Vacant", "Occupied", "Under Maintenance", "Deleted"] },
         "imageUrl": { "type": "string" },
@@ -86,16 +87,16 @@
   },
   "firestore": {
     "/users/{userId}": { "schema": { "$ref": "#/backend/entities/User" }, "description": "User Profiles" },
-    "/residents/{userId}": { "schema": { "$ref": "#/backend/entities/User" }, "description": "Resident Access Records (Alias)" },
-    "/properties/{propertyId}": { "schema": { "$ref": "#/backend/entities/Property" }, "description": "Property Registry" },
-    "/tenants/{tenantId}": { "schema": { "$ref": "#/backend/entities/Tenancy" }, "description": "Tenant Registry" },
+    "/residents/{userId}": { "schema": { "$ref": "#/backend/entities/User" }, "description": "Resident Identity Cache" },
+    "/properties/{propertyId}": { "schema": { "$ref": "#/backend/entities/Property" }, "description": "Asset Registry" },
+    "/tenants/{tenantId}": { "schema": { "$ref": "#/backend/entities/Tenancy" }, "description": "Tenancy Registry" },
     "/messages/{messageId}": { "schema": { "$ref": "#/backend/entities/Message" }, "description": "Secure Chat" },
-    "/repairs/{repairId}": { "schema": { "$ref": "#/backend/entities/Repair" }, "description": "Maintenance Records" },
-    "/documents/{documentId}": { "schema": { "$ref": "#/backend/entities/Document" }, "description": "Compliance Records" },
-    "/rentPayments/{id}": { "schema": { "type": "object" }, "description": "Income Ledger" },
+    "/repairs/{repairId}": { "schema": { "$ref": "#/backend/entities/Repair" }, "description": "Maintenance History" },
+    "/documents/{documentId}": { "schema": { "$ref": "#/backend/entities/Document" }, "description": "Compliance Audit Trail" },
+    "/rentPayments/{id}": { "schema": { "type": "object" }, "description": "Rental Ledger" },
     "/expenses/{id}": { "schema": { "type": "object" }, "description": "Expense Ledger" },
-    "/contractors/{id}": { "schema": { "type": "object" }, "description": "Trades Directory" },
+    "/contractors/{id}": { "schema": { "type": "object" }, "description": "Contractor Directory" },
     "/inspections/{id}": { "schema": { "type": "object" }, "description": "Inspection Audits" },
-    "/screenings/{id}": { "schema": { "type": "object" }, "description": "Tenant Vetting" }
+    "/screenings/{id}": { "schema": { "type": "object" }, "description": "Vetting History" }
   }
 }
