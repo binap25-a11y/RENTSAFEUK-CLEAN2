@@ -24,8 +24,7 @@
         "activeTenantUids": { "type": "array", "items": { "type": "string" } },
         "address": { "type": "object" },
         "status": { "type": "string", "enum": ["Vacant", "Occupied", "Under Maintenance", "Deleted"] },
-        "imageUrl": { "type": "string" },
-        "additionalImageUrls": { "type": "array", "items": { "type": "string" } }
+        "imageUrl": { "type": "string" }
       }
     },
     "Tenancy": {
@@ -39,7 +38,6 @@
         "email": { "type": "string", "format": "email" },
         "verified": { "type": "boolean" },
         "name": { "type": "string" },
-        "telephone": { "type": "string" },
         "status": { "type": "string" }
       }
     },
@@ -61,9 +59,8 @@
       "properties": {
         "id": { "type": "string" },
         "title": { "type": "string" },
-        "description": { "type": "string" },
         "landlordId": { "type": "string" },
-        "tenantId": { "type": "string" },
+        "propertyId": { "type": "string" },
         "status": { "type": "string" },
         "priority": { "type": "string" }
       }
@@ -77,43 +74,7 @@
         "propertyId": { "type": "string" },
         "landlordId": { "type": "string" },
         "documentType": { "type": "string" },
-        "issueDate": { "type": "string", "format": "date" },
-        "expiryDate": { "type": "string", "format": "date" },
-        "fileUrl": { "type": "string" }
-      }
-    },
-    "Contractor": {
-      "title": "Contractor",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "landlordId": { "type": "string" },
-        "name": { "type": "string" },
-        "trade": { "type": "string" },
-        "phone": { "type": "string" },
-        "status": { "type": "string" }
-      }
-    },
-    "Expense": {
-      "title": "Expense",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "landlordId": { "type": "string" },
-        "propertyId": { "type": "string" },
-        "amount": { "type": "number" },
-        "date": { "type": "string", "format": "date" }
-      }
-    },
-    "RentPayment": {
-      "title": "RentPayment",
-      "type": "object",
-      "properties": {
-        "id": { "type": "string" },
-        "landlordId": { "type": "string" },
-        "propertyId": { "type": "string" },
-        "amount": { "type": "number" },
-        "status": { "type": "string" }
+        "expiryDate": { "type": "string", "format": "date" }
       }
     }
   },
@@ -122,14 +83,12 @@
   },
   "firestore": {
     "/users/{userId}": { "schema": { "$ref": "#/backend/entities/User" }, "description": "User Profiles" },
-    "/residents/{userId}": { "schema": { "$ref": "#/backend/entities/User" }, "description": "Resident Access Records" },
+    "/residents/{userId}": { "schema": { "$ref": "#/backend/entities/User" }, "description": "Resident Access Records (Alias)" },
     "/properties/{propertyId}": { "schema": { "$ref": "#/backend/entities/Property" }, "description": "Property Registry" },
     "/tenants/{tenantId}": { "schema": { "$ref": "#/backend/entities/Tenancy" }, "description": "Tenant Registry" },
     "/messages/{messageId}": { "schema": { "$ref": "#/backend/entities/Message" }, "description": "Secure Chat" },
     "/repairs/{repairId}": { "schema": { "$ref": "#/backend/entities/Repair" }, "description": "Maintenance Records" },
     "/documents/{documentId}": { "schema": { "$ref": "#/backend/entities/Document" }, "description": "Compliance Records" },
-    "/contractors/{id}": { "schema": { "$ref": "#/backend/entities/Contractor" }, "description": "Service Directory" },
-    "/expenses/{id}": { "schema": { "$ref": "#/backend/entities/Expense" }, "description": "Financial Outgoings" },
-    "/rentPayments/{id}": { "schema": { "$ref": "#/backend/entities/RentPayment" }, "description": "Income Ledger" }
+    "/rentPayments/{id}": { "schema": { "type": "object" }, "description": "Income Ledger" }
   }
 }

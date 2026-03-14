@@ -1,16 +1,26 @@
+
 'use client';
 
 /**
- * Consolidated Firebase SDK Barrel File.
- * Re-exports everything from modularized utility files.
- * Core initialization is handled in init.ts to prevent circular dependencies.
+ * @fileOverview Consolidated Firebase SDK Registry
+ * Decoupled from core initialization to prevent circular dependencies.
  */
 
-export * from './init';
-export * from './provider';
-export * from './firestore/use-collection';
-export * from './firestore/use-doc';
-export * from './firestore-utilities';
-export * from './auth-utilities';
-export * from './errors';
-export * from './error-emitter';
+export { firebaseApp, auth, firestore, storage, initializeFirebase } from './init';
+export { FirebaseProvider, useFirebase, useAuth, useFirestore, useFirebaseApp, useMemoFirebase, useUser } from './provider';
+export { useCollection } from './firestore/use-collection';
+export { useDoc } from './firestore/use-doc';
+export { 
+  setDocumentNonBlocking, 
+  addDocumentNonBlocking, 
+  updateDocumentNonBlocking, 
+  deleteDocumentNonBlocking 
+} from './firestore-utilities';
+export { 
+  signInNonBlocking, 
+  createUserNonBlocking, 
+  initiateAnonymousSignIn,
+  type UserRole 
+} from './auth-utilities';
+export { FirestorePermissionError } from './errors';
+export { errorEmitter } from './error-emitter';
