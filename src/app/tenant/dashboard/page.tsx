@@ -79,7 +79,6 @@ export default function TenantDashboard() {
         }
 
         if (!tenantDoc) {
-            console.log("Discovery: No tenancy registry entry found for", userEmail);
             setIsLoading(false);
             discoveryRef.current = false;
             return;
@@ -193,7 +192,7 @@ export default function TenantDashboard() {
 
   if (!context) {
     return (
-        <Card className="max-w-md mx-auto mt-20 shadow-2xl border-none overflow-hidden">
+        <Card className="max-w-md mx-auto mt-20 shadow-2xl border-none overflow-hidden text-left">
             <CardHeader className="text-center bg-muted/20 pb-8 border-b">
                 <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 border shadow-sm text-muted-foreground/20">
                     <Search className="h-10 w-10" />
@@ -267,7 +266,7 @@ export default function TenantDashboard() {
                     Direct Support
                 </CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4 px-6 pb-6">
+            <CardContent className="space-y-4 px-6 pb-6 text-left">
                 <p className="text-xs font-medium">Message your landlord securely about property issues.</p>
                 <Button variant="secondary" size="sm" className="w-full font-bold h-9 shadow-md rounded-xl uppercase tracking-widest text-[10px]" asChild>
                     <Link href="/tenant/messages">Open Inbox <ChevronRight className="ml-1 h-3 w-3"/></Link>
@@ -276,7 +275,7 @@ export default function TenantDashboard() {
         </Card>
       </div>
 
-      <div className="grid gap-6 lg:grid-cols-2 mt-8">
+      <div className="grid gap-6 lg:grid-cols-2 mt-8 text-left">
         <Card className="border-none shadow-md overflow-hidden group text-left">
             <CardHeader className="bg-muted/30 border-b px-6 text-left">
                 <CardTitle className="text-lg flex items-center gap-2 font-headline text-foreground">

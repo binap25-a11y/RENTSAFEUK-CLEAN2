@@ -140,10 +140,7 @@ export default function TenantsPage() {
     try {
       const tenantRef = doc(firestore, 'tenants', tenantToArchive.id);
       
-      // 1. Mark Tenant as Archived (Reactive via useCollection)
-      updateDocumentNonBlocking(tenantRef, { status: 'Archived' });
-
-      // 2. Atomic Status Sync: Scan for remaining active tenants on this property
+      // 1. Scan for other active tenants on this property FIRST to ensure accuracy
       const activeTenantsQuery = query(
           collection(firestore, 'tenants'),
           where('propertyId', '==', tenantToArchive.propertyId),
@@ -152,16 +149,21 @@ export default function TenantsPage() {
       );
       const snap = await getDocs(activeTenantsQuery);
       
-      // If this was the last active tenant (count including current is handled by the reactive nature of the query engine), 
-      // mark property as vacant atomically. Note: snapshot checks against live data.
-      if (snap.docs.filter(d => d.id !== tenantToArchive.id).length === 0) {
+      // Filter out the current tenant being archived
+      const otherActiveTenants = snap.docs.filter(d => d.id !== tenantToArchive.id);
+
+      // 2. Mark Tenant as Archived
+      updateDocumentNonBlocking(tenantRef, { status: 'Archived' });
+
+      // 3. Update Property status if this was the last tenant
+      if (otherActiveTenants.length === 0) {
           const propRef = doc(firestore, 'properties', tenantToArchive.propertyId);
           updateDocumentNonBlocking(propRef, { status: 'Vacant' });
       }
 
       toast({
         title: 'Tenant Archived',
-        description: `${tenantToArchive.name} has been moved to the archives and property status updated.`,
+        description: `${tenantToArchive.name} moved to archives. Asset status updated.`,
       });
       
       setTenantToArchive(null);
@@ -206,7 +208,7 @@ export default function TenantsPage() {
             <CardTitle>Portfolio Registry</CardTitle>
             <CardDescription>A list of active tenants and their Resident Hub status.</CardDescription>
           </CardHeader>
-          <CardContent className="pt-6">
+          <CardContent className="pt-6 text-left">
             <div className="relative w-full max-sm mb-6">
               <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
               <Input

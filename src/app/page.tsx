@@ -109,7 +109,7 @@ export default function LoginPage() {
             router.replace('/dashboard');
           }
         } catch (error: any) {
-          // Handle handshake deferral silently
+          // Handle handshake deferral silently to prevent technical distraction
           router.replace('/dashboard');
         }
       };

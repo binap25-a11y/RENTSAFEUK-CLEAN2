@@ -221,13 +221,13 @@ export default function TenantDetailPage() {
 
   return (
     <div className="flex flex-col gap-6 text-left">
-        <div className="flex flex-col gap-4">
+        <div className="flex flex-col gap-4 text-left">
             <div className='flex items-center gap-4'>
                 <Button variant="outline" size="icon" asChild className="shrink-0">
                     <Link href="/dashboard/tenants"><ArrowLeft className="h-4 w-4" /></Link>
                 </Button>
                 <div className="min-w-0 text-left">
-                    <div className="flex items-center gap-2 flex-wrap">
+                    <div className="flex items-center gap-2 flex-wrap text-left">
                         <h1 className="text-2xl font-bold font-headline leading-tight break-words">{tenant.name}</h1>
                         {isVerified ? (
                             <Badge className="bg-green-100 text-green-800 border-green-200 gap-1.5 font-bold uppercase text-[9px]">
@@ -270,10 +270,10 @@ export default function TenantDetailPage() {
             </div>
         </div>
 
-        <div className="flex flex-col gap-6">
+        <div className="flex flex-col gap-6 text-left">
             {!isVerified && (
                 <Card className="border-primary/20 bg-primary/5 shadow-inner">
-                    <CardContent className="flex items-center gap-4 py-4">
+                    <CardContent className="flex items-center gap-4 py-4 text-left">
                         <div className="p-2.5 rounded-full bg-primary/10 text-primary shrink-0"><AlertCircle className="h-5 w-5" /></div>
                         <div className="flex-1 text-left">
                             <p className="text-sm font-bold text-primary">Verification Handshake Required</p>
@@ -284,22 +284,22 @@ export default function TenantDetailPage() {
                 </Card>
             )}
 
-            <Card className="shadow-lg border-none">
-                <CardHeader className="pb-4 bg-muted/20 border-b">
+            <Card className="shadow-lg border-none text-left">
+                <CardHeader className="pb-4 bg-muted/20 border-b text-left">
                     <CardTitle className="text-lg font-headline">Contact Information</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4 pt-6">
+                <CardContent className="space-y-4 pt-6 text-left">
                     <div className="grid gap-4 sm:grid-cols-2">
-                        <div className="flex items-center gap-4 p-4 rounded-xl bg-background border shadow-sm transition-all hover:border-primary/20">
+                        <div className="flex items-center gap-4 p-4 rounded-xl bg-background border shadow-sm transition-all hover:border-primary/20 text-left">
                             <div className="p-2.5 rounded-full bg-primary/10 text-primary shrink-0"><Mail className="h-4 w-4" /></div>
-                            <div className="min-w-0 flex-1">
+                            <div className="min-w-0 flex-1 text-left">
                                 <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.2em] mb-0.5">Verified Identity Key</p>
                                 <a href={`mailto:${tenant.email}`} className="font-bold text-primary hover:underline break-all block text-sm">{tenant.email}</a>
                             </div>
                         </div>
-                        <div className="flex items-center gap-4 p-4 rounded-xl bg-background border shadow-sm transition-all hover:border-primary/20">
+                        <div className="flex items-center gap-4 p-4 rounded-xl bg-background border shadow-sm transition-all hover:border-primary/20 text-left">
                             <div className="p-2.5 rounded-full bg-primary/10 text-primary shrink-0"><Phone className="h-4 w-4" /></div>
-                            <div className="min-w-0 flex-1">
+                            <div className="min-w-0 flex-1 text-left">
                                 <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.2em] mb-0.5">Mobile Phone</p>
                                 <p className="font-bold text-sm">{tenant.telephone}</p>
                             </div>
@@ -308,20 +308,20 @@ export default function TenantDetailPage() {
                 </CardContent>
             </Card>
 
-            <Card className="shadow-lg border-none">
-                <CardHeader className="pb-4 bg-muted/20 border-b">
+            <Card className="shadow-lg border-none text-left">
+                <CardHeader className="pb-4 bg-muted/20 border-b text-left">
                     <CardTitle className="text-lg font-headline">Tenancy Agreement Details</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-6 pt-6">
+                <CardContent className="space-y-6 pt-6 text-left">
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                        <div className="p-4 rounded-xl bg-background border shadow-sm flex items-start gap-4">
+                        <div className="p-4 rounded-xl bg-background border shadow-sm flex items-start gap-4 text-left">
                             <div className="p-2.5 rounded-lg bg-green-50 text-green-600 shrink-0"><Banknote className="h-5 w-5" /></div>
                             <div className="text-left">
                                 <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.2em] mb-0.5">Agreed Rent</p>
                                 <p className="font-bold text-xl">£{tenant.monthlyRent?.toLocaleString() || '0'}<span className="text-xs font-medium text-muted-foreground"> /mo</span></p>
                             </div>
                         </div>
-                        <div className="p-4 rounded-xl bg-background border shadow-sm flex items-start gap-4">
+                        <div className="p-4 rounded-xl bg-background border shadow-sm flex items-start gap-4 text-left">
                             <div className="p-2.5 rounded-lg bg-blue-50 text-blue-600 shrink-0"><CalendarDays className="h-5 w-5" /></div>
                             <div className="text-left">
                                 <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-[0.2em] mb-0.5">Rent Due Date</p>
@@ -329,13 +329,13 @@ export default function TenantDetailPage() {
                             </div>
                         </div>
                     </div>
-                    <div className="p-5 rounded-xl bg-muted/30 border border-dashed flex flex-col gap-4">
+                    <div className="p-5 rounded-xl bg-muted/30 border border-dashed flex flex-col gap-4 text-left">
                         <div className="flex items-center gap-2 text-[10px] text-muted-foreground uppercase font-bold tracking-[0.2em]">
                             <CalendarDays className="h-3.5 w-3.5" />
                             Contract Timeline
                         </div>
                         <div className="flex items-center gap-8 text-left">
-                            <div className="flex-1">
+                            <div className="flex-1 text-left">
                                 <p className="text-[9px] text-muted-foreground font-bold uppercase tracking-widest mb-1">Effective Start</p>
                                 <p className="font-bold text-base">{safeCreateDate(tenant.tenancyStartDate) ? format(safeCreateDate(tenant.tenancyStartDate)!, 'dd MMM yyyy') : 'N/A'}</p>
                             </div>
@@ -349,14 +349,14 @@ export default function TenantDetailPage() {
                 </CardContent>
             </Card>
             
-            <Card className="shadow-lg border-none overflow-hidden">
-                <CardHeader className="pb-4 bg-muted/20 border-b"><CardTitle className="text-lg font-headline">Assigned Asset</CardTitle></CardHeader>
-                <CardContent className="pt-6">
-                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-4 rounded-xl bg-background border shadow-sm">
-                        <div className="flex items-start gap-4 flex-1 min-w-0">
+            <Card className="shadow-lg border-none overflow-hidden text-left">
+                <CardHeader className="pb-4 bg-muted/20 border-b text-left"><CardTitle className="text-lg font-headline">Assigned Asset</CardTitle></CardHeader>
+                <CardContent className="pt-6 text-left">
+                    <div className="flex flex-col md:flex-row md:items-center justify-between gap-6 p-4 rounded-xl bg-background border shadow-sm text-left">
+                        <div className="flex items-start gap-4 flex-1 min-w-0 text-left">
                             <div className="p-2.5 rounded-lg bg-muted/50 text-primary shrink-0 mt-1"><MapPin className="h-5 w-5" /></div>
                             <div className="min-w-0 flex-1 text-left">
-                                <Link href={`/dashboard/properties/${tenant.propertyId}`} className="text-lg font-bold text-primary hover:underline leading-tight block whitespace-normal">{propertyAddress}</Link>
+                                <Link href={`/dashboard/properties/${tenant.propertyId}`} className="text-lg font-bold text-primary hover:underline leading-tight block whitespace-normal text-left">{propertyAddress}</Link>
                                 <Badge variant="outline" className="text-[9px] uppercase font-bold tracking-widest border-primary/20 bg-primary/5 text-primary mt-2">Active Lease</Badge>
                             </div>
                         </div>
@@ -367,8 +367,8 @@ export default function TenantDetailPage() {
         </div>
 
         <AlertDialog open={isDeleteDialogOpen} onOpenChange={setIsDeleteDialogOpen}>
-            <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
-                <AlertDialogHeader>
+            <AlertDialogContent className="rounded-2xl border-none shadow-2xl text-left">
+                <AlertDialogHeader className='text-left'>
                     <div className="p-4 rounded-full bg-destructive/10 w-fit mx-auto mb-4"><Trash2 className="h-8 w-8 text-destructive" /></div>
                     <AlertDialogTitle className="text-xl font-headline text-center">Archive tenant record?</AlertDialogTitle>
                     <AlertDialogDescription className="text-base font-medium text-center">This will move <strong className="text-foreground">{tenant.name}</strong> to your archives. Access to the Resident Hub will be revoked.</AlertDialogDescription>
