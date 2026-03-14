@@ -142,6 +142,14 @@
     "/rentPayments/{id}": {
       "schema": "object",
       "description": "Rental collection ledger."
+    },
+    "/checklists/{id}": {
+      "schema": "object",
+      "description": "Pre-tenancy audit logs."
+    },
+    "/screenings/{id}": {
+      "schema": "object",
+      "description": "Tenant vetting and reference reports."
     }
   }
 }

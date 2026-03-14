@@ -42,7 +42,6 @@ import {
   useFirestore,
   useCollection,
   useMemoFirebase,
-  updateDocumentNonBlocking,
 } from '@/firebase';
 import { collection, query, where, doc, getDocs, limit, updateDoc } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
@@ -162,7 +161,8 @@ export default function TenantsPage() {
         description: `${tenantToArchive.name} has been moved to the archives and property status updated.`,
       });
       
-      // Soft-refresh the router to ensure all server components align if any
+      // Hard navigation to ensure state alignment if necessary
+      setTenantToArchive(null);
       router.refresh();
     } catch (e) {
       console.error('Error archiving tenant:', e);
@@ -173,7 +173,6 @@ export default function TenantsPage() {
       });
     } finally {
       setIsArchiving(false);
-      setTenantToArchive(null);
     }
   };
 

@@ -3,8 +3,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RentSafeUK Security Governance v5.0
-     * Optimized for Static Query Verification and Case-Insensitive Discovery.
+     * RentSafeUK Security Governance v6.0
+     * Optimized for Static Query Verification and Case-Insensitive Discovery Handshakes.
      */
 
     function isSignedIn() {
@@ -20,7 +20,7 @@ service cloud.firestore {
       return isSignedIn() && request.auth.uid == data.get('landlordId', '');
     }
 
-    // Helper to check if the user is the tenant of the record
+    // Helper to check if the user is the tenant of the record (Case-Insensitive)
     function isTenant(data) {
       let email = getEmail();
       let uid = request.auth.uid;
@@ -28,8 +28,8 @@ service cloud.firestore {
         uid == data.get('tenantId', '') || 
         uid == data.get('userId', '') ||
         (email != "" && (
-          email == data.get('email', '') || 
-          email == data.get('tenantEmail', '')
+          email == data.get('email', '').lower() || 
+          email == data.get('tenantEmail', '').lower()
         ))
       );
     }
@@ -41,9 +41,9 @@ service cloud.firestore {
 
     // --- Tenant Registry ---
     match /tenants/{tenantId} {
-      // Discovery: Authorized via verified email token
+      // Discovery: Statically verifiable for query optimizer
       allow list: if isSignedIn() && (
-        getEmail() == resource.data.get('email', '') ||
+        getEmail() == resource.data.get('email', '').lower() ||
         request.auth.uid == resource.data.get('userId', '') ||
         request.auth.uid == resource.data.get('landlordId', '')
       );
@@ -53,17 +53,17 @@ service cloud.firestore {
       // HANDSHAKE: Allow residents to link their UID if they match the registry email
       allow update: if isSignedIn() && (
         isLandlord(resource.data) || 
-        (getEmail() == resource.data.get('email', '') && request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'verified', 'joinedDate', 'status', 'lastSyncCheck']))
+        (getEmail() == resource.data.get('email', '').lower() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'verified', 'joinedDate', 'status', 'lastSyncCheck']))
       );
       allow delete: if isLandlord(resource.data);
     }
 
     // --- Property Portfolio ---
     match /properties/{propertyId} {
-      // Discovery: Authorized via verified email token
+      // Discovery: Statically verifiable for query optimizer
       allow list: if isSignedIn() && (
         request.auth.uid == resource.data.get('landlordId', '') || 
-        getEmail() == resource.data.get('tenantEmail', '')
+        getEmail() == resource.data.get('tenantEmail', '').lower()
       );
       allow get: if isLandlord(resource.data) || isTenant(resource.data);
       allow create: if isSignedIn();
@@ -71,7 +71,7 @@ service cloud.firestore {
       // HANDSHAKE: Allow residents to link their UID to the property bridge
       allow update: if isSignedIn() && (
         isLandlord(resource.data) || 
-        (getEmail() == resource.data.get('tenantEmail', '') && request.resource.data.diff(resource.data).affectedKeys().hasAny(['tenantId', 'activeTenantUids', 'status']))
+        (getEmail() == resource.data.get('tenantEmail', '').lower() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['tenantId', 'activeTenantUids', 'status']))
       );
       allow delete: if isLandlord(resource.data);
     }
