@@ -53,7 +53,7 @@ import { cn } from '@/lib/utils';
 
 /**
  * @fileOverview Comprehensive Landlord Property View.
- * Enhanced with real-time bidirectional messaging registry and full source restoration.
+ * Enhanced with professional full-viewport messaging registry and bidirectional real-time sync.
  */
 
 interface Property {
@@ -159,6 +159,7 @@ export default function PropertyDetailPage() {
     e.preventDefault();
     if (!newReply.trim() || !user || !property || isSendingReply) return;
 
+    // Use existing message context or default to first active tenant
     const targetTenantId = messages?.find(m => m.senderId !== user.uid)?.tenantId || (activeTenants?.[0]?.userId);
     
     if (!targetTenantId) {
@@ -182,7 +183,7 @@ export default function PropertyDetailPage() {
         toast({ title: 'Message Sent', description: 'Communication synchronized with the audit trail.' });
     } catch (error) {
         console.error("Sync failure:", error);
-        toast({ variant: 'destructive', title: 'Send Failed' });
+        toast({ variant: 'destructive', title: 'Send Failed', description: 'Index creation or sync error detected.' });
     } finally {
         setIsSendingReply(false);
     }

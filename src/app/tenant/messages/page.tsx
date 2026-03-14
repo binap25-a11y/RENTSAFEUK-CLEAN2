@@ -33,7 +33,7 @@ import { useToast } from '@/hooks/use-toast';
 
 /**
  * @fileOverview Resident Portal Messaging interface.
- * Unified Architecture with professional full-viewport history trail.
+ * Unified Architecture with professional full-viewport history trail and transactional confirmations.
  */
 
 interface Message {
