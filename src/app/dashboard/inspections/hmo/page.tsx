@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,7 +30,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, CheckCircle2 } from 'lucide-react';
+import { Loader2, CheckCircle2, Download } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -44,6 +43,7 @@ import {
 } from '@/firebase';
 import { collection, query, where, addDoc, limit } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
+import { generateInspectionPDF } from '@/lib/generate-inspection-pdf';
 
 const hmoInspectionSchema = z.object({
   // General
@@ -163,6 +163,8 @@ interface Property {
     nameOrNumber?: string;
     street: string;
     city: string;
+    county?: string;
+    postcode: string;
   };
   status?: string;
 }
@@ -272,6 +274,8 @@ export default function HmoInspectionPage() {
         setIsSubmitting(true);
 
         const { propertyId, ...inspectionData } = data;
+        const selectedProperty = activeProperties.find(p => p.id === propertyId);
+
         const newInspection = {
             ...inspectionData,
             landlordId: user.uid,
@@ -284,9 +288,13 @@ export default function HmoInspectionPage() {
         try {
             const cleanedSubmission = prepareForFirestore(newInspection);
             const inspectionsCollection = collection(firestore, 'inspections');
-            await addDoc(inspectionsCollection, cleanedSubmission);
-            toast({ title: 'HMO Inspection Saved' });
-            router.push('/dashboard/inspections');
+            const docRef = await addDoc(inspectionsCollection, cleanedSubmission);
+            
+            // AUTO-PDF GENERATION WORKFLOW
+            toast({ title: 'HMO Report Saved', description: 'Generating PDF audit record...' });
+            generateInspectionPDF(newInspection, selectedProperty);
+
+            router.push(`/dashboard/inspections/${docRef.id}?propertyId=${propertyId}`);
         } catch (error) {
             console.error(error);
             toast({ variant: 'destructive', title: 'Save Failed', description: 'Check your internet connection and try again.' });
@@ -304,7 +312,7 @@ export default function HmoInspectionPage() {
             <CardHeader>
                 <CardTitle>HMO Inspection Checklist</CardTitle>
                 <CardDescription>
-                    Record a detailed inspection for a House in Multiple Occupation.
+                    Record a detailed inspection for an HMO and generate an audit PDF.
                 </CardDescription>
             </CardHeader>
             <CardContent>
@@ -375,6 +383,8 @@ export default function HmoInspectionPage() {
                                     <ChecklistItem form={form} name="fireSafety.heatDetector" label="Heat detector in kitchen" />
                                     <ChecklistItem form={form} name="fireSafety.fireDoors" label="Fire doors self-closing" />
                                     <ChecklistItem form={form} name="fireSafety.doorSeals" label="Intumescent seals intact" />
+                                    <ChecklistItem form={form} name="fireSafety.extinguishers" label="Fire extinguishers serviced" />
+                                    <ChecklistItem form={form} name="fireSafety.fireBlanket" label="Fire blanket in kitchen" />
                                     <ChecklistItem form={form} name="fireSafety.emergencyLighting" label="Emergency lighting operational" />
                                     <ChecklistItem form={form} name="fireSafety.clearRoutes" label="Fire escape routes clear" />
                                     <NotesField form={form} name="fireSafety.notes" placeholder="Fire safety notes..." />
@@ -406,7 +416,11 @@ export default function HmoInspectionPage() {
                         <div className="flex justify-end gap-2 pt-4">
                             <Button type="button" variant="outline" asChild><Link href="/dashboard/inspections">Cancel</Link></Button>
                             <Button type="submit" disabled={isSubmitting}>
-                                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Save Report'}
+                                {isSubmitting ? (
+                                  <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</>
+                                ) : (
+                                  <><Download className="mr-2 h-4 w-4" /> Save & Export PDF</>
+                                )}
                             </Button>
                         </div>
                     </form>

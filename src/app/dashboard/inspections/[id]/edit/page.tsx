@@ -1,15 +1,14 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
 import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
-import { useEffect, useState } from 'react';
-import { Loader2, ArrowLeft, Save } from 'lucide-react';
+import { useEffect, useState, useMemo } from 'react';
+import { Loader2, ArrowLeft, Save, Download } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
-import { doc, updateDoc } from 'firebase/firestore';
+import { useDoc, useFirestore, useMemoFirebase, useUser, useCollection } from '@/firebase';
+import { doc, updateDoc, collection, query, where, limit } from 'firebase/firestore';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from '@/components/ui/form';
@@ -19,6 +18,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
 import Link from 'next/link';
+import { generateInspectionPDF } from '@/lib/generate-inspection-pdf';
 
 const ChecklistItem = ({ form, name, label }: { form: any, name: any, label: string }) => (
     <FormField
@@ -76,7 +76,13 @@ export default function EditInspectionPage() {
     return doc(firestore, 'inspections', id);
   }, [firestore, id, user]);
 
-  const { data: inspection, isLoading } = useDoc(inspectionRef);
+  const { data: inspection, isLoading: isLoadingInspection } = useDoc(inspectionRef);
+
+  const propertyRef = useMemoFirebase(() => {
+    if (!firestore || !propertyId || !user) return null;
+    return doc(firestore, 'properties', propertyId);
+  }, [firestore, propertyId, user]);
+  const { data: property, isLoading: isLoadingProperty } = useDoc(propertyRef);
 
   const form = useForm();
 
@@ -92,14 +98,17 @@ export default function EditInspectionPage() {
   }, [inspection, form]);
 
   async function onSubmit(data: any) {
-    if (!user || !firestore || !inspectionRef) return;
+    if (!user || !firestore || !inspectionRef || !property) return;
     setIsSaving(true);
 
     try {
       const cleanedData = prepareForFirestore(data);
       await updateDoc(inspectionRef, cleanedData);
       
-      toast({ title: 'Inspection Updated', description: 'Your changes have been saved successfully.' });
+      // AUTO-PDF GENERATION WORKFLOW
+      toast({ title: 'Changes Saved', description: 'Generating updated PDF report...' });
+      generateInspectionPDF({ ...inspection, ...data }, property);
+      
       router.push(`/dashboard/inspections/${id}?propertyId=${propertyId}`);
     } catch (error) {
       console.error('Failed to update inspection:', error);
@@ -108,6 +117,8 @@ export default function EditInspectionPage() {
       setIsSaving(false);
     }
   }
+
+  const isLoading = isLoadingInspection || isLoadingProperty;
 
   if (isLoading) {
     return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
@@ -118,7 +129,7 @@ export default function EditInspectionPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6">
+    <div className="flex flex-col gap-6 text-left">
       <div className="flex items-center gap-4">
         <Button variant="outline" size="icon" asChild>
           <Link href="/dashboard/inspections">
@@ -127,7 +138,7 @@ export default function EditInspectionPage() {
         </Button>
         <div>
           <h1 className="text-2xl font-bold">Edit {inspection.type} Report</h1>
-          <p className="text-muted-foreground">Modify the inspection details below.</p>
+          <p className="text-muted-foreground text-sm">Modify the inspection details and generate an updated PDF audit.</p>
         </div>
       </div>
 
@@ -226,9 +237,12 @@ export default function EditInspectionPage() {
             <Button type="button" variant="outline" asChild>
               <Link href="/dashboard/inspections">Cancel</Link>
             </Button>
-            <Button type="submit" disabled={isSaving}>
-              {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Save className="mr-2 h-4 w-4" />}
-              Save Changes
+            <Button type="submit" disabled={isSaving} className="h-11 px-8 font-bold uppercase tracking-widest text-[10px] shadow-lg">
+              {isSaving ? (
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</>
+              ) : (
+                <><Download className="mr-2 h-4 w-4" /> Save & Export PDF</>
+              )}
             </Button>
           </div>
         </form>

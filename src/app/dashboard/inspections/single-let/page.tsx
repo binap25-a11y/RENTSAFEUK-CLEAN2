@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -29,7 +28,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Upload, Loader2 } from 'lucide-react';
+import { Upload, Loader2, Download } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Accordion, AccordionContent, AccordionItem, AccordionTrigger } from '@/components/ui/accordion';
 import { Checkbox } from '@/components/ui/checkbox';
@@ -53,6 +52,7 @@ import {
   AlertDialogHeader,
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
+import { generateInspectionPDF } from '@/lib/generate-inspection-pdf';
 
 
 const inspectionSchema = z.object({
@@ -160,6 +160,8 @@ interface Property {
     nameOrNumber?: string;
     street: string;
     city: string;
+    county?: string;
+    postcode: string;
   };
   status?: string;
 }
@@ -256,6 +258,7 @@ export default function SingleLetInspectionPage() {
 
     try {
       const { propertyId, report, ...inspectionData } = data;
+      const selectedProperty = properties.find(p => p.id === propertyId);
       
       const newInspection = {
         ...inspectionData,
@@ -266,15 +269,14 @@ export default function SingleLetInspectionPage() {
       };
 
       const cleanedSubmission = prepareForFirestore(newInspection);
-
       const inspectionsCollection = collection(firestore, 'inspections');
-      await addDoc(inspectionsCollection, cleanedSubmission);
+      const docRef = await addDoc(inspectionsCollection, cleanedSubmission);
       
-      toast({
-        title: 'Inspection Saved',
-        description: 'The inspection details have been successfully saved.',
-      });
-      router.push('/dashboard/inspections');
+      // AUTO-PDF GENERATION WORKFLOW
+      toast({ title: 'Inspection Saved', description: 'Generating PDF audit record...' });
+      generateInspectionPDF(newInspection, selectedProperty);
+      
+      router.push(`/dashboard/inspections/${docRef.id}?propertyId=${propertyId}`);
     } catch (error) {
       console.error('Failed to save inspection:', error);
       toast({
@@ -332,7 +334,7 @@ export default function SingleLetInspectionPage() {
         <CardHeader>
           <CardTitle>Record Single-Let Inspection</CardTitle>
           <CardDescription>
-            Fill in the details to record a property inspection.
+            Fill in the details to record a property inspection and generate an audit PDF.
           </CardDescription>
         </CardHeader>
         <CardContent>
@@ -521,7 +523,7 @@ export default function SingleLetInspectionPage() {
                   <AccordionTrigger suppressHydrationWarning className='text-lg font-semibold'>Interior General Condition</AccordionTrigger>
                   <AccordionContent className='pt-4'>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <ChecklistItem form={form} name="interior.wallsCeilorsFloors" label="Walls, ceilings, floors" />
+                          <ChecklistItem form={form} name="interior.wallsCeilingsFloors" label="Walls, ceilings, floors" />
                           <ChecklistItem form={form} name="interior.noDamp" label="No signs of damp, mould, or condensation" />
                           <ChecklistItem form={form} name="interior.windows" label="Windows open and close correctly" />
                           <ChecklistItem form={form} name="interior.doors" label="Internal doors and locks functioning" />
@@ -652,7 +654,12 @@ export default function SingleLetInspectionPage() {
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       Saving...
                     </>
-                  ) : 'Save Inspection'}
+                  ) : (
+                    <>
+                      <Download className="mr-2 h-4 w-4" />
+                      Save & Export PDF
+                    </>
+                  )}
                 </Button>
               </div>
             </form>
