@@ -1,3 +1,4 @@
+
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -9,61 +10,32 @@ service cloud.firestore {
      * This ruleset enforces a strict user-ownership model. The application is designed such that 
      * every piece of data (Properties, Tenants, Maintenance Requests, etc.) is explicitly owned 
      * by a UserProfile. Access is restricted to the authenticated owner.
-     *
-     * DATA STRUCTURE
-     * Data is organized hierarchically under two main roots:
-     * 1. /userProfiles/{userId}: Global profile information.
-     * 2. /users/{userId}/...: A user-scoped data tree containing properties and all related sub-entities.
-     *
-     * KEY SECURITY DECISIONS
-     * - Authorization Independence: Sub-collection documents (like Tenants) denormalize the 
-     *   'propertyOwnerId'. This allows rules to verify ownership instantly without performing 
-     *   expensive 'get()' calls to parent documents.
-     * - Path-Based Security: The rules leverage the {userId} path parameter to ensure users 
-     *   can only list or access documents within their own designated data tree.
-     * - Defensive Writes: For all write operations, the rules verify that internal data fields 
-     *   (like 'ownerId') match the authenticated user's ID, preventing users from "spoofing" 
-     *   ownership or moving data between accounts.
-     * - Prototyping Flexibility: While authorization is strictly enforced, data types and 
-     *   object shapes are not strictly validated to allow for rapid UI/UX iteration.
      */
 
     // --- GLOBAL HELPER FUNCTIONS ---
 
-    /** @description Checks if the request is from an authenticated user. */
     function isSignedIn() {
       return request.auth != null;
     }
 
-    /** @description Checks if the authenticated user's UID matches the provided userId. */
     function isOwner(userId) {
       return isSignedIn() && request.auth.uid == userId;
     }
 
-    /** @description Verifies ownership and ensures the document exists for updates/deletes. */
     function isExistingOwner(userId) {
       return isOwner(userId) && resource != null;
     }
 
-    /** @description Validates that a field in the incoming data matches the expected userId. */
     function isValidOwnership(field, userId) {
       return request.resource.data[field] == userId;
     }
 
-    /** @description Ensures a field remains unchanged during an update. */
     function isImmutable(field) {
       return request.resource.data[field] == resource.data[field];
     }
 
     // --- COLLECTION RULES ---
 
-    /**
-     * @description Rules for user profile documents. Restricted to the owner.
-     * @path /userProfiles/{userId}
-     * @allow (create) if auth.uid == "user123" and request.resource.data.id == "user123"
-     * @deny (list) if auth.uid != userId
-     * @principle Ownership and path-to-field consistency.
-     */
     match /userProfiles/{userId} {
       allow get, list: if isOwner(userId);
       allow create: if isOwner(userId) && isValidOwnership('id', userId);
@@ -71,23 +43,12 @@ service cloud.firestore {
       allow delete: if isExistingOwner(userId);
     }
 
-    /**
-     * @description Properties owned by a user.
-     * @path /users/{userId}/properties/{propertyId}
-     * @allow (get) if auth.uid == userId
-     * @deny (create) if request.resource.data.ownerId != auth.uid
-     * @principle Path-based authorization with denormalized ownership validation.
-     */
     match /users/{userId}/properties/{propertyId} {
       allow get, list: if isOwner(userId);
       allow create: if isOwner(userId) && isValidOwnership('ownerId', userId);
       allow update: if isExistingOwner(userId) && isImmutable('ownerId');
       allow delete: if isExistingOwner(userId);
 
-      /**
-       * @description Tenants associated with a property. Requires propertyOwnerId denormalization.
-       * @path /users/{userId}/properties/{propertyId}/tenants/{tenantId}
-       */
       match /tenants/{tenantId} {
         allow get, list: if isOwner(userId);
         allow create: if isOwner(userId) && isValidOwnership('propertyOwnerId', userId);
@@ -95,10 +56,6 @@ service cloud.firestore {
         allow delete: if isExistingOwner(userId);
       }
 
-      /**
-       * @description Maintenance requests for a property.
-       * @path /users/{userId}/properties/{propertyId}/maintenanceRequests/{requestId}
-       */
       match /maintenanceRequests/{requestId} {
         allow get, list: if isOwner(userId);
         allow create: if isOwner(userId) && isValidOwnership('propertyOwnerId', userId);
@@ -106,10 +63,6 @@ service cloud.firestore {
         allow delete: if isExistingOwner(userId);
       }
 
-      /**
-       * @description Property inspection records.
-       * @path /users/{userId}/properties/{propertyId}/inspections/{inspectionId}
-       */
       match /inspections/{inspectionId} {
         allow get, list: if isOwner(userId);
         allow create: if isOwner(userId) && isValidOwnership('propertyOwnerId', userId);
@@ -117,10 +70,6 @@ service cloud.firestore {
         allow delete: if isExistingOwner(userId);
       }
 
-      /**
-       * @description Documents (PDFs, Images) associated with a property.
-       * @path /users/{userId}/properties/{propertyId}/documents/{docId}
-       */
       match /documents/{docId} {
         allow get, list: if isOwner(userId);
         allow create: if isOwner(userId) && isValidOwnership('propertyOwnerId', userId);
@@ -129,24 +78,22 @@ service cloud.firestore {
       }
     }
 
-    /**
-     * @description Audit trail of user activities.
-     * @path /users/{userId}/activityLogs/{logId}
-     * @allow (list) if auth.uid == userId
-     * @deny (update) if false (logs are usually append-only)
-     * @principle Restricts activity history to the specific user.
-     */
     match /users/{userId}/activityLogs/{logId} {
       allow get, list: if isOwner(userId);
       allow create: if isOwner(userId) && isValidOwnership('userId', userId);
-      allow update, delete: if false; // Activity logs are immutable for audit integrity
+      allow update, delete: if false;
     }
 
     /**
-     * @description Catch-all for undefined collections. 
-     * Note: The error reported for '/messages' suggests a missing entity in the IR. 
-     * By default, all undocumented paths are denied.
+     * @description Secure chat between residents and landlords.
+     * @path /messages/{messageId}
      */
+    match /messages/{messageId} {
+      allow list: if isSignedIn() && (resource.data.tenantId == request.auth.uid || resource.data.landlordId == request.auth.uid);
+      allow get: if isSignedIn() && (resource.data.tenantId == request.auth.uid || resource.data.landlordId == request.auth.uid);
+      allow create: if isSignedIn() && (request.resource.data.senderId == request.auth.uid);
+    }
+
     match /{path=**} {
       allow read, write: if false;
     }
