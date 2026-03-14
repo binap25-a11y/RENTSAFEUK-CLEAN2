@@ -159,7 +159,6 @@ export default function PropertyDetailPage() {
     e.preventDefault();
     if (!newReply.trim() || !user || !property || isSendingReply) return;
 
-    // Find the first tenant associated with this property to message
     const targetTenantId = messages?.find(m => m.senderId !== user.uid)?.tenantId || (activeTenants?.[0]?.userId);
     
     if (!targetTenantId) {
@@ -274,7 +273,7 @@ export default function PropertyDetailPage() {
         <div className="flex items-center justify-between gap-4">
             <div className="flex items-center gap-4 overflow-hidden">
                 <Button variant="outline" size="icon" asChild className="shrink-0"><Link href="/dashboard/properties"><ArrowLeft className="h-4" /></Link></Button>
-                <div className="min-w-0">
+                <div className="min-w-0 text-left">
                     <h1 className="text-2xl font-bold font-headline leading-tight break-words">{propertyAddressTitle}</h1>
                     <p className="text-muted-foreground text-sm font-medium mt-1">{propertyAddressSubtitle}</p>
                 </div>
@@ -353,7 +352,7 @@ export default function PropertyDetailPage() {
                 </TabsList>
                 <TabsContent value="overview" className="space-y-6 pt-4">
                     {property.tenancy && (
-                    <Card className="shadow-md border-none overflow-hidden">
+                    <Card className="shadow-md border-none overflow-hidden text-left">
                         <CardHeader className="pb-4 bg-muted/5 border-b"><CardTitle className="font-headline text-lg">Lease Financials</CardTitle></CardHeader>
                         <CardContent className="grid grid-cols-1 md:grid-cols-2 gap-8 pt-8 px-8 pb-8">
                             {property.tenancy.monthlyRent && (
@@ -373,7 +372,7 @@ export default function PropertyDetailPage() {
                     )}
                 </TabsContent>
                 <TabsContent value="messages" className="pt-4 space-y-4">
-                    <Card className="shadow-lg border-none overflow-hidden flex flex-col h-[600px]">
+                    <Card className="shadow-lg border-none overflow-hidden flex flex-col h-[600px] text-left">
                         <CardHeader className="bg-muted/30 border-b py-4 px-6 flex flex-row items-center justify-between">
                             <div className="flex items-center gap-3">
                                 <div className="h-10 w-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-md">
@@ -439,7 +438,7 @@ export default function PropertyDetailPage() {
                                 <Input 
                                     placeholder="Type a secure registry response..." 
                                     value={newReply}
-                                    onChange={(e) => setNewMessage(e.target.value)}
+                                    onChange={(e) => setNewReply(e.target.value)}
                                     className="flex-1 rounded-xl h-11 bg-muted/20 border-2"
                                     disabled={isSendingReply || (!messages?.length && !activeTenants?.length)}
                                 />
@@ -454,7 +453,7 @@ export default function PropertyDetailPage() {
           </div>
           
           <div className="space-y-6">
-            <Card className="shadow-md border-none overflow-hidden bg-muted/5">
+            <Card className="shadow-md border-none overflow-hidden bg-muted/5 text-left">
               <CardHeader className="flex flex-row items-center justify-between pb-4 bg-muted/20 border-b">
                 <CardTitle className="font-headline text-lg">Active Residents</CardTitle>
                 <Button variant="ghost" size="icon" asChild className="text-primary"><Link href={`/dashboard/tenants/add?propertyId=${propertyId}`}><PlusCircle className="h-5 w-5" /></Link></Button>
@@ -476,7 +475,7 @@ export default function PropertyDetailPage() {
               </CardContent>
             </Card>
             
-            <Card className="shadow-md border-none overflow-hidden bg-muted/5">
+            <Card className="shadow-md border-none overflow-hidden bg-muted/5 text-left">
               <CardHeader className="pb-4 bg-muted/20 border-b text-left"><CardTitle className="font-headline text-lg">Asset Location</CardTitle></CardHeader>
               <CardContent className="p-0">
                   <div className="aspect-square w-full shadow-inner relative bg-muted/20">

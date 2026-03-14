@@ -4,8 +4,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RENTSAFEUK SECURITY GOVERNANCE v6.1
-     * Re-synchronized to authorize composite messaging indexes.
+     * RENTSAFEUK SECURITY GOVERNANCE v6.3
+     * Force-reloaded to authorize newly provisioned composite messaging indexes.
      */
 
     function isSignedIn() {
@@ -33,7 +33,6 @@ service cloud.firestore {
         resource.data.get('tenantEmail', "").lower() == userEmail()
       );
       
-      // Proof-optimized list branches
       allow list: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid ||
         request.auth.uid in resource.data.get('activeTenantUids', []) ||
