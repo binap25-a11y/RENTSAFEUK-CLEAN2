@@ -3,12 +3,16 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * Maintain UK Security Governance v3.0
-     * Optimized for high-speed Query-Compatible Discovery and Secure Handshake.
+     * Maintain UK Security Governance v4.0
+     * Optimized for high-speed Query-Compatible Discovery and Case-Insensitive Handshake.
      */
 
     function isSignedIn() {
       return request.auth != null;
+    }
+
+    function getEmail() {
+      return request.auth.token.get('email', '').lower();
     }
 
     // Helper to check if the user is the landlord of the record
@@ -18,14 +22,14 @@ service cloud.firestore {
 
     // Helper to check if the user is the tenant of the record (via UID or verified Email)
     function isTenant(data) {
-      let email = request.auth.token.email;
+      let email = getEmail();
       let uid = request.auth.uid;
       return isSignedIn() && (
         uid == data.get('tenantId', '') || 
         uid == data.get('userId', '') ||
-        (email != null && (
-          email == data.get('email', '') || 
-          email == data.get('tenantEmail', '') ||
+        (email != "" && (
+          email == data.get('email', '').lower() || 
+          email == data.get('tenantEmail', '').lower() ||
           (data.get('tenantEmails', []) is list && email in data.get('tenantEmails', []))
         ))
       );
@@ -38,10 +42,9 @@ service cloud.firestore {
 
     // --- Tenant Registry ---
     match /tenants/{tenantId} {
-      // Discovery: Allow residents to find their registry entry by email
-      // Management: Allow landlords to list their own tenants
+      // Discovery: Allow residents to find their registry entry by normalized email
       allow list: if isSignedIn() && (
-        request.auth.token.email == resource.data.email ||
+        getEmail() == resource.data.email.lower() ||
         request.auth.uid == resource.data.userId ||
         request.auth.uid == resource.data.landlordId
       );
@@ -51,7 +54,7 @@ service cloud.firestore {
       // HANDSHAKE: Allow residents to link their UID if they match the registry email
       allow update: if isSignedIn() && (
         isLandlord(resource.data) || 
-        (request.auth.token.email == resource.data.email && request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'verified', 'joinedDate', 'status', 'lastSyncCheck']))
+        (getEmail() == resource.data.email.lower() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'verified', 'joinedDate', 'status', 'lastSyncCheck']))
       );
       allow delete: if isLandlord(resource.data);
     }
@@ -59,10 +62,9 @@ service cloud.firestore {
     // --- Property Portfolio ---
     match /properties/{propertyId} {
       // Discovery: Allow residents to find their property by email
-      // Management: Allow landlords to list their portfolio
       allow list: if isSignedIn() && (
         request.auth.uid == resource.data.landlordId || 
-        request.auth.token.email == resource.data.tenantEmail
+        getEmail() == resource.data.tenantEmail.lower()
       );
       allow get: if isLandlord(resource.data) || isTenant(resource.data);
       allow create: if isSignedIn();
@@ -70,7 +72,7 @@ service cloud.firestore {
       // HANDSHAKE: Allow residents to link their UID to the property bridge
       allow update: if isSignedIn() && (
         isLandlord(resource.data) || 
-        (request.auth.token.email == resource.data.tenantEmail && request.resource.data.diff(resource.data).affectedKeys().hasAny(['tenantId', 'activeTenantUids', 'status']))
+        (getEmail() == resource.data.tenantEmail.lower() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['tenantId', 'activeTenantUids', 'status']))
       );
       allow delete: if isLandlord(resource.data);
     }

@@ -157,6 +157,7 @@ export default function AddTenantPage() {
     setIsSubmitting(true);
 
     const tenantsCollection = collection(firestore, 'tenants');
+    // STRICT NORMALIZATION: Ensure email is lowercase before writing to registry bridge
     const normalizedEmail = data.email.toLowerCase().trim();
     
     const newTenant = {

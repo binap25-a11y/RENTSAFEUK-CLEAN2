@@ -121,7 +121,7 @@ export default function LoginPage() {
     setAuthError(null);
 
     const handleError = (error: any) => {
-      // SPECIFIC FEEDBACK: Maps Firebase error codes to user-friendly messages.
+      // SPECIFIC FEEDBACK: Human-readable mapping for security-denied credentials.
       switch (error.code) {
           case 'auth/wrong-password':
           case 'auth/user-not-found':

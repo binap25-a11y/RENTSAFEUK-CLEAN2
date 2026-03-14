@@ -147,6 +147,7 @@ export default function EditTenantPage() {
     setIsSaving(true);
     
     try {
+      // STRICT NORMALIZATION: Force lowercase email for registry bridge synchronicity
       const normalizedEmail = data.email.toLowerCase().trim();
       const updateData = { 
         ...data, 

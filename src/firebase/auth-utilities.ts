@@ -21,7 +21,7 @@ export async function signInNonBlocking(
   onError?: (error: any) => void
 ): Promise<void> {
   if (!auth) return;
-  // Normalize email for consistency
+  // STRICT NORMALIZATION: Case-insensitive email handling
   const normalizedEmail = email.toLowerCase().trim();
   
   signInWithEmailAndPassword(auth, normalizedEmail, password)

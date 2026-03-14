@@ -58,6 +58,7 @@ export default function TenantDashboard() {
     setIsLoading(true);
     setErrorState(null);
 
+    // CASE NORMALIZATION: Strict lowercase matching for security rules synchronicity
     const userEmail = user.email.toLowerCase().trim();
 
     try {
@@ -82,6 +83,7 @@ export default function TenantDashboard() {
         // If the tenant record isn't linked to this UID yet, perform the handshake.
         if (tenantData.userId !== user.uid || !tenantData.verified) {
             setIsHandshaking(true);
+            console.log("Handshake: Linking identity UID to registry bridge...");
             
             // 1. Link account UID to Tenant registry
             await updateDoc(tenantDoc.ref, { 
