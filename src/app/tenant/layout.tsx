@@ -73,7 +73,7 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
         <SidebarHeader className="border-b bg-sidebar pb-4 pt-6">
           <Link href="/tenant/dashboard" className="flex items-center gap-2 px-2">
             <Logo className="w-8 h-8 text-primary" />
-            <span className="font-bold text-lg font-headline tracking-tight">RentSafe Portal</span>
+            <span className="font-bold text-lg font-headline tracking-tight">RentSafeUK Portal</span>
           </Link>
         </SidebarHeader>
         <SidebarContent>
