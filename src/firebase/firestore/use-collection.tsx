@@ -25,15 +25,6 @@ export interface UseCollectionResult<T> {
   error: FirestoreError | Error | null;
 }
 
-export interface InternalQuery extends Query<DocumentData> {
-  _query: {
-    path: {
-      canonicalString(): string;
-    }
-    filters?: any[];
-  }
-}
-
 /**
  * React hook to subscribe to a Firestore collection or query in real-time.
  * Optimized for statically provable query verification.
@@ -65,15 +56,15 @@ export function useCollection<T = any>(
         setIsLoading(false);
       },
       (firestoreError: FirestoreError) => {
-        const path = memoizedTargetRefOrQuery.type === 'collection'
-            ? (memoizedTargetRefOrQuery as CollectionReference).path
-            : (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.path.canonicalString();
+        const path = (memoizedTargetRefOrQuery as any).path || (memoizedTargetRefOrQuery as any)._query?.path?.canonicalString() || 'unknown';
 
         if (firestoreError.code === 'permission-denied') {
+            const internal = memoizedTargetRefOrQuery as any;
+            const queryFilters = internal?._query?.filters || [];
             const contextualError = new FirestorePermissionError({
                 operation: 'list',
                 path,
-                queryFilters: (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.filters
+                queryFilters
             });
             setError(contextualError);
             errorEmitter.emit('permission-error', contextualError);
