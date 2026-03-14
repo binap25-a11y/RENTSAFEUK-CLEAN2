@@ -1,4 +1,3 @@
-
 'use client';
     
 import { useState, useEffect } from 'react';
@@ -68,7 +67,8 @@ export function useDoc<T = any>(
             setError(contextualError);
             errorEmitter.emit('permission-error', contextualError);
         } else {
-            console.error("Firestore Document Error:", firestoreError.message);
+            // Report actual errors to help debugging
+            console.error(`Firestore Error [${firestoreError.code}]:`, firestoreError.message);
             setError(firestoreError);
         }
         

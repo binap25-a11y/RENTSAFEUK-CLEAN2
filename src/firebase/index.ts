@@ -3,6 +3,7 @@
 /**
  * Consolidated Firebase SDK Barrel File.
  * Re-exports everything from modularized utility files.
+ * Core initialization is handled in init.ts to prevent circular dependencies.
  */
 
 export * from './init';

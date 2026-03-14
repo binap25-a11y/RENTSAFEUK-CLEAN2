@@ -1,4 +1,3 @@
-
 {
   "entities": {
     "User": {
@@ -54,6 +53,19 @@
         "content": { "type": "string" },
         "timestamp": { "type": "string", "format": "date-time" }
       }
+    },
+    "Repair": {
+      "title": "Repair",
+      "type": "object",
+      "properties": {
+        "id": { "type": "string" },
+        "title": { "type": "string" },
+        "description": { "type": "string" },
+        "landlordId": { "type": "string" },
+        "tenantId": { "type": "string" },
+        "status": { "type": "string" },
+        "priority": { "type": "string" }
+      }
     }
   },
   "auth": {
@@ -65,7 +77,7 @@
     "/properties/{propertyId}": { "schema": { "$ref": "#/backend/entities/Property" }, "description": "Asset registry" },
     "/tenants/{tenantId}": { "schema": { "$ref": "#/backend/entities/Tenancy" }, "description": "Resident registry" },
     "/messages/{messageId}": { "schema": { "$ref": "#/backend/entities/Message" }, "description": "Private communication channel" },
-    "/repairs/{repairId}": { "description": "Maintenance audit trail" },
+    "/repairs/{repairId}": { "schema": { "$ref": "#/backend/entities/Repair" }, "description": "Maintenance audit trail" },
     "/expenses/{expenseId}": { "description": "Financial ledger" },
     "/rentPayments/{paymentId}": { "description": "Rent tracking" },
     "/documents/{documentId}": { "description": "Compliance vault" },

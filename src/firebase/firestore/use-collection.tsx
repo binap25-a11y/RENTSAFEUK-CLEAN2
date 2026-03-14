@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect } from 'react';
@@ -76,7 +75,6 @@ export function useCollection<T = any>(
             ? (memoizedTargetRefOrQuery as CollectionReference).path
             : (memoizedTargetRefOrQuery as unknown as InternalQuery)._query.path.canonicalString();
 
-        // Check if it's actually a permission error or something else (like a missing index)
         if (firestoreError.code === 'permission-denied') {
             const contextualError = new FirestorePermissionError({
                 operation: 'list',
@@ -85,8 +83,8 @@ export function useCollection<T = any>(
             setError(contextualError);
             errorEmitter.emit('permission-error', contextualError);
         } else {
-            // Report the actual Firestore error (e.g. missing index)
-            console.error("Firestore Query Error:", firestoreError.message);
+            // Report actual errors (missing indexes, etc.) to help debugging
+            console.error(`Firestore Error [${firestoreError.code}]:`, firestoreError.message);
             setError(firestoreError);
         }
         
