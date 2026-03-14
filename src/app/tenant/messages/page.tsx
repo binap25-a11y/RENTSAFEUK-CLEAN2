@@ -28,13 +28,19 @@ interface Message {
 }
 
 export default function TenantMessagesPage() {
-  const { user, isUserLoading } = useUser();
+  const { user, isUserLoading } = userHook();
   const firestore = useFirestore();
   const [tenantContext, setTenantContext] = useState<any>(null);
   const [isLoadingContext, setIsLoadingContext] = useState(true);
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
   const scrollRef = useRef<HTMLDivElement>(null);
+
+  // Identity discovery wrapper
+  function userHook() {
+    const { user, isUserLoading } = useUser();
+    return { user, isUserLoading };
+  }
 
   useEffect(() => {
     if (isUserLoading || !user || !firestore || !user.email) {
@@ -122,7 +128,7 @@ export default function TenantMessagesPage() {
     return (
       <Card className="max-w-md mx-auto mt-10 shadow-lg border-none text-center">
         <CardHeader className="bg-muted/20 pb-8 border-b">
-          <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 border shadow-sm">
+          <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 border shadow-sm flex items-center justify-center">
               <AlertCircle className="h-8 w-8 text-destructive" />
           </div>
           <CardTitle className="text-lg text-primary font-headline">Messaging Blocked</CardTitle>
