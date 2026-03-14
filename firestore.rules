@@ -1,11 +1,10 @@
-
 rules_version = '2';
 service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RENTSAFEUK SECURITY GOVERNANCE v5.0
-     * Optimized for Static Query Prove-ability.
+     * RENTSAFEUK SECURITY GOVERNANCE v6.0
+     * Optimized for Static Query Prove-ability and Actor-Based Listing.
      */
 
     function isSignedIn() {
@@ -69,7 +68,8 @@ service cloud.firestore {
       
       allow update: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid ||
-        (userEmail() != "" && resource.data.email.lower() == userEmail())
+        (userEmail() != "" && resource.data.email.lower() == userEmail()) ||
+        (request.resource.data.diff(resource.data).affectedKeys().hasOnly(['userId', 'verified', 'joinedDate', 'status', 'lastSyncCheck']) && resource.data.email.lower() == userEmail())
       );
       
       allow delete: if isSignedIn() && resource.data.landlordId == request.auth.uid;

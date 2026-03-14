@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -179,8 +178,8 @@ export default function TenantMessagesPage() {
   }
 
   return (
-    <div className="h-[calc(100vh-8rem)] flex flex-col gap-4 text-left max-w-5xl mx-auto">
-      <div className="flex items-center justify-between px-1">
+    <div className="h-[calc(100vh-9rem)] flex flex-col gap-4 text-left max-w-5xl mx-auto">
+      <div className="flex items-center justify-between px-1 shrink-0">
           <div>
               <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Resident Chat</h1>
               <p className="text-xs text-muted-foreground font-medium uppercase tracking-[0.2em] flex items-center gap-1.5 mt-1">

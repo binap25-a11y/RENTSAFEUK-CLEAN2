@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -440,7 +439,7 @@ export default function PropertyDetailPage() {
                                 <Input 
                                     placeholder="Type a secure response..." 
                                     value={newReply}
-                                    onChange={(e) => setNewReply(e.target.value)}
+                                    onChange={(e) => setNewMessage(e.target.value)}
                                     className="flex-1 rounded-xl h-11 bg-muted/20 border-2"
                                     disabled={isSendingReply || (!messages?.length && !activeTenants?.length)}
                                 />
