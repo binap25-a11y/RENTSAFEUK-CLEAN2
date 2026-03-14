@@ -45,7 +45,7 @@ import { useUser, useAuth, useFirestore, useDoc, useMemoFirebase } from '@/fireb
 import { updateProfile, deleteUser } from 'firebase/auth';
 import { doc, setDoc, deleteDoc } from 'firebase/firestore';
 import { useEffect, useState } from 'react';
-import { Loader2, ShieldCheck, Clock, Lock, Key, AlertTriangle, UserCircle, Gavel, FileShield, FileText, ExternalLink } from 'lucide-react';
+import { Loader2, ShieldCheck, Clock, Lock, Key, AlertTriangle, UserCircle, Gavel, FileText, ExternalLink } from 'lucide-react';
 import { useRouter } from 'next/navigation';
 import { Badge } from '@/components/ui/badge';
 import Link from 'next/link';
@@ -341,7 +341,7 @@ export default function SettingsPage() {
             <div className="grid gap-4 sm:grid-cols-2">
                 <Button variant="outline" asChild className="h-16 justify-start gap-4 px-4 border-2 hover:bg-primary/5 transition-all">
                     <Link href="/privacy-policy">
-                        <FileShield className="h-6 w-6 text-primary shrink-0" />
+                        <ShieldCheck className="h-6 w-6 text-primary shrink-0" />
                         <div className="text-left">
                             <p className="text-sm font-bold">Privacy Policy</p>
                             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">Data protection standards</p>
