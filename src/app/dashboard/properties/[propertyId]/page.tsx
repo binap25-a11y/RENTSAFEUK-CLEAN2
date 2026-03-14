@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useParams, useRouter } from 'next/navigation';
@@ -160,6 +161,7 @@ export default function PropertyDetailPage() {
     e.preventDefault();
     if (!newReply.trim() || !user || !property || isSendingReply) return;
 
+    // Use the first active tenant as the recipient context if not already established via message history
     const targetTenantId = messages?.find(m => m.senderId !== user.uid)?.tenantId || (activeTenants?.[0]?.userId);
     
     if (!targetTenantId) {

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useRef } from 'react';
@@ -33,7 +34,7 @@ import { useToast } from '@/hooks/use-toast';
 /**
  * @fileOverview Resident Portal Chat
  * Secure real-time chat with audit-ready timestamps and date dividers.
- * Fully restored component registry and viewport flex architecture.
+ * Features immediate visual confirmation upon successful message transmission.
  */
 
 interface Message {
