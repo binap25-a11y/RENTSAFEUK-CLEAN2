@@ -4,8 +4,9 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RENTSAFEUK SECURITY GOVERNANCE v11.0
+     * RENTSAFEUK SECURITY GOVERNANCE v12.0
      * Optimized identity mapping for bidirectional messaging using stable tenant document IDs.
+     * Updated to support verified resident lookups via cross-collection get().
      */
 
     function isSignedIn() {
@@ -80,7 +81,7 @@ service cloud.firestore {
       allow read, list: if isSignedIn() && (
         request.auth.uid == resource.data.landlordId || 
         request.auth.uid == resource.data.get('tenantUid', '') ||
-        get(/databases/$(database)/documents/tenants/$(resource.data.tenantId)).data.userId == request.auth.uid
+        (exists(/databases/$(database)/documents/tenants/$(resource.data.tenantId)) && get(/databases/$(database)/documents/tenants/$(resource.data.tenantId)).data.userId == request.auth.uid)
       );
       
       allow create: if isSignedIn() && request.resource.data.senderId == request.auth.uid;

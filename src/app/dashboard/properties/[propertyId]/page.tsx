@@ -118,7 +118,6 @@ export default function PropertyDetailPage() {
   const [newReply, setNewReply] = useState('');
   const [isSendingReply, setIsSendingReply] = useState(false);
   
-  // URL Param Sync: Default tab from search params
   const initialTab = searchParams.get('tab') || 'overview';
   const [activeTab, setActiveTab] = useState(initialTab);
 
@@ -126,7 +125,6 @@ export default function PropertyDetailPage() {
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const identityInputRef = useRef<HTMLInputElement>(null);
 
-  // Synchronize state with URL changes
   useEffect(() => {
     const tab = searchParams.get('tab');
     if (tab && ['overview', 'messages'].includes(tab)) {
@@ -175,7 +173,6 @@ export default function PropertyDetailPage() {
     e.preventDefault();
     if (!newReply.trim() || !user || !property || isSendingReply) return;
 
-    // Discovery Handshake: Target first active tenant or context
     const targetTenant = messages?.find(m => m.senderId !== user.uid) || activeTenants?.[0];
     const targetTenantId = targetTenant?.tenantId || targetTenant?.id;
     const targetTenantUid = targetTenant?.senderId !== user.uid ? (targetTenant as any)?.tenantUid : (activeTenants?.[0]?.userId || '');
@@ -199,7 +196,7 @@ export default function PropertyDetailPage() {
             timestamp: serverTimestamp()
         });
         setNewReply('');
-        toast({ title: 'Message Synchronized', description: 'Entry recorded in the cloud ledger.' });
+        toast({ title: 'Message Sent' });
     } catch (error) {
         console.error("Ledger sync failure:", error);
         toast({ variant: 'destructive', title: 'Transmission Failed' });

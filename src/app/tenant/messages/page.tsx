@@ -123,10 +123,7 @@ export default function TenantMessagesPage() {
             timestamp: serverTimestamp()
         });
         setNewMessage('');
-        toast({
-            title: 'Message Sent',
-            description: 'Communication recorded in the secure cloud ledger.',
-        });
+        toast({ title: 'Message Sent' });
     } catch (error) {
         console.error("Sync failure:", error);
         toast({ variant: 'destructive', title: 'Transmission Failed' });
