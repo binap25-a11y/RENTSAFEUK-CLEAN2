@@ -28,7 +28,8 @@ import {
   Upload,
   X,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  Archive
 } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase } from '@/firebase';
 import { doc, updateDoc, collection, query, where, getDocs, limit, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -111,6 +112,7 @@ export default function PropertyDetailPage() {
   const { toast } = useToast();
   
   const [isDeleting, setIsDeleting] = useState(false);
+  const [isArchiving, setIsArchiving] = useState(false); // Added for completeness
   const [isMediaUpdating, setIsMediaUpdating] = useState(false);
   const [newReply, setNewReply] = useState('');
   const [isSendingReply, setIsSendingReply] = useState(false);
@@ -180,7 +182,7 @@ export default function PropertyDetailPage() {
             timestamp: serverTimestamp()
         });
         setNewReply('');
-        toast({ title: 'Reply Logged', description: 'Resident notified via the audit registry.' });
+        toast({ title: 'Reply Sent', description: 'Resident notified via the audit registry.' });
     } catch (error) {
         console.error("Sync failure:", error);
         toast({ variant: 'destructive', title: 'Send Failed' });
@@ -231,13 +233,17 @@ export default function PropertyDetailPage() {
 
   const handleDeleteConfirm = async () => {
     if (!firestore || !user || !property) return;
+    setIsArchiving(true);
     try {
       await updateDoc(doc(firestore, 'properties', propertyId), { status: 'Deleted' });
       toast({ title: 'Property Archived' });
       router.push('/dashboard/properties');
     } catch (e) {
       toast({ variant: 'destructive', title: 'Action Failed' });
-    } finally { setIsDeleting(false); }
+    } finally { 
+      setIsDeleting(false); 
+      setIsArchiving(false);
+    }
   };
   
   const getMessageDate = (timestamp: any) => {
@@ -344,7 +350,7 @@ export default function PropertyDetailPage() {
                     <TabsTrigger value="overview" className="px-6 py-2 rounded-lg font-bold uppercase tracking-widest text-[10px]">Overview</TabsTrigger>
                     <TabsTrigger value="messages" className="px-6 py-2 rounded-lg font-bold uppercase tracking-widest text-[10px] gap-2">
                         <MessageSquare className="h-3 w-3" />
-                        Secure Chat Registry
+                        Communication Registry
                     </TabsTrigger>
                 </TabsList>
                 <TabsContent value="overview" className="space-y-6 pt-4">
@@ -376,7 +382,7 @@ export default function PropertyDetailPage() {
                                     <Building2 className="h-5 w-5" />
                                 </div>
                                 <div>
-                                    <CardTitle className="text-lg font-headline">Communication Registry</CardTitle>
+                                    <CardTitle className="text-lg font-headline">Resident Messaging</CardTitle>
                                     <CardDescription>Verified chronological message trail for this asset.</CardDescription>
                                 </div>
                             </div>
@@ -435,7 +441,7 @@ export default function PropertyDetailPage() {
                                 <Input 
                                     placeholder="Type a secure registry response..." 
                                     value={newReply}
-                                    onChange={(e) => setNewMessage(e.target.value)}
+                                    onChange={(e) => setNewReply(e.target.value)}
                                     className="flex-1 rounded-xl h-11 bg-muted/20 border-2"
                                     disabled={isSendingReply || (!messages?.length && !activeTenants?.length)}
                                 />
@@ -492,7 +498,9 @@ export default function PropertyDetailPage() {
           </AlertDialogHeader>
           <AlertDialogFooter>
             <AlertDialogCancel className="rounded-xl font-bold uppercase text-xs h-11">Cancel</AlertDialogCancel>
-            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold uppercase text-xs h-11 px-8 shadow-lg" onClick={handleDeleteConfirm}>Archive Asset</AlertDialogAction>
+            <AlertDialogAction className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold uppercase text-xs h-11 px-8 shadow-lg" onClick={handleDeleteConfirm} disabled={isArchiving}>
+                {isArchiving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Archive Asset
+            </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
       </AlertDialog>
