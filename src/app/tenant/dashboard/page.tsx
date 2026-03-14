@@ -24,6 +24,11 @@ import { collection, query, where, limit, getDocs, doc, updateDoc, getDoc, array
 import { format } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 
+/**
+ * @fileOverview Resident Hub Dashboard
+ * Manages the secure identity handshake and context resolution for verified residents.
+ */
+
 interface TenantContext {
     landlordId: string;
     propertyId: string;
@@ -39,6 +44,7 @@ export default function TenantDashboard() {
   const [context, setContext] = useState<TenantContext | null>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isHandshaking, setIsHandshaking] = useState(false);
+  const [errorState, setErrorState] = useState<string | null>(null);
   const discoveryRef = useRef(false);
 
   const performDiscovery = useCallback(async () => {
@@ -50,6 +56,7 @@ export default function TenantDashboard() {
 
     discoveryRef.current = true;
     setIsLoading(true);
+    setErrorState(null);
 
     const userEmail = user.email.toLowerCase().trim();
 
@@ -57,7 +64,7 @@ export default function TenantDashboard() {
         const tenantsCol = collection(firestore, 'tenants');
         
         // STAGE 1: Discovery Search (Optimized for Rule Engine)
-        // We use a query filter that matches the auth token email for static verification.
+        // We use a query filter that matches the auth token email for high-speed permission grant.
         const qByEmail = query(tenantsCol, where('email', '==', userEmail), limit(1));
         const snap = await getDocs(qByEmail);
 
@@ -72,7 +79,7 @@ export default function TenantDashboard() {
         const tenantData = tenantDoc.data();
         
         // STAGE 2: Secure Identity Handshake
-        // Transistions account from email-discovery to permanent UID-verification.
+        // Transitions account from email-discovery to permanent UID-verification.
         if (tenantData.userId !== user.uid || !tenantData.verified) {
             setIsHandshaking(true);
             
@@ -106,19 +113,24 @@ export default function TenantDashboard() {
                 tenantData: { ...tenantData, verified: true, userId: user.uid },
                 propertyData: propSnap.data()
             });
+        } else {
+            setErrorState("Identity linked, but property asset details could not be resolved.");
         }
         
         setIsLoading(false);
         discoveryRef.current = false;
     } catch (err: any) {
-        console.error("Resident Hub Discovery Blocked:", err.message);
+        console.warn("Resident Hub Discovery deferred:", err.message);
         
-        // ERROR GOVERNANCE: Trigger rich error overlay if security rules block access
+        // ERROR GOVERNANCE: Handle permission denial by surfacing developer overlay if needed
         if (err.code === 'permission-denied') {
             errorEmitter.emit('permission-error', new FirestorePermissionError({
                 path: 'tenants',
                 operation: 'list'
             }));
+            setErrorState("Access Denied: Security rules blocked your identity discovery.");
+        } else {
+            setErrorState(err.message || "An unexpected error occurred during identity handshake.");
         }
         
         setIsLoading(false);
@@ -141,14 +153,36 @@ export default function TenantDashboard() {
                 </div>
                 <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-32 h-32 bg-primary/5 rounded-full animate-ping" />
             </div>
-            <div className="space-y-3">
-                <h2 className="font-headline text-2xl font-bold text-primary tracking-tight">
+            <div className="space-y-3 text-left">
+                <h2 className="font-headline text-2xl font-bold text-primary tracking-tight text-center">
                     {isHandshaking ? "Verifying Tenancy..." : "Syncing Resident Hub..."}
                 </h2>
-                <p className="text-muted-foreground font-medium">Establishing secure connection to your property vault.</p>
+                <p className="text-muted-foreground font-medium text-center">Establishing secure connection to your property vault.</p>
             </div>
         </div>
     );
+  }
+
+  if (errorState) {
+      return (
+        <Card className="max-w-md mx-auto mt-20 shadow-2xl border-none overflow-hidden text-left">
+            <CardHeader className="bg-destructive/10 pb-6 border-b border-destructive/20">
+                <div className="flex items-center gap-3">
+                    <AlertCircle className="h-6 w-6 text-destructive" />
+                    <CardTitle className="font-headline text-lg text-destructive">Handshake Failed</CardTitle>
+                </div>
+            </CardHeader>
+            <CardContent className="pt-6">
+                <p className="text-sm font-medium leading-relaxed">{errorState}</p>
+                <p className="text-xs text-muted-foreground mt-4 italic">"Please try refreshing the page or contacting your landlord if the issue persists."</p>
+            </CardContent>
+            <CardFooter className="pt-6 bg-muted/5 border-t">
+                <Button variant="outline" className="w-full h-11 font-bold" onClick={() => { discoveryRef.current = false; performDiscovery(); }}>
+                    <RefreshCw className="mr-2 h-3.5 w-3.5" /> Force Retry Sync
+                </Button>
+            </CardFooter>
+        </Card>
+      );
   }
 
   if (!context) {

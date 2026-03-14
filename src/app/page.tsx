@@ -32,7 +32,6 @@ import {
 import { Input } from '@/components/ui/input';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Loader2, Eye, EyeOff, AlertCircle, ShieldCheck, Building2, Users, UserCircle } from 'lucide-react';
-import { Alert, AlertDescription, AlertTitle } from '@/alert'; // Note: Ensure this import path is correct or uses @/components/ui/alert
 import { doc, getDoc, collection, query, where, getDocs, limit, setDoc, updateDoc } from 'firebase/firestore';
 
 const formSchema = z.object({
@@ -124,23 +123,25 @@ export default function LoginPage() {
     setAuthError(null);
 
     const handleError = (error: any) => {
-      console.error("Auth Action Error:", error.code, error.message);
-      // SPECIFIC FEEDBACK: Maps Firebase error codes to user-friendly messages as requested.
+      // Map Firebase error codes to user-friendly messages for immediate feedback.
       switch (error.code) {
           case 'auth/wrong-password':
           case 'auth/user-not-found':
           case 'auth/invalid-credential':
           case 'auth/invalid-email':
-              setAuthError('The email or password you entered is incorrect. Please try again.');
+              setAuthError('The email or password you entered is incorrect. Please check your details and try again.');
               break;
           case 'auth/email-already-in-use':
-              setAuthError('An account with this email address already exists.');
+              setAuthError('An account with this email address already exists. Please log in instead.');
               break;
           case 'auth/too-many-requests':
               setAuthError('Access temporarily disabled due to many failed attempts. Please try again later.');
               break;
+          case 'auth/network-request-failed':
+              setAuthError('Network error. Please check your internet connection.');
+              break;
           default:
-              setAuthError('Authentication failed. Please check your connection and try again.');
+              setAuthError('Authentication failed. Please check your details or try again later.');
       }
       setIsProcessing(false);
     };
@@ -211,10 +212,10 @@ export default function LoginPage() {
           </CardHeader>
           <CardContent>
             {authError && (
-              <div className="mb-4 p-4 rounded-lg bg-destructive/10 border border-destructive/20 flex gap-3 text-left">
+              <div className="mb-4 p-4 rounded-lg bg-destructive/10 border border-destructive/20 flex gap-3 text-left animate-in fade-in slide-in-from-top-1">
                 <AlertCircle className="h-5 w-5 text-destructive shrink-0 mt-0.5" />
                 <div>
-                    <p className="text-sm font-bold text-destructive">Access Denied</p>
+                    <p className="text-sm font-bold text-destructive">Sign-in Error</p>
                     <p className="text-xs text-destructive/80 font-medium leading-relaxed">{authError}</p>
                 </div>
               </div>

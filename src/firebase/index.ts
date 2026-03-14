@@ -5,7 +5,11 @@ import { initializeApp, getApps, getApp, FirebaseApp } from 'firebase/app';
 import { getAuth } from 'firebase/auth';
 import { getFirestore } from 'firebase/firestore'
 
-// IMPORTANT: DO NOT MODIFY THIS FUNCTION
+/**
+ * RentSafeUK Firebase Core Initialization
+ * Consolidated barrel file for SDK access and utilities.
+ */
+
 export function initializeFirebase() {
   if (!getApps().length) {
     let firebaseApp;

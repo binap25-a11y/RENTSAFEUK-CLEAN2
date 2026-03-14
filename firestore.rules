@@ -3,7 +3,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RentSafeUK Security Governance v15.0
+     * RentSafeUK Security Governance v16.0
      * Optimized for high-speed Discovery and secure Identity Handshake.
      */
 
@@ -17,10 +17,15 @@ service cloud.firestore {
       );
     }
 
-    // DISCOVERY: Allows tenants to identify their record by email token
-    function isTenantDiscovery() {
+    // DISCOVERY: Allows users to identify their record by email token or UID
+    function isTenantDiscovery(data) {
       let email = request.auth.token.email;
-      return isSignedIn() && email != null;
+      let uid = request.auth.uid;
+      return isSignedIn() && (
+        (email != null && email == data.get('email', '')) || 
+        uid == data.get('userId', '') ||
+        uid == data.get('tenantId', '')
+      );
     }
 
     // AUTHORIZED: Validates relationship via UID or verified registry bridge
@@ -46,15 +51,15 @@ service cloud.firestore {
 
     // --- Tenant Registry ---
     match /tenants/{tenantId} {
-      // HIGH-SPEED DISCOVERY: Allow listing so performDiscovery() can find the record by email.
+      // Allow searching for own record by email or UID
       allow list: if isSignedIn(); 
       allow get: if isRelated(resource.data);
       allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
       
-      // HANDSHAKE: Allow residents to update their own verification status/UID
+      // HANDSHAKE: Allow residents to update their own verification status/UID if they match the email
       allow update: if isSignedIn() && (
         isLandlord(resource.data) || 
-        (isTenantDiscovery() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'verified', 'joinedDate', 'status', 'lastSyncCheck']))
+        (isTenantDiscovery(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasAny(['userId', 'verified', 'joinedDate', 'status', 'lastSyncCheck']))
       );
       allow delete: if isLandlord(resource.data);
     }
@@ -65,10 +70,10 @@ service cloud.firestore {
       allow get: if isRelated(resource.data);
       allow create: if isSignedIn() && request.resource.data.landlordId == request.auth.uid;
       
-      // HANDSHAKE: Allow residents to link their account to the property bridge
+      // HANDSHAKE: Allow residents to link their account to the property bridge if they match the registry
       allow update: if isSignedIn() && (
         isLandlord(resource.data) || 
-        (isTenantDiscovery() && request.resource.data.diff(resource.data).affectedKeys().hasAny(['tenantId', 'activeTenantUids', 'status']))
+        (isTenantDiscovery(resource.data) && request.resource.data.diff(resource.data).affectedKeys().hasAny(['tenantId', 'activeTenantUids', 'status']))
       );
       allow delete: if isLandlord(resource.data);
     }
