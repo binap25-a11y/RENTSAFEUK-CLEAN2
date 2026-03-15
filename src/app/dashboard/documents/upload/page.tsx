@@ -97,6 +97,7 @@ export default function UploadDocumentPage() {
   const watchIssueDate = form.watch('issueDate');
   const watchExpiryDate = form.watch('expiryDate');
   const watchType = form.watch('documentType');
+  const watchPropId = form.watch('propertyId');
 
   // HYDRATION HANDSHAKE: Set default preferences only after client-side mount
   useEffect(() => {
@@ -110,8 +111,16 @@ export default function UploadDocumentPage() {
 
   // SELECTION MEMORY HANDSHAKE: Ensure preferences are updated immediately on change
   useEffect(() => {
-    if (watchType) localStorage.setItem('last_doc_type', watchType);
+    if (watchType && typeof window !== 'undefined') {
+      localStorage.setItem('last_doc_type', watchType);
+    }
   }, [watchType]);
+
+  useEffect(() => {
+    if (watchPropId && typeof window !== 'undefined') {
+      localStorage.setItem('last_doc_prop', watchPropId);
+    }
+  }, [watchPropId]);
 
   const complianceWarning = useMemo(() => {
     if (watchType === 'Gas Safety Certificate' && watchIssueDate && watchExpiryDate) {
@@ -170,11 +179,13 @@ export default function UploadDocumentPage() {
 
       await addDoc(documentsCollection, dataToSave);
       
-      // PERSISTENCE HANDSHAKE: Avoid repeated selection for multi-document audits
-      localStorage.setItem('last_doc_prop', data.propertyId);
-      localStorage.setItem('last_doc_type', data.documentType);
+      // PERSISTENCE HANDSHAKE: Definitive save for future audits
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('last_doc_prop', data.propertyId);
+        localStorage.setItem('last_doc_type', data.documentType);
+      }
 
-      toast({ title: 'Document Logged', description: 'The record and file have been saved successfully.' });
+      toast({ title: 'Document Logged', description: 'Record saved and preferences synchronized.' });
       router.push('/dashboard/documents');
     } catch (error) {
         console.error('Failed to save document', error);
@@ -235,6 +246,7 @@ export default function UploadDocumentPage() {
                       <FormItem>
                       <FormLabel className="font-bold">Active Property</FormLabel>
                       <Select 
+                        key={field.value || 'prop-pending'}
                         onValueChange={(val) => {
                           field.onChange(val);
                           localStorage.setItem('last_doc_prop', val);
@@ -265,6 +277,7 @@ export default function UploadDocumentPage() {
                       <FormItem>
                           <FormLabel className="font-bold">Document Type</FormLabel>
                           <Select 
+                            key={field.value || 'type-pending'}
                             onValueChange={(val) => {
                               field.onChange(val);
                               localStorage.setItem('last_doc_type', val);

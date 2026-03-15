@@ -142,12 +142,12 @@ export default function EditDocumentPage() {
 
       await updateDoc(docRef, JSON.parse(JSON.stringify(updateData)));
       
-      // PERSISTENCE HANDSHAKE: Definitive save of the selection when the user clicks 'Save Changes'
+      // DEFINITIVE PERSISTENCE: Save the selection strictly on successful submission
       if (typeof window !== 'undefined') {
         localStorage.setItem('last_doc_type', data.documentType);
       }
 
-      toast({ title: 'Document Updated', description: 'Changes have been synchronized.' });
+      toast({ title: 'Document Updated', description: 'Changes saved and preferences synchronized.' });
       router.push('/dashboard/documents');
     } catch (error) {
         console.error('Failed to update document', error);
@@ -159,6 +159,8 @@ export default function EditDocumentPage() {
 
   if (isLoading) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!documentRecord) return <div className="text-center py-20 italic">Document record not found.</div>;
+
+  const currentType = form.watch('documentType');
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 text-left">
@@ -198,10 +200,10 @@ export default function EditDocumentPage() {
                   <FormItem>
                       <FormLabel className="font-bold">Document Type</FormLabel>
                       <Select 
-                        key={documentRecord.id} 
+                        key={field.value || 'pending'} 
                         onValueChange={(val) => {
                           field.onChange(val);
-                          // SELECTION MEMORY: Save choice instantly to update the "last used" preference
+                          // SELECTION MEMORY: Save choice instantly to local storage
                           if (typeof window !== 'undefined') {
                             localStorage.setItem('last_doc_type', val);
                           }
