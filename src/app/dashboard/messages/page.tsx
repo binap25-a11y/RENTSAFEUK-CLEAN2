@@ -1,6 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -37,7 +38,6 @@ import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { safeToDate } from '@/lib/date-utils';
 import { useToast } from '@/hooks/use-toast';
-import { useRouter } from 'next/navigation';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -67,7 +67,7 @@ import {
 /**
  * @fileOverview Communication Hub
  * Enhanced chronological list of all resident conversations.
- * Handles real-time updates and full property context mapping.
+ * Includes explicit page refresh on data mutation for registry synchronization.
  */
 
 interface Message {
@@ -94,7 +94,7 @@ interface Property {
   };
 }
 
-export default function LandlordInboxPage() {
+export default function CommunicationHubPage() {
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
@@ -139,6 +139,24 @@ export default function LandlordInboxPage() {
     return map;
   }, [properties]);
 
+  // 4. Fetch tenants to resolve resident names correctly
+  const tenantsQuery = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return query(
+        collection(firestore, 'tenants'),
+        where('landlordId', '==', user.uid)
+    );
+  }, [user, firestore]);
+  const { data: tenants } = useCollection<any>(tenantsQuery);
+
+  const tenantNameMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    tenants?.forEach(t => {
+        map[t.id] = t.name;
+    });
+    return map;
+  }, [tenants]);
+
   // Sort and filter messages
   const allMessages = useMemo(() => {
     if (!rawMessages) return [];
@@ -153,11 +171,12 @@ export default function LandlordInboxPage() {
     const term = searchTerm.toLowerCase();
     return allMessages.filter(m => {
         const address = propertyMap[m.propertyId] || '';
+        const residentName = tenantNameMap[m.tenantId] || m.senderName || '';
         return m.content.toLowerCase().includes(term) || 
-               m.senderName.toLowerCase().includes(term) ||
+               residentName.toLowerCase().includes(term) ||
                address.toLowerCase().includes(term);
     });
-  }, [allMessages, searchTerm, propertyMap]);
+  }, [allMessages, searchTerm, propertyMap, tenantNameMap]);
 
   const handleToggleRead = (msg: Message) => {
     if (!firestore) return;
@@ -169,13 +188,15 @@ export default function LandlordInboxPage() {
   const handleDeleteConfirm = () => {
     if (!firestore || !messageToDelete) return;
     const msgRef = doc(firestore, 'messages', messageToDelete.id);
-    // This is non-blocking and the UI will update instantly via useCollection
+    // Explicit deletion logic with hard refresh to ensure total registry sync
     deleteDocumentNonBlocking(msgRef);
     toast({ title: 'Message Deleted' });
     setMessageToDelete(null);
     
-    // Trigger a router refresh to ensure all counters are perfectly aligned
-    router.refresh();
+    // Hard refresh to ensure sidebar and header counters align perfectly
+    setTimeout(() => {
+        window.location.reload();
+    }, 500);
   };
 
   const handleSendReply = async () => {
@@ -204,7 +225,11 @@ export default function LandlordInboxPage() {
         toast({ title: 'Reply Sent' });
         setReplyContent('');
         setReplyingTo(null);
-        router.refresh();
+        
+        // Refresh registry state
+        setTimeout(() => {
+            window.location.reload();
+        }, 500);
     } catch (err) {
         console.error("Reply failure:", err);
         toast({ variant: 'destructive', title: 'Transmission Failed' });
@@ -242,7 +267,7 @@ export default function LandlordInboxPage() {
           </div>
           <div>
               <Badge variant="outline" className="h-12 px-4 rounded-2xl border-2 font-bold uppercase tracking-widest text-[10px] bg-background shadow-sm">
-                  <span className="text-primary mr-1">{filteredMessages.length}</span> Messages Live
+                  <span className="text-primary mr-1">{filteredMessages.length}</span> of messages
               </Badge>
           </div>
       </div>
@@ -250,12 +275,12 @@ export default function LandlordInboxPage() {
       {isLoadingMessages ? (
         <div className="flex flex-col justify-center items-center h-64 gap-4">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">Syncing chronological audit...</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">Syncing Hub Registry...</p>
         </div>
       ) : error ? (
         <div className="py-20 text-center px-10 border-2 border-dashed border-destructive/20 rounded-[2rem] bg-destructive/5">
             <AlertCircle className="h-12 w-12 text-destructive/20 mx-auto mb-4" />
-            <p className="text-sm font-bold text-destructive">Registry Connection Interrupted</p>
+            <p className="text-sm font-bold text-destructive">Hub Connection Interrupted</p>
             <Button variant="outline" className="mt-6 h-9" onClick={() => window.location.reload()}>
                 <RefreshCw className="mr-2 h-3.5 w-3.5" /> Force Hub Sync
             </Button>
@@ -274,6 +299,7 @@ export default function LandlordInboxPage() {
                 const isLandlord = msg.senderId === user?.uid;
                 const isUnread = !isLandlord && msg.read !== true;
                 const propertyAddress = propertyMap[msg.propertyId] || 'Assigned Property';
+                const residentName = tenantNameMap[msg.tenantId] || msg.senderName || 'Resident';
                 
                 return (
                     <Card key={msg.id} className={cn(
@@ -297,9 +323,9 @@ export default function LandlordInboxPage() {
                                     <div className="flex flex-col text-left">
                                         <div className="flex items-center gap-2">
                                             <p className={cn("font-bold text-base truncate", isUnread && "text-primary")}>
-                                                {msg.senderName}
+                                                {isLandlord ? `To: ${residentName}` : residentName}
                                             </p>
-                                            {isLandlord && <Badge variant="outline" className="text-[8px] font-bold uppercase tracking-tighter h-4 py-0">Landlord Reply</Badge>}
+                                            {isLandlord && <Badge variant="outline" className="text-[8px] font-bold uppercase tracking-tighter h-4 py-0">Your Reply</Badge>}
                                         </div>
                                         <div className="flex items-center gap-1.5 mt-0.5">
                                             <MapPin className="h-3 w-3 text-muted-foreground" />
@@ -368,7 +394,7 @@ export default function LandlordInboxPage() {
           <ShieldCheck className="h-10 w-10 text-primary opacity-20 shrink-0" />
           <div className="space-y-1">
               <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Chronological Hub Policy</p>
-              <p className="text-[11px] text-muted-foreground/70 leading-relaxed font-medium">This hub serves as a definitive record of all communications. Property associations and resident identities are cryptographically mapped for management security.</p>
+              <p className="text-[11px] text-muted-foreground/70 leading-relaxed font-medium">This hub serves as a definitive record of all communications. Property associations and resident identities are chronologically mapped for management security.</p>
           </div>
       </div>
 
@@ -381,7 +407,7 @@ export default function LandlordInboxPage() {
                     Send Reply
                 </DialogTitle>
                 <DialogDescription className="font-medium text-primary/60">
-                    Responding to {replyingTo?.senderName} regarding {propertyMap[replyingTo?.propertyId || ''] || 'Property'}
+                    Responding to {tenantNameMap[replyingTo?.tenantId || ''] || replyingTo?.senderName} regarding {propertyMap[replyingTo?.propertyId || ''] || 'Property'}
                 </DialogDescription>
             </DialogHeader>
             <div className="py-6 space-y-6">
