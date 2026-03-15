@@ -40,7 +40,8 @@ import {
   Search, 
   ChevronsUpDown,
   List,
-  Banknote
+  Banknote,
+  UserCircle
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useState, useMemo, useEffect, Suspense } from 'react';
@@ -124,7 +125,7 @@ function MaintenanceFormContent() {
       category: '',
       otherCategoryDetails: '',
       priority: 'Routine',
-      reportedBy: 'Management',
+      reportedBy: 'Landlord',
       contractorName: '',
       contractorPhone: '',
       notes: '',
@@ -407,42 +408,34 @@ function MaintenanceFormContent() {
                             <FormMessage />
                           </FormItem>
                         )} />
+
+                        {/* Expected Cost positioned under Detailed Description */}
+                        <FormField control={form.control} name="estimatedCost" render={({ field }) => (
+                          <FormItem className="max-w-md">
+                              <FormLabel className="font-bold flex items-center gap-2">
+                                  <Banknote className="h-4 w-4 text-primary" />
+                                  Expected Cost (£)
+                              </FormLabel>
+                              <FormControl>
+                              <Input 
+                                  type="number"
+                                  step="0.01"
+                                  placeholder="0.00" 
+                                  className="h-11 bg-background" 
+                                  {...field}
+                                  onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                              />
+                              </FormControl>
+                              <FormDescription className="text-[10px]">Will be reflected in portfolio financials.</FormDescription>
+                              <FormMessage />
+                          </FormItem>
+                        )} />
                     </div>
 
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t pt-8">
+                        {/* Assignment Section (Moved to first col) */}
                         <div className="space-y-6">
-                            <h3 className="font-bold text-lg flex items-center gap-2"><Calendar className="h-5 w-5 text-primary" /> Audit Info</h3>
-                            <FormField control={form.control} name="reportedBy" render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="font-bold">Reported By</FormLabel>
-                                <FormControl>
-                                  <Input 
-                                    placeholder="e.g., Tenant name" 
-                                    className="h-11 bg-background" 
-                                    {...field} 
-                                    value={field.value ?? ''} 
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )} />
-                            <FormField control={form.control} name="reportedDate" render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="font-bold">Date of Report</FormLabel>
-                                <FormControl>
-                                  <Input 
-                                    type="date" 
-                                    className="h-11 bg-background" 
-                                    value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} 
-                                    onChange={(e) => field.onChange(e.target.value)} 
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )} />
-                        </div>
-                        <div className="space-y-6">
-                            <h3 className="font-bold text-lg flex items-center gap-2 text-green-600"><PlusCircle className="h-5 w-5" /> Assignment & Financials</h3>
+                            <h3 className="font-bold text-lg flex items-center gap-2 text-primary"><PlusCircle className="h-5 w-5" /> Assignment</h3>
                             <div className="space-y-2">
                                 <Label className="font-bold">Quick-select Contractor</Label>
                                 <Select onValueChange={(contractorId) => {
@@ -477,27 +470,58 @@ function MaintenanceFormContent() {
                                     <FormMessage />
                                 </FormItem>
                                 )} />
-                                <FormField control={form.control} name="estimatedCost" render={({ field }) => (
+                                <FormField control={form.control} name="contractorPhone" render={({ field }) => (
                                 <FormItem>
-                                    <FormLabel className="font-bold flex items-center gap-2">
-                                        <Banknote className="h-4 w-4 text-primary" />
-                                        Expected Cost (£)
-                                    </FormLabel>
+                                    <FormLabel className="font-bold">Contractor Phone</FormLabel>
                                     <FormControl>
                                     <Input 
-                                        type="number"
-                                        step="0.01"
-                                        placeholder="0.00" 
+                                        placeholder="Phone number" 
                                         className="h-11 bg-background" 
-                                        {...field}
-                                        onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                                        {...field} 
+                                        value={field.value ?? ''} 
                                     />
                                     </FormControl>
-                                    <FormDescription className="text-[10px]">Will be reflected in portfolio financials.</FormDescription>
                                     <FormMessage />
                                 </FormItem>
                                 )} />
                             </div>
+                        </div>
+
+                        {/* Audit Info Section (Moved to second col) */}
+                        <div className="space-y-6">
+                            <h3 className="font-bold text-lg flex items-center gap-2 text-muted-foreground"><Calendar className="h-5 w-5" /> Audit Info</h3>
+                            <FormField control={form.control} name="reportedBy" render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="font-bold">Reported By</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl>
+                                        <SelectTrigger className="h-11 bg-background">
+                                            <SelectValue placeholder="Select reporter" />
+                                        </SelectTrigger>
+                                    </FormControl>
+                                    <SelectContent>
+                                        {['Landlord', 'Tenant', 'Agent', 'Other'].map(r => (
+                                            <SelectItem key={r} value={r}>{r}</SelectItem>
+                                        ))}
+                                    </SelectContent>
+                                </Select>
+                                <FormMessage />
+                              </FormItem>
+                            )} />
+                            <FormField control={form.control} name="reportedDate" render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="font-bold">Date of Report</FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="date" 
+                                    className="h-11 bg-background" 
+                                    value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} 
+                                    onChange={(e) => field.onChange(e.target.value)} 
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )} />
                         </div>
                     </div>
                 </div>

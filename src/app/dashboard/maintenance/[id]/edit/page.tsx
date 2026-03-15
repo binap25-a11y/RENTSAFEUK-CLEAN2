@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -128,6 +129,7 @@ export default function EditMaintenancePage() {
         if (maintenanceLog) {
             form.reset({
                 ...maintenanceLog,
+                reportedBy: maintenanceLog.reportedBy || 'Landlord',
                 reportedDate: safeToDate(maintenanceLog.reportedDate) || new Date(),
                 scheduledDate: safeToDate(maintenanceLog.scheduledDate) || undefined,
                 otherCategoryDetails: maintenanceLog.otherCategoryDetails ?? '',
@@ -167,7 +169,7 @@ export default function EditMaintenancePage() {
     }
 
     return (
-        <div className="max-w-2xl mx-auto space-y-6">
+        <div className="max-w-2xl mx-auto space-y-6 text-left">
             <div className='flex items-center gap-4'>
                 <Button variant="outline" size="icon" asChild>
                     <Link href={`/dashboard/maintenance/${logId}?propertyId=${propertyId}`}><ArrowLeft className="h-4 w-4" /></Link>
@@ -258,28 +260,61 @@ export default function EditMaintenancePage() {
                             )} />
                             
                             <Card className="bg-muted/30 border-dashed">
-                                <CardHeader><CardTitle className="text-lg">Contractor & Scheduling</CardTitle></CardHeader>
-                                <CardContent className="space-y-4">
-                                    <div className="space-y-2">
-                                        <Label htmlFor="contractor-quick-select">Select a saved contractor</Label>
-                                        <Select onValueChange={(contractorId) => {
-                                            const contractor = contractors?.find(c => c.id === contractorId);
-                                            if (contractor) {
-                                                form.setValue('contractorName', contractor.name);
-                                                form.setValue('contractorPhone', contractor.phone);
-                                            }
-                                        }}>
-                                            <SelectTrigger id="contractor-quick-select">
-                                                <SelectValue placeholder="Select from your directory" />
-                                            </SelectTrigger>
-                                            <SelectContent>{contractors?.map((c) => <SelectItem key={c.id} value={c.id}>{c.name} ({c.trade})</SelectItem>)}</SelectContent>
-                                        </Select>
+                                <CardHeader><CardTitle className="text-lg">Assignment & Audit</CardTitle></CardHeader>
+                                <CardContent className="space-y-6">
+                                    <div className="space-y-4">
+                                        <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Contractor Details</h3>
+                                        <div className="space-y-2">
+                                            <Label htmlFor="contractor-quick-select">Select a saved contractor</Label>
+                                            <Select onValueChange={(contractorId) => {
+                                                const contractor = contractors?.find(c => c.id === contractorId);
+                                                if (contractor) {
+                                                    form.setValue('contractorName', contractor.name);
+                                                    form.setValue('contractorPhone', contractor.phone);
+                                                }
+                                            }}>
+                                                <SelectTrigger id="contractor-quick-select">
+                                                    <SelectValue placeholder="Select from your directory" />
+                                                </SelectTrigger>
+                                                <SelectContent>{contractors?.map((c) => <SelectItem key={c.id} value={c.id}>{c.name} ({c.trade})</SelectItem>)}</SelectContent>
+                                            </Select>
+                                        </div>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <FormField control={form.control} name="contractorName" render={({ field }) => (<FormItem><FormLabel>Assigned To</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                            <FormField control={form.control} name="contractorPhone" render={({ field }) => (<FormItem><FormLabel>Contractor Phone</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        </div>
                                     </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                        <FormField control={form.control} name="contractorName" render={({ field }) => (<FormItem><FormLabel>Contractor Name</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField control={form.control} name="contractorPhone" render={({ field }) => (<FormItem><FormLabel>Contractor Phone</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
+
+                                    <div className="space-y-4 border-t pt-6">
+                                        <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Reporting Audit</h3>
+                                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                            <FormField control={form.control} name="reportedBy" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Reported By</FormLabel>
+                                                    <Select onValueChange={field.onChange} value={field.value}>
+                                                        <FormControl><SelectTrigger><SelectValue placeholder="Select reporter" /></SelectTrigger></FormControl>
+                                                        <SelectContent>
+                                                            {['Landlord', 'Tenant', 'Agent', 'Other'].map(r => (
+                                                                <SelectItem key={r} value={r}>{r}</SelectItem>
+                                                            ))}
+                                                        </SelectContent>
+                                                    </Select>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                            <FormField control={form.control} name="reportedDate" render={({ field }) => (
+                                                <FormItem>
+                                                    <FormLabel>Reported Date</FormLabel>
+                                                    <FormControl>
+                                                        <Input type="date" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} />
+                                                    </FormControl>
+                                                    <FormMessage />
+                                                </FormItem>
+                                            )} />
+                                        </div>
                                     </div>
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+
+                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t pt-6">
                                         <FormField control={form.control} name="scheduledDate" render={({ field }) => (
                                             <FormItem>
                                                 <FormLabel>Scheduled Date</FormLabel>
@@ -305,7 +340,7 @@ export default function EditMaintenancePage() {
                             <div className="flex justify-end gap-2">
                                 <Button type="button" variant="outline" asChild><Link href={`/dashboard/maintenance/${logId}?propertyId=${propertyId}`}>Cancel</Link></Button>
                                 <Button type="submit" disabled={isSaving}>
-                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Save'}
+                                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Save Changes'}
                                 </Button>
                             </div>
                         </form>
