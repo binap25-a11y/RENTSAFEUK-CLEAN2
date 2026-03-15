@@ -2,7 +2,7 @@
 
 import { useState, useEffect, useMemo } from 'react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, onSnapshot, doc, getDoc, getDocs, limit, orderBy } from 'firebase/firestore';
+import { collection, query, where, doc, getDoc, limit, orderBy } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -16,30 +16,22 @@ import {
   CalendarCheck, 
   ShieldAlert,
   ChevronRight,
-  AlertCircle,
-  FileWarning,
-  Clock,
   LayoutDashboard,
   Building2,
   TrendingUp,
-  History
+  Clock
 } from 'lucide-react';
 import Link from 'next/link';
 import { format, isBefore, addDays } from 'date-fns';
+import { PortfolioAnalytics } from '@/components/dashboard/portfolio-analytics';
+import { safeToDate } from '@/lib/date-utils';
+import { cn } from '@/lib/utils';
 
 interface Property { id: string; status: string; landlordId: string; }
 interface Tenant { id: string; status: string; landlordId: string; }
-interface Repair { id: string; status: string; landlordId: string; title: string; priority: string; reportedDate: any; }
-interface Document { id: string; expiryDate: any; landlordId: string; title: string; }
-interface Inspection { id: string; status: string; landlordId: string; scheduledDate: any; type: string; }
-
-const toDate = (val: any): Date | null => {
-  if (!val) return null;
-  if (val instanceof Date) return val;
-  if (typeof val === 'object' && 'seconds' in val) return new Date(val.seconds * 1000);
-  const d = new Date(val);
-  return isNaN(d.getTime()) ? null : d;
-};
+interface Repair { id: string; status: string; landlordId: string; title: string; priority: string; reportedDate: any; propertyId: string; }
+interface DocumentRecord { id: string; expiryDate: any; landlordId: string; title: string; }
+interface Inspection { id: string; status: string; landlordId: string; scheduledDate: any; type: string; propertyId: string; }
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
@@ -99,7 +91,7 @@ export default function DashboardPage() {
     if (!user || !firestore) return null;
     return query(collection(firestore, 'documents'), where('landlordId', '==', user.uid));
   }, [user, firestore]);
-  const { data: documents } = useCollection<Document>(docsQuery);
+  const { data: documents } = useCollection<DocumentRecord>(docsQuery);
 
   const inspectionsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -114,7 +106,7 @@ export default function DashboardPage() {
     const soon = addDays(today, 90);
     
     return documents.reduce((acc, doc) => {
-      const expiry = toDate(doc.expiryDate);
+      const expiry = safeToDate(doc.expiryDate);
       if (!expiry) return acc;
       if (isBefore(expiry, today)) acc.expired++;
       else if (isBefore(expiry, soon)) acc.expiringSoon++;
@@ -125,8 +117,12 @@ export default function DashboardPage() {
   if (isUserLoading || isLoadingProfile) {
     return (
       <div className="flex h-[60vh] w-full flex-col items-center justify-center gap-4">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
-        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Establishing Command Center...</p>
+        <div className="bg-primary/5 p-10 rounded-full">
+            <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        </div>
+        <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">
+            Establishing Command Center...
+        </p>
       </div>
     );
   }
@@ -143,12 +139,12 @@ export default function DashboardPage() {
       {/* Primary Stats Grid */}
       <div className="grid gap-4 sm:grid-cols-2 lg:grid-cols-4">
         <Link href="/dashboard/properties" className="block">
-          <Card className="hover:shadow-xl transition-all border-none shadow-md group">
+          <Card className="hover:shadow-xl transition-all border-none shadow-md group h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Managed Assets</CardTitle>
+              <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-left">Managed Assets</CardTitle>
               <Building2 className="h-4 w-4 text-primary group-hover:scale-110 transition-transform" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="text-left">
               <div className="text-3xl font-bold">{properties?.length || 0}</div>
               <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1"><TrendingUp className="h-3 w-3" />Portfolio Capacity</p>
             </CardContent>
@@ -156,12 +152,12 @@ export default function DashboardPage() {
         </Link>
 
         <Link href="/dashboard/tenants" className="block">
-          <Card className="hover:shadow-xl transition-all border-none shadow-md group">
+          <Card className="hover:shadow-xl transition-all border-none shadow-md group h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Active Residents</CardTitle>
+              <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-left">Active Residents</CardTitle>
               <Users className="h-4 w-4 text-primary group-hover:scale-110 transition-transform" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="text-left">
               <div className="text-3xl font-bold">{tenants?.length || 0}</div>
               <p className="text-[10px] text-muted-foreground mt-1">Verified Tenancies</p>
             </CardContent>
@@ -169,12 +165,12 @@ export default function DashboardPage() {
         </Link>
 
         <Link href="/dashboard/maintenance/logged" className="block">
-          <Card className="hover:shadow-xl transition-all border-none shadow-md group">
+          <Card className="hover:shadow-xl transition-all border-none shadow-md group h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Open Repairs</CardTitle>
+              <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-left">Open Repairs</CardTitle>
               <Wrench className="h-4 w-4 text-primary group-hover:scale-110 transition-transform" />
             </CardHeader>
-            <CardContent>
+            <CardContent className="text-left">
               <div className="text-3xl font-bold">{repairs?.length || 0}</div>
               <p className="text-[10px] text-muted-foreground mt-1">Maintenance Queue</p>
             </CardContent>
@@ -183,17 +179,17 @@ export default function DashboardPage() {
 
         <Link href="/dashboard/documents" className="block">
           <Card className={cn(
-            "hover:shadow-xl transition-all border-none shadow-md group",
-            complianceStats.expired > 0 ? "bg-destructive/5" : ""
+            "hover:shadow-xl transition-all border-none shadow-md group h-full",
+            complianceStats.expired > 0 ? "bg-destructive/[0.03] border-destructive/10 border" : ""
           )}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Legal Compliance</CardTitle>
+              <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-left">Legal Compliance</CardTitle>
               <ShieldAlert className={cn(
                 "h-4 w-4 transition-transform group-hover:scale-110",
                 complianceStats.expired > 0 ? "text-destructive" : "text-primary"
               )} />
             </CardHeader>
-            <CardContent>
+            <CardContent className="text-left">
               <div className={cn("text-3xl font-bold", complianceStats.expired > 0 && "text-destructive")}>
                 {complianceStats.expired}
               </div>
@@ -203,12 +199,14 @@ export default function DashboardPage() {
         </Link>
       </div>
 
-      {/* Quick Actions & High Priority */}
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
+          {/* Financial Analytics Chart */}
+          <PortfolioAnalytics />
+
           {/* Quick Actions */}
           <Card className="border-none shadow-lg overflow-hidden">
-            <CardHeader className="bg-primary/5 border-b">
+            <CardHeader className="bg-primary/5 border-b text-left">
               <CardTitle className="text-sm font-bold uppercase tracking-wider flex items-center gap-2">
                 <LayoutDashboard className="h-4 w-4 text-primary" />
                 Management Actions
@@ -237,9 +235,9 @@ export default function DashboardPage() {
           </Card>
 
           {/* Recent Repairs */}
-          <Card className="border-none shadow-lg">
-            <CardHeader className="flex flex-row items-center justify-between border-b pb-4">
-              <div className="space-y-1">
+          <Card className="border-none shadow-lg text-left">
+            <CardHeader className="flex flex-row items-center justify-between border-b pb-4 text-left">
+              <div className="space-y-1 text-left">
                 <CardTitle className="text-lg font-headline">Maintenance Priority</CardTitle>
                 <CardDescription className="text-xs">Active requests requiring attention.</CardDescription>
               </div>
@@ -261,11 +259,11 @@ export default function DashboardPage() {
                         )}>
                           <Wrench className="h-4 w-4" />
                         </div>
-                        <div>
+                        <div className="text-left">
                           <p className="text-sm font-bold group-hover:text-primary transition-colors">{r.title}</p>
                           <div className="flex items-center gap-2 mt-0.5">
                             <Badge variant={r.priority === 'Emergency' ? 'destructive' : 'secondary'} className="text-[8px] h-4 px-1.5 uppercase">{r.priority}</Badge>
-                            <span className="text-[10px] text-muted-foreground">{r.reportedDate ? format(toDate(r.reportedDate)!, 'd MMM') : ''}</span>
+                            <span className="text-[10px] text-muted-foreground">{r.reportedDate ? format(safeToDate(r.reportedDate)!, 'd MMM') : ''}</span>
                           </div>
                         </div>
                       </div>
@@ -280,7 +278,10 @@ export default function DashboardPage() {
 
         <div className="space-y-6">
           {/* Compliance Card */}
-          <Card className="border-none shadow-lg overflow-hidden">
+          <Card className={cn(
+            "hover:shadow-xl transition-all border-none shadow-lg group text-left",
+            complianceStats.expired > 0 ? "bg-destructive/[0.02]" : ""
+          )}>
             <CardHeader className="bg-destructive/5 border-b border-destructive/10">
               <CardTitle className="text-sm font-bold uppercase tracking-widest flex items-center gap-2">
                 <ShieldAlert className="h-4 w-4 text-destructive" />
@@ -291,22 +292,22 @@ export default function DashboardPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-muted-foreground">Expired Documents</span>
-                  <Badge variant={complianceStats.expired > 0 ? "destructive" : "secondary"} className="h-5">{complianceStats.expired}</Badge>
+                  <Badge variant={complianceStats.expired > 0 ? "destructive" : "secondary"} className="h-5 font-bold">{complianceStats.expired}</Badge>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-muted-foreground">Expiring Soon (90d)</span>
-                  <Badge variant="outline" className="h-5">{complianceStats.expiringSoon}</Badge>
+                  <Badge variant="outline" className="h-5 font-bold">{complianceStats.expiringSoon}</Badge>
                 </div>
               </div>
-              <Button asChild variant="outline" className="w-full text-[10px] font-bold uppercase tracking-widest border-destructive/20 hover:bg-destructive/5">
+              <Button asChild variant="outline" className="w-full text-[10px] font-bold uppercase tracking-widest border-destructive/20 hover:bg-destructive/5 h-11">
                 <Link href="/dashboard/documents">Resolve Audit Issues</Link>
               </Button>
             </CardContent>
           </Card>
 
           {/* Upcoming Inspections */}
-          <Card className="border-none shadow-lg">
-            <CardHeader className="border-b pb-4">
+          <Card className="border-none shadow-lg text-left">
+            <CardHeader className="border-b pb-4 text-left">
               <CardTitle className="text-sm font-bold flex items-center gap-2">
                 <Clock className="h-4 w-4 text-primary" />
                 Inspection Schedule
@@ -319,11 +320,11 @@ export default function DashboardPage() {
                 <div className="divide-y">
                   {inspections.map(i => (
                     <div key={i.id} className="p-4 flex items-center justify-between hover:bg-muted/5 transition-colors">
-                      <div>
+                      <div className="text-left">
                         <p className="text-xs font-bold">{i.type}</p>
-                        <p className="text-[10px] text-muted-foreground uppercase mt-0.5">{format(toDate(i.scheduledDate)!, 'PPP')}</p>
+                        <p className="text-[10px] text-muted-foreground uppercase mt-0.5">{format(safeToDate(i.scheduledDate)!, 'PPP')}</p>
                       </div>
-                      <Button variant="ghost" size="icon" asChild className="h-8 w-8"><Link href={`/dashboard/inspections/${i.id}?propertyId=${i.propertyId}`}><Eye className="h-3.5 w-3.5" /></Link></Button>
+                      <Button variant="ghost" size="icon" asChild className="h-8 w-8"><Link href={`/dashboard/inspections/${i.id}?propertyId=${i.propertyId}`}><ChevronRight className="h-3.5 w-3.5" /></Link></Button>
                     </div>
                   ))}
                 </div>
@@ -340,6 +341,3 @@ export default function DashboardPage() {
     </div>
   );
 }
-
-const cn = (...classes: any[]) => classes.filter(Boolean).join(' ');
-function Eye(props: any) { return <History {...props} />; }
