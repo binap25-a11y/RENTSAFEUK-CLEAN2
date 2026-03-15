@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -261,11 +260,12 @@ export default function EditMaintenancePage() {
                             
                             <Card className="bg-muted/30 border-dashed">
                                 <CardHeader><CardTitle className="text-lg">Assignment & Audit</CardTitle></CardHeader>
-                                <CardContent className="space-y-6">
+                                <CardContent className="space-y-8">
+                                    {/* SECTION 1: ASSIGNMENT */}
                                     <div className="space-y-4">
-                                        <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Contractor Details</h3>
+                                        <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Assignment</h3>
                                         <div className="space-y-2">
-                                            <Label htmlFor="contractor-quick-select">Select a saved contractor</Label>
+                                            <Label htmlFor="contractor-quick-select">Quick-select Contractor</Label>
                                             <Select onValueChange={(contractorId) => {
                                                 const contractor = contractors?.find(c => c.id === contractorId);
                                                 if (contractor) {
@@ -285,8 +285,9 @@ export default function EditMaintenancePage() {
                                         </div>
                                     </div>
 
+                                    {/* SECTION 2: AUDIT INFO (Positioned BELOW Assignment) */}
                                     <div className="space-y-4 border-t pt-6">
-                                        <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Reporting Audit</h3>
+                                        <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Audit Info</h3>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <FormField control={form.control} name="reportedBy" render={({ field }) => (
                                                 <FormItem>
@@ -317,7 +318,7 @@ export default function EditMaintenancePage() {
                                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t pt-6">
                                         <FormField control={form.control} name="scheduledDate" render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Scheduled Date</FormLabel>
+                                                <FormLabel>Scheduled Visit Date</FormLabel>
                                                 <FormControl>
                                                     <Input type="date" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} />
                                                 </FormControl>

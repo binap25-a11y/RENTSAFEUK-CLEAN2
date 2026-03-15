@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -238,6 +237,7 @@ function MaintenanceFormContent() {
             <Form {...form}>
               <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-8">
                 <div className="grid gap-8">
+                    {/* SECTION 1: ISSUE DETAILS */}
                     <div className="space-y-6">
                         <FormField
                         control={form.control}
@@ -409,7 +409,6 @@ function MaintenanceFormContent() {
                           </FormItem>
                         )} />
 
-                        {/* Expected Cost positioned under Detailed Description */}
                         <FormField control={form.control} name="estimatedCost" render={({ field }) => (
                           <FormItem className="max-w-md">
                               <FormLabel className="font-bold flex items-center gap-2">
@@ -433,96 +432,116 @@ function MaintenanceFormContent() {
                         )} />
                     </div>
 
-                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8 border-t pt-8">
-                        {/* Assignment Section (Moved to first col) */}
+                    <div className="space-y-10 border-t pt-8">
+                        {/* SECTION 2: ASSIGNMENT */}
                         <div className="space-y-6">
                             <h3 className="font-bold text-lg flex items-center gap-2 text-primary"><PlusCircle className="h-5 w-5" /> Assignment</h3>
-                            <div className="space-y-2">
-                                <Label className="font-bold">Quick-select Contractor</Label>
-                                <Select onValueChange={(contractorId) => {
-                                    const contractor = contractors?.find(c => c.id === contractorId);
-                                    if (contractor) {
-                                        form.setValue('contractorName', contractor.name);
-                                        form.setValue('contractorPhone', contractor.phone);
-                                    }
-                                }}>
-                                    <SelectTrigger className="h-11 bg-background">
-                                        <SelectValue placeholder="Search your directory..." />
-                                    </SelectTrigger>
-                                    <SelectContent>
-                                        {contractors?.map((c) => (
-                                            <SelectItem key={c.id} value={c.id}>{c.name} ({c.trade})</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                            </div>
-                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                                <FormField control={form.control} name="contractorName" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="font-bold">Assigned To</FormLabel>
-                                    <FormControl>
-                                    <Input 
-                                        placeholder="Contractor name" 
-                                        className="h-11 bg-background" 
-                                        {...field} 
-                                        value={field.value ?? ''} 
-                                    />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                                )} />
-                                <FormField control={form.control} name="contractorPhone" render={({ field }) => (
-                                <FormItem>
-                                    <FormLabel className="font-bold">Contractor Phone</FormLabel>
-                                    <FormControl>
-                                    <Input 
-                                        placeholder="Phone number" 
-                                        className="h-11 bg-background" 
-                                        {...field} 
-                                        value={field.value ?? ''} 
-                                    />
-                                    </FormControl>
-                                    <FormMessage />
-                                </FormItem>
-                                )} />
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <div className="space-y-4">
+                                    <div className="space-y-2">
+                                        <Label className="font-bold">Quick-select Contractor</Label>
+                                        <Select onValueChange={(contractorId) => {
+                                            const contractor = contractors?.find(c => c.id === contractorId);
+                                            if (contractor) {
+                                                form.setValue('contractorName', contractor.name);
+                                                form.setValue('contractorPhone', contractor.phone);
+                                            }
+                                        }}>
+                                            <SelectTrigger className="h-11 bg-background">
+                                                <SelectValue placeholder="Search your directory..." />
+                                            </SelectTrigger>
+                                            <SelectContent>
+                                                {contractors?.map((c) => (
+                                                    <SelectItem key={c.id} value={c.id}>{c.name} ({c.trade})</SelectItem>
+                                                ))}
+                                            </SelectContent>
+                                        </Select>
+                                    </div>
+                                    <FormField control={form.control} name="contractorName" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="font-bold">Assigned To</FormLabel>
+                                            <FormControl>
+                                            <Input 
+                                                placeholder="Contractor name" 
+                                                className="h-11 bg-background" 
+                                                {...field} 
+                                                value={field.value ?? ''} 
+                                            />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+                                </div>
+                                <div className="space-y-4">
+                                    <FormField control={form.control} name="contractorPhone" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="font-bold">Contractor Phone</FormLabel>
+                                            <FormControl>
+                                            <Input 
+                                                placeholder="Phone number" 
+                                                className="h-11 bg-background" 
+                                                {...field} 
+                                                value={field.value ?? ''} 
+                                            />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+                                    <FormField control={form.control} name="scheduledDate" render={({ field }) => (
+                                        <FormItem>
+                                            <FormLabel className="font-bold">Scheduled Visit Date</FormLabel>
+                                            <FormControl>
+                                            <Input 
+                                                type="date" 
+                                                className="h-11 bg-background" 
+                                                value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} 
+                                                onChange={(e) => field.onChange(e.target.value)} 
+                                            />
+                                            </FormControl>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+                                </div>
                             </div>
                         </div>
 
-                        {/* Audit Info Section (Moved to second col) */}
-                        <div className="space-y-6">
+                        {/* SECTION 3: AUDIT INFO (Positioned BELOW Assignment) */}
+                        <div className="space-y-6 border-t pt-8">
                             <h3 className="font-bold text-lg flex items-center gap-2 text-muted-foreground"><Calendar className="h-5 w-5" /> Audit Info</h3>
-                            <FormField control={form.control} name="reportedBy" render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="font-bold">Reported By</FormLabel>
-                                <Select onValueChange={field.onChange} value={field.value}>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                <FormField control={form.control} name="reportedBy" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="font-bold">Reported By</FormLabel>
+                                    <Select onValueChange={field.onChange} value={field.value}>
+                                        <FormControl>
+                                            <SelectTrigger className="h-11 bg-background">
+                                                <SelectValue placeholder="Select reporter" />
+                                            </SelectTrigger>
+                                        </FormControl>
+                                        <SelectContent>
+                                            {['Landlord', 'Tenant', 'Agent', 'Other'].map(r => (
+                                                <SelectItem key={r} value={r}>{r}</SelectItem>
+                                            ))}
+                                        </SelectContent>
+                                    </Select>
+                                    <FormMessage />
+                                </FormItem>
+                                )} />
+                                <FormField control={form.control} name="reportedDate" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="font-bold">Date of Report</FormLabel>
                                     <FormControl>
-                                        <SelectTrigger className="h-11 bg-background">
-                                            <SelectValue placeholder="Select reporter" />
-                                        </SelectTrigger>
+                                    <Input 
+                                        type="date" 
+                                        className="h-11 bg-background" 
+                                        value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} 
+                                        onChange={(e) => field.onChange(e.target.value)} 
+                                    />
                                     </FormControl>
-                                    <SelectContent>
-                                        {['Landlord', 'Tenant', 'Agent', 'Other'].map(r => (
-                                            <SelectItem key={r} value={r}>{r}</SelectItem>
-                                        ))}
-                                    </SelectContent>
-                                </Select>
-                                <FormMessage />
-                              </FormItem>
-                            )} />
-                            <FormField control={form.control} name="reportedDate" render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="font-bold">Date of Report</FormLabel>
-                                <FormControl>
-                                  <Input 
-                                    type="date" 
-                                    className="h-11 bg-background" 
-                                    value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} 
-                                    onChange={(e) => field.onChange(e.target.value)} 
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )} />
+                                    <FormMessage />
+                                </FormItem>
+                                )} />
+                            </div>
                         </div>
                     </div>
                 </div>
