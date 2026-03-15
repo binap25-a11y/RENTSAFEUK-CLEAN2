@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -83,15 +84,15 @@ export default function DashboardPage() {
     if (!user || !firestore) return null;
     return query(collection(firestore, 'properties'), where('landlordId', '==', user.uid), where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance']));
   }, [user, firestore]);
-  const { data: properties } = useCollection<Property>(propertiesQuery);
+  const { data: properties, isLoading: isLoadingProps } = useCollection<Property>(propertiesQuery);
 
   const tenantsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(collection(firestore, 'tenants'), where('landlordId', '==', user.uid), where('status', '==', 'Active'));
   }, [user, firestore]);
-  const { data: tenants } = useCollection<Tenant>(tenantsQuery);
+  const { data: tenants, isLoading: isLoadingTenants } = useCollection<Tenant>(tenantsQuery);
 
-  // Fetch all repairs for the landlord to allow in-memory filtering for both stats and financials
+  // Fetch all repairs for the landlord
   const repairsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
@@ -100,7 +101,7 @@ export default function DashboardPage() {
       limit(500)
     );
   }, [user, firestore]);
-  const { data: rawRepairs } = useCollection<Repair>(repairsQuery);
+  const { data: rawRepairs, isLoading: isLoadingRepairs } = useCollection<Repair>(repairsQuery);
 
   const openRepairs = useMemo(() => {
     if (!rawRepairs) return [];
@@ -111,25 +112,25 @@ export default function DashboardPage() {
     if (!user || !firestore) return null;
     return query(collection(firestore, 'expenses'), where('landlordId', '==', user.uid), limit(500));
   }, [user, firestore]);
-  const { data: allExpenses } = useCollection<Expense>(expensesQuery);
+  const { data: allExpenses, isLoading: isLoadingExpenses } = useCollection<Expense>(expensesQuery);
 
   const rentQuery = useMemoFirebase(() => {
     if (!user || !firestore || !today) return null;
     return query(collection(firestore, 'rentPayments'), where('landlordId', '==', user.uid), where('year', '==', getYear(today)));
   }, [user, firestore, today]);
-  const { data: rentPayments } = useCollection<RentPayment>(rentQuery);
+  const { data: rentPayments, isLoading: isLoadingRent } = useCollection<RentPayment>(rentQuery);
 
   const docsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(collection(firestore, 'documents'), where('landlordId', '==', user.uid));
   }, [user, firestore]);
-  const { data: documents } = useCollection<DocumentRecord>(docsQuery);
+  const { data: documents, isLoading: isLoadingDocs } = useCollection<DocumentRecord>(docsQuery);
 
   const inspectionsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(collection(firestore, 'inspections'), where('landlordId', '==', user.uid), where('status', '==', 'Scheduled'), limit(5));
   }, [user, firestore]);
-  const { data: inspections } = useCollection<Inspection>(inspectionsQuery);
+  const { data: inspections, isLoading: isLoadingInspections } = useCollection<Inspection>(inspectionsQuery);
 
   // Financial Aggregation
   const financialSummary = useMemo(() => {
@@ -137,7 +138,6 @@ export default function DashboardPage() {
     
     const income = rentPayments.reduce((acc, p) => acc + (Number(p.amountPaid) || 0), 0);
     const baseExpenses = allExpenses.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
-    // Include all repairs with costs in expenses for accuracy
     const repairExpenses = rawRepairs.reduce((acc, r) => acc + (Number(r.expectedCost || r.estimatedCost || 0)), 0);
     
     const totalExpenses = baseExpenses + repairExpenses;
@@ -189,7 +189,9 @@ export default function DashboardPage() {
               <Building2 className="h-4 w-4 text-primary group-hover:scale-110 transition-transform" />
             </CardHeader>
             <CardContent className="text-left">
-              <div className="text-3xl font-bold">{properties?.length || 0}</div>
+              <div className="text-3xl font-bold">
+                {isLoadingProps ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/30" /> : (properties?.length || 0)}
+              </div>
               <p className="text-[10px] text-muted-foreground mt-1 flex items-center gap-1"><TrendingUp className="h-3 w-3" />Portfolio Capacity</p>
             </CardContent>
           </Card>
@@ -202,7 +204,9 @@ export default function DashboardPage() {
               <Users className="h-4 w-4 text-primary group-hover:scale-110 transition-transform" />
             </CardHeader>
             <CardContent className="text-left">
-              <div className="text-3xl font-bold">{tenants?.length || 0}</div>
+              <div className="text-3xl font-bold">
+                {isLoadingTenants ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/30" /> : (tenants?.length || 0)}
+              </div>
               <p className="text-[10px] text-muted-foreground mt-1">Verified Tenancies</p>
             </CardContent>
           </Card>
@@ -215,7 +219,9 @@ export default function DashboardPage() {
               <Wrench className="h-4 w-4 text-primary group-hover:scale-110 transition-transform" />
             </CardHeader>
             <CardContent className="text-left">
-              <div className="text-3xl font-bold">{openRepairs.length}</div>
+              <div className="text-3xl font-bold">
+                {isLoadingRepairs ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/30" /> : openRepairs.length}
+              </div>
               <p className="text-[10px] text-muted-foreground mt-1">Maintenance Queue</p>
             </CardContent>
           </Card>
@@ -235,7 +241,7 @@ export default function DashboardPage() {
             </CardHeader>
             <CardContent className="text-left">
               <div className={cn("text-3xl font-bold", complianceStats.expired > 0 && "text-destructive")}>
-                {complianceStats.expired}
+                {isLoadingDocs ? <Loader2 className="h-6 w-6 animate-spin text-muted-foreground/30" /> : complianceStats.expired}
               </div>
               <p className="text-[10px] text-muted-foreground mt-1">Expired Certificates</p>
             </CardContent>
@@ -262,20 +268,24 @@ export default function DashboardPage() {
                 <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Income Received</p>
                 <div className="flex items-center gap-2 text-green-600">
                     <ArrowUpRight className="h-4 w-4" />
-                    <span className="text-2xl font-bold">£{financialSummary.income.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    <span className="text-2xl font-bold">
+                      {isLoadingRent ? <Loader2 className="h-5 w-5 animate-spin" /> : `£${financialSummary.income.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+                    </span>
                 </div>
             </div>
             <div className="p-6 flex flex-col items-center justify-center text-center">
                 <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Expenses (Incl. Repairs)</p>
                 <div className="flex items-center gap-2 text-destructive">
                     <ArrowDownRight className="h-4 w-4" />
-                    <span className="text-2xl font-bold">£{financialSummary.expenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                    <span className="text-2xl font-bold">
+                      {isLoadingExpenses || isLoadingRepairs ? <Loader2 className="h-5 w-5 animate-spin" /> : `£${financialSummary.expenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
+                    </span>
                 </div>
             </div>
             <div className={cn("p-6 flex flex-col items-center justify-center text-center", financialSummary.net >= 0 ? "bg-green-50/50" : "bg-destructive/5")}>
                 <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Net Cashflow</p>
                 <div className={cn("text-2xl font-bold", financialSummary.net >= 0 ? "text-primary" : "text-destructive")}>
-                    £{financialSummary.net.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                    {isLoadingRent || isLoadingExpenses || isLoadingRepairs ? <Loader2 className="h-5 w-5 animate-spin" /> : `£${financialSummary.net.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
                 </div>
             </div>
         </CardContent>
@@ -283,7 +293,6 @@ export default function DashboardPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
-          {/* Financial Analytics Chart */}
           <PortfolioAnalytics />
 
           {/* Quick Actions */}
@@ -328,7 +337,9 @@ export default function DashboardPage() {
               </Button>
             </CardHeader>
             <CardContent className="p-0">
-              {!openRepairs.length ? (
+              {isLoadingRepairs ? (
+                <div className="py-12 flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary/20" /></div>
+              ) : !openRepairs.length ? (
                 <div className="py-12 text-center text-muted-foreground italic bg-muted/5">No active repairs requiring attention.</div>
               ) : (
                 <div className="divide-y">
@@ -374,11 +385,15 @@ export default function DashboardPage() {
               <div className="space-y-3">
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-muted-foreground">Expired Documents</span>
-                  <Badge variant={complianceStats.expired > 0 ? "destructive" : "secondary"} className="h-5 font-bold">{complianceStats.expired}</Badge>
+                  <Badge variant={complianceStats.expired > 0 ? "destructive" : "secondary"} className="h-5 font-bold">
+                    {isLoadingDocs ? "..." : complianceStats.expired}
+                  </Badge>
                 </div>
                 <div className="flex items-center justify-between">
                   <span className="text-xs font-medium text-muted-foreground">Expiring Soon (90d)</span>
-                  <Badge variant="outline" className="h-5 font-bold">{complianceStats.expiringSoon}</Badge>
+                  <Badge variant="outline" className="h-5 font-bold">
+                    {isLoadingDocs ? "..." : complianceStats.expiringSoon}
+                  </Badge>
                 </div>
               </div>
               <Button asChild variant="outline" className="w-full text-[10px] font-bold uppercase tracking-widest border-destructive/20 hover:bg-destructive/5 h-11">
@@ -396,7 +411,9 @@ export default function DashboardPage() {
               </CardTitle>
             </CardHeader>
             <CardContent className="p-0">
-              {!inspections?.length ? (
+              {isLoadingInspections ? (
+                <div className="py-8 flex justify-center"><Loader2 className="h-6 w-6 animate-spin text-primary/20" /></div>
+              ) : !inspections?.length ? (
                 <div className="p-8 text-center text-xs text-muted-foreground italic">No scheduled visits.</div>
               ) : (
                 <div className="divide-y">
