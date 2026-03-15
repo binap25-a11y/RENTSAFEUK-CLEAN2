@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -33,7 +34,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Loader2, ArrowLeft, Banknote, Calendar, HardHat, Info } from 'lucide-react';
+import { Loader2, ArrowLeft, Banknote, Calendar, HardHat } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
   useUser,
@@ -57,7 +58,7 @@ const maintenanceEditSchema = z.object({
   contractorName: z.string().optional(),
   contractorPhone: z.string().optional(),
   scheduledDate: z.coerce.date().optional(),
-  expectedCost: z.coerce.number().min(0, "Cost cannot be negative").default(0),
+  expectedCost: z.coerce.number().min(0).default(0),
   notes: z.string().optional(),
 });
 
@@ -76,7 +77,6 @@ interface MaintenanceLog {
   contractorPhone?: string;
   scheduledDate?: any;
   expectedCost?: number;
-  estimatedCost?: number;
   notes?: string;
 }
 
@@ -106,14 +106,6 @@ export default function EditMaintenancePage() {
 
     const form = useForm<MaintenanceFormValues>({
         resolver: zodResolver(maintenanceEditSchema),
-        defaultValues: {
-            title: '',
-            category: '',
-            priority: 'Routine',
-            status: 'Open',
-            reportedBy: 'Landlord',
-            expectedCost: 0,
-        }
     });
 
     const watchCategory = form.watch('category');
@@ -138,7 +130,6 @@ export default function EditMaintenancePage() {
         return contractors.find(c => c.name === watchContractorName && c.phone === watchContractorPhone)?.id || "";
     }, [contractors, watchContractorName, watchContractorPhone]);
 
-    // PRE-FILL LOGIC: Definitively sync form state with DB record
     useEffect(() => {
         if (maintenanceLog) {
             form.reset({
@@ -150,11 +141,11 @@ export default function EditMaintenancePage() {
                 reportedBy: maintenanceLog.reportedBy || 'Landlord',
                 reportedDate: safeToDate(maintenanceLog.reportedDate) || new Date(),
                 scheduledDate: safeToDate(maintenanceLog.scheduledDate) || undefined,
-                expectedCost: maintenanceLog.expectedCost ?? maintenanceLog.estimatedCost ?? 0,
-                otherCategoryDetails: maintenanceLog.otherCategoryDetails ?? '',
-                notes: maintenanceLog.notes ?? '',
-                contractorName: maintenanceLog.contractorName ?? '',
-                contractorPhone: maintenanceLog.contractorPhone ?? '',
+                expectedCost: maintenanceLog.expectedCost || 0,
+                otherCategoryDetails: maintenanceLog.otherCategoryDetails || '',
+                notes: maintenanceLog.notes || '',
+                contractorName: maintenanceLog.contractorName || '',
+                contractorPhone: maintenanceLog.contractorPhone || '',
             });
         }
     }, [maintenanceLog, form]);
@@ -167,205 +158,80 @@ export default function EditMaintenancePage() {
 
         try {
             await updateDoc(maintenanceLogRef, cleanedData);
-            toast({ title: 'Maintenance Log Updated' });
+            toast({ title: 'Record Updated' });
             router.push(`/dashboard/maintenance/${logId}?propertyId=${propertyId}`);
         } catch (error) {
-            console.error('Failed to update maintenance log', error);
             toast({ variant: 'destructive', title: 'Update Failed' });
         } finally {
             setIsSaving(false);
         }
     }
 
-    if (isLoadingLog) {
-        return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
-    }
-    
-    if (!maintenanceLog) {
-        return <div className="text-center py-10">Maintenance log not found.</div>;
-    }
+    if (isLoadingLog) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+    if (!maintenanceLog) return <div className="text-center py-10">Record not found.</div>;
 
     return (
         <div className="max-w-2xl mx-auto space-y-6 text-left">
             <div className='flex items-center gap-4'>
-                <Button variant="outline" size="icon" asChild>
-                    <Link href={`/dashboard/maintenance/${logId}?propertyId=${propertyId}`}><ArrowLeft className="h-4 w-4" /></Link>
-                </Button>
-                <div>
-                    <h1 className="text-2xl font-bold font-headline">Edit Maintenance</h1>
-                </div>
+                <Button variant="outline" size="icon" asChild><Link href={`/dashboard/maintenance/${logId}?propertyId=${propertyId}`}><ArrowLeft className="h-4 w-4" /></Link></Button>
+                <h1 className="text-2xl font-bold font-headline">Edit Maintenance</h1>
             </div>
             
             <Card className="shadow-lg border-none overflow-hidden">
-                <CardHeader className="bg-muted/30 border-b pb-6">
-                    <CardTitle className="text-xl">Update Issue Details</CardTitle>
+                <CardHeader className="bg-muted/30 border-b pb-6 text-left">
+                    <CardTitle>Update Registry</CardTitle>
                     <CardDescription>Modify the current state and financial impact of this repair.</CardDescription>
                 </CardHeader>
                 <CardContent className="pt-8">
                     <Form {...form}>
                         <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-10">
-                            {/* SECTION 1: ISSUE DETAILS */}
+                            {/* 1. ISSUE DETAILS */}
                             <div className="space-y-6">
-                                <h3 className="text-sm font-bold uppercase tracking-widest text-primary px-1">Issue Metadata</h3>
-                                <FormField control={form.control} name="title" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="font-bold">Issue Title</FormLabel>
-                                        <FormControl><Input className="h-11" {...field} /></FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
-                                
-                                <FormField control={form.control} name="description" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="font-bold">Detailed Description</FormLabel>
-                                        <FormControl><Textarea rows={4} className="resize-none" {...field} /></FormControl>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
-
+                                <h3 className="text-sm font-bold uppercase tracking-widest text-primary px-1">1. Issue Audit</h3>
+                                <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel className="font-bold">Title</FormLabel><FormControl><Input className="h-11" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel className="font-bold">Description</FormLabel><FormControl><Textarea rows={4} className="resize-none" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                 <FormField control={form.control} name="expectedCost" render={({ field }) => (
-                                    <FormItem className="max-w-md">
-                                        <FormLabel className="font-bold flex items-center gap-2">
-                                            <Banknote className="h-4 w-4 text-primary" />
-                                            Expected Cost (£)
-                                        </FormLabel>
-                                        <FormControl>
-                                        <Input 
-                                            type="number"
-                                            step="0.01"
-                                            min="0"
-                                            placeholder="0.00" 
-                                            className="h-11 bg-background" 
-                                            {...field}
-                                            value={field.value === 0 ? '' : field.value}
-                                            onChange={(e) => {
-                                                const val = e.target.value;
-                                                field.onChange(val === '' ? 0 : Number(val));
-                                            }}
-                                        />
-                                        </FormControl>
-                                        <FormDescription className="text-[10px]">Will be reflected in portfolio financials. Must be 0 or greater.</FormDescription>
+                                    <FormItem className="max-w-md"><FormLabel className="font-bold flex items-center gap-2"><Banknote className="h-4 w-4 text-primary" />Expected Cost (£)</FormLabel>
+                                        <FormControl><Input type="number" step="0.01" min="0" placeholder="0.00" className="h-11" {...field} value={field.value === 0 ? '' : field.value} onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))} /></FormControl>
                                         <FormMessage />
                                     </FormItem>
                                 )} />
-                                
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                    <FormField control={form.control} name="category" render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="font-bold">Category</FormLabel>
-                                            <Select onValueChange={field.onChange} value={field.value}>
-                                                <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Pick category" /></SelectTrigger></FormControl>
-                                                <SelectContent>{CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent>
-                                            </Select>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )} />
-                                    <FormField control={form.control} name="priority" render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="font-bold">Priority</FormLabel>
-                                            <Select onValueChange={field.onChange} value={field.value}>
-                                                <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Pick priority" /></SelectTrigger></FormControl>
-                                                <SelectContent>{PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
-                                            </Select>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )} />
+                                    <FormField control={form.control} name="category" render={({ field }) => (<FormItem><FormLabel className="font-bold">Category</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11"><SelectValue /></SelectTrigger></FormControl><SelectContent>{CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="priority" render={({ field }) => (<FormItem><FormLabel className="font-bold">Priority</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11"><SelectValue /></SelectTrigger></FormControl><SelectContent>{PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
                                 </div>
-
-                                {watchCategory === 'Other' && (
-                                  <FormField control={form.control} name="otherCategoryDetails" render={({ field }) => (
-                                      <FormItem className="animate-in fade-in slide-in-from-top-2">
-                                        <FormLabel className="font-bold">Other Category Details</FormLabel>
-                                        <FormControl><Textarea placeholder="Specify trade required..." className="resize-none bg-muted/50" {...field} value={field.value ?? ''} /></FormControl>
-                                        <FormMessage />
-                                      </FormItem>
-                                    )} />
-                                )}
-
-                                <FormField control={form.control} name="status" render={({ field }) => (
-                                    <FormItem>
-                                        <FormLabel className="font-bold">Repair Status</FormLabel>
-                                        <Select onValueChange={field.onChange} value={field.value}>
-                                            <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Update status" /></SelectTrigger></FormControl>
-                                            <SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
-                                        </Select>
-                                        <FormMessage />
-                                    </FormItem>
-                                )} />
+                                <FormField control={form.control} name="status" render={({ field }) => (<FormItem><FormLabel className="font-bold">Repair Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11"><SelectValue /></SelectTrigger></FormControl><SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
                             </div>
 
-                            {/* SECTION 2: ASSIGNMENT */}
+                            {/* 2. ASSIGNMENT */}
                             <div className="space-y-8 border-t pt-8">
-                                <div className="space-y-6">
-                                    <h3 className="text-sm font-bold uppercase tracking-widest text-primary px-1">Assignment Registry</h3>
-                                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                        <div className="space-y-4">
-                                            <div className="space-y-2 text-left">
-                                                <Label className="font-bold text-xs" htmlFor="edit-contractor-quick-select">Quick-select Contractor</Label>
-                                                <Select value={matchedContractorId} onValueChange={(contractorId) => {
-                                                    const contractor = contractors?.find(c => c.id === contractorId);
-                                                    if (contractor) {
-                                                        form.setValue('contractorName', contractor.name);
-                                                        form.setValue('contractorPhone', contractor.phone);
-                                                        // Fuzzy match trade to category
-                                                        const matchedCat = CATEGORIES.find(c => contractor.trade.toLowerCase().includes(c.toLowerCase().substring(0, 4)));
-                                                        if (matchedCat) form.setValue('category', matchedCat);
-                                                    }
-                                                }}>
-                                                    <SelectTrigger id="edit-contractor-quick-select" className="h-11 bg-muted/20">
-                                                        <SelectValue placeholder="Search directory..." />
-                                                    </SelectTrigger>
-                                                    <SelectContent>{contractors?.map((c) => <SelectItem key={c.id} value={c.id}>{c.name} ({c.trade})</SelectItem>)}</SelectContent>
-                                                </Select>
-                                            </div>
-                                            <FormField control={form.control} name="contractorName" render={({ field }) => (<FormItem><FormLabel className="font-bold">Assigned To</FormLabel><FormControl><Input className="h-11" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        </div>
-                                        <div className="space-y-4">
-                                            <FormField control={form.control} name="contractorPhone" render={({ field }) => (<FormItem><FormLabel className="font-bold">Contractor Phone</FormLabel><FormControl><Input className="h-11" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                            <FormField control={form.control} name="scheduledDate" render={({ field }) => (
-                                                <FormItem>
-                                                    <FormLabel className="font-bold">Scheduled Visit Date</FormLabel>
-                                                    <FormControl>
-                                                        <Input type="date" className="h-11" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} />
-                                                    </FormControl>
-                                                    <FormMessage />
-                                                </FormItem>
-                                            )} />
-                                        </div>
+                                <h3 className="text-sm font-bold uppercase tracking-widest text-primary px-1">2. Assignment</h3>
+                                <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                                    <div className="space-y-4">
+                                        <Label className="font-bold text-xs">Quick-select Contractor</Label>
+                                        <Select value={matchedContractorId} onValueChange={(cid) => { const c = contractors?.find(x => x.id === cid); if (c) { form.setValue('contractorName', c.name); form.setValue('contractorPhone', c.phone); const cat = CATEGORIES.find(cat => c.trade.toLowerCase().includes(cat.toLowerCase().substring(0,4))); if (cat) form.setValue('category', cat); } }}><SelectTrigger className="h-11 bg-muted/20"><SelectValue placeholder="Search directory..." /></SelectTrigger><SelectContent>{contractors?.map(c => <SelectItem key={c.id} value={c.id}>{c.name} ({c.trade})</SelectItem>)}</SelectContent></Select>
+                                        <FormField control={form.control} name="contractorName" render={({ field }) => (<FormItem><FormLabel className="font-bold">Assigned To</FormLabel><FormControl><Input className="h-11" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                    </div>
+                                    <div className="space-y-4">
+                                        <FormField control={form.control} name="contractorPhone" render={({ field }) => (<FormItem><FormLabel className="font-bold">Contractor Phone</FormLabel><FormControl><Input className="h-11" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField control={form.control} name="scheduledDate" render={({ field }) => (<FormItem><FormLabel className="font-bold">Scheduled Date</FormLabel><FormControl><Input type="date" className="h-11" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={e => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>)} />
                                     </div>
                                 </div>
                             </div>
 
-                            {/* SECTION 3: AUDIT INFO */}
+                            {/* 3. AUDIT */}
                             <div className="space-y-6 border-t pt-8">
-                                <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground px-1 flex items-center gap-2"><Calendar className="h-4 w-4" /> Audit Info</h3>
+                                <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground px-1">3. Audit History</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <FormField control={form.control} name="reportedBy" render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="font-bold">Reported By</FormLabel>
-                                            <Select onValueChange={field.onChange} value={field.value}>
-                                                <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Reporter type" /></SelectTrigger></FormControl>
-                                                <SelectContent>{REPORTERS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
-                                            </Select>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )} />
-                                    <FormField control={form.control} name="reportedDate" render={({ field }) => (
-                                        <FormItem>
-                                            <FormLabel className="font-bold">Date of Report</FormLabel>
-                                            <FormControl>
-                                                <Input type="date" className="h-11" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} />
-                                            </FormControl>
-                                            <FormMessage />
-                                        </FormItem>
-                                    )} />
+                                    <FormField control={form.control} name="reportedBy" render={({ field }) => (<FormItem><FormLabel className="font-bold">Reported By</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11"><SelectValue /></SelectTrigger></FormControl><SelectContent>{REPORTERS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="reportedDate" render={({ field }) => (<FormItem><FormLabel className="font-bold">Reported Date</FormLabel><FormControl><Input type="date" className="h-11" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={e => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>)} />
                                 </div>
                             </div>
 
                             <div className="flex justify-end gap-3 pt-6 border-t">
                                 <Button type="button" variant="ghost" asChild className="h-11 font-bold uppercase text-xs tracking-widest"><Link href={`/dashboard/maintenance/${logId}?propertyId=${propertyId}`}>Cancel</Link></Button>
                                 <Button type="submit" disabled={isSaving} className="h-11 px-10 shadow-lg font-bold uppercase text-xs tracking-widest">
-                                    {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Syncing...</> : 'Save Record Changes'}
+                                    {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : 'Save Record Changes'}
                                 </Button>
                             </div>
                         </form>

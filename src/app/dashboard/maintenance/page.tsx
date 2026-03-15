@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -38,7 +39,7 @@ import {
   PlusCircle, 
   Search, 
   ChevronsUpDown,
-  List,
+  History,
   Banknote
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
@@ -163,7 +164,6 @@ function MaintenanceFormContent() {
     if (!user || !firestore) return;
     setIsSubmitting(true);
 
-    // Save sticky preferences for session continuity
     localStorage.setItem('last_repair_cat', data.category);
     localStorage.setItem('last_repair_prio', data.priority);
 
@@ -191,23 +191,23 @@ function MaintenanceFormContent() {
         </div>
 
         <Button asChild variant="outline" className="font-bold shadow-sm h-11 px-6 border-primary/20 hover:bg-primary/5 transition-all">
-            <Link href="/dashboard/maintenance/logged"><List className="mr-2 h-4 w-4 text-primary" /> View History</Link>
+            <Link href="/dashboard/maintenance/logged"><History className="mr-2 h-4 w-4 text-primary" /> View History</Link>
         </Button>
 
         <Card className="border-none shadow-xl overflow-hidden">
           <CardHeader className="bg-muted/30 border-b pb-6">
-            <CardTitle className="text-xl flex items-center gap-2 text-foreground"><AlertCircle className="h-5 w-5 text-primary" />Record New Issue</CardTitle>
-            <CardDescription>Detailed documentation ensures professional resolution and audit compliance.</CardDescription>
+            <CardTitle className="text-xl flex items-center gap-2 text-foreground"><AlertCircle className="h-5 w-5 text-primary" />Log New Issue</CardTitle>
+            <CardDescription>Comprehensive documentation ensures efficient resolution and audit integrity.</CardDescription>
           </CardHeader>
           <CardContent className="pt-8">
             <Form {...form}>
               <form onSubmit={form.handleSubmit(handleFormSubmit)} className="space-y-10">
-                {/* SECTION 1: ISSUE DETAILS */}
+                {/* 1. ISSUE DETAILS */}
                 <div className="space-y-6">
-                    <h3 className="text-sm font-bold uppercase tracking-widest text-primary px-1">1. Issue Discovery</h3>
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-primary px-1">1. Discovery Details</h3>
                     <FormField control={form.control} name="propertyId" render={({ field }) => (
                         <FormItem className="flex flex-col">
-                        <FormLabel className="font-bold">Portfolio Property</FormLabel>
+                        <FormLabel className="font-bold">Target Property</FormLabel>
                         <Popover open={isPropSelectorOpen} onOpenChange={setIsPropSelectorOpen}>
                             <PopoverTrigger asChild>
                                 <FormControl><Button variant="outline" className={cn("w-full justify-between h-11 bg-background text-left font-normal", !field.value && "text-muted-foreground")}>
@@ -223,47 +223,64 @@ function MaintenanceFormContent() {
                         </FormItem>
                     )} />
                     <FormField control={form.control} name="title" render={({ field }) => (
-                      <FormItem><FormLabel className="font-bold">Issue Headline</FormLabel><FormControl><Input placeholder="e.g. Leaking boiler" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
+                      <FormItem><FormLabel className="font-bold">Issue Title</FormLabel><FormControl><Input placeholder="e.g. Broken Boiler" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
                     )} />
                     <FormField control={form.control} name="description" render={({ field }) => (
-                      <FormItem><FormLabel className="font-bold">Detailed Description</FormLabel><FormControl><Textarea placeholder="Details for the contractor..." className="min-h-[100px] resize-none rounded-xl" {...field} /></FormControl><FormMessage /></FormItem>
+                      <FormItem><FormLabel className="font-bold">Detailed Description</FormLabel><FormControl><Textarea placeholder="Specific details for contractor access..." className="min-h-[100px] resize-none rounded-xl" {...field} /></FormControl><FormMessage /></FormItem>
                     )} />
                     <FormField control={form.control} name="expectedCost" render={({ field }) => (
-                      <FormItem className="max-w-md"><FormLabel className="font-bold flex items-center gap-2"><Banknote className="h-4 w-4 text-primary" />Expected Cost (£)</FormLabel><FormControl><Input type="number" step="0.01" min="0" placeholder="0.00" className="h-11" {...field} value={field.value === 0 ? '' : field.value} onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))} /></FormControl><FormDescription className="text-[10px]">Tax audit baseline. Must be 0 or more.</FormDescription><FormMessage /></FormItem>
+                      <FormItem className="max-w-md"><FormLabel className="font-bold flex items-center gap-2"><Banknote className="h-4 w-4 text-primary" />Expected Cost (£)</FormLabel><FormControl><Input type="number" step="0.01" min="0" placeholder="0.00" className="h-11" {...field} value={field.value === 0 ? '' : field.value} onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))} /></FormControl><FormDescription className="text-[10px]">Tax baseline. Must be 0 or more.</FormDescription><FormMessage /></FormItem>
                     )} />
                     <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <FormField control={form.control} name="category" render={({ field }) => (
                         <FormItem><FormLabel className="font-bold">Trade Category</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Pick type" /></SelectTrigger></FormControl><SelectContent>{CATEGORIES.map(c => <SelectItem key={c} value={c}>{c}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>
                       )} />
                       <FormField control={form.control} name="priority" render={({ field }) => (
-                        <FormItem><FormLabel className="font-bold">Priority Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Pick urgency" /></SelectTrigger></FormControl><SelectContent>{PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>
+                        <FormItem><FormLabel className="font-bold">Urgency</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Pick priority" /></SelectTrigger></FormControl><SelectContent>{PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>
                       )} />
                     </div>
                 </div>
 
-                {/* SECTION 2: ASSIGNMENT */}
+                {/* 2. ASSIGNMENT */}
                 <div className="space-y-8 border-t pt-8">
-                    <div className="space-y-6">
-                        <h3 className="text-sm font-bold uppercase tracking-widest text-primary px-1">2. Remediation Assignment</h3>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                            <div className="space-y-4">
-                                <div className="space-y-2"><Label className="font-bold text-xs">Quick-select Contractor</Label><Select value={matchedContractorId} onValueChange={(cid) => { const c = contractors?.find(x => x.id === cid); if (c) { form.setValue('contractorName', c.name); form.setValue('contractorPhone', c.phone); const cat = CATEGORIES.find(cat => c.trade.toLowerCase().includes(cat.toLowerCase().substring(0,4))); if (cat) form.setValue('category', cat); } }}><SelectTrigger className="h-11 bg-muted/20"><SelectValue placeholder="Directory search..." /></SelectTrigger><SelectContent>{contractors?.map(c => <SelectItem key={c.id} value={c.id}>{c.name} ({c.trade})</SelectItem>)}</SelectContent></Select></div>
-                                <FormField control={form.control} name="contractorName" render={({ field }) => (<FormItem><FormLabel className="font-bold">Assigned To</FormLabel><FormControl><Input className="h-11" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                            </div>
-                            <div className="space-y-4">
-                                <FormField control={form.control} name="contractorPhone" render={({ field }) => (<FormItem><FormLabel className="font-bold">Contractor Phone</FormLabel><FormControl><Input className="h-11" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                <FormField control={form.control} name="scheduledDate" render={({ field }) => (<FormItem><FormLabel className="font-bold">Visit Date</FormLabel><FormControl><Input type="date" className="h-11" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={e => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>)} />
-                            </div>
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-primary px-1">2. Remediation Assignment</h3>
+                    <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                        <div className="space-y-4 text-left">
+                            <Label className="font-bold text-xs">Quick-select Contractor</Label>
+                            <Select value={matchedContractorId} onValueChange={(cid) => { const c = contractors?.find(x => x.id === cid); if (c) { form.setValue('contractorName', c.name); form.setValue('contractorPhone', c.phone); const cat = CATEGORIES.find(cat => c.trade.toLowerCase().includes(cat.toLowerCase().substring(0,4))); if (cat) form.setValue('category', cat); } }}>
+                                <SelectTrigger className="h-11 bg-muted/20"><SelectValue placeholder="Directory search..." /></SelectTrigger>
+                                <SelectContent>{contractors?.map(c => <SelectItem key={c.id} value={c.id}>{c.name} ({c.trade})</SelectItem>)}</SelectContent>
+                            </Select>
+                            <FormField control={form.control} name="contractorName" render={({ field }) => (<FormItem><FormLabel className="font-bold">Assigned To</FormLabel><FormControl><Input className="h-11" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                        </div>
+                        <div className="space-y-4">
+                            <FormField control={form.control} name="contractorPhone" render={({ field }) => (<FormItem><FormLabel className="font-bold">Contractor Phone</FormLabel><FormControl><Input className="h-11" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                            <FormField control={form.control} name="scheduledDate" render={({ field }) => (<FormItem><FormLabel className="font-bold">Visit Date</FormLabel><FormControl><Input type="date" className="h-11" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={e => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>)} />
                         </div>
                     </div>
                 </div>
 
-                {/* SECTION 3: AUDIT INFO */}
+                {/* 3. AUDIT INFO */}
                 <div className="space-y-6 border-t pt-8">
-                    <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground px-1 flex items-center gap-2"><Calendar className="h-4 w-4" /> 3. Audit Info</h3>
+                    <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground px-1 flex items-center gap-2"><Calendar className="h-4 w-4" /> 3. Audit Context</h3>
                     <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                        <FormField control={form.control} name="reportedBy" render={({ field }) => (<FormItem><FormLabel className="font-bold">Reported By</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11"><SelectValue /></SelectTrigger></FormControl><SelectContent>{REPORTERS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-                        <FormField control={form.control} name="reportedDate" render={({ field }) => (<FormItem><FormLabel className="font-bold">Date of Report</FormLabel><FormControl><Input type="date" className="h-11" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={e => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>)} />
+                        <FormField control={form.control} name="reportedBy" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="font-bold">Reported By</FormLabel>
+                                <Select onValueChange={field.onChange} value={field.value}>
+                                    <FormControl><SelectTrigger className="h-11"><SelectValue /></SelectTrigger></FormControl>
+                                    <SelectContent>{REPORTERS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+                                </Select>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
+                        <FormField control={form.control} name="reportedDate" render={({ field }) => (
+                            <FormItem>
+                                <FormLabel className="font-bold">Date of Report</FormLabel>
+                                <FormControl><Input type="date" className="h-11" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={e => field.onChange(e.target.value)} /></FormControl>
+                                <FormMessage />
+                            </FormItem>
+                        )} />
                     </div>
                 </div>
                 
