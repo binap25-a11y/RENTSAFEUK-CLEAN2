@@ -9,23 +9,19 @@ import { Badge } from '@/components/ui/badge';
 import { 
   MessageSquare, 
   Loader2, 
-  Home, 
   User, 
   Search,
   ShieldCheck,
-  AlertCircle,
-  RefreshCw,
-  Clock,
   Trash2,
   Reply,
   MoreVertical,
   CheckCircle2,
   Send,
-  MapPin
+  MapPin,
+  Clock
 } from 'lucide-react';
 import { 
   useUser, 
-  useFirebase,
   useFirestore, 
   useCollection, 
   useMemoFirebase,
@@ -68,7 +64,7 @@ import {
 /**
  * @fileOverview Communication Hub
  * Fully reactive and non-blocking management of resident conversations.
- * Optimized to prevent UI freezes during data mutations.
+ * Optimized to prevent UI freezes during rapid data mutations.
  */
 
 interface Message {
@@ -186,25 +182,29 @@ export default function CommunicationHubPage() {
   };
 
   /**
-   * DEFINITIVE NON-BLOCKING DELETE
-   * Clears state instantly to allow modal cleanup, then performs DB action.
+   * REFINED NON-BLOCKING DELETE
+   * Clears state immediately to allow browser modal cleanup.
+   * Deferring the DB action prevents the body from staying stuck in a "frozen" state.
    */
   const handleDeleteConfirm = () => {
     if (!firestore || !messageToDelete) return;
     
-    // Capture reference for async action
     const docId = messageToDelete.id;
     const msgRef = doc(firestore, 'messages', docId);
     
-    // UI Action: Clear state immediately to dismiss dialog and restore body scroll/events
+    // UI Action: Close dialog instantly to restore mouse pointer/hand functionality
     setMessageToDelete(null);
     
-    // Background Task: Slight delay ensures Dialog cleanup finishes before DB re-render triggers
-    setTimeout(() => {
-        deleteDocumentNonBlocking(msgRef);
-    }, 100);
-    
-    toast({ title: 'Message Removed from Hub' });
+    // UX Action: Show feedback instantly
+    toast({ title: 'Message removed from registry' });
+
+    // Background Task: Slight delay ensures Dialog cleanup finishes and body attributes are cleared
+    // before the reactive list re-render triggers.
+    window.requestAnimationFrame(() => {
+        setTimeout(() => {
+            deleteDocumentNonBlocking(msgRef);
+        }, 300);
+    });
   };
 
   const handleSendReply = async () => {
@@ -246,6 +246,10 @@ export default function CommunicationHubPage() {
     });
   };
 
+  const navigateToThread = (propertyId: string, tenantId: string) => {
+    router.push(`/dashboard/properties/${propertyId}?tab=messages&tenantId=${tenantId}`);
+  };
+
   return (
     <div className="space-y-8 max-w-5xl mx-auto text-left animate-in fade-in duration-500">
       <div className="flex flex-col gap-2 p-6 rounded-3xl bg-primary/5 border border-primary/10">
@@ -280,7 +284,7 @@ export default function CommunicationHubPage() {
       {isLoadingMessages ? (
         <div className="flex flex-col justify-center items-center h-64 gap-4">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">Syncing Reactive Hub...</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">Syncing Hub...</p>
         </div>
       ) : filteredMessages.length === 0 ? (
         <div className="text-center py-32 border-2 border-dashed rounded-[3rem] bg-muted/5">
@@ -295,8 +299,8 @@ export default function CommunicationHubPage() {
             {filteredMessages.map((msg) => {
                 const isLandlord = msg.senderId === user?.uid;
                 const isUnread = !isLandlord && msg.read !== true;
-                const propertyAddress = propertyMap[msg.propertyId] || 'Assigned Asset';
-                const residentName = tenantNameMap[msg.tenantId] || msg.senderName || 'Resident';
+                const propertyAddress = propertyMap[m.propertyId] || 'Assigned Asset';
+                const residentName = tenantNameMap[m.tenantId] || msg.senderName || 'Resident';
                 
                 return (
                     <Card 
@@ -305,7 +309,7 @@ export default function CommunicationHubPage() {
                             "shadow-md border-none overflow-hidden transition-all group relative cursor-pointer",
                             isUnread ? "ring-2 ring-primary/20 bg-primary/[0.02]" : "hover:bg-muted/5"
                         )}
-                        onClick={() => router.push(`/dashboard/properties/${msg.propertyId}?tab=messages&tenantId=${msg.tenantId}`)}
+                        onClick={() => navigateToThread(msg.propertyId, msg.tenantId)}
                     >
                         <div className="flex items-start gap-4 p-5">
                             <div className="relative shrink-0">
@@ -341,7 +345,7 @@ export default function CommunicationHubPage() {
                                         </span>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2" onClick={(e) => e.stopPropagation()}>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 cursor-pointer" onClick={(e) => e.stopPropagation()}>
                                                     <MoreVertical className="h-4 w-4" />
                                                 </Button>
                                             </DropdownMenuTrigger>
@@ -366,10 +370,14 @@ export default function CommunicationHubPage() {
                                                     {msg.read ? 'Mark as Unread' : 'Mark as Read'}
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
-                                                <DropdownMenuItem asChild className="cursor-pointer">
-                                                    <Link href={`/dashboard/properties/${msg.propertyId}?tab=messages&tenantId=${msg.tenantId}`}>
-                                                        <MessageSquare className="mr-2 h-4 w-4" /> View Full Thread
-                                                    </Link>
+                                                <DropdownMenuItem 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        navigateToThread(msg.propertyId, msg.tenantId);
+                                                    }} 
+                                                    className="cursor-pointer"
+                                                >
+                                                    <MessageSquare className="mr-2 h-4 w-4" /> View Full Thread
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem 
                                                     onClick={(e) => {
@@ -390,9 +398,6 @@ export default function CommunicationHubPage() {
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <Badge variant="outline" className="text-[8px] uppercase font-bold tracking-widest bg-background py-0 h-5 border-primary/20 hover:bg-primary/5 transition-colors">
-                                        <Home className="h-2.5 w-2.5 mr-1" /> Open Asset Hub
-                                    </Badge>
                                     {!isLandlord && (
                                         <Button 
                                             variant="link" 
@@ -417,8 +422,8 @@ export default function CommunicationHubPage() {
       <div className="p-6 rounded-2xl bg-muted/30 border border-dashed flex items-center gap-4 text-left">
           <ShieldCheck className="h-10 w-10 text-primary opacity-20 shrink-0" />
           <div className="space-y-1">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">High-Performance Registry</p>
-              <p className="text-[11px] text-muted-foreground/70 leading-relaxed font-medium">All interactions are non-blocking and reactive. The interface remains active during database operations, providing a fluid management experience across the entire portfolio.</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Reactive Registry Audit</p>
+              <p className="text-[11px] text-muted-foreground/70 leading-relaxed font-medium">All interactions are non-blocking. The registry remains active during deletions, allowing for rapid management flow without UI freezing or forced reloads.</p>
           </div>
       </div>
 
@@ -452,7 +457,7 @@ export default function CommunicationHubPage() {
             <DialogFooter className="bg-muted/5 -mx-6 -mb-6 p-6 border-t flex items-center justify-between">
                 <div className="hidden sm:flex items-center gap-2 text-[10px] text-muted-foreground font-bold uppercase">
                     <Clock className="h-3 w-3" />
-                    Reactive Sync Link
+                    Reactive Handshake
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
                     <Button variant="ghost" onClick={() => setReplyingTo(null)} className="font-bold">Cancel</Button>
@@ -474,7 +479,7 @@ export default function CommunicationHubPage() {
                 </div>
                 <AlertDialogTitle className="text-xl font-headline text-center">Delete Audit Record?</AlertDialogTitle>
                 <AlertDialogDescription className="text-center font-medium">
-                    This will remove this record from the Hub history instantly. This action is non-blocking and reactive, ensuring your management flow is not interrupted.
+                    This will remove this record from the registry history instantly. This action is non-blocking, ensuring your cursor remains active for subsequent tasks.
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="mt-6 gap-3 flex-col-reverse sm:flex-row">
