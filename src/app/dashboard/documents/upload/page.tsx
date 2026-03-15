@@ -6,7 +6,7 @@ import { useForm } from 'react-hook-form';
 import { z } from 'zod';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import {
   Card,
   CardContent,
@@ -98,6 +98,11 @@ export default function UploadDocumentPage() {
   const watchIssueDate = form.watch('issueDate');
   const watchExpiryDate = form.watch('expiryDate');
   const watchType = form.watch('documentType');
+
+  // SELECTION MEMORY HANDSHAKE: Ensure preferences are updated immediately on change
+  useEffect(() => {
+    if (watchType) localStorage.setItem('last_doc_type', watchType);
+  }, [watchType]);
 
   const complianceWarning = useMemo(() => {
     if (watchType === 'Gas Safety Certificate' && watchIssueDate && watchExpiryDate) {
@@ -220,7 +225,13 @@ export default function UploadDocumentPage() {
                   render={({ field }) => (
                       <FormItem>
                       <FormLabel className="font-bold">Active Property</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
+                      <Select 
+                        onValueChange={(val) => {
+                          field.onChange(val);
+                          localStorage.setItem('last_doc_prop', val);
+                        }} 
+                        value={field.value}
+                      >
                           <FormControl>
                           <SelectTrigger className="h-11">
                               <SelectValue placeholder="Select a property" />
@@ -244,7 +255,13 @@ export default function UploadDocumentPage() {
                       render={({ field }) => (
                       <FormItem>
                           <FormLabel className="font-bold">Document Type</FormLabel>
-                          <Select onValueChange={field.onChange} value={field.value}>
+                          <Select 
+                            onValueChange={(val) => {
+                              field.onChange(val);
+                              localStorage.setItem('last_doc_type', val);
+                            }} 
+                            value={field.value}
+                          >
                           <FormControl>
                               <SelectTrigger className="h-11">
                               <SelectValue placeholder="Select a type" />

@@ -143,7 +143,7 @@ export default function EditDocumentPage() {
 
       await updateDoc(docRef, JSON.parse(JSON.stringify(updateData)));
       
-      // PERSISTENCE HANDSHAKE: Avoid repeated selection in future sessions
+      // PERSISTENCE HANDSHAKE: Update selection memory for future new documents
       localStorage.setItem('last_doc_type', data.documentType);
       
       toast({ title: 'Document Updated', description: 'Changes have been synchronized.' });
@@ -160,7 +160,7 @@ export default function EditDocumentPage() {
   if (!documentRecord) return <div className="text-center py-20 italic">Document record not found.</div>;
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6">
+    <div className="max-w-2xl mx-auto space-y-6 text-left">
       <div className="flex items-center gap-4">
         <Button variant="outline" size="icon" asChild>
           <Link href="/dashboard/documents">
@@ -196,7 +196,14 @@ export default function EditDocumentPage() {
                   render={({ field }) => (
                   <FormItem>
                       <FormLabel className="font-bold">Document Type</FormLabel>
-                      <Select key={dataKey} onValueChange={field.onChange} value={field.value}>
+                      <Select 
+                        key={dataKey} 
+                        onValueChange={(val) => {
+                          field.onChange(val);
+                          localStorage.setItem('last_doc_type', val);
+                        }} 
+                        value={field.value}
+                      >
                       <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select document type" /></SelectTrigger></FormControl>
                       <SelectContent>
                           {[
