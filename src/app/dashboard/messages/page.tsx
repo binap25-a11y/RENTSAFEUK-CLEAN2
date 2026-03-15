@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -23,6 +22,7 @@ import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebas
 import { collection, query, where, orderBy, limit } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
+import { cn } from '@/lib/utils';
 
 interface Message {
     id: string;
