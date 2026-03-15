@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -159,14 +160,21 @@ export default function EditMaintenancePage() {
 
     useEffect(() => {
         if (maintenanceLog && !isLoadingProps) {
+            // SELECTION MEMORY HANDSHAKE: Use session preferences during multi-edit triage
+            const storedProp = localStorage.getItem('last_repair_prop');
+            const storedCat = localStorage.getItem('last_repair_cat');
+            const storedPrio = localStorage.getItem('last_repair_prio');
+            const storedStatus = localStorage.getItem('last_repair_status');
+            const storedReporter = localStorage.getItem('last_repair_reporter');
+
             form.reset({
-                propertyId: maintenanceLog.propertyId || propertyIdFromUrl || '',
+                propertyId: storedProp || maintenanceLog.propertyId || propertyIdFromUrl || '',
                 title: maintenanceLog.title || '',
                 description: maintenanceLog.description || '',
-                category: normalizeValue(maintenanceLog.category, CATEGORIES),
-                priority: normalizeValue(maintenanceLog.priority, PRIORITIES),
-                status: normalizeValue(maintenanceLog.status, STATUSES),
-                reportedBy: normalizeValue(maintenanceLog.reportedBy || 'Landlord', REPORTERS),
+                category: storedCat || normalizeValue(maintenanceLog.category, CATEGORIES),
+                priority: storedPrio || normalizeValue(maintenanceLog.priority, PRIORITIES),
+                status: storedStatus || normalizeValue(maintenanceLog.status, STATUSES),
+                reportedBy: storedReporter || normalizeValue(maintenanceLog.reportedBy || 'Landlord', REPORTERS),
                 reportedDate: safeToDate(maintenanceLog.reportedDate) || new Date(),
                 scheduledDate: safeToDate(maintenanceLog.scheduledDate) || undefined,
                 expectedCost: maintenanceLog.expectedCost || 0,
@@ -178,8 +186,8 @@ export default function EditMaintenancePage() {
         }
     }, [maintenanceLog, form, propertyIdFromUrl, isLoadingProps]);
 
-    // REACTIVE KEY: Ensures all Selects re-sync when registry data loads
-    const dataKey = maintenanceLog ? `registry-loaded-${maintenanceLog.status}-${maintenanceLog.category}` : 'registry-pending';
+    // REACTIVE KEY: Ensures all Selects re-sync when registry data or preferences change
+    const dataKey = maintenanceLog ? `registry-loaded-${localStorage.getItem('last_repair_status')}-${localStorage.getItem('last_repair_cat')}` : 'registry-pending';
 
     async function handleFormSubmit(data: MaintenanceFormValues) {
         if (!user || !firestore || !maintenanceLogRef) return;
@@ -225,7 +233,7 @@ export default function EditMaintenancePage() {
                                 <FormField control={form.control} name="propertyId" render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="font-bold">Target Property</FormLabel>
-                                        <Select key={`${dataKey}-prop`} onValueChange={field.onChange} value={field.value ? String(field.value) : ""}>
+                                        <Select key={`${dataKey}-prop`} onValueChange={(val) => { field.onChange(val); localStorage.setItem('last_repair_prop', val); }} value={field.value ? String(field.value) : ""}>
                                             <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select property" /></SelectTrigger></FormControl>
                                             <SelectContent>
                                                 {properties?.map(p => (<SelectItem key={p.id} value={p.id}>{formatAddress(p.address)}</SelectItem>))}
@@ -245,7 +253,7 @@ export default function EditMaintenancePage() {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                     <FormField control={form.control} name="category" render={({ field }) => (
                                         <FormItem><FormLabel className="font-bold">Category</FormLabel>
-                                            <Select key={`${dataKey}-cat`} onValueChange={field.onChange} value={field.value ? String(field.value) : ""}>
+                                            <Select key={`${dataKey}-cat`} onValueChange={(val) => { field.onChange(val); localStorage.setItem('last_repair_cat', val); }} value={field.value ? String(field.value) : ""}>
                                                 <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select category" /></SelectTrigger></FormControl>
                                                 <SelectContent>{CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent>
                                             </Select>
@@ -254,7 +262,7 @@ export default function EditMaintenancePage() {
                                     )} />
                                     <FormField control={form.control} name="priority" render={({ field }) => (
                                         <FormItem><FormLabel className="font-bold">Priority</FormLabel>
-                                            <Select key={`${dataKey}-prio`} onValueChange={field.onChange} value={field.value ? String(field.value) : ""}>
+                                            <Select key={`${dataKey}-prio`} onValueChange={(val) => { field.onChange(val); localStorage.setItem('last_repair_prio', val); }} value={field.value ? String(field.value) : ""}>
                                                 <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select priority" /></SelectTrigger></FormControl>
                                                 <SelectContent>{PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
                                             </Select>
@@ -264,7 +272,7 @@ export default function EditMaintenancePage() {
                                 </div>
                                 <FormField control={form.control} name="status" render={({ field }) => (
                                     <FormItem><FormLabel className="font-bold">Repair Status</FormLabel>
-                                        <Select key={`${dataKey}-status`} onValueChange={field.onChange} value={field.value ? String(field.value) : ""}>
+                                        <Select key={`${dataKey}-status`} onValueChange={(val) => { field.onChange(val); localStorage.setItem('last_repair_status', val); }} value={field.value ? String(field.value) : ""}>
                                             <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select status" /></SelectTrigger></FormControl>
                                             <SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                                         </Select>
@@ -287,7 +295,10 @@ export default function EditMaintenancePage() {
                                                     form.setValue('contractorName', c.name); 
                                                     form.setValue('contractorPhone', c.phone); 
                                                     const cat = CATEGORIES.find(cat => c.trade.toLowerCase().includes(cat.toLowerCase().substring(0,4))); 
-                                                    if (cat) form.setValue('category', cat); 
+                                                    if (cat) {
+                                                        form.setValue('category', cat);
+                                                        localStorage.setItem('last_repair_cat', cat);
+                                                    }
                                                 } 
                                             }}
                                         >
@@ -308,7 +319,7 @@ export default function EditMaintenancePage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                     <FormField control={form.control} name="reportedBy" render={({ field }) => (
                                         <FormItem><FormLabel className="font-bold">Reported By</FormLabel>
-                                            <Select key={`${dataKey}-reporter`} onValueChange={field.onChange} value={field.value ? String(field.value) : ""}>
+                                            <Select key={`${dataKey}-reporter`} onValueChange={(val) => { field.onChange(val); localStorage.setItem('last_repair_reporter', val); }} value={field.value ? String(field.value) : ""}>
                                                 <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select reporter" /></SelectTrigger></FormControl>
                                                 <SelectContent>{REPORTERS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
                                             </Select>

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -123,13 +124,17 @@ export default function EditTenantPage() {
   
   useEffect(() => {
     if (tenant && !isLoadingProperties) {
+        // SELECTION MEMORY HANDSHAKE: Use session preferences during profile updates
+        const storedProp = localStorage.getItem('last_tenant_prop');
+        const storedRentDay = localStorage.getItem('last_rent_day');
+
         form.reset({
             name: tenant.name || '',
             email: tenant.email || '',
             telephone: tenant.telephone || '',
-            propertyId: tenant.propertyId || propertyIdFromUrl || '',
+            propertyId: storedProp || tenant.propertyId || propertyIdFromUrl || '',
             monthlyRent: tenant.monthlyRent,
-            rentDueDay: tenant.rentDueDay || 1,
+            rentDueDay: storedRentDay ? Number(storedRentDay) : (tenant.rentDueDay || 1),
             tenancyStartDate: safeToDate(tenant.tenancyStartDate) || new Date(),
             tenancyEndDate: safeToDate(tenant.tenancyEndDate) || undefined,
             notes: tenant.notes || '',
@@ -137,8 +142,8 @@ export default function EditTenantPage() {
     }
   }, [tenant, form, propertyIdFromUrl, isLoadingProperties]);
 
-  // REACTIVE KEY: Forces re-render of Select components when registry data loads
-  const dataKey = tenant ? `registry-loaded-${tenant.propertyId}-${tenant.rentDueDay}` : 'registry-pending';
+  // REACTIVE KEY: Forces re-render of Select components when registry data loads or preferences change
+  const dataKey = tenant ? `registry-loaded-${localStorage.getItem('last_tenant_prop')}-${localStorage.getItem('last_rent_day')}` : 'registry-pending';
 
   async function onSubmit(data: TenantFormValues) {
     if (!user || !firestore || !tenant || !tenantRef) {
@@ -231,7 +236,7 @@ export default function EditTenantPage() {
                     <FormLabel className="font-bold">Assigned Property</FormLabel>
                     <Select 
                       key={`${dataKey}-prop`} 
-                      onValueChange={field.onChange} 
+                      onValueChange={(val) => { field.onChange(val); localStorage.setItem('last_tenant_prop', val); }} 
                       value={field.value ? String(field.value) : ""}
                     >
                       <FormControl>
@@ -273,7 +278,7 @@ export default function EditTenantPage() {
                           <FormLabel className="font-bold flex items-center gap-2"><CalendarDays className="h-4 w-4 text-primary" />Rent Due Day</FormLabel>
                           <Select 
                             key={`${dataKey}-rent-day`} 
-                            onValueChange={(val) => field.onChange(Number(val))} 
+                            onValueChange={(val) => { field.onChange(Number(val)); localStorage.setItem('last_rent_day', val); }} 
                             value={field.value ? String(field.value) : "1"}
                           >
                               <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select day" /></SelectTrigger></FormControl>

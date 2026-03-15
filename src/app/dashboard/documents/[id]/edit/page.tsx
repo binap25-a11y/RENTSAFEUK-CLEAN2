@@ -100,13 +100,16 @@ export default function EditDocumentPage() {
   const { data: documentRecord, isLoading } = useDoc<DocumentRecord>(docRef);
 
   // REACTIVE KEY: Ensures selection is remembered and correctly displayed upon record load
-  const dataKey = documentRecord ? `registry-loaded-${documentRecord.documentType}` : 'registry-pending';
+  const dataKey = documentRecord ? `registry-loaded-${documentRecord.documentType}-${localStorage.getItem('last_doc_type')}` : 'registry-pending';
 
   useEffect(() => {
     if (documentRecord) {
+      // SELECTION MEMORY HANDSHAKE: Prefer last chosen type during multi-edit sessions
+      const sessionPreference = typeof window !== 'undefined' ? localStorage.getItem('last_doc_type') : null;
+      
       form.reset({
         title: documentRecord.title,
-        documentType: documentRecord.documentType,
+        documentType: sessionPreference || documentRecord.documentType,
         issueDate: toDate(documentRecord.issueDate) || new Date(),
         expiryDate: toDate(documentRecord.expiryDate) || '',
         notes: documentRecord.notes || '',
@@ -142,9 +145,6 @@ export default function EditDocumentPage() {
       };
 
       await updateDoc(docRef, JSON.parse(JSON.stringify(updateData)));
-      
-      // PERSISTENCE HANDSHAKE: Update selection memory for future new documents
-      localStorage.setItem('last_doc_type', data.documentType);
       
       toast({ title: 'Document Updated', description: 'Changes have been synchronized.' });
       router.push('/dashboard/documents');
