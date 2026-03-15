@@ -70,7 +70,7 @@ const maintenanceSchema = z.object({
   contractorName: z.string().optional(),
   contractorPhone: z.string().optional(),
   scheduledDate: z.coerce.date().optional(),
-  estimatedCost: z.coerce.number().optional(),
+  estimatedCost: z.coerce.number().min(0, "Cost cannot be negative").optional(),
   notes: z.string().optional(),
 });
 
@@ -420,13 +420,14 @@ function MaintenanceFormContent() {
                               <Input 
                                   type="number"
                                   step="0.01"
+                                  min="0"
                                   placeholder="0.00" 
                                   className="h-11 bg-background" 
                                   {...field}
                                   onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
                               />
                               </FormControl>
-                              <FormDescription className="text-[10px]">Will be reflected in portfolio financials.</FormDescription>
+                              <FormDescription className="text-[10px]">Will be reflected in portfolio financials. Must be 0 or greater.</FormDescription>
                               <FormMessage />
                           </FormItem>
                         )} />

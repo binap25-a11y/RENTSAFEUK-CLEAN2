@@ -57,7 +57,7 @@ const maintenanceEditSchema = z.object({
   contractorName: z.string().optional(),
   contractorPhone: z.string().optional(),
   scheduledDate: z.coerce.date().optional(),
-  estimatedCost: z.coerce.number().optional(),
+  estimatedCost: z.coerce.number().min(0, "Cost cannot be negative").optional(),
   notes: z.string().optional(),
 });
 
@@ -326,9 +326,16 @@ export default function EditMaintenancePage() {
                                         )} />
                                         <FormField control={form.control} name="estimatedCost" render={({ field }) => (
                                             <FormItem>
-                                                <FormLabel>Estimated Cost (£)</FormLabel>
+                                                <FormLabel>Expected Cost (£)</FormLabel>
                                                 <FormControl>
-                                                    <Input type="text" inputMode="decimal" placeholder="150.00" {...field} onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} />
+                                                    <Input 
+                                                        type="number" 
+                                                        step="0.01" 
+                                                        min="0"
+                                                        placeholder="150.00" 
+                                                        {...field} 
+                                                        onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} 
+                                                    />
                                                 </FormControl>
                                                 <FormMessage />
                                             </FormItem>
