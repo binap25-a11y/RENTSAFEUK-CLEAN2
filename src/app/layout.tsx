@@ -3,9 +3,16 @@ import { Toaster } from '@/components/ui/toaster';
 import './globals.css';
 import { FirebaseClientProvider } from '@/firebase/client-provider';
 
+/**
+ * @fileOverview Root Layout for RentSafeUK
+ * Explicitly configures brand-aligned metadata for PWA and mobile installs.
+ * Brand Color: #A7D1AB (Soft Green)
+ */
+
 export const metadata: Metadata = {
   title: 'RentSafeUK',
-  description: 'Professional UK Property Management App',
+  description: 'Professional UK Property Management & Portfolio Audit Trail',
+  manifest: '/manifest.webmanifest',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -16,6 +23,7 @@ export const metadata: Metadata = {
   },
   icons: {
     icon: 'https://placehold.co/32x32/A7D1AB/ffffff/png?text=RS',
+    shortcut: 'https://placehold.co/196x196/A7D1AB/ffffff/png?text=RS',
     apple: 'https://placehold.co/180x180/A7D1AB/ffffff/png?text=RS',
   },
 };
