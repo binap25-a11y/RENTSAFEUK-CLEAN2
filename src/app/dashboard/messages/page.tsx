@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo } from 'react';
@@ -235,7 +236,7 @@ export default function LandlordInboxPage() {
           </div>
           <div className="hidden sm:block">
               <Badge variant="outline" className="h-12 px-4 rounded-2xl border-2 font-bold uppercase tracking-widest text-[10px] bg-background">
-                  {rawMessages?.length || 0} Records Indexed
+                  {filteredMessages.length} Messages
               </Badge>
           </div>
       </div>
