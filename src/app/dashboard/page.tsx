@@ -137,7 +137,7 @@ export default function DashboardPage() {
     <div className="space-y-8 animate-in fade-in duration-500 text-left">
       <div className="flex flex-col gap-2">
         <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Property Portfolio</h1>
-        <p className="text-muted-foreground font-medium text-lg">Central command for your managed estate.</p>
+        <p className="text-muted-foreground font-medium text-lg">Central command for your managed rental properties.</p>
       </div>
 
       {/* Primary Stats Grid */}
