@@ -96,6 +96,15 @@
       ]
     },
     {
+      "collectionGroup": "repairs",
+      "queryScope": "COLLECTION_GROUP",
+      "fields": [
+        { "fieldPath": "landlordId", "order": "ASCENDING" },
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "reportedDate", "order": "DESCENDING" }
+      ]
+    },
+    {
       "collectionGroup": "inspections",
       "queryScope": "COLLECTION",
       "fields": [
