@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -92,6 +93,17 @@ interface Expense {
   notes?: string;
 }
 
+interface MaintenanceRepair {
+    id: string;
+    propertyId: string;
+    landlordId: string;
+    reportedDate: any;
+    category: string;
+    title: string;
+    estimatedCost?: number;
+    status: string;
+}
+
 type PaymentStatus = 'Paid' | 'Partially Paid' | 'Unpaid' | 'Pending';
 interface RentPayment {
   id: string;
@@ -162,6 +174,13 @@ export default function FinancialsPage() {
   }, [firestore, user, selectedYear]);
   const { data: allRentPayments, isLoading: isLoadingRent } = useCollection<RentPayment>(rentQuery);
 
+  // 4. Fetch maintenance repairs for financial aggregation
+  const repairsQuery = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return query(collection(firestore, 'repairs'), where('landlordId', '==', user.uid), limit(500));
+  }, [firestore, user]);
+  const { data: allRepairs, isLoading: isLoadingRepairs } = useCollection<MaintenanceRepair>(repairsQuery);
+
   const selectedProperty = useMemo(() => {
     if (selectedPropertyId === 'all') return undefined;
     return activeProperties?.find(p => p.id === selectedPropertyId);
@@ -177,6 +196,17 @@ export default function FinancialsPage() {
     });
   }, [allExpenses, selectedPropertyId, selectedYear]);
 
+  const repairCosts = useMemo(() => {
+    if (!allRepairs || !selectedYear) return [];
+    return allRepairs.filter(r => {
+        const d = safeToDate(r.reportedDate);
+        const matchesYear = d && isSameYear(d, new Date(selectedYear, 0, 1));
+        const matchesProperty = selectedPropertyId === 'all' || r.propertyId === selectedPropertyId;
+        const hasCost = Number(r.estimatedCost || 0) > 0;
+        return matchesYear && matchesProperty && hasCost;
+    });
+  }, [allRepairs, selectedPropertyId, selectedYear]);
+
   const rentPayments = useMemo(() => {
     if (!allRentPayments) return [];
     return allRentPayments.filter(p => selectedPropertyId === 'all' || p.propertyId === selectedPropertyId);
@@ -190,10 +220,15 @@ export default function FinancialsPage() {
   }, [activeProperties, selectedPropertyId, selectedProperty]);
 
   const totalPaidRent = useMemo(() => rentPayments.reduce((acc, p) => acc + (Number(p.amountPaid) || 0), 0), [rentPayments]);
-  const totalExpenses = useMemo(() => expenses.reduce((acc, expense) => acc + (Number(expense.amount) || 0), 0), [expenses]);
+  const totalExpenses = useMemo(() => {
+      const baseTotal = expenses.reduce((acc, expense) => acc + (Number(expense.amount) || 0), 0);
+      const repairTotal = repairCosts.reduce((acc, r) => acc + (Number(r.estimatedCost) || 0), 0);
+      return baseTotal + repairTotal;
+  }, [expenses, repairCosts]);
+
   const netIncome = totalPaidRent - totalExpenses;
   
-  const isLoading = isLoadingProperties || isLoadingExpenses || isLoadingRent || !selectedYear;
+  const isLoading = isLoadingProperties || isLoadingExpenses || isLoadingRent || isLoadingRepairs || !selectedYear;
 
   const generateHMRCPDF = () => {
     if (!selectedYear) return;
@@ -206,16 +241,21 @@ export default function FinancialsPage() {
     doc.setLineWidth(0.5);
     doc.line(14, 40, 200, 40);
 
-    const ratesInsurance = expenses.filter(e => ['Insurance', 'Utilities'].includes(e.expenseType)).reduce((a, b) => a + (Number(b.amount) || 0), 0);
-    const maintenance = expenses.filter(e => ['Repairs and Maintenance', 'Cleaning', 'Gardening'].includes(e.expenseType)).reduce((a, b) => a + (Number(b.amount) || 0), 0);
+    const baseInsurance = expenses.filter(e => ['Insurance', 'Utilities'].includes(e.expenseType)).reduce((a, b) => a + (Number(b.amount) || 0), 0);
+    
+    // Aggregate Maintenance (Base + Repairs)
+    const baseMaintenance = expenses.filter(e => ['Repairs and Maintenance', 'Cleaning', 'Gardening'].includes(e.expenseType)).reduce((a, b) => a + (Number(b.amount) || 0), 0);
+    const repairMaintenance = repairCosts.reduce((a, b) => a + (Number(b.estimatedCost) || 0), 0);
+    const totalMaintenance = baseMaintenance + repairMaintenance;
+
     const professionalFees = expenses.filter(e => ['Letting Agent Fees'].includes(e.expenseType)).reduce((a, b) => a + (Number(b.amount) || 0), 0);
     const financeCosts = expenses.filter(e => ['Mortgage Interest'].includes(e.expenseType)).reduce((a, b) => a + (Number(b.amount) || 0), 0);
     const otherExpenses = expenses.filter(e => e.expenseType === 'Other').reduce((a, b) => a + (Number(b.amount) || 0), 0);
 
     const hmrcCategories = [
         ['Rent received (total for period)', formatCurrency(totalPaidRent)],
-        ['Rates, council tax, insurance, ground rents etc.', formatCurrency(ratesInsurance)],
-        ['Property repairs and maintenance', formatCurrency(maintenance)],
+        ['Rates, council tax, insurance, ground rents etc.', formatCurrency(baseInsurance)],
+        ['Property repairs and maintenance', formatCurrency(totalMaintenance)],
         ['Management fees and other professional fees', formatCurrency(professionalFees)],
         ['Other allowable property expenses', formatCurrency(otherExpenses)],
         ['Residential finance costs (for reference)', formatCurrency(financeCosts)],
@@ -278,7 +318,7 @@ export default function FinancialsPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card className="border-none shadow-md overflow-hidden text-left"><div className="h-1 bg-primary w-full" /><CardHeader className="pb-2 px-6"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{selectedPropertyId === 'all' ? 'Portfolio Gross' : 'Property Gross'}</CardTitle></CardHeader><CardContent className='px-6 pb-6'><div className="text-2xl font-bold tracking-tight">{formatCurrency(displayIncome)}</div></CardContent></Card>
             <Card className="border-none shadow-md overflow-hidden text-left"><div className="h-1 bg-green-500 w-full" /><CardHeader className="pb-2 px-6"><CardTitle className="text-xs font-bold uppercase tracking-widest text-green-600">Income Received</CardTitle></CardHeader><CardContent className='px-6 pb-6'><div className="text-2xl font-bold tracking-tight">{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(totalPaidRent)}</div></CardContent></Card>
-            <Card className="border-none shadow-md overflow-hidden text-left"><div className="h-1 bg-destructive w-full" /><CardHeader className="pb-2 px-6"><CardTitle className="text-xs font-bold uppercase tracking-widest text-destructive">Expenses</CardTitle></CardHeader><CardContent className='px-6 pb-6'><div className="text-2xl font-bold tracking-tight">{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(totalExpenses)}</div></CardContent></Card>
+            <Card className="border-none shadow-md overflow-hidden text-left"><div className="h-1 bg-destructive w-full" /><CardHeader className="pb-2 px-6"><CardTitle className="text-xs font-bold uppercase tracking-widest text-destructive">Expenses (Incl. Repairs)</CardTitle></CardHeader><CardContent className='px-6 pb-6'><div className="text-2xl font-bold tracking-tight">{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(totalExpenses)}</div></CardContent></Card>
             <Card className="border-none shadow-md overflow-hidden text-left"><div className="h-1 bg-amber-500 w-full" /><CardHeader className="pb-2 px-6"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Net Position</CardTitle></CardHeader><CardContent className='px-6 pb-6'><div className={"text-2xl font-bold tracking-tight " + (netIncome < 0 ? "text-destructive" : "text-primary")}>{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(netIncome)}</div></CardContent></Card>
         </div>
 
@@ -293,7 +333,7 @@ export default function FinancialsPage() {
                     <PoundSterling className="mr-2 h-4 w-4 text-primary" /> HMRC Tax Export (PDF)
                   </Button>
                 </div>
-                <AnnualSummary selectedYear={selectedYear || 0} expenses={expenses} isLoadingExpenses={isLoading} />
+                <AnnualSummary selectedYear={selectedYear || 0} expenses={expenses} repairCosts={repairCosts} isLoadingExpenses={isLoading} />
             </TabsContent>
             <TabsContent value="statement">
                 <RentStatement selectedProperty={selectedProperty} selectedYear={selectedYear || 0} rentPayments={rentPayments} isLoadingPayments={isLoading} />
@@ -450,7 +490,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
             </CardContent>
         </Card>
 
-        <div className="flex items-center gap-3 w-full px-1">
+        <div className="flex items-center gap-3 w-full px-1 text-left">
             <Button asChild variant="outline" className="flex-1 font-bold shadow-sm h-11 px-6 border-primary/20 hover:bg-primary/5 transition-all uppercase tracking-widest text-[10px]">
                 <Link href="/dashboard/expenses/logged">
                     <History className="mr-2 h-4 w-4 text-primary" /> View History
@@ -469,12 +509,19 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
   );
 }
 
-function AnnualSummary({ selectedYear, expenses, isLoadingExpenses }: { selectedYear: number, expenses: Expense[], isLoadingExpenses: boolean }) {
+function AnnualSummary({ selectedYear, expenses, repairCosts, isLoadingExpenses }: { selectedYear: number, expenses: Expense[], repairCosts: MaintenanceRepair[], isLoadingExpenses: boolean }) {
   const expensesByCategory = useMemo(() => {
     const map: Record<string, number> = {};
     expenses.forEach(e => { map[e.expenseType] = (map[e.expenseType] || 0) + (Number(e.amount) || 0); });
+    
+    // Add repair costs specifically into Repairs and Maintenance category
+    const totalRepairCost = repairCosts.reduce((acc, r) => acc + (Number(r.estimatedCost) || 0), 0);
+    if (totalRepairCost > 0) {
+        map['Repairs and Maintenance'] = (map['Repairs and Maintenance'] || 0) + totalRepairCost;
+    }
+
     return Object.entries(map).sort(([, a], [, b]) => b - a);
-  }, [expenses]);
+  }, [expenses, repairCosts]);
 
   return (
     <Card className="mt-6 border-none shadow-lg overflow-hidden text-left">

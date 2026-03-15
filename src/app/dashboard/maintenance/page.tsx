@@ -39,7 +39,8 @@ import {
   PlusCircle, 
   Search, 
   ChevronsUpDown,
-  List
+  List,
+  Banknote
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useState, useMemo, useEffect, Suspense } from 'react';
@@ -127,6 +128,7 @@ function MaintenanceFormContent() {
       contractorName: '',
       contractorPhone: '',
       notes: '',
+      estimatedCost: 0,
     },
   });
 
@@ -213,7 +215,7 @@ function MaintenanceFormContent() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
-        <div className="space-y-2">
+        <div className="space-y-2 text-left">
           <h1 className="text-3xl font-bold font-headline tracking-tight text-primary flex items-center gap-2">
               <Wrench className="h-8 w-8" />
               Maintenance Hub
@@ -221,7 +223,7 @@ function MaintenanceFormContent() {
           <p className="text-muted-foreground font-medium text-lg">Record and track repairs across your portfolio.</p>
         </div>
 
-        <Card className="border-none shadow-xl overflow-hidden">
+        <Card className="border-none shadow-xl overflow-hidden text-left">
           <CardHeader className="bg-muted/30 border-b pb-6">
             <CardTitle className="text-xl flex items-center gap-2 text-foreground">
                 <AlertCircle className="h-5 w-5 text-primary" />
@@ -440,7 +442,7 @@ function MaintenanceFormContent() {
                             )} />
                         </div>
                         <div className="space-y-6">
-                            <h3 className="font-bold text-lg flex items-center gap-2 text-green-600"><PlusCircle className="h-5 w-5" /> Assignment</h3>
+                            <h3 className="font-bold text-lg flex items-center gap-2 text-green-600"><PlusCircle className="h-5 w-5" /> Assignment & Financials</h3>
                             <div className="space-y-2">
                                 <Label className="font-bold">Quick-select Contractor</Label>
                                 <Select onValueChange={(contractorId) => {
@@ -460,20 +462,42 @@ function MaintenanceFormContent() {
                                     </SelectContent>
                                 </Select>
                             </div>
-                            <FormField control={form.control} name="contractorName" render={({ field }) => (
-                              <FormItem>
-                                <FormLabel className="font-bold">Assigned To</FormLabel>
-                                <FormControl>
-                                  <Input 
-                                    placeholder="Contractor name" 
-                                    className="h-11 bg-background" 
-                                    {...field} 
-                                    value={field.value ?? ''} 
-                                  />
-                                </FormControl>
-                                <FormMessage />
-                              </FormItem>
-                            )} />
+                            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                                <FormField control={form.control} name="contractorName" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="font-bold">Assigned To</FormLabel>
+                                    <FormControl>
+                                    <Input 
+                                        placeholder="Contractor name" 
+                                        className="h-11 bg-background" 
+                                        {...field} 
+                                        value={field.value ?? ''} 
+                                    />
+                                    </FormControl>
+                                    <FormMessage />
+                                </FormItem>
+                                )} />
+                                <FormField control={form.control} name="estimatedCost" render={({ field }) => (
+                                <FormItem>
+                                    <FormLabel className="font-bold flex items-center gap-2">
+                                        <Banknote className="h-4 w-4 text-primary" />
+                                        Expected Cost (£)
+                                    </FormLabel>
+                                    <FormControl>
+                                    <Input 
+                                        type="number"
+                                        step="0.01"
+                                        placeholder="0.00" 
+                                        className="h-11 bg-background" 
+                                        {...field}
+                                        onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                                    />
+                                    </FormControl>
+                                    <FormDescription className="text-[10px]">Will be reflected in portfolio financials.</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                                )} />
+                            </div>
                         </div>
                     </div>
                 </div>

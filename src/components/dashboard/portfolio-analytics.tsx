@@ -1,3 +1,4 @@
+
 'use client';
 
 import * as React from 'react';
@@ -66,8 +67,18 @@ export function PortfolioAnalytics() {
   }, [user, firestore]);
   const { data: allExpenses, isLoading: isLoadingExpenses } = useCollection(expensesQuery);
 
+  // 3. Fetch Maintenance Repairs for additional outgoing data
+  const repairsQuery = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return query(
+        collection(firestore, 'repairs'),
+        where('landlordId', '==', user.uid)
+    );
+  }, [user, firestore]);
+  const { data: allRepairs, isLoading: isLoadingRepairs } = useCollection(repairsQuery);
+
   const chartData = React.useMemo(() => {
-    if (!rentPayments || !allExpenses || !currentYear) return [];
+    if (!rentPayments || !allExpenses || !allRepairs || !currentYear) return [];
 
     return MONTHS.map((monthName, index) => {
       // Aggregate verified income for this specific month
@@ -76,20 +87,28 @@ export function PortfolioAnalytics() {
         .reduce((sum, p) => sum + (Number(p.amountPaid) || 0), 0);
 
       // Aggregate ledger expenses for this specific month
-      const monthExpenses = allExpenses
+      const monthBaseExpenses = allExpenses
         .filter((e) => {
           const d = safeToDate(e.date);
           return d && d.getFullYear() === currentYear && d.getMonth() === index;
         })
         .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
 
+      // Aggregate repair costs for this specific month
+      const monthRepairExpenses = allRepairs
+        .filter((r) => {
+            const d = safeToDate(r.reportedDate);
+            return d && d.getFullYear() === currentYear && d.getMonth() === index;
+        })
+        .reduce((sum, r) => sum + (Number(r.estimatedCost) || 0), 0);
+
       return {
         month: monthName.substring(0, 3),
         income: monthIncome,
-        expenses: monthExpenses,
+        expenses: monthBaseExpenses + monthRepairExpenses,
       };
     });
-  }, [rentPayments, allExpenses, currentYear]);
+  }, [rentPayments, allExpenses, allRepairs, currentYear]);
 
   const totals = React.useMemo(() => {
     const income = chartData.reduce((sum, d) => sum + d.income, 0);
@@ -97,7 +116,7 @@ export function PortfolioAnalytics() {
     return { income, expenses, net: income - expenses };
   }, [chartData]);
 
-  if (isLoadingRent || isLoadingExpenses || !currentYear) {
+  if (isLoadingRent || isLoadingExpenses || isLoadingRepairs || !currentYear) {
     return (
       <Card className="border-none shadow-lg h-[400px] flex items-center justify-center">
         <div className="flex flex-col items-center gap-2">
@@ -133,7 +152,7 @@ export function PortfolioAnalytics() {
   }
 
   return (
-    <Card className="border-none shadow-lg overflow-hidden">
+    <Card className="border-none shadow-lg overflow-hidden text-left">
       <CardHeader className="bg-primary/5 border-b flex flex-row items-center justify-between">
         <div className="text-left">
           <CardTitle className="text-sm font-bold uppercase tracking-wider flex items-center gap-2">

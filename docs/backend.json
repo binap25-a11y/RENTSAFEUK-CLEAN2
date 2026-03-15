@@ -1,3 +1,4 @@
+
 {
   "entities": {
     "User": {
@@ -67,7 +68,8 @@
         "propertyId": { "type": "string" },
         "status": { "type": "string" },
         "priority": { "type": "string" },
-        "reportedDate": { "type": "string", "format": "date-time" }
+        "reportedDate": { "type": "string", "format": "date-time" },
+        "estimatedCost": { "type": "number", "description": "Financial outgoing for this maintenance event" }
       }
     },
     "Document": {
