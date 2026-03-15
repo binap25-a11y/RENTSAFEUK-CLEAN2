@@ -30,13 +30,14 @@ import {
   updateDocumentNonBlocking,
   deleteDocumentNonBlocking
 } from '@/firebase';
-import { collection, query, where, limit, addDoc, serverTimestamp, doc } from 'firebase/firestore';
+import { collection, query, where, limit, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { safeToDate } from '@/lib/date-utils';
 import { useToast } from '@/hooks/use-toast';
+import { useRouter } from 'next/navigation';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -97,6 +98,7 @@ export default function LandlordInboxPage() {
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const router = useRouter();
   const [searchTerm, setSearchTerm] = useState('');
   
   // Interaction States
@@ -171,6 +173,9 @@ export default function LandlordInboxPage() {
     deleteDocumentNonBlocking(msgRef);
     toast({ title: 'Message Deleted' });
     setMessageToDelete(null);
+    
+    // Trigger a router refresh to ensure all counters are perfectly aligned
+    router.refresh();
   };
 
   const handleSendReply = async () => {
@@ -199,6 +204,7 @@ export default function LandlordInboxPage() {
         toast({ title: 'Reply Sent' });
         setReplyContent('');
         setReplyingTo(null);
+        router.refresh();
     } catch (err) {
         console.error("Reply failure:", err);
         toast({ variant: 'destructive', title: 'Transmission Failed' });
@@ -234,9 +240,9 @@ export default function LandlordInboxPage() {
                 onChange={e => setSearchTerm(e.target.value)} 
               />
           </div>
-          <div className="hidden sm:block">
-              <Badge variant="outline" className="h-12 px-4 rounded-2xl border-2 font-bold uppercase tracking-widest text-[10px] bg-background">
-                  {filteredMessages.length} Messages Live
+          <div>
+              <Badge variant="outline" className="h-12 px-4 rounded-2xl border-2 font-bold uppercase tracking-widest text-[10px] bg-background shadow-sm">
+                  <span className="text-primary mr-1">{filteredMessages.length}</span> Messages Live
               </Badge>
           </div>
       </div>
