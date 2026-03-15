@@ -221,7 +221,7 @@ export default function SingleLetInspectionPage() {
   
   const [photoFiles, setPhotoFiles] = useState<File[]>([]);
   const [videoFiles, setVideoFiles] = useState<File[]>([]);
-  const [previews, setPreviews] = useState<string[]>([]);
+  const [photoPreviews, setPhotoPreviews] = useState<string[]>([]);
 
   const form = useForm<InspectionFormValues>({
     resolver: zodResolver(inspectionSchema),
@@ -257,7 +257,7 @@ export default function SingleLetInspectionPage() {
     if (type === 'photo') {
       setPhotoFiles(prev => [...prev, ...files]);
       const newPreviews = files.map(f => URL.createObjectURL(f));
-      setPreviews(prev => [...prev, ...newPreviews]);
+      setPhotoPreviews(prev => [...prev, ...newPreviews]);
     } else {
       setVideoFiles(prev => [...prev, ...files]);
     }
@@ -269,10 +269,10 @@ export default function SingleLetInspectionPage() {
       updatedFiles.splice(idx, 1);
       setPhotoFiles(updatedFiles);
       
-      const updatedPreviews = [...previews];
+      const updatedPreviews = [...photoPreviews];
       URL.revokeObjectURL(updatedPreviews[idx]);
       updatedPreviews.splice(idx, 1);
-      setPreviews(updatedPreviews);
+      setPhotoPreviews(updatedPreviews);
     } else {
       const updatedFiles = [...videoFiles];
       updatedFiles.splice(idx, 1);
@@ -703,7 +703,7 @@ export default function SingleLetInspectionPage() {
                       <div className="space-y-4">
                           <FormLabel className="font-bold flex items-center gap-2"><Images className="h-4 w-4 text-primary" /> Photos (Included in PDF)</FormLabel>
                           <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
-                              {previews.map((url, idx) => (
+                              {photoPreviews.map((url, idx) => (
                                   <div key={idx} className="relative aspect-square rounded-xl overflow-hidden border group shadow-sm bg-background">
                                       <Image src={url} alt="Preview" fill className="object-cover" unoptimized />
                                       <Button type="button" variant="destructive" size="icon" className="absolute top-1.5 right-1.5 h-7 w-7 opacity-0 group-hover:opacity-100 transition-opacity shadow-lg" onClick={() => removeFile(idx, 'photo')}><X className="h-4 w-4" /></Button>

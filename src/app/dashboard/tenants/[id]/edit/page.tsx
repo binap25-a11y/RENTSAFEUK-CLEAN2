@@ -40,7 +40,7 @@ import {
   useMemoFirebase,
   useDoc,
 } from '@/firebase';
-import { collection, query, where, doc, updateDoc, arrayUnion, arrayRemove } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc, arrayUnion, arrayRemove, limit } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { safeToDate, formatDateForInput } from '@/lib/date-utils';
 
@@ -115,7 +115,8 @@ export default function EditTenantPage() {
     return query(
       collection(firestore, 'properties'),
       where('landlordId', '==', user.uid),
-      where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance'])
+      where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance']),
+      limit(500)
     );
   }, [firestore, user]);
   const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
@@ -226,7 +227,7 @@ export default function EditTenantPage() {
                   <FormItem>
                     <FormLabel className="font-bold">Assigned Property</FormLabel>
                     <Select 
-                      key={`${tenant.id}-prop-${field.value}`}
+                      key={tenant ? `${tenant.id}-prop-${field.value}` : 'loading'}
                       onValueChange={field.onChange} 
                       value={field.value ? String(field.value) : ""}
                     >
@@ -268,7 +269,7 @@ export default function EditTenantPage() {
                       <FormItem>
                           <FormLabel className="font-bold flex items-center gap-2"><CalendarDays className="h-4 w-4 text-primary" />Rent Due Day</FormLabel>
                           <Select 
-                            key={`${tenant.id}-day-${field.value}`}
+                            key={tenant ? `${tenant.id}-day-${field.value}` : 'loading'}
                             onValueChange={field.onChange} 
                             value={field.value ? String(field.value) : ""}
                           >

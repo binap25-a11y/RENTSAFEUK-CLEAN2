@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -226,7 +225,7 @@ export default function EditMaintenancePage() {
                                     <FormItem>
                                         <FormLabel className="font-bold">Target Property</FormLabel>
                                         <Select 
-                                            key={`${logId}-prop-${field.value}`}
+                                            key={maintenanceLog ? `${logId}-prop-${field.value}` : 'loading'}
                                             onValueChange={field.onChange} 
                                             value={field.value}
                                         >
@@ -249,7 +248,7 @@ export default function EditMaintenancePage() {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                     <FormField control={form.control} name="category" render={({ field }) => (
                                         <FormItem><FormLabel className="font-bold">Category</FormLabel>
-                                            <Select key={`${logId}-cat-${field.value}`} onValueChange={field.onChange} value={field.value}>
+                                            <Select key={maintenanceLog ? `${logId}-cat-${field.value}` : 'loading'} onValueChange={field.onChange} value={field.value}>
                                                 <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select category" /></SelectTrigger></FormControl>
                                                 <SelectContent>{CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent>
                                             </Select>
@@ -258,7 +257,7 @@ export default function EditMaintenancePage() {
                                     )} />
                                     <FormField control={form.control} name="priority" render={({ field }) => (
                                         <FormItem><FormLabel className="font-bold">Priority</FormLabel>
-                                            <Select key={`${logId}-prio-${field.value}`} onValueChange={field.onChange} value={field.value}>
+                                            <Select key={maintenanceLog ? `${logId}-prio-${field.value}` : 'loading'} onValueChange={field.onChange} value={field.value}>
                                                 <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select priority" /></SelectTrigger></FormControl>
                                                 <SelectContent>{PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
                                             </Select>
@@ -268,7 +267,7 @@ export default function EditMaintenancePage() {
                                 </div>
                                 <FormField control={form.control} name="status" render={({ field }) => (
                                     <FormItem><FormLabel className="font-bold">Repair Status</FormLabel>
-                                        <Select key={`${logId}-status-${field.value}`} onValueChange={field.onChange} value={field.value}>
+                                        <Select key={maintenanceLog ? `${logId}-status-${field.value}` : 'loading'} onValueChange={field.onChange} value={field.value}>
                                             <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select status" /></SelectTrigger></FormControl>
                                             <SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                                         </Select>
@@ -284,7 +283,7 @@ export default function EditMaintenancePage() {
                                     <div className="space-y-4">
                                         <Label className="font-bold text-xs">Quick-select Contractor</Label>
                                         <Select 
-                                            key={`${logId}-contractor-${matchedContractorId}`}
+                                            key={maintenanceLog ? `${logId}-contractor-${matchedContractorId}` : 'loading'}
                                             value={matchedContractorId} 
                                             onValueChange={(cid) => { 
                                                 const c = contractors?.find(x => x.id === cid); 
@@ -314,7 +313,7 @@ export default function EditMaintenancePage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                     <FormField control={form.control} name="reportedBy" render={({ field }) => (
                                         <FormItem><FormLabel className="font-bold">Reported By</FormLabel>
-                                            <Select key={`${logId}-reportedBy-${field.value}`} onValueChange={field.onChange} value={field.value}>
+                                            <Select key={maintenanceLog ? `${logId}-reportedBy-${field.value}` : 'loading'} onValueChange={field.onChange} value={field.value}>
                                                 <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select reporter" /></SelectTrigger></FormControl>
                                                 <SelectContent>{REPORTERS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
                                             </Select>
