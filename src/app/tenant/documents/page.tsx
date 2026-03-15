@@ -25,6 +25,7 @@ interface DocumentRecord {
     fileUrl?: string;
     expiryDate: any;
     issueDate: any;
+    sharedWithTenant?: boolean;
 }
 
 export default function TenantDocumentsPage() {
@@ -63,9 +64,11 @@ export default function TenantDocumentsPage() {
 
   const docsQuery = useMemoFirebase(() => {
     if (!tenantContext || !user || !firestore) return null;
+    // CRITICAL PRIVACY FILTER: Only show documents marked as shared
     return query(
         collection(firestore, 'documents'),
         where('propertyId', '==', tenantContext.propertyId),
+        where('sharedWithTenant', '==', true),
         limit(50)
     );
   }, [tenantContext, user, firestore]);
@@ -80,7 +83,7 @@ export default function TenantDocumentsPage() {
 
   if (isLoadingContext || isUserLoading) {
     return (
-      <div className="flex h-64 flex-col items-center justify-center gap-4">
+      <div className="flex h-64 flex-col items-center justify-center gap-4 text-center">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
         <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Portal Vault...</p>
       </div>
@@ -89,8 +92,8 @@ export default function TenantDocumentsPage() {
 
   if (!tenantContext) {
     return (
-      <Card className="max-w-md mx-auto mt-10 shadow-lg border-none text-center">
-        <CardHeader className="bg-muted/20 pb-8">
+      <Card className="max-w-md mx-auto mt-10 shadow-lg border-none text-center overflow-hidden">
+        <CardHeader className="bg-muted/20 pb-8 border-b">
           <div className="bg-background p-4 rounded-full w-fit mx-auto mb-4 border shadow-sm">
               <AlertCircle className="h-8 w-8 text-destructive" />
           </div>
@@ -105,10 +108,10 @@ export default function TenantDocumentsPage() {
   }
 
   return (
-    <div className="space-y-8 text-left">
+    <div className="space-y-8 text-left animate-in fade-in duration-500">
       <div>
-        <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Tenant Documents</h1>
-        <p className="text-muted-foreground font-medium">Shared certificates, safety reports, and agreements.</p>
+        <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Resident Documents</h1>
+        <p className="text-muted-foreground font-medium">Verified certificates, agreements, and safety reports shared by management.</p>
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-3">
@@ -116,32 +119,34 @@ export default function TenantDocumentsPage() {
             <div className="col-span-full py-20 text-center"><Loader2 className="h-8 w-8 animate-spin text-primary mx-auto" /></div>
         ) : !documents?.length ? (
             <div className="col-span-full py-20 text-center border-2 border-dashed rounded-3xl bg-muted/5">
-                <FileText className="h-12 w-12 text-muted-foreground/20 mx-auto mb-4" />
+                <div className="bg-background p-6 rounded-full w-fit mx-auto mb-4 shadow-sm border">
+                    <FileText className="h-10 w-10 text-muted-foreground/20" />
+                </div>
                 <p className="text-muted-foreground font-bold">Vault is currently empty.</p>
-                <p className="text-xs text-muted-foreground mt-1">Your landlord has not shared any documents yet.</p>
+                <p className="text-xs text-muted-foreground mt-1 max-w-[240px] mx-auto leading-relaxed">Management has not yet shared any legal or compliance documents for this property.</p>
             </div>
         ) : (
             documents.map((doc) => (
-                <Card key={doc.id} className="shadow-lg border-none overflow-hidden hover:scale-[1.02] transition-all">
-                    <CardHeader className="bg-primary/5 pb-4">
+                <Card key={doc.id} className="shadow-lg border-none overflow-hidden hover:scale-[1.02] transition-all group cursor-default">
+                    <CardHeader className="bg-primary/5 pb-4 group-hover:bg-primary/10 transition-colors">
                         <div className="flex items-center justify-between mb-2">
                             <Badge variant={getStatus(doc.expiryDate) === 'Valid' ? 'default' : 'destructive'} className="text-[9px] uppercase font-bold px-2 py-0">
                                 {getStatus(doc.expiryDate)}
                             </Badge>
                             <ShieldCheck className="h-4 w-4 text-primary opacity-40" />
                         </div>
-                        <CardTitle className="text-base font-bold leading-tight line-clamp-2">{doc.title}</CardTitle>
-                        <CardDescription className="text-[10px] uppercase font-bold tracking-widest">{doc.documentType}</CardDescription>
+                        <CardTitle className="text-base font-bold leading-tight line-clamp-2 text-foreground">{doc.title}</CardTitle>
+                        <CardDescription className="text-[10px] uppercase font-bold tracking-widest mt-1">{doc.documentType}</CardDescription>
                     </CardHeader>
                     <CardContent className="pt-4 space-y-4">
                         {doc.fileUrl ? (
-                            <Button className="w-full h-10 font-bold uppercase tracking-widest text-[10px]" asChild>
+                            <Button className="w-full h-11 font-bold uppercase tracking-widest text-[10px] shadow-md" asChild>
                                 <a href={doc.fileUrl} target="_blank" rel="noopener noreferrer">
-                                    <Download className="mr-2 h-3.5 w-3.5" /> Download
+                                    <Download className="mr-2 h-3.5 w-3.5" /> Download Document
                                 </a>
                             </Button>
                         ) : (
-                            <Badge variant="outline" className="w-full justify-center h-10 border-dashed opacity-50">Log Only</Badge>
+                            <Badge variant="outline" className="w-full justify-center h-11 border-dashed opacity-50 font-bold uppercase text-[9px] tracking-widest">Metadata Only</Badge>
                         )}
                     </CardContent>
                 </Card>

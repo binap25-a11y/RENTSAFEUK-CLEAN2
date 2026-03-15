@@ -68,6 +68,7 @@
         "propertyId": { "type": "string" },
         "status": { "type": "string" },
         "priority": { "type": "string" },
+        "reportedBy": { "type": "string" },
         "reportedDate": { "type": "string", "format": "date-time" },
         "estimatedCost": { "type": "number", "description": "Financial outgoing for this maintenance event" }
       }
@@ -81,7 +82,8 @@
         "propertyId": { "type": "string" },
         "landlordId": { "type": "string" },
         "documentType": { "type": "string" },
-        "expiryDate": { "type": "string", "format": "date" }
+        "expiryDate": { "type": "string", "format": "date" },
+        "sharedWithTenant": { "type": "boolean", "default": false }
       }
     }
   },

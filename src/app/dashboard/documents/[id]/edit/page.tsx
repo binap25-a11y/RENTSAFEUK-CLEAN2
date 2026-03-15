@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, ArrowLeft, FileUp, X, FileText, ExternalLink } from 'lucide-react';
+import { Loader2, ArrowLeft, FileUp, X, FileText, ExternalLink, ShieldCheck } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -42,6 +43,7 @@ import {
 } from '@/firebase';
 import { doc, updateDoc } from 'firebase/firestore';
 import { uploadPropertyDocument } from '@/lib/upload-document';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const documentSchema = z.object({
   title: z.string().min(3, 'Title is too short'),
@@ -49,6 +51,7 @@ const documentSchema = z.object({
   issueDate: z.coerce.date({ required_error: 'Please select an issue date.' }),
   expiryDate: z.coerce.date().optional().or(z.literal('')),
   notes: z.string().optional(),
+  sharedWithTenant: z.boolean().default(false),
 });
 
 type DocumentFormValues = z.infer<typeof documentSchema>;
@@ -62,6 +65,7 @@ interface DocumentRecord {
     expiryDate: any;
     notes?: string;
     fileUrl?: string;
+    sharedWithTenant?: boolean;
 }
 
 const toDate = (val: any): Date | null => {
@@ -103,6 +107,7 @@ export default function EditDocumentPage() {
         issueDate: toDate(documentRecord.issueDate) || new Date(),
         expiryDate: toDate(documentRecord.expiryDate) || '',
         notes: documentRecord.notes || '',
+        sharedWithTenant: documentRecord.sharedWithTenant || false,
       });
     }
   }, [documentRecord, form]);
@@ -166,7 +171,7 @@ export default function EditDocumentPage() {
         </CardHeader>
         <CardContent className="pt-8">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 text-left">
               <FormField
                   control={form.control}
                   name="title"
@@ -237,6 +242,30 @@ export default function EditDocumentPage() {
                       )}
                   />
               </div>
+
+              <FormField
+                control={form.control}
+                name="sharedWithTenant"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-xl border p-4 bg-primary/5 border-primary/10">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel className="font-bold flex items-center gap-2">
+                        <ShieldCheck className="h-4 w-4 text-primary" />
+                        Share with Resident
+                      </FormLabel>
+                      <FormDescription className="text-xs">
+                        Visibility toggle for the Resident Hub.
+                      </FormDescription>
+                    </div>
+                  </FormItem>
+                )}
+              />
 
               <div className="space-y-4">
                   <FormLabel className="font-bold">Attached File</FormLabel>

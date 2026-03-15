@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -31,7 +32,7 @@ import {
   SelectTrigger,
   SelectValue,
 } from '@/components/ui/select';
-import { Loader2, Info, FileUp, X, FileText } from 'lucide-react';
+import { Loader2, Info, FileUp, X, FileText, ShieldCheck } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { Textarea } from '@/components/ui/textarea';
 import {
@@ -44,6 +45,7 @@ import { collection, query, where, addDoc, limit } from 'firebase/firestore';
 import { differenceInMonths } from 'date-fns';
 import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { uploadPropertyDocument } from '@/lib/upload-document';
+import { Checkbox } from '@/components/ui/checkbox';
 
 const documentSchema = z.object({
   title: z.string().min(3, 'Title is too short'),
@@ -52,6 +54,7 @@ const documentSchema = z.object({
   issueDate: z.coerce.date({ required_error: 'Please select an issue date.' }),
   expiryDate: z.coerce.date().optional().or(z.literal('')),
   notes: z.string().optional(),
+  sharedWithTenant: z.boolean().default(false),
 }).refine(data => {
   if (!data.expiryDate) return true;
   return new Date(data.expiryDate) > new Date(data.issueDate);
@@ -88,6 +91,7 @@ export default function UploadDocumentPage() {
         documentType: '',
         notes: '',
         expiryDate: '',
+        sharedWithTenant: false,
     }
   });
 
@@ -293,6 +297,30 @@ export default function UploadDocumentPage() {
                       )}
                   />
               </div>
+
+              <FormField
+                control={form.control}
+                name="sharedWithTenant"
+                render={({ field }) => (
+                  <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-xl border p-4 bg-primary/5 border-primary/10">
+                    <FormControl>
+                      <Checkbox
+                        checked={field.value}
+                        onCheckedChange={field.onChange}
+                      />
+                    </FormControl>
+                    <div className="space-y-1 leading-none">
+                      <FormLabel className="font-bold flex items-center gap-2">
+                        <ShieldCheck className="h-4 w-4 text-primary" />
+                        Share with Resident
+                      </FormLabel>
+                      <FormDescription className="text-xs">
+                        If enabled, the verified tenant for this property will be able to view and download this document in their hub.
+                      </FormDescription>
+                    </div>
+                  </FormItem>
+                )}
+              />
 
               <div className="space-y-4">
                   <FormLabel className="font-bold">Upload Document File</FormLabel>
