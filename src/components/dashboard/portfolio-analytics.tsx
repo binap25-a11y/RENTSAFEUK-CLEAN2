@@ -21,9 +21,10 @@ import { collection, query, where } from 'firebase/firestore';
 import { Loader2, Banknote, TrendingUp } from 'lucide-react';
 import { safeToDate } from '@/lib/date-utils';
 
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
+// UK Tax Year Month Sequence
+const TAX_MONTHS = [
+  'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December',
+  'January', 'February', 'March'
 ];
 
 const chartConfig = {
@@ -40,24 +41,26 @@ const chartConfig = {
 export function PortfolioAnalytics() {
   const { user } = useUser();
   const firestore = useFirestore();
-  const [currentYear, setCurrentYear] = React.useState<number | null>(null);
+  const [taxYearStart, setTaxYearStart] = React.useState<number | null>(null);
 
   React.useEffect(() => {
-    setCurrentYear(new Date().getFullYear());
+    const now = new Date();
+    // If before April 6, previous tax year is active
+    const start = (now.getMonth() < 3 || (now.getMonth() === 3 && now.getDate() < 6)) ? now.getFullYear() - 1 : now.getFullYear();
+    setTaxYearStart(start);
   }, []);
 
-  // 1. Fetch Rent Payments for the current year (Income)
+  // Fetch Rent Payments (all for now, filter in memory for tax year flexibility)
   const rentQuery = useMemoFirebase(() => {
-    if (!user || !firestore || !currentYear) return null;
+    if (!user || !firestore) return null;
     return query(
       collection(firestore, 'rentPayments'),
-      where('landlordId', '==', user.uid),
-      where('year', '==', currentYear)
+      where('landlordId', '==', user.uid)
     );
-  }, [user, firestore, currentYear]);
+  }, [user, firestore]);
   const { data: rentPayments, isLoading: isLoadingRent } = useCollection(rentQuery);
 
-  // 2. Fetch Expenses for the current year (Outgoings)
+  // Fetch Expenses
   const expensesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
@@ -67,7 +70,7 @@ export function PortfolioAnalytics() {
   }, [user, firestore]);
   const { data: allExpenses, isLoading: isLoadingExpenses } = useCollection(expensesQuery);
 
-  // 3. Fetch Maintenance Repairs for additional outgoing data
+  // Fetch Maintenance Repairs
   const repairsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
@@ -78,27 +81,31 @@ export function PortfolioAnalytics() {
   const { data: allRepairs, isLoading: isLoadingRepairs } = useCollection(repairsQuery);
 
   const chartData = React.useMemo(() => {
-    if (!rentPayments || !allExpenses || !allRepairs || !currentYear) return [];
+    if (!rentPayments || !allExpenses || !allRepairs || !taxYearStart) return [];
 
-    return MONTHS.map((monthName, index) => {
-      // Aggregate verified income for this specific month
+    return TAX_MONTHS.map((monthName) => {
+      const monthIdx = TAX_MONTHS.indexOf(monthName);
+      const calendarYear = monthIdx >= 9 ? taxYearStart + 1 : taxYearStart;
+      const jsMonth = (monthIdx + 3) % 12; // JS Date months are 0-11, April is 3
+
+      // Aggregate Income for this Tax Month
       const monthIncome = rentPayments
-        .filter((p) => p.month === monthName && p.status === 'Paid')
+        .filter((p) => p.month === monthName && p.year === calendarYear && p.status === 'Paid')
         .reduce((sum, p) => sum + (Number(p.amountPaid) || 0), 0);
 
-      // Aggregate ledger expenses for this specific month
+      // Aggregate Base Expenses for this Tax Month
       const monthBaseExpenses = allExpenses
         .filter((e) => {
           const d = safeToDate(e.date);
-          return d && d.getFullYear() === currentYear && d.getMonth() === index;
+          return d && d.getFullYear() === calendarYear && d.getMonth() === jsMonth;
         })
         .reduce((sum, e) => sum + (Number(e.amount) || 0), 0);
 
-      // Aggregate repair costs for this specific month
+      // Aggregate Repair Costs for this Tax Month
       const monthRepairExpenses = allRepairs
         .filter((r) => {
             const d = safeToDate(r.reportedDate);
-            return d && d.getFullYear() === currentYear && d.getMonth() === index;
+            return d && d.getFullYear() === calendarYear && d.getMonth() === jsMonth;
         })
         .reduce((sum, r) => sum + (Number(r.expectedCost || r.estimatedCost || 0)), 0);
 
@@ -108,7 +115,7 @@ export function PortfolioAnalytics() {
         expenses: monthBaseExpenses + monthRepairExpenses,
       };
     });
-  }, [rentPayments, allExpenses, allRepairs, currentYear]);
+  }, [rentPayments, allExpenses, allRepairs, taxYearStart]);
 
   const totals = React.useMemo(() => {
     const income = chartData.reduce((sum, d) => sum + d.income, 0);
@@ -116,12 +123,12 @@ export function PortfolioAnalytics() {
     return { income, expenses, net: income - expenses };
   }, [chartData]);
 
-  if (isLoadingRent || isLoadingExpenses || isLoadingRepairs || !currentYear) {
+  if (isLoadingRent || isLoadingExpenses || isLoadingRepairs || !taxYearStart) {
     return (
       <Card className="border-none shadow-lg h-[400px] flex items-center justify-center">
         <div className="flex flex-col items-center gap-2">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Aggregating Ledger...</p>
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Syncing Analytics Ledger...</p>
         </div>
       </Card>
     );
@@ -135,16 +142,16 @@ export function PortfolioAnalytics() {
         <CardHeader className="bg-primary/5 border-b">
           <CardTitle className="text-sm font-bold uppercase tracking-wider flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-primary" />
-            Financial Performance: {currentYear}
+            Tax Year Performance: {taxYearStart}/{ (taxYearStart + 1).toString().slice(-2) }
           </CardTitle>
         </CardHeader>
         <CardContent className="h-[300px] flex flex-col items-center justify-center text-center p-6">
           <div className="p-4 rounded-full bg-muted/20 mb-4">
             <Banknote className="h-10 w-10 text-muted-foreground/20" />
           </div>
-          <p className="text-sm font-bold text-foreground">No financial data recorded for {currentYear}</p>
+          <p className="text-sm font-bold text-foreground">Registry trail standby for {taxYearStart}</p>
           <p className="text-xs text-muted-foreground mt-1 max-w-[240px]">
-            Log rent collection and maintenance expenses to populate this chronological audit.
+            Income and expenses logged in your financial ledger will update this real-time analytics chart.
           </p>
         </CardContent>
       </Card>
@@ -157,14 +164,14 @@ export function PortfolioAnalytics() {
         <div className="text-left">
           <CardTitle className="text-sm font-bold uppercase tracking-wider flex items-center gap-2">
             <TrendingUp className="h-4 w-4 text-primary" />
-            Portfolio Analytics: {currentYear}
+            Portfolio Analytics: {taxYearStart}/{ (taxYearStart + 1).toString().slice(-2) }
           </CardTitle>
           <CardDescription className="text-[10px] font-bold uppercase tracking-widest mt-1">
-            Verified Rent Income vs. Maintenance Ledger
+            Real-time UK Tax Year (April-April) Flow
           </CardDescription>
         </div>
         <div className="text-right">
-          <p className="text-[10px] font-bold uppercase text-muted-foreground">Net Position</p>
+          <p className="text-[10px] font-bold uppercase text-muted-foreground">Net Tax Position</p>
           <p className={`text-xl font-bold ${totals.net >= 0 ? 'text-primary' : 'text-destructive'}`}>
             £{totals.net.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           </p>
@@ -219,7 +226,7 @@ export function PortfolioAnalytics() {
         </div>
         <div className="flex items-center gap-2">
           <div className="h-2 w-2 rounded-full bg-destructive" />
-          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Portfolio Outgoings</span>
+          <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Allowable Expenses</span>
         </div>
       </div>
     </Card>

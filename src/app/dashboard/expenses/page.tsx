@@ -17,6 +17,7 @@ import { Button } from '@/components/ui/button';
 import {
   Form,
   FormControl,
+  FormDescription,
   FormField,
   FormItem,
   FormLabel,
@@ -37,9 +38,10 @@ import {
   Loader2, 
   History,
   PlusCircle,
-  Banknote
+  Banknote,
+  RefreshCw
 } from 'lucide-react';
-import { getYear, isSameYear } from 'date-fns';
+import { getYear, isSameYear, isAfter, isBefore, parseISO, startOfDay } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import {
   Table,
@@ -60,10 +62,12 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import Link from 'next/link';
+import { safeToDate } from '@/lib/date-utils';
 
-const MONTHS = [
-  'January', 'February', 'March', 'April', 'May', 'June',
-  'July', 'August', 'September', 'October', 'November', 'December'
+// UK Tax Year Month Sequence (April to March)
+const TAX_MONTHS = [
+  'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December',
+  'January', 'February', 'March'
 ];
 
 interface Property {
@@ -110,7 +114,7 @@ interface RentPayment {
   id: string;
   propertyId: string;
   landlordId: string;
-  year: number;
+  year: number; // This remains calendar year for database indexing, but UI aggregates by tax year
   month: string;
   status: PaymentStatus;
   amountPaid?: number;
@@ -127,14 +131,6 @@ const expenseSchema = z.object({
 });
 type ExpenseFormValues = z.infer<typeof expenseSchema>;
 
-function safeToDate(val: any): Date | null {
-  if (!val) return null;
-  if (val instanceof Date) return val;
-  if (typeof val === 'object' && 'seconds' in val) return new Date(val.seconds * 1000);
-  const d = new Date(val);
-  return isNaN(d.getTime()) ? null : d;
-}
-
 const formatCurrency = (val: number) => {
   return new Intl.NumberFormat('en-GB', {
     style: 'currency',
@@ -148,10 +144,14 @@ export default function FinancialsPage() {
   const { user } = useUser();
   const firestore = useFirestore();
   const [selectedPropertyId, setSelectedPropertyId] = useState('all');
-  const [selectedYear, setSelectedYear] = useState<number | null>(null);
+  const [selectedTaxYearStart, setSelectedTaxYearStart] = useState<number | null>(null);
 
   useEffect(() => {
-    setSelectedYear(getYear(new Date()));
+    const now = new Date();
+    const currentYear = now.getFullYear();
+    // If before April 6, previous tax year is active
+    const taxYearStart = (now.getMonth() < 3 || (now.getMonth() === 3 && now.getDate() < 6)) ? currentYear - 1 : currentYear;
+    setSelectedTaxYearStart(taxYearStart);
   }, []);
 
   // 1. Fetch properties
@@ -164,15 +164,16 @@ export default function FinancialsPage() {
   // 2. Fetch all expenses for this landlord
   const expensesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    return query(collection(firestore, 'expenses'), where('landlordId', '==', user.uid), limit(500));
+    return query(collection(firestore, 'expenses'), where('landlordId', '==', user.uid), limit(1000));
   }, [firestore, user]);
   const { data: allExpenses, isLoading: isLoadingExpenses } = useCollection<Expense>(expensesQuery);
 
-  // 3. Fetch rent payments for this landlord
+  // 3. Fetch rent payments for this landlord (spanning potentially two calendar years for one tax year)
   const rentQuery = useMemoFirebase(() => {
-    if (!user || !firestore || !selectedYear) return null;
-    return query(collection(firestore, 'rentPayments'), where('landlordId', '==', user.uid), where('year', '==', selectedYear));
-  }, [firestore, user, selectedYear]);
+    if (!user || !firestore || !selectedTaxYearStart) return null;
+    // We fetch a broader range to cover the tax year crossover
+    return query(collection(firestore, 'rentPayments'), where('landlordId', '==', user.uid));
+  }, [firestore, user, selectedTaxYearStart]);
   const { data: allRentPayments, isLoading: isLoadingRent } = useCollection<RentPayment>(rentQuery);
 
   // 4. Fetch maintenance repairs for financial aggregation
@@ -187,31 +188,49 @@ export default function FinancialsPage() {
     return activeProperties?.find(p => p.id === selectedPropertyId);
   }, [activeProperties, selectedPropertyId]);
 
+  // Tax Year Boundary Logic
+  const taxBounds = useMemo(() => {
+    if (!selectedTaxYearStart) return null;
+    return {
+        start: new Date(selectedTaxYearStart, 3, 6), // April 6
+        end: new Date(selectedTaxYearStart + 1, 3, 5, 23, 59, 59) // April 5 next year
+    };
+  }, [selectedTaxYearStart]);
+
   const expenses = useMemo(() => {
-    if (!allExpenses || !selectedYear) return [];
+    if (!allExpenses || !taxBounds) return [];
     return allExpenses.filter(exp => {
         const d = safeToDate(exp.date);
-        const matchesYear = d && isSameYear(d, new Date(selectedYear, 0, 1));
+        const matchesTaxYear = d && isAfter(d, taxBounds.start) && isBefore(d, taxBounds.end);
         const matchesProperty = selectedPropertyId === 'all' || exp.propertyId === selectedPropertyId;
-        return matchesYear && matchesProperty;
+        return matchesTaxYear && matchesProperty;
     });
-  }, [allExpenses, selectedPropertyId, selectedYear]);
+  }, [allExpenses, selectedPropertyId, taxBounds]);
 
   const repairCosts = useMemo(() => {
-    if (!allRepairs || !selectedYear) return [];
+    if (!allRepairs || !taxBounds) return [];
     return allRepairs.filter(r => {
         const d = safeToDate(r.reportedDate);
-        const matchesYear = d && isSameYear(d, new Date(selectedYear, 0, 1));
+        const matchesTaxYear = d && isAfter(d, taxBounds.start) && isBefore(d, taxBounds.end);
         const matchesProperty = selectedPropertyId === 'all' || r.propertyId === selectedPropertyId;
         const hasCost = Number(r.expectedCost || r.estimatedCost || 0) > 0;
-        return matchesYear && matchesProperty && hasCost;
+        return matchesTaxYear && matchesProperty && hasCost;
     });
-  }, [allRepairs, selectedPropertyId, selectedYear]);
+  }, [allRepairs, selectedPropertyId, taxBounds]);
 
   const rentPayments = useMemo(() => {
-    if (!allRentPayments) return [];
-    return allRentPayments.filter(p => selectedPropertyId === 'all' || p.propertyId === selectedPropertyId);
-  }, [allRentPayments, selectedPropertyId]);
+    if (!allRentPayments || !selectedTaxYearStart) return [];
+    return allRentPayments.filter(p => {
+        const matchesProperty = selectedPropertyId === 'all' || p.propertyId === selectedPropertyId;
+        
+        // Month index in our custom tax array
+        const monthIdx = TAX_MONTHS.indexOf(p.month);
+        // If Jan-Mar, the calendar year should be start + 1. If Apr-Dec, calendar year is start.
+        const expectedCalYear = monthIdx >= 9 ? selectedTaxYearStart + 1 : selectedTaxYearStart;
+        
+        return matchesProperty && p.year === expectedCalYear;
+    });
+  }, [allRentPayments, selectedPropertyId, selectedTaxYearStart]);
 
   const displayIncome = useMemo(() => {
     if (selectedPropertyId !== 'all' && selectedProperty) {
@@ -230,22 +249,22 @@ export default function FinancialsPage() {
 
   const netIncome = totalPaidRent - totalExpenses;
   
-  const isLoading = isLoadingProperties || isLoadingExpenses || isLoadingRent || isLoadingRepairs || !selectedYear;
+  const isLoading = isLoadingProperties || isLoadingExpenses || isLoadingRent || isLoadingRepairs || !selectedTaxYearStart;
 
-  const generateHMRCPDF = () => {
-    if (!selectedYear) return;
+  const generateHMRCPDF = async () => {
+    if (!selectedTaxYearStart || !taxBounds) return;
+    
     const doc = new jsPDF();
     doc.setFontSize(20);
-    doc.text(`HMRC Self-Assessment Export - ${selectedYear}`, 14, 22);
+    doc.text(`HMRC Tax Report - ${selectedTaxYearStart}/${(selectedTaxYearStart + 1).toString().slice(-2)}`, 14, 22);
     doc.setFontSize(10);
     doc.text(`Generated for: ${user?.displayName || user?.email}`, 14, 30);
-    doc.text(`Portfolio Scope: ${selectedPropertyId === 'all' ? 'Entire Active Portfolio' : formatAddress(selectedProperty?.address as any)}`, 14, 36);
+    doc.text(`Portfolio Scope: ${selectedPropertyId === 'all' ? 'Entire Portfolio' : formatAddress(selectedProperty?.address as any)}`, 14, 36);
     doc.setLineWidth(0.5);
     doc.line(14, 40, 200, 40);
 
     const baseInsurance = expenses.filter(e => ['Insurance', 'Utilities'].includes(e.expenseType)).reduce((a, b) => a + (Number(b.amount) || 0), 0);
     
-    // Aggregate Maintenance (Base + Repairs)
     const baseMaintenance = expenses.filter(e => ['Repairs and Maintenance', 'Cleaning', 'Gardening'].includes(e.expenseType)).reduce((a, b) => a + (Number(b.amount) || 0), 0);
     const repairMaintenance = repairCosts.reduce((a, b) => a + (Number(b.expectedCost || b.estimatedCost || 0)), 0);
     const totalMaintenance = baseMaintenance + repairMaintenance;
@@ -256,11 +275,11 @@ export default function FinancialsPage() {
 
     const hmrcCategories = [
         ['Rent received (total for period)', formatCurrency(totalPaidRent)],
-        ['Rates, council tax, insurance, ground rents etc.', formatCurrency(baseInsurance)],
+        ['Rates, insurance, ground rents etc.', formatCurrency(baseInsurance)],
         ['Property repairs and maintenance', formatCurrency(totalMaintenance)],
-        ['Management fees and other professional fees', formatCurrency(professionalFees)],
+        ['Management and professional fees', formatCurrency(professionalFees)],
         ['Other allowable property expenses', formatCurrency(otherExpenses)],
-        ['Residential finance costs (for reference)', formatCurrency(financeCosts)],
+        ['Residential finance costs (Ref only)', formatCurrency(financeCosts)],
     ];
 
     autoTable(doc, { 
@@ -274,10 +293,16 @@ export default function FinancialsPage() {
     const finalY = (doc as any).lastAutoTable.finalY + 15;
     doc.setFontSize(9);
     doc.setTextColor(100);
-    const note = "Note: Residential finance costs (Mortgage Interest) are listed for reference. Under UK law (Section 24), these are typically claimed as a 20% basic rate tax reduction on your overall return rather than as a direct expense against rental profit.";
+    const note = "Note: Residential finance costs (Mortgage Interest) are listed for reference. Under Section 24, these are typically claimed as a 20% basic rate tax reduction rather than direct expenses.";
     doc.text(doc.splitTextToSize(note, 180), 14, finalY);
 
-    doc.save(`RentSafeUK-HMRC-Tax-Report-${selectedYear}.pdf`);
+    doc.save(`HMRC-Tax-Report-${selectedTaxYearStart}-${selectedTaxYearStart + 1}.pdf`);
+    
+    // INTERACTION RECOVERY: Refresh page to prevent UI freeze after PDF generation
+    toast({ title: 'Report Generated', description: 'Refreshing ledger context...' });
+    setTimeout(() => {
+        window.location.reload();
+    }, 1500);
   };
 
   function formatAddress(address: Property['address']) {
@@ -285,17 +310,20 @@ export default function FinancialsPage() {
     return [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
   }
 
+  // Stable keys for Select components to prevent stale state
+  const taxYearKey = selectedTaxYearStart ? `tax-year-${selectedTaxYearStart}` : 'loading';
+
   return (
     <div className="flex flex-col gap-6 max-w-6xl mx-auto text-left">
         <div className="flex flex-col gap-4 max-w-md bg-card p-6 rounded-lg border shadow-sm">
             <div className="grid w-full gap-1.5">
-                <Label htmlFor="financial-scope-selector" className="text-xs uppercase font-bold text-muted-foreground">Scope View</Label>
+                <Label htmlFor="financial-scope-selector" className="text-xs uppercase font-bold text-muted-foreground">Registry View</Label>
                 <Select onValueChange={setSelectedPropertyId} value={selectedPropertyId}>
                     <SelectTrigger id="financial-scope-selector" className="h-11">
                         <SelectValue placeholder={isLoadingProperties ? "Syncing..." : "All Properties"} />
                     </SelectTrigger>
                     <SelectContent>
-                        <SelectItem value="all">All Properties (Portfolio View)</SelectItem>
+                        <SelectItem value="all">Entire Portfolio (Consolidated)</SelectItem>
                         {activeProperties?.map((prop) => (
                           <SelectItem key={prop.id} value={prop.id}>
                             {formatAddress(prop.address)}
@@ -305,12 +333,14 @@ export default function FinancialsPage() {
                 </Select>
             </div>
             <div className="grid w-full gap-1.5">
-                <Label htmlFor="reporting-year-selector" className="text-xs uppercase font-bold text-muted-foreground">Reporting Year</Label>
-                <Select onValueChange={(value) => setSelectedYear(Number(value))} value={selectedYear ? String(selectedYear) : ''}>
-                    <SelectTrigger id="reporting-year-selector" className="h-11"><SelectValue /></SelectTrigger>
+                <Label htmlFor="reporting-year-selector" className="text-xs uppercase font-bold text-muted-foreground">UK Tax Year Cycle</Label>
+                <Select key={taxYearKey} onValueChange={(value) => setSelectedTaxYearStart(Number(value))} value={selectedTaxYearStart ? String(selectedTaxYearStart) : ''}>
+                    <SelectTrigger id="reporting-year-selector" className="h-11">
+                        <SelectValue placeholder="Tax Year" />
+                    </SelectTrigger>
                     <SelectContent>
                         {Array.from({ length: 5 }, (_, i) => (new Date().getFullYear()) - i).map(year => (
-                            <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                            <SelectItem key={year} value={String(year)}>{year} / {(year + 1).toString().slice(-2)}</SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
@@ -318,27 +348,47 @@ export default function FinancialsPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card className="border-none shadow-md overflow-hidden text-left"><div className="h-1 bg-primary w-full" /><CardHeader className="pb-2 px-6"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">{selectedPropertyId === 'all' ? 'Portfolio Gross' : 'Property Gross'}</CardTitle></CardHeader><CardContent className='px-6 pb-6'><div className="text-2xl font-bold tracking-tight">{formatCurrency(displayIncome)}</div></CardContent></Card>
-            <Card className="border-none shadow-md overflow-hidden text-left"><div className="h-1 bg-green-500 w-full" /><CardHeader className="pb-2 px-6"><CardTitle className="text-xs font-bold uppercase tracking-widest text-green-600">Income Received</CardTitle></CardHeader><CardContent className='px-6 pb-6'><div className="text-2xl font-bold tracking-tight">{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(totalPaidRent)}</div></CardContent></Card>
-            <Card className="border-none shadow-md overflow-hidden text-left"><div className="h-1 bg-destructive w-full" /><CardHeader className="pb-2 px-6"><CardTitle className="text-xs font-bold uppercase tracking-widest text-destructive">Expenses (Incl. Repairs)</CardTitle></CardHeader><CardContent className='px-6 pb-6'><div className="text-2xl font-bold tracking-tight">{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(totalExpenses)}</div></CardContent></Card>
-            <Card className="border-none shadow-md overflow-hidden text-left"><div className="h-1 bg-amber-500 w-full" /><CardHeader className="pb-2 px-6"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Net Position</CardTitle></CardHeader><CardContent className='px-6 pb-6'><div className={"text-2xl font-bold tracking-tight " + (netIncome < 0 ? "text-destructive" : "text-primary")}>{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(netIncome)}</div></CardContent></Card>
+            <Card className="border-none shadow-md overflow-hidden text-left">
+                <div className="h-1 bg-primary w-full" />
+                <CardHeader className="pb-2 px-6"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Gross Expected</CardTitle></CardHeader>
+                <CardContent className='px-6 pb-6'><div className="text-2xl font-bold tracking-tight">{formatCurrency(displayIncome)}</div></CardContent>
+            </Card>
+            <Card className="border-none shadow-md overflow-hidden text-left">
+                <div className="h-1 bg-green-500 w-full" />
+                <CardHeader className="pb-2 px-6"><CardTitle className="text-xs font-bold uppercase tracking-widest text-green-600">Verified Income</CardTitle></CardHeader>
+                <CardContent className='px-6 pb-6'><div className="text-2xl font-bold tracking-tight">{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(totalPaidRent)}</div></CardContent>
+            </Card>
+            <Card className="border-none shadow-md overflow-hidden text-left">
+                <div className="h-1 bg-destructive w-full" />
+                <CardHeader className="pb-2 px-6"><CardTitle className="text-xs font-bold uppercase tracking-widest text-destructive">Total Expenses</CardTitle></CardHeader>
+                <CardContent className='px-6 pb-6'><div className="text-2xl font-bold tracking-tight">{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(totalExpenses)}</div></CardContent>
+            </Card>
+            <Card className="border-none shadow-md overflow-hidden text-left">
+                <div className="h-1 bg-amber-500 w-full" />
+                <CardHeader className="pb-2 px-6"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Taxable Position</CardTitle></CardHeader>
+                <CardContent className='px-6 pb-6'><div className={"text-2xl font-bold tracking-tight " + (netIncome < 0 ? "text-destructive" : "text-primary")}>{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(netIncome)}</div></CardContent>
+            </Card>
         </div>
 
         <Tabs defaultValue="expenses" className="pt-4">
-            <TabsList className="bg-muted/50 p-1 h-auto"><TabsTrigger value="expenses" className="font-bold px-6">Tracker</TabsTrigger><TabsTrigger value="summary" className="font-bold px-6">Tax Summary</TabsTrigger><TabsTrigger value="statement" className="font-bold px-6">Rent Ledger</TabsTrigger></TabsList>
+            <TabsList className="bg-muted/50 p-1 h-auto rounded-xl">
+                <TabsTrigger value="expenses" className="font-bold px-6 py-2 rounded-lg text-[10px] uppercase tracking-widest">Expense Tracker</TabsTrigger>
+                <TabsTrigger value="summary" className="font-bold px-6 py-2 rounded-lg text-[10px] uppercase tracking-widest">HMRC Audit</TabsTrigger>
+                <TabsTrigger value="statement" className="font-bold px-6 py-2 rounded-lg text-[10px] uppercase tracking-widest">Rent Ledger</TabsTrigger>
+            </TabsList>
             <TabsContent value="expenses">
                 <ExpenseTracker properties={activeProperties || []} selectedPropertyId={selectedPropertyId} />
             </TabsContent>
             <TabsContent value="summary">
                 <div className="flex justify-end gap-2 mb-4 pt-4">
-                  <Button onClick={generateHMRCPDF} size="sm" variant="outline" className="font-bold text-xs uppercase tracking-widest h-10 px-6 border-primary/20">
-                    <PoundSterling className="mr-2 h-4 w-4 text-primary" /> HMRC Tax Export (PDF)
+                  <Button onClick={generateHMRCPDF} size="sm" variant="outline" className="font-bold text-[10px] uppercase tracking-widest h-10 px-6 border-primary/20 bg-background shadow-md">
+                    <PoundSterling className="mr-2 h-4 w-4 text-primary" /> Export HMRC Tax PDF
                   </Button>
                 </div>
-                <AnnualSummary selectedYear={selectedYear || 0} expenses={expenses} repairCosts={repairCosts} isLoadingExpenses={isLoading} />
+                <AnnualSummary selectedYear={selectedTaxYearStart || 0} expenses={expenses} repairCosts={repairCosts} isLoadingExpenses={isLoading} />
             </TabsContent>
             <TabsContent value="statement">
-                <RentStatement selectedProperty={selectedProperty} selectedYear={selectedYear || 0} rentPayments={rentPayments} isLoadingPayments={isLoading} />
+                <RentStatement selectedProperty={selectedProperty} selectedYear={selectedTaxYearStart || 0} rentPayments={rentPayments} isLoadingPayments={isLoading} />
             </TabsContent>
         </Tabs>
     </div>
@@ -376,7 +426,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
     const expCol = collection(firestore, 'expenses');
     addDoc(expCol, { ...data, landlordId: user.uid })
       .then(() => {
-        toast({ title: 'Expense Logged', description: 'Financial record added to audit trail.' });
+        toast({ title: 'Expense Logged', description: 'Syncing with tax year financials...' });
         form.reset({ propertyId: selectedPropertyId !== 'all' ? selectedPropertyId : '', expenseType: '', notes: '', date: new Date(), paidBy: 'Landlord', amount: 0 });
       })
       .catch(() => toast({ variant: 'destructive', title: 'Save Failed' }))
@@ -393,16 +443,16 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
         <Card className="mt-6 border-none shadow-lg overflow-hidden">
             <CardHeader className="bg-primary/5 border-b px-6">
                 <CardTitle className="text-lg">Log New Financial Outgoing</CardTitle>
-                <CardDescription>Select a property and category to record a new expense.</CardDescription>
+                <CardDescription>Select a property and category to record a new allowable expense.</CardDescription>
             </CardHeader>
             <CardContent className="pt-8 px-6 pb-8">
             <Form {...form}>
                 <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                 <FormField control={form.control} name="propertyId" render={({ field }) => (
                     <FormItem className='text-left'>
-                        <FormLabel className="font-bold" htmlFor="expense-property-select">Target Property</FormLabel>
+                        <FormLabel className="font-bold">Target Property</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger id="expense-property-select" name="propertyId" className="h-11 bg-background"><SelectValue placeholder="Select from portfolio" /></SelectTrigger></FormControl>
+                        <FormControl><SelectTrigger className="h-11 bg-background"><SelectValue placeholder="Select from portfolio" /></SelectTrigger></FormControl>
                         <SelectContent>{properties.map(p => (<SelectItem key={p.id} value={p.id}>{formatAddress(p.address)}</SelectItem>))}</SelectContent>
                         </Select>
                         <FormMessage />
@@ -411,11 +461,9 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField control={form.control} name="date" render={({ field }) => (
                         <FormItem className='text-left'>
-                          <FormLabel className="font-bold" htmlFor="expense-date-input">Date</FormLabel>
+                          <FormLabel className="font-bold">Date</FormLabel>
                           <FormControl>
                             <Input 
-                              id="expense-date-input"
-                              name="date"
                               type="date" 
                               className="h-11 bg-background" 
                               value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} 
@@ -427,9 +475,9 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                     )} />
                     <FormField control={form.control} name="expenseType" render={({ field }) => (
                         <FormItem className='text-left'>
-                            <FormLabel className="font-bold" htmlFor="expense-type-select">Category</FormLabel>
+                            <FormLabel className="font-bold">Tax Category</FormLabel>
                             <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl><SelectTrigger id="expense-type-select" name="expenseType" className="h-11 bg-background"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
+                                <FormControl><SelectTrigger className="h-11 bg-background"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
                                 <SelectContent>
                                     {['Repairs and Maintenance','Utilities','Insurance','Mortgage Interest','Cleaning','Gardening','Letting Agent Fees', 'Other'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
                                 </SelectContent>
@@ -441,11 +489,9 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
                     <FormField control={form.control} name="amount" render={({ field }) => (
                         <FormItem className='text-left'>
-                          <FormLabel className="font-bold" htmlFor="expense-amount-input">Amount (£)</FormLabel>
+                          <FormLabel className="font-bold">Amount (£)</FormLabel>
                           <FormControl>
                             <Input 
-                              id="expense-amount-input"
-                              name="amount"
                               type="number" 
                               step="0.01" 
                               className="h-11 bg-background" 
@@ -458,11 +504,9 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                     )} />
                     <FormField control={form.control} name="paidBy" render={({ field }) => (
                       <FormItem className='text-left'>
-                        <FormLabel className="font-bold" htmlFor="expense-paid-by-input">Paid By</FormLabel>
+                        <FormLabel className="font-bold">Paid By</FormLabel>
                         <FormControl>
                           <Input 
-                            id="expense-paid-by-input"
-                            name="paidBy"
                             placeholder="e.g. Landlord" 
                             className="h-11 bg-background" 
                             {...field} 
@@ -474,12 +518,10 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                 </div>
                 <FormField control={form.control} name="notes" render={({ field }) => (
                   <FormItem className='text-left'>
-                    <FormLabel className="font-bold" htmlFor="expense-notes-area">Audit Notes</FormLabel>
+                    <FormLabel className="font-bold">Audit Notes</FormLabel>
                     <FormControl>
                       <Textarea 
-                        id="expense-notes-area"
-                        name="notes"
-                        placeholder="Details for tax records..." 
+                        placeholder="Details for HMRC records..." 
                         className="rounded-xl min-h-[100px] bg-background resize-none" 
                         {...field} 
                       />
@@ -495,7 +537,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
         <div className="flex items-center gap-3 w-full px-1 text-left">
             <Button asChild variant="outline" className="flex-1 font-bold shadow-sm h-11 px-6 border-primary/20 hover:bg-primary/5 transition-all uppercase tracking-widest text-[10px]">
                 <Link href="/dashboard/expenses/logged">
-                    <History className="mr-2 h-4 w-4 text-primary" /> View History
+                    <History className="mr-2 h-4 w-4 text-primary" /> History Log
                 </Link>
             </Button>
             <Button 
@@ -504,7 +546,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                 className="flex-1 font-bold shadow-lg h-11 px-8 bg-primary hover:bg-primary/90 transition-all uppercase tracking-widest text-[10px]"
             >
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-                Log Expense Record
+                Log Tax Record
             </Button>
         </div>
     </div>
@@ -516,7 +558,6 @@ function AnnualSummary({ selectedYear, expenses, repairCosts, isLoadingExpenses 
     const map: Record<string, number> = {};
     expenses.forEach(e => { map[e.expenseType] = (map[e.expenseType] || 0) + (Number(e.amount) || 0); });
     
-    // Add repair costs specifically into Repairs and Maintenance category
     const totalRepairCost = repairCosts.reduce((acc, r) => acc + (Number(r.expectedCost || r.estimatedCost || 0)), 0);
     if (totalRepairCost > 0) {
         map['Repairs and Maintenance'] = (map['Repairs and Maintenance'] || 0) + totalRepairCost;
@@ -528,14 +569,14 @@ function AnnualSummary({ selectedYear, expenses, repairCosts, isLoadingExpenses 
   return (
     <Card className="mt-6 border-none shadow-lg overflow-hidden text-left">
         <CardHeader className="bg-primary/5 border-b border-primary/10 px-6">
-            <CardTitle className="text-lg">Tax Year Summary: {selectedYear}</CardTitle>
-            <CardDescription>Aggregated outgoings for self-assessment reporting.</CardDescription>
+            <CardTitle className="text-lg">Tax Year Audit: {selectedYear}/{ (selectedYear + 1).toString().slice(-2) }</CardTitle>
+            <CardDescription>Consolidated outgoings grouped by HMRC categories.</CardDescription>
         </CardHeader>
         <CardContent className="pt-0 px-0">
-            {isLoadingExpenses ? (<div className="flex h-48 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>) : expensesByCategory.length === 0 ? (<p className="py-16 text-center text-muted-foreground italic">No expense data found for this period.</p>) : (
+            {isLoadingExpenses ? (<div className="flex h-48 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>) : expensesByCategory.length === 0 ? (<p className="py-16 text-center text-muted-foreground italic">No tax-allowable outgoings found for this period.</p>) : (
                 <Table>
                     <TableHeader className="bg-muted/50">
-                        <TableRow><TableHead className="font-bold text-[10px] uppercase tracking-wider pl-6">Category</TableHead><TableHead className="text-right font-bold text-[10px] uppercase tracking-wider pr-6">Total Outgoing</TableHead></TableRow>
+                        <TableRow><TableHead className="font-bold text-[10px] uppercase tracking-wider pl-6 py-4">HMRC Category Grouping</TableHead><TableHead className="text-right font-bold text-[10px] uppercase tracking-wider pr-6">Total Outgoing</TableHead></TableRow>
                     </TableHeader>
                     <TableBody>{expensesByCategory.map(([name, amount]) => (<TableRow key={name} className="hover:bg-muted/30 transition-colors"><TableCell className="font-bold pl-6 py-4">{name}</TableCell><TableCell className="text-right font-bold pr-6">{formatCurrency(amount)}</TableCell></TableRow>))}</TableBody>
                 </Table>
@@ -552,19 +593,29 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
   const statement = useMemo(() => {
     const defaultRent = selectedProperty?.tenancy?.monthlyRent || 0;
     const paymentsMap = rentPayments?.reduce((acc, p) => { acc[p.month] = p; return acc; }, {} as Record<string, RentPayment>);
-    return MONTHS.map(month => ({ month, rent: paymentsMap?.[month]?.expectedAmount ?? defaultRent, status: paymentsMap?.[month]?.status || 'Pending' }));
+    
+    return TAX_MONTHS.map(month => ({ 
+        month, 
+        rent: paymentsMap?.[month]?.expectedAmount ?? defaultRent, 
+        status: paymentsMap?.[month]?.status || 'Pending' 
+    }));
   }, [selectedProperty, rentPayments]);
 
   const handleStatusChange = (month: string, status: PaymentStatus) => {
     if (!firestore || !user || !selectedProperty) return;
-    const rentPaymentId = `${selectedProperty.id}-${selectedYear}-${month}`;
+    
+    // Calculate calendar year for this tax month
+    const monthIdx = TAX_MONTHS.indexOf(month);
+    const calendarYear = monthIdx >= 9 ? selectedYear + 1 : selectedYear;
+    
+    const rentPaymentId = `${selectedProperty.id}-${calendarYear}-${month}`;
     const rentPaymentRef = doc(firestore, 'rentPayments', rentPaymentId);
     const expectedAmount = statement.find(s => s.month === month)?.rent ?? 0;
     
     setDoc(rentPaymentRef, { 
         landlordId: user.uid, 
         propertyId: selectedProperty.id, 
-        year: selectedYear, 
+        year: calendarYear, 
         month, 
         status, 
         expectedAmount, 
@@ -574,18 +625,18 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
     });
   };
 
-  if (!selectedProperty) return <Card className="mt-6 border-dashed bg-muted/5"><CardContent className='py-24 text-center'><div className="bg-background p-4 rounded-full w-fit mx-auto shadow-sm mb-4 border"><Banknote className="h-10 w-10 text-muted-foreground opacity-20" /></div><p className="text-muted-foreground font-medium">Select a specific property to view its rent ledger.</p></CardContent></Card>;
+  if (!selectedProperty) return <Card className="mt-6 border-dashed bg-muted/5"><CardContent className='py-24 text-center'><div className="bg-background p-4 rounded-full w-fit mx-auto shadow-sm mb-4 border"><Banknote className="h-10 w-10 text-muted-foreground opacity-20" /></div><p className="text-muted-foreground font-medium">Select a property asset to view the monthly rent ledger.</p></CardContent></Card>;
 
   return (
     <Card className="mt-6 border-none shadow-lg overflow-hidden text-left">
         <CardHeader className="bg-primary/5 border-b border-primary/10 px-6">
-            <CardTitle className="text-lg">Rent Ledger: {selectedYear}</CardTitle>
-            <CardDescription>Track collection status month-by-month.</CardDescription>
+            <CardTitle className="text-lg">Rent Ledger: {selectedYear}/{ (selectedYear + 1).toString().slice(-2) }</CardTitle>
+            <CardDescription>Track monthly collection status within the current tax year.</CardDescription>
         </CardHeader>
         <CardContent className='p-0'>{isLoadingPayments ? <div className="p-20 flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : (
             <Table>
                 <TableHeader className="bg-muted/50">
-                    <TableRow><TableHead className="pl-6 font-bold text-[10px] uppercase tracking-wider">Month</TableHead><TableHead className="font-bold text-[10px] uppercase tracking-wider">Expected Rent</TableHead><TableHead className="font-bold text-[10px] uppercase tracking-wider pr-6">Payment Status</TableHead></TableRow>
+                    <TableRow><TableHead className="pl-6 font-bold text-[10px] uppercase tracking-wider py-4">Registry Month</TableHead><TableHead className="font-bold text-[10px] uppercase tracking-wider">Expected Rent</TableHead><TableHead className="font-bold text-[10px] uppercase tracking-wider pr-6">Collection Status</TableHead></TableRow>
                 </TableHeader>
                 <TableBody>
                     {statement.map((row) => (
@@ -594,7 +645,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                             <TableCell className="font-medium">{formatCurrency(row.rent)}</TableCell>
                             <TableCell className="pr-6">
                                 <Select value={row.status} onValueChange={(v) => handleStatusChange(row.month, v as PaymentStatus)}>
-                                    <SelectTrigger id={`payment-status-select-${row.month}`} name={`rentStatus-${row.month}`} className="w-[160px] h-9 text-xs font-bold shadow-none bg-background border-2"><SelectValue /></SelectTrigger>
+                                    <SelectTrigger className="w-[160px] h-9 text-xs font-bold shadow-none bg-background border-2"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="Paid">Paid</SelectItem>
                                         <SelectItem value="Partially Paid">Partially Paid</SelectItem>
