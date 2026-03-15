@@ -299,8 +299,8 @@ export default function CommunicationHubPage() {
             {filteredMessages.map((msg) => {
                 const isLandlord = msg.senderId === user?.uid;
                 const isUnread = !isLandlord && msg.read !== true;
-                const propertyAddress = propertyMap[m.propertyId] || 'Assigned Asset';
-                const residentName = tenantNameMap[m.tenantId] || msg.senderName || 'Resident';
+                const propertyAddress = propertyMap[msg.propertyId] || 'Assigned Asset';
+                const residentName = tenantNameMap[msg.tenantId] || msg.senderName || 'Resident';
                 
                 return (
                     <Card 
