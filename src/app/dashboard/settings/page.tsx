@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -187,6 +186,9 @@ export default function SettingsPage() {
   }
 
   const currentRole = form.watch('role') || 'landlord';
+  
+  // Robust selection key pattern to ensure the Select component re-mounts with the loaded data
+  const dataKey = profile ? `timeout-${profile.idleTimeoutMinutes}` : 'loading';
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
@@ -249,7 +251,7 @@ export default function SettingsPage() {
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Automatic Sign-out Period</FormLabel>
-                                <Select onValueChange={field.onChange} value={String(field.value)}>
+                                <Select key={dataKey} onValueChange={field.onChange} value={String(field.value)}>
                                     <FormControl>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select timeout" />
