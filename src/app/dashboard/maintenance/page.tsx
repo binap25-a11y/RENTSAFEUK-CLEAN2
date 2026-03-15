@@ -505,7 +505,7 @@ function MaintenanceFormContent() {
                             </div>
                         </div>
 
-                        {/* SECTION 3: AUDIT INFO (Positioned BELOW Assignment) */}
+                        {/* SECTION 3: AUDIT INFO */}
                         <div className="space-y-6 border-t pt-8">
                             <h3 className="font-bold text-lg flex items-center gap-2 text-muted-foreground"><Calendar className="h-5 w-5" /> Audit Info</h3>
                             <div className="grid grid-cols-1 md:grid-cols-2 gap-8">

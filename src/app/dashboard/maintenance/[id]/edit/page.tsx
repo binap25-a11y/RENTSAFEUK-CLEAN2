@@ -33,7 +33,7 @@ import {
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
 import { Label } from '@/components/ui/label';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { Loader2, ArrowLeft, Banknote, Calendar, PlusCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import {
   useUser,
@@ -42,7 +42,7 @@ import {
   useDoc,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, doc, updateDoc, Timestamp } from 'firebase/firestore';
+import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
 
 const maintenanceEditSchema = z.object({
   title: z.string().min(3, 'Title is too short'),
@@ -201,6 +201,28 @@ export default function EditMaintenancePage() {
                                     <FormMessage />
                                 </FormItem>
                             )} />
+
+                            <FormField control={form.control} name="estimatedCost" render={({ field }) => (
+                                <FormItem className="max-w-md">
+                                    <FormLabel className="font-bold flex items-center gap-2">
+                                        <Banknote className="h-4 w-4 text-primary" />
+                                        Expected Cost (£)
+                                    </FormLabel>
+                                    <FormControl>
+                                    <Input 
+                                        type="number"
+                                        step="0.01"
+                                        min="0"
+                                        placeholder="0.00" 
+                                        className="h-11 bg-background" 
+                                        {...field}
+                                        onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                                    />
+                                    </FormControl>
+                                    <FormDescription className="text-[10px]">Will be reflected in portfolio financials. Must be 0 or greater.</FormDescription>
+                                    <FormMessage />
+                                </FormItem>
+                            )} />
                             
                             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                 <FormField control={form.control} name="category" render={({ field }) => (
@@ -263,7 +285,10 @@ export default function EditMaintenancePage() {
                                 <CardContent className="space-y-8">
                                     {/* SECTION 1: ASSIGNMENT */}
                                     <div className="space-y-4">
-                                        <h3 className="text-sm font-bold uppercase tracking-widest text-primary">Assignment</h3>
+                                        <h3 className="text-sm font-bold uppercase tracking-widest text-primary flex items-center gap-2">
+                                            <PlusCircle className="h-4 w-4" />
+                                            Assignment
+                                        </h3>
                                         <div className="space-y-2">
                                             <Label htmlFor="contractor-quick-select">Quick-select Contractor</Label>
                                             <Select onValueChange={(contractorId) => {
@@ -283,11 +308,23 @@ export default function EditMaintenancePage() {
                                             <FormField control={form.control} name="contractorName" render={({ field }) => (<FormItem><FormLabel>Assigned To</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                                             <FormField control={form.control} name="contractorPhone" render={({ field }) => (<FormItem><FormLabel>Contractor Phone</FormLabel><FormControl><Input {...field} /></FormControl><FormMessage /></FormItem>)} />
                                         </div>
+                                        <FormField control={form.control} name="scheduledDate" render={({ field }) => (
+                                            <FormItem>
+                                                <FormLabel>Scheduled Visit Date</FormLabel>
+                                                <FormControl>
+                                                    <Input type="date" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} />
+                                                </FormControl>
+                                                <FormMessage />
+                                            </FormItem>
+                                        )} />
                                     </div>
 
-                                    {/* SECTION 2: AUDIT INFO (Positioned BELOW Assignment) */}
+                                    {/* SECTION 2: AUDIT INFO */}
                                     <div className="space-y-4 border-t pt-6">
-                                        <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Audit Info</h3>
+                                        <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                                            <Calendar className="h-4 w-4" />
+                                            Audit Info
+                                        </h3>
                                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
                                             <FormField control={form.control} name="reportedBy" render={({ field }) => (
                                                 <FormItem>
@@ -313,34 +350,6 @@ export default function EditMaintenancePage() {
                                                 </FormItem>
                                             )} />
                                         </div>
-                                    </div>
-
-                                    <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 border-t pt-6">
-                                        <FormField control={form.control} name="scheduledDate" render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Scheduled Visit Date</FormLabel>
-                                                <FormControl>
-                                                    <Input type="date" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )} />
-                                        <FormField control={form.control} name="estimatedCost" render={({ field }) => (
-                                            <FormItem>
-                                                <FormLabel>Expected Cost (£)</FormLabel>
-                                                <FormControl>
-                                                    <Input 
-                                                        type="number" 
-                                                        step="0.01" 
-                                                        min="0"
-                                                        placeholder="150.00" 
-                                                        {...field} 
-                                                        onChange={e => field.onChange(e.target.value === '' ? undefined : +e.target.value)} 
-                                                    />
-                                                </FormControl>
-                                                <FormMessage />
-                                            </FormItem>
-                                        )} />
                                     </div>
                                 </CardContent>
                             </Card>

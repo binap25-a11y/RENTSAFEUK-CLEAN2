@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useAuth, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, doc, getDoc, limit, orderBy } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -19,19 +19,24 @@ import {
   LayoutDashboard,
   Building2,
   TrendingUp,
-  Clock
+  Clock,
+  Banknote,
+  ArrowUpRight,
+  ArrowDownRight
 } from 'lucide-react';
 import Link from 'next/link';
-import { format, isBefore, addDays } from 'date-fns';
+import { format, isBefore, addDays, getYear } from 'date-fns';
 import { PortfolioAnalytics } from '@/components/dashboard/portfolio-analytics';
 import { safeToDate } from '@/lib/date-utils';
 import { cn } from '@/lib/utils';
 
 interface Property { id: string; status: string; landlordId: string; }
 interface Tenant { id: string; status: string; landlordId: string; }
-interface Repair { id: string; status: string; landlordId: string; title: string; priority: string; reportedDate: any; propertyId: string; }
+interface Repair { id: string; status: string; landlordId: string; title: string; priority: string; reportedDate: any; propertyId: string; estimatedCost?: number; }
 interface DocumentRecord { id: string; expiryDate: any; landlordId: string; title: string; }
 interface Inspection { id: string; status: string; landlordId: string; scheduledDate: any; type: string; propertyId: string; }
+interface Expense { id: string; amount: number; date: any; }
+interface RentPayment { id: string; amountPaid?: number; status: string; }
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
@@ -88,9 +93,21 @@ export default function DashboardPage() {
 
   const repairsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    return query(collection(firestore, 'repairs'), where('landlordId', '==', user.uid), where('status', 'in', ['Open', 'In Progress']), orderBy('reportedDate', 'desc'), limit(5));
+    return query(collection(firestore, 'repairs'), where('landlordId', '==', user.uid), where('status', 'in', ['Open', 'In Progress']), orderBy('reportedDate', 'desc'), limit(100));
   }, [user, firestore]);
-  const { data: repairs } = useCollection<Repair>(repairsQuery);
+  const { data: allRepairs } = useCollection<Repair>(repairsQuery);
+
+  const expensesQuery = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return query(collection(firestore, 'expenses'), where('landlordId', '==', user.uid), limit(500));
+  }, [user, firestore]);
+  const { data: allExpenses } = useCollection<Expense>(expensesQuery);
+
+  const rentQuery = useMemoFirebase(() => {
+    if (!user || !firestore || !today) return null;
+    return query(collection(firestore, 'rentPayments'), where('landlordId', '==', user.uid), where('year', '==', getYear(today)));
+  }, [user, firestore, today]);
+  const { data: rentPayments } = useCollection<RentPayment>(rentQuery);
 
   const docsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -103,6 +120,18 @@ export default function DashboardPage() {
     return query(collection(firestore, 'inspections'), where('landlordId', '==', user.uid), where('status', '==', 'Scheduled'), limit(5));
   }, [user, firestore]);
   const { data: inspections } = useCollection<Inspection>(inspectionsQuery);
+
+  // Financial Aggregation
+  const financialSummary = useMemo(() => {
+    if (!rentPayments || !allExpenses || !allRepairs) return { income: 0, expenses: 0, net: 0 };
+    
+    const income = rentPayments.reduce((acc, p) => acc + (Number(p.amountPaid) || 0), 0);
+    const baseExpenses = allExpenses.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
+    const repairExpenses = allRepairs.reduce((acc, r) => acc + (Number(r.estimatedCost) || 0), 0);
+    
+    const totalExpenses = baseExpenses + repairExpenses;
+    return { income, expenses: totalExpenses, net: income - totalExpenses };
+  }, [rentPayments, allExpenses, allRepairs]);
 
   // Compliance Analytics
   const complianceStats = useMemo(() => {
@@ -175,7 +204,7 @@ export default function DashboardPage() {
               <Wrench className="h-4 w-4 text-primary group-hover:scale-110 transition-transform" />
             </CardHeader>
             <CardContent className="text-left">
-              <div className="text-3xl font-bold">{repairs?.length || 0}</div>
+              <div className="text-3xl font-bold">{allRepairs?.filter(r => r.status !== 'Completed' && r.status !== 'Cancelled').length || 0}</div>
               <p className="text-[10px] text-muted-foreground mt-1">Maintenance Queue</p>
             </CardContent>
           </Card>
@@ -202,6 +231,44 @@ export default function DashboardPage() {
           </Card>
         </Link>
       </div>
+
+      {/* Portfolio Financial Summary */}
+      <Card className="border-none shadow-lg overflow-hidden bg-primary/5 border border-primary/10">
+        <CardHeader className="border-b bg-primary/10 flex flex-row items-center justify-between">
+            <div className="text-left">
+                <CardTitle className="text-sm font-bold uppercase tracking-wider flex items-center gap-2">
+                    <Banknote className="h-4 w-4 text-primary" />
+                    Financial Overview (YTD)
+                </CardTitle>
+                <CardDescription className="text-[10px] font-bold uppercase tracking-widest">Aggregated performance across all assets</CardDescription>
+            </div>
+            <Button variant="ghost" size="sm" asChild className="h-8 font-bold uppercase text-[9px] tracking-widest text-primary">
+                <Link href="/dashboard/expenses">Detailed Ledger <ChevronRight className="ml-1 h-3 w-3"/></Link>
+            </Button>
+        </CardHeader>
+        <CardContent className="grid grid-cols-1 sm:grid-cols-3 divide-y sm:divide-y-0 sm:divide-x p-0">
+            <div className="p-6 flex flex-col items-center justify-center text-center">
+                <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Income Received</p>
+                <div className="flex items-center gap-2 text-green-600">
+                    <ArrowUpRight className="h-4 w-4" />
+                    <span className="text-2xl font-bold">£{financialSummary.income.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                </div>
+            </div>
+            <div className="p-6 flex flex-col items-center justify-center text-center">
+                <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Expenses (Incl. Repairs)</p>
+                <div className="flex items-center gap-2 text-destructive">
+                    <ArrowDownRight className="h-4 w-4" />
+                    <span className="text-2xl font-bold">£{financialSummary.expenses.toLocaleString(undefined, { minimumFractionDigits: 2 })}</span>
+                </div>
+            </div>
+            <div className={cn("p-6 flex flex-col items-center justify-center text-center", financialSummary.net >= 0 ? "bg-green-50/50" : "bg-destructive/5")}>
+                <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground mb-1">Net Cashflow</p>
+                <div className={cn("text-2xl font-bold", financialSummary.net >= 0 ? "text-primary" : "text-destructive")}>
+                    £{financialSummary.net.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                </div>
+            </div>
+        </CardContent>
+      </Card>
 
       <div className="grid gap-6 lg:grid-cols-3">
         <div className="lg:col-span-2 space-y-6">
@@ -250,11 +317,11 @@ export default function DashboardPage() {
               </Button>
             </CardHeader>
             <CardContent className="p-0">
-              {!repairs?.length ? (
+              {!allRepairs?.filter(r => r.status !== 'Completed' && r.status !== 'Cancelled').length ? (
                 <div className="py-12 text-center text-muted-foreground italic bg-muted/5">No active repairs.</div>
               ) : (
                 <div className="divide-y">
-                  {repairs.map((r) => (
+                  {allRepairs.filter(r => r.status !== 'Completed' && r.status !== 'Cancelled').slice(0, 5).map((r) => (
                     <div key={r.id} className="p-4 flex items-center justify-between hover:bg-muted/5 transition-colors group">
                       <div className="flex items-center gap-4">
                         <div className={cn(
