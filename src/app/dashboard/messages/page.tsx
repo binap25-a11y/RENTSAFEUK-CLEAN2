@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useTransition } from 'react';
-import { useRouter, useSearchParams } from 'next/navigation';
+import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -17,12 +17,13 @@ import {
   Reply,
   MoreVertical,
   CheckCircle2,
-  Send,
   MapPin,
   Clock,
   Wrench,
   AlertTriangle,
-  FileText
+  ChevronRight,
+  Inbox,
+  Send
 } from 'lucide-react';
 import { 
   useUser, 
@@ -65,12 +66,6 @@ import {
   DialogFooter,
 } from '@/components/ui/dialog';
 
-/**
- * @fileOverview Communication Hub
- * Optimized with Optimistic UI Deletion and Maintenance Conversion tools.
- * Definitively handles pointer interactivity resets to prevent UI freezes.
- */
-
 interface Message {
     id: string;
     senderId: string;
@@ -83,6 +78,15 @@ interface Message {
     propertyId: string;
     landlordId: string;
     read?: boolean;
+}
+
+interface Conversation {
+    id: string;
+    propertyId: string;
+    tenantId: string;
+    lastMessage: Message;
+    unreadCount: number;
+    totalCount: number;
 }
 
 interface Property {
@@ -98,10 +102,11 @@ interface Property {
 const QUICK_REPLIES = [
   "I've received your message and will look into this shortly.",
   "Thank you for letting me know. I've assigned a contractor to visit.",
-  "I'm currently out of the office but will get back to you today.",
   "Rent payment received, thank you.",
   "Please see the shared documents vault for the requested files."
 ];
+
+const URGENCY_KEYWORDS = ['leak', 'emergency', 'urgent', 'broken', 'repair', 'flood', 'fire', 'danger'];
 
 export default function CommunicationHubPage() {
   const { user } = useUser();
@@ -111,16 +116,24 @@ export default function CommunicationHubPage() {
   const [isPending, startTransition] = useTransition();
   const [searchTerm, setSearchTerm] = useState('');
   
-  // Interaction States
   const [messageToDelete, setMessageToDelete] = useState<Message | null>(null);
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [replyContent, setReplyContent] = useState('');
   const [isSendingReply, setIsSendingReply] = useState(false);
-  
-  // Optimistic UI State
   const [optimisticDeletedIds, setOptimisticDeletedIds] = useState<Set<string>>(new Set());
 
-  // 1. Fetch all messages for this landlord (Live Reactive Stream)
+  // INTERACTION RECOVERY: Force clear pointer locks if browser gets stuck after modal close
+  useEffect(() => {
+    const cleanup = () => {
+      document.body.style.pointerEvents = '';
+      document.body.style.overflow = '';
+    };
+    if (!messageToDelete && !replyingTo) {
+      const timeout = setTimeout(cleanup, 150);
+      return () => clearTimeout(timeout);
+    }
+  }, [messageToDelete, replyingTo]);
+
   const messagesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
@@ -132,13 +145,9 @@ export default function CommunicationHubPage() {
 
   const { data: rawMessages, isLoading: isLoadingMessages } = useCollection<Message>(messagesQuery);
 
-  // 2. Resolve Asset Registry
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    return query(
-        collection(firestore, 'properties'),
-        where('landlordId', '==', user.uid)
-    );
+    return query(collection(firestore, 'properties'), where('landlordId', '==', user.uid));
   }, [user?.uid, firestore]);
   const { data: properties } = useCollection<Property>(propertiesQuery);
 
@@ -150,94 +159,73 @@ export default function CommunicationHubPage() {
     return map;
   }, [properties]);
 
-  // 3. Resolve Resident Registry
   const tenantsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    return query(
-        collection(firestore, 'tenants'),
-        where('landlordId', '==', user.uid)
-    );
+    return query(collection(firestore, 'tenants'), where('landlordId', '==', user.uid));
   }, [user?.uid, firestore]);
   const { data: tenants } = useCollection<any>(tenantsQuery);
 
   const tenantNameMap = useMemo(() => {
     const map: Record<string, string> = {};
-    tenants?.forEach(t => {
-        map[t.id] = t.name;
-    });
+    tenants?.forEach(t => { map[t.id] = t.name; });
     return map;
   }, [tenants]);
 
-  // Combined filtering: Search + Optimistic Deletion + Chronological
-  const visibleMessages = useMemo(() => {
-    if (!rawMessages) return [];
+  const conversations = useMemo((): Conversation[] => {
+    if (!rawMessages || !user) return [];
     
     const term = searchTerm.toLowerCase();
+    const threads: Record<string, Conversation> = {};
     
-    return [...rawMessages]
-        .filter(m => !optimisticDeletedIds.has(m.id)) // Optimistic filter
-        .filter(m => {
-            const address = propertyMap[m.propertyId] || '';
-            const residentName = tenantNameMap[m.tenantId] || m.senderName || '';
-            return m.content.toLowerCase().includes(term) || 
-                   residentName.toLowerCase().includes(term) ||
-                   address.toLowerCase().includes(term);
+    rawMessages.forEach(m => {
+        if (optimisticDeletedIds.has(m.id)) return;
+        
+        const threadId = `${m.propertyId}_${m.tenantId}`;
+        const isIncoming = m.senderId !== user.uid;
+        const isUnread = isIncoming && m.read !== true;
+
+        if (!threads[threadId] || (safeToDate(m.timestamp)?.getTime() || 0) > (safeToDate(threads[threadId].lastMessage.timestamp)?.getTime() || 0)) {
+            threads[threadId] = {
+                id: threadId,
+                propertyId: m.propertyId,
+                tenantId: m.tenantId,
+                lastMessage: m,
+                unreadCount: (threads[threadId]?.unreadCount || 0) + (isUnread ? 1 : 0),
+                totalCount: (threads[threadId]?.totalCount || 0) + 1
+            };
+        } else {
+            if (isUnread) threads[threadId].unreadCount += 1;
+            threads[threadId].totalCount += 1;
+        }
+    });
+
+    return Object.values(threads)
+        .filter(c => {
+            const address = propertyMap[c.propertyId] || '';
+            const residentName = tenantNameMap[c.tenantId] || c.lastMessage.senderName || '';
+            return residentName.toLowerCase().includes(term) || address.toLowerCase().includes(term);
         })
         .sort((a, b) => {
-            const dateA = safeToDate(a.timestamp) || new Date(0);
-            const dateB = safeToDate(b.timestamp) || new Date(0);
+            const dateA = safeToDate(a.lastMessage.timestamp) || new Date(0);
+            const dateB = safeToDate(b.lastMessage.timestamp) || new Date(0);
             return dateB.getTime() - dateA.getTime();
         });
-  }, [rawMessages, searchTerm, propertyMap, tenantNameMap, optimisticDeletedIds]);
+  }, [rawMessages, searchTerm, propertyMap, tenantNameMap, optimisticDeletedIds, user]);
 
-  /**
-   * DEFINITIVE CURSOR RECOVERY
-   * Radix UI occasionally fails to restore pointer-events on the body if 
-   * the component re-renders rapidly during a dialog close.
-   */
-  useEffect(() => {
-    const cleanup = () => {
-      document.body.style.pointerEvents = '';
-      document.body.style.overflow = '';
-    };
-
-    if (!messageToDelete && !replyingTo) {
-      const timeout = setTimeout(cleanup, 100);
-      return () => clearTimeout(timeout);
-    }
-  }, [messageToDelete, replyingTo]);
-
-  const handleToggleRead = (msg: Message) => {
-    if (!firestore) return;
-    const msgRef = doc(firestore, 'messages', msg.id);
-    updateDocumentNonBlocking(msgRef, { read: !msg.read });
-    toast({ title: msg.read ? 'Marked as Unread' : 'Marked as Read' });
-  };
-
-  /**
-   * OPTIMISTIC UI DELETION
-   * Removes message instantly from view to prevent UI freezes and race conditions.
-   */
   const handleDeleteConfirm = () => {
     if (!firestore || !messageToDelete) return;
-    
     const id = messageToDelete.id;
-    const msgRef = doc(firestore, 'messages', id);
-    
-    // 1. Instantly hide from user
+    // OPTIMISTIC DELETION: Remove from local set instantly
     setOptimisticDeletedIds(prev => new Set(prev).add(id));
-    
-    // 2. Instant modal cleanup
     setMessageToDelete(null);
     
-    // 3. Fire-and-forget DB sync
-    deleteDocumentNonBlocking(msgRef);
-    toast({ title: 'Record removed from registry' });
+    // Non-blocking background sync
+    deleteDocumentNonBlocking(doc(firestore, 'messages', id));
+    toast({ title: 'Record removed' });
   };
 
   const handleSendReply = async () => {
     if (!firestore || !user || !replyingTo || !replyContent.trim()) return;
-    
     setIsSendingReply(true);
     try {
         await addDoc(collection(firestore, 'messages'), {
@@ -247,46 +235,31 @@ export default function CommunicationHubPage() {
             tenantUid: replyingTo.tenantUid || replyingTo.senderId,
             tenantEmail: replyingTo.tenantEmail || '',
             senderId: user.uid,
-            senderName: user.displayName || 'Landlord',
+            senderName: user.displayName || 'Management',
             content: replyContent.trim(),
             timestamp: serverTimestamp(),
             read: false
         });
-
         if (!replyingTo.read) {
-            const originalRef = doc(firestore, 'messages', replyingTo.id);
-            updateDocumentNonBlocking(originalRef, { read: true });
+            updateDocumentNonBlocking(doc(firestore, 'messages', replyingTo.id), { read: true });
         }
-
         toast({ title: 'Reply Sent' });
         setReplyContent('');
         setReplyingTo(null);
     } catch (err) {
-        toast({ variant: 'destructive', title: 'Transmission Error' });
+        toast({ variant: 'destructive', title: 'Error' });
     } finally {
         setIsSendingReply(false);
     }
-  };
-
-  const handleSearchChange = (val: string) => {
-    startTransition(() => {
-        setSearchTerm(val);
-    });
   };
 
   const navigateToThread = (propertyId: string, tenantId: string) => {
     router.push(`/dashboard/properties/${propertyId}?tab=messages&tenantId=${tenantId}`);
   };
 
-  const handleLogAsRepair = (e: React.MouseEvent, msg: Message) => {
-    e.stopPropagation();
-    router.push(`/dashboard/maintenance?propertyId=${msg.propertyId}&title=${encodeURIComponent(msg.content.substring(0, 50))}&reportedBy=${encodeURIComponent(msg.senderName)}`);
-  };
-
-  // Automated Urgency Detector
   const isUrgent = (content: string) => {
-    const criticalKeywords = ['leak', 'emergency', 'broken', 'urgent', 'fire', 'smoke', 'flood', 'water', 'help'];
-    return criticalKeywords.some(word => content.toLowerCase().includes(word));
+    const lower = content.toLowerCase();
+    return URGENCY_KEYWORDS.some(kw => lower.includes(kw));
   };
 
   return (
@@ -294,11 +267,11 @@ export default function CommunicationHubPage() {
       <div className="flex flex-col gap-2 p-6 rounded-3xl bg-primary/5 border border-primary/10">
         <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-primary text-primary-foreground">
-                <MessageSquare className="h-6 w-6" />
+                <Inbox className="h-6 w-6" />
             </div>
             <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Communication Hub</h1>
         </div>
-        <p className="text-muted-foreground font-medium text-lg ml-1">Live management hub for all resident and asset interactions.</p>
+        <p className="text-muted-foreground font-medium text-lg ml-1">Grouped conversation registry for verified residents.</p>
       </div>
 
       <div className="flex items-center justify-between gap-4 px-1">
@@ -310,73 +283,69 @@ export default function CommunicationHubPage() {
               <Input 
                 placeholder="Search conversations..." 
                 className="pl-10 h-12 bg-card border-muted rounded-2xl shadow-sm focus-visible:ring-primary" 
-                onChange={e => handleSearchChange(e.target.value)} 
+                onChange={e => startTransition(() => setSearchTerm(e.target.value))} 
               />
           </div>
-          <div>
-              <Badge variant="outline" className="h-12 px-4 rounded-2xl border-2 font-bold uppercase tracking-widest text-[10px] bg-background shadow-sm">
-                  <span className="text-primary mr-1">{visibleMessages.length}</span> messages
-              </Badge>
-          </div>
+          <Badge variant="outline" className="h-12 px-4 rounded-2xl border-2 font-bold uppercase tracking-widest text-[10px] bg-background shadow-sm">
+              <span className="text-primary mr-1">{conversations.length}</span> messages
+          </Badge>
       </div>
 
       {isLoadingMessages ? (
         <div className="flex flex-col justify-center items-center h-64 gap-4">
-            <div className="p-6 rounded-full bg-primary/5">
-                <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            </div>
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">Syncing Registry...</p>
+            <Loader2 className="h-10 w-10 animate-spin text-primary/20" />
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Registry...</p>
         </div>
-      ) : visibleMessages.length === 0 ? (
+      ) : conversations.length === 0 ? (
         <div className="text-center py-32 border-2 border-dashed rounded-[3rem] bg-muted/5">
-            <div className="p-6 rounded-full bg-background shadow-xl w-fit mx-auto mb-6">
-                <MessageSquare className="h-12 w-12 text-primary/10" />
-            </div>
-            <h3 className="text-xl font-bold">Inbox Empty</h3>
-            <p className="text-muted-foreground mt-2 max-w-xs mx-auto">No communication records found matching your search criteria.</p>
+            <MessageSquare className="h-12 w-12 text-primary/10 mx-auto mb-4" />
+            <h3 className="text-xl font-bold">Inbox Clear</h3>
+            <p className="text-muted-foreground mt-2 max-w-xs mx-auto">No communication threads found matching your criteria.</p>
         </div>
       ) : (
         <div className="grid gap-4">
-            {visibleMessages.map((msg) => {
-                const isLandlord = msg.senderId === user?.uid;
-                const isUnread = !isLandlord && msg.read !== true;
-                const propertyAddress = propertyMap[msg.propertyId] || 'Assigned Asset';
-                const residentName = tenantNameMap[msg.tenantId] || msg.senderName || 'Resident';
-                const urgent = !isLandlord && isUrgent(msg.content);
+            {conversations.map((conv) => {
+                const msg = conv.lastMessage;
+                const residentName = tenantNameMap[conv.tenantId] || msg.senderName || 'Resident';
+                const propertyAddress = propertyMap[conv.propertyId] || 'Assigned Asset';
+                const isLandlordLast = msg.senderId === user?.uid;
+                const hasUnread = conv.unreadCount > 0;
+                const urgent = isUrgent(msg.content);
                 
                 return (
                     <Card 
-                        key={msg.id} 
+                        key={conv.id} 
                         className={cn(
-                            "shadow-md border-none overflow-hidden transition-all group relative cursor-pointer",
-                            isUnread ? "ring-2 ring-primary/20 bg-primary/[0.02]" : "hover:bg-muted/5",
-                            urgent && !isLandlord && "border-l-4 border-l-destructive"
+                            "shadow-md border-none overflow-hidden transition-all group relative cursor-pointer hover:shadow-xl",
+                            hasUnread ? "ring-2 ring-primary/20 bg-primary/[0.02]" : "hover:bg-muted/5",
+                            urgent && "border-l-4 border-l-destructive"
                         )}
-                        onClick={() => navigateToThread(msg.propertyId, msg.tenantId)}
+                        onClick={() => navigateToThread(conv.propertyId, conv.tenantId)}
                     >
                         <div className="flex items-start gap-4 p-5">
-                            <div className="relative shrink-0">
+                            <div className="relative shrink-0 pt-1">
                                 <div className={cn(
                                     "h-12 w-12 rounded-2xl flex items-center justify-center transition-colors shadow-sm",
-                                    isLandlord ? "bg-muted text-muted-foreground" : (isUnread ? "bg-primary text-primary-foreground" : "bg-primary/5 text-primary")
+                                    hasUnread ? "bg-primary text-primary-foreground" : "bg-muted text-muted-foreground"
                                 )}>
                                     <User className="h-6 w-6" />
                                 </div>
-                                {isUnread && (
-                                    <span className="absolute -top-1 -right-1 h-3.5 w-3.5 bg-destructive rounded-full border-2 border-background animate-pulse shadow-sm" />
+                                {hasUnread && (
+                                    <span className="absolute -top-1 -right-1 flex h-5 w-5 items-center justify-center bg-destructive text-[10px] font-bold text-white rounded-full border-2 border-background shadow-lg">
+                                        {conv.unreadCount}
+                                    </span>
                                 )}
                             </div>
                             <div className="flex-1 min-w-0">
-                                <div className="flex items-center justify-between mb-1.5">
+                                <div className="flex items-center justify-between mb-1">
                                     <div className="flex flex-col text-left">
                                         <div className="flex items-center gap-2">
-                                            <p className={cn("font-bold text-base truncate", isUnread && "text-primary")}>
-                                                {isLandlord ? `To: ${residentName}` : residentName}
+                                            <p className={cn("font-bold text-base truncate", hasUnread && "text-primary")}>
+                                                {residentName}
                                             </p>
-                                            {isLandlord && <Badge variant="outline" className="text-[8px] font-bold uppercase tracking-tighter h-4 py-0">Reply Sent</Badge>}
-                                            {urgent && !isLandlord && (
-                                                <Badge variant="destructive" className="text-[8px] font-bold uppercase tracking-tighter h-4 py-0 gap-1">
-                                                    <AlertTriangle className="h-2 w-2" /> Urgent
+                                            {urgent && (
+                                                <Badge variant="destructive" className="h-4 px-1.5 text-[8px] font-bold uppercase tracking-widest animate-pulse">
+                                                    Urgent
                                                 </Badge>
                                             )}
                                         </div>
@@ -387,92 +356,50 @@ export default function CommunicationHubPage() {
                                             </span>
                                         </div>
                                     </div>
-                                    <div className="flex items-center gap-3 self-start">
-                                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap pt-1">
-                                            {safeToDate(msg.timestamp) ? format(safeToDate(msg.timestamp)!, 'HH:mm • d MMM') : 'Just now'}
+                                    <div className="flex items-center gap-2 self-start pt-1">
+                                        <div className="flex gap-1 opacity-0 group-hover:opacity-100 transition-opacity mr-2">
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="h-8 w-8 text-primary" 
+                                                title="Reply"
+                                                onClick={(e) => { e.stopPropagation(); setReplyingTo(msg); }}
+                                            >
+                                                <Reply className="h-4 w-4" />
+                                            </Button>
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="h-8 w-8 text-muted-foreground" 
+                                                title="Log as Maintenance"
+                                                asChild
+                                                onClick={(e) => e.stopPropagation()}
+                                            >
+                                                <Link href={`/dashboard/maintenance?propertyId=${msg.propertyId}&title=${encodeURIComponent(msg.content.substring(0, 50))}&description=${encodeURIComponent(msg.content)}`}>
+                                                    <Wrench className="h-4 w-4" />
+                                                </Link>
+                                            </Button>
+                                            <Button 
+                                                variant="ghost" 
+                                                size="icon" 
+                                                className="h-8 w-8 text-destructive" 
+                                                title="Delete Record"
+                                                onClick={(e) => { e.stopPropagation(); setMessageToDelete(msg); }}
+                                            >
+                                                <Trash2 className="h-4 w-4" />
+                                            </Button>
+                                        </div>
+                                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground shrink-0">
+                                            {safeToDate(msg.timestamp) ? format(safeToDate(msg.timestamp)!, 'd MMM HH:mm') : 'Just now'}
                                         </span>
-                                        <DropdownMenu>
-                                            <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 cursor-pointer" onClick={(e) => e.stopPropagation()}>
-                                                    <MoreVertical className="h-4 w-4" />
-                                                </Button>
-                                            </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="w-52 p-1">
-                                                <DropdownMenuItem 
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setReplyingTo(msg);
-                                                    }} 
-                                                    className="cursor-pointer"
-                                                >
-                                                    <Reply className="mr-2 h-4 w-4" /> Send Reply
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem 
-                                                    onClick={(e) => handleLogAsRepair(e, msg)}
-                                                    className="cursor-pointer font-bold text-primary"
-                                                >
-                                                    <Wrench className="mr-2 h-4 w-4" /> Log as Repair
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem 
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        handleToggleRead(msg);
-                                                    }} 
-                                                    className="cursor-pointer"
-                                                >
-                                                    <CheckCircle2 className="mr-2 h-4 w-4" /> 
-                                                    {msg.read ? 'Mark as Unread' : 'Mark as Read'}
-                                                </DropdownMenuItem>
-                                                <DropdownMenuSeparator />
-                                                <DropdownMenuItem 
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        navigateToThread(msg.propertyId, msg.tenantId);
-                                                    }} 
-                                                    className="cursor-pointer"
-                                                >
-                                                    <MessageSquare className="mr-2 h-4 w-4" /> View Full Thread
-                                                </DropdownMenuItem>
-                                                <DropdownMenuItem 
-                                                    onClick={(e) => {
-                                                        e.stopPropagation();
-                                                        setMessageToDelete(msg);
-                                                    }} 
-                                                    className="text-destructive font-bold cursor-pointer"
-                                                >
-                                                    <Trash2 className="mr-2 h-4 w-4" /> Delete Record
-                                                </DropdownMenuItem>
-                                            </DropdownMenuContent>
-                                        </DropdownMenu>
+                                        <ChevronRight className="h-4 w-4 text-muted-foreground group-hover:translate-x-1 transition-transform" />
                                     </div>
                                 </div>
-                                <div className="bg-muted/30 p-3 rounded-xl border border-muted mb-3 group-hover:bg-muted/40 transition-colors">
-                                    <p className={cn("text-sm leading-relaxed", isUnread ? "text-foreground font-medium" : "text-muted-foreground")}>
+                                <div className="bg-muted/30 p-3 rounded-xl border border-muted group-hover:bg-muted/40 transition-colors">
+                                    <p className={cn("text-sm line-clamp-2", hasUnread ? "text-foreground font-semibold" : "text-muted-foreground")}>
+                                        {isLandlordLast && <span className="text-primary mr-1 font-bold">You:</span>}
                                         "{msg.content}"
                                     </p>
-                                </div>
-                                <div className="flex items-center gap-4">
-                                    {!isLandlord && (
-                                        <Button 
-                                            variant="link" 
-                                            className="h-auto p-0 text-[10px] font-bold uppercase tracking-widest text-primary gap-1" 
-                                            onClick={(e) => {
-                                                e.stopPropagation();
-                                                setReplyingTo(msg);
-                                            }}
-                                        >
-                                            <Reply className="h-3 w-3" /> Quick Reply
-                                        </Button>
-                                    )}
-                                    {!isLandlord && (
-                                        <Button 
-                                            variant="link" 
-                                            className="h-auto p-0 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary gap-1" 
-                                            onClick={(e) => handleLogAsRepair(e, msg)}
-                                        >
-                                            <Wrench className="h-3 w-3" /> Convert to Repair
-                                        </Button>
-                                    )}
                                 </div>
                             </div>
                         </div>
@@ -481,77 +408,52 @@ export default function CommunicationHubPage() {
             })}
         </div>
       )}
-      
-      <div className="p-6 rounded-2xl bg-muted/30 border border-dashed flex items-center gap-4 text-left">
-          <ShieldCheck className="h-10 w-10 text-primary opacity-20 shrink-0" />
-          <div className="space-y-1">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Professional Communication Audit</p>
-              <p className="text-[11px] text-muted-foreground/70 leading-relaxed font-medium">All interactions are chronologically recorded. The registry uses Optimistic UI updates to ensure zero-latency record management.</p>
-          </div>
-      </div>
 
-      {/* Reply Dialog */}
       <Dialog open={!!replyingTo} onOpenChange={(open) => !open && setReplyingTo(null)}>
-        <DialogContent className="max-w-lg text-left overflow-hidden rounded-2xl border-none shadow-2xl">
-            <DialogHeader className="bg-primary/5 -mx-6 -mt-6 p-6 border-b border-primary/10 text-left">
+        <DialogContent className="max-w-lg text-left rounded-2xl border-none shadow-2xl">
+            <DialogHeader className="bg-primary/5 -mx-6 -mt-6 p-6 border-b border-primary/10">
                 <DialogTitle className="flex items-center gap-2">
                     <Reply className="h-5 w-5 text-primary" />
-                    Professional Response
+                    Quick Response
                 </DialogTitle>
-                <DialogDescription className="font-medium text-primary/60">
-                    Responding to {tenantNameMap[replyingTo?.tenantId || ''] || replyingTo?.senderName}
-                </DialogDescription>
+                <DialogDescription>Sending reply to thread.</DialogDescription>
             </DialogHeader>
             <div className="py-6 space-y-6">
-                <div className="bg-muted/30 p-4 rounded-xl border-2 border-dashed italic text-sm text-muted-foreground">
-                    "{replyingTo?.content}"
+                <div className="bg-muted/20 p-4 rounded-xl border border-dashed mb-4">
+                    <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground mb-2">Original Message</p>
+                    <p className="text-xs italic text-muted-foreground line-clamp-3">"{replyingTo?.content}"</p>
                 </div>
-                
-                <div className="space-y-2">
-                    <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1">Quick Templates</p>
-                    <div className="flex flex-wrap gap-2">
-                        {QUICK_REPLIES.map((reply, idx) => (
-                            <Button 
-                                key={idx} 
-                                variant="outline" 
-                                size="sm" 
-                                className="h-7 text-[9px] font-bold uppercase tracking-tight rounded-lg border-primary/10 hover:bg-primary/5 hover:text-primary transition-all"
-                                onClick={() => setReplyContent(reply)}
-                            >
-                                {reply.split(' ').slice(0, 3).join(' ')}...
-                            </Button>
-                        ))}
-                    </div>
-                </div>
-
-                <div className="space-y-3">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground px-1">Reply Content</p>
-                    <Textarea 
-                        placeholder="Type your response to the resident..." 
-                        rows={5}
-                        className="resize-none rounded-xl border-2 focus-visible:ring-primary h-32 bg-background"
-                        value={replyContent}
-                        onChange={(e) => setReplyContent(e.target.value)}
-                    />
+                <Textarea 
+                    placeholder="Type your response..." 
+                    rows={5}
+                    className="resize-none rounded-xl border-2 h-32"
+                    value={replyContent}
+                    onChange={(e) => setReplyContent(e.target.value)}
+                />
+                <div className="flex flex-wrap gap-2">
+                    {QUICK_REPLIES.map((reply, idx) => (
+                        <Button 
+                            key={idx} 
+                            variant="outline" 
+                            size="sm" 
+                            className="h-7 text-[9px] font-bold uppercase rounded-lg border-primary/20 hover:bg-primary/5"
+                            onClick={() => setReplyContent(reply)}
+                        >
+                            {reply.split(' ').slice(0, 3).join(' ')}...
+                        </Button>
+                    ))}
                 </div>
             </div>
-            <DialogFooter className="bg-muted/5 -mx-6 -mb-6 p-6 border-t flex items-center justify-between">
-                <div className="hidden sm:flex items-center gap-2 text-[10px] text-muted-foreground font-bold uppercase">
-                    <Clock className="h-3 w-3" />
-                    Encrypted Channel
-                </div>
-                <div className="flex gap-2 w-full sm:w-auto">
-                    <Button variant="ghost" onClick={() => setReplyingTo(null)} className="font-bold">Cancel</Button>
-                    <Button onClick={handleSendReply} disabled={!replyContent.trim() || isSendingReply} className="px-8 shadow-lg font-bold">
-                        {isSendingReply ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
-                        Send Reply
-                    </Button>
-                </div>
+            <DialogFooter className="gap-3">
+                <Button variant="ghost" className="font-bold uppercase tracking-widest text-[10px]" onClick={() => setReplyingTo(null)}>Cancel</Button>
+                <Button onClick={handleSendReply} disabled={!replyContent.trim() || isSendingReply} className="px-8 shadow-lg font-bold uppercase tracking-widest text-[10px]">
+                    {isSendingReply ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+                    Send Reply
+                </Button>
             </DialogFooter>
         </DialogContent>
       </Dialog>
 
-      {/* Delete Confirmation */}
       <AlertDialog open={!!messageToDelete} onOpenChange={(open) => !open && setMessageToDelete(null)}>
         <AlertDialogContent className="rounded-2xl border-none shadow-2xl text-left">
             <AlertDialogHeader className="text-left">
@@ -559,13 +461,11 @@ export default function CommunicationHubPage() {
                     <Trash2 className="h-8 w-8 text-destructive" />
                 </div>
                 <AlertDialogTitle className="text-xl font-headline text-center">Remove Audit Record?</AlertDialogTitle>
-                <AlertDialogDescription className="text-center font-medium">
-                    This will instantly remove this record from the registry history using Optimistic UI synchronization.
-                </AlertDialogDescription>
+                <AlertDialogDescription className="text-center">This will permanently remove this message from the chronological registry. This action cannot be undone.</AlertDialogDescription>
             </AlertDialogHeader>
-            <AlertDialogFooter className="mt-6 gap-3 flex-col-reverse sm:flex-row">
-                <AlertDialogCancel className="rounded-xl font-bold uppercase tracking-widest text-[10px] h-12 flex-1 border-2">Cancel</AlertDialogCancel>
-                <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold uppercase tracking-widest text-[10px] h-12 flex-1 shadow-lg">
+            <AlertDialogFooter className="mt-6 gap-3">
+                <AlertDialogCancel className="rounded-xl font-bold uppercase text-[10px] h-12 flex-1 border-2">Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-white rounded-xl font-bold uppercase text-[10px] h-12 flex-1 shadow-lg">
                     Confirm Deletion
                 </AlertDialogAction>
             </AlertDialogFooter>

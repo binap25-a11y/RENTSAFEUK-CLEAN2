@@ -42,9 +42,9 @@ import {
   List
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, Suspense } from 'react';
 import Link from 'next/link';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import {
   useUser,
   useFirestore,
@@ -101,24 +101,29 @@ const prepareForFirestore = (obj: any): any => {
     }));
 };
 
-export default function MaintenancePage() {
+function MaintenanceFormContent() {
   const { user } = useUser();
   const firestore = useFirestore();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
   const [isPropSelectorOpen, setIsPropSelectorOpen] = useState(false);
   const [propertySearch, setPropertySearch] = useState('');
 
+  const propertyIdFromUrl = searchParams.get('propertyId');
+  const titleFromUrl = searchParams.get('title');
+  const descriptionFromUrl = searchParams.get('description');
+
   const form = useForm<MaintenanceFormValues>({
     resolver: zodResolver(maintenanceSchema),
     defaultValues: {
-      propertyId: '',
-      title: '',
-      description: '',
+      propertyId: propertyIdFromUrl || '',
+      title: titleFromUrl || '',
+      description: descriptionFromUrl || '',
       category: '',
       otherCategoryDetails: '',
-      priority: '',
-      reportedBy: '',
+      priority: 'Routine',
+      reportedBy: 'Management',
       contractorName: '',
       contractorPhone: '',
       notes: '',
@@ -241,7 +246,6 @@ export default function MaintenancePage() {
                                 <PopoverTrigger asChild>
                                     <FormControl>
                                         <Button
-                                            id="maintenance-prop-trigger"
                                             variant="outline"
                                             role="combobox"
                                             className={cn(
@@ -260,7 +264,6 @@ export default function MaintenancePage() {
                                     <div className="flex items-center border-b px-3 bg-muted/20">
                                         <Search className="h-4 w-4 shrink-0 opacity-50 mr-2" />
                                         <Input 
-                                            id="prop-search-field"
                                             placeholder="Type address..." 
                                             className="h-11 border-0 focus-visible:ring-0 bg-transparent" 
                                             value={propertySearch}
@@ -311,10 +314,10 @@ export default function MaintenancePage() {
                             name="category"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="font-bold" htmlFor="issue-category-select">Trade Category</FormLabel>
+                                <FormLabel className="font-bold">Trade Category</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl>
-                                    <SelectTrigger id="issue-category-select" className="h-11 bg-background">
+                                    <SelectTrigger className="h-11 bg-background">
                                       <SelectValue placeholder="Select trade" />
                                     </SelectTrigger>
                                   </FormControl>
@@ -333,10 +336,10 @@ export default function MaintenancePage() {
                             name="priority"
                             render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="font-bold" htmlFor="issue-priority-select">Priority Status</FormLabel>
+                                <FormLabel className="font-bold">Priority Status</FormLabel>
                                 <Select onValueChange={field.onChange} value={field.value}>
                                   <FormControl>
-                                    <SelectTrigger id="issue-priority-select" className="h-11 bg-background">
+                                    <SelectTrigger className="h-11 bg-background">
                                       <SelectValue placeholder="Select urgency" />
                                     </SelectTrigger>
                                   </FormControl>
@@ -358,10 +361,9 @@ export default function MaintenancePage() {
                             name="otherCategoryDetails"
                             render={({ field }) => (
                               <FormItem className="animate-in fade-in slide-in-from-top-2">
-                                <FormLabel className="font-bold" htmlFor="other-details-area">Category Details</FormLabel>
+                                <FormLabel className="font-bold">Category Details</FormLabel>
                                 <FormControl>
                                   <Textarea
-                                    id="other-details-area"
                                     placeholder="Please specify the type of maintenance required..."
                                     className="bg-background resize-none rounded-xl"
                                     {...field}
@@ -377,10 +379,9 @@ export default function MaintenancePage() {
 
                         <FormField control={form.control} name="title" render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="font-bold" htmlFor="issue-headline-input">Issue Headline</FormLabel>
+                            <FormLabel className="font-bold">Issue Headline</FormLabel>
                             <FormControl>
                               <Input 
-                                id="issue-headline-input"
                                 placeholder="e.g., Leaking boiler in kitchen" 
                                 className="h-11 bg-background" 
                                 {...field} 
@@ -392,10 +393,9 @@ export default function MaintenancePage() {
                         )} />
                         <FormField control={form.control} name="description" render={({ field }) => (
                           <FormItem>
-                            <FormLabel className="font-bold" htmlFor="issue-desc-area">Detailed Description</FormLabel>
+                            <FormLabel className="font-bold">Detailed Description</FormLabel>
                             <FormControl>
                               <Textarea 
-                                id="issue-desc-area"
                                 placeholder="Please describe the issue in detail for the contractor." 
                                 className="min-h-[120px] rounded-xl bg-background resize-none" 
                                 {...field} 
@@ -412,10 +412,9 @@ export default function MaintenancePage() {
                             <h3 className="font-bold text-lg flex items-center gap-2"><Calendar className="h-5 w-5 text-primary" /> Audit Info</h3>
                             <FormField control={form.control} name="reportedBy" render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="font-bold" htmlFor="reported-by-input">Reported By</FormLabel>
+                                <FormLabel className="font-bold">Reported By</FormLabel>
                                 <FormControl>
                                   <Input 
-                                    id="reported-by-input"
                                     placeholder="e.g., Tenant name" 
                                     className="h-11 bg-background" 
                                     {...field} 
@@ -427,10 +426,9 @@ export default function MaintenancePage() {
                             )} />
                             <FormField control={form.control} name="reportedDate" render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="font-bold" htmlFor="reported-date-input">Date of Report</FormLabel>
+                                <FormLabel className="font-bold">Date of Report</FormLabel>
                                 <FormControl>
                                   <Input 
-                                    id="reported-date-input"
                                     type="date" 
                                     className="h-11 bg-background" 
                                     value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} 
@@ -444,7 +442,7 @@ export default function MaintenancePage() {
                         <div className="space-y-6">
                             <h3 className="font-bold text-lg flex items-center gap-2 text-green-600"><PlusCircle className="h-5 w-5" /> Assignment</h3>
                             <div className="space-y-2">
-                                <Label htmlFor="contractor-select-quick" className="font-bold">Quick-select Contractor</Label>
+                                <Label className="font-bold">Quick-select Contractor</Label>
                                 <Select onValueChange={(contractorId) => {
                                     const contractor = contractors?.find(c => c.id === contractorId);
                                     if (contractor) {
@@ -452,7 +450,7 @@ export default function MaintenancePage() {
                                         form.setValue('contractorPhone', contractor.phone);
                                     }
                                 }}>
-                                    <SelectTrigger id="contractor-select-quick" className="h-11 bg-background">
+                                    <SelectTrigger className="h-11 bg-background">
                                         <SelectValue placeholder="Search your directory..." />
                                     </SelectTrigger>
                                     <SelectContent>
@@ -464,10 +462,9 @@ export default function MaintenancePage() {
                             </div>
                             <FormField control={form.control} name="contractorName" render={({ field }) => (
                               <FormItem>
-                                <FormLabel className="font-bold" htmlFor="assigned-contractor-input">Assigned To</FormLabel>
+                                <FormLabel className="font-bold">Assigned To</FormLabel>
                                 <FormControl>
                                   <Input 
-                                    id="assigned-contractor-input"
                                     placeholder="Contractor name" 
                                     className="h-11 bg-background" 
                                     {...field} 
@@ -480,26 +477,34 @@ export default function MaintenancePage() {
                         </div>
                     </div>
                 </div>
+                
+                <div className="flex items-center gap-3 w-full px-1">
+                    <Button asChild variant="outline" className="flex-1 font-bold shadow-sm h-11 px-6 border-primary/20 hover:bg-primary/5 transition-all">
+                        <Link href="/dashboard/maintenance/logged">
+                            <List className="mr-2 h-4 w-4 text-primary" /> View History
+                        </Link>
+                    </Button>
+                    <Button 
+                        type="submit"
+                        disabled={isSubmitting} 
+                        className="flex-1 font-bold shadow-lg h-11 px-8 bg-primary hover:bg-primary/90 transition-all"
+                    >
+                        {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
+                        Log Maintenance Request
+                    </Button>
+                </div>
               </form>
             </Form>
           </CardContent>
         </Card>
-
-        <div className="flex items-center gap-3 w-full px-1">
-            <Button asChild variant="outline" className="flex-1 font-bold shadow-sm h-11 px-6 border-primary/20 hover:bg-primary/5 transition-all">
-                <Link href="/dashboard/maintenance/logged">
-                    <List className="mr-2 h-4 w-4 text-primary" /> View History
-                </Link>
-            </Button>
-            <Button 
-                onClick={form.handleSubmit(handleFormSubmit)} 
-                disabled={isSubmitting} 
-                className="flex-1 font-bold shadow-lg h-11 px-8 bg-primary hover:bg-primary/90 transition-all"
-            >
-                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-                Log Maintenance Request
-            </Button>
-        </div>
     </div>
+  );
+}
+
+export default function MaintenancePage() {
+  return (
+    <Suspense fallback={<div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>}>
+      <MaintenanceFormContent />
+    </Suspense>
   );
 }
