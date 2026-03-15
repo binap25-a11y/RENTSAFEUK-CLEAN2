@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -87,8 +86,8 @@ export default function UploadDocumentPage() {
     resolver: zodResolver(documentSchema),
     defaultValues: {
         title: '',
-        propertyId: typeof window !== 'undefined' ? (localStorage.getItem('last_doc_prop') || '') : '',
-        documentType: typeof window !== 'undefined' ? (localStorage.getItem('last_doc_type') || '') : '',
+        propertyId: '',
+        documentType: '',
         notes: '',
         expiryDate: '',
         sharedWithTenant: false,
@@ -98,6 +97,16 @@ export default function UploadDocumentPage() {
   const watchIssueDate = form.watch('issueDate');
   const watchExpiryDate = form.watch('expiryDate');
   const watchType = form.watch('documentType');
+
+  // HYDRATION HANDSHAKE: Set default preferences only after client-side mount
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      const lastProp = localStorage.getItem('last_doc_prop');
+      const lastType = localStorage.getItem('last_doc_type');
+      if (lastProp) form.setValue('propertyId', lastProp);
+      if (lastType) form.setValue('documentType', lastType);
+    }
+  }, [form]);
 
   // SELECTION MEMORY HANDSHAKE: Ensure preferences are updated immediately on change
   useEffect(() => {

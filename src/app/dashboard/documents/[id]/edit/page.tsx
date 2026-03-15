@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -98,17 +97,6 @@ export default function EditDocumentPage() {
   }, [firestore, user, id]);
 
   const { data: documentRecord, isLoading } = useDoc<DocumentRecord>(docRef);
-
-  // SELECTION MEMORY HANDSHAKE: Forces re-render when record loads or session memory is updated.
-  const [lastSessionType, setLastSessionType] = useState<string>('');
-  
-  useEffect(() => {
-    if (typeof window !== 'undefined') {
-      setLastSessionType(localStorage.getItem('last_doc_type') || '');
-    }
-  }, []);
-
-  const dataKey = documentRecord ? `registry-loaded-${id}-${documentRecord.documentType}-${lastSessionType}` : 'registry-pending';
 
   useEffect(() => {
     if (documentRecord) {
@@ -210,13 +198,12 @@ export default function EditDocumentPage() {
                   <FormItem>
                       <FormLabel className="font-bold">Document Type</FormLabel>
                       <Select 
-                        key={dataKey} 
+                        key={documentRecord.id} 
                         onValueChange={(val) => {
                           field.onChange(val);
                           // SELECTION MEMORY: Save choice instantly to update the "last used" preference
                           if (typeof window !== 'undefined') {
                             localStorage.setItem('last_doc_type', val);
-                            setLastSessionType(val);
                           }
                         }} 
                         value={field.value}
