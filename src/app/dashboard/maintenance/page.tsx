@@ -186,7 +186,7 @@ function MaintenanceFormContent() {
 
   const matchedContractorId = useMemo(() => {
       if (!contractors || !watchContractorName || !watchContractorPhone) return "";
-      return contractors.find(c => c.name === watchContractorName && c.phone === watchContractorPhone)?.id || "";
+      return contractors.find(c => c.id === matchedContractorId)?.id || "";
   }, [contractors, watchContractorName, watchContractorPhone]);
 
   async function handleFormSubmit(data: MaintenanceFormValues) {
@@ -222,12 +222,20 @@ function MaintenanceFormContent() {
 
   return (
     <div className="max-w-6xl mx-auto space-y-8">
-        <div className="space-y-2 text-left">
-          <h1 className="text-3xl font-bold font-headline tracking-tight text-primary flex items-center gap-2">
-              <Wrench className="h-8 w-8" />
-              Maintenance Hub
-          </h1>
-          <p className="text-muted-foreground font-medium text-lg">Record and track repairs across your portfolio.</p>
+        <div className="flex flex-col gap-6 text-left">
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold font-headline tracking-tight text-primary flex items-center gap-2">
+                <Wrench className="h-8 w-8" />
+                Maintenance Hub
+            </h1>
+            <p className="text-muted-foreground font-medium text-lg">Record and track repairs across your portfolio.</p>
+          </div>
+          
+          <Button asChild variant="outline" className="w-fit font-bold shadow-sm h-11 px-6 border-primary/20 hover:bg-primary/5 transition-all">
+              <Link href="/dashboard/maintenance/logged">
+                  <List className="mr-2 h-4 w-4 text-primary" /> View History
+              </Link>
+          </Button>
         </div>
 
         <Card className="border-none shadow-xl overflow-hidden text-left">
@@ -555,15 +563,10 @@ function MaintenanceFormContent() {
                 </div>
                 
                 <div className="flex items-center gap-3 w-full px-1 text-left">
-                    <Button asChild variant="outline" className="flex-1 font-bold shadow-sm h-11 px-6 border-primary/20 hover:bg-primary/5 transition-all">
-                        <Link href="/dashboard/maintenance/logged">
-                            <List className="mr-2 h-4 w-4 text-primary" /> View History
-                        </Link>
-                    </Button>
                     <Button 
                         type="submit"
                         disabled={isSubmitting} 
-                        className="flex-1 font-bold shadow-lg h-11 px-8 bg-primary hover:bg-primary/90 transition-all"
+                        className="w-full font-bold shadow-lg h-11 px-8 bg-primary hover:bg-primary/90 transition-all"
                     >
                         {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
                         Log Maintenance Request
