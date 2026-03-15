@@ -99,12 +99,12 @@ export default function EditDocumentPage() {
 
   const { data: documentRecord, isLoading } = useDoc<DocumentRecord>(docRef);
 
-  // REACTIVE KEY: Ensures selection is remembered and correctly displayed upon record load
-  const dataKey = documentRecord ? `registry-loaded-${documentRecord.documentType}-${localStorage.getItem('last_doc_type')}` : 'registry-pending';
+  // REACTIVE KEY: Forces re-render when record loads or session memory is updated
+  const dataKey = documentRecord ? `registry-loaded-${documentRecord.documentType}-${typeof window !== 'undefined' ? localStorage.getItem('last_doc_type') : ''}` : 'registry-pending';
 
   useEffect(() => {
     if (documentRecord) {
-      // SELECTION MEMORY HANDSHAKE: Prefer last chosen type during multi-edit sessions
+      // SELECTION MEMORY HANDSHAKE: Prioritize last chosen type for triage sessions
       const sessionPreference = typeof window !== 'undefined' ? localStorage.getItem('last_doc_type') : null;
       
       form.reset({
