@@ -22,7 +22,6 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
-  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import {
@@ -118,6 +117,12 @@ export default function EditMaintenancePage() {
 
     const form = useForm<MaintenanceFormValues>({
         resolver: zodResolver(maintenanceEditSchema),
+        defaultValues: {
+            reportedBy: 'Landlord',
+            status: 'Open',
+            priority: 'Routine',
+            expectedCost: 0
+        }
     });
 
     const watchContractorName = form.watch('contractorName');
@@ -147,6 +152,7 @@ export default function EditMaintenancePage() {
         return contractors.find(c => c.name === watchContractorName && c.phone === watchContractorPhone)?.id || "";
     }, [contractors, watchContractorName, watchContractorPhone]);
 
+    // Standardizes casing for dropdown matching
     const normalizeValue = (val: string, options: string[]) => {
         if (!val) return "";
         const found = options.find(o => o.toLowerCase() === val.toLowerCase());
@@ -182,7 +188,7 @@ export default function EditMaintenancePage() {
 
         try {
             await updateDoc(maintenanceLogRef, cleanedData);
-            toast({ title: 'Record Updated' });
+            toast({ title: 'Record Updated', description: 'The maintenance registry has been synchronized.' });
             router.push(`/dashboard/maintenance/${logId}?propertyId=${data.propertyId}`);
         } catch (error) {
             toast({ variant: 'destructive', title: 'Update Failed' });
@@ -220,9 +226,9 @@ export default function EditMaintenancePage() {
                                     <FormItem>
                                         <FormLabel className="font-bold">Target Property</FormLabel>
                                         <Select 
-                                            key={maintenanceLog.propertyId}
+                                            key={`${logId}-prop-${field.value}`}
                                             onValueChange={field.onChange} 
-                                            defaultValue={field.value}
+                                            value={field.value}
                                         >
                                             <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select property" /></SelectTrigger></FormControl>
                                             <SelectContent>
@@ -241,10 +247,34 @@ export default function EditMaintenancePage() {
                                     </FormItem>
                                 )} />
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                    <FormField control={form.control} name="category" render={({ field }) => (<FormItem><FormLabel className="font-bold">Category</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11"><SelectValue /></SelectTrigger></FormControl><SelectContent>{CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-                                    <FormField control={form.control} name="priority" render={({ field }) => (<FormItem><FormLabel className="font-bold">Priority</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11"><SelectValue /></SelectTrigger></FormControl><SelectContent>{PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="category" render={({ field }) => (
+                                        <FormItem><FormLabel className="font-bold">Category</FormLabel>
+                                            <Select key={`${logId}-cat-${field.value}`} onValueChange={field.onChange} value={field.value}>
+                                                <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select category" /></SelectTrigger></FormControl>
+                                                <SelectContent>{CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
+                                    <FormField control={form.control} name="priority" render={({ field }) => (
+                                        <FormItem><FormLabel className="font-bold">Priority</FormLabel>
+                                            <Select key={`${logId}-prio-${field.value}`} onValueChange={field.onChange} value={field.value}>
+                                                <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select priority" /></SelectTrigger></FormControl>
+                                                <SelectContent>{PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
                                 </div>
-                                <FormField control={form.control} name="status" render={({ field }) => (<FormItem><FormLabel className="font-bold">Repair Status</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11"><SelectValue /></SelectTrigger></FormControl><SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                                <FormField control={form.control} name="status" render={({ field }) => (
+                                    <FormItem><FormLabel className="font-bold">Repair Status</FormLabel>
+                                        <Select key={`${logId}-status-${field.value}`} onValueChange={field.onChange} value={field.value}>
+                                            <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select status" /></SelectTrigger></FormControl>
+                                            <SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
                             </div>
 
                             {/* 2. ASSIGNMENT */}
@@ -253,7 +283,22 @@ export default function EditMaintenancePage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                     <div className="space-y-4">
                                         <Label className="font-bold text-xs">Quick-select Contractor</Label>
-                                        <Select value={matchedContractorId} onValueChange={(cid) => { const c = contractors?.find(x => x.id === cid); if (c) { form.setValue('contractorName', c.name); form.setValue('contractorPhone', c.phone); const cat = CATEGORIES.find(cat => c.trade.toLowerCase().includes(cat.toLowerCase().substring(0,4))); if (cat) form.setValue('category', cat); } }}><SelectTrigger className="h-11 bg-muted/20"><SelectValue placeholder="Search directory..." /></SelectTrigger><SelectContent>{contractors?.map(c => <SelectItem key={c.id} value={c.id}>{c.name} ({c.trade})</SelectItem>)}</SelectContent></Select>
+                                        <Select 
+                                            key={`${logId}-contractor-${matchedContractorId}`}
+                                            value={matchedContractorId} 
+                                            onValueChange={(cid) => { 
+                                                const c = contractors?.find(x => x.id === cid); 
+                                                if (c) { 
+                                                    form.setValue('contractorName', c.name); 
+                                                    form.setValue('contractorPhone', c.phone); 
+                                                    const cat = CATEGORIES.find(cat => c.trade.toLowerCase().includes(cat.toLowerCase().substring(0,4))); 
+                                                    if (cat) form.setValue('category', cat); 
+                                                } 
+                                            }}
+                                        >
+                                            <SelectTrigger className="h-11 bg-muted/20"><SelectValue placeholder="Search directory..." /></SelectTrigger>
+                                            <SelectContent>{contractors?.map(c => <SelectItem key={c.id} value={c.id}>{c.name} ({c.trade})</SelectItem>)}</SelectContent>
+                                        </Select>
                                         <FormField control={form.control} name="contractorName" render={({ field }) => (<FormItem><FormLabel className="font-bold">Assigned To</FormLabel><FormControl><Input className="h-11" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                     </div>
                                     <div className="space-y-4">
@@ -267,7 +312,15 @@ export default function EditMaintenancePage() {
                             <div className="space-y-6 border-t pt-8">
                                 <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground px-1">3. Audit History</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-                                    <FormField control={form.control} name="reportedBy" render={({ field }) => (<FormItem><FormLabel className="font-bold">Reported By</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11"><SelectValue /></SelectTrigger></FormControl><SelectContent>{REPORTERS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="reportedBy" render={({ field }) => (
+                                        <FormItem><FormLabel className="font-bold">Reported By</FormLabel>
+                                            <Select key={`${logId}-reportedBy-${field.value}`} onValueChange={field.onChange} value={field.value}>
+                                                <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select reporter" /></SelectTrigger></FormControl>
+                                                <SelectContent>{REPORTERS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
+                                            </Select>
+                                            <FormMessage />
+                                        </FormItem>
+                                    )} />
                                     <FormField control={form.control} name="reportedDate" render={({ field }) => (<FormItem><FormLabel className="font-bold">Reported Date</FormLabel><FormControl><Input type="date" className="h-11" value={formatDateForInput(field.value)} onChange={e => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>)} />
                                 </div>
                             </div>
