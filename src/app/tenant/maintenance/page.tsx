@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -34,8 +33,9 @@ import { Textarea } from '@/components/ui/textarea';
 import { Loader2, Wrench, Upload, X, AlertCircle } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { useUser, useFirestore } from '@/firebase';
-import { query, where, limit, addDoc, collection, onSnapshot } from 'firebase/firestore';
+import { query, where, limit, addDoc, collection, onSnapshot, getDoc, doc } from 'firebase/firestore';
 import { uploadPropertyImage } from '@/lib/upload-image';
+import { notifyLandlordOfMaintenance } from '@/app/actions/notifications';
 import Image from 'next/image';
 
 const maintenanceSchema = z.object({
@@ -103,7 +103,7 @@ export default function TenantMaintenancePage() {
     const files = Array.from(e.target.files || []);
     setPhotoFiles(prev => [...prev, ...files]);
     const previews = files.map(f => URL.createObjectURL(f));
-    setPhotoPreviews(prev => [...prev, ...previews]);
+    setPhotoPreviews(prev => [...prev, ...newPreviews]);
   };
 
   const removePhoto = (idx: number) => {
@@ -143,6 +143,31 @@ export default function TenantMaintenancePage() {
       await addDoc(logsCollection, payload);
 
       toast({ title: 'Repair Request Logged', description: 'Landlord notified.' });
+
+      // ASYNC NOTIFICATION HANDSHAKE
+      try {
+          const [landlordSnap, propertySnap] = await Promise.all([
+              getDoc(doc(firestore, 'users', tenantContext.landlordId)),
+              getDoc(doc(firestore, 'properties', tenantContext.propertyId))
+          ]);
+
+          const landlordEmail = landlordSnap.data()?.email;
+          const propertyAddress = propertySnap.data()?.address?.street || 'your property';
+          const senderName = user.displayName || 'Resident';
+
+          if (landlordEmail) {
+              await notifyLandlordOfMaintenance(
+                  landlordEmail,
+                  senderName,
+                  data.title,
+                  data.category,
+                  propertyAddress
+              );
+          }
+      } catch (notifErr) {
+          console.warn("Maintenance notification handshake failed:", notifErr);
+      }
+
       router.push('/tenant/dashboard');
     } catch (error) {
       console.error(error);
