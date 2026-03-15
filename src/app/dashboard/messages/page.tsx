@@ -184,16 +184,24 @@ export default function CommunicationHubPage() {
     toast({ title: msg.read ? 'Marked as Unread' : 'Marked as Read' });
   };
 
+  /**
+   * DEFINITIVE NON-BLOCKING DELETE
+   * Clears state instantly to allow modal cleanup, then performs DB action.
+   */
   const handleDeleteConfirm = () => {
     if (!firestore || !messageToDelete) return;
     
-    // UI Action: Capture ref then clear state immediately to dismiss dialog
-    const msgRef = doc(firestore, 'messages', messageToDelete.id);
+    // Capture reference for async action
+    const docId = messageToDelete.id;
+    const msgRef = doc(firestore, 'messages', docId);
+    
+    // UI Action: Clear state immediately to dismiss dialog and restore body scroll/events
     setMessageToDelete(null);
     
-    // Background Task: Fire and forget delete call
-    // The UI will update reactively via useCollection without a freeze
-    deleteDocumentNonBlocking(msgRef);
+    // Background Task: Slight delay ensures Dialog cleanup finishes before DB re-render triggers
+    setTimeout(() => {
+        deleteDocumentNonBlocking(msgRef);
+    }, 100);
     
     toast({ title: 'Message Removed from Hub' });
   };
