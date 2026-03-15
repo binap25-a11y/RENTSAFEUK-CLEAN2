@@ -19,7 +19,10 @@ import {
   CheckCircle2,
   Send,
   MapPin,
-  Clock
+  Clock,
+  Wrench,
+  AlertTriangle,
+  FileText
 } from 'lucide-react';
 import { 
   useUser, 
@@ -64,8 +67,8 @@ import {
 
 /**
  * @fileOverview Communication Hub
- * Optimized for reactive performance and non-blocking data mutations.
- * Implements standard cleanup for pointer-events to prevent UI freezes.
+ * Optimized with Optimistic UI Deletion and Maintenance Conversion tools.
+ * Definitively handles pointer interactivity resets to prevent UI freezes.
  */
 
 interface Message {
@@ -92,12 +95,19 @@ interface Property {
   };
 }
 
+const QUICK_REPLIES = [
+  "I've received your message and will look into this shortly.",
+  "Thank you for letting me know. I've assigned a contractor to visit.",
+  "I'm currently out of the office but will get back to you today.",
+  "Rent payment received, thank you.",
+  "Please see the shared documents vault for the requested files."
+];
+
 export default function CommunicationHubPage() {
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
   const router = useRouter();
-  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -106,6 +116,9 @@ export default function CommunicationHubPage() {
   const [replyingTo, setReplyingTo] = useState<Message | null>(null);
   const [replyContent, setReplyContent] = useState('');
   const [isSendingReply, setIsSendingReply] = useState(false);
+  
+  // Optimistic UI State
+  const [optimisticDeletedIds, setOptimisticDeletedIds] = useState<Set<string>>(new Set());
 
   // 1. Fetch all messages for this landlord (Live Reactive Stream)
   const messagesQuery = useMemoFirebase(() => {
@@ -155,26 +168,27 @@ export default function CommunicationHubPage() {
     return map;
   }, [tenants]);
 
-  // Chronological sorting in-memory for zero-freeze responsiveness
-  const allMessages = useMemo(() => {
+  // Combined filtering: Search + Optimistic Deletion + Chronological
+  const visibleMessages = useMemo(() => {
     if (!rawMessages) return [];
-    return [...rawMessages].sort((a, b) => {
-        const dateA = safeToDate(a.timestamp) || new Date(0);
-        const dateB = safeToDate(b.timestamp) || new Date(0);
-        return dateB.getTime() - dateA.getTime();
-    });
-  }, [rawMessages]);
-
-  const filteredMessages = useMemo(() => {
+    
     const term = searchTerm.toLowerCase();
-    return allMessages.filter(m => {
-        const address = propertyMap[m.propertyId] || '';
-        const residentName = tenantNameMap[m.tenantId] || m.senderName || '';
-        return m.content.toLowerCase().includes(term) || 
-               residentName.toLowerCase().includes(term) ||
-               address.toLowerCase().includes(term);
-    });
-  }, [allMessages, searchTerm, propertyMap, tenantNameMap]);
+    
+    return [...rawMessages]
+        .filter(m => !optimisticDeletedIds.has(m.id)) // Optimistic filter
+        .filter(m => {
+            const address = propertyMap[m.propertyId] || '';
+            const residentName = tenantNameMap[m.tenantId] || m.senderName || '';
+            return m.content.toLowerCase().includes(term) || 
+                   residentName.toLowerCase().includes(term) ||
+                   address.toLowerCase().includes(term);
+        })
+        .sort((a, b) => {
+            const dateA = safeToDate(a.timestamp) || new Date(0);
+            const dateB = safeToDate(b.timestamp) || new Date(0);
+            return dateB.getTime() - dateA.getTime();
+        });
+  }, [rawMessages, searchTerm, propertyMap, tenantNameMap, optimisticDeletedIds]);
 
   /**
    * DEFINITIVE CURSOR RECOVERY
@@ -188,7 +202,7 @@ export default function CommunicationHubPage() {
     };
 
     if (!messageToDelete && !replyingTo) {
-      const timeout = setTimeout(cleanup, 150);
+      const timeout = setTimeout(cleanup, 100);
       return () => clearTimeout(timeout);
     }
   }, [messageToDelete, replyingTo]);
@@ -201,24 +215,24 @@ export default function CommunicationHubPage() {
   };
 
   /**
-   * OPTIMIZED NON-BLOCKING DELETE
-   * Re-implemented with an aggressive deferral to prevent cursor freezes.
+   * OPTIMISTIC UI DELETION
+   * Removes message instantly from view to prevent UI freezes and race conditions.
    */
   const handleDeleteConfirm = () => {
     if (!firestore || !messageToDelete) return;
     
-    const docId = messageToDelete.id;
-    const msgRef = doc(firestore, 'messages', docId);
+    const id = messageToDelete.id;
+    const msgRef = doc(firestore, 'messages', id);
     
-    // 1. Instantly clear state to start modal close animation
+    // 1. Instantly hide from user
+    setOptimisticDeletedIds(prev => new Set(prev).add(id));
+    
+    // 2. Instant modal cleanup
     setMessageToDelete(null);
     
-    // 2. Defer database call until animation is projected to finish
-    // This allows the browser to prioritize Radix UI cleanup tasks.
-    setTimeout(() => {
-        deleteDocumentNonBlocking(msgRef);
-        toast({ title: 'Record removed from registry' });
-    }, 300); 
+    // 3. Fire-and-forget DB sync
+    deleteDocumentNonBlocking(msgRef);
+    toast({ title: 'Record removed from registry' });
   };
 
   const handleSendReply = async () => {
@@ -264,6 +278,17 @@ export default function CommunicationHubPage() {
     router.push(`/dashboard/properties/${propertyId}?tab=messages&tenantId=${tenantId}`);
   };
 
+  const handleLogAsRepair = (e: React.MouseEvent, msg: Message) => {
+    e.stopPropagation();
+    router.push(`/dashboard/maintenance?propertyId=${msg.propertyId}&title=${encodeURIComponent(msg.content.substring(0, 50))}&reportedBy=${encodeURIComponent(msg.senderName)}`);
+  };
+
+  // Automated Urgency Detector
+  const isUrgent = (content: string) => {
+    const criticalKeywords = ['leak', 'emergency', 'broken', 'urgent', 'fire', 'smoke', 'flood', 'water', 'help'];
+    return criticalKeywords.some(word => content.toLowerCase().includes(word));
+  };
+
   return (
     <div className="space-y-8 max-w-5xl mx-auto text-left animate-in fade-in duration-500">
       <div className="flex flex-col gap-2 p-6 rounded-3xl bg-primary/5 border border-primary/10">
@@ -290,17 +315,19 @@ export default function CommunicationHubPage() {
           </div>
           <div>
               <Badge variant="outline" className="h-12 px-4 rounded-2xl border-2 font-bold uppercase tracking-widest text-[10px] bg-background shadow-sm">
-                  <span className="text-primary mr-1">{filteredMessages.length}</span> messages
+                  <span className="text-primary mr-1">{visibleMessages.length}</span> messages
               </Badge>
           </div>
       </div>
 
       {isLoadingMessages ? (
         <div className="flex flex-col justify-center items-center h-64 gap-4">
-            <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">Syncing Hub...</p>
+            <div className="p-6 rounded-full bg-primary/5">
+                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            </div>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">Syncing Registry...</p>
         </div>
-      ) : filteredMessages.length === 0 ? (
+      ) : visibleMessages.length === 0 ? (
         <div className="text-center py-32 border-2 border-dashed rounded-[3rem] bg-muted/5">
             <div className="p-6 rounded-full bg-background shadow-xl w-fit mx-auto mb-6">
                 <MessageSquare className="h-12 w-12 text-primary/10" />
@@ -310,18 +337,20 @@ export default function CommunicationHubPage() {
         </div>
       ) : (
         <div className="grid gap-4">
-            {filteredMessages.map((msg) => {
+            {visibleMessages.map((msg) => {
                 const isLandlord = msg.senderId === user?.uid;
                 const isUnread = !isLandlord && msg.read !== true;
                 const propertyAddress = propertyMap[msg.propertyId] || 'Assigned Asset';
                 const residentName = tenantNameMap[msg.tenantId] || msg.senderName || 'Resident';
+                const urgent = !isLandlord && isUrgent(msg.content);
                 
                 return (
                     <Card 
                         key={msg.id} 
                         className={cn(
                             "shadow-md border-none overflow-hidden transition-all group relative cursor-pointer",
-                            isUnread ? "ring-2 ring-primary/20 bg-primary/[0.02]" : "hover:bg-muted/5"
+                            isUnread ? "ring-2 ring-primary/20 bg-primary/[0.02]" : "hover:bg-muted/5",
+                            urgent && !isLandlord && "border-l-4 border-l-destructive"
                         )}
                         onClick={() => navigateToThread(msg.propertyId, msg.tenantId)}
                     >
@@ -345,6 +374,11 @@ export default function CommunicationHubPage() {
                                                 {isLandlord ? `To: ${residentName}` : residentName}
                                             </p>
                                             {isLandlord && <Badge variant="outline" className="text-[8px] font-bold uppercase tracking-tighter h-4 py-0">Reply Sent</Badge>}
+                                            {urgent && !isLandlord && (
+                                                <Badge variant="destructive" className="text-[8px] font-bold uppercase tracking-tighter h-4 py-0 gap-1">
+                                                    <AlertTriangle className="h-2 w-2" /> Urgent
+                                                </Badge>
+                                            )}
                                         </div>
                                         <div className="flex items-center gap-1.5 mt-0.5">
                                             <MapPin className="h-3 w-3 text-muted-foreground" />
@@ -363,7 +397,7 @@ export default function CommunicationHubPage() {
                                                     <MoreVertical className="h-4 w-4" />
                                                 </Button>
                                             </DropdownMenuTrigger>
-                                            <DropdownMenuContent align="end" className="w-48 p-1">
+                                            <DropdownMenuContent align="end" className="w-52 p-1">
                                                 <DropdownMenuItem 
                                                     onClick={(e) => {
                                                         e.stopPropagation();
@@ -372,6 +406,12 @@ export default function CommunicationHubPage() {
                                                     className="cursor-pointer"
                                                 >
                                                     <Reply className="mr-2 h-4 w-4" /> Send Reply
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem 
+                                                    onClick={(e) => handleLogAsRepair(e, msg)}
+                                                    className="cursor-pointer font-bold text-primary"
+                                                >
+                                                    <Wrench className="mr-2 h-4 w-4" /> Log as Repair
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem 
                                                     onClick={(e) => {
@@ -411,7 +451,7 @@ export default function CommunicationHubPage() {
                                         "{msg.content}"
                                     </p>
                                 </div>
-                                <div className="flex items-center gap-3">
+                                <div className="flex items-center gap-4">
                                     {!isLandlord && (
                                         <Button 
                                             variant="link" 
@@ -422,6 +462,15 @@ export default function CommunicationHubPage() {
                                             }}
                                         >
                                             <Reply className="h-3 w-3" /> Quick Reply
+                                        </Button>
+                                    )}
+                                    {!isLandlord && (
+                                        <Button 
+                                            variant="link" 
+                                            className="h-auto p-0 text-[10px] font-bold uppercase tracking-widest text-muted-foreground hover:text-primary gap-1" 
+                                            onClick={(e) => handleLogAsRepair(e, msg)}
+                                        >
+                                            <Wrench className="h-3 w-3" /> Convert to Repair
                                         </Button>
                                     )}
                                 </div>
@@ -437,7 +486,7 @@ export default function CommunicationHubPage() {
           <ShieldCheck className="h-10 w-10 text-primary opacity-20 shrink-0" />
           <div className="space-y-1">
               <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Professional Communication Audit</p>
-              <p className="text-[11px] text-muted-foreground/70 leading-relaxed font-medium">All interactions are chronologically recorded. The registry is fully reactive and restores pointer interactivity instantly after each data mutation.</p>
+              <p className="text-[11px] text-muted-foreground/70 leading-relaxed font-medium">All interactions are chronologically recorded. The registry uses Optimistic UI updates to ensure zero-latency record management.</p>
           </div>
       </div>
 
@@ -457,12 +506,30 @@ export default function CommunicationHubPage() {
                 <div className="bg-muted/30 p-4 rounded-xl border-2 border-dashed italic text-sm text-muted-foreground">
                     "{replyingTo?.content}"
                 </div>
+                
+                <div className="space-y-2">
+                    <p className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground px-1">Quick Templates</p>
+                    <div className="flex flex-wrap gap-2">
+                        {QUICK_REPLIES.map((reply, idx) => (
+                            <Button 
+                                key={idx} 
+                                variant="outline" 
+                                size="sm" 
+                                className="h-7 text-[9px] font-bold uppercase tracking-tight rounded-lg border-primary/10 hover:bg-primary/5 hover:text-primary transition-all"
+                                onClick={() => setReplyContent(reply)}
+                            >
+                                {reply.split(' ').slice(0, 3).join(' ')}...
+                            </Button>
+                        ))}
+                    </div>
+                </div>
+
                 <div className="space-y-3">
                     <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground px-1">Reply Content</p>
                     <Textarea 
                         placeholder="Type your response to the resident..." 
                         rows={5}
-                        className="resize-none rounded-xl border-2 focus-visible:ring-primary h-32"
+                        className="resize-none rounded-xl border-2 focus-visible:ring-primary h-32 bg-background"
                         value={replyContent}
                         onChange={(e) => setReplyContent(e.target.value)}
                     />
@@ -493,7 +560,7 @@ export default function CommunicationHubPage() {
                 </div>
                 <AlertDialogTitle className="text-xl font-headline text-center">Remove Audit Record?</AlertDialogTitle>
                 <AlertDialogDescription className="text-center font-medium">
-                    This will permanently remove this record from the registry history. Your mouse cursor will remain active for subsequent tasks.
+                    This will instantly remove this record from the registry history using Optimistic UI synchronization.
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="mt-6 gap-3 flex-col-reverse sm:flex-row">
