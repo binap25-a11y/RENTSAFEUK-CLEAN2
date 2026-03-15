@@ -110,7 +110,7 @@ export default function AddTenantPage() {
       telephone: '',
       notes: '',
       monthlyRent: undefined,
-      rentDueDay: 1,
+      rentDueDay: typeof window !== 'undefined' ? Number(localStorage.getItem('last_rent_day') || 1) : 1,
     },
   });
 
@@ -155,6 +155,9 @@ export default function AddTenantPage() {
   async function onSubmit(data: TenantFormValues) {
     if (!user || !firestore) return;
     setIsSubmitting(true);
+
+    // PERSISTENCE HANDSHAKE
+    localStorage.setItem('last_rent_day', String(data.rentDueDay));
 
     const tenantsCollection = collection(firestore, 'tenants');
     const normalizedEmail = data.email.toLowerCase().trim();
@@ -271,8 +274,8 @@ export default function AddTenantPage() {
                 <FormField control={form.control} name="rentDueDay" render={({ field }) => (
                     <FormItem>
                         <FormLabel className="font-bold flex items-center gap-2"><CalendarDays className="h-4 w-4 text-primary" />Rent Due Day</FormLabel>
-                        <Select onValueChange={field.onChange} value={String(field.value)}>
-                            <FormControl><SelectTrigger className="h-11"><SelectValue /></SelectTrigger></FormControl>
+                        <Select onValueChange={field.onChange} value={field.value ? String(field.value) : "1"}>
+                            <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select day" /></SelectTrigger></FormControl>
                             <SelectContent>
                                 {Array.from({ length: 31 }, (_, i) => (i + 1)).map(day => (
                                     <SelectItem key={day} value={String(day)}>
