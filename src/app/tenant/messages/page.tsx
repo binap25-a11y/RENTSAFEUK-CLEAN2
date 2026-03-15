@@ -1,6 +1,7 @@
+
 'use client';
 
-import { useState, useEffect, useRef } from 'react';
+import { useState, useEffect, useRef, useMemo } from 'react';
 import { 
   Card, 
   CardContent, 
@@ -33,6 +34,7 @@ import { cn } from '@/lib/utils';
 import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { notifyLandlordOfMessage } from '@/app/actions/notifications';
+import { safeToDate } from '@/lib/date-utils';
 
 interface Message {
     id: string;
@@ -59,7 +61,6 @@ export default function TenantMessagesPage() {
   const scrollRef = useRef<HTMLDivElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
 
-  // Discovery: Map Auth Email to Registry Record
   useEffect(() => {
     if (isUserLoading || !user || !firestore || !user.email) {
       if (!user && !isUserLoading) setIsLoadingContext(false);
@@ -88,25 +89,33 @@ export default function TenantMessagesPage() {
     return () => unsub();
   }, [user, isUserLoading, firestore]);
 
-  // Real-time chronological message ledger keyed by stable tenant doc ID
   const messagesQuery = useMemoFirebase(() => {
     if (!tenantContext || !user || !firestore || !user.email) return null;
     const userEmail = user.email.toLowerCase().trim();
+    // Simplified query to avoid index errors during indexing periods
     return query(
         collection(firestore, 'messages'),
         where('propertyId', '==', tenantContext.propertyId),
         where('tenantId', '==', tenantContext.tenantId),
         where('tenantEmail', '==', userEmail),
-        orderBy('timestamp', 'asc'),
         limit(100)
     );
   }, [tenantContext, user, firestore]);
 
-  const { data: messages, isLoading: isLoadingMessages, error: messagesError } = useCollection<Message>(messagesQuery);
+  const { data: rawMessages, isLoading: isLoadingMessages, error: messagesError } = useCollection<Message>(messagesQuery);
 
-  // Mark messages as read when viewing the thread
+  // In-memory sorting to resolve index precondition hazards
+  const messages = useMemo(() => {
+    if (!rawMessages) return [];
+    return [...rawMessages].sort((a, b) => {
+        const dateA = safeToDate(a.timestamp) || new Date(0);
+        const dateB = safeToDate(b.timestamp) || new Date(0);
+        return dateA.getTime() - dateB.getTime();
+    });
+  }, [rawMessages]);
+
   useEffect(() => {
-    if (messages && user) {
+    if (messages.length > 0 && user) {
       const unreadIncoming = messages.filter(m => m.senderId !== user.uid && m.read !== true);
       if (unreadIncoming.length > 0) {
         unreadIncoming.forEach(msg => {
@@ -117,7 +126,6 @@ export default function TenantMessagesPage() {
     }
   }, [messages, user, firestore]);
 
-  // Auto-scroll to bottom
   useEffect(() => {
     if (scrollRef.current) {
         scrollRef.current.scrollIntoView({ behavior: 'smooth' });
@@ -150,8 +158,6 @@ export default function TenantMessagesPage() {
         setNewMessage('');
         toast({ title: 'Message Sent' });
 
-        // ASYNC NOTIFICATION HANDSHAKE
-        // Fetch landlord email and property address for the notification
         try {
             const [landlordSnap, propertySnap] = await Promise.all([
                 getDoc(doc(firestore, 'users', tenantContext.landlordId)),
@@ -183,13 +189,6 @@ export default function TenantMessagesPage() {
 
   const scrollToTop = () => topRef.current?.scrollIntoView({ behavior: 'smooth' });
   const scrollToBottom = () => scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
-
-  const getMessageDate = (timestamp: any) => {
-    if (!timestamp) return new Date();
-    if (timestamp.toDate) return timestamp.toDate();
-    if (timestamp.seconds) return new Date(timestamp.seconds * 1000);
-    return new Date(timestamp);
-  };
 
   const formatDateDivider = (date: Date) => {
     try {
@@ -284,7 +283,7 @@ export default function TenantMessagesPage() {
                                 <AlertCircle className="h-12 w-12 text-destructive/20 mx-auto mb-4" />
                                 <p className="text-sm font-bold text-destructive">Registry Standby</p>
                                 <p className="text-xs text-muted-foreground mt-1 max-w-[320px] mx-auto font-medium">The chronological communication audit is temporarily establishing high-performance indexes. Please wait 2 minutes.</p>
-                                <Button variant="outline" className="mt-6 h-9" onClick={() => window.location.reload()}><RefreshCw className="mr-2 h-3 w-3" /> Retry Sync</Button>
+                                <Button variant="outline" className="mt-6 h-9" onClick={() => window.location.reload()}><RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Sync</Button>
                             </div>
                         ) : !messages?.length ? (
                             <div className="py-24 text-center px-10 border-2 border-dashed rounded-[2rem] bg-muted/10 mx-4">
@@ -295,10 +294,10 @@ export default function TenantMessagesPage() {
                         ) : (
                             messages.map((msg, idx) => {
                                 const isMe = msg.senderId === user?.uid;
-                                const date = getMessageDate(msg.timestamp);
+                                const date = safeToDate(msg.timestamp) || new Date();
                                 
                                 const prevMsg = messages[idx - 1];
-                                const showDateDivider = !prevMsg || !isSameDay(date, getMessageDate(prevMsg.timestamp));
+                                const showDateDivider = !prevMsg || !isSameDay(date, safeToDate(prevMsg.timestamp) || new Date());
                                 
                                 return (
                                     <div key={msg.id} className="space-y-4 text-left">

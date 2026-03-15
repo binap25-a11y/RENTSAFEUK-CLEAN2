@@ -14,8 +14,9 @@ import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Bell, FileWarning, CalendarClock, Loader2, Banknote, MessageSquare, Wrench, RefreshCw } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
-import { collection, query, where, onSnapshot, limit, orderBy } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, limit } from 'firebase/firestore';
 import { format, isBefore, addDays, setDate, startOfMonth, isPast, isFuture } from 'date-fns';
+import { safeToDate } from '@/lib/date-utils';
 
 interface NotificationItem {
   id: string;
@@ -25,14 +26,6 @@ interface NotificationItem {
   icon: any;
   href: string;
 }
-
-const toDate = (val: any): Date | null => {
-  if (!val) return null;
-  if (val instanceof Date) return val;
-  if (typeof val === 'object' && 'seconds' in val) return new Date(val.seconds * 1000);
-  const d = new Date(val);
-  return isNaN(d.getTime()) ? null : d;
-};
 
 export function Notifications() {
   const { user } = useUser();
@@ -51,12 +44,12 @@ export function Notifications() {
 
     setIsLoading(true);
     
-    // Professional Flat Collection Listeners
+    // Use simple non-indexed queries for discovery notification sets
     const qDocs = query(collection(firestore, 'documents'), where('landlordId', '==', user.uid), limit(50));
     const qInsp = query(collection(firestore, 'inspections'), where('landlordId', '==', user.uid), limit(50));
     const qTenants = query(collection(firestore, 'tenants'), where('landlordId', '==', user.uid), where('status', '==', 'Active'));
     const qRent = query(collection(firestore, 'rentPayments'), where('landlordId', '==', user.uid), limit(50));
-    const qMsgs = query(collection(firestore, 'messages'), where('landlordId', '==', user.uid), orderBy('timestamp', 'desc'), limit(20));
+    const qMsgs = query(collection(firestore, 'messages'), where('landlordId', '==', user.uid), limit(20));
     const qRepairs = query(collection(firestore, 'repairs'), where('landlordId', '==', user.uid), where('status', '==', 'Open'), limit(20));
 
     const unsubDocs = onSnapshot(qDocs, (snap) => setAllDocuments(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
@@ -83,7 +76,7 @@ export function Notifications() {
     
     const documentReminders = allDocuments
         .map((doc) => {
-          const expiry = toDate(doc.expiryDate);
+          const expiry = safeToDate(doc.expiryDate);
           if (!expiry) return null;
           const ninetyDaysFromNow = addDays(today, 90);
           let status = 'Valid';
@@ -103,7 +96,7 @@ export function Notifications() {
 
     const inspectionReminders = allInspections
         .map((insp) => {
-          const scheduled = toDate(insp.scheduledDate);
+          const scheduled = safeToDate(insp.scheduledDate);
           if (!scheduled || insp.status !== 'Scheduled') return null;
           return { ...insp, scheduledDate: scheduled };
         })
@@ -117,13 +110,12 @@ export function Notifications() {
           href: `/dashboard/inspections`
         }));
 
-    // Alert only on unread incoming messages
     const messageAlerts = allMessages
         .filter(msg => msg.senderId !== user?.uid && msg.read !== true)
         .map((msg) => ({
             id: `msg-${msg.id}`,
             description: `Message from ${msg.senderName}`,
-            dueDate: toDate(msg.timestamp) || today,
+            dueDate: safeToDate(msg.timestamp) || today,
             status: 'New',
             icon: MessageSquare,
             href: `/dashboard/properties/${msg.propertyId}?tab=messages`
@@ -132,7 +124,7 @@ export function Notifications() {
     const repairAlerts = allRepairs.map((repair) => ({
         id: `repair-${repair.id}`,
         description: `New Request: ${repair.title}`,
-        dueDate: toDate(repair.reportedDate) || today,
+        dueDate: safeToDate(repair.reportedDate) || today,
         status: repair.priority,
         icon: Wrench,
         href: `/dashboard/maintenance/${repair.id}?propertyId=${repair.propertyId}`
@@ -167,10 +159,6 @@ export function Notifications() {
 
   const notificationCount = allReminders.length;
 
-  /**
-   * DEFINITIVE REFRESH HANDLER
-   * Triggers a full browser reload to prevent state freezing and ensure audit-ready sync.
-   */
   const handleNotificationClick = (href: string) => {
     window.location.href = href;
   };
