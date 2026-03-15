@@ -339,7 +339,7 @@ export default function FinancialsPage() {
                         <SelectValue placeholder="Tax Year" />
                     </SelectTrigger>
                     <SelectContent>
-                        {Array.from({ length: 5 }, (_, i) => (new Date().getFullYear()) - i).map(year => (
+                        {Array.from({ length: 8 }, (_, i) => (new Date().getFullYear() + 2) - i).map(year => (
                             <SelectItem key={year} value={String(year)}>{year} / {(year + 1).toString().slice(-2)}</SelectItem>
                         ))}
                     </SelectContent>

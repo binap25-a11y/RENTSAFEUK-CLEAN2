@@ -285,7 +285,7 @@ export default function LoggedExpensesPage() {
                             <SelectValue placeholder="Year" />
                         </SelectTrigger>
                         <SelectContent>
-                            {Array.from({ length: 5 }, (_, i) => (new Date().getFullYear()) - i).map(year => (
+                            {Array.from({ length: 8 }, (_, i) => (new Date().getFullYear() + 2) - i).map(year => (
                                 <SelectItem key={year} value={String(year)}>{year}</SelectItem>
                             ))}
                         </SelectContent>
