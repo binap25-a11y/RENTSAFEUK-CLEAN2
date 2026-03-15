@@ -31,7 +31,7 @@ import {
   updateDocumentNonBlocking,
   deleteDocumentNonBlocking
 } from '@/firebase';
-import { collection, query, where, limit, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
+import { collection, query, where, limit, addDoc, serverTimestamp, doc } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -66,8 +66,8 @@ import {
 
 /**
  * @fileOverview Communication Hub
- * Enhanced chronological list of all resident conversations.
- * Includes explicit page refresh on data mutation for registry synchronization.
+ * Reactive chronological list of all resident conversations.
+ * Deletions and replies synchronize live without page refreshes.
  */
 
 interface Message {
@@ -188,15 +188,10 @@ export default function CommunicationHubPage() {
   const handleDeleteConfirm = () => {
     if (!firestore || !messageToDelete) return;
     const msgRef = doc(firestore, 'messages', messageToDelete.id);
-    // Explicit deletion logic with hard refresh to ensure total registry sync
+    // Reactive Deletion: useCollection will auto-update UI when doc is removed
     deleteDocumentNonBlocking(msgRef);
     toast({ title: 'Message Deleted' });
     setMessageToDelete(null);
-    
-    // Hard refresh to ensure sidebar and header counters align perfectly
-    setTimeout(() => {
-        window.location.reload();
-    }, 500);
   };
 
   const handleSendReply = async () => {
@@ -225,11 +220,6 @@ export default function CommunicationHubPage() {
         toast({ title: 'Reply Sent' });
         setReplyContent('');
         setReplyingTo(null);
-        
-        // Refresh registry state
-        setTimeout(() => {
-            window.location.reload();
-        }, 500);
     } catch (err) {
         console.error("Reply failure:", err);
         toast({ variant: 'destructive', title: 'Transmission Failed' });
@@ -249,7 +239,7 @@ export default function CommunicationHubPage() {
                 <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Communication Hub</h1>
             </div>
             <Button variant="ghost" size="sm" className="font-bold uppercase tracking-widest text-[9px] text-primary" onClick={() => window.location.reload()}>
-                <RefreshCw className="h-3 w-3 mr-1.5" /> Sync Hub
+                <RefreshCw className="h-3 w-3 mr-1.5" /> Sync Registry
             </Button>
         </div>
         <p className="text-muted-foreground font-medium text-lg ml-1">Professional hub for all resident and asset interactions.</p>
