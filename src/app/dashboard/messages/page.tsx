@@ -12,18 +12,17 @@ import {
   Loader2, 
   User, 
   Search,
-  ShieldCheck,
   Trash2,
   Reply,
   MoreVertical,
-  CheckCircle2,
   MapPin,
   Clock,
   Wrench,
-  AlertTriangle,
   ChevronRight,
   Inbox,
-  Send
+  Send,
+  ShieldCheck,
+  AlertTriangle
 } from 'lucide-react';
 import { 
   useUser, 
@@ -33,7 +32,7 @@ import {
   updateDocumentNonBlocking,
   deleteDocumentNonBlocking
 } from '@/firebase';
-import { collection, query, where, limit, addDoc, serverTimestamp, doc } from 'firebase/firestore';
+import { collection, query, where, limit, addDoc, serverTimestamp, doc, getDoc } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -287,13 +286,15 @@ export default function CommunicationHubPage() {
               />
           </div>
           <Badge variant="outline" className="h-12 px-4 rounded-2xl border-2 font-bold uppercase tracking-widest text-[10px] bg-background shadow-sm">
-              <span className="text-primary mr-1">{conversations.length}</span> messages
+              <span className="text-primary mr-1">{conversations.length}</span> threads
           </Badge>
       </div>
 
       {isLoadingMessages ? (
         <div className="flex flex-col justify-center items-center h-64 gap-4">
-            <Loader2 className="h-10 w-10 animate-spin text-primary/20" />
+            <div className="bg-primary/5 p-8 rounded-full">
+                <Loader2 className="h-10 w-10 animate-spin text-primary" />
+            </div>
             <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Registry...</p>
         </div>
       ) : conversations.length === 0 ? (
