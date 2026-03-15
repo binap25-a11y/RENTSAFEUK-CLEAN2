@@ -99,8 +99,7 @@ export default function EditDocumentPage() {
 
   const { data: documentRecord, isLoading } = useDoc<DocumentRecord>(docRef);
 
-  // REACTIVE KEY: Forces re-render when record loads or session memory is updated.
-  // This ensures the dropdown definitively populates with the last chosen type or the saved record type.
+  // SELECTION MEMORY HANDSHAKE: Forces re-render when record loads or session memory is updated.
   const lastSessionType = typeof window !== 'undefined' ? localStorage.getItem('last_doc_type') : '';
   const dataKey = documentRecord ? `registry-loaded-${id}-${documentRecord.documentType}-${lastSessionType}` : 'registry-pending';
 
@@ -148,6 +147,11 @@ export default function EditDocumentPage() {
 
       await updateDoc(docRef, JSON.parse(JSON.stringify(updateData)));
       
+      // PERSISTENCE HANDSHAKE: Avoid repeated selection for multi-document audits
+      if (typeof window !== 'undefined') {
+        localStorage.setItem('last_doc_type', data.documentType);
+      }
+
       toast({ title: 'Document Updated', description: 'Changes have been synchronized.' });
       router.push('/dashboard/documents');
     } catch (error) {
@@ -203,7 +207,9 @@ export default function EditDocumentPage() {
                         onValueChange={(val) => {
                           field.onChange(val);
                           // SELECTION MEMORY: Save choice instantly to avoid repeated selection in triage
-                          localStorage.setItem('last_doc_type', val);
+                          if (typeof window !== 'undefined') {
+                            localStorage.setItem('last_doc_type', val);
+                          }
                         }} 
                         value={field.value}
                       >
