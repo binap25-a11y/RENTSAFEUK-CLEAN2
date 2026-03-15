@@ -189,8 +189,8 @@ export default function FinancialsPage() {
     return activeProperties?.reduce((total, prop) => (total + (Number(prop.tenancy?.monthlyRent || 0) * 12)), 0) || 0;
   }, [activeProperties, selectedPropertyId, selectedProperty]);
 
-  const totalPaidRent = useMemo(() => rentPayments.reduce((acc, p) => acc + Number(p.amountPaid || 0), 0), [rentPayments]);
-  const totalExpenses = useMemo(() => expenses.reduce((acc, expense) => acc + Number(expense.amount || 0), 0), [expenses]);
+  const totalPaidRent = useMemo(() => rentPayments.reduce((acc, p) => acc + (Number(p.amountPaid) || 0), 0), [rentPayments]);
+  const totalExpenses = useMemo(() => expenses.reduce((acc, expense) => acc + (Number(expense.amount) || 0), 0), [expenses]);
   const netIncome = totalPaidRent - totalExpenses;
   
   const isLoading = isLoadingProperties || isLoadingExpenses || isLoadingRent || !selectedYear;
@@ -206,11 +206,11 @@ export default function FinancialsPage() {
     doc.setLineWidth(0.5);
     doc.line(14, 40, 200, 40);
 
-    const ratesInsurance = expenses.filter(e => ['Insurance', 'Utilities'].includes(e.expenseType)).reduce((a, b) => a + Number(b.amount || 0), 0);
-    const maintenance = expenses.filter(e => ['Repairs and Maintenance', 'Cleaning', 'Gardening'].includes(e.expenseType)).reduce((a, b) => a + Number(b.amount || 0), 0);
-    const professionalFees = expenses.filter(e => ['Letting Agent Fees'].includes(e.expenseType)).reduce((a, b) => a + Number(b.amount || 0), 0);
-    const financeCosts = expenses.filter(e => ['Mortgage Interest'].includes(e.expenseType)).reduce((a, b) => a + Number(b.amount || 0), 0);
-    const otherExpenses = expenses.filter(e => e.expenseType === 'Other').reduce((a, b) => a + Number(b.amount || 0), 0);
+    const ratesInsurance = expenses.filter(e => ['Insurance', 'Utilities'].includes(e.expenseType)).reduce((a, b) => a + (Number(b.amount) || 0), 0);
+    const maintenance = expenses.filter(e => ['Repairs and Maintenance', 'Cleaning', 'Gardening'].includes(e.expenseType)).reduce((a, b) => a + (Number(b.amount) || 0), 0);
+    const professionalFees = expenses.filter(e => ['Letting Agent Fees'].includes(e.expenseType)).reduce((a, b) => a + (Number(b.amount) || 0), 0);
+    const financeCosts = expenses.filter(e => ['Mortgage Interest'].includes(e.expenseType)).reduce((a, b) => a + (Number(b.amount) || 0), 0);
+    const otherExpenses = expenses.filter(e => e.expenseType === 'Other').reduce((a, b) => a + (Number(b.amount) || 0), 0);
 
     const hmrcCategories = [
         ['Rent received (total for period)', formatCurrency(totalPaidRent)],
@@ -472,7 +472,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
 function AnnualSummary({ selectedYear, expenses, isLoadingExpenses }: { selectedYear: number, expenses: Expense[], isLoadingExpenses: boolean }) {
   const expensesByCategory = useMemo(() => {
     const map: Record<string, number> = {};
-    expenses.forEach(e => { map[e.expenseType] = (map[e.expenseType] || 0) + Number(e.amount); });
+    expenses.forEach(e => { map[e.expenseType] = (map[e.expenseType] || 0) + (Number(e.amount) || 0); });
     return Object.entries(map).sort(([, a], [, b]) => b - a);
   }, [expenses]);
 

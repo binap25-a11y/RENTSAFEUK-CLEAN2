@@ -39,11 +39,15 @@ const chartConfig = {
 export function PortfolioAnalytics() {
   const { user } = useUser();
   const firestore = useFirestore();
-  const currentYear = new Date().getFullYear();
+  const [currentYear, setCurrentYear] = React.useState<number | null>(null);
+
+  React.useEffect(() => {
+    setCurrentYear(new Date().getFullYear());
+  }, []);
 
   // 1. Fetch Rent Payments for the current year (Income)
   const rentQuery = useMemoFirebase(() => {
-    if (!user || !firestore) return null;
+    if (!user || !firestore || !currentYear) return null;
     return query(
       collection(firestore, 'rentPayments'),
       where('landlordId', '==', user.uid),
@@ -63,7 +67,7 @@ export function PortfolioAnalytics() {
   const { data: allExpenses, isLoading: isLoadingExpenses } = useCollection(expensesQuery);
 
   const chartData = React.useMemo(() => {
-    if (!rentPayments || !allExpenses) return [];
+    if (!rentPayments || !allExpenses || !currentYear) return [];
 
     return MONTHS.map((monthName, index) => {
       // Aggregate verified income for this specific month
@@ -93,7 +97,7 @@ export function PortfolioAnalytics() {
     return { income, expenses, net: income - expenses };
   }, [chartData]);
 
-  if (isLoadingRent || isLoadingExpenses) {
+  if (isLoadingRent || isLoadingExpenses || !currentYear) {
     return (
       <Card className="border-none shadow-lg h-[400px] flex items-center justify-center">
         <div className="flex flex-col items-center gap-2">

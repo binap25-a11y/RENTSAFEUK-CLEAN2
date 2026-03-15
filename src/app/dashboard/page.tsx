@@ -40,6 +40,11 @@ export default function DashboardPage() {
   
   const [isLoadingProfile, setIsLoadingProfile] = useState(true);
   const [userRole, setUserRole] = useState<string | null>(null);
+  const [today, setToday] = useState<Date | null>(null);
+
+  useEffect(() => {
+    setToday(new Date());
+  }, []);
 
   // Role Verification Handshake
   useEffect(() => {
@@ -101,8 +106,7 @@ export default function DashboardPage() {
 
   // Compliance Analytics
   const complianceStats = useMemo(() => {
-    if (!documents) return { expired: 0, expiringSoon: 0 };
-    const today = new Date();
+    if (!documents || !today) return { expired: 0, expiringSoon: 0 };
     const soon = addDays(today, 90);
     
     return documents.reduce((acc, doc) => {
@@ -112,7 +116,7 @@ export default function DashboardPage() {
       else if (isBefore(expiry, soon)) acc.expiringSoon++;
       return acc;
     }, { expired: 0, expiringSoon: 0 });
-  }, [documents]);
+  }, [documents, today]);
 
   if (isUserLoading || isLoadingProfile) {
     return (
