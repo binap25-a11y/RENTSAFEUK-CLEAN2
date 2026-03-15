@@ -157,7 +157,6 @@ export default function AddTenantPage() {
     setIsSubmitting(true);
 
     const tenantsCollection = collection(firestore, 'tenants');
-    // STRICT NORMALIZATION: Ensure email is lowercase before writing to registry bridge
     const normalizedEmail = data.email.toLowerCase().trim();
     
     const newTenant = {
@@ -274,7 +273,13 @@ export default function AddTenantPage() {
                         <FormLabel className="font-bold flex items-center gap-2"><CalendarDays className="h-4 w-4 text-primary" />Rent Due Day</FormLabel>
                         <Select onValueChange={field.onChange} value={String(field.value)}>
                             <FormControl><SelectTrigger className="h-11"><SelectValue /></SelectTrigger></FormControl>
-                            <SelectContent>{Array.from({ length: 31 }, (_, i) => (i + 1)).map(day => (<SelectItem key={day} value={String(day)}>{day} of month</SelectItem>))}</SelectContent>
+                            <SelectContent>
+                                {Array.from({ length: 31 }, (_, i) => (i + 1)).map(day => (
+                                    <SelectItem key={day} value={String(day)}>
+                                        {day}{[1, 21, 31].includes(day) ? 'st' : [2, 22].includes(day) ? 'nd' : [3, 23].includes(day) ? 'rd' : 'th'} of month
+                                    </SelectItem>
+                                ))}
+                            </SelectContent>
                         </Select>
                         <FormMessage />
                     </FormItem>

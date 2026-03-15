@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -33,7 +32,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { Loader2, ArrowLeft, CalendarDays } from 'lucide-react';
 import {
   useUser,
   useFirestore,
@@ -267,10 +266,20 @@ export default function EditTenantPage() {
                       name="rentDueDay"
                       render={({ field }) => (
                       <FormItem>
-                          <FormLabel className="font-bold">Rent Due Day</FormLabel>
-                          <Select onValueChange={field.onChange} value={String(field.value)}>
+                          <FormLabel className="font-bold flex items-center gap-2"><CalendarDays className="h-4 w-4 text-primary" />Rent Due Day</FormLabel>
+                          <Select 
+                            key={tenant.id} // Re-render when data is ready
+                            onValueChange={field.onChange} 
+                            value={String(field.value)}
+                          >
                               <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select day" /></SelectTrigger></FormControl>
-                              <SelectContent>{Array.from({ length: 31 }, (_, i) => (i + 1)).map(day => (<SelectItem key={day} value={String(day)}>{day} of month</SelectItem>))}</SelectContent>
+                              <SelectContent>
+                                {Array.from({ length: 31 }, (_, i) => (i + 1)).map(day => (
+                                    <SelectItem key={day} value={String(day)}>
+                                        {day}{[1, 21, 31].includes(day) ? 'st' : [2, 22].includes(day) ? 'nd' : [3, 23].includes(day) ? 'rd' : 'th'} of month
+                                    </SelectItem>
+                                ))}
+                              </SelectContent>
                           </Select>
                           <FormMessage />
                       </FormItem>
