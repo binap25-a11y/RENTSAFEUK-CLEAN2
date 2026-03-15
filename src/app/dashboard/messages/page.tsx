@@ -2,7 +2,7 @@
 'use client';
 
 import { useState, useMemo, useEffect, useTransition } from 'react';
-import { useRouter } from 'next/navigation';
+import { useRouter, useSearchParams } from 'next/navigation';
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -97,6 +97,7 @@ export default function CommunicationHubPage() {
   const firestore = useFirestore();
   const { toast } = useToast();
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [isPending, startTransition] = useTransition();
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -181,11 +182,13 @@ export default function CommunicationHubPage() {
    * the component re-renders rapidly during a dialog close.
    */
   useEffect(() => {
+    const cleanup = () => {
+      document.body.style.pointerEvents = '';
+      document.body.style.overflow = '';
+    };
+
     if (!messageToDelete && !replyingTo) {
-      const timeout = setTimeout(() => {
-        document.body.style.pointerEvents = '';
-        document.body.style.overflow = '';
-      }, 100);
+      const timeout = setTimeout(cleanup, 150);
       return () => clearTimeout(timeout);
     }
   }, [messageToDelete, replyingTo]);
@@ -199,7 +202,7 @@ export default function CommunicationHubPage() {
 
   /**
    * OPTIMIZED NON-BLOCKING DELETE
-   * Re-implemented with a robust handshake to prevent cursor freezes.
+   * Re-implemented with an aggressive deferral to prevent cursor freezes.
    */
   const handleDeleteConfirm = () => {
     if (!firestore || !messageToDelete) return;
@@ -207,19 +210,15 @@ export default function CommunicationHubPage() {
     const docId = messageToDelete.id;
     const msgRef = doc(firestore, 'messages', docId);
     
-    // 1. Local state clear - this triggers the modal close animation
+    // 1. Instantly clear state to start modal close animation
     setMessageToDelete(null);
     
-    // 2. Immediate feedback
-    toast({ title: 'Record removed from registry' });
-
-    // 3. Defer the actual database mutation to allow the UI to finish its transition
-    // This ensures Radix can clean up body styles before the reactive list re-renders.
+    // 2. Defer database call until animation is projected to finish
+    // This allows the browser to prioritize Radix UI cleanup tasks.
     setTimeout(() => {
-        startTransition(() => {
-            deleteDocumentNonBlocking(msgRef);
-        });
-    }, 150);
+        deleteDocumentNonBlocking(msgRef);
+        toast({ title: 'Record removed from registry' });
+    }, 300); 
   };
 
   const handleSendReply = async () => {
