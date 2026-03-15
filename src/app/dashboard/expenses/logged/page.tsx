@@ -115,7 +115,7 @@ type ExpenseFormValues = z.infer<typeof expenseSchema>;
 function safeToDate(val: any): Date | null {
   if (!val) return null;
   if (val instanceof Date) return val;
-  if (typeof val === 'object' && 'seconds' in val) return new Date(val.seconds * 1000);
+  if (typeof val === 'object' && val.seconds !== undefined) return new Date(val.seconds * 1000);
   const d = new Date(val);
   return isNaN(d.getTime()) ? null : d;
 }
@@ -285,7 +285,7 @@ export default function LoggedExpensesPage() {
                             <SelectValue placeholder="Year" />
                         </SelectTrigger>
                         <SelectContent>
-                            {Array.from({ length: 8 }, (_, i) => (new Date().getFullYear() + 2) - i).map(year => (
+                            {Array.from({ length: 18 }, (_, i) => (new Date().getFullYear() + 12) - i).map(year => (
                                 <SelectItem key={year} value={String(year)}>{year}</SelectItem>
                             ))}
                         </SelectContent>

@@ -41,7 +41,7 @@ import {
   Banknote,
   RefreshCw
 } from 'lucide-react';
-import { getYear, isSameYear, isAfter, isBefore, parseISO, startOfDay } from 'date-fns';
+import { getYear, isAfter, isBefore } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import {
   Table,
@@ -168,10 +168,9 @@ export default function FinancialsPage() {
   }, [firestore, user]);
   const { data: allExpenses, isLoading: isLoadingExpenses } = useCollection<Expense>(expensesQuery);
 
-  // 3. Fetch rent payments for this landlord (spanning potentially two calendar years for one tax year)
+  // 3. Fetch rent payments for this landlord
   const rentQuery = useMemoFirebase(() => {
     if (!user || !firestore || !selectedTaxYearStart) return null;
-    // We fetch a broader range to cover the tax year crossover
     return query(collection(firestore, 'rentPayments'), where('landlordId', '==', user.uid));
   }, [firestore, user, selectedTaxYearStart]);
   const { data: allRentPayments, isLoading: isLoadingRent } = useCollection<RentPayment>(rentQuery);
@@ -222,12 +221,8 @@ export default function FinancialsPage() {
     if (!allRentPayments || !selectedTaxYearStart) return [];
     return allRentPayments.filter(p => {
         const matchesProperty = selectedPropertyId === 'all' || p.propertyId === selectedPropertyId;
-        
-        // Month index in our custom tax array
         const monthIdx = TAX_MONTHS.indexOf(p.month);
-        // If Jan-Mar, the calendar year should be start + 1. If Apr-Dec, calendar year is start.
         const expectedCalYear = monthIdx >= 9 ? selectedTaxYearStart + 1 : selectedTaxYearStart;
-        
         return matchesProperty && p.year === expectedCalYear;
     });
   }, [allRentPayments, selectedPropertyId, selectedTaxYearStart]);
@@ -264,11 +259,9 @@ export default function FinancialsPage() {
     doc.line(14, 40, 200, 40);
 
     const baseInsurance = expenses.filter(e => ['Insurance', 'Utilities'].includes(e.expenseType)).reduce((a, b) => a + (Number(b.amount) || 0), 0);
-    
     const baseMaintenance = expenses.filter(e => ['Repairs and Maintenance', 'Cleaning', 'Gardening'].includes(e.expenseType)).reduce((a, b) => a + (Number(b.amount) || 0), 0);
     const repairMaintenance = repairCosts.reduce((a, b) => a + (Number(b.expectedCost || b.estimatedCost || 0)), 0);
     const totalMaintenance = baseMaintenance + repairMaintenance;
-
     const professionalFees = expenses.filter(e => ['Letting Agent Fees'].includes(e.expenseType)).reduce((a, b) => a + (Number(b.amount) || 0), 0);
     const financeCosts = expenses.filter(e => ['Mortgage Interest'].includes(e.expenseType)).reduce((a, b) => a + (Number(b.amount) || 0), 0);
     const otherExpenses = expenses.filter(e => e.expenseType === 'Other').reduce((a, b) => a + (Number(b.amount) || 0), 0);
@@ -298,7 +291,7 @@ export default function FinancialsPage() {
 
     doc.save(`HMRC-Tax-Report-${selectedTaxYearStart}-${selectedTaxYearStart + 1}.pdf`);
     
-    // INTERACTION RECOVERY: Refresh page to prevent UI freeze after PDF generation
+    // INTERACTION RECOVERY
     toast({ title: 'Report Generated', description: 'Refreshing ledger context...' });
     setTimeout(() => {
         window.location.reload();
@@ -310,7 +303,6 @@ export default function FinancialsPage() {
     return [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
   }
 
-  // Stable keys for Select components to prevent stale state
   const taxYearKey = selectedTaxYearStart ? `tax-year-${selectedTaxYearStart}` : 'loading';
 
   return (
@@ -339,7 +331,7 @@ export default function FinancialsPage() {
                         <SelectValue placeholder="Tax Year" />
                     </SelectTrigger>
                     <SelectContent>
-                        {Array.from({ length: 8 }, (_, i) => (new Date().getFullYear() + 2) - i).map(year => (
+                        {Array.from({ length: 18 }, (_, i) => (new Date().getFullYear() + 12) - i).map(year => (
                             <SelectItem key={year} value={String(year)}>{year} / {(year + 1).toString().slice(-2)}</SelectItem>
                         ))}
                     </SelectContent>
@@ -604,7 +596,6 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
   const handleStatusChange = (month: string, status: PaymentStatus) => {
     if (!firestore || !user || !selectedProperty) return;
     
-    // Calculate calendar year for this tax month
     const monthIdx = TAX_MONTHS.indexOf(month);
     const calendarYear = monthIdx >= 9 ? selectedYear + 1 : selectedYear;
     
