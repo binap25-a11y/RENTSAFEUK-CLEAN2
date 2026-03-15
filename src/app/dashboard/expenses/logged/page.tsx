@@ -279,7 +279,7 @@ export default function LoggedExpensesPage() {
                     </Select>
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="year-filter">Reporting Year</Label>
+                    <Label htmlFor="year-filter">Reporting Year (12 Future, 5 Past)</Label>
                     <Select value={selectedYear ? String(selectedYear) : ''} onValueChange={(v) => setSelectedYear(Number(v))}>
                         <SelectTrigger id="year-filter">
                             <SelectValue placeholder="Year" />

@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -86,6 +87,7 @@ export default function EditDocumentPage() {
   const firestore = useFirestore();
   const [isSaving, setIsSaving] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
   const form = useForm<DocumentFormValues>({
     resolver: zodResolver(documentSchema),
@@ -99,9 +101,13 @@ export default function EditDocumentPage() {
   const { data: documentRecord, isLoading } = useDoc<DocumentRecord>(docRef);
 
   useEffect(() => {
-    if (documentRecord) {
-      // SELECTION MEMORY HANDSHAKE: Prioritize last chosen type for triage sessions
-      const sessionPreference = typeof window !== 'undefined' ? localStorage.getItem('last_doc_type') : null;
+    setIsMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (documentRecord && isMounted) {
+      // PREFERENCE HANDSHAKE: Use session preference only if it was updated during this session
+      const sessionPreference = localStorage.getItem('last_doc_type');
       
       form.reset({
         title: documentRecord.title,
@@ -112,7 +118,7 @@ export default function EditDocumentPage() {
         sharedWithTenant: documentRecord.sharedWithTenant || false,
       });
     }
-  }, [documentRecord, form]);
+  }, [documentRecord, form, isMounted]);
 
   const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     if (e.target.files && e.target.files[0]) {
@@ -133,6 +139,9 @@ export default function EditDocumentPage() {
         fileUrl = await uploadPropertyDocument(selectedFile, user.uid, propertyId);
       }
 
+      // SUBMISSION MEMORY: Solidify the selection strictly before the sync redirect
+      localStorage.setItem('last_doc_type', data.documentType);
+
       const updateData = {
         ...data,
         fileUrl,
@@ -142,11 +151,6 @@ export default function EditDocumentPage() {
 
       await updateDoc(docRef, JSON.parse(JSON.stringify(updateData)));
       
-      // DEFINITIVE PERSISTENCE: Save the selection strictly on successful submission
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('last_doc_type', data.documentType);
-      }
-
       toast({ title: 'Document Updated', description: 'Changes saved and preferences synchronized.' });
       router.push('/dashboard/documents');
     } catch (error) {
@@ -157,10 +161,11 @@ export default function EditDocumentPage() {
     }
   }
 
-  if (isLoading) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+  if (isLoading || !isMounted) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!documentRecord) return <div className="text-center py-20 italic">Document record not found.</div>;
 
-  const currentType = form.watch('documentType');
+  // DYNAMIC KEY: Forces dropdown re-sync when registry data or preferences change
+  const selectKey = `doc-type-selector-${form.getValues('documentType') || 'loading'}`;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 text-left">
@@ -200,13 +205,10 @@ export default function EditDocumentPage() {
                   <FormItem>
                       <FormLabel className="font-bold">Document Type</FormLabel>
                       <Select 
-                        key={field.value || 'pending'} 
+                        key={selectKey}
                         onValueChange={(val) => {
                           field.onChange(val);
-                          // SELECTION MEMORY: Save choice instantly to local storage
-                          if (typeof window !== 'undefined') {
-                            localStorage.setItem('last_doc_type', val);
-                          }
+                          localStorage.setItem('last_doc_type', val);
                         }} 
                         value={field.value}
                       >
@@ -217,6 +219,7 @@ export default function EditDocumentPage() {
                           ].map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
                       </SelectContent>
                       </Select>
+                      <FormDescription className="text-[10px]">Your last selection is reactively remembered for the next audit.</FormDescription>
                       <FormMessage />
                   </FormItem>
                   )}

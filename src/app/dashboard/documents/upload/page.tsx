@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -81,6 +82,7 @@ export default function UploadDocumentPage() {
   const firestore = useFirestore();
   const [isSaving, setIsSaving] = useState(false);
   const [selectedFile, setSelectedFile] = useState<File | null>(null);
+  const [isMounted, setIsMounted] = useState(false);
 
   const form = useForm<DocumentFormValues>({
     resolver: zodResolver(documentSchema),
@@ -99,28 +101,19 @@ export default function UploadDocumentPage() {
   const watchType = form.watch('documentType');
   const watchPropId = form.watch('propertyId');
 
+  useEffect(() => {
+    setIsMounted(true);
+  }, []);
+
   // HYDRATION HANDSHAKE: Set default preferences only after client-side mount
   useEffect(() => {
-    if (typeof window !== 'undefined') {
+    if (isMounted && typeof window !== 'undefined') {
       const lastProp = localStorage.getItem('last_doc_prop');
       const lastType = localStorage.getItem('last_doc_type');
       if (lastProp) form.setValue('propertyId', lastProp);
       if (lastType) form.setValue('documentType', lastType);
     }
-  }, [form]);
-
-  // SELECTION MEMORY HANDSHAKE: Ensure preferences are updated immediately on change
-  useEffect(() => {
-    if (watchType && typeof window !== 'undefined') {
-      localStorage.setItem('last_doc_type', watchType);
-    }
-  }, [watchType]);
-
-  useEffect(() => {
-    if (watchPropId && typeof window !== 'undefined') {
-      localStorage.setItem('last_doc_prop', watchPropId);
-    }
-  }, [watchPropId]);
+  }, [isMounted, form]);
 
   const complianceWarning = useMemo(() => {
     if (watchType === 'Gas Safety Certificate' && watchIssueDate && watchExpiryDate) {
@@ -180,10 +173,8 @@ export default function UploadDocumentPage() {
       await addDoc(documentsCollection, dataToSave);
       
       // PERSISTENCE HANDSHAKE: Definitive save for future audits
-      if (typeof window !== 'undefined') {
-        localStorage.setItem('last_doc_prop', data.propertyId);
-        localStorage.setItem('last_doc_type', data.documentType);
-      }
+      localStorage.setItem('last_doc_prop', data.propertyId);
+      localStorage.setItem('last_doc_type', data.documentType);
 
       toast({ title: 'Document Logged', description: 'Record saved and preferences synchronized.' });
       router.push('/dashboard/documents');
@@ -198,6 +189,12 @@ export default function UploadDocumentPage() {
   const formatAddress = (address: Property['address']) => {
     return [address.nameOrNumber, address.street, address.city].filter(Boolean).join(', ');
   };
+
+  if (!isMounted) return null;
+
+  // DYNAMIC KEYS: Ensure selectors refresh when preferences are loaded
+  const propKey = `upload-prop-selector-${watchPropId || 'pending'}`;
+  const typeKey = `upload-type-selector-${watchType || 'pending'}`;
 
   return (
     <div className="flex flex-col gap-8 max-w-2xl mx-auto text-left">
@@ -246,7 +243,7 @@ export default function UploadDocumentPage() {
                       <FormItem>
                       <FormLabel className="font-bold">Active Property</FormLabel>
                       <Select 
-                        key={field.value || 'prop-pending'}
+                        key={propKey}
                         onValueChange={(val) => {
                           field.onChange(val);
                           localStorage.setItem('last_doc_prop', val);
@@ -277,7 +274,7 @@ export default function UploadDocumentPage() {
                       <FormItem>
                           <FormLabel className="font-bold">Document Type</FormLabel>
                           <Select 
-                            key={field.value || 'type-pending'}
+                            key={typeKey}
                             onValueChange={(val) => {
                               field.onChange(val);
                               localStorage.setItem('last_doc_type', val);

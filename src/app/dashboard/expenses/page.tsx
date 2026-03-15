@@ -325,7 +325,7 @@ export default function FinancialsPage() {
                 </Select>
             </div>
             <div className="grid w-full gap-1.5">
-                <Label htmlFor="reporting-year-selector" className="text-xs uppercase font-bold text-muted-foreground">UK Tax Year Cycle</Label>
+                <Label htmlFor="reporting-year-selector" className="text-xs uppercase font-bold text-muted-foreground">UK Tax Year Cycle (12 Future, 5 Past)</Label>
                 <Select key={taxYearKey} onValueChange={(value) => setSelectedTaxYearStart(Number(value))} value={selectedTaxYearStart ? String(selectedTaxYearStart) : ''}>
                     <SelectTrigger id="reporting-year-selector" className="h-11">
                         <SelectValue placeholder="Tax Year" />
