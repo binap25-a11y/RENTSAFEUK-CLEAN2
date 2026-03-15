@@ -1,7 +1,6 @@
-
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -65,9 +64,9 @@ import {
 } from '@/components/ui/dialog';
 
 /**
- * @fileOverview Communication Registry
+ * @fileOverview Communication Hub
  * Enhanced chronological list of all resident conversations.
- * Now includes full property and tenant context for every message.
+ * Handles real-time updates and full property context mapping.
  */
 
 interface Message {
@@ -106,7 +105,7 @@ export default function LandlordInboxPage() {
   const [replyContent, setReplyContent] = useState('');
   const [isSendingReply, setIsSendingReply] = useState(false);
 
-  // 1. Fetch all messages for this landlord
+  // 1. Fetch all messages for this landlord (Live Collection)
   const messagesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
@@ -168,6 +167,7 @@ export default function LandlordInboxPage() {
   const handleDeleteConfirm = () => {
     if (!firestore || !messageToDelete) return;
     const msgRef = doc(firestore, 'messages', messageToDelete.id);
+    // This is non-blocking and the UI will update instantly via useCollection
     deleteDocumentNonBlocking(msgRef);
     toast({ title: 'Message Deleted' });
     setMessageToDelete(null);
@@ -215,13 +215,13 @@ export default function LandlordInboxPage() {
                 <div className="p-2 rounded-xl bg-primary text-primary-foreground">
                     <MessageSquare className="h-6 w-6" />
                 </div>
-                <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Communication Registry</h1>
+                <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Communication Hub</h1>
             </div>
             <Button variant="ghost" size="sm" className="font-bold uppercase tracking-widest text-[9px] text-primary" onClick={() => window.location.reload()}>
-                <RefreshCw className="h-3 w-3 mr-1.5" /> Sync Registry
+                <RefreshCw className="h-3 w-3 mr-1.5" /> Sync Hub
             </Button>
         </div>
-        <p className="text-muted-foreground font-medium text-lg ml-1">Professional audit of all resident and asset interactions.</p>
+        <p className="text-muted-foreground font-medium text-lg ml-1">Professional hub for all resident and asset interactions.</p>
       </div>
 
       <div className="flex items-center justify-between gap-4 px-1">
@@ -236,7 +236,7 @@ export default function LandlordInboxPage() {
           </div>
           <div className="hidden sm:block">
               <Badge variant="outline" className="h-12 px-4 rounded-2xl border-2 font-bold uppercase tracking-widest text-[10px] bg-background">
-                  {filteredMessages.length} Messages
+                  {filteredMessages.length} Messages Live
               </Badge>
           </div>
       </div>
@@ -244,14 +244,14 @@ export default function LandlordInboxPage() {
       {isLoadingMessages ? (
         <div className="flex flex-col justify-center items-center h-64 gap-4">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">Establishing Audit Trail...</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">Syncing chronological audit...</p>
         </div>
       ) : error ? (
         <div className="py-20 text-center px-10 border-2 border-dashed border-destructive/20 rounded-[2rem] bg-destructive/5">
             <AlertCircle className="h-12 w-12 text-destructive/20 mx-auto mb-4" />
-            <p className="text-sm font-bold text-destructive">Sync Connection Interrupted</p>
+            <p className="text-sm font-bold text-destructive">Registry Connection Interrupted</p>
             <Button variant="outline" className="mt-6 h-9" onClick={() => window.location.reload()}>
-                <RefreshCw className="mr-2 h-3.5 w-3.5" /> Force Registry Sync
+                <RefreshCw className="mr-2 h-3.5 w-3.5" /> Force Hub Sync
             </Button>
         </div>
       ) : filteredMessages.length === 0 ? (
@@ -361,8 +361,8 @@ export default function LandlordInboxPage() {
       <div className="p-6 rounded-2xl bg-muted/30 border border-dashed flex items-center gap-4 text-left">
           <ShieldCheck className="h-10 w-10 text-primary opacity-20 shrink-0" />
           <div className="space-y-1">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Chronological Audit Policy</p>
-              <p className="text-[11px] text-muted-foreground/70 leading-relaxed font-medium">This registry serves as a definitive record of all communications. Property associations and resident identities are cryptographically mapped for management security.</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Chronological Hub Policy</p>
+              <p className="text-[11px] text-muted-foreground/70 leading-relaxed font-medium">This hub serves as a definitive record of all communications. Property associations and resident identities are cryptographically mapped for management security.</p>
           </div>
       </div>
 
@@ -396,7 +396,7 @@ export default function LandlordInboxPage() {
             <DialogFooter className="bg-muted/5 -mx-6 -mb-6 p-6 border-t flex items-center justify-between">
                 <div className="hidden sm:flex items-center gap-2 text-[10px] text-muted-foreground font-bold uppercase">
                     <Clock className="h-3 w-3" />
-                    Registry record will be created
+                    Hub record will be created
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
                     <Button variant="ghost" onClick={() => setReplyingTo(null)} className="font-bold">Cancel</Button>
@@ -416,9 +416,9 @@ export default function LandlordInboxPage() {
                 <div className="p-4 rounded-full bg-destructive/10 w-fit mx-auto mb-4">
                     <Trash2 className="h-8 w-8 text-destructive" />
                 </div>
-                <AlertDialogTitle className="text-xl font-headline text-center">Delete Audit Record?</AlertDialogTitle>
+                <AlertDialogTitle className="text-xl font-headline text-center">Delete Hub Record?</AlertDialogTitle>
                 <AlertDialogDescription className="text-center font-medium">
-                    This will permanently remove this message from the chronological registry. This action cannot be reversed and may affect your management audit trail.
+                    This will permanently remove this message from the chronological hub history. This action cannot be reversed and may affect your management audit trail.
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="mt-6 gap-3 flex-col-reverse sm:flex-row">

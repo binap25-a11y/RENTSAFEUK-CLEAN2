@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -84,7 +83,7 @@ const menuItems = [
   },
   { href: '/dashboard/expenses', label: 'Financials', icon: CreditCard },
   { href: '/dashboard/reminders', label: 'Reminders', icon: Bell },
-  { href: '/dashboard/messages', label: 'Messages', icon: MessageSquare }, // Messages moved below Reminders
+  { href: '/dashboard/messages', label: 'Communication Hub', icon: MessageSquare }, 
 ];
 
 export function MainNav() {
@@ -181,7 +180,7 @@ export function MainNav() {
                     <Icon />
                     <span>{label}</span>
                 </div>
-                {label === 'Messages' && unreadCount > 0 && (
+                {label === 'Communication Hub' && unreadCount > 0 && (
                     <Badge className="h-5 px-1.5 min-w-[20px] justify-center bg-primary text-primary-foreground font-bold text-[10px] rounded-full shadow-sm animate-in fade-in zoom-in duration-300">
                         {unreadCount}
                     </Badge>
