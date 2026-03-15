@@ -184,7 +184,7 @@ export default function DashboardPage() {
         <Link href="/dashboard/documents" className="block">
           <Card className={cn(
             "hover:shadow-xl transition-all border-none shadow-md group h-full",
-            complianceStats.expired > 0 ? "bg-destructive/[0.03] border-destructive/10 border" : ""
+            complianceStats.expired > 0 ? "bg-destructive/[0.02] border-destructive/10 border" : ""
           )}>
             <CardHeader className="flex flex-row items-center justify-between pb-2">
               <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-left">Legal Compliance</CardTitle>
