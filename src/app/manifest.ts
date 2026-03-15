@@ -2,8 +2,8 @@ import { MetadataRoute } from 'next'
 
 /**
  * Defines the PWA manifest for the application.
- * Stabilized to use exact RentSafeUK brand colors (#A7D1AB) for icons
- * and high-contrast white text to ensure visibility on mobile home screens.
+ * Synchronized with RentSafeUK brand colors (#A7D1AB).
+ * Provides explicit maskable icons for Android adaptive icon support.
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -20,6 +20,12 @@ export default function manifest(): MetadataRoute.Manifest {
         src: 'https://placehold.co/192x192/A7D1AB/ffffff/png?text=RS',
         sizes: '192x192',
         type: 'image/png',
+        purpose: 'any',
+      },
+      {
+        src: 'https://placehold.co/192x192/A7D1AB/ffffff/png?text=RS',
+        sizes: '192x192',
+        type: 'image/png',
         purpose: 'maskable',
       },
       {
@@ -27,6 +33,12 @@ export default function manifest(): MetadataRoute.Manifest {
         sizes: '512x512',
         type: 'image/png',
         purpose: 'any',
+      },
+      {
+        src: 'https://placehold.co/512x512/A7D1AB/ffffff/png?text=RentSafeUK',
+        sizes: '512x512',
+        type: 'image/png',
+        purpose: 'maskable',
       },
     ],
   }

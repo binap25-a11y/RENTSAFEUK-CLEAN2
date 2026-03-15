@@ -203,6 +203,9 @@ export default function EditMaintenancePage() {
     if (isLoading) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
     if (!maintenanceLog) return <div className="text-center py-10">Record not found.</div>;
 
+    // Use a stable data-key to force dropdown synchronization when the record is loaded
+    const dataKey = maintenanceLog ? 'registry-loaded' : 'registry-pending';
+
     return (
         <div className="max-w-2xl mx-auto space-y-6 text-left">
             <div className='flex items-center gap-4'>
@@ -224,11 +227,7 @@ export default function EditMaintenancePage() {
                                 <FormField control={form.control} name="propertyId" render={({ field }) => (
                                     <FormItem>
                                         <FormLabel className="font-bold">Target Property</FormLabel>
-                                        <Select 
-                                            key={maintenanceLog ? `${logId}-prop-${field.value}` : 'loading'}
-                                            onValueChange={field.onChange} 
-                                            value={field.value}
-                                        >
+                                        <Select key={`${dataKey}-prop`} onValueChange={field.onChange} value={field.value}>
                                             <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select property" /></SelectTrigger></FormControl>
                                             <SelectContent>
                                                 {properties?.map(p => (<SelectItem key={p.id} value={p.id}>{formatAddress(p.address)}</SelectItem>))}
@@ -248,7 +247,7 @@ export default function EditMaintenancePage() {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                     <FormField control={form.control} name="category" render={({ field }) => (
                                         <FormItem><FormLabel className="font-bold">Category</FormLabel>
-                                            <Select key={maintenanceLog ? `${logId}-cat-${field.value}` : 'loading'} onValueChange={field.onChange} value={field.value}>
+                                            <Select key={`${dataKey}-cat`} onValueChange={field.onChange} value={field.value}>
                                                 <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select category" /></SelectTrigger></FormControl>
                                                 <SelectContent>{CATEGORIES.map(cat => <SelectItem key={cat} value={cat}>{cat}</SelectItem>)}</SelectContent>
                                             </Select>
@@ -257,7 +256,7 @@ export default function EditMaintenancePage() {
                                     )} />
                                     <FormField control={form.control} name="priority" render={({ field }) => (
                                         <FormItem><FormLabel className="font-bold">Priority</FormLabel>
-                                            <Select key={maintenanceLog ? `${logId}-prio-${field.value}` : 'loading'} onValueChange={field.onChange} value={field.value}>
+                                            <Select key={`${dataKey}-prio`} onValueChange={field.onChange} value={field.value}>
                                                 <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select priority" /></SelectTrigger></FormControl>
                                                 <SelectContent>{PRIORITIES.map(p => <SelectItem key={p} value={p}>{p}</SelectItem>)}</SelectContent>
                                             </Select>
@@ -267,7 +266,7 @@ export default function EditMaintenancePage() {
                                 </div>
                                 <FormField control={form.control} name="status" render={({ field }) => (
                                     <FormItem><FormLabel className="font-bold">Repair Status</FormLabel>
-                                        <Select key={maintenanceLog ? `${logId}-status-${field.value}` : 'loading'} onValueChange={field.onChange} value={field.value}>
+                                        <Select key={`${dataKey}-status`} onValueChange={field.onChange} value={field.value}>
                                             <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select status" /></SelectTrigger></FormControl>
                                             <SelectContent>{STATUSES.map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}</SelectContent>
                                         </Select>
@@ -283,7 +282,7 @@ export default function EditMaintenancePage() {
                                     <div className="space-y-4">
                                         <Label className="font-bold text-xs">Quick-select Contractor</Label>
                                         <Select 
-                                            key={maintenanceLog ? `${logId}-contractor-${matchedContractorId}` : 'loading'}
+                                            key={`${dataKey}-contractor-match`}
                                             value={matchedContractorId} 
                                             onValueChange={(cid) => { 
                                                 const c = contractors?.find(x => x.id === cid); 
@@ -313,7 +312,7 @@ export default function EditMaintenancePage() {
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                     <FormField control={form.control} name="reportedBy" render={({ field }) => (
                                         <FormItem><FormLabel className="font-bold">Reported By</FormLabel>
-                                            <Select key={maintenanceLog ? `${logId}-reportedBy-${field.value}` : 'loading'} onValueChange={field.onChange} value={field.value}>
+                                            <Select key={`${dataKey}-reporter`} onValueChange={field.onChange} value={field.value}>
                                                 <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select reporter" /></SelectTrigger></FormControl>
                                                 <SelectContent>{REPORTERS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent>
                                             </Select>

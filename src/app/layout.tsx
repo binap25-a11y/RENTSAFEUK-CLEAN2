@@ -12,7 +12,7 @@ import { FirebaseClientProvider } from '@/firebase/client-provider';
 export const metadata: Metadata = {
   title: 'RentSafeUK',
   description: 'Professional UK Property Management & Portfolio Audit Trail',
-  manifest: '/manifest.webmanifest',
+  applicationName: 'RentSafeUK',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -22,10 +22,15 @@ export const metadata: Metadata = {
     telephone: false,
   },
   icons: {
-    icon: 'https://placehold.co/32x32/A7D1AB/ffffff/png?text=RS',
-    shortcut: 'https://placehold.co/196x196/A7D1AB/ffffff/png?text=RS',
-    apple: 'https://placehold.co/180x180/A7D1AB/ffffff/png?text=RS',
+    icon: [
+      { url: 'https://placehold.co/32x32/A7D1AB/ffffff/png?text=RS', sizes: '32x32' },
+      { url: 'https://placehold.co/192x192/A7D1AB/ffffff/png?text=RS', sizes: '192x192' },
+    ],
+    apple: [
+      { url: 'https://placehold.co/180x180/A7D1AB/ffffff/png?text=RS', sizes: '180x180' },
+    ],
   },
+  manifest: '/manifest.webmanifest',
 };
 
 export const viewport: Viewport = {

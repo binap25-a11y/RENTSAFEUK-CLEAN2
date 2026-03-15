@@ -201,6 +201,9 @@ export default function EditTenantPage() {
   
   if (!tenant) return <div className="text-center py-10"><p>Tenant not found.</p></div>;
 
+  // Use a stable key to synchronize dropdown UI when data is ready
+  const dataKey = tenant ? 'registry-loaded' : 'registry-pending';
+
   return (
     <div className="space-y-6 max-w-2xl mx-auto text-left">
       <div className="flex items-center gap-4">
@@ -226,11 +229,7 @@ export default function EditTenantPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="font-bold">Assigned Property</FormLabel>
-                    <Select 
-                      key={tenant ? `${tenant.id}-prop-${field.value}` : 'loading'}
-                      onValueChange={field.onChange} 
-                      value={field.value ? String(field.value) : ""}
-                    >
+                    <Select key={`${dataKey}-prop`} onValueChange={field.onChange} value={field.value}>
                       <FormControl>
                         <SelectTrigger className="h-11">
                           <SelectValue placeholder="Select a property" />
@@ -268,11 +267,7 @@ export default function EditTenantPage() {
                       render={({ field }) => (
                       <FormItem>
                           <FormLabel className="font-bold flex items-center gap-2"><CalendarDays className="h-4 w-4 text-primary" />Rent Due Day</FormLabel>
-                          <Select 
-                            key={tenant ? `${tenant.id}-day-${field.value}` : 'loading'}
-                            onValueChange={field.onChange} 
-                            value={field.value ? String(field.value) : ""}
-                          >
+                          <Select key={`${dataKey}-rent-day`} onValueChange={field.onChange} value={String(field.value)}>
                               <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select day" /></SelectTrigger></FormControl>
                               <SelectContent>
                                 {Array.from({ length: 31 }, (_, i) => (i + 1)).map(day => (
