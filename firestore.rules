@@ -4,9 +4,9 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RENTSAFEUK SECURITY GOVERNANCE v20.9
+     * RENTSAFEUK SECURITY GOVERNANCE v20.10
      * Synchronized with high-performance composite indexes for messaging and audit trails.
-     * Definitively hardening the read-receipt update permissions.
+     * Hardened permissions for message deletion and read-receipt updates.
      */
 
     function isSignedIn() {
@@ -84,11 +84,14 @@ service cloud.firestore {
         request.resource.data.senderId == request.auth.uid
       );
 
-      // Hardened Update: Only allow recipients to mark messages as read.
+      // recipients can mark messages as read.
       allow update: if isSignedIn() && (
         request.auth.uid == resource.data.landlordId || 
         resource.data.get('tenantEmail', '').lower() == userEmail()
       ) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
+
+      // Landlords can delete messages from their registry
+      allow delete: if isSignedIn() && request.auth.uid == resource.data.landlordId;
     }
 
     // --- Maintenance (Repairs) ---
