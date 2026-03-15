@@ -93,7 +93,13 @@ export default function DashboardPage() {
 
   const repairsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
-    return query(collection(firestore, 'repairs'), where('landlordId', '==', user.uid), where('status', 'in', ['Open', 'In Progress']), orderBy('reportedDate', 'desc'), limit(100));
+    return query(
+      collection(firestore, 'repairs'), 
+      where('landlordId', '==', user.uid), 
+      where('status', 'in', ['Open', 'In Progress']), 
+      orderBy('reportedDate', 'desc'), 
+      limit(100)
+    );
   }, [user, firestore]);
   const { data: allRepairs } = useCollection<Repair>(repairsQuery);
 
@@ -204,7 +210,7 @@ export default function DashboardPage() {
               <Wrench className="h-4 w-4 text-primary group-hover:scale-110 transition-transform" />
             </CardHeader>
             <CardContent className="text-left">
-              <div className="text-3xl font-bold">{allRepairs?.filter(r => r.status !== 'Completed' && r.status !== 'Cancelled').length || 0}</div>
+              <div className="text-3xl font-bold">{allRepairs?.length || 0}</div>
               <p className="text-[10px] text-muted-foreground mt-1">Maintenance Queue</p>
             </CardContent>
           </Card>
@@ -317,11 +323,11 @@ export default function DashboardPage() {
               </Button>
             </CardHeader>
             <CardContent className="p-0">
-              {!allRepairs?.filter(r => r.status !== 'Completed' && r.status !== 'Cancelled').length ? (
-                <div className="py-12 text-center text-muted-foreground italic bg-muted/5">No active repairs.</div>
+              {!allRepairs?.length ? (
+                <div className="py-12 text-center text-muted-foreground italic bg-muted/5">No active repairs requiring attention.</div>
               ) : (
                 <div className="divide-y">
-                  {allRepairs.filter(r => r.status !== 'Completed' && r.status !== 'Cancelled').slice(0, 5).map((r) => (
+                  {allRepairs.slice(0, 5).map((r) => (
                     <div key={r.id} className="p-4 flex items-center justify-between hover:bg-muted/5 transition-colors group">
                       <div className="flex items-center gap-4">
                         <div className={cn(
