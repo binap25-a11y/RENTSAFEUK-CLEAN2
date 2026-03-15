@@ -100,7 +100,14 @@ export default function EditDocumentPage() {
   const { data: documentRecord, isLoading } = useDoc<DocumentRecord>(docRef);
 
   // SELECTION MEMORY HANDSHAKE: Forces re-render when record loads or session memory is updated.
-  const lastSessionType = typeof window !== 'undefined' ? localStorage.getItem('last_doc_type') : '';
+  const [lastSessionType, setLastSessionType] = useState<string>('');
+  
+  useEffect(() => {
+    if (typeof window !== 'undefined') {
+      setLastSessionType(localStorage.getItem('last_doc_type') || '');
+    }
+  }, []);
+
   const dataKey = documentRecord ? `registry-loaded-${id}-${documentRecord.documentType}-${lastSessionType}` : 'registry-pending';
 
   useEffect(() => {
@@ -147,7 +154,7 @@ export default function EditDocumentPage() {
 
       await updateDoc(docRef, JSON.parse(JSON.stringify(updateData)));
       
-      // PERSISTENCE HANDSHAKE: Avoid repeated selection for multi-document audits
+      // PERSISTENCE HANDSHAKE: Definitive save of the selection when the user clicks 'Save Changes'
       if (typeof window !== 'undefined') {
         localStorage.setItem('last_doc_type', data.documentType);
       }
@@ -206,9 +213,10 @@ export default function EditDocumentPage() {
                         key={dataKey} 
                         onValueChange={(val) => {
                           field.onChange(val);
-                          // SELECTION MEMORY: Save choice instantly to avoid repeated selection in triage
+                          // SELECTION MEMORY: Save choice instantly to update the "last used" preference
                           if (typeof window !== 'undefined') {
                             localStorage.setItem('last_doc_type', val);
+                            setLastSessionType(val);
                           }
                         }} 
                         value={field.value}
