@@ -53,7 +53,7 @@ import Link from 'next/link';
 const profileSchema = z.object({
   displayName: z.string().min(2, 'Display name must be at least 2 characters.'),
   email: z.string().email().optional(),
-  idleTimeoutMinutes: z.coerce.number().min(5, 'Minimum timeout is 5 minutes.'),
+  idleTimeoutMinutes: z.coerce.number().min(1, 'Minimum timeout is 1 minute.'),
   role: z.string().optional(),
 });
 
@@ -256,6 +256,9 @@ export default function SettingsPage() {
                                         </SelectTrigger>
                                     </FormControl>
                                     <SelectContent>
+                                        <SelectItem value="1">1 Minute (Testing)</SelectItem>
+                                        <SelectItem value="2">2 Minutes</SelectItem>
+                                        <SelectItem value="5">5 Minutes</SelectItem>
                                         <SelectItem value="15">15 Minutes</SelectItem>
                                         <SelectItem value="30">30 Minutes (Recommended)</SelectItem>
                                         <SelectItem value="60">1 Hour</SelectItem>
