@@ -110,7 +110,6 @@ export default function DashboardLayout({
   useEffect(() => {
     if (!isMounted || !user || !firestore) return;
 
-    // Use User Profile for definitive role verification instead of property counts
     const userRef = doc(firestore, 'users', user.uid);
     const unsub = onSnapshot(userRef, (snap) => {
         if (snap.exists()) {
@@ -137,8 +136,8 @@ export default function DashboardLayout({
     );
   }
 
-  // Sidebar is shown for all users in the dashboard path, providing they aren't marked as tenants (who use the /tenant/ layout)
-  const showSidebar = userRole !== 'tenant' || pathname !== '/dashboard';
+  // Sidebar visibility handshake: show for non-tenant roles in the management path
+  const showSidebar = userRole !== 'tenant' || pathname.startsWith('/dashboard');
 
   return (
     <SidebarProvider>
