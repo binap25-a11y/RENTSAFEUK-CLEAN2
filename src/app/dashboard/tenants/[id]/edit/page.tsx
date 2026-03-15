@@ -122,7 +122,7 @@ export default function EditTenantPage() {
   const { data: properties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
   
   useEffect(() => {
-    if (tenant) {
+    if (tenant && !isLoadingProperties) {
         form.reset({
             name: tenant.name || '',
             email: tenant.email || '',
@@ -135,7 +135,10 @@ export default function EditTenantPage() {
             notes: tenant.notes || '',
         });
     }
-  }, [tenant, form, propertyIdFromUrl]);
+  }, [tenant, form, propertyIdFromUrl, isLoadingProperties]);
+
+  // REACTIVE KEY: Forces re-render of Select components when registry data loads
+  const dataKey = tenant ? `registry-loaded-${tenant.propertyId}-${tenant.rentDueDay}` : 'registry-pending';
 
   async function onSubmit(data: TenantFormValues) {
     if (!user || !firestore || !tenant || !tenantRef) {
@@ -201,9 +204,6 @@ export default function EditTenantPage() {
   
   if (!tenant) return <div className="text-center py-10"><p>Tenant not found.</p></div>;
 
-  // Use a stable key to synchronize dropdown UI when data is ready
-  const dataKey = tenant ? 'registry-loaded' : 'registry-pending';
-
   return (
     <div className="space-y-6 max-w-2xl mx-auto text-left">
       <div className="flex items-center gap-4">
@@ -229,7 +229,11 @@ export default function EditTenantPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="font-bold">Assigned Property</FormLabel>
-                    <Select key={`${dataKey}-prop`} onValueChange={field.onChange} value={field.value}>
+                    <Select 
+                      key={`${dataKey}-prop`} 
+                      onValueChange={field.onChange} 
+                      value={field.value ? String(field.value) : ""}
+                    >
                       <FormControl>
                         <SelectTrigger className="h-11">
                           <SelectValue placeholder="Select a property" />
@@ -267,7 +271,11 @@ export default function EditTenantPage() {
                       render={({ field }) => (
                       <FormItem>
                           <FormLabel className="font-bold flex items-center gap-2"><CalendarDays className="h-4 w-4 text-primary" />Rent Due Day</FormLabel>
-                          <Select key={`${dataKey}-rent-day`} onValueChange={field.onChange} value={String(field.value)}>
+                          <Select 
+                            key={`${dataKey}-rent-day`} 
+                            onValueChange={(val) => field.onChange(Number(val))} 
+                            value={field.value ? String(field.value) : "1"}
+                          >
                               <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select day" /></SelectTrigger></FormControl>
                               <SelectContent>
                                 {Array.from({ length: 31 }, (_, i) => (i + 1)).map(day => (

@@ -82,8 +82,11 @@ export default function SettingsPage() {
   
   const { data: profile, isLoading: isProfileLoading } = useDoc(userDocRef);
 
+  // STABLE DATA KEY: Forces re-render of Select components when data is loaded
+  const dataKey = isProfileLoading ? 'registry-pending' : `registry-loaded-${profile?.idleTimeoutMinutes || 30}`;
+
   useEffect(() => {
-    if (user) {
+    if (user && !isProfileLoading) {
       form.reset({
         displayName: user.displayName || '',
         email: user.email || '',
@@ -91,7 +94,7 @@ export default function SettingsPage() {
         role: profile?.role || 'landlord',
       });
     }
-  }, [user, profile, form]);
+  }, [user, profile, isProfileLoading, form]);
 
   async function onSubmit(data: ProfileFormValues) {
     if (!auth || !auth.currentUser || !firestore || !user) {
@@ -143,10 +146,7 @@ export default function SettingsPage() {
     
     setIsUpdating(true);
     try {
-      // 1. Delete Firestore Profile
       await deleteDoc(doc(firestore, 'users', user.uid));
-      
-      // 2. Delete Auth User
       await deleteUser(auth.currentUser);
       
       toast({
@@ -180,15 +180,12 @@ export default function SettingsPage() {
   if (isLoading) {
     return (
       <div className="flex h-64 items-center justify-center">
-        <Loader2 className="h-8 w-8 animate-spin text-muted-foreground" />
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
       </div>
     );
   }
 
   const currentRole = form.watch('role') || 'landlord';
-  
-  // Robust selection key pattern to ensure the Select component re-mounts with the loaded data
-  const dataKey = profile ? `timeout-${profile.idleTimeoutMinutes}` : 'loading';
 
   return (
     <div className="space-y-8 max-w-4xl mx-auto">
@@ -251,7 +248,11 @@ export default function SettingsPage() {
                         render={({ field }) => (
                             <FormItem>
                                 <FormLabel>Automatic Sign-out Period</FormLabel>
-                                <Select key={dataKey} onValueChange={field.onChange} value={String(field.value)}>
+                                <Select 
+                                  key={dataKey} 
+                                  onValueChange={(val) => field.onChange(Number(val))} 
+                                  value={field.value ? String(field.value) : "30"}
+                                >
                                     <FormControl>
                                         <SelectTrigger>
                                             <SelectValue placeholder="Select timeout" />
