@@ -134,6 +134,8 @@ function MaintenanceFormContent() {
 
   const watchCategory = form.watch('category');
   const selectedPropertyId = form.watch('propertyId');
+  const watchContractorName = form.watch('contractorName');
+  const watchContractorPhone = form.watch('contractorPhone');
 
   useEffect(() => {
     form.setValue('reportedDate', new Date());
@@ -181,6 +183,11 @@ function MaintenanceFormContent() {
     );
   }, [firestore, user]);
   const { data: contractors } = useCollection<Contractor>(contractorsQuery);
+
+  const matchedContractorId = useMemo(() => {
+      if (!contractors || !watchContractorName || !watchContractorPhone) return "";
+      return contractors.find(c => c.name === watchContractorName && c.phone === watchContractorPhone)?.id || "";
+  }, [contractors, watchContractorName, watchContractorPhone]);
 
   async function handleFormSubmit(data: MaintenanceFormValues) {
     if (!user || !firestore) return;
@@ -243,7 +250,7 @@ function MaintenanceFormContent() {
                         control={form.control}
                         name="propertyId"
                         render={({ field }) => (
-                            <FormItem className="flex flex-col">
+                            <FormItem className="flex flex-col text-left">
                             <FormLabel className="font-bold">Search Portfolio Property</FormLabel>
                             <Popover open={isPropSelectorOpen} onOpenChange={setIsPropSelectorOpen}>
                                 <PopoverTrigger asChild>
@@ -341,7 +348,7 @@ function MaintenanceFormContent() {
                         )} />
 
                         <FormField control={form.control} name="expectedCost" render={({ field }) => (
-                          <FormItem className="max-w-md">
+                          <FormItem className="max-w-md text-left">
                               <FormLabel className="font-bold flex items-center gap-2">
                                   <Banknote className="h-4 w-4 text-primary" />
                                   Expected Cost (£)
@@ -363,7 +370,7 @@ function MaintenanceFormContent() {
                           </FormItem>
                         )} />
 
-                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                        <div className="grid grid-cols-1 sm:grid-cols-2 gap-6 text-left">
                           <FormField
                             control={form.control}
                             name="category"
@@ -415,7 +422,7 @@ function MaintenanceFormContent() {
                             control={form.control}
                             name="otherCategoryDetails"
                             render={({ field }) => (
-                              <FormItem className="animate-in fade-in slide-in-from-top-2">
+                              <FormItem className="animate-in fade-in slide-in-from-top-2 text-left">
                                 <FormLabel className="font-bold">Category Details</FormLabel>
                                 <FormControl>
                                   <Textarea
@@ -436,12 +443,12 @@ function MaintenanceFormContent() {
                     <div className="space-y-10 border-t pt-8">
                         {/* SECTION 2: ASSIGNMENT */}
                         <div className="space-y-6">
-                            <h3 className="font-bold text-lg flex items-center gap-2 text-primary"><PlusCircle className="h-5 w-5" /> Assignment</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <h3 className="font-bold text-lg flex items-center gap-2 text-primary">Assignment</h3>
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
                                 <div className="space-y-4">
                                     <div className="space-y-2">
                                         <Label className="font-bold">Quick-select Contractor</Label>
-                                        <Select onValueChange={(contractorId) => {
+                                        <Select value={matchedContractorId} onValueChange={(contractorId) => {
                                             const contractor = contractors?.find(c => c.id === contractorId);
                                             if (contractor) {
                                                 form.setValue('contractorName', contractor.name);
@@ -509,7 +516,7 @@ function MaintenanceFormContent() {
                         {/* SECTION 3: AUDIT INFO */}
                         <div className="space-y-6 border-t pt-8">
                             <h3 className="font-bold text-lg flex items-center gap-2 text-muted-foreground"><Calendar className="h-5 w-5" /> Audit Info</h3>
-                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
+                            <div className="grid grid-cols-1 md:grid-cols-2 gap-8 text-left">
                                 <FormField control={form.control} name="reportedBy" render={({ field }) => (
                                 <FormItem>
                                     <FormLabel className="font-bold">Reported By</FormLabel>
@@ -547,7 +554,7 @@ function MaintenanceFormContent() {
                     </div>
                 </div>
                 
-                <div className="flex items-center gap-3 w-full px-1">
+                <div className="flex items-center gap-3 w-full px-1 text-left">
                     <Button asChild variant="outline" className="flex-1 font-bold shadow-sm h-11 px-6 border-primary/20 hover:bg-primary/5 transition-all">
                         <Link href="/dashboard/maintenance/logged">
                             <List className="mr-2 h-4 w-4 text-primary" /> View History
