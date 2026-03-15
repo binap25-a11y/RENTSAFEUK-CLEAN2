@@ -1,8 +1,8 @@
 'use client';
 
-import { useState, useEffect, useMemo } from 'react';
+import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -12,8 +12,6 @@ import {
   Home, 
   User, 
   Search,
-  Building2,
-  Clock,
   ShieldCheck,
   AlertCircle,
   RefreshCw
@@ -23,6 +21,12 @@ import { collection, query, where, orderBy, limit } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+
+/**
+ * @fileOverview Communication Registry
+ * Central audit page for all landlord-tenant communication.
+ * Groups individual messages into threads for a cleaner professional overview.
+ */
 
 interface Message {
     id: string;
@@ -69,14 +73,18 @@ export default function LandlordInboxPage() {
     const threadMap = new Map<string, Thread>();
     
     allMessages.forEach(msg => {
-        const threadKey = `${msg.propertyId}-${msg.tenantId}`;
+        // Robust Key: Use property/tenant link or fallback to sender identity if links are missing
+        const threadKey = (msg.propertyId && msg.tenantId) 
+            ? `${msg.propertyId}-${msg.tenantId}` 
+            : `direct-${msg.senderId === user?.uid ? msg.tenantId : msg.senderId}`;
+            
         const isIncomingUnread = msg.senderId !== user?.uid && msg.read !== true;
 
         if (!threadMap.has(threadKey)) {
             threadMap.set(threadKey, {
                 id: threadKey,
-                tenantId: msg.tenantId,
-                propertyId: msg.propertyId,
+                tenantId: msg.tenantId || '',
+                propertyId: msg.propertyId || '',
                 lastMessage: msg,
                 unreadCount: isIncomingUnread ? 1 : 0
             });
