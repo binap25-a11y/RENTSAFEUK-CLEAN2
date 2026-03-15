@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo, useEffect } from 'react';
+import { useState, useMemo, useEffect, useTransition } from 'react';
 import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 import { Card } from '@/components/ui/card';
@@ -25,6 +25,7 @@ import {
 } from 'lucide-react';
 import { 
   useUser, 
+  useFirebase,
   useFirestore, 
   useCollection, 
   useMemoFirebase,
@@ -66,8 +67,8 @@ import {
 
 /**
  * @fileOverview Communication Hub
- * Live chronological list of all resident conversations.
- * Optimised for immediate reactivity and zero-freeze interactions.
+ * Fully reactive and non-blocking management of resident conversations.
+ * Optimized to prevent UI freezes during data mutations.
  */
 
 interface Message {
@@ -98,7 +99,7 @@ export default function CommunicationHubPage() {
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
-  const router = useRouter();
+  const [isPending, startTransition] = useTransition();
   const [searchTerm, setSearchTerm] = useState('');
   
   // Interaction States
@@ -107,7 +108,7 @@ export default function CommunicationHubPage() {
   const [replyContent, setReplyContent] = useState('');
   const [isSendingReply, setIsSendingReply] = useState(false);
 
-  // 1. Fetch all messages for this landlord (Live Collection)
+  // 1. Fetch all messages for this landlord (Live Reactive Stream)
   const messagesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
@@ -117,9 +118,9 @@ export default function CommunicationHubPage() {
     );
   }, [user?.uid, firestore]);
 
-  const { data: rawMessages, isLoading: isLoadingMessages, error } = useCollection<Message>(messagesQuery);
+  const { data: rawMessages, isLoading: isLoadingMessages } = useCollection<Message>(messagesQuery);
 
-  // 2. Fetch properties to resolve addresses
+  // 2. Resolve Asset Registry
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
@@ -127,10 +128,8 @@ export default function CommunicationHubPage() {
         where('landlordId', '==', user.uid)
     );
   }, [user?.uid, firestore]);
-
   const { data: properties } = useCollection<Property>(propertiesQuery);
 
-  // 3. Create property lookup map
   const propertyMap = useMemo(() => {
     const map: Record<string, string> = {};
     properties?.forEach(p => {
@@ -139,7 +138,7 @@ export default function CommunicationHubPage() {
     return map;
   }, [properties]);
 
-  // 4. Fetch tenants to resolve resident names
+  // 3. Resolve Resident Registry
   const tenantsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
@@ -157,7 +156,7 @@ export default function CommunicationHubPage() {
     return map;
   }, [tenants]);
 
-  // Sort messages in-memory for immediate reactivity and index stability
+  // Chronological sorting in-memory for zero-freeze responsiveness
   const allMessages = useMemo(() => {
     if (!rawMessages) return [];
     return [...rawMessages].sort((a, b) => {
@@ -181,20 +180,22 @@ export default function CommunicationHubPage() {
   const handleToggleRead = (msg: Message) => {
     if (!firestore) return;
     const msgRef = doc(firestore, 'messages', msg.id);
-    // Non-blocking update
     updateDocumentNonBlocking(msgRef, { read: !msg.read });
     toast({ title: msg.read ? 'Marked as Unread' : 'Marked as Read' });
   };
 
   const handleDeleteConfirm = () => {
     if (!firestore || !messageToDelete) return;
-    const msgRef = doc(firestore, 'messages', messageToDelete.id);
     
-    // Reactive Deletion: UI updates instantly via useCollection
-    // No page reload needed, user can continue actions immediately.
-    deleteDocumentNonBlocking(msgRef);
+    // UI Action: Capture ref then clear state immediately to dismiss dialog
+    const msgRef = doc(firestore, 'messages', messageToDelete.id);
     setMessageToDelete(null);
-    toast({ title: 'Message Removed' });
+    
+    // Background Task: Fire and forget delete call
+    // The UI will update reactively via useCollection without a freeze
+    deleteDocumentNonBlocking(msgRef);
+    
+    toast({ title: 'Message Removed from Hub' });
   };
 
   const handleSendReply = async () => {
@@ -220,15 +221,20 @@ export default function CommunicationHubPage() {
             updateDocumentNonBlocking(originalRef, { read: true });
         }
 
-        toast({ title: 'Reply Sent' });
+        toast({ title: 'Professional Reply Dispatched' });
         setReplyContent('');
         setReplyingTo(null);
     } catch (err) {
-        console.error("Reply failed:", err);
-        toast({ variant: 'destructive', title: 'Transmission Failed' });
+        toast({ variant: 'destructive', title: 'Transmission Error' });
     } finally {
         setIsSendingReply(false);
     }
+  };
+
+  const handleSearchChange = (val: string) => {
+    startTransition(() => {
+        setSearchTerm(val);
+    });
   };
 
   return (
@@ -250,12 +256,14 @@ export default function CommunicationHubPage() {
 
       <div className="flex items-center justify-between gap-4 px-1">
           <div className="relative w-full max-w-md">
-              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Search className={cn(
+                  "absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground transition-all",
+                  isPending && "animate-pulse text-primary"
+              )} />
               <Input 
                 placeholder="Search conversations..." 
                 className="pl-10 h-12 bg-card border-muted rounded-2xl shadow-sm focus-visible:ring-primary" 
-                value={searchTerm} 
-                onChange={e => setSearchTerm(e.target.value)} 
+                onChange={e => handleSearchChange(e.target.value)} 
               />
           </div>
           <div>
@@ -268,7 +276,7 @@ export default function CommunicationHubPage() {
       {isLoadingMessages ? (
         <div className="flex flex-col justify-center items-center h-64 gap-4">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">Syncing Hub...</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">Syncing Reactive Hub...</p>
         </div>
       ) : filteredMessages.length === 0 ? (
         <div className="text-center py-32 border-2 border-dashed rounded-[3rem] bg-muted/5">
@@ -276,7 +284,7 @@ export default function CommunicationHubPage() {
                 <MessageSquare className="h-12 w-12 text-primary/10" />
             </div>
             <h3 className="text-xl font-bold">Inbox Empty</h3>
-            <p className="text-muted-foreground mt-2 max-w-xs mx-auto">No communication records found matching your search.</p>
+            <p className="text-muted-foreground mt-2 max-w-xs mx-auto">No communication records found matching your current search criteria.</p>
         </div>
       ) : (
         <div className="grid gap-4">
@@ -378,8 +386,8 @@ export default function CommunicationHubPage() {
       <div className="p-6 rounded-2xl bg-muted/30 border border-dashed flex items-center gap-4 text-left">
           <ShieldCheck className="h-10 w-10 text-primary opacity-20 shrink-0" />
           <div className="space-y-1">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Reactive Registry Interface</p>
-              <p className="text-[11px] text-muted-foreground/70 leading-relaxed font-medium">All deletions and updates reflect instantly across the platform via the secure live data stream. Page interaction remains fluid during all operations.</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">High-Performance Registry</p>
+              <p className="text-[11px] text-muted-foreground/70 leading-relaxed font-medium">All interactions are non-blocking and reactive. The interface remains active during database operations, providing a fluid management experience across the entire portfolio.</p>
           </div>
       </div>
 
@@ -413,7 +421,7 @@ export default function CommunicationHubPage() {
             <DialogFooter className="bg-muted/5 -mx-6 -mb-6 p-6 border-t flex items-center justify-between">
                 <div className="hidden sm:flex items-center gap-2 text-[10px] text-muted-foreground font-bold uppercase">
                     <Clock className="h-3 w-3" />
-                    Live Audit Sync
+                    Reactive Sync Link
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
                     <Button variant="ghost" onClick={() => setReplyingTo(null)} className="font-bold">Cancel</Button>
@@ -435,7 +443,7 @@ export default function CommunicationHubPage() {
                 </div>
                 <AlertDialogTitle className="text-xl font-headline text-center">Delete Audit Record?</AlertDialogTitle>
                 <AlertDialogDescription className="text-center font-medium">
-                    This will permanently remove this record from the Hub history. This action reflects instantly across the platform and cannot be undone.
+                    This will remove this record from the Hub history instantly. This action is non-blocking and reactive, ensuring your management flow is not interrupted.
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="mt-6 gap-3 flex-col-reverse sm:flex-row">
