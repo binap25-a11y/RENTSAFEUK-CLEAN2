@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect, useTransition } from 'react';
@@ -63,8 +64,8 @@ import {
 
 /**
  * @fileOverview Communication Hub
- * Fully reactive and non-blocking management of resident conversations.
- * Optimized to prevent UI freezes during rapid data mutations.
+ * Optimized for reactive performance and non-blocking data mutations.
+ * Implements standard cleanup for pointer-events to prevent UI freezes.
  */
 
 interface Message {
@@ -174,6 +175,21 @@ export default function CommunicationHubPage() {
     });
   }, [allMessages, searchTerm, propertyMap, tenantNameMap]);
 
+  /**
+   * DEFINITIVE CURSOR RECOVERY
+   * Radix UI occasionally fails to restore pointer-events on the body if 
+   * the component re-renders rapidly during a dialog close.
+   */
+  useEffect(() => {
+    if (!messageToDelete && !replyingTo) {
+      const timeout = setTimeout(() => {
+        document.body.style.pointerEvents = '';
+        document.body.style.overflow = '';
+      }, 100);
+      return () => clearTimeout(timeout);
+    }
+  }, [messageToDelete, replyingTo]);
+
   const handleToggleRead = (msg: Message) => {
     if (!firestore) return;
     const msgRef = doc(firestore, 'messages', msg.id);
@@ -182,9 +198,8 @@ export default function CommunicationHubPage() {
   };
 
   /**
-   * REFINED NON-BLOCKING DELETE
-   * Clears state immediately to allow browser modal cleanup.
-   * Deferring the DB action prevents the body from staying stuck in a "frozen" state.
+   * OPTIMIZED NON-BLOCKING DELETE
+   * Re-implemented with a robust handshake to prevent cursor freezes.
    */
   const handleDeleteConfirm = () => {
     if (!firestore || !messageToDelete) return;
@@ -192,19 +207,19 @@ export default function CommunicationHubPage() {
     const docId = messageToDelete.id;
     const msgRef = doc(firestore, 'messages', docId);
     
-    // UI Action: Close dialog instantly to restore mouse pointer/hand functionality
+    // 1. Local state clear - this triggers the modal close animation
     setMessageToDelete(null);
     
-    // UX Action: Show feedback instantly
-    toast({ title: 'Message removed from registry' });
+    // 2. Immediate feedback
+    toast({ title: 'Record removed from registry' });
 
-    // Background Task: Slight delay ensures Dialog cleanup finishes and body attributes are cleared
-    // before the reactive list re-render triggers.
-    window.requestAnimationFrame(() => {
-        setTimeout(() => {
+    // 3. Defer the actual database mutation to allow the UI to finish its transition
+    // This ensures Radix can clean up body styles before the reactive list re-renders.
+    setTimeout(() => {
+        startTransition(() => {
             deleteDocumentNonBlocking(msgRef);
-        }, 300);
-    });
+        });
+    }, 150);
   };
 
   const handleSendReply = async () => {
@@ -216,7 +231,7 @@ export default function CommunicationHubPage() {
             landlordId: user.uid,
             propertyId: replyingTo.propertyId,
             tenantId: replyingTo.tenantId,
-            tenantUid: replyingTo.tenantUid || '',
+            tenantUid: replyingTo.tenantUid || replyingTo.senderId,
             tenantEmail: replyingTo.tenantEmail || '',
             senderId: user.uid,
             senderName: user.displayName || 'Landlord',
@@ -230,7 +245,7 @@ export default function CommunicationHubPage() {
             updateDocumentNonBlocking(originalRef, { read: true });
         }
 
-        toast({ title: 'Professional Reply Dispatched' });
+        toast({ title: 'Reply Sent' });
         setReplyContent('');
         setReplyingTo(null);
     } catch (err) {
@@ -292,7 +307,7 @@ export default function CommunicationHubPage() {
                 <MessageSquare className="h-12 w-12 text-primary/10" />
             </div>
             <h3 className="text-xl font-bold">Inbox Empty</h3>
-            <p className="text-muted-foreground mt-2 max-w-xs mx-auto">No communication records found matching your current search criteria.</p>
+            <p className="text-muted-foreground mt-2 max-w-xs mx-auto">No communication records found matching your search criteria.</p>
         </div>
       ) : (
         <div className="grid gap-4">
@@ -330,7 +345,7 @@ export default function CommunicationHubPage() {
                                             <p className={cn("font-bold text-base truncate", isUnread && "text-primary")}>
                                                 {isLandlord ? `To: ${residentName}` : residentName}
                                             </p>
-                                            {isLandlord && <Badge variant="outline" className="text-[8px] font-bold uppercase tracking-tighter h-4 py-0">Management Reply</Badge>}
+                                            {isLandlord && <Badge variant="outline" className="text-[8px] font-bold uppercase tracking-tighter h-4 py-0">Reply Sent</Badge>}
                                         </div>
                                         <div className="flex items-center gap-1.5 mt-0.5">
                                             <MapPin className="h-3 w-3 text-muted-foreground" />
@@ -407,7 +422,7 @@ export default function CommunicationHubPage() {
                                                 setReplyingTo(msg);
                                             }}
                                         >
-                                            <Reply className="h-3 w-3" /> Professional Response
+                                            <Reply className="h-3 w-3" /> Quick Reply
                                         </Button>
                                     )}
                                 </div>
@@ -422,8 +437,8 @@ export default function CommunicationHubPage() {
       <div className="p-6 rounded-2xl bg-muted/30 border border-dashed flex items-center gap-4 text-left">
           <ShieldCheck className="h-10 w-10 text-primary opacity-20 shrink-0" />
           <div className="space-y-1">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Reactive Registry Audit</p>
-              <p className="text-[11px] text-muted-foreground/70 leading-relaxed font-medium">All interactions are non-blocking. The registry remains active during deletions, allowing for rapid management flow without UI freezing or forced reloads.</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Professional Communication Audit</p>
+              <p className="text-[11px] text-muted-foreground/70 leading-relaxed font-medium">All interactions are chronologically recorded. The registry is fully reactive and restores pointer interactivity instantly after each data mutation.</p>
           </div>
       </div>
 
@@ -436,7 +451,7 @@ export default function CommunicationHubPage() {
                     Professional Response
                 </DialogTitle>
                 <DialogDescription className="font-medium text-primary/60">
-                    Responding to {tenantNameMap[replyingTo?.tenantId || ''] || replyingTo?.senderName} regarding {propertyMap[replyingTo?.propertyId || ''] || 'Asset'}
+                    Responding to {tenantNameMap[replyingTo?.tenantId || ''] || replyingTo?.senderName}
                 </DialogDescription>
             </DialogHeader>
             <div className="py-6 space-y-6">
@@ -457,7 +472,7 @@ export default function CommunicationHubPage() {
             <DialogFooter className="bg-muted/5 -mx-6 -mb-6 p-6 border-t flex items-center justify-between">
                 <div className="hidden sm:flex items-center gap-2 text-[10px] text-muted-foreground font-bold uppercase">
                     <Clock className="h-3 w-3" />
-                    Reactive Handshake
+                    Encrypted Channel
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
                     <Button variant="ghost" onClick={() => setReplyingTo(null)} className="font-bold">Cancel</Button>
@@ -477,9 +492,9 @@ export default function CommunicationHubPage() {
                 <div className="p-4 rounded-full bg-destructive/10 w-fit mx-auto mb-4">
                     <Trash2 className="h-8 w-8 text-destructive" />
                 </div>
-                <AlertDialogTitle className="text-xl font-headline text-center">Delete Audit Record?</AlertDialogTitle>
+                <AlertDialogTitle className="text-xl font-headline text-center">Remove Audit Record?</AlertDialogTitle>
                 <AlertDialogDescription className="text-center font-medium">
-                    This will remove this record from the registry history instantly. This action is non-blocking, ensuring your cursor remains active for subsequent tasks.
+                    This will permanently remove this record from the registry history. Your mouse cursor will remain active for subsequent tasks.
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="mt-6 gap-3 flex-col-reverse sm:flex-row">
