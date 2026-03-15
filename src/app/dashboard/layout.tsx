@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -18,7 +17,7 @@ import { Loader2, Search, Share2, RefreshCw } from 'lucide-react';
 import { useUser, useFirestore } from '@/firebase';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
-import { collection, query, where, limit, onSnapshot } from 'firebase/firestore';
+import { doc, onSnapshot } from 'firebase/firestore';
 import { BackToTopButton } from '@/components/ui/back-to-top-button';
 import { Button } from '@/components/ui/button';
 import { IdleTimeout } from '@/components/dashboard/idle-timeout';
@@ -41,11 +40,6 @@ function DashboardHeader() {
     return () => document.removeEventListener('keydown', down);
   }, []);
 
-  /**
-   * GLOBAL PORTFOLIO SYNC
-   * Provides a definitive way for the landlord to refresh the entire app state
-   * to prevent frozen UI or state crashes.
-   */
   const handleGlobalSync = () => {
     window.location.reload();
   };
@@ -107,7 +101,7 @@ export default function DashboardLayout({
   const router = useRouter();
   const pathname = usePathname();
   const [isMounted, setIsMounted] = useState(false);
-  const [isLandlord, setIsLandlord] = useState<boolean | null>(null);
+  const [userRole, setUserRole] = useState<string | null>(null);
 
   useEffect(() => {
     setIsMounted(true);
@@ -116,10 +110,12 @@ export default function DashboardLayout({
   useEffect(() => {
     if (!isMounted || !user || !firestore) return;
 
-    // Flat structure query check
-    const q = query(collection(firestore, 'properties'), where('landlordId', '==', user.uid), limit(1));
-    const unsub = onSnapshot(q, (snap) => {
-        setIsLandlord(snap.size > 0);
+    // Use User Profile for definitive role verification instead of property counts
+    const userRef = doc(firestore, 'users', user.uid);
+    const unsub = onSnapshot(userRef, (snap) => {
+        if (snap.exists()) {
+            setUserRole(snap.data().role);
+        }
     });
     return () => unsub();
   }, [isMounted, user, firestore]);
@@ -141,7 +137,8 @@ export default function DashboardLayout({
     );
   }
 
-  const showSidebar = isLandlord === true || pathname !== '/dashboard';
+  // Sidebar is shown for all users in the dashboard path, providing they aren't marked as tenants (who use the /tenant/ layout)
+  const showSidebar = userRole !== 'tenant' || pathname !== '/dashboard';
 
   return (
     <SidebarProvider>
@@ -159,7 +156,7 @@ export default function DashboardLayout({
             </SidebarContent>
             <SidebarFooter>
             <div className="p-4 text-[10px] text-muted-foreground uppercase tracking-widest text-center opacity-50">
-                RentSafeUK Portfolio v2.0
+                RentSafeUK Portfolio v2.1
             </div>
             </SidebarFooter>
         </Sidebar>

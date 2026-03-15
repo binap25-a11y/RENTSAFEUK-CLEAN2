@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -54,6 +53,7 @@ import { uploadPropertyImage } from '@/lib/upload-image';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { safeToDate } from '@/lib/date-utils';
 
 interface Property {
     id: string;
@@ -122,7 +122,6 @@ export default function PropertyDetailPage() {
   const galleryInputRef = useRef<HTMLInputElement>(null);
   const identityInputRef = useRef<HTMLInputElement>(null);
 
-  // Sync Tab State with URL parameters
   useEffect(() => {
     const tab = searchParams.get('tab');
     if (tab && ['overview', 'messages'].includes(tab)) {
@@ -162,7 +161,6 @@ export default function PropertyDetailPage() {
 
   const { data: messages, isLoading: isLoadingMessages, error: messagesError } = useCollection<Message>(messagesQuery);
 
-  // Mark messages as read when viewing the messages tab
   useEffect(() => {
     if (activeTab === 'messages' && messages && user) {
       const unreadIncoming = messages.filter(m => m.senderId !== user.uid && m.read !== true);
@@ -185,7 +183,6 @@ export default function PropertyDetailPage() {
     e.preventDefault();
     if (!newReply.trim() || !user || !property || isSendingReply) return;
 
-    // Use established resident doc ID for thread stability
     const targetTenant = activeTenants?.[0];
     const targetTenantId = targetTenant?.id;
     const targetTenantUid = targetTenant?.userId || '';
@@ -249,13 +246,6 @@ export default function PropertyDetailPage() {
     } catch (e) { toast({ variant: 'destructive', title: 'Action Failed' }); } finally { setIsArchiving(false); setIsDeleting(false); }
   };
   
-  const getMessageDate = (timestamp: any) => {
-    if (!timestamp) return new Date();
-    if (timestamp.toDate) return timestamp.toDate();
-    if (timestamp.seconds) return new Date(timestamp.seconds * 1000);
-    return new Date(timestamp);
-  };
-
   const formatDateDivider = (date: Date) => {
     try {
         if (isToday(date)) return 'Today';
@@ -402,7 +392,7 @@ export default function PropertyDetailPage() {
                                         <div className="py-20 text-center px-10 border-2 border-dashed border-destructive/20 rounded-[2rem] bg-destructive/5 mx-4">
                                             <AlertCircle className="h-12 w-12 text-destructive/20 mx-auto mb-4" />
                                             <p className="text-sm font-bold text-destructive">Sync Standby</p>
-                                            <p className="text-xs text-muted-foreground mt-1 max-w-[240px] mx-auto font-medium">The chronological audit trail is temporarily establishing high-performance indexes. Please wait 2 minutes.</p>
+                                            <p className="text-xs text-muted-foreground mt-1 max-w-[240px] mx-auto font-medium">Establishing high-performance audit trail indexes.</p>
                                             <Button variant="outline" className="mt-6 h-9" onClick={() => window.location.reload()}><RefreshCw className="mr-2 h-3 w-3" /> Retry Sync</Button>
                                         </div>
                                     ) : !messages?.length ? (
@@ -414,9 +404,9 @@ export default function PropertyDetailPage() {
                                     ) : (
                                         messages.map((msg, idx) => {
                                             const isLandlord = msg.senderId === user?.uid;
-                                            const date = getMessageDate(msg.timestamp);
+                                            const date = safeToDate(msg.timestamp) || new Date();
                                             const prevMsg = messages[idx - 1];
-                                            const showDateDivider = !prevMsg || !isSameDay(date, getMessageDate(prevMsg.timestamp));
+                                            const showDateDivider = !prevMsg || !isSameDay(date, safeToDate(prevMsg.timestamp) || new Date());
                                             
                                             return (
                                                 <div key={msg.id} className="space-y-4">
