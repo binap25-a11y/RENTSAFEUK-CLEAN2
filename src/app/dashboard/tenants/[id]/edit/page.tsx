@@ -33,7 +33,7 @@ import {
   SelectValue,
 } from '@/components/ui/select';
 import { Textarea } from '@/components/ui/textarea';
-import { Loader2, CalendarDays, ArrowLeft } from 'lucide-react';
+import { Loader2, ArrowLeft } from 'lucide-react';
 import {
   useUser,
   useFirestore,
@@ -127,7 +127,7 @@ export default function EditTenantPage() {
             name: tenant.name || '',
             email: tenant.email || '',
             telephone: tenant.telephone || '',
-            propertyId: tenant.propertyId || '',
+            propertyId: tenant.propertyId || propertyIdFromUrl || '',
             monthlyRent: tenant.monthlyRent,
             rentDueDay: tenant.rentDueDay || 1,
             tenancyStartDate: safeToDate(tenant.tenancyStartDate) || new Date(),
@@ -135,7 +135,7 @@ export default function EditTenantPage() {
             notes: tenant.notes || '',
         });
     }
-  }, [tenant, form]);
+  }, [tenant, form, propertyIdFromUrl]);
 
   async function onSubmit(data: TenantFormValues) {
     if (!user || !firestore || !tenant || !tenantRef) {
@@ -189,14 +189,17 @@ export default function EditTenantPage() {
   }
   
   const formatAddress = (address: Property['address']) => {
+    if (!address) return 'N/A';
     return [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
   };
 
-  if (isLoadingTenant || isLoadingProperties) {
+  const isLoading = isLoadingTenant || isLoadingProperties;
+
+  if (isLoading) {
     return <div className="flex justify-center items-center h-64"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
   
-  if (!tenant && !isLoadingTenant) return <div className="text-center py-10"><p>Tenant not found.</p></div>;
+  if (!tenant) return <div className="text-center py-10"><p>Tenant not found.</p></div>;
 
   return (
     <div className="space-y-6 max-w-2xl mx-auto text-left">
@@ -223,7 +226,11 @@ export default function EditTenantPage() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="font-bold">Assigned Property</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
+                    <Select 
+                      key={tenant.id}
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
+                    >
                       <FormControl>
                         <SelectTrigger className="h-11">
                           <SelectValue placeholder="Select a property" />
@@ -237,6 +244,7 @@ export default function EditTenantPage() {
                         ))}
                       </SelectContent>
                     </Select>
+                    <FormDescription className="text-[10px]">Select the asset where this resident is legally assigned.</FormDescription>
                     <FormMessage />
                   </FormItem>
                 )}

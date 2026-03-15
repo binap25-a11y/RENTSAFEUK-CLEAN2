@@ -43,10 +43,11 @@ import {
   useDoc,
   useMemoFirebase,
 } from '@/firebase';
-import { collection, query, where, doc, updateDoc } from 'firebase/firestore';
-import { safeToDate } from '@/lib/date-utils';
+import { collection, query, where, doc, updateDoc, limit } from 'firebase/firestore';
+import { safeToDate, formatDateForInput } from '@/lib/date-utils';
 
 const maintenanceEditSchema = z.object({
+  propertyId: z.string().min(1, 'Property selection required'),
   title: z.string().min(3, 'Title is too short'),
   description: z.string().optional(),
   category: z.string({ required_error: 'Please select a category.' }),
@@ -65,6 +66,7 @@ const maintenanceEditSchema = z.object({
 type MaintenanceFormValues = z.infer<typeof maintenanceEditSchema>;
 
 interface MaintenanceLog {
+  propertyId: string;
   title: string;
   description?: string;
   category: string;
@@ -78,6 +80,16 @@ interface MaintenanceLog {
   scheduledDate?: any;
   expectedCost?: number;
   notes?: string;
+}
+
+interface Property {
+  id: string;
+  address: {
+    nameOrNumber?: string;
+    street: string;
+    city: string;
+    postcode: string;
+  };
 }
 
 interface Contractor {
@@ -100,7 +112,7 @@ export default function EditMaintenancePage() {
     const firestore = useFirestore();
 
     const logId = params.id as string;
-    const propertyId = searchParams.get('propertyId');
+    const propertyIdFromUrl = searchParams.get('propertyId');
 
     const [isSaving, setIsSaving] = useState(false);
 
@@ -108,7 +120,6 @@ export default function EditMaintenancePage() {
         resolver: zodResolver(maintenanceEditSchema),
     });
 
-    const watchCategory = form.watch('category');
     const watchContractorName = form.watch('contractorName');
     const watchContractorPhone = form.watch('contractorPhone');
 
@@ -119,9 +130,15 @@ export default function EditMaintenancePage() {
 
     const { data: maintenanceLog, isLoading: isLoadingLog } = useDoc<MaintenanceLog>(maintenanceLogRef);
 
+    const propertiesQuery = useMemoFirebase(() => {
+        if (!user || !firestore) return null;
+        return query(collection(firestore, 'properties'), where('landlordId', '==', user.uid), limit(500));
+    }, [firestore, user]);
+    const { data: properties, isLoading: isLoadingProps } = useCollection<Property>(propertiesQuery);
+
     const contractorsQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
-        return query(collection(firestore, 'contractors'), where('landlordId', '==', user.uid));
+        return query(collection(firestore, 'contractors'), where('landlordId', '==', user.uid), limit(500));
     }, [firestore, user]);
     const { data: contractors } = useCollection<Contractor>(contractorsQuery);
 
@@ -130,15 +147,22 @@ export default function EditMaintenancePage() {
         return contractors.find(c => c.name === watchContractorName && c.phone === watchContractorPhone)?.id || "";
     }, [contractors, watchContractorName, watchContractorPhone]);
 
+    const normalizeValue = (val: string, options: string[]) => {
+        if (!val) return "";
+        const found = options.find(o => o.toLowerCase() === val.toLowerCase());
+        return found || val;
+    };
+
     useEffect(() => {
         if (maintenanceLog) {
             form.reset({
+                propertyId: maintenanceLog.propertyId || propertyIdFromUrl || '',
                 title: maintenanceLog.title || '',
                 description: maintenanceLog.description || '',
-                category: maintenanceLog.category || '',
-                priority: maintenanceLog.priority || 'Routine',
-                status: maintenanceLog.status || 'Open',
-                reportedBy: maintenanceLog.reportedBy || 'Landlord',
+                category: normalizeValue(maintenanceLog.category, CATEGORIES),
+                priority: normalizeValue(maintenanceLog.priority, PRIORITIES),
+                status: normalizeValue(maintenanceLog.status, STATUSES),
+                reportedBy: normalizeValue(maintenanceLog.reportedBy || 'Landlord', REPORTERS),
                 reportedDate: safeToDate(maintenanceLog.reportedDate) || new Date(),
                 scheduledDate: safeToDate(maintenanceLog.scheduledDate) || undefined,
                 expectedCost: maintenanceLog.expectedCost || 0,
@@ -148,7 +172,7 @@ export default function EditMaintenancePage() {
                 contractorPhone: maintenanceLog.contractorPhone || '',
             });
         }
-    }, [maintenanceLog, form]);
+    }, [maintenanceLog, form, propertyIdFromUrl]);
 
     async function handleFormSubmit(data: MaintenanceFormValues) {
         if (!user || !firestore || !maintenanceLogRef) return;
@@ -159,7 +183,7 @@ export default function EditMaintenancePage() {
         try {
             await updateDoc(maintenanceLogRef, cleanedData);
             toast({ title: 'Record Updated' });
-            router.push(`/dashboard/maintenance/${logId}?propertyId=${propertyId}`);
+            router.push(`/dashboard/maintenance/${logId}?propertyId=${data.propertyId}`);
         } catch (error) {
             toast({ variant: 'destructive', title: 'Update Failed' });
         } finally {
@@ -167,13 +191,17 @@ export default function EditMaintenancePage() {
         }
     }
 
-    if (isLoadingLog) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
+    const formatAddress = (address: Property['address']) => [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
+
+    const isLoading = isLoadingLog || isLoadingProps;
+
+    if (isLoading) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
     if (!maintenanceLog) return <div className="text-center py-10">Record not found.</div>;
 
     return (
         <div className="max-w-2xl mx-auto space-y-6 text-left">
             <div className='flex items-center gap-4'>
-                <Button variant="outline" size="icon" asChild><Link href={`/dashboard/maintenance/${logId}?propertyId=${propertyId}`}><ArrowLeft className="h-4 w-4" /></Link></Button>
+                <Button variant="outline" size="icon" asChild><Link href={`/dashboard/maintenance/${logId}?propertyId=${maintenanceLog.propertyId}`}><ArrowLeft className="h-4 w-4" /></Link></Button>
                 <h1 className="text-2xl font-bold font-headline">Edit Maintenance</h1>
             </div>
             
@@ -188,6 +216,22 @@ export default function EditMaintenancePage() {
                             {/* 1. ISSUE DETAILS */}
                             <div className="space-y-6">
                                 <h3 className="text-sm font-bold uppercase tracking-widest text-primary px-1">1. Issue Audit</h3>
+                                <FormField control={form.control} name="propertyId" render={({ field }) => (
+                                    <FormItem>
+                                        <FormLabel className="font-bold">Target Property</FormLabel>
+                                        <Select 
+                                            key={maintenanceLog.propertyId}
+                                            onValueChange={field.onChange} 
+                                            defaultValue={field.value}
+                                        >
+                                            <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select property" /></SelectTrigger></FormControl>
+                                            <SelectContent>
+                                                {properties?.map(p => (<SelectItem key={p.id} value={p.id}>{formatAddress(p.address)}</SelectItem>))}
+                                            </SelectContent>
+                                        </Select>
+                                        <FormMessage />
+                                    </FormItem>
+                                )} />
                                 <FormField control={form.control} name="title" render={({ field }) => (<FormItem><FormLabel className="font-bold">Title</FormLabel><FormControl><Input className="h-11" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                 <FormField control={form.control} name="description" render={({ field }) => (<FormItem><FormLabel className="font-bold">Description</FormLabel><FormControl><Textarea rows={4} className="resize-none" {...field} /></FormControl><FormMessage /></FormItem>)} />
                                 <FormField control={form.control} name="expectedCost" render={({ field }) => (
@@ -214,7 +258,7 @@ export default function EditMaintenancePage() {
                                     </div>
                                     <div className="space-y-4">
                                         <FormField control={form.control} name="contractorPhone" render={({ field }) => (<FormItem><FormLabel className="font-bold">Contractor Phone</FormLabel><FormControl><Input className="h-11" {...field} /></FormControl><FormMessage /></FormItem>)} />
-                                        <FormField control={form.control} name="scheduledDate" render={({ field }) => (<FormItem><FormLabel className="font-bold">Scheduled Date</FormLabel><FormControl><Input type="date" className="h-11" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={e => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>)} />
+                                        <FormField control={form.control} name="scheduledDate" render={({ field }) => (<FormItem><FormLabel className="font-bold">Scheduled Date</FormLabel><FormControl><Input type="date" className="h-11" value={formatDateForInput(field.value)} onChange={e => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>)} />
                                     </div>
                                 </div>
                             </div>
@@ -224,12 +268,12 @@ export default function EditMaintenancePage() {
                                 <h3 className="text-sm font-bold uppercase tracking-widest text-muted-foreground px-1">3. Audit History</h3>
                                 <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                                     <FormField control={form.control} name="reportedBy" render={({ field }) => (<FormItem><FormLabel className="font-bold">Reported By</FormLabel><Select onValueChange={field.onChange} value={field.value}><FormControl><SelectTrigger className="h-11"><SelectValue /></SelectTrigger></FormControl><SelectContent>{REPORTERS.map(r => <SelectItem key={r} value={r}>{r}</SelectItem>)}</SelectContent></Select><FormMessage /></FormItem>)} />
-                                    <FormField control={form.control} name="reportedDate" render={({ field }) => (<FormItem><FormLabel className="font-bold">Reported Date</FormLabel><FormControl><Input type="date" className="h-11" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={e => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>)} />
+                                    <FormField control={form.control} name="reportedDate" render={({ field }) => (<FormItem><FormLabel className="font-bold">Reported Date</FormLabel><FormControl><Input type="date" className="h-11" value={formatDateForInput(field.value)} onChange={e => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>)} />
                                 </div>
                             </div>
 
                             <div className="flex justify-end gap-3 pt-6 border-t">
-                                <Button type="button" variant="ghost" asChild className="h-11 font-bold uppercase text-xs tracking-widest"><Link href={`/dashboard/maintenance/${logId}?propertyId=${propertyId}`}>Cancel</Link></Button>
+                                <Button type="button" variant="ghost" asChild className="h-11 font-bold uppercase text-xs tracking-widest"><Link href={`/dashboard/maintenance/${logId}?propertyId=${maintenanceLog.propertyId}`}>Cancel</Link></Button>
                                 <Button type="submit" disabled={isSaving} className="h-11 px-10 shadow-lg font-bold uppercase text-xs tracking-widest">
                                     {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</> : 'Save Record Changes'}
                                 </Button>

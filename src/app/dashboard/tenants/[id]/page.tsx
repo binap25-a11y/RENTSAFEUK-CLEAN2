@@ -254,7 +254,7 @@ export default function TenantDetailPage() {
                     <BellRing className="h-3.5 w-3.5 text-primary" /> Send Rent Nudge
                 </Button>
                 <Button variant="outline" asChild className="h-10 px-6 font-bold uppercase tracking-widest text-[10px] shadow-sm border-primary/20 hover:bg-primary/5">
-                    <Link href={`/dashboard/tenants/${id}/edit`}>
+                    <Link href={`/dashboard/tenants/${id}/edit?propertyId=${tenant.propertyId}`}>
                         <Edit className="mr-2 h-3.5 w-3.5 text-primary" /> Edit Profile
                     </Link>
                 </Button>
