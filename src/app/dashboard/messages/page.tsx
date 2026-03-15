@@ -8,7 +8,6 @@ import { Badge } from '@/components/ui/badge';
 import { 
   MessageSquare, 
   Loader2, 
-  ChevronRight, 
   Home, 
   User, 
   Search,
@@ -20,7 +19,8 @@ import {
   Reply,
   MoreVertical,
   CheckCircle2,
-  Send
+  Send,
+  MapPin
 } from 'lucide-react';
 import { 
   useUser, 
@@ -66,7 +66,7 @@ import {
 /**
  * @fileOverview Communication Registry
  * Enhanced chronological list of all resident conversations.
- * Supports direct replies and message deletion.
+ * Now includes full property and tenant context for every message.
  */
 
 interface Message {
@@ -83,6 +83,16 @@ interface Message {
     read?: boolean;
 }
 
+interface Property {
+  id: string;
+  address: {
+    nameOrNumber?: string;
+    street: string;
+    city: string;
+    postcode: string;
+  };
+}
+
 export default function LandlordInboxPage() {
   const { user } = useUser();
   const firestore = useFirestore();
@@ -95,7 +105,7 @@ export default function LandlordInboxPage() {
   const [replyContent, setReplyContent] = useState('');
   const [isSendingReply, setIsSendingReply] = useState(false);
 
-  // Fetch all messages for this landlord
+  // 1. Fetch all messages for this landlord
   const messagesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
@@ -105,9 +115,29 @@ export default function LandlordInboxPage() {
     );
   }, [user, firestore]);
 
-  const { data: rawMessages, isLoading, error } = useCollection<Message>(messagesQuery);
+  const { data: rawMessages, isLoading: isLoadingMessages, error } = useCollection<Message>(messagesQuery);
 
-  // Derive individual message list - sorted newest first in-memory
+  // 2. Fetch properties to resolve addresses
+  const propertiesQuery = useMemoFirebase(() => {
+    if (!user || !firestore) return null;
+    return query(
+        collection(firestore, 'properties'),
+        where('landlordId', '==', user.uid)
+    );
+  }, [user, firestore]);
+
+  const { data: properties } = useCollection<Property>(propertiesQuery);
+
+  // 3. Create property lookup map
+  const propertyMap = useMemo(() => {
+    const map: Record<string, string> = {};
+    properties?.forEach(p => {
+        map[p.id] = [p.address.nameOrNumber, p.address.street].filter(Boolean).join(', ');
+    });
+    return map;
+  }, [properties]);
+
+  // Sort and filter messages
   const allMessages = useMemo(() => {
     if (!rawMessages) return [];
     return [...rawMessages].sort((a, b) => {
@@ -118,13 +148,14 @@ export default function LandlordInboxPage() {
   }, [rawMessages]);
 
   const filteredMessages = useMemo(() => {
-    if (!searchTerm) return allMessages;
     const term = searchTerm.toLowerCase();
-    return allMessages.filter(m => 
-        m.content.toLowerCase().includes(term) || 
-        m.senderName.toLowerCase().includes(term)
-    );
-  }, [allMessages, searchTerm]);
+    return allMessages.filter(m => {
+        const address = propertyMap[m.propertyId] || '';
+        return m.content.toLowerCase().includes(term) || 
+               m.senderName.toLowerCase().includes(term) ||
+               address.toLowerCase().includes(term);
+    });
+  }, [allMessages, searchTerm, propertyMap]);
 
   const handleToggleRead = (msg: Message) => {
     if (!firestore) return;
@@ -137,7 +168,7 @@ export default function LandlordInboxPage() {
     if (!firestore || !messageToDelete) return;
     const msgRef = doc(firestore, 'messages', messageToDelete.id);
     deleteDocumentNonBlocking(msgRef);
-    toast({ title: 'Message Deleted', description: 'Record removed from registry.' });
+    toast({ title: 'Message Deleted' });
     setMessageToDelete(null);
   };
 
@@ -159,7 +190,6 @@ export default function LandlordInboxPage() {
             read: false
         });
 
-        // Mark the original message as read since we've replied
         if (!replyingTo.read) {
             const originalRef = doc(firestore, 'messages', replyingTo.id);
             updateDocumentNonBlocking(originalRef, { read: true });
@@ -190,14 +220,14 @@ export default function LandlordInboxPage() {
                 <RefreshCw className="h-3 w-3 mr-1.5" /> Sync Registry
             </Button>
         </div>
-        <p className="text-muted-foreground font-medium text-lg ml-1">Full chronological audit of all resident interaction.</p>
+        <p className="text-muted-foreground font-medium text-lg ml-1">Professional audit of all resident and asset interactions.</p>
       </div>
 
       <div className="flex items-center justify-between gap-4 px-1">
           <div className="relative w-full max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input 
-                placeholder="Search by resident or content..." 
+                placeholder="Search resident, content or address..." 
                 className="pl-10 h-12 bg-card border-muted rounded-2xl shadow-sm focus-visible:ring-primary" 
                 value={searchTerm} 
                 onChange={e => setSearchTerm(e.target.value)} 
@@ -210,10 +240,10 @@ export default function LandlordInboxPage() {
           </div>
       </div>
 
-      {isLoading ? (
+      {isLoadingMessages ? (
         <div className="flex flex-col justify-center items-center h-64 gap-4">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Establishing Audit Trail...</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">Establishing Audit Trail...</p>
         </div>
       ) : error ? (
         <div className="py-20 text-center px-10 border-2 border-dashed border-destructive/20 rounded-[2rem] bg-destructive/5">
@@ -229,13 +259,15 @@ export default function LandlordInboxPage() {
                 <MessageSquare className="h-12 w-12 text-primary/10" />
             </div>
             <h3 className="text-xl font-bold">No Records Found</h3>
-            <p className="text-muted-foreground mt-2 max-w-xs mx-auto">Active communication will appear here once residents begin using the portal hub.</p>
+            <p className="text-muted-foreground mt-2 max-w-xs mx-auto">Communication records will appear here once residents interact with their hubs.</p>
         </div>
       ) : (
         <div className="grid gap-4">
             {filteredMessages.map((msg) => {
                 const isLandlord = msg.senderId === user?.uid;
                 const isUnread = !isLandlord && msg.read !== true;
+                const propertyAddress = propertyMap[msg.propertyId] || 'Assigned Property';
+                
                 return (
                     <Card key={msg.id} className={cn(
                         "shadow-md border-none overflow-hidden transition-all group relative",
@@ -255,15 +287,23 @@ export default function LandlordInboxPage() {
                             </div>
                             <div className="flex-1 min-w-0">
                                 <div className="flex items-center justify-between mb-1.5">
-                                    <div className="flex items-center gap-2">
-                                        <p className={cn("font-bold text-base truncate", isUnread && "text-primary")}>
-                                            {msg.senderName}
-                                        </p>
-                                        {isLandlord && <Badge variant="outline" className="text-[8px] font-bold uppercase tracking-tighter h-4 py-0">Landlord Reply</Badge>}
+                                    <div className="flex flex-col text-left">
+                                        <div className="flex items-center gap-2">
+                                            <p className={cn("font-bold text-base truncate", isUnread && "text-primary")}>
+                                                {msg.senderName}
+                                            </p>
+                                            {isLandlord && <Badge variant="outline" className="text-[8px] font-bold uppercase tracking-tighter h-4 py-0">Landlord Reply</Badge>}
+                                        </div>
+                                        <div className="flex items-center gap-1.5 mt-0.5">
+                                            <MapPin className="h-3 w-3 text-muted-foreground" />
+                                            <span className="text-[10px] font-bold text-muted-foreground uppercase tracking-tight truncate max-w-[250px]">
+                                                {propertyAddress}
+                                            </span>
+                                        </div>
                                     </div>
-                                    <div className="flex items-center gap-3">
-                                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap">
-                                            {safeToDate(msg.timestamp) ? format(safeToDate(msg.timestamp)!, 'HH:mm • d MMM') : 'Just now'}
+                                    <div className="flex items-center gap-3 self-start">
+                                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap pt-1">
+                                            {safeToDate(msg.timestamp) ? format(safeToDate(msg.timestamp)!, 'HH:mm • d MMM') : 'Recently'}
                                         </span>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
@@ -282,7 +322,7 @@ export default function LandlordInboxPage() {
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem asChild className="cursor-pointer">
                                                     <Link href={`/dashboard/properties/${msg.propertyId}?tab=messages`}>
-                                                        <Home className="mr-2 h-4 w-4" /> Open Property Chat
+                                                        <MessageSquare className="mr-2 h-4 w-4" /> Full Thread Audit
                                                     </Link>
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem onClick={() => setMessageToDelete(msg)} className="text-destructive font-bold cursor-pointer">
@@ -300,12 +340,12 @@ export default function LandlordInboxPage() {
                                 <div className="flex items-center gap-3">
                                     <Link href={`/dashboard/properties/${msg.propertyId}`}>
                                         <Badge variant="outline" className="text-[8px] uppercase font-bold tracking-widest bg-background py-0 h-5 border-primary/20 hover:bg-primary/5 transition-colors">
-                                            <Home className="h-2.5 w-2.5 mr-1" /> Asset Audit Link
+                                            <Home className="h-2.5 w-2.5 mr-1" /> Open Asset Hub
                                         </Badge>
                                     </Link>
                                     {!isLandlord && (
                                         <Button variant="link" className="h-auto p-0 text-[10px] font-bold uppercase tracking-widest text-primary gap-1" onClick={() => setReplyingTo(msg)}>
-                                            <Reply className="h-3 w-3" /> Quick Reply
+                                            <Reply className="h-3 w-3" /> Quick Response
                                         </Button>
                                     )}
                                 </div>
@@ -320,8 +360,8 @@ export default function LandlordInboxPage() {
       <div className="p-6 rounded-2xl bg-muted/30 border border-dashed flex items-center gap-4 text-left">
           <ShieldCheck className="h-10 w-10 text-primary opacity-20 shrink-0" />
           <div className="space-y-1">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Chronological Registry Policy</p>
-              <p className="text-[11px] text-muted-foreground/70 leading-relaxed font-medium">This registry is a definitive record of all communications. Actions taken here are logged for audit compliance purposes.</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Chronological Audit Policy</p>
+              <p className="text-[11px] text-muted-foreground/70 leading-relaxed font-medium">This registry serves as a definitive record of all communications. Property associations and resident identities are cryptographically mapped for management security.</p>
           </div>
       </div>
 
@@ -334,7 +374,7 @@ export default function LandlordInboxPage() {
                     Send Reply
                 </DialogTitle>
                 <DialogDescription className="font-medium text-primary/60">
-                    Responding to {replyingTo?.senderName}
+                    Responding to {replyingTo?.senderName} regarding {propertyMap[replyingTo?.propertyId || ''] || 'Property'}
                 </DialogDescription>
             </DialogHeader>
             <div className="py-6 space-y-6">
