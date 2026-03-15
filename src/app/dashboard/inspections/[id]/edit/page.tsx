@@ -208,7 +208,7 @@ export default function EditInspectionPage() {
   const isLoading = isLoadingInspection || isLoadingProperty;
 
   if (isLoading) {
-    return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin" /></div>;
+    return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   }
 
   if (!inspection) {
@@ -216,7 +216,7 @@ export default function EditInspectionPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 text-left">
+    <div className="flex flex-col gap-6 text-left max-w-4xl mx-auto">
       <div className="flex items-center gap-4">
         <Button variant="outline" size="icon" asChild>
           <Link href="/dashboard/inspections">
@@ -230,25 +230,29 @@ export default function EditInspectionPage() {
       </div>
 
       <Form {...form}>
-        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
-          <Card>
-            <CardHeader>
-              <CardTitle>General Information</CardTitle>
+        <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 text-left">
+          <Card className="shadow-lg border-none">
+            <CardHeader className="bg-primary/5 border-b">
+              <CardTitle className="text-lg font-headline">General Information</CardTitle>
             </CardHeader>
-            <CardContent className="space-y-4">
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+            <CardContent className="pt-6 space-y-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <FormField control={form.control} name="inspectorName" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Inspector Name</FormLabel>
-                    <FormControl><Input {...field} /></FormControl>
+                    <FormLabel className="font-bold">Inspector Name</FormLabel>
+                    <FormControl><Input className="h-11" {...field} value={field.value ?? ''}/></FormControl>
                     <FormMessage />
                   </FormItem>
                 )} />
                 <FormField control={form.control} name="status" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Status</FormLabel>
-                    <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl><SelectTrigger><SelectValue /></SelectTrigger></FormControl>
+                    <FormLabel className="font-bold">Registry Status</FormLabel>
+                    <Select 
+                      key={inspection ? `status-${inspection.id}-${field.value}` : 'loading'}
+                      onValueChange={field.onChange} 
+                      value={field.value}
+                    >
+                      <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select state" /></SelectTrigger></FormControl>
                       <SelectContent>
                         {['Scheduled', 'Completed', 'Cancelled'].map(s => <SelectItem key={s} value={s}>{s}</SelectItem>)}
                       </SelectContent>
@@ -257,13 +261,14 @@ export default function EditInspectionPage() {
                   </FormItem>
                 )} />
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <FormField control={form.control} name="scheduledDate" render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Date</FormLabel>
+                    <FormLabel className="font-bold">Date conducted</FormLabel>
                     <FormControl>
                       <Input
                         type="date"
+                        className="h-11"
                         value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
                         onChange={(e) => field.onChange(e.target.value)}
                       />
@@ -326,13 +331,13 @@ export default function EditInspectionPage() {
                         <FormLabel className="font-bold flex items-center gap-2"><Images className="h-4 w-4 text-primary" /> Photos</FormLabel>
                         <div className="grid grid-cols-2 sm:grid-cols-4 gap-4">
                             {existingPhotos.map((url, idx) => (
-                                <div key={`existing-${idx}`} className="relative aspect-square rounded-xl overflow-hidden border shadow-sm">
+                                <div key={`existing-${idx}`} className="relative aspect-square rounded-xl overflow-hidden border shadow-sm group">
                                     <Image src={url} alt="Existing Photo" fill className="object-cover" unoptimized />
                                     <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeExistingFile(url, 'photo')}><X className="h-3 w-3" /></Button>
                                 </div>
                             ))}
                             {previews.map((url, idx) => (
-                                <div key={`new-${idx}`} className="relative aspect-square rounded-xl overflow-hidden border border-primary shadow-sm">
+                                <div key={`new-${idx}`} className="relative aspect-square rounded-xl overflow-hidden border border-primary shadow-sm group">
                                     <Image src={url} alt="New Photo" fill className="object-cover" unoptimized />
                                     <Button type="button" variant="destructive" size="icon" className="absolute top-1 right-1 h-6 w-6 opacity-0 group-hover:opacity-100 transition-opacity" onClick={() => removeNewFile(idx, 'photo')}><X className="h-3 w-3" /></Button>
                                 </div>
@@ -376,15 +381,15 @@ export default function EditInspectionPage() {
             </AccordionItem>
           </Accordion>
 
-          <div className="flex justify-end gap-4">
-            <Button type="button" variant="outline" asChild>
+          <div className="flex justify-end gap-4 pt-6 border-t">
+            <Button type="button" variant="ghost" asChild className="h-11 font-bold uppercase tracking-widest text-xs px-8">
               <Link href="/dashboard/inspections">Cancel</Link>
             </Button>
-            <Button type="submit" disabled={isSaving} className="h-11 px-8 font-bold uppercase tracking-widest text-[10px] shadow-lg">
+            <Button type="submit" disabled={isSaving} className="h-11 px-10 font-bold uppercase tracking-widest text-xs shadow-lg">
               {isSaving ? (
-                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving...</>
+                <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Saving Registry...</>
               ) : (
-                <><Download className="mr-2 h-4 w-4" /> Save & Export PDF</>
+                <><Download className="mr-2 h-4 w-4" /> Update & Export PDF</>
               )}
             </Button>
           </div>

@@ -226,8 +226,8 @@ export default function SingleLetInspectionPage() {
   const form = useForm<InspectionFormValues>({
     resolver: zodResolver(inspectionSchema),
     defaultValues: {
-        status: 'Completed',
-        inspectionType: 'Routine Inspection',
+        status: typeof window !== 'undefined' ? (localStorage.getItem('last_insp_status') || 'Completed') : 'Completed',
+        inspectionType: typeof window !== 'undefined' ? (localStorage.getItem('last_insp_type') || 'Routine Inspection') : 'Routine Inspection',
         propertyId: '',
     }
   });
@@ -291,6 +291,10 @@ export default function SingleLetInspectionPage() {
   async function proceedToSave(data: InspectionFormValues) {
     if (!user || !firestore) return;
     setIsSubmitting(true);
+
+    // PERSISTENCE HANDSHAKE
+    localStorage.setItem('last_insp_status', data.status);
+    localStorage.setItem('last_insp_type', data.inspectionType);
 
     try {
       const { propertyId, report, ...inspectionData } = data;
@@ -409,21 +413,21 @@ export default function SingleLetInspectionPage() {
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
               
-              <Card>
-                <CardHeader>
-                  <CardTitle className="text-xl">Inspection Details</CardTitle>
+              <Card className="shadow-md border-none">
+                <CardHeader className="bg-primary/5 border-b">
+                  <CardTitle className="text-xl font-headline">Inspection Metadata</CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-4">
+                <CardContent className="pt-6 space-y-4">
                    <FormField
                     control={form.control}
                     name="propertyId"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Property</FormLabel>
+                        <FormLabel className="font-bold">Active Asset</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                           <FormControl>
-                            <SelectTrigger>
-                              <SelectValue placeholder={isLoadingProperties ? "Loading properties..." : "Select an active property"} />
+                            <SelectTrigger className="h-11">
+                              <SelectValue placeholder={isLoadingProperties ? "Syncing..." : "Select an active property"} />
                             </SelectTrigger>
                           </FormControl>
                           <SelectContent>
@@ -438,17 +442,17 @@ export default function SingleLetInspectionPage() {
                       </FormItem>
                     )}
                   />
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                     <FormField
                       control={form.control}
                       name="inspectionType"
                       render={({ field }) => (
                           <FormItem>
-                          <FormLabel>Inspection Type</FormLabel>
+                          <FormLabel className="font-bold">Report Type</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
-                              <SelectTrigger>
-                                  <SelectValue placeholder="Select a type" />
+                              <SelectTrigger className="h-11">
+                                  <SelectValue placeholder="Pick type" />
                               </SelectTrigger>
                               </FormControl>
                               <SelectContent>
@@ -468,11 +472,11 @@ export default function SingleLetInspectionPage() {
                       name="status"
                       render={({ field }) => (
                           <FormItem>
-                          <FormLabel>Status</FormLabel>
+                          <FormLabel className="font-bold">Registry Status</FormLabel>
                           <Select onValueChange={field.onChange} value={field.value}>
                               <FormControl>
-                              <SelectTrigger>
-                                  <SelectValue placeholder="Select a status" />
+                              <SelectTrigger className="h-11">
+                                  <SelectValue placeholder="Status" />
                               </SelectTrigger>
                               </FormControl>
                               <SelectContent>
@@ -486,16 +490,17 @@ export default function SingleLetInspectionPage() {
                       )}
                       />
                   </div>
-                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                        <FormField
                           control={form.control}
                           name="scheduledDate"
                           render={({ field }) => (
                               <FormItem>
-                                  <FormLabel>Scheduled Date</FormLabel>
+                                  <FormLabel className="font-bold">Audit Date</FormLabel>
                                   <FormControl>
                                       <Input
                                           type="date"
+                                          className="h-11"
                                           value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
                                           onChange={(e) => field.onChange(e.target.value)}
                                       />
@@ -509,10 +514,11 @@ export default function SingleLetInspectionPage() {
                           name="completedDate"
                           render={({ field }) => (
                               <FormItem>
-                                  <FormLabel>Completed Date</FormLabel>
+                                  <FormLabel className="font-bold">Completion Date (Optional)</FormLabel>
                                   <FormControl>
                                       <Input
                                           type="date"
+                                          className="h-11"
                                           value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''}
                                           onChange={(e) => field.onChange(e.target.value)}
                                       />
@@ -522,15 +528,15 @@ export default function SingleLetInspectionPage() {
                           )}
                       />
                    </div>
-                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                   <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                       <FormField
                           control={form.control}
                           name="inspectorName"
                           render={({ field }) => (
                               <FormItem>
-                              <FormLabel>Inspector Name</FormLabel>
+                              <FormLabel className="font-bold">Auditor Name</FormLabel>
                               <FormControl>
-                                  <Input placeholder="e.g., Jane Smith" {...field} value={field.value ?? ''} />
+                                  <Input placeholder="e.g. Jane Smith" className="h-11" {...field} value={field.value ?? ''} />
                               </FormControl>
                               <FormMessage />
                               </FormItem>
@@ -541,9 +547,9 @@ export default function SingleLetInspectionPage() {
                           name="tenantPresentName"
                           render={({ field }) => (
                               <FormItem>
-                              <FormLabel>Tenant Present Name</FormLabel>
+                              <FormLabel className="font-bold">Resident Present (Optional)</FormLabel>
                               <FormControl>
-                                  <Input placeholder="e.g., John Doe" {...field} value={field.value ?? ''} />
+                                  <Input placeholder="Resident name" className="h-11" {...field} value={field.value ?? ''} />
                               </FormControl>
                               <FormMessage />
                               </FormItem>
@@ -553,11 +559,16 @@ export default function SingleLetInspectionPage() {
                 </CardContent>
               </Card>
 
-              <h2 className="text-xl font-semibold border-b pb-2">Inspection Checklist</h2>
+              <div className="pt-4 text-left">
+                <h2 className="text-xl font-bold font-headline border-b-2 border-primary/10 pb-2 flex items-center gap-2">
+                    <CheckCircle2 className="h-5 w-5 text-primary" />
+                    Inspection Checklist
+                </h2>
+              </div>
 
               <Accordion type="multiple" className="w-full space-y-4">
                 <AccordionItem value="exterior" className='border rounded-lg px-4'>
-                  <AccordionTrigger suppressHydrationWarning className='text-lg font-semibold'>Exterior</AccordionTrigger>
+                  <AccordionTrigger className='text-lg font-semibold'>Exterior</AccordionTrigger>
                   <AccordionContent className='pt-4'>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <ChecklistItem form={form} name="exterior.roofCondition" label="Roof condition" />
@@ -572,7 +583,7 @@ export default function SingleLetInspectionPage() {
                 </AccordionItem>
 
                 <AccordionItem value="safety" className='border rounded-lg px-4'>
-                  <AccordionTrigger suppressHydrationWarning className='text-lg font-semibold'>Safety & Compliance</AccordionTrigger>
+                  <AccordionTrigger className='text-lg font-semibold'>Safety & Compliance</AccordionTrigger>
                   <AccordionContent className='pt-4'>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <ChecklistItem form={form} name="safety.smokeAlarms" label="Smoke alarms tested and working" />
@@ -588,7 +599,7 @@ export default function SingleLetInspectionPage() {
                 </AccordionItem>
 
                 <AccordionItem value="interior" className='border rounded-lg px-4'>
-                  <AccordionTrigger suppressHydrationWarning className='text-lg font-semibold'>Interior General Condition</AccordionTrigger>
+                  <AccordionTrigger className='text-lg font-semibold'>Interior General Condition</AccordionTrigger>
                   <AccordionContent className='pt-4'>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <ChecklistItem form={form} name="interior.wallsCeilingsFloors" label="Walls, ceilings, floors" />
@@ -603,7 +614,7 @@ export default function SingleLetInspectionPage() {
                 </AccordionItem>
                 
                  <AccordionItem value="kitchen" className='border rounded-lg px-4'>
-                  <AccordionTrigger suppressHydrationWarning className='text-lg font-semibold'>Kitchen</AccordionTrigger>
+                  <AccordionTrigger className='text-lg font-semibold'>Kitchen</AccordionTrigger>
                   <AccordionContent className='pt-4'>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <ChecklistItem form={form} name="kitchen.worktops" label="Worktops, cupboards and flooring" />
@@ -618,7 +629,7 @@ export default function SingleLetInspectionPage() {
                 </AccordionItem>
                 
                 <AccordionItem value="bathrooms" className='border rounded-lg px-4'>
-                  <AccordionTrigger suppressHydrationWarning className='text-lg font-semibold'>Bathrooms</AccordionTrigger>
+                  <AccordionTrigger className='text-lg font-semibold'>Bathrooms</AccordionTrigger>
                   <AccordionContent className='pt-4'>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <ChecklistItem form={form} name="bathrooms.toilet" label="Toilet flushing" />
@@ -633,7 +644,7 @@ export default function SingleLetInspectionPage() {
                 </AccordionItem>
                 
                 <AccordionItem value="heating" className='border rounded-lg px-4'>
-                  <AccordionTrigger suppressHydrationWarning className='text-lg font-semibold'>Heating</AccordionTrigger>
+                  <AccordionTrigger className='text-lg font-semibold'>Heating</AccordionTrigger>
                   <AccordionContent className='pt-4'>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <ChecklistItem form={form} name="heating.boiler" label="Boiler functioning" />
@@ -646,7 +657,7 @@ export default function SingleLetInspectionPage() {
                 </AccordionItem>
                 
                 <AccordionItem value="bedrooms" className='border rounded-lg px-4'>
-                  <AccordionTrigger suppressHydrationWarning className='text-lg font-semibold'>Bedrooms</AccordionTrigger>
+                  <AccordionTrigger className='text-lg font-semibold'>Bedrooms</AccordionTrigger>
                   <AccordionContent className='pt-4'>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <ChecklistItem form={form} name="bedrooms.windows" label="Windows and locks working" />
@@ -660,7 +671,7 @@ export default function SingleLetInspectionPage() {
                 </AccordionItem>
 
                 <AccordionItem value="tenant" className='border rounded-lg px-4'>
-                  <AccordionTrigger suppressHydrationWarning className='text-lg font-semibold'>Tenant Responsibilities</AccordionTrigger>
+                  <AccordionTrigger className='text-lg font-semibold'>Resident Responsibilities</AccordionTrigger>
                   <AccordionContent className='pt-4'>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <ChecklistItem form={form} name="tenantResponsibilities.clean" label="Property kept reasonably clean" />
@@ -673,15 +684,15 @@ export default function SingleLetInspectionPage() {
                               name="tenantResponsibilities.concerns"
                               render={({ field }) => (
                                   <FormItem className="md:col-span-2">
-                                      <FormLabel>Tenant's Concerns Recorded</FormLabel>
+                                      <FormLabel className="font-bold">Resident's Concerns Recorded</FormLabel>
                                       <FormControl>
-                                          <Textarea placeholder="Record any concerns raised by the tenant" {...field} value={field.value ?? ''} />
+                                          <Textarea placeholder="Record any concerns raised by the resident" className="min-h-[100px] resize-none rounded-xl" {...field} value={field.value ?? ''} />
                                       </FormControl>
                                       <FormMessage />
                                   </FormItem>
                               )}
                           />
-                          <NotesField form={form} name="tenantResponsibilities.notes" placeholder="General notes on tenant responsibilities..." />
+                          <NotesField form={form} name="tenantResponsibilities.notes" placeholder="General notes on resident responsibilities..." />
                       </div>
                   </AccordionContent>
                 </AccordionItem>
@@ -728,7 +739,7 @@ export default function SingleLetInspectionPage() {
                 </AccordionItem>
 
                 <AccordionItem value="followUp" className='border rounded-lg px-4'>
-                  <AccordionTrigger suppressHydrationWarning className='text-lg font-semibold'>Follow-up Actions</AccordionTrigger>
+                  <AccordionTrigger className='text-lg font-semibold'>Follow-up Actions</AccordionTrigger>
                   <AccordionContent className='pt-4'>
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                           <ChecklistItem form={form} name="followUpActions.repairsRequired" label="Repairs Required" />
@@ -739,9 +750,9 @@ export default function SingleLetInspectionPage() {
                               name="followUpActions.notes"
                               render={({ field }) => (
                                   <FormItem className="md:col-span-2">
-                                      <FormLabel>Notes for Landlord/Agent</FormLabel>
+                                      <FormLabel className="font-bold">Instructions for Management</FormLabel>
                                       <FormControl>
-                                          <Textarea placeholder="Detail any required follow-up actions..." {...field} value={field.value ?? ''} />
+                                          <Textarea placeholder="Detail any required follow-up actions..." className="min-h-[100px] resize-none rounded-xl" {...field} value={field.value ?? ''} />
                                       </FormControl>
                                       <FormMessage />
                                   </FormItem>
@@ -753,15 +764,15 @@ export default function SingleLetInspectionPage() {
 
               </Accordion>
               
-              <div className="flex justify-end gap-2">
-                <Button type="button" variant="outline" asChild>
+              <div className="flex justify-end gap-3 pt-6 border-t">
+                <Button type="button" variant="ghost" asChild className="h-11 font-bold uppercase tracking-widest text-xs px-8">
                   <Link href="/dashboard/inspections">Cancel</Link>
                 </Button>
-                <Button type="submit" disabled={isSubmitting}>
+                <Button type="submit" disabled={isSubmitting} className="h-11 px-10 shadow-lg font-bold uppercase tracking-widest text-xs">
                   {isSubmitting ? (
                     <>
                       <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-                      Saving...
+                      Syncing Registry...
                     </>
                   ) : (
                     <>
@@ -777,17 +788,17 @@ export default function SingleLetInspectionPage() {
       </Card>
 
       <AlertDialog open={isConfirmDialogOpen} onOpenChange={setIsConfirmDialogOpen}>
-        <AlertDialogContent>
+        <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
           <AlertDialogHeader>
-            <AlertDialogTitle>Incomplete Checklist</AlertDialogTitle>
-            <AlertDialogDescription>
-              A significant number of checklist items have not been ticked. Are you sure you want to save this report as it is?
+            <AlertDialogTitle className="text-xl font-headline">Incomplete Audit</AlertDialogTitle>
+            <AlertDialogDescription className="text-base font-medium">
+              A significant number of checklist items have not been verified. Are you sure you want to finalize this report?
             </AlertDialogDescription>
           </AlertDialogHeader>
-          <AlertDialogFooter>
-            <AlertDialogCancel onClick={() => setFormDataToSave(null)}>Go Back</AlertDialogCancel>
-            <AlertDialogAction onClick={handleConfirmSave} disabled={isSubmitting}>
-              {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Save Anyway'}
+          <AlertDialogFooter className="gap-3 mt-4">
+            <AlertDialogCancel className="rounded-xl font-bold uppercase tracking-widest text-xs h-11" onClick={() => setFormDataToSave(null)}>Go Back</AlertDialogCancel>
+            <AlertDialogAction onClick={handleConfirmSave} disabled={isSubmitting} className="bg-primary text-white rounded-xl font-bold uppercase tracking-widest text-xs h-11 px-8 shadow-lg">
+              Finalize Anyway
             </AlertDialogAction>
           </AlertDialogFooter>
         </AlertDialogContent>
