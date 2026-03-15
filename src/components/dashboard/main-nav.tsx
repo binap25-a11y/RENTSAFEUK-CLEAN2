@@ -24,6 +24,7 @@ import {
   Users,
   HardHat,
   MessageSquare,
+  Newspaper,
 } from 'lucide-react';
 import * as React from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -83,7 +84,8 @@ const menuItems = [
   },
   { href: '/dashboard/expenses', label: 'Financials', icon: CreditCard },
   { href: '/dashboard/reminders', label: 'Reminders', icon: Bell },
-  { href: '/dashboard/messages', label: 'Communication Hub', icon: MessageSquare }, 
+  { href: '/dashboard/messages', label: 'Communication Hub', icon: MessageSquare },
+  { href: '/dashboard/news', label: 'News and Law Updates', icon: Newspaper },
 ];
 
 export function MainNav() {
@@ -175,10 +177,10 @@ export function MainNav() {
               }
               tooltip={label}
             >
-              <Link href={href} onClick={handleLinkClick} className="flex items-center justify-between w-full">
-                <div className="flex items-center gap-2">
-                    <Icon />
-                    <span>{label}</span>
+              <Link href={href} onClick={handleLinkClick} className="flex items-center justify-between w-full text-left">
+                <div className="flex items-center gap-2 min-w-0">
+                    <Icon className="shrink-0" />
+                    <span className="truncate">{label}</span>
                 </div>
                 {label === 'Communication Hub' && unreadCount > 0 && (
                     <Badge className="h-5 px-1.5 min-w-[20px] justify-center bg-primary text-primary-foreground font-bold text-[10px] rounded-full shadow-sm animate-in fade-in zoom-in duration-300">
