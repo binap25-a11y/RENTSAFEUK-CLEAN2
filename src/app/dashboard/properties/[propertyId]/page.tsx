@@ -33,9 +33,9 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
-import { doc, updateDoc, collection, query, where, getDocs, limit, orderBy, addDoc, serverTimestamp } from 'firebase/firestore';
+import { doc, updateDoc, collection, query, where, getDocs, limit, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useState, useRef, useEffect } from 'react';
+import { useState, useRef, useEffect, useMemo } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -150,16 +150,27 @@ export default function PropertyDetailPage() {
 
   const messagesQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
+    // CRITICAL: Simple query to bypass index failed-precondition hazards.
+    // Sorting is handled in-memory via useMemo below.
     return query(
         collection(firestore, 'messages'),
         where('propertyId', '==', propertyId),
         where('landlordId', '==', user.uid),
-        orderBy('timestamp', 'asc'),
         limit(100)
     );
   }, [firestore, propertyId, user]);
 
-  const { data: messages, isLoading: isLoadingMessages, error: messagesError } = useCollection<Message>(messagesQuery);
+  const { data: rawMessages, isLoading: isLoadingMessages, error: messagesError } = useCollection<Message>(messagesQuery);
+
+  // Chronological sorting in memory to ensure reliability
+  const messages = useMemo(() => {
+    if (!rawMessages) return [];
+    return [...rawMessages].sort((a, b) => {
+        const dateA = safeToDate(a.timestamp) || new Date(0);
+        const dateB = safeToDate(b.timestamp) || new Date(0);
+        return dateA.getTime() - dateB.getTime();
+    });
+  }, [rawMessages]);
 
   useEffect(() => {
     if (activeTab === 'messages' && messages && user) {
