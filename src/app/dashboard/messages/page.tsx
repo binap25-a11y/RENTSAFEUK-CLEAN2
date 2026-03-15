@@ -248,16 +248,11 @@ export default function CommunicationHubPage() {
   return (
     <div className="space-y-8 max-w-5xl mx-auto text-left animate-in fade-in duration-500">
       <div className="flex flex-col gap-2 p-6 rounded-3xl bg-primary/5 border border-primary/10">
-        <div className="flex items-center justify-between">
-            <div className="flex items-center gap-3">
-                <div className="p-2 rounded-xl bg-primary text-primary-foreground">
-                    <MessageSquare className="h-6 w-6" />
-                </div>
-                <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Communication Hub</h1>
+        <div className="flex items-center gap-3">
+            <div className="p-2 rounded-xl bg-primary text-primary-foreground">
+                <MessageSquare className="h-6 w-6" />
             </div>
-            <Button variant="ghost" size="sm" className="font-bold uppercase tracking-widest text-[9px] text-primary" onClick={() => window.location.reload()}>
-                <RefreshCw className="h-3 w-3 mr-1.5" /> Registry Refresh
-            </Button>
+            <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Communication Hub</h1>
         </div>
         <p className="text-muted-foreground font-medium text-lg ml-1">Live management hub for all resident and asset interactions.</p>
       </div>
