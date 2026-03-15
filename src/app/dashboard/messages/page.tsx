@@ -267,7 +267,7 @@ export default function CommunicationHubPage() {
           </div>
           <div>
               <Badge variant="outline" className="h-12 px-4 rounded-2xl border-2 font-bold uppercase tracking-widest text-[10px] bg-background shadow-sm">
-                  <span className="text-primary mr-1">{filteredMessages.length}</span> of messages
+                  <span className="text-primary mr-1">{filteredMessages.length}</span> messages
               </Badge>
           </div>
       </div>
