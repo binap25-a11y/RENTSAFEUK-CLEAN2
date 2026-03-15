@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -22,6 +21,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import {
@@ -47,7 +47,7 @@ const documentSchema = z.object({
   title: z.string().min(3, 'Title is too short'),
   documentType: z.string({ required_error: 'Please select a document type.' }),
   issueDate: z.coerce.date({ required_error: 'Please select an issue date.' }),
-  expiryDate: z.coerce.date({ required_error: 'Please select an expiry date.' }),
+  expiryDate: z.coerce.date().optional().or(z.literal('')),
   notes: z.string().optional(),
 });
 
@@ -101,7 +101,7 @@ export default function EditDocumentPage() {
         title: documentRecord.title,
         documentType: documentRecord.documentType,
         issueDate: toDate(documentRecord.issueDate) || new Date(),
-        expiryDate: toDate(documentRecord.expiryDate) || new Date(),
+        expiryDate: toDate(documentRecord.expiryDate) || '',
         notes: documentRecord.notes || '',
       });
     }
@@ -129,6 +129,7 @@ export default function EditDocumentPage() {
       const updateData = {
         ...data,
         fileUrl,
+        expiryDate: data.expiryDate ? new Date(data.expiryDate).toISOString() : null,
         updatedAt: new Date().toISOString()
       };
 
@@ -221,7 +222,7 @@ export default function EditDocumentPage() {
                       name="expiryDate"
                       render={({ field }) => (
                           <FormItem>
-                              <FormLabel className="font-bold">Expiry Date</FormLabel>
+                              <FormLabel className="font-bold">Expiry Date (Optional)</FormLabel>
                               <FormControl>
                                   <Input
                                       type="date"
@@ -230,6 +231,7 @@ export default function EditDocumentPage() {
                                       onChange={(e) => field.onChange(e.target.value)}
                                   />
                               </FormControl>
+                              <FormDescription className="text-[10px]">Leave blank for permanent records.</FormDescription>
                               <FormMessage />
                           </FormItem>
                       )}

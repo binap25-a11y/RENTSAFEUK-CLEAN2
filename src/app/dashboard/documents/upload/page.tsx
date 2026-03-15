@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -22,6 +21,7 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from '@/components/ui/form';
 import { Input } from '@/components/ui/input';
 import {
@@ -50,9 +50,12 @@ const documentSchema = z.object({
   propertyId: z.string({ required_error: 'Please select a property.' }).min(1, 'Property required.'),
   documentType: z.string({ required_error: 'Please select a document type.' }),
   issueDate: z.coerce.date({ required_error: 'Please select an issue date.' }),
-  expiryDate: z.coerce.date({ required_error: 'Please select an expiry date.' }),
+  expiryDate: z.coerce.date().optional().or(z.literal('')),
   notes: z.string().optional(),
-}).refine(data => data.expiryDate > data.issueDate, {
+}).refine(data => {
+  if (!data.expiryDate) return true;
+  return new Date(data.expiryDate) > new Date(data.issueDate);
+}, {
   message: "Expiry date must be after the issue date.",
   path: ["expiryDate"]
 });
@@ -84,6 +87,7 @@ export default function UploadDocumentPage() {
         propertyId: '',
         documentType: '',
         notes: '',
+        expiryDate: '',
     }
   });
 
@@ -93,7 +97,7 @@ export default function UploadDocumentPage() {
 
   const complianceWarning = useMemo(() => {
     if (watchType === 'Gas Safety Certificate' && watchIssueDate && watchExpiryDate) {
-        const months = differenceInMonths(watchExpiryDate, watchIssueDate);
+        const months = differenceInMonths(new Date(watchExpiryDate), new Date(watchIssueDate));
         if (months > 12) {
             return "Gas Safety Certificates typically require annual renewal (12 months). Please verify the validity period.";
         }
@@ -142,6 +146,7 @@ export default function UploadDocumentPage() {
         ...data,
         fileUrl,
         landlordId: user.uid,
+        expiryDate: data.expiryDate ? new Date(data.expiryDate).toISOString() : null,
         createdDate: new Date().toISOString()
       };
 
@@ -163,7 +168,6 @@ export default function UploadDocumentPage() {
 
   return (
     <div className="flex flex-col gap-8 max-w-2xl mx-auto text-left">
-      {/* Page Header - Consistent with Audit Trail Style */}
       <div className="space-y-2">
         <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Log Property Document</h1>
         <p className="text-muted-foreground font-medium text-lg">Record a new legal or compliance document and upload the associated file.</p>
@@ -274,7 +278,7 @@ export default function UploadDocumentPage() {
                       name="expiryDate"
                       render={({ field }) => (
                           <FormItem>
-                              <FormLabel className="font-bold">Expiry Date</FormLabel>
+                              <FormLabel className="font-bold">Expiry Date (Optional)</FormLabel>
                               <FormControl>
                                   <Input
                                       type="date"
@@ -283,6 +287,7 @@ export default function UploadDocumentPage() {
                                       onChange={(e) => field.onChange(e.target.value)}
                                   />
                               </FormControl>
+                              <FormDescription className="text-[10px]">Leave blank for permanent records.</FormDescription>
                               <FormMessage />
                           </FormItem>
                       )}

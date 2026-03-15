@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -94,7 +93,8 @@ interface DocumentRecord {
     fileUrl?: string;
 }
 
-const getDocumentStatus = (expiryDate: Date, today: Date) => {
+const getDocumentStatus = (expiryDate: Date | null, today: Date) => {
+    if (!expiryDate) return 'Valid';
     const ninetyDaysFromNow = addDays(today, 90);
     if (isBefore(expiryDate, today)) return 'Expired';
     if (isBefore(expiryDate, ninetyDaysFromNow)) return 'Expiring Soon';
@@ -162,7 +162,7 @@ export default function DocumentsPage() {
     const documentsWithStatus = useMemo(() => {
         if (!today || !allDocuments) return [];
         return allDocuments.map(doc => {
-            const expiry = toDate(doc.expiryDate) || new Date();
+            const expiry = toDate(doc.expiryDate);
             return {
                 ...doc,
                 status: getDocumentStatus(expiry, today),
@@ -295,7 +295,7 @@ export default function DocumentsPage() {
                       <TableCell className="py-5 pl-8"><div className="flex items-center gap-4"><div className="p-3 rounded-2xl bg-primary/5 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors shadow-sm"><FileText className="h-5 w-5" /></div><div><p className="font-bold text-sm text-foreground">{docItem.title}</p><p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-0.5">{docItem.documentType}</p></div></div></TableCell>
                       <TableCell className="text-xs text-muted-foreground font-medium max-w-[150px] truncate">{propertyMap[docItem.propertyId] || 'Assigned Property'}</TableCell>
                       <TableCell><Badge variant={getStatusVariant(docItem.status)} className="text-[10px] font-bold uppercase px-3 py-1 rounded-lg tracking-tighter">{docItem.status}</Badge></TableCell>
-                      <TableCell className="text-xs font-bold tabular-nums text-muted-foreground">{format(docItem.expiryDateObj, 'dd/MM/yyyy')}</TableCell>
+                      <TableCell className="text-xs font-bold tabular-nums text-muted-foreground">{docItem.expiryDateObj ? format(docItem.expiryDateObj, 'dd/MM/yyyy') : 'No Expiry'}</TableCell>
                       <TableCell className="text-right pr-8"><div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">{docItem.fileUrl ? (<Button variant="secondary" size="icon" className="h-9 w-9 rounded-xl shadow-sm hover:scale-110 transition-transform" title="View File" asChild><Link href={docItem.fileUrl} target="_blank"><Eye className="h-4 w-4" /></Link></Button>) : (<Badge variant="outline" className="h-9 px-3 border-dashed text-[9px] font-bold uppercase tracking-widest opacity-40 bg-muted/10">No Attachment</Badge>)}<DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-2"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="rounded-xl p-1 shadow-2xl border-2"><DropdownMenuItem asChild className="rounded-lg"><Link href={`/dashboard/documents/${docItem.id}/edit`} className="cursor-pointer"><Edit className="mr-2 h-4 w-4" /> Edit Record Details</Link></DropdownMenuItem>{docItem.fileUrl && (<DropdownMenuItem asChild className="rounded-lg"><a href={docItem.fileUrl} target="_blank" rel="noopener noreferrer" className="cursor-pointer"><Download className="mr-2 h-4 w-4" /> Download Attachment</a></DropdownMenuItem>)}<DropdownMenuSeparator /><DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10 rounded-lg cursor-pointer font-bold" onClick={() => setDocumentToDelete(docItem)}><Trash2 className="mr-2 h-4 w-4" /> Delete Audit Record</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div></TableCell>
                     </TableRow>
                   ))}
@@ -305,7 +305,7 @@ export default function DocumentsPage() {
           )}
         </CardContent>
       </Card>
-      <AlertDialog open={!!documentToDelete} onOpenChange={(open) => !open && setDocumentToDelete(null)}><AlertDialogContent className="rounded-[2rem] border-none shadow-2xl"><AlertDialogHeader><div className="p-4 rounded-full bg-destructive/10 w-fit mx-auto mb-4"><AlertCircle className="h-8 w-8 text-destructive" /></div><AlertDialogTitle className="text-xl text-center">Delete Audit Record?</AlertDialogTitle><AlertDialogDescription className="text-base font-medium text-center">This will permanently remove the record for <strong className="text-foreground">{documentToDelete?.title}</strong> and its associated file attachment. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter className="gap-3 mt-6 flex-col-reverse sm:flex-row"><AlertDialogCancel className="rounded-2xl font-bold uppercase tracking-widest text-xs h-12 flex-1 border-2">Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-2xl font-bold uppercase tracking-widest text-xs h-12 flex-1 shadow-lg">Delete Record</AlertDialogAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
+      <AlertDialog open={!!documentToDelete} onOpenChange={(open) => !open && setDocumentToDelete(null)}><AlertDialogContent className="rounded-[2rem] border-none shadow-2xl"><AlertDialogHeader><div className="p-4 rounded-full bg-destructive/10 w-fit mx-auto mb-4"><AlertCircle className="h-8 w-8 text-destructive" /></div><AlertDialogTitle className="text-xl text-center">Delete Audit Record?</AlertDialogTitle><AlertDialogDescription className="text-base font-medium text-center">This will permanently remove the record for <strong className="text-foreground">{documentToDelete?.title}</strong> and its associated file attachment. This action cannot be undone.</AlertDialogDescription></AlertDialogHeader><AlertDialogFooter className="gap-3 mt-6 flex-col-reverse sm:flex-row"><AlertDialogCancel className="rounded-2xl font-bold uppercase tracking-widest text-xs h-12 flex-1 border-2">Cancel</AlertDialogCancel><AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-2xl font-bold uppercase tracking-widest text-xs h-12 flex-1 shadow-lg">Delete Record</AlertAction></AlertDialogFooter></AlertDialogContent></AlertDialog>
     </div>
   );
 }
