@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
-import { useUser, useAuth, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
 import { collection, query, where, doc, getDoc, limit, orderBy } from 'firebase/firestore';
 import { useRouter } from 'next/navigation';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
@@ -32,11 +32,11 @@ import { cn } from '@/lib/utils';
 
 interface Property { id: string; status: string; landlordId: string; }
 interface Tenant { id: string; status: string; landlordId: string; }
-interface Repair { id: string; status: string; landlordId: string; title: string; priority: string; reportedDate: any; propertyId: string; estimatedCost?: number; }
+interface Repair { id: string; status: string; landlordId: string; title: string; priority: string; reportedDate: any; propertyId: string; estimatedCost?: number; expectedCost?: number; }
 interface DocumentRecord { id: string; expiryDate: any; landlordId: string; title: string; }
 interface Inspection { id: string; status: string; landlordId: string; scheduledDate: any; type: string; propertyId: string; }
 interface Expense { id: string; amount: number; date: any; }
-interface RentPayment { id: string; amountPaid?: number; status: string; }
+interface RentPayment { id: string; amountPaid?: number; status: string; month: string; year: number; }
 
 export default function DashboardPage() {
   const { user, isUserLoading } = useUser();
@@ -91,17 +91,21 @@ export default function DashboardPage() {
   }, [user, firestore]);
   const { data: tenants } = useCollection<Tenant>(tenantsQuery);
 
+  // Fetch all repairs for the landlord to allow in-memory filtering for both stats and financials
   const repairsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
       collection(firestore, 'repairs'), 
-      where('landlordId', '==', user.uid), 
-      where('status', 'in', ['Open', 'In Progress']), 
-      orderBy('reportedDate', 'desc'), 
-      limit(100)
+      where('landlordId', '==', user.uid),
+      limit(500)
     );
   }, [user, firestore]);
-  const { data: allRepairs } = useCollection<Repair>(repairsQuery);
+  const { data: rawRepairs } = useCollection<Repair>(repairsQuery);
+
+  const openRepairs = useMemo(() => {
+    if (!rawRepairs) return [];
+    return rawRepairs.filter(r => ['Open', 'In Progress'].includes(r.status));
+  }, [rawRepairs]);
 
   const expensesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -129,15 +133,16 @@ export default function DashboardPage() {
 
   // Financial Aggregation
   const financialSummary = useMemo(() => {
-    if (!rentPayments || !allExpenses || !allRepairs) return { income: 0, expenses: 0, net: 0 };
+    if (!rentPayments || !allExpenses || !rawRepairs) return { income: 0, expenses: 0, net: 0 };
     
     const income = rentPayments.reduce((acc, p) => acc + (Number(p.amountPaid) || 0), 0);
     const baseExpenses = allExpenses.reduce((acc, e) => acc + (Number(e.amount) || 0), 0);
-    const repairExpenses = allRepairs.reduce((acc, r) => acc + (Number(r.estimatedCost) || 0), 0);
+    // Include all repairs with costs in expenses for accuracy
+    const repairExpenses = rawRepairs.reduce((acc, r) => acc + (Number(r.expectedCost || r.estimatedCost || 0)), 0);
     
     const totalExpenses = baseExpenses + repairExpenses;
     return { income, expenses: totalExpenses, net: income - totalExpenses };
-  }, [rentPayments, allExpenses, allRepairs]);
+  }, [rentPayments, allExpenses, rawRepairs]);
 
   // Compliance Analytics
   const complianceStats = useMemo(() => {
@@ -210,7 +215,7 @@ export default function DashboardPage() {
               <Wrench className="h-4 w-4 text-primary group-hover:scale-110 transition-transform" />
             </CardHeader>
             <CardContent className="text-left">
-              <div className="text-3xl font-bold">{allRepairs?.length || 0}</div>
+              <div className="text-3xl font-bold">{openRepairs.length}</div>
               <p className="text-[10px] text-muted-foreground mt-1">Maintenance Queue</p>
             </CardContent>
           </Card>
@@ -293,7 +298,7 @@ export default function DashboardPage() {
               <Button asChild variant="outline" className="h-20 flex-col gap-2 border-2 hover:border-primary/50 hover:bg-primary/5 transition-all">
                 <Link href="/dashboard/properties/add">
                   <PlusCircle className="h-5 w-5 text-primary" />
-                  <span className="text-[10px] font-bold uppercase">Onboard Asset</span>
+                  <span className="text-[10px] font-bold uppercase">Onboard Property</span>
                 </Link>
               </Button>
               <Button asChild variant="outline" className="h-20 flex-col gap-2 border-2 hover:border-primary/50 hover:bg-primary/5 transition-all">
@@ -323,11 +328,11 @@ export default function DashboardPage() {
               </Button>
             </CardHeader>
             <CardContent className="p-0">
-              {!allRepairs?.length ? (
+              {!openRepairs.length ? (
                 <div className="py-12 text-center text-muted-foreground italic bg-muted/5">No active repairs requiring attention.</div>
               ) : (
                 <div className="divide-y">
-                  {allRepairs.slice(0, 5).map((r) => (
+                  {openRepairs.slice(0, 5).map((r) => (
                     <div key={r.id} className="p-4 flex items-center justify-between hover:bg-muted/5 transition-colors group">
                       <div className="flex items-center gap-4">
                         <div className={cn(

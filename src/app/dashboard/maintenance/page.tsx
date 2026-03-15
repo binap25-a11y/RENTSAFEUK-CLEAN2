@@ -69,7 +69,7 @@ const maintenanceSchema = z.object({
   contractorName: z.string().optional(),
   contractorPhone: z.string().optional(),
   scheduledDate: z.coerce.date().optional(),
-  estimatedCost: z.coerce.number().min(0, "Cost cannot be negative").optional(),
+  expectedCost: z.coerce.number().min(0, "Cost cannot be negative").default(0),
   notes: z.string().optional(),
 });
 
@@ -128,7 +128,7 @@ function MaintenanceFormContent() {
       contractorName: '',
       contractorPhone: '',
       notes: '',
-      estimatedCost: 0,
+      expectedCost: 0,
     },
   });
 
@@ -311,6 +311,57 @@ function MaintenanceFormContent() {
                             </FormItem>
                         )}
                         />
+                        <FormField control={form.control} name="title" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="font-bold">Issue Headline</FormLabel>
+                            <FormControl>
+                              <Input 
+                                placeholder="e.g., Leaking boiler in kitchen" 
+                                className="h-11 bg-background" 
+                                {...field} 
+                                value={field.value ?? ''} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+                        <FormField control={form.control} name="description" render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="font-bold">Detailed Description</FormLabel>
+                            <FormControl>
+                              <Textarea 
+                                placeholder="Please describe the issue in detail for the contractor." 
+                                className="min-h-[120px] rounded-xl bg-background resize-none" 
+                                {...field} 
+                                value={field.value ?? ''} 
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )} />
+
+                        <FormField control={form.control} name="expectedCost" render={({ field }) => (
+                          <FormItem className="max-w-md">
+                              <FormLabel className="font-bold flex items-center gap-2">
+                                  <Banknote className="h-4 w-4 text-primary" />
+                                  Expected Cost (£)
+                              </FormLabel>
+                              <FormControl>
+                              <Input 
+                                  type="number"
+                                  step="0.01"
+                                  min="0"
+                                  placeholder="0.00" 
+                                  className="h-11 bg-background" 
+                                  {...field}
+                                  onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
+                              />
+                              </FormControl>
+                              <FormDescription className="text-[10px]">Will be reflected in portfolio financials. Must be 0 or greater.</FormDescription>
+                              <FormMessage />
+                          </FormItem>
+                        )} />
+
                         <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                           <FormField
                             control={form.control}
@@ -379,57 +430,6 @@ function MaintenanceFormContent() {
                             )}
                           />
                         )}
-
-                        <FormField control={form.control} name="title" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="font-bold">Issue Headline</FormLabel>
-                            <FormControl>
-                              <Input 
-                                placeholder="e.g., Leaking boiler in kitchen" 
-                                className="h-11 bg-background" 
-                                {...field} 
-                                value={field.value ?? ''} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-                        <FormField control={form.control} name="description" render={({ field }) => (
-                          <FormItem>
-                            <FormLabel className="font-bold">Detailed Description</FormLabel>
-                            <FormControl>
-                              <Textarea 
-                                placeholder="Please describe the issue in detail for the contractor." 
-                                className="min-h-[120px] rounded-xl bg-background resize-none" 
-                                {...field} 
-                                value={field.value ?? ''} 
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )} />
-
-                        <FormField control={form.control} name="estimatedCost" render={({ field }) => (
-                          <FormItem className="max-w-md">
-                              <FormLabel className="font-bold flex items-center gap-2">
-                                  <Banknote className="h-4 w-4 text-primary" />
-                                  Expected Cost (£)
-                              </FormLabel>
-                              <FormControl>
-                              <Input 
-                                  type="number"
-                                  step="0.01"
-                                  min="0"
-                                  placeholder="0.00" 
-                                  className="h-11 bg-background" 
-                                  {...field}
-                                  onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
-                              />
-                              </FormControl>
-                              <FormDescription className="text-[10px]">Will be reflected in portfolio financials. Must be 0 or greater.</FormDescription>
-                              <FormMessage />
-                          </FormItem>
-                        )} />
                     </div>
 
                     <div className="space-y-10 border-t pt-8">

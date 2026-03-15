@@ -56,7 +56,7 @@ const maintenanceEditSchema = z.object({
   contractorName: z.string().optional(),
   contractorPhone: z.string().optional(),
   scheduledDate: z.coerce.date().optional(),
-  estimatedCost: z.coerce.number().min(0, "Cost cannot be negative").optional(),
+  expectedCost: z.coerce.number().min(0, "Cost cannot be negative").default(0),
   notes: z.string().optional(),
 });
 
@@ -75,6 +75,7 @@ interface MaintenanceLog {
   contractorPhone?: string;
   scheduledDate?: any;
   estimatedCost?: number;
+  expectedCost?: number;
   notes?: string;
 }
 
@@ -131,6 +132,7 @@ export default function EditMaintenancePage() {
                 reportedBy: maintenanceLog.reportedBy || 'Landlord',
                 reportedDate: safeToDate(maintenanceLog.reportedDate) || new Date(),
                 scheduledDate: safeToDate(maintenanceLog.scheduledDate) || undefined,
+                expectedCost: maintenanceLog.expectedCost ?? maintenanceLog.estimatedCost ?? 0,
                 otherCategoryDetails: maintenanceLog.otherCategoryDetails ?? '',
                 notes: maintenanceLog.notes ?? '',
             });
@@ -202,7 +204,7 @@ export default function EditMaintenancePage() {
                                 </FormItem>
                             )} />
 
-                            <FormField control={form.control} name="estimatedCost" render={({ field }) => (
+                            <FormField control={form.control} name="expectedCost" render={({ field }) => (
                                 <FormItem className="max-w-md">
                                     <FormLabel className="font-bold flex items-center gap-2">
                                         <Banknote className="h-4 w-4 text-primary" />
@@ -216,7 +218,7 @@ export default function EditMaintenancePage() {
                                         placeholder="0.00" 
                                         className="h-11 bg-background" 
                                         {...field}
-                                        onChange={(e) => field.onChange(e.target.value === '' ? undefined : Number(e.target.value))}
+                                        onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
                                     />
                                     </FormControl>
                                     <FormDescription className="text-[10px]">Will be reflected in portfolio financials. Must be 0 or greater.</FormDescription>
@@ -281,14 +283,10 @@ export default function EditMaintenancePage() {
                             )} />
                             
                             <Card className="bg-muted/30 border-dashed">
-                                <CardHeader><CardTitle className="text-lg">Assignment & Audit</CardTitle></CardHeader>
+                                <CardHeader><CardTitle className="text-lg">Assignment</CardTitle></CardHeader>
                                 <CardContent className="space-y-8">
                                     {/* SECTION 1: ASSIGNMENT */}
                                     <div className="space-y-4">
-                                        <h3 className="text-sm font-bold uppercase tracking-widest text-primary flex items-center gap-2">
-                                            <PlusCircle className="h-4 w-4" />
-                                            Assignment
-                                        </h3>
                                         <div className="space-y-2">
                                             <Label htmlFor="contractor-quick-select">Quick-select Contractor</Label>
                                             <Select onValueChange={(contractorId) => {
