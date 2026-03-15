@@ -145,7 +145,7 @@ export default function DashboardPage() {
         <Link href="/dashboard/properties" className="block">
           <Card className="hover:shadow-xl transition-all border-none shadow-md group h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-left">Managed Assets</CardTitle>
+              <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-left">Managed Properties</CardTitle>
               <Building2 className="h-4 w-4 text-primary group-hover:scale-110 transition-transform" />
             </CardHeader>
             <CardContent className="text-left">
@@ -158,7 +158,7 @@ export default function DashboardPage() {
         <Link href="/dashboard/tenants" className="block">
           <Card className="hover:shadow-xl transition-all border-none shadow-md group h-full">
             <CardHeader className="flex flex-row items-center justify-between pb-2">
-              <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-left">Active Residents</CardTitle>
+              <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground text-left">Active Tenants</CardTitle>
               <Users className="h-4 w-4 text-primary group-hover:scale-110 transition-transform" />
             </CardHeader>
             <CardContent className="text-left">
