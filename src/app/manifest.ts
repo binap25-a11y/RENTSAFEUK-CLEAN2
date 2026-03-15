@@ -2,7 +2,7 @@ import { MetadataRoute } from 'next'
 
 /**
  * Defines the PWA manifest for the application.
- * Using manifest.ts provides a dynamic and robust way to handle PWA metadata in Next.js 15.
+ * Updated to use RentSafeUK brand colors for consistent mobile installation.
  */
 export default function manifest(): MetadataRoute.Manifest {
   return {
@@ -12,8 +12,8 @@ export default function manifest(): MetadataRoute.Manifest {
     start_url: '/dashboard',
     display: 'standalone',
     orientation: 'portrait',
-    background_color: '#FFFFFF',
-    theme_color: '#2172F9',
+    background_color: '#F4F8F6',
+    theme_color: '#A7D1AB',
     icons: [
       {
         src: 'https://picsum.photos/seed/rentsafe-pwa-192/192/192',
