@@ -15,19 +15,58 @@ import {
   ShieldCheck,
   AlertCircle,
   RefreshCw,
-  Clock
+  Clock,
+  Trash2,
+  Reply,
+  MoreVertical,
+  CheckCircle2,
+  Send
 } from 'lucide-react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, limit } from 'firebase/firestore';
+import { 
+  useUser, 
+  useFirestore, 
+  useCollection, 
+  useMemoFirebase,
+  updateDocumentNonBlocking,
+  deleteDocumentNonBlocking
+} from '@/firebase';
+import { collection, query, where, limit, addDoc, serverTimestamp, doc } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { cn } from '@/lib/utils';
 import { safeToDate } from '@/lib/date-utils';
+import { useToast } from '@/hooks/use-toast';
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+  DropdownMenuSeparator,
+} from '@/components/ui/dropdown-menu';
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+} from '@/components/ui/alert-dialog';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+  DialogFooter,
+} from '@/components/ui/dialog';
 
 /**
  * @fileOverview Communication Registry
- * Definitive chronological list of all resident conversations.
- * Ensures every message is visible and accounted for in the audit trail.
+ * Enhanced chronological list of all resident conversations.
+ * Supports direct replies and message deletion.
  */
 
 interface Message {
@@ -37,6 +76,8 @@ interface Message {
     content: string;
     timestamp: any;
     tenantId: string;
+    tenantUid?: string;
+    tenantEmail?: string;
     propertyId: string;
     landlordId: string;
     read?: boolean;
@@ -45,10 +86,16 @@ interface Message {
 export default function LandlordInboxPage() {
   const { user } = useUser();
   const firestore = useFirestore();
+  const { toast } = useToast();
   const [searchTerm, setSearchTerm] = useState('');
+  
+  // Interaction States
+  const [messageToDelete, setMessageToDelete] = useState<Message | null>(null);
+  const [replyingTo, setReplyingTo] = useState<Message | null>(null);
+  const [replyContent, setReplyContent] = useState('');
+  const [isSendingReply, setIsSendingReply] = useState(false);
 
   // Fetch all messages for this landlord
-  // NOTE: Removed strict Firestore ordering to ensure visibility of documents missing timestamps
   const messagesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
@@ -79,23 +126,78 @@ export default function LandlordInboxPage() {
     );
   }, [allMessages, searchTerm]);
 
+  const handleToggleRead = (msg: Message) => {
+    if (!firestore) return;
+    const msgRef = doc(firestore, 'messages', msg.id);
+    updateDocumentNonBlocking(msgRef, { read: !msg.read });
+    toast({ title: msg.read ? 'Marked as Unread' : 'Marked as Read' });
+  };
+
+  const handleDeleteConfirm = () => {
+    if (!firestore || !messageToDelete) return;
+    const msgRef = doc(firestore, 'messages', messageToDelete.id);
+    deleteDocumentNonBlocking(msgRef);
+    toast({ title: 'Message Deleted', description: 'Record removed from registry.' });
+    setMessageToDelete(null);
+  };
+
+  const handleSendReply = async () => {
+    if (!firestore || !user || !replyingTo || !replyContent.trim()) return;
+    
+    setIsSendingReply(true);
+    try {
+        await addDoc(collection(firestore, 'messages'), {
+            landlordId: user.uid,
+            propertyId: replyingTo.propertyId,
+            tenantId: replyingTo.tenantId,
+            tenantUid: replyingTo.tenantUid || '',
+            tenantEmail: replyingTo.tenantEmail || '',
+            senderId: user.uid,
+            senderName: user.displayName || 'Landlord',
+            content: replyContent.trim(),
+            timestamp: serverTimestamp(),
+            read: false
+        });
+
+        // Mark the original message as read since we've replied
+        if (!replyingTo.read) {
+            const originalRef = doc(firestore, 'messages', replyingTo.id);
+            updateDocumentNonBlocking(originalRef, { read: true });
+        }
+
+        toast({ title: 'Reply Sent' });
+        setReplyContent('');
+        setReplyingTo(null);
+    } catch (err) {
+        console.error("Reply failure:", err);
+        toast({ variant: 'destructive', title: 'Transmission Failed' });
+    } finally {
+        setIsSendingReply(false);
+    }
+  };
+
   return (
     <div className="space-y-8 max-w-5xl mx-auto text-left animate-in fade-in duration-500">
       <div className="flex flex-col gap-2 p-6 rounded-3xl bg-primary/5 border border-primary/10">
-        <div className="flex items-center gap-3">
-            <div className="p-2 rounded-xl bg-primary text-primary-foreground">
-                <MessageSquare className="h-6 w-6" />
+        <div className="flex items-center justify-between">
+            <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-primary text-primary-foreground">
+                    <MessageSquare className="h-6 w-6" />
+                </div>
+                <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Communication Registry</h1>
             </div>
-            <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Communication Registry</h1>
+            <Button variant="ghost" size="sm" className="font-bold uppercase tracking-widest text-[9px] text-primary" onClick={() => window.location.reload()}>
+                <RefreshCw className="h-3 w-3 mr-1.5" /> Sync Registry
+            </Button>
         </div>
-        <p className="text-muted-foreground font-medium text-lg ml-1">Archive of all messages across your portfolio.</p>
+        <p className="text-muted-foreground font-medium text-lg ml-1">Full chronological audit of all resident interaction.</p>
       </div>
 
       <div className="flex items-center justify-between gap-4 px-1">
           <div className="relative w-full max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input 
-                placeholder="Search message history..." 
+                placeholder="Search by resident or content..." 
                 className="pl-10 h-12 bg-card border-muted rounded-2xl shadow-sm focus-visible:ring-primary" 
                 value={searchTerm} 
                 onChange={e => setSearchTerm(e.target.value)} 
@@ -103,7 +205,7 @@ export default function LandlordInboxPage() {
           </div>
           <div className="hidden sm:block">
               <Badge variant="outline" className="h-12 px-4 rounded-2xl border-2 font-bold uppercase tracking-widest text-[10px] bg-background">
-                  {rawMessages?.length || 0} Messages Indexed
+                  {rawMessages?.length || 0} Records Indexed
               </Badge>
           </div>
       </div>
@@ -111,17 +213,14 @@ export default function LandlordInboxPage() {
       {isLoading ? (
         <div className="flex flex-col justify-center items-center h-64 gap-4">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Registry...</p>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Establishing Audit Trail...</p>
         </div>
       ) : error ? (
         <div className="py-20 text-center px-10 border-2 border-dashed border-destructive/20 rounded-[2rem] bg-destructive/5">
             <AlertCircle className="h-12 w-12 text-destructive/20 mx-auto mb-4" />
-            <p className="text-sm font-bold text-destructive">Sync Connection Error</p>
-            <p className="text-xs text-muted-foreground mt-1 max-w-[320px] mx-auto font-medium">
-                Establishing high-performance audit trail indexes. 
-            </p>
+            <p className="text-sm font-bold text-destructive">Sync Connection Interrupted</p>
             <Button variant="outline" className="mt-6 h-9" onClick={() => window.location.reload()}>
-                <RefreshCw className="mr-2 h-3.5 w-3.5" /> Force Retry
+                <RefreshCw className="mr-2 h-3.5 w-3.5" /> Force Registry Sync
             </Button>
         </div>
       ) : filteredMessages.length === 0 ? (
@@ -129,51 +228,90 @@ export default function LandlordInboxPage() {
             <div className="p-6 rounded-full bg-background shadow-xl w-fit mx-auto mb-6">
                 <MessageSquare className="h-12 w-12 text-primary/10" />
             </div>
-            <h3 className="text-xl font-bold">No Messages Found</h3>
-            <p className="text-muted-foreground mt-2 max-w-xs mx-auto">Active communication with your residents will appear here once established in the Property Hub.</p>
+            <h3 className="text-xl font-bold">No Records Found</h3>
+            <p className="text-muted-foreground mt-2 max-w-xs mx-auto">Active communication will appear here once residents begin using the portal hub.</p>
         </div>
       ) : (
         <div className="grid gap-4">
             {filteredMessages.map((msg) => {
-                const isIncomingUnread = msg.senderId !== user?.uid && msg.read !== true;
+                const isLandlord = msg.senderId === user?.uid;
+                const isUnread = !isLandlord && msg.read !== true;
                 return (
-                    <Link key={msg.id} href={msg.propertyId ? `/dashboard/properties/${msg.propertyId}?tab=messages` : '#'}>
-                        <Card className="shadow-md border-none overflow-hidden transition-all hover:shadow-xl hover:translate-x-1 group">
-                            <div className="flex items-center gap-4 p-5">
-                                <div className="relative">
-                                    <div className={cn(
-                                        "h-12 w-12 rounded-2xl flex items-center justify-center shrink-0 transition-colors shadow-sm",
-                                        isIncomingUnread ? "bg-primary text-primary-foreground" : "bg-primary/5 text-primary group-hover:bg-primary group-hover:text-primary-foreground"
-                                    )}>
-                                        <User className="h-6 w-6" />
-                                    </div>
-                                    {isIncomingUnread && (
-                                        <span className="absolute -top-1 -right-1 h-3 w-3 bg-destructive rounded-full border-2 border-background animate-pulse" />
-                                    )}
+                    <Card key={msg.id} className={cn(
+                        "shadow-md border-none overflow-hidden transition-all group relative",
+                        isUnread ? "ring-2 ring-primary/20 bg-primary/[0.02]" : "hover:bg-muted/5"
+                    )}>
+                        <div className="flex items-start gap-4 p-5">
+                            <div className="relative shrink-0">
+                                <div className={cn(
+                                    "h-12 w-12 rounded-2xl flex items-center justify-center transition-colors shadow-sm",
+                                    isLandlord ? "bg-muted text-muted-foreground" : (isUnread ? "bg-primary text-primary-foreground" : "bg-primary/5 text-primary")
+                                )}>
+                                    <User className="h-6 w-6" />
                                 </div>
-                                <div className="flex-1 min-w-0">
-                                    <div className="flex items-center justify-between mb-1">
-                                        <p className={cn("font-bold text-base truncate", isIncomingUnread && "text-primary")}>
+                                {isUnread && (
+                                    <span className="absolute -top-1 -right-1 h-3.5 w-3.5 bg-destructive rounded-full border-2 border-background animate-pulse shadow-sm" />
+                                )}
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center justify-between mb-1.5">
+                                    <div className="flex items-center gap-2">
+                                        <p className={cn("font-bold text-base truncate", isUnread && "text-primary")}>
                                             {msg.senderName}
                                         </p>
-                                        <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-                                            {safeToDate(msg.timestamp) ? format(safeToDate(msg.timestamp)!, 'HH:mm • d MMM') : 'Recently'}
-                                        </span>
+                                        {isLandlord && <Badge variant="outline" className="text-[8px] font-bold uppercase tracking-tighter h-4 py-0">Landlord Reply</Badge>}
                                     </div>
-                                    <p className={cn("text-sm line-clamp-1 italic", isIncomingUnread ? "text-foreground font-bold" : "text-muted-foreground")}>
-                                        "{msg.content}"
-                                    </p>
-                                    <div className="flex items-center gap-3 mt-2">
-                                        <Badge variant="outline" className="text-[8px] uppercase font-bold tracking-widest bg-background py-0 h-5 border-primary/20">
-                                            {msg.propertyId ? <><Home className="h-2.5 w-2.5 mr-1" /> Asset Link</> : 'Direct'}
-                                        </Badge>
-                                        {isIncomingUnread && <Badge className="bg-destructive text-white text-[8px] uppercase font-bold h-5">Action Required</Badge>}
+                                    <div className="flex items-center gap-3">
+                                        <span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground whitespace-nowrap">
+                                            {safeToDate(msg.timestamp) ? format(safeToDate(msg.timestamp)!, 'HH:mm • d MMM') : 'Just now'}
+                                        </span>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2">
+                                                    <MoreVertical className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-48 p-1">
+                                                <DropdownMenuItem onClick={() => setReplyingTo(msg)} className="cursor-pointer">
+                                                    <Reply className="mr-2 h-4 w-4" /> Send Reply
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => handleToggleRead(msg)} className="cursor-pointer">
+                                                    <CheckCircle2 className="mr-2 h-4 w-4" /> 
+                                                    {msg.read ? 'Mark as Unread' : 'Mark as Read'}
+                                                </DropdownMenuItem>
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem asChild className="cursor-pointer">
+                                                    <Link href={`/dashboard/properties/${msg.propertyId}?tab=messages`}>
+                                                        <Home className="mr-2 h-4 w-4" /> Open Property Chat
+                                                    </Link>
+                                                </DropdownMenuItem>
+                                                <DropdownMenuItem onClick={() => setMessageToDelete(msg)} className="text-destructive font-bold cursor-pointer">
+                                                    <Trash2 className="mr-2 h-4 w-4" /> Delete Record
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
                                     </div>
                                 </div>
-                                <ChevronRight className="h-5 w-5 text-muted-foreground opacity-20 group-hover:opacity-100 transition-opacity" />
+                                <div className="bg-muted/30 p-3 rounded-xl border border-muted mb-3 cursor-pointer" onClick={() => setReplyingTo(msg)}>
+                                    <p className={cn("text-sm leading-relaxed", isUnread ? "text-foreground font-medium" : "text-muted-foreground")}>
+                                        "{msg.content}"
+                                    </p>
+                                </div>
+                                <div className="flex items-center gap-3">
+                                    <Link href={`/dashboard/properties/${msg.propertyId}`}>
+                                        <Badge variant="outline" className="text-[8px] uppercase font-bold tracking-widest bg-background py-0 h-5 border-primary/20 hover:bg-primary/5 transition-colors">
+                                            <Home className="h-2.5 w-2.5 mr-1" /> Asset Audit Link
+                                        </Badge>
+                                    </Link>
+                                    {!isLandlord && (
+                                        <Button variant="link" className="h-auto p-0 text-[10px] font-bold uppercase tracking-widest text-primary gap-1" onClick={() => setReplyingTo(msg)}>
+                                            <Reply className="h-3 w-3" /> Quick Reply
+                                        </Button>
+                                    )}
+                                </div>
                             </div>
-                        </Card>
-                    </Link>
+                        </div>
+                    </Card>
                 );
             })}
         </div>
@@ -182,10 +320,74 @@ export default function LandlordInboxPage() {
       <div className="p-6 rounded-2xl bg-muted/30 border border-dashed flex items-center gap-4 text-left">
           <ShieldCheck className="h-10 w-10 text-primary opacity-20 shrink-0" />
           <div className="space-y-1">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Legal & Compliance Audit</p>
-              <p className="text-[11px] text-muted-foreground/70 leading-relaxed font-medium">All communication via the Resident Hub is chronologically archived and cryptographically linked to your property assets for professional audit trail requirements.</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Chronological Registry Policy</p>
+              <p className="text-[11px] text-muted-foreground/70 leading-relaxed font-medium">This registry is a definitive record of all communications. Actions taken here are logged for audit compliance purposes.</p>
           </div>
       </div>
+
+      {/* Reply Dialog */}
+      <Dialog open={!!replyingTo} onOpenChange={(open) => !open && setReplyingTo(null)}>
+        <DialogContent className="max-w-lg text-left overflow-hidden rounded-2xl border-none shadow-2xl">
+            <DialogHeader className="bg-primary/5 -mx-6 -mt-6 p-6 border-b border-primary/10">
+                <DialogTitle className="flex items-center gap-2">
+                    <Reply className="h-5 w-5 text-primary" />
+                    Send Reply
+                </DialogTitle>
+                <DialogDescription className="font-medium text-primary/60">
+                    Responding to {replyingTo?.senderName}
+                </DialogDescription>
+            </DialogHeader>
+            <div className="py-6 space-y-6">
+                <div className="bg-muted/30 p-4 rounded-xl border-2 border-dashed italic text-sm text-muted-foreground">
+                    "{replyingTo?.content}"
+                </div>
+                <div className="space-y-3">
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground px-1">Reply Content</p>
+                    <Textarea 
+                        placeholder="Type your professional response..." 
+                        rows={5}
+                        className="resize-none rounded-xl border-2 focus-visible:ring-primary h-32"
+                        value={replyContent}
+                        onChange={(e) => setReplyContent(e.target.value)}
+                    />
+                </div>
+            </div>
+            <DialogFooter className="bg-muted/5 -mx-6 -mb-6 p-6 border-t flex items-center justify-between">
+                <div className="hidden sm:flex items-center gap-2 text-[10px] text-muted-foreground font-bold uppercase">
+                    <Clock className="h-3 w-3" />
+                    Registry record will be created
+                </div>
+                <div className="flex gap-2 w-full sm:w-auto">
+                    <Button variant="ghost" onClick={() => setReplyingTo(null)} className="font-bold">Cancel</Button>
+                    <Button onClick={handleSendReply} disabled={!replyContent.trim() || isSendingReply} className="px-8 shadow-lg font-bold">
+                        {isSendingReply ? <Loader2 className="h-4 w-4 animate-spin" /> : <Send className="h-4 w-4 mr-2" />}
+                        Send Reply
+                    </Button>
+                </div>
+            </DialogFooter>
+        </DialogContent>
+      </Dialog>
+
+      {/* Delete Confirmation */}
+      <AlertDialog open={!!messageToDelete} onOpenChange={(open) => !open && setMessageToDelete(null)}>
+        <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
+            <AlertDialogHeader className="text-left">
+                <div className="p-4 rounded-full bg-destructive/10 w-fit mx-auto mb-4">
+                    <Trash2 className="h-8 w-8 text-destructive" />
+                </div>
+                <AlertDialogTitle className="text-xl font-headline text-center">Delete Audit Record?</AlertDialogTitle>
+                <AlertDialogDescription className="text-center font-medium">
+                    This will permanently remove this message from the chronological registry. This action cannot be reversed and may affect your management audit trail.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="mt-6 gap-3 flex-col-reverse sm:flex-row">
+                <AlertDialogCancel className="rounded-xl font-bold uppercase tracking-widest text-[10px] h-12 flex-1">Cancel</AlertDialogCancel>
+                <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold uppercase tracking-widest text-[10px] h-12 flex-1 shadow-lg">
+                    Confirm Deletion
+                </AlertDialogAction>
+            </AlertDialogFooter>
+        </AlertDialogContent>
+      </AlertDialog>
     </div>
   );
 }
