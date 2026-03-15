@@ -354,7 +354,8 @@ function MaintenanceFormContent() {
                                   placeholder="0.00" 
                                   className="h-11 bg-background" 
                                   {...field}
-                                  onChange={(e) => field.onChange(e.target.value === '' ? 0 : Number(e.target.value))}
+                                  value={field.value === 0 ? '' : field.value}
+                                  onChange={(e) => field.onChange(e.target.value === '' ? '' : Number(e.target.value))}
                               />
                               </FormControl>
                               <FormDescription className="text-[10px]">Will be reflected in portfolio financials. Must be 0 or greater.</FormDescription>
