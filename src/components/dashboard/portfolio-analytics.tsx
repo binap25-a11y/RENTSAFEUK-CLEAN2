@@ -100,7 +100,7 @@ export function PortfolioAnalytics() {
             const d = safeToDate(r.reportedDate);
             return d && d.getFullYear() === currentYear && d.getMonth() === index;
         })
-        .reduce((sum, r) => sum + (Number(r.estimatedCost) || 0), 0);
+        .reduce((sum, r) => sum + (Number(r.expectedCost || r.estimatedCost || 0)), 0);
 
       return {
         month: monthName.substring(0, 3),

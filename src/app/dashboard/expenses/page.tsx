@@ -100,6 +100,7 @@ interface MaintenanceRepair {
     reportedDate: any;
     category: string;
     title: string;
+    expectedCost?: number;
     estimatedCost?: number;
     status: string;
 }
@@ -202,7 +203,7 @@ export default function FinancialsPage() {
         const d = safeToDate(r.reportedDate);
         const matchesYear = d && isSameYear(d, new Date(selectedYear, 0, 1));
         const matchesProperty = selectedPropertyId === 'all' || r.propertyId === selectedPropertyId;
-        const hasCost = Number(r.estimatedCost || 0) > 0;
+        const hasCost = Number(r.expectedCost || r.estimatedCost || 0) > 0;
         return matchesYear && matchesProperty && hasCost;
     });
   }, [allRepairs, selectedPropertyId, selectedYear]);
@@ -220,9 +221,10 @@ export default function FinancialsPage() {
   }, [activeProperties, selectedPropertyId, selectedProperty]);
 
   const totalPaidRent = useMemo(() => rentPayments.reduce((acc, p) => acc + (Number(p.amountPaid) || 0), 0), [rentPayments]);
+  
   const totalExpenses = useMemo(() => {
       const baseTotal = expenses.reduce((acc, expense) => acc + (Number(expense.amount) || 0), 0);
-      const repairTotal = repairCosts.reduce((acc, r) => acc + (Number(r.estimatedCost) || 0), 0);
+      const repairTotal = repairCosts.reduce((acc, r) => acc + (Number(r.expectedCost || r.estimatedCost || 0)), 0);
       return baseTotal + repairTotal;
   }, [expenses, repairCosts]);
 
@@ -245,7 +247,7 @@ export default function FinancialsPage() {
     
     // Aggregate Maintenance (Base + Repairs)
     const baseMaintenance = expenses.filter(e => ['Repairs and Maintenance', 'Cleaning', 'Gardening'].includes(e.expenseType)).reduce((a, b) => a + (Number(b.amount) || 0), 0);
-    const repairMaintenance = repairCosts.reduce((a, b) => a + (Number(b.estimatedCost) || 0), 0);
+    const repairMaintenance = repairCosts.reduce((a, b) => a + (Number(b.expectedCost || b.estimatedCost || 0)), 0);
     const totalMaintenance = baseMaintenance + repairMaintenance;
 
     const professionalFees = expenses.filter(e => ['Letting Agent Fees'].includes(e.expenseType)).reduce((a, b) => a + (Number(b.amount) || 0), 0);
@@ -515,7 +517,7 @@ function AnnualSummary({ selectedYear, expenses, repairCosts, isLoadingExpenses 
     expenses.forEach(e => { map[e.expenseType] = (map[e.expenseType] || 0) + (Number(e.amount) || 0); });
     
     // Add repair costs specifically into Repairs and Maintenance category
-    const totalRepairCost = repairCosts.reduce((acc, r) => acc + (Number(r.estimatedCost) || 0), 0);
+    const totalRepairCost = repairCosts.reduce((acc, r) => acc + (Number(r.expectedCost || r.estimatedCost || 0)), 0);
     if (totalRepairCost > 0) {
         map['Repairs and Maintenance'] = (map['Repairs and Maintenance'] || 0) + totalRepairCost;
     }
