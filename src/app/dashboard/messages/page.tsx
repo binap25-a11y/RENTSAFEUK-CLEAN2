@@ -99,6 +99,7 @@ export default function CommunicationHubPage() {
   const { user } = useUser();
   const firestore = useFirestore();
   const { toast } = useToast();
+  const router = useRouter();
   const [isPending, startTransition] = useTransition();
   const [searchTerm, setSearchTerm] = useState('');
   
@@ -298,10 +299,14 @@ export default function CommunicationHubPage() {
                 const residentName = tenantNameMap[msg.tenantId] || msg.senderName || 'Resident';
                 
                 return (
-                    <Card key={msg.id} className={cn(
-                        "shadow-md border-none overflow-hidden transition-all group relative",
-                        isUnread ? "ring-2 ring-primary/20 bg-primary/[0.02]" : "hover:bg-muted/5"
-                    )}>
+                    <Card 
+                        key={msg.id} 
+                        className={cn(
+                            "shadow-md border-none overflow-hidden transition-all group relative cursor-pointer",
+                            isUnread ? "ring-2 ring-primary/20 bg-primary/[0.02]" : "hover:bg-muted/5"
+                        )}
+                        onClick={() => router.push(`/dashboard/properties/${msg.propertyId}?tab=messages&tenantId=${msg.tenantId}`)}
+                    >
                         <div className="flex items-start gap-4 p-5">
                             <div className="relative shrink-0">
                                 <div className={cn(
@@ -336,44 +341,67 @@ export default function CommunicationHubPage() {
                                         </span>
                                         <DropdownMenu>
                                             <DropdownMenuTrigger asChild>
-                                                <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2">
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2" onClick={(e) => e.stopPropagation()}>
                                                     <MoreVertical className="h-4 w-4" />
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end" className="w-48 p-1">
-                                                <DropdownMenuItem onClick={() => setReplyingTo(msg)} className="cursor-pointer">
+                                                <DropdownMenuItem 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setReplyingTo(msg);
+                                                    }} 
+                                                    className="cursor-pointer"
+                                                >
                                                     <Reply className="mr-2 h-4 w-4" /> Send Reply
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => handleToggleRead(msg)} className="cursor-pointer">
+                                                <DropdownMenuItem 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        handleToggleRead(msg);
+                                                    }} 
+                                                    className="cursor-pointer"
+                                                >
                                                     <CheckCircle2 className="mr-2 h-4 w-4" /> 
                                                     {msg.read ? 'Mark as Unread' : 'Mark as Read'}
                                                 </DropdownMenuItem>
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem asChild className="cursor-pointer">
-                                                    <Link href={`/dashboard/properties/${msg.propertyId}?tab=messages`}>
+                                                    <Link href={`/dashboard/properties/${msg.propertyId}?tab=messages&tenantId=${msg.tenantId}`}>
                                                         <MessageSquare className="mr-2 h-4 w-4" /> View Full Thread
                                                     </Link>
                                                 </DropdownMenuItem>
-                                                <DropdownMenuItem onClick={() => setMessageToDelete(msg)} className="text-destructive font-bold cursor-pointer">
+                                                <DropdownMenuItem 
+                                                    onClick={(e) => {
+                                                        e.stopPropagation();
+                                                        setMessageToDelete(msg);
+                                                    }} 
+                                                    className="text-destructive font-bold cursor-pointer"
+                                                >
                                                     <Trash2 className="mr-2 h-4 w-4" /> Delete Record
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
                                         </DropdownMenu>
                                     </div>
                                 </div>
-                                <div className="bg-muted/30 p-3 rounded-xl border border-muted mb-3 cursor-pointer hover:bg-muted/40 transition-colors" onClick={() => setReplyingTo(msg)}>
+                                <div className="bg-muted/30 p-3 rounded-xl border border-muted mb-3 group-hover:bg-muted/40 transition-colors">
                                     <p className={cn("text-sm leading-relaxed", isUnread ? "text-foreground font-medium" : "text-muted-foreground")}>
                                         "{msg.content}"
                                     </p>
                                 </div>
                                 <div className="flex items-center gap-3">
-                                    <Link href={`/dashboard/properties/${msg.propertyId}`}>
-                                        <Badge variant="outline" className="text-[8px] uppercase font-bold tracking-widest bg-background py-0 h-5 border-primary/20 hover:bg-primary/5 transition-colors">
-                                            <Home className="h-2.5 w-2.5 mr-1" /> Open Asset Hub
-                                        </Badge>
-                                    </Link>
+                                    <Badge variant="outline" className="text-[8px] uppercase font-bold tracking-widest bg-background py-0 h-5 border-primary/20 hover:bg-primary/5 transition-colors">
+                                        <Home className="h-2.5 w-2.5 mr-1" /> Open Asset Hub
+                                    </Badge>
                                     {!isLandlord && (
-                                        <Button variant="link" className="h-auto p-0 text-[10px] font-bold uppercase tracking-widest text-primary gap-1" onClick={() => setReplyingTo(msg)}>
+                                        <Button 
+                                            variant="link" 
+                                            className="h-auto p-0 text-[10px] font-bold uppercase tracking-widest text-primary gap-1" 
+                                            onClick={(e) => {
+                                                e.stopPropagation();
+                                                setReplyingTo(msg);
+                                            }}
+                                        >
                                             <Reply className="h-3 w-3" /> Professional Response
                                         </Button>
                                     )}

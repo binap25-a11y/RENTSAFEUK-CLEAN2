@@ -30,9 +30,10 @@ import {
   Calendar,
   History,
   ChevronDown,
-  RefreshCw
+  RefreshCw,
+  Users
 } from 'lucide-react';
-import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
+import { useUser, useAuth, useFirestore, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
 import { doc, updateDoc, collection, query, where, getDocs, limit, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -151,7 +152,7 @@ export default function PropertyDetailPage() {
   const messagesQuery = useMemoFirebase(() => {
     if (!firestore || !propertyId || !user) return null;
     // CRITICAL: Simple query to bypass index failed-precondition hazards.
-    // Sorting is handled in-memory via useMemo below.
+    // Sorting and tenant-specific filtering is handled in-memory via useMemo below.
     return query(
         collection(firestore, 'messages'),
         where('propertyId', '==', propertyId),
@@ -162,15 +163,22 @@ export default function PropertyDetailPage() {
 
   const { data: rawMessages, isLoading: isLoadingMessages, error: messagesError } = useCollection<Message>(messagesQuery);
 
-  // Chronological sorting in memory to ensure reliability
+  // Chronological sorting and thread filtering in memory to ensure reliability
   const messages = useMemo(() => {
     if (!rawMessages) return [];
-    return [...rawMessages].sort((a, b) => {
+    
+    let filtered = [...rawMessages];
+    const tenantIdParam = searchParams.get('tenantId');
+    if (tenantIdParam) {
+        filtered = filtered.filter(m => m.tenantId === tenantIdParam);
+    }
+
+    return filtered.sort((a, b) => {
         const dateA = safeToDate(a.timestamp) || new Date(0);
         const dateB = safeToDate(b.timestamp) || new Date(0);
         return dateA.getTime() - dateB.getTime();
     });
-  }, [rawMessages]);
+  }, [rawMessages, searchParams]);
 
   useEffect(() => {
     if (activeTab === 'messages' && messages && user) {
@@ -194,7 +202,12 @@ export default function PropertyDetailPage() {
     e.preventDefault();
     if (!newReply.trim() || !user || !property || isSendingReply) return;
 
-    const targetTenant = activeTenants?.[0];
+    // Use either the filtered tenantId from URL or the first available active tenant
+    const tenantIdParam = searchParams.get('tenantId');
+    const targetTenant = tenantIdParam 
+        ? activeTenants?.find(t => t.id === tenantIdParam)
+        : activeTenants?.[0];
+
     const targetTenantId = targetTenant?.id;
     const targetTenantUid = targetTenant?.userId || '';
     const targetTenantEmail = targetTenant?.email || '';
@@ -270,6 +283,10 @@ export default function PropertyDetailPage() {
 
   const propertyAddressTitle = [property.address.nameOrNumber, property.address.street].filter(Boolean).join(', ');
   const propertyAddressSubtitle = [property.address.city, property.address.county, property.address.postcode].filter(Boolean).join(', ');
+
+  const filteredTenantName = searchParams.get('tenantId') 
+    ? activeTenants?.find(t => t.id === searchParams.get('tenantId'))?.name 
+    : null;
 
   return (
     <>
@@ -378,17 +395,29 @@ export default function PropertyDetailPage() {
                 </TabsContent>
                 <TabsContent value="messages" className="pt-4 space-y-4">
                     <Card className="shadow-lg border-none overflow-hidden flex flex-col h-[calc(100vh-12rem)] min-h-[500px]">
-                        <CardHeader className="bg-muted/30 border-b py-4 px-6 flex flex-row items-center justify-between shrink-0">
+                        <CardHeader className="bg-muted/30 border-b py-4 px-6 flex flex-col sm:flex-row sm:items-center justify-between gap-4 shrink-0">
                             <div className="flex items-center gap-3">
                                 <div className="h-10 w-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-md">
                                     <Building2 className="h-5 w-5" />
                                 </div>
                                 <div className="text-left">
                                     <CardTitle className="text-sm font-bold">Secure Message History</CardTitle>
-                                    <p className="text-[9px] text-green-600 font-bold uppercase tracking-widest">Encrypted communication audit</p>
+                                    <div className="flex items-center gap-2 mt-0.5">
+                                        <p className="text-[9px] text-green-600 font-bold uppercase tracking-widest">Encrypted communication audit</p>
+                                        {filteredTenantName && (
+                                            <Badge variant="outline" className="h-4 py-0 text-[8px] border-primary/20 bg-primary/5 gap-1 font-bold uppercase">
+                                                <Users className="h-2 w-2" /> {filteredTenantName}
+                                            </Badge>
+                                        )}
+                                    </div>
                                 </div>
                             </div>
                             <div className='flex items-center gap-2'>
+                                {searchParams.get('tenantId') && (
+                                    <Button variant="ghost" size="sm" asChild className="font-bold uppercase tracking-widest text-[8px] h-7 px-3">
+                                        <Link href={`/dashboard/properties/${property.id}?tab=messages`}>Clear Thread Filter</Link>
+                                    </Button>
+                                )}
                                 <Button variant="outline" size="sm" onClick={scrollToTop} className="font-bold uppercase tracking-widest text-[8px] h-7 px-3 border-2">Full History</Button>
                                 <Badge variant="outline" className="h-6 text-[8px] uppercase font-bold tracking-widest bg-background border-2 shadow-sm px-3">Sync Online</Badge>
                             </div>
@@ -404,7 +433,7 @@ export default function PropertyDetailPage() {
                                             <AlertCircle className="h-12 w-12 text-destructive/20 mx-auto mb-4" />
                                             <p className="text-sm font-bold text-destructive">Sync Standby</p>
                                             <p className="text-xs text-muted-foreground mt-1 max-w-[240px] mx-auto font-medium">Establishing high-performance audit trail indexes.</p>
-                                            <Button variant="outline" className="mt-6 h-9" onClick={() => window.location.reload()}><RefreshCw className="mr-2 h-3 w-3" /> Retry Sync</Button>
+                                            <Button variant="outline" className="mt-6 h-9" onClick={() => window.location.reload()}><RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Sync</Button>
                                         </div>
                                     ) : !messages?.length ? (
                                         <div className="py-20 text-center px-10 border-2 border-dashed rounded-[2rem] bg-muted/10 mx-4">
@@ -452,7 +481,7 @@ export default function PropertyDetailPage() {
                         <CardFooter className="p-4 border-t bg-background shrink-0">
                             <form onSubmit={handleSendReply} className="flex w-full gap-2">
                                 <Input 
-                                    placeholder="Type a response to the resident hub..." 
+                                    placeholder={filteredTenantName ? `Message ${filteredTenantName}...` : "Type a response to the resident hub..."} 
                                     value={newReply}
                                     onChange={(e) => setNewReply(e.target.value)}
                                     className="flex-1 rounded-xl h-11 bg-muted/20 border-2"
