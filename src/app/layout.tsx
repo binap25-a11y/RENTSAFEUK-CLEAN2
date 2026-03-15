@@ -5,7 +5,7 @@ import { FirebaseClientProvider } from '@/firebase/client-provider';
 
 export const metadata: Metadata = {
   title: 'RentSafeUK',
-  description: 'Property Management App',
+  description: 'Professional UK Property Management App',
   appleWebApp: {
     capable: true,
     statusBarStyle: 'default',
@@ -13,6 +13,10 @@ export const metadata: Metadata = {
   },
   formatDetection: {
     telephone: false,
+  },
+  icons: {
+    icon: 'https://placehold.co/32x32/A7D1AB/ffffff/png?text=RS',
+    apple: 'https://placehold.co/180x180/A7D1AB/ffffff/png?text=RS',
   },
 };
 
