@@ -1,6 +1,6 @@
 'use client';
 
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import Link from 'next/link';
 import {
   Card,
@@ -110,6 +110,21 @@ export default function MaintenanceLoggedPage() {
   const [logToCancel, setLogToCancel] = useState<MaintenanceLog | null>(null);
   const [logToDelete, setLogToDelete] = useState<MaintenanceLog | null>(null);
 
+  /**
+   * INTERACTION RECOVERY
+   * Proactively resets body pointer events if a modal closing doesn't trigger correctly.
+   */
+  useEffect(() => {
+    const cleanup = () => {
+      document.body.style.pointerEvents = '';
+      document.body.style.overflow = '';
+    };
+    if (!logToCancel && !logToDelete) {
+      const timeout = setTimeout(cleanup, 150);
+      return () => clearTimeout(timeout);
+    }
+  }, [logToCancel, logToDelete]);
+
   // 1. Fetch properties using flat root collection
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
@@ -169,18 +184,26 @@ export default function MaintenanceLoggedPage() {
 
   const handleCancelConfirm = async () => {
     if (!firestore || !logToCancel || !user) return;
+    const id = logToCancel.id;
+    setLogToCancel(null); // Immediate state clear
     try {
-      await updateDoc(doc(firestore, 'repairs', logToCancel.id), { status: 'Cancelled' });
+      await updateDoc(doc(firestore, 'repairs', id), { status: 'Cancelled' });
       toast({ title: 'Log Cancelled' });
-    } catch (error) { toast({ variant: 'destructive', title: 'Update Failed' }); } finally { setLogToCancel(null); }
+    } catch (error) { 
+        toast({ variant: 'destructive', title: 'Update Failed' }); 
+    }
   };
   
   const handleDeleteConfirm = async () => {
     if (!firestore || !logToDelete || !user) return;
+    const id = logToDelete.id;
+    setLogToDelete(null); // Immediate state clear to unlock UI
     try {
-      await deleteDoc(doc(firestore, 'repairs', logToDelete.id));
+      await deleteDoc(doc(firestore, 'repairs', id));
       toast({ title: 'Log Deleted' });
-    } catch (error) { toast({ variant: 'destructive', title: 'Delete Failed' }); } finally { setLogToDelete(null); }
+    } catch (error) { 
+        toast({ variant: 'destructive', title: 'Delete Failed' }); 
+    }
   };
 
   const getPriorityVariant = (priority: string) => {

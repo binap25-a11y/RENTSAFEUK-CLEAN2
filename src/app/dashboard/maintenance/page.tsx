@@ -186,7 +186,7 @@ function MaintenanceFormContent() {
 
   const matchedContractorId = useMemo(() => {
       if (!contractors || !watchContractorName || !watchContractorPhone) return "";
-      return contractors.find(c => c.id === matchedContractorId)?.id || "";
+      return contractors.find(c => c.name === watchContractorName && c.phone === watchContractorPhone)?.id || "";
   }, [contractors, watchContractorName, watchContractorPhone]);
 
   async function handleFormSubmit(data: MaintenanceFormValues) {
@@ -370,7 +370,10 @@ function MaintenanceFormContent() {
                                   className="h-11 bg-background" 
                                   {...field}
                                   value={field.value === 0 ? '' : field.value}
-                                  onChange={(e) => field.onChange(e.target.value === '' ? '' : Number(e.target.value))}
+                                  onChange={(e) => {
+                                      const val = e.target.value;
+                                      field.onChange(val === '' ? 0 : Number(val));
+                                  }}
                               />
                               </FormControl>
                               <FormDescription className="text-[10px]">Will be reflected in portfolio financials. Must be 0 or greater.</FormDescription>

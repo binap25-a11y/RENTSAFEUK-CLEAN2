@@ -11,7 +11,7 @@ import { format } from 'date-fns';
 import { useDoc, useFirestore, useMemoFirebase, useUser } from '@/firebase';
 import { doc, updateDoc, deleteDoc } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import {
   AlertDialog,
   AlertDialogAction,
@@ -37,6 +37,7 @@ interface MaintenanceLog {
     contractorName?: string;
     contractorPhone?: string;
     scheduledDate?: any;
+    expectedCost?: number;
     estimatedCost?: number;
     photoUrls?: string[];
     notes?: string;
@@ -77,6 +78,21 @@ export default function MaintenanceDetailPage() {
   const propertyId = searchParams.get('propertyId');
   const firestore = useFirestore();
 
+  /**
+   * INTERACTION RECOVERY
+   * Resets body styles if modal transitions get stuck.
+   */
+  useEffect(() => {
+    const cleanup = () => {
+      document.body.style.pointerEvents = '';
+      document.body.style.overflow = '';
+    };
+    if (!isCancelDialogOpen && !isDeleteDialogOpen) {
+      const timeout = setTimeout(cleanup, 150);
+      return () => clearTimeout(timeout);
+    }
+  }, [isCancelDialogOpen, isDeleteDialogOpen]);
+
   const maintenanceLogRef = useMemoFirebase(() => {
     if (!firestore || !id || !user) return null;
     return doc(firestore, 'repairs', id);
@@ -92,6 +108,7 @@ export default function MaintenanceDetailPage() {
   
   const handleCancelConfirm = async () => {
     if (!maintenanceLogRef) return;
+    setIsCancelDialogOpen(false); // Close immediately
     try {
       await updateDoc(maintenanceLogRef, { status: 'Cancelled' });
       toast({ title: 'Log Cancelled', description: 'The maintenance log has been marked as cancelled.' });
@@ -99,13 +116,12 @@ export default function MaintenanceDetailPage() {
     } catch (e) {
       console.error('Error cancelling log:', e);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not cancel the log. Please try again.' });
-    } finally {
-      setIsCancelDialogOpen(false);
     }
   };
 
   const handleDeleteConfirm = async () => {
     if (!maintenanceLogRef) return;
+    setIsDeleteDialogOpen(false); // Close immediately to release UI
     try {
       await deleteDoc(maintenanceLogRef);
       toast({ title: 'Log Deleted', description: 'The maintenance log has been permanently removed.' });
@@ -113,8 +129,6 @@ export default function MaintenanceDetailPage() {
     } catch (e) {
       console.error('Error deleting log:', e);
       toast({ variant: 'destructive', title: 'Error', description: 'Could not delete the log. Please try again.' });
-    } finally {
-      setIsDeleteDialogOpen(false);
     }
   };
 
@@ -197,7 +211,7 @@ export default function MaintenanceDetailPage() {
                         </DropdownMenuItem>
                     )}
                     <DropdownMenuSeparator />
-                    <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive focus:text-destructive focus:bg-destructive/10">
+                    <DropdownMenuItem onClick={() => setIsDeleteDialogOpen(true)} className="text-destructive font-bold">
                         <Trash2 className="mr-2 h-4 w-4" /> Delete Permanently
                     </DropdownMenuItem>
                 </DropdownMenuContent>
@@ -317,12 +331,12 @@ export default function MaintenanceDetailPage() {
                                 </div>
                             </div>
                         )}
-                        {maintenanceLog.estimatedCost && (
+                        {(maintenanceLog.expectedCost || maintenanceLog.estimatedCost) && (
                             <div className="flex items-start gap-3">
                                 <Banknote className="h-5 w-5 text-muted-foreground flex-shrink-0 mt-1" />
                                 <div>
-                                    <p className="text-sm font-medium">Estimated Cost</p>
-                                    <p className="text-sm text-muted-foreground">£{maintenanceLog.estimatedCost.toFixed(2)}</p>
+                                    <p className="text-sm font-medium">Expected Cost</p>
+                                    <p className="text-sm text-muted-foreground">£{(maintenanceLog.expectedCost ?? maintenanceLog.estimatedCost ?? 0).toFixed(2)}</p>
                                 </div>
                             </div>
                         )}
@@ -340,7 +354,7 @@ export default function MaintenanceDetailPage() {
           <AlertDialogHeader>
             <AlertDialogTitle>Are you sure you want to cancel this log?</AlertDialogTitle>
             <AlertDialogDescription>
-              This will mark the maintenance log as 'Cancelled'. This action can be undone by editing the log later.
+              This will mark the maintenance log as 'Cancelled'.
             </AlertDialogDescription>
           </AlertDialogHeader>
           <AlertDialogFooter>
