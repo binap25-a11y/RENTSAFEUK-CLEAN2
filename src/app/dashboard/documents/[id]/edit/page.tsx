@@ -99,6 +99,9 @@ export default function EditDocumentPage() {
 
   const { data: documentRecord, isLoading } = useDoc<DocumentRecord>(docRef);
 
+  // REACTIVE KEY: Ensures selection is remembered and correctly displayed upon record load
+  const dataKey = documentRecord ? `registry-loaded-${documentRecord.documentType}` : 'registry-pending';
+
   useEffect(() => {
     if (documentRecord) {
       form.reset({
@@ -139,6 +142,9 @@ export default function EditDocumentPage() {
       };
 
       await updateDoc(docRef, JSON.parse(JSON.stringify(updateData)));
+      
+      // PERSISTENCE HANDSHAKE: Avoid repeated selection in future sessions
+      localStorage.setItem('last_doc_type', data.documentType);
       
       toast({ title: 'Document Updated', description: 'Changes have been synchronized.' });
       router.push('/dashboard/documents');
@@ -190,8 +196,8 @@ export default function EditDocumentPage() {
                   render={({ field }) => (
                   <FormItem>
                       <FormLabel className="font-bold">Document Type</FormLabel>
-                      <Select onValueChange={field.onChange} value={field.value}>
-                      <FormControl><SelectTrigger className="h-11"><SelectValue /></SelectTrigger></FormControl>
+                      <Select key={dataKey} onValueChange={field.onChange} value={field.value}>
+                      <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select document type" /></SelectTrigger></FormControl>
                       <SelectContent>
                           {[
                              'Tenancy Agreement', 'Inventory', 'Gas Safety Certificate', 'Electrical Certificate', 'EPC', 'Insurance', 'Deposit Protection', 'Licence', 'Correspondence', 'Invoice'

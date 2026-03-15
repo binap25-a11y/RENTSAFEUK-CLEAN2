@@ -87,8 +87,8 @@ export default function UploadDocumentPage() {
     resolver: zodResolver(documentSchema),
     defaultValues: {
         title: '',
-        propertyId: '',
-        documentType: '',
+        propertyId: typeof window !== 'undefined' ? (localStorage.getItem('last_doc_prop') || '') : '',
+        documentType: typeof window !== 'undefined' ? (localStorage.getItem('last_doc_type') || '') : '',
         notes: '',
         expiryDate: '',
         sharedWithTenant: false,
@@ -156,6 +156,10 @@ export default function UploadDocumentPage() {
 
       await addDoc(documentsCollection, dataToSave);
       
+      // PERSISTENCE HANDSHAKE: Avoid repeated selection for multi-document audits
+      localStorage.setItem('last_doc_prop', data.propertyId);
+      localStorage.setItem('last_doc_type', data.documentType);
+
       toast({ title: 'Document Logged', description: 'The record and file have been saved successfully.' });
       router.push('/dashboard/documents');
     } catch (error) {
