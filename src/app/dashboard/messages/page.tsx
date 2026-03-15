@@ -66,8 +66,8 @@ import {
 
 /**
  * @fileOverview Communication Hub
- * Reactive chronological list of all resident conversations.
- * Deletions and replies synchronize live without page refreshes.
+ * Live chronological list of all resident conversations.
+ * Optimised for immediate reactivity and zero-freeze interactions.
  */
 
 interface Message {
@@ -139,7 +139,7 @@ export default function CommunicationHubPage() {
     return map;
   }, [properties]);
 
-  // 4. Fetch tenants to resolve resident names correctly
+  // 4. Fetch tenants to resolve resident names
   const tenantsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
@@ -157,7 +157,7 @@ export default function CommunicationHubPage() {
     return map;
   }, [tenants]);
 
-  // Sort and filter messages
+  // Sort messages in-memory for immediate reactivity
   const allMessages = useMemo(() => {
     if (!rawMessages) return [];
     return [...rawMessages].sort((a, b) => {
@@ -188,10 +188,11 @@ export default function CommunicationHubPage() {
   const handleDeleteConfirm = () => {
     if (!firestore || !messageToDelete) return;
     const msgRef = doc(firestore, 'messages', messageToDelete.id);
-    // Reactive Deletion: useCollection will auto-update UI when doc is removed
+    
+    // Non-blocking Deletion: UI updates instantly via useCollection
     deleteDocumentNonBlocking(msgRef);
-    toast({ title: 'Message Deleted' });
     setMessageToDelete(null);
+    toast({ title: 'Message Removed' });
   };
 
   const handleSendReply = async () => {
@@ -221,7 +222,7 @@ export default function CommunicationHubPage() {
         setReplyContent('');
         setReplyingTo(null);
     } catch (err) {
-        console.error("Reply failure:", err);
+        console.error("Reply failed:", err);
         toast({ variant: 'destructive', title: 'Transmission Failed' });
     } finally {
         setIsSendingReply(false);
@@ -239,17 +240,17 @@ export default function CommunicationHubPage() {
                 <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Communication Hub</h1>
             </div>
             <Button variant="ghost" size="sm" className="font-bold uppercase tracking-widest text-[9px] text-primary" onClick={() => window.location.reload()}>
-                <RefreshCw className="h-3 w-3 mr-1.5" /> Sync Registry
+                <RefreshCw className="h-3 w-3 mr-1.5" /> Force Registry Sync
             </Button>
         </div>
-        <p className="text-muted-foreground font-medium text-lg ml-1">Professional hub for all resident and asset interactions.</p>
+        <p className="text-muted-foreground font-medium text-lg ml-1">Live management hub for all resident and asset interactions.</p>
       </div>
 
       <div className="flex items-center justify-between gap-4 px-1">
           <div className="relative w-full max-w-md">
               <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
               <Input 
-                placeholder="Search resident, content or address..." 
+                placeholder="Search hub registry..." 
                 className="pl-10 h-12 bg-card border-muted rounded-2xl shadow-sm focus-visible:ring-primary" 
                 value={searchTerm} 
                 onChange={e => setSearchTerm(e.target.value)} 
@@ -265,30 +266,22 @@ export default function CommunicationHubPage() {
       {isLoadingMessages ? (
         <div className="flex flex-col justify-center items-center h-64 gap-4">
             <Loader2 className="h-10 w-10 animate-spin text-primary" />
-            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">Syncing Hub Registry...</p>
-        </div>
-      ) : error ? (
-        <div className="py-20 text-center px-10 border-2 border-dashed border-destructive/20 rounded-[2rem] bg-destructive/5">
-            <AlertCircle className="h-12 w-12 text-destructive/20 mx-auto mb-4" />
-            <p className="text-sm font-bold text-destructive">Hub Connection Interrupted</p>
-            <Button variant="outline" className="mt-6 h-9" onClick={() => window.location.reload()}>
-                <RefreshCw className="mr-2 h-3.5 w-3.5" /> Force Hub Sync
-            </Button>
+            <p className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground animate-pulse text-center">Syncing Registry...</p>
         </div>
       ) : filteredMessages.length === 0 ? (
         <div className="text-center py-32 border-2 border-dashed rounded-[3rem] bg-muted/5">
             <div className="p-6 rounded-full bg-background shadow-xl w-fit mx-auto mb-6">
                 <MessageSquare className="h-12 w-12 text-primary/10" />
             </div>
-            <h3 className="text-xl font-bold">No Records Found</h3>
-            <p className="text-muted-foreground mt-2 max-w-xs mx-auto">Communication records will appear here once residents interact with their hubs.</p>
+            <h3 className="text-xl font-bold">Registry Standby</h3>
+            <p className="text-muted-foreground mt-2 max-w-xs mx-auto">No communication records found matching your search.</p>
         </div>
       ) : (
         <div className="grid gap-4">
             {filteredMessages.map((msg) => {
                 const isLandlord = msg.senderId === user?.uid;
                 const isUnread = !isLandlord && msg.read !== true;
-                const propertyAddress = propertyMap[msg.propertyId] || 'Assigned Property';
+                const propertyAddress = propertyMap[msg.propertyId] || 'Assigned Asset';
                 const residentName = tenantNameMap[msg.tenantId] || msg.senderName || 'Resident';
                 
                 return (
@@ -345,7 +338,7 @@ export default function CommunicationHubPage() {
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem asChild className="cursor-pointer">
                                                     <Link href={`/dashboard/properties/${msg.propertyId}?tab=messages`}>
-                                                        <MessageSquare className="mr-2 h-4 w-4" /> Full Thread Audit
+                                                        <MessageSquare className="mr-2 h-4 w-4" /> View Full Thread
                                                     </Link>
                                                 </DropdownMenuItem>
                                                 <DropdownMenuItem onClick={() => setMessageToDelete(msg)} className="text-destructive font-bold cursor-pointer">
@@ -355,7 +348,7 @@ export default function CommunicationHubPage() {
                                         </DropdownMenu>
                                     </div>
                                 </div>
-                                <div className="bg-muted/30 p-3 rounded-xl border border-muted mb-3 cursor-pointer" onClick={() => setReplyingTo(msg)}>
+                                <div className="bg-muted/30 p-3 rounded-xl border border-muted mb-3 cursor-pointer hover:bg-muted/40 transition-colors" onClick={() => setReplyingTo(msg)}>
                                     <p className={cn("text-sm leading-relaxed", isUnread ? "text-foreground font-medium" : "text-muted-foreground")}>
                                         "{msg.content}"
                                     </p>
@@ -363,7 +356,7 @@ export default function CommunicationHubPage() {
                                 <div className="flex items-center gap-3">
                                     <Link href={`/dashboard/properties/${msg.propertyId}`}>
                                         <Badge variant="outline" className="text-[8px] uppercase font-bold tracking-widest bg-background py-0 h-5 border-primary/20 hover:bg-primary/5 transition-colors">
-                                            <Home className="h-2.5 w-2.5 mr-1" /> Open Asset Hub
+                                            <Home className="h-2.5 w-2.5 mr-1" /> Open Property Hub
                                         </Badge>
                                     </Link>
                                     {!isLandlord && (
@@ -383,21 +376,21 @@ export default function CommunicationHubPage() {
       <div className="p-6 rounded-2xl bg-muted/30 border border-dashed flex items-center gap-4 text-left">
           <ShieldCheck className="h-10 w-10 text-primary opacity-20 shrink-0" />
           <div className="space-y-1">
-              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Chronological Hub Policy</p>
-              <p className="text-[11px] text-muted-foreground/70 leading-relaxed font-medium">This hub serves as a definitive record of all communications. Property associations and resident identities are chronologically mapped for management security.</p>
+              <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Reactive Registry Handshake</p>
+              <p className="text-[11px] text-muted-foreground/70 leading-relaxed font-medium">All interactions are synchronized live with the secure management ledger. Deletions and updates reflect instantly across the platform without page refreshes.</p>
           </div>
       </div>
 
       {/* Reply Dialog */}
       <Dialog open={!!replyingTo} onOpenChange={(open) => !open && setReplyingTo(null)}>
         <DialogContent className="max-w-lg text-left overflow-hidden rounded-2xl border-none shadow-2xl">
-            <DialogHeader className="bg-primary/5 -mx-6 -mt-6 p-6 border-b border-primary/10">
+            <DialogHeader className="bg-primary/5 -mx-6 -mt-6 p-6 border-b border-primary/10 text-left">
                 <DialogTitle className="flex items-center gap-2">
                     <Reply className="h-5 w-5 text-primary" />
                     Send Reply
                 </DialogTitle>
                 <DialogDescription className="font-medium text-primary/60">
-                    Responding to {tenantNameMap[replyingTo?.tenantId || ''] || replyingTo?.senderName} regarding {propertyMap[replyingTo?.propertyId || ''] || 'Property'}
+                    Responding to {tenantNameMap[replyingTo?.tenantId || ''] || replyingTo?.senderName} regarding {propertyMap[replyingTo?.propertyId || ''] || 'Asset'}
                 </DialogDescription>
             </DialogHeader>
             <div className="py-6 space-y-6">
@@ -405,9 +398,9 @@ export default function CommunicationHubPage() {
                     "{replyingTo?.content}"
                 </div>
                 <div className="space-y-3">
-                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground px-1">Reply Content</p>
+                    <p className="text-[10px] font-bold uppercase tracking-[0.2em] text-muted-foreground px-1">Professional Response</p>
                     <Textarea 
-                        placeholder="Type your professional response..." 
+                        placeholder="Type your response to the resident..." 
                         rows={5}
                         className="resize-none rounded-xl border-2 focus-visible:ring-primary h-32"
                         value={replyContent}
@@ -418,7 +411,7 @@ export default function CommunicationHubPage() {
             <DialogFooter className="bg-muted/5 -mx-6 -mb-6 p-6 border-t flex items-center justify-between">
                 <div className="hidden sm:flex items-center gap-2 text-[10px] text-muted-foreground font-bold uppercase">
                     <Clock className="h-3 w-3" />
-                    Hub record will be created
+                    Registry sync live
                 </div>
                 <div className="flex gap-2 w-full sm:w-auto">
                     <Button variant="ghost" onClick={() => setReplyingTo(null)} className="font-bold">Cancel</Button>
@@ -433,18 +426,18 @@ export default function CommunicationHubPage() {
 
       {/* Delete Confirmation */}
       <AlertDialog open={!!messageToDelete} onOpenChange={(open) => !open && setMessageToDelete(null)}>
-        <AlertDialogContent className="rounded-2xl border-none shadow-2xl">
+        <AlertDialogContent className="rounded-2xl border-none shadow-2xl text-left">
             <AlertDialogHeader className="text-left">
                 <div className="p-4 rounded-full bg-destructive/10 w-fit mx-auto mb-4">
                     <Trash2 className="h-8 w-8 text-destructive" />
                 </div>
-                <AlertDialogTitle className="text-xl font-headline text-center">Delete Hub Record?</AlertDialogTitle>
+                <AlertDialogTitle className="text-xl font-headline text-center">Delete Registry Record?</AlertDialogTitle>
                 <AlertDialogDescription className="text-center font-medium">
-                    This will permanently remove this message from the chronological hub history. This action cannot be reversed and may affect your management audit trail.
+                    This will permanently remove this record from the chronological communication history. This action reflects instantly and cannot be undone.
                 </AlertDialogDescription>
             </AlertDialogHeader>
             <AlertDialogFooter className="mt-6 gap-3 flex-col-reverse sm:flex-row">
-                <AlertDialogCancel className="rounded-xl font-bold uppercase tracking-widest text-[10px] h-12 flex-1">Cancel</AlertDialogCancel>
+                <AlertDialogCancel className="rounded-xl font-bold uppercase tracking-widest text-[10px] h-12 flex-1 border-2">Cancel</AlertDialogCancel>
                 <AlertDialogAction onClick={handleDeleteConfirm} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-xl font-bold uppercase tracking-widest text-[10px] h-12 flex-1 shadow-lg">
                     Confirm Deletion
                 </AlertDialogAction>
