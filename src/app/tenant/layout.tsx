@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -32,7 +33,6 @@ import { UserNav } from '@/components/dashboard/user-nav';
 /**
  * @fileOverview Resident Portal Layout
  * Handles mounting states and secure role verification for verified residents.
- * Expanded to max-w-7xl for better visibility of the chat and records.
  */
 
 export default function TenantLayout({ children }: { children: React.ReactNode }) {
@@ -61,7 +61,7 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
   }
 
   const menuItems = [
-    { href: '/tenant/dashboard', label: 'My Home', icon: LayoutDashboard },
+    { href: '/tenant/dashboard', label: 'My Home', icon: Home },
     { href: '/tenant/maintenance', label: 'Repairs', icon: Wrench },
     { href: '/tenant/documents', label: 'Documents', icon: Files },
     { href: '/tenant/messages', label: 'Messages', icon: MessageSquare },
@@ -105,7 +105,7 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
         <header className="sticky top-0 z-30 flex h-14 items-center justify-between border-b bg-background/95 backdrop-blur px-4 lg:px-6">
           <div className="flex items-center gap-4">
             <SidebarTrigger className="md:hidden" />
-            <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground hidden sm:block text-left">Tenant Mode Active</h2>
+            <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground hidden sm:block text-left">RentSafeUK Resident Portal</h2>
           </div>
           <UserNav />
         </header>
