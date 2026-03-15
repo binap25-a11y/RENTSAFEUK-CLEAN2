@@ -29,8 +29,7 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "landlordId", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "DESCENDING" },
-        { "fieldPath": "__name__", "order": "DESCENDING" }
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
       ]
     },
     {
@@ -39,8 +38,7 @@
       "fields": [
         { "fieldPath": "propertyId", "order": "ASCENDING" },
         { "fieldPath": "landlordId", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
+        { "fieldPath": "timestamp", "order": "ASCENDING" }
       ]
     },
     {
@@ -50,8 +48,7 @@
         { "fieldPath": "propertyId", "order": "ASCENDING" },
         { "fieldPath": "tenantId", "order": "ASCENDING" },
         { "fieldPath": "tenantEmail", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
+        { "fieldPath": "timestamp", "order": "ASCENDING" }
       ]
     },
     {
@@ -59,8 +56,7 @@
       "queryScope": "COLLECTION_GROUP",
       "fields": [
         { "fieldPath": "landlordId", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "DESCENDING" },
-        { "fieldPath": "__name__", "order": "DESCENDING" }
+        { "fieldPath": "timestamp", "order": "DESCENDING" }
       ]
     },
     {
@@ -70,8 +66,7 @@
         { "fieldPath": "propertyId", "order": "ASCENDING" },
         { "fieldPath": "tenantId", "order": "ASCENDING" },
         { "fieldPath": "tenantEmail", "order": "ASCENDING" },
-        { "fieldPath": "timestamp", "order": "ASCENDING" },
-        { "fieldPath": "__name__", "order": "ASCENDING" }
+        { "fieldPath": "timestamp", "order": "ASCENDING" }
       ]
     },
     {
@@ -79,7 +74,8 @@
       "queryScope": "COLLECTION",
       "fields": [
         { "fieldPath": "landlordId", "order": "ASCENDING" },
-        { "fieldPath": "status", "order": "ASCENDING" }
+        { "fieldPath": "status", "order": "ASCENDING" },
+        { "fieldPath": "reportedDate", "order": "DESCENDING" }
       ]
     },
     {
