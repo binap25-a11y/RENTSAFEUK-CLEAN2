@@ -2,7 +2,7 @@
 
 import { useState, useMemo } from 'react';
 import Link from 'next/link';
-import { Card, CardHeader, CardTitle, CardDescription } from '@/components/ui/card';
+import { Card } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { 
@@ -17,10 +17,11 @@ import {
   RefreshCw
 } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
-import { collection, query, where, orderBy, limit } from 'firebase/firestore';
+import { collection, query, where, limit } from 'firebase/firestore';
 import { format } from 'date-fns';
 import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
+import { safeToDate } from '@/lib/date-utils';
 
 /**
  * @fileOverview Communication Registry
@@ -53,30 +54,37 @@ export default function LandlordInboxPage() {
   const firestore = useFirestore();
   const [searchTerm, setSearchTerm] = useState('');
 
-  // Fetch all messages for this landlord to build thread list
+  // Fetch all messages for this landlord
+  // NOTE: Removed orderBy('timestamp') from Firestore query to prevent exclusion of docs missing the field.
+  // We handle sorting in-memory for maximum visibility of legacy/orphaned data.
   const messagesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(
         collection(firestore, 'messages'),
         where('landlordId', '==', user.uid),
-        orderBy('timestamp', 'desc'),
         limit(500)
     );
   }, [user, firestore]);
 
-  const { data: allMessages, isLoading, error } = useCollection<Message>(messagesQuery);
+  const { data: rawMessages, isLoading, error } = useCollection<Message>(messagesQuery);
 
   // Group messages into threads and calculate unread status
   const threads = useMemo(() => {
-    if (!allMessages) return [];
+    if (!rawMessages) return [];
     
+    // Sort in memory so that documents missing timestamps are still processed
+    const allMessages = [...rawMessages].sort((a, b) => {
+        const dateA = safeToDate(a.timestamp) || new Date(0);
+        const dateB = safeToDate(b.timestamp) || new Date(0);
+        return dateB.getTime() - dateA.getTime();
+    });
+
     const threadMap = new Map<string, Thread>();
     
     allMessages.forEach(msg => {
-        // Robust Key: Use property/tenant link or fallback to sender identity if links are missing
-        const threadKey = (msg.propertyId && msg.tenantId) 
-            ? `${msg.propertyId}-${msg.tenantId}` 
-            : `direct-${msg.senderId === user?.uid ? msg.tenantId : msg.senderId}`;
+        // Robust Key: Prioritize property link, then tenant identity, then sender identity
+        const identityKey = msg.tenantId || msg.senderId;
+        const threadKey = msg.propertyId ? `${msg.propertyId}-${identityKey}` : `direct-${identityKey}`;
             
         const isIncomingUnread = msg.senderId !== user?.uid && msg.read !== true;
 
@@ -90,6 +98,7 @@ export default function LandlordInboxPage() {
             });
         } else {
             const thread = threadMap.get(threadKey)!;
+            // Since messages are sorted newest first, the first one encountered is the 'lastMessage'
             if (isIncomingUnread) {
                 thread.unreadCount += 1;
             }
@@ -97,7 +106,7 @@ export default function LandlordInboxPage() {
     });
     
     return Array.from(threadMap.values());
-  }, [allMessages, user]);
+  }, [rawMessages, user]);
 
   const filteredThreads = useMemo(() => {
     if (!searchTerm) return threads;
@@ -120,14 +129,21 @@ export default function LandlordInboxPage() {
         <p className="text-muted-foreground font-medium text-lg ml-1">Central audit of all resident conversations across your portfolio.</p>
       </div>
 
-      <div className="relative w-full max-w-md mx-1">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input 
-            placeholder="Search by name or message content..." 
-            className="pl-10 h-12 bg-card border-muted rounded-2xl shadow-sm focus-visible:ring-primary" 
-            value={searchTerm} 
-            onChange={e => setSearchTerm(e.target.value)} 
-          />
+      <div className="flex items-center justify-between gap-4 px-1">
+          <div className="relative w-full max-w-md">
+              <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+              <Input 
+                placeholder="Search by name or message content..." 
+                className="pl-10 h-12 bg-card border-muted rounded-2xl shadow-sm focus-visible:ring-primary" 
+                value={searchTerm} 
+                onChange={e => setSearchTerm(e.target.value)} 
+              />
+          </div>
+          <div className="hidden sm:block">
+              <Badge variant="outline" className="h-12 px-4 rounded-2xl border-2 font-bold uppercase tracking-widest text-[10px] bg-background">
+                  {rawMessages?.length || 0} Total Messages
+              </Badge>
+          </div>
       </div>
 
       {isLoading ? (
@@ -141,7 +157,6 @@ export default function LandlordInboxPage() {
             <p className="text-sm font-bold text-destructive">Sync Standby</p>
             <p className="text-xs text-muted-foreground mt-1 max-w-[320px] mx-auto font-medium">
                 Indexes are being established or you may have a permission issue. 
-                If this persists, verify your landlord profile is correctly configured.
             </p>
             <Button variant="outline" className="mt-6 h-9" onClick={() => window.location.reload()}>
                 <RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Sync
@@ -158,7 +173,7 @@ export default function LandlordInboxPage() {
       ) : (
         <div className="grid gap-4">
             {filteredThreads.map((thread) => (
-                <Link key={thread.id} href={`/dashboard/properties/${thread.propertyId}?tab=messages`}>
+                <Link key={thread.id} href={thread.propertyId ? `/dashboard/properties/${thread.propertyId}?tab=messages` : '#'}>
                     <Card className="shadow-md border-none overflow-hidden transition-all hover:shadow-xl hover:translate-x-1 group">
                         <div className="flex items-center gap-4 p-5">
                             <div className="relative">
@@ -177,7 +192,7 @@ export default function LandlordInboxPage() {
                                         {thread.lastMessage.senderName}
                                     </p>
                                     <span className="text-[9px] font-bold uppercase tracking-widest text-muted-foreground">
-                                        {thread.lastMessage.timestamp?.seconds ? format(new Date(thread.lastMessage.timestamp.seconds * 1000), 'HH:mm • d MMM') : 'Just now'}
+                                        {safeToDate(thread.lastMessage.timestamp) ? format(safeToDate(thread.lastMessage.timestamp)!, 'HH:mm • d MMM') : 'Recently'}
                                     </span>
                                 </div>
                                 <p className={cn("text-sm line-clamp-1 italic", thread.unreadCount > 0 ? "text-foreground font-bold" : "text-muted-foreground")}>
@@ -185,9 +200,9 @@ export default function LandlordInboxPage() {
                                 </p>
                                 <div className="flex items-center gap-3 mt-2">
                                     <Badge variant="outline" className="text-[8px] uppercase font-bold tracking-widest bg-background py-0 h-5 border-primary/20">
-                                        <Home className="h-2.5 w-2.5 mr-1" /> Linked Asset
+                                        {thread.propertyId ? <><Home className="h-2.5 w-2.5 mr-1" /> Linked Asset</> : 'Direct Contact'}
                                     </Badge>
-                                    <span className="text-[9px] font-bold text-primary truncate max-w-[200px]">Resident Thread Enabled</span>
+                                    <span className="text-[9px] font-bold text-primary truncate max-w-[200px]">Audit Registry Enabled</span>
                                 </div>
                             </div>
                             <ChevronRight className="h-5 w-5 text-muted-foreground opacity-20 group-hover:opacity-100 transition-opacity" />
