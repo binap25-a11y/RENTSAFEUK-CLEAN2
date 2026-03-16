@@ -24,10 +24,10 @@ export const metadata: Metadata = {
   icons: {
     icon: [
       { url: 'https://placehold.co/32x32/A7D1AB/ffffff/png?text=RS', sizes: '32x32' },
-      { url: 'https://placehold.co/192x192/A7D1AB/ffffff/png?text=RS', sizes: '192x192' },
+      { url: 'https://placehold.co/192x192/A7D1AB/ffffff/png?text=RentSafeUK', sizes: '192x192' },
     ],
     apple: [
-      { url: 'https://placehold.co/180x180/A7D1AB/ffffff/png?text=RS', sizes: '180x180' },
+      { url: 'https://placehold.co/180x180/A7D1AB/ffffff/png?text=RentSafeUK', sizes: '180x180' },
     ],
   },
   manifest: '/manifest.webmanifest',

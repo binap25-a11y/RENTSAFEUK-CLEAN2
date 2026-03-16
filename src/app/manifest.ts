@@ -17,28 +17,16 @@ export default function manifest(): MetadataRoute.Manifest {
     theme_color: '#A7D1AB',
     icons: [
       {
-        src: 'https://placehold.co/192x192/A7D1AB/ffffff/png?text=RS',
+        src: 'https://placehold.co/192x192/A7D1AB/ffffff/png?text=RentSafeUK',
         sizes: '192x192',
         type: 'image/png',
-        purpose: 'any',
-      },
-      {
-        src: 'https://placehold.co/192x192/A7D1AB/ffffff/png?text=RS',
-        sizes: '192x192',
-        type: 'image/png',
-        purpose: 'maskable',
+        purpose: 'maskable any',
       },
       {
         src: 'https://placehold.co/512x512/A7D1AB/ffffff/png?text=RentSafeUK',
         sizes: '512x512',
         type: 'image/png',
-        purpose: 'any',
-      },
-      {
-        src: 'https://placehold.co/512x512/A7D1AB/ffffff/png?text=RentSafeUK',
-        sizes: '512x512',
-        type: 'image/png',
-        purpose: 'maskable',
+        purpose: 'maskable any',
       },
     ],
   }

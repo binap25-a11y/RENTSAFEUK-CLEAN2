@@ -93,6 +93,8 @@ export default function EditDocumentPage() {
     resolver: zodResolver(documentSchema),
   });
 
+  const watchType = form.watch('documentType');
+
   const docRef = useMemoFirebase(() => {
     if (!firestore || !user || !id) return null;
     return doc(firestore, 'documents', id);
@@ -106,7 +108,7 @@ export default function EditDocumentPage() {
 
   useEffect(() => {
     if (documentRecord && isMounted) {
-      // PREFERENCE HANDSHAKE: Use session preference only if it was updated during this session
+      // PREFERENCE HANDSHAKE: Prioritize session memory for batch triage
       const sessionPreference = localStorage.getItem('last_doc_type');
       
       form.reset({
@@ -139,7 +141,7 @@ export default function EditDocumentPage() {
         fileUrl = await uploadPropertyDocument(selectedFile, user.uid, propertyId);
       }
 
-      // SUBMISSION MEMORY: Solidify the selection strictly before the sync redirect
+      // SUBMISSION MEMORY: Solidify the selection definitively on save
       localStorage.setItem('last_doc_type', data.documentType);
 
       const updateData = {
@@ -164,8 +166,8 @@ export default function EditDocumentPage() {
   if (isLoading || !isMounted) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!documentRecord) return <div className="text-center py-20 italic">Document record not found.</div>;
 
-  // DYNAMIC KEY: Forces dropdown re-sync when registry data or preferences change
-  const selectKey = `doc-type-selector-${form.getValues('documentType') || 'loading'}`;
+  // DYNAMIC KEY: Forces dropdown re-sync using reactive watch state
+  const selectKey = `doc-type-selector-${watchType || 'loading'}`;
 
   return (
     <div className="max-w-2xl mx-auto space-y-6 text-left">
@@ -219,7 +221,7 @@ export default function EditDocumentPage() {
                           ].map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
                       </SelectContent>
                       </Select>
-                      <FormDescription className="text-[10px]">Your last selection is reactively remembered for the next audit.</FormDescription>
+                      <FormDescription className="text-[10px]">Your selection is reactively remembered for the next audit.</FormDescription>
                       <FormMessage />
                   </FormItem>
                   )}

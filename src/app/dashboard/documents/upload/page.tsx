@@ -105,7 +105,7 @@ export default function UploadDocumentPage() {
     setIsMounted(true);
   }, []);
 
-  // HYDRATION HANDSHAKE: Set default preferences only after client-side mount
+  // HYDRATION HANDSHAKE: Set default preferences strictly after mount
   useEffect(() => {
     if (isMounted && typeof window !== 'undefined') {
       const lastProp = localStorage.getItem('last_doc_prop');
@@ -172,7 +172,7 @@ export default function UploadDocumentPage() {
 
       await addDoc(documentsCollection, dataToSave);
       
-      // PERSISTENCE HANDSHAKE: Definitive save for future audits
+      // PERSISTENCE HANDSHAKE: Solidify for future triage
       localStorage.setItem('last_doc_prop', data.propertyId);
       localStorage.setItem('last_doc_type', data.documentType);
 
@@ -192,7 +192,7 @@ export default function UploadDocumentPage() {
 
   if (!isMounted) return null;
 
-  // DYNAMIC KEYS: Ensure selectors refresh when preferences are loaded
+  // DYNAMIC KEYS: Ensures selectors re-sync based on reactive watch state
   const propKey = `upload-prop-selector-${watchPropId || 'pending'}`;
   const typeKey = `upload-type-selector-${watchType || 'pending'}`;
 
