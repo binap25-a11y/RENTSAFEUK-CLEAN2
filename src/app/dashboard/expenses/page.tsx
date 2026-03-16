@@ -45,7 +45,10 @@ import {
   TrendingUp,
   PieChart,
   ArrowUpRight,
-  ArrowDownRight
+  ArrowDownRight,
+  Clock,
+  ShieldCheck,
+  Calendar
 } from 'lucide-react';
 import { getYear, isAfter, isBefore } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -70,6 +73,7 @@ import autoTable from 'jspdf-autotable';
 import Link from 'next/link';
 import { safeToDate } from '@/lib/date-utils';
 import { Badge } from '@/components/ui/badge';
+import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 
 // UK Tax Year Month Sequence (April to March)
@@ -318,15 +322,15 @@ export default function FinancialsPage() {
   }
 
   return (
-    <div className="flex flex-col gap-6 max-w-6xl mx-auto text-left">
-        <div className="flex flex-col gap-4 max-w-md bg-card p-6 rounded-lg border shadow-sm">
-            <div className="grid w-full gap-1.5">
-                <Label htmlFor="financial-scope-selector" className="text-xs uppercase font-bold text-muted-foreground tracking-widest">Registry View</Label>
+    <div className="flex flex-col gap-6 max-w-6xl mx-auto text-left animate-in fade-in duration-500">
+        <div className="flex flex-col gap-4 max-w-md bg-card p-6 rounded-2xl border shadow-lg ring-1 ring-primary/5">
+            <div className="grid w-full gap-1.5 text-left">
+                <Label htmlFor="financial-scope-selector" className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Registry View</Label>
                 <Select onValueChange={setSelectedPropertyId} value={selectedPropertyId}>
-                    <SelectTrigger id="financial-scope-selector" className="h-11">
+                    <SelectTrigger id="financial-scope-selector" className="h-12 bg-muted/5 rounded-xl border-2">
                         <SelectValue placeholder={isLoadingProperties ? "Syncing..." : "All Properties"} />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="rounded-xl">
                         <SelectItem value="all">Entire Portfolio (Consolidated)</SelectItem>
                         {activeProperties?.map((prop) => (
                           <SelectItem key={prop.id} value={prop.id}>
@@ -336,13 +340,13 @@ export default function FinancialsPage() {
                     </SelectContent>
                 </Select>
             </div>
-            <div className="grid w-full gap-1.5">
-                <Label htmlFor="reporting-year-selector" className="text-xs uppercase font-bold text-muted-foreground tracking-widest">UK Tax Year Cycle (12 Future, 5 Past)</Label>
+            <div className="grid w-full gap-1.5 text-left">
+                <Label htmlFor="reporting-year-selector" className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">UK Tax Year Cycle (12 Future, 5 Past)</Label>
                 <Select onValueChange={(value) => setSelectedTaxYearStart(Number(value))} value={selectedTaxYearStart ? String(selectedTaxYearStart) : ''}>
-                    <SelectTrigger id="reporting-year-selector" className="h-11">
+                    <SelectTrigger id="reporting-year-selector" className="h-12 bg-muted/5 rounded-xl border-2">
                         <SelectValue placeholder="Tax Year" />
                     </SelectTrigger>
-                    <SelectContent>
+                    <SelectContent className="rounded-xl">
                         {Array.from({ length: 18 }, (_, i) => (new Date().getFullYear() + 12) - i).map(year => (
                             <SelectItem key={year} value={String(year)}>{year} / {(year + 1).toString().slice(-2)}</SelectItem>
                         ))}
@@ -352,46 +356,46 @@ export default function FinancialsPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card className="border-none shadow-md overflow-hidden text-left">
-                <div className="h-1 bg-primary w-full" />
-                <CardHeader className="pb-2 px-6"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Gross Expected</CardTitle></CardHeader>
-                <CardContent className='px-6 pb-6'><div className="text-2xl font-bold tracking-tight">{formatCurrency(totalExpectedRent)}</div></CardContent>
+            <Card className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all">
+                <div className="h-1 bg-primary w-full opacity-20 group-hover:opacity-100 transition-opacity" />
+                <CardHeader className="pb-2 px-6"><CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Gross Expected</CardTitle></CardHeader>
+                <CardContent className='px-6 pb-6'><div className="text-2xl font-bold tracking-tight text-foreground">{formatCurrency(totalExpectedRent)}</div></CardContent>
             </Card>
-            <Card className="border-none shadow-md overflow-hidden text-left">
-                <div className="h-1 bg-green-500 w-full" />
-                <CardHeader className="pb-2 px-6"><CardTitle className="text-xs font-bold uppercase tracking-widest text-green-600">Verified Income</CardTitle></CardHeader>
-                <CardContent className='px-6 pb-6'><div className="text-2xl font-bold tracking-tight">{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(totalPaidRent)}</div></CardContent>
+            <Card className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all">
+                <div className="h-1 bg-green-500 w-full opacity-20 group-hover:opacity-100 transition-opacity" />
+                <CardHeader className="pb-2 px-6"><CardTitle className="text-[10px] font-bold uppercase tracking-widest text-green-600">Verified Income</CardTitle></CardHeader>
+                <CardContent className='px-6 pb-6'><div className="text-2xl font-bold tracking-tight text-foreground">{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(totalPaidRent)}</div></CardContent>
             </Card>
-            <Card className="border-none shadow-md overflow-hidden text-left">
-                <div className="h-1 bg-destructive w-full" />
-                <CardHeader className="pb-2 px-6"><CardTitle className="text-xs font-bold uppercase tracking-widest text-destructive">Total Expenses</CardTitle></CardHeader>
-                <CardContent className='px-6 pb-6'><div className="text-2xl font-bold tracking-tight">{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(totalExpenses)}</div></CardContent>
+            <Card className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all">
+                <div className="h-1 bg-destructive w-full opacity-20 group-hover:opacity-100 transition-opacity" />
+                <CardHeader className="pb-2 px-6"><CardTitle className="text-[10px] font-bold uppercase tracking-widest text-destructive">Total Expenses</CardTitle></CardHeader>
+                <CardContent className='px-6 pb-6'><div className="text-2xl font-bold tracking-tight text-foreground">{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(totalExpenses)}</div></CardContent>
             </Card>
-            <Card className="border-none shadow-md overflow-hidden text-left">
-                <div className="h-1 bg-amber-500 w-full" />
-                <CardHeader className="pb-2 px-6"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Taxable Position</CardTitle></CardHeader>
+            <Card className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all">
+                <div className="h-1 bg-amber-500 w-full opacity-20 group-hover:opacity-100 transition-opacity" />
+                <CardHeader className="pb-2 px-6"><CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Taxable Position</CardTitle></CardHeader>
                 <CardContent className='px-6 pb-6'><div className={"text-2xl font-bold tracking-tight " + (netIncome < 0 ? "text-destructive" : "text-primary")}>{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(netIncome)}</div></CardContent>
             </Card>
         </div>
 
         <Tabs defaultValue="expenses" className="pt-4">
-            <TabsList className="bg-muted/50 p-1 h-auto rounded-xl">
-                <TabsTrigger value="expenses" className="font-bold px-6 py-2 rounded-lg text-[10px] uppercase tracking-widest">Expense Tracker</TabsTrigger>
-                <TabsTrigger value="summary" className="font-bold px-6 py-2 rounded-lg text-[10px] uppercase tracking-widest">HMRC Audit</TabsTrigger>
-                <TabsTrigger value="statement" className="font-bold px-6 py-2 rounded-lg text-[10px] uppercase tracking-widest">Rent Ledger</TabsTrigger>
+            <TabsList className="bg-muted/50 p-1 h-auto rounded-[1rem] w-full sm:w-auto overflow-x-auto justify-start sm:justify-center">
+                <TabsTrigger value="expenses" className="font-bold px-8 py-2.5 rounded-lg text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">Expense Tracker</TabsTrigger>
+                <TabsTrigger value="summary" className="font-bold px-8 py-2.5 rounded-lg text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">HMRC Audit</TabsTrigger>
+                <TabsTrigger value="statement" className="font-bold px-8 py-2.5 rounded-lg text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">Rent Ledger</TabsTrigger>
             </TabsList>
-            <TabsContent value="expenses">
+            <TabsContent value="expenses" className="animate-in fade-in slide-in-from-top-2 duration-500">
                 <ExpenseTracker properties={activeProperties || []} selectedPropertyId={selectedPropertyId} />
             </TabsContent>
-            <TabsContent value="summary">
+            <TabsContent value="summary" className="animate-in fade-in slide-in-from-top-2 duration-500">
                 <div className="flex justify-end gap-2 mb-4 pt-4">
-                  <Button onClick={generateHMRCPDF} size="sm" variant="outline" className="font-bold text-[10px] uppercase tracking-widest h-10 px-6 border-primary/20 bg-background shadow-md">
+                  <Button onClick={generateHMRCPDF} size="sm" variant="outline" className="font-bold text-[10px] uppercase tracking-widest h-11 px-8 rounded-xl border-primary/20 bg-background shadow-lg hover:bg-primary/5">
                     <PoundSterling className="mr-2 h-4 w-4 text-primary" /> Export HMRC Tax PDF
                   </Button>
                 </div>
                 <AnnualSummary selectedYear={selectedTaxYearStart || 0} expenses={expenses} repairCosts={repairCosts} isLoadingExpenses={isLoading} />
             </TabsContent>
-            <TabsContent value="statement">
+            <TabsContent value="statement" className="animate-in fade-in slide-in-from-top-2 duration-500">
                 <RentStatement 
                     selectedProperty={selectedProperty} 
                     selectedYear={selectedTaxYearStart || 0} 
@@ -448,53 +452,53 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
   }
 
   return (
-    <Card className="mt-6 border-none shadow-lg overflow-hidden text-left">
-        <CardHeader className="bg-primary/5 border-b px-6">
-            <CardTitle className="text-lg font-headline">Log New Financial Outgoing</CardTitle>
-            <CardDescription>Record an allowable expense for tax reporting.</CardDescription>
+    <Card className="mt-6 border-none shadow-2xl rounded-[2rem] overflow-hidden text-left bg-card">
+        <CardHeader className="bg-primary/5 border-b px-8 py-8">
+            <CardTitle className="text-xl font-headline flex items-center gap-3 text-primary"><PlusCircle className="h-6 w-6" /> Log New Financial Outgoing</CardTitle>
+            <CardDescription className="text-base font-medium">Record an allowable expense for professional tax reporting.</CardDescription>
         </CardHeader>
-        <CardContent className="pt-8 px-6 pb-8">
+        <CardContent className="pt-8 px-8 pb-8">
         <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8">
             <FormField control={form.control} name="propertyId" render={({ field }) => (
                 <FormItem>
-                    <FormLabel className="font-bold">Target Property</FormLabel>
+                    <FormLabel className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground px-1">Target Property</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
-                    <FormControl><SelectTrigger className="h-11 bg-background"><SelectValue placeholder="Select from portfolio" /></SelectTrigger></FormControl>
-                    <SelectContent>{properties.map(p => (<SelectItem key={p.id} value={p.id}>{formatAddress(p.address)}</SelectItem>))}</SelectContent>
+                    <FormControl><SelectTrigger className="h-12 bg-muted/5 border-2 rounded-xl"><SelectValue placeholder="Select from portfolio" /></SelectTrigger></FormControl>
+                    <SelectContent className="rounded-xl">{properties.map(p => (<SelectItem key={p.id} value={p.id} className="rounded-lg">{formatAddress(p.address)}</SelectItem>))}</SelectContent>
                     </Select>
                     <FormMessage />
                 </FormItem>
             )} />
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <FormField control={form.control} name="date" render={({ field }) => (
                     <FormItem>
-                      <FormLabel className="font-bold">Date</FormLabel>
-                      <FormControl><Input type="date" className="h-11" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} /></FormControl>
+                      <FormLabel className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground px-1">Effective Date</FormLabel>
+                      <FormControl><Input type="date" className="h-12 bg-muted/5 border-2 rounded-xl" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} /></FormControl>
                       <FormMessage />
                     </FormItem>
                 )} />
                 <FormField control={form.control} name="expenseType" render={({ field }) => (
                     <FormItem>
-                        <FormLabel className="font-bold">Tax Category</FormLabel>
+                        <FormLabel className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground px-1">Tax Category</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
-                            <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
-                            <SelectContent>{['Repairs and Maintenance','Utilities','Insurance','Mortgage Interest','Cleaning','Gardening','Letting Agent Fees', 'Other'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
+                            <FormControl><SelectTrigger className="h-12 bg-muted/5 border-2 rounded-xl"><SelectValue placeholder="Select grouping" /></SelectTrigger></FormControl>
+                            <SelectContent className="rounded-xl">{['Repairs and Maintenance','Utilities','Insurance','Mortgage Interest','Cleaning','Gardening','Letting Agent Fees', 'Other'].map(t => <SelectItem key={t} value={t} className="rounded-lg">{t}</SelectItem>)}</SelectContent>
                         </Select>
                         <FormMessage />
                     </FormItem>
                 )} />
             </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
                 <FormField control={form.control} name="amount" render={({ field }) => (
-                    <FormItem><FormLabel className="font-bold">Amount (£)</FormLabel><FormControl><Input type="number" step="0.01" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
+                    <FormItem><FormLabel className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground px-1">Transaction Amount (£)</FormLabel><FormControl><Input type="number" step="0.01" className="h-12 bg-muted/5 border-2 rounded-xl font-bold text-lg" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
-                <FormField control={form.control} name="paidBy" render={({ field }) => (<FormItem><FormLabel className="font-bold">Paid By</FormLabel><FormControl><Input className="h-11" {...field} /></FormControl><FormMessage /></FormItem>)} />
+                <FormField control={form.control} name="paidBy" render={({ field }) => (<FormItem><FormLabel className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground px-1">Payer Reference</FormLabel><FormControl><Input className="h-12 bg-muted/5 border-2 rounded-xl" {...field} /></FormControl><FormMessage /></FormItem>)} />
             </div>
-            <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel className="font-bold">Audit Notes</FormLabel><FormControl><Textarea className="rounded-xl min-h-[100px] resize-none" {...field} /></FormControl><FormMessage /></FormItem>)} />
-            <Button type="submit" disabled={isSubmitting} className="w-full font-bold shadow-lg h-11 uppercase tracking-widest text-[10px]">
-                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
-                Log Tax Record
+            <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground px-1">Audit Notes</FormLabel><FormControl><Textarea className="rounded-2xl min-h-[120px] resize-none border-2 bg-muted/5" {...field} /></FormControl><FormMessage /></FormItem>)} />
+            <Button type="submit" disabled={isSubmitting} className="w-full font-bold shadow-2xl h-12 uppercase tracking-widest text-[11px] rounded-xl bg-primary hover:bg-primary/90 transition-all">
+                {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <ShieldCheck className="mr-2 h-4 w-4" />}
+                Sync Tax Record to Ledger
             </Button>
             </form>
         </Form>
@@ -513,17 +517,31 @@ function AnnualSummary({ selectedYear, expenses, repairCosts, isLoadingExpenses 
   }, [expenses, repairCosts]);
 
   return (
-    <Card className="mt-6 border-none shadow-lg overflow-hidden text-left">
-        <CardHeader className="bg-primary/5 border-b border-primary/10 px-6">
-            <CardTitle className="text-lg font-headline">Tax Year Audit: {selectedYear}/{ (selectedYear + 1).toString().slice(-2) }</CardTitle>
-            <CardDescription>Consolidated outgoings by HMRC categories.</CardDescription>
+    <Card className="mt-6 border-none shadow-2xl rounded-[2rem] overflow-hidden text-left bg-card">
+        <CardHeader className="bg-primary/5 border-b border-primary/10 px-8 py-8">
+            <CardTitle className="text-xl font-headline flex items-center gap-3 text-foreground"><History className="h-6 w-6 text-primary" /> Tax Year Audit: {selectedYear}/{ (selectedYear + 1).toString().slice(-2) }</CardTitle>
+            <CardDescription className="text-base font-medium">Verified consolidated outgoings mapped to standard HMRC categories.</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-            {isLoadingExpenses ? (<div className="flex h-48 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>) : expensesByCategory.length === 0 ? (<p className="py-16 text-center text-muted-foreground italic">No tax-allowable outgoings for this period.</p>) : (
-                <Table>
-                    <TableHeader className="bg-muted/50"><TableRow><TableHead className="pl-6 py-4 font-bold uppercase text-[10px]">HMRC Category Grouping</TableHead><TableHead className="text-right pr-6 font-bold uppercase text-[10px]">Total Outgoing</TableHead></TableRow></TableHeader>
-                    <TableBody>{expensesByCategory.map(([name, amount]) => (<TableRow key={name}><TableCell className="font-bold pl-6 py-4">{name}</TableCell><TableCell className="text-right font-bold pr-6">{formatCurrency(amount)}</TableCell></TableRow>))}</TableBody>
-                </Table>
+            {isLoadingExpenses ? (<div className="flex h-64 items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>) : expensesByCategory.length === 0 ? (<div className="py-24 text-center text-muted-foreground italic flex flex-col items-center gap-4"><div className="p-6 rounded-full bg-muted/20"><AlertCircle className="h-10 w-10 opacity-20" /></div><p className="font-bold text-lg">No tax-allowable data detected.</p></div>) : (
+                <div className="overflow-hidden">
+                    <Table>
+                        <TableHeader className="bg-muted/30">
+                            <TableRow>
+                                <TableHead className="pl-8 py-5 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Standard HMRC Category</TableHead>
+                                <TableHead className="text-right pr-8 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Audit Total</TableHead>
+                            </TableRow>
+                        </TableHeader>
+                        <TableBody>
+                            {expensesByCategory.map(([name, amount]) => (
+                                <TableRow key={name} className="hover:bg-primary/[0.02] transition-colors group">
+                                    <TableCell className="font-bold pl-8 py-6 text-base group-hover:text-primary transition-colors">{name}</TableCell>
+                                    <TableCell className="text-right font-bold pr-8 text-lg tabular-nums">{formatCurrency(amount)}</TableCell>
+                                </TableRow>
+                            ))}
+                        </TableBody>
+                    </Table>
+                </div>
             )}
         </CardContent>
     </Card>
@@ -565,7 +583,6 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
     const row = statement.find(s => s.month === month && s.year === calendarYear);
     const expectedAmount = row?.rent ?? 0;
     
-    // Automatically set amountPaid to expected amount if status is 'Paid'
     setDoc(doc(firestore, 'rentPayments', rentPaymentId), { 
         landlordId: user.uid, 
         propertyId: selectedProperty.id, 
@@ -574,7 +591,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
         status, 
         expectedAmount, 
         amountPaid: status === 'Paid' ? expectedAmount : 0 
-    }, { merge: true }).then(() => toast({ title: 'Ledger Updated' }));
+    }, { merge: true }).then(() => toast({ title: 'Registry Sync Successful' }));
   };
 
   const handleRentAmountChange = (month: string, calendarYear: number, amount: number) => {
@@ -590,112 +607,138 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
         month,
         expectedAmount: amount,
         amountPaid: status === 'Paid' ? amount : 0
-    }, { merge: true }).then(() => toast({ title: 'Expected Rent Updated' }));
+    }, { merge: true }).then(() => toast({ title: 'Fiscal Expectation Adjusted' }));
   };
 
   if (!selectedProperty) return (
-    <Card className="mt-6 border-dashed bg-muted/5 h-[400px] flex items-center justify-center">
-        <CardContent className='text-center'>
-            <div className="bg-background p-6 rounded-full w-fit mx-auto mb-4 border shadow-sm">
-                <Banknote className="h-10 w-10 text-muted-foreground opacity-20" />
+    <Card className="mt-6 border-2 border-dashed bg-muted/5 h-[450px] flex items-center justify-center rounded-[2rem]">
+        <CardContent className='text-center space-y-6 max-w-xs'>
+            <div className="bg-background p-8 rounded-full w-fit mx-auto shadow-2xl border-2 border-primary/10">
+                <Banknote className="h-12 w-12 text-primary/30" />
             </div>
-            <p className="text-muted-foreground font-medium text-lg">Portfolio Asset Required</p>
-            <p className="text-sm text-muted-foreground mt-1">Select a property from the registry view above to access the rent ledger.</p>
+            <div className="space-y-2">
+                <p className="text-foreground font-bold text-xl font-headline">Portfolio Context Required</p>
+                <p className="text-sm text-muted-foreground leading-relaxed">Please select a specific property from the registry view above to access the interactive rent ledger.</p>
+            </div>
         </CardContent>
     </Card>
   );
 
   return (
-    <div className="space-y-6">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-4 mt-6">
-            <Card className="border-none shadow-sm bg-primary/5 text-left">
-                <CardHeader className="pb-2"><CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Collected YTD</CardTitle></CardHeader>
-                <CardContent className="flex items-center justify-between pb-4">
-                    <span className="text-2xl font-bold text-green-600">{formatCurrency(collectionStats.totalCollected)}</span>
-                    <ArrowUpRight className="h-5 w-5 text-green-600 opacity-20" />
+    <div className="space-y-8 animate-in fade-in duration-700">
+        <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden group">
+                <CardHeader className="pb-2 px-6 pt-6">
+                    <CardTitle className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">Collected YTD</CardTitle>
+                </CardHeader>
+                <CardContent className="flex items-center justify-between pb-6 px-6">
+                    <span className="text-3xl font-bold text-green-600 tracking-tight">{formatCurrency(collectionStats.totalCollected)}</span>
+                    <div className="p-3 rounded-2xl bg-green-50 text-green-600 shadow-inner group-hover:scale-110 transition-transform"><ArrowUpRight className="h-6 w-6" /></div>
                 </CardContent>
             </Card>
-            <Card className="border-none shadow-sm bg-primary/5 text-left">
-                <CardHeader className="pb-2"><CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Outstanding Balance</CardTitle></CardHeader>
-                <CardContent className="flex items-center justify-between pb-4">
-                    <span className="text-2xl font-bold text-destructive">{formatCurrency(collectionStats.remaining)}</span>
-                    <ArrowDownRight className="h-5 w-5 text-destructive opacity-20" />
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden group">
+                <CardHeader className="pb-2 px-6 pt-6">
+                    <CardTitle className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">Outstanding Balance</CardTitle>
+                </CardHeader>
+                <CardContent className="flex items-center justify-between pb-6 px-6">
+                    <span className="text-3xl font-bold text-destructive tracking-tight">{formatCurrency(collectionStats.remaining)}</span>
+                    <div className="p-3 rounded-2xl bg-destructive/5 text-destructive shadow-inner group-hover:scale-110 transition-transform"><ArrowDownRight className="h-6 w-6" /></div>
                 </CardContent>
             </Card>
-            <Card className="border-none shadow-sm bg-primary/5 text-left">
-                <CardHeader className="pb-2"><CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Collection Rate</CardTitle></CardHeader>
-                <CardContent className="flex items-center justify-between pb-4">
-                    <span className="text-2xl font-bold">{collectionStats.rate.toFixed(1)}%</span>
-                    <TrendingUp className="h-5 w-5 text-primary opacity-20" />
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden">
+                <CardHeader className="pb-2 px-6 pt-6">
+                    <CardTitle className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground flex items-center justify-between">
+                        Collection Rate
+                        <span className="text-primary font-bold">{collectionStats.rate.toFixed(1)}%</span>
+                    </CardTitle>
+                </CardHeader>
+                <CardContent className="px-6 pb-6 space-y-4">
+                    <Progress value={collectionStats.rate} className="h-2.5 bg-muted shadow-inner" />
+                    <div className="flex items-center gap-2 text-[10px] font-bold uppercase text-muted-foreground">
+                        <ShieldCheck className="h-3.5 w-3.5 text-primary" />
+                        Fiscal Performance Tracking
+                    </div>
                 </CardContent>
             </Card>
         </div>
 
-        <Card className="border-none shadow-lg overflow-hidden text-left">
-            <CardHeader className="bg-primary/5 border-b border-primary/10 px-6">
-                <CardTitle className="text-lg font-headline flex items-center justify-between">
-                    Monthly Rent Ledger: {selectedYear}/{ (selectedYear + 1).toString().slice(-2) }
-                    <Badge variant="outline" className="text-[9px] uppercase tracking-widest bg-background">{selectedProperty.address.street}</Badge>
-                </CardTitle>
-                <CardDescription>Verified chronological registry of rent collection status and overrides.</CardDescription>
+        <Card className="border-none shadow-2xl rounded-[2.5rem] overflow-hidden text-left bg-card">
+            <CardHeader className="bg-primary/5 border-b border-primary/10 px-8 py-8 flex flex-row items-center justify-between">
+                <div className="text-left space-y-1">
+                    <CardTitle className="text-xl font-headline flex items-center gap-3">
+                        Monthly Rent Ledger: {selectedYear}/{ (selectedYear + 1).toString().slice(-2) }
+                    </CardTitle>
+                    <CardDescription className="text-sm font-medium flex items-center gap-2">
+                        <MapPin className="h-3.5 w-3.5 text-primary" />
+                        {selectedProperty.address.street}
+                    </CardDescription>
+                </div>
+                <Badge variant="outline" className="hidden sm:flex h-8 px-4 rounded-xl border-2 font-bold uppercase text-[9px] tracking-widest bg-background shadow-sm">
+                    Registry Active
+                </Badge>
             </CardHeader>
             <CardContent className='p-0'>
                 {isLoadingPayments ? (
-                    <div className="p-24 flex justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>
+                    <div className="p-32 flex flex-col items-center gap-4"><Loader2 className="h-12 w-12 animate-spin text-primary" /><p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Chronological Trail...</p></div>
                 ) : (
                     <div className="overflow-x-auto">
                         <Table>
-                            <TableHeader className="bg-muted/50">
+                            <TableHeader className="bg-muted/30">
                                 <TableRow>
-                                    <TableHead className="pl-6 py-4 font-bold uppercase text-[10px] tracking-wider">Accounting Period</TableHead>
-                                    <TableHead className="font-bold uppercase text-[10px] tracking-wider">Expected Rent (£)</TableHead>
-                                    <TableHead className="font-bold uppercase text-[10px] tracking-wider">Status</TableHead>
-                                    <TableHead className="pr-6 font-bold uppercase text-[10px] tracking-wider text-right">Action</TableHead>
+                                    <TableHead className="pl-10 py-6 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Accounting Period</TableHead>
+                                    <TableHead className="font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground text-center">Expected Rent</TableHead>
+                                    <TableHead className="font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Audit Status</TableHead>
+                                    <TableHead className="pr-10 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground text-right">Management Action</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {statement.map((row) => (
-                                    <TableRow key={`${row.month}-${row.year}`} className="hover:bg-muted/10 transition-colors group">
-                                        <TableCell className="font-bold pl-6 py-5">
-                                            <div className="flex flex-col">
-                                                <span className="text-sm">{row.month}</span>
-                                                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest">{row.year}</span>
+                                    <TableRow key={`${row.month}-${row.year}`} className="hover:bg-primary/[0.02] transition-all group border-b border-muted/50">
+                                        <TableCell className="pl-10 py-8 text-left">
+                                            <div className="flex flex-col gap-0.5">
+                                                <span className="text-xl font-bold text-foreground group-hover:text-primary transition-colors">{row.month}</span>
+                                                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest flex items-center gap-1.5"><Calendar className="h-3 w-3" /> {row.year}</span>
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="relative max-w-[120px]">
-                                                <span className="absolute left-3 top-1/2 -translate-y-1/2 text-muted-foreground opacity-50 text-xs">£</span>
-                                                <Input 
-                                                    type="number" 
-                                                    key={`rent-input-${row.month}-${row.year}-${row.rent}`}
-                                                    defaultValue={row.rent} 
-                                                    className="h-9 pl-6 font-mono text-sm font-bold bg-background border-dashed focus:border-solid transition-all"
-                                                    onBlur={(e) => handleRentAmountChange(row.month, row.year, Number(e.target.value))}
-                                                />
+                                            <div className="flex justify-center">
+                                                <div className="relative max-w-[160px] group/input">
+                                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-base opacity-40 group-focus-within/input:opacity-100 transition-opacity">£</span>
+                                                    <Input 
+                                                        type="number" 
+                                                        key={`rent-v3-${row.month}-${row.year}-${row.rent}`}
+                                                        defaultValue={row.rent} 
+                                                        className="h-12 pl-8 pr-4 font-mono text-lg font-bold bg-muted/5 border-2 border-transparent hover:border-muted focus:border-primary rounded-xl transition-all shadow-none text-center"
+                                                        onBlur={(e) => handleRentAmountChange(row.month, row.year, Number(e.target.value))}
+                                                    />
+                                                </div>
                                             </div>
                                         </TableCell>
                                         <TableCell>
                                             <Badge 
                                                 variant={row.status === 'Paid' ? 'default' : row.status === 'Unpaid' ? 'destructive' : 'secondary'}
                                                 className={cn(
-                                                    "text-[9px] uppercase font-bold px-3 h-6 gap-1.5 shadow-sm",
+                                                    "text-[9px] uppercase font-bold px-4 h-7 gap-2 shadow-sm rounded-lg",
                                                     row.status === 'Paid' && "bg-green-100 text-green-800 border-green-200"
                                                 )}
                                             >
-                                                {row.status === 'Paid' && <CheckCircle2 className="h-3 w-3" />}
+                                                {row.status === 'Paid' ? <CheckCircle2 className="h-3.5 w-3.5" /> : row.status === 'Pending' ? <Clock className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />}
                                                 {row.status}
                                             </Badge>
                                         </TableCell>
-                                        <TableCell className="pr-6 text-right">
+                                        <TableCell className="pr-10 text-right">
                                             <Select value={row.status} onValueChange={(v) => handleStatusChange(row.month, row.year, v as PaymentStatus)}>
-                                                <SelectTrigger className="w-[160px] h-9 text-xs font-bold ml-auto shadow-sm">
+                                                <SelectTrigger className={cn(
+                                                    "w-[180px] h-11 text-xs font-bold ml-auto shadow-md rounded-xl border-2 transition-all",
+                                                    row.status === 'Paid' ? "border-green-200 bg-green-50/30" : "bg-background"
+                                                )}>
                                                     <SelectValue />
                                                 </SelectTrigger>
-                                                <SelectContent align="end">
-                                                    <SelectItem value="Paid" className="text-green-600 font-bold">Mark as Paid</SelectItem>
-                                                    <SelectItem value="Partially Paid">Partially Paid</SelectItem>
-                                                    <SelectItem value="Unpaid" className="text-destructive">Unpaid / Overdue</SelectItem>
-                                                    <SelectItem value="Pending">Payment Pending</SelectItem>
+                                                <SelectContent align="end" className="rounded-xl p-1 shadow-2xl">
+                                                    <SelectItem value="Paid" className="text-green-600 font-bold rounded-lg focus:bg-green-50 focus:text-green-700 py-2.5">Mark as Paid</SelectItem>
+                                                    <SelectItem value="Partially Paid" className="rounded-lg py-2.5">Partially Paid</SelectItem>
+                                                    <SelectItem value="Unpaid" className="text-destructive font-bold rounded-lg focus:bg-destructive/5 focus:text-destructive py-2.5">Unpaid / Overdue</SelectItem>
+                                                    <SelectItem value="Pending" className="rounded-lg py-2.5">Payment Pending</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </TableCell>
@@ -706,20 +749,25 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                     </div>
                 )}
             </CardContent>
-            <CardFooter className="bg-muted/10 border-t py-6 px-6 flex justify-between items-center">
-                <div className="flex gap-6">
-                    <div className="flex flex-col">
-                        <span className="text-[9px] font-bold uppercase text-muted-foreground tracking-widest">Total Accrued</span>
-                        <span className="text-lg font-bold">{formatCurrency(collectionStats.totalExpected)}</span>
+            <CardFooter className="bg-primary/5 border-t py-10 px-10 flex flex-col sm:flex-row justify-between items-center gap-8">
+                <div className="flex gap-12 w-full sm:w-auto">
+                    <div className="flex flex-col gap-1 text-left">
+                        <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-[0.2em]">Total Accrued</span>
+                        <span className="text-2xl font-bold text-foreground tabular-nums tracking-tighter">{formatCurrency(collectionStats.totalExpected)}</span>
                     </div>
-                    <div className="flex flex-col">
-                        <span className="text-[9px] font-bold uppercase text-muted-foreground tracking-widest">Total Outstanding</span>
-                        <span className="text-lg font-bold text-destructive">{formatCurrency(collectionStats.remaining)}</span>
+                    <div className="flex flex-col gap-1 text-left">
+                        <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-[0.2em]">Total Outstanding</span>
+                        <span className="text-2xl font-bold text-destructive tabular-nums tracking-tighter">{formatCurrency(collectionStats.remaining)}</span>
                     </div>
                 </div>
-                <div className="text-right">
-                    <span className="text-[9px] font-bold uppercase text-primary tracking-widest block mb-1">Fiscal Integrity Verified</span>
-                    <Badge className="bg-primary text-primary-foreground font-bold tracking-tighter">Collection Audit: {collectionStats.rate.toFixed(0)}%</Badge>
+                <div className="text-center sm:text-right space-y-3 w-full sm:w-auto border-t sm:border-t-0 pt-6 sm:pt-0">
+                    <div className="space-y-1">
+                        <span className="text-[10px] font-bold uppercase text-primary tracking-[0.3em] block">Verified Fiscal Position</span>
+                        <p className="text-xs text-muted-foreground font-medium">Registry synchronization active for {selectedYear}</p>
+                    </div>
+                    <Badge className="bg-primary text-primary-foreground font-bold tracking-tight h-10 px-6 rounded-xl shadow-lg hover:bg-primary/90 transition-all text-sm">
+                        Portfolio Collection: {collectionStats.rate.toFixed(0)}%
+                    </Badge>
                 </div>
             </CardFooter>
         </Card>

@@ -93,8 +93,6 @@ export default function EditDocumentPage() {
     resolver: zodResolver(documentSchema),
   });
 
-  const watchType = form.watch('documentType');
-
   const docRef = useMemoFirebase(() => {
     if (!firestore || !user || !id) return null;
     return doc(firestore, 'documents', id);
@@ -108,6 +106,7 @@ export default function EditDocumentPage() {
 
   useEffect(() => {
     if (documentRecord && isMounted) {
+      // SELECTION MEMORY HANDSHAKE: Last used selection takes precedence during batch updates
       const sessionPreference = localStorage.getItem('last_doc_type');
       
       form.reset({
@@ -140,6 +139,7 @@ export default function EditDocumentPage() {
         fileUrl = await uploadPropertyDocument(selectedFile, user.uid, propertyId);
       }
 
+      // SUBMISSION PERSISTENCE: Strictly lock the selection for subsequent triage
       localStorage.setItem('last_doc_type', data.documentType);
 
       const updateData = {
@@ -151,7 +151,7 @@ export default function EditDocumentPage() {
 
       await updateDoc(docRef, JSON.parse(JSON.stringify(updateData)));
       
-      toast({ title: 'Document Updated' });
+      toast({ title: 'Registry Synchronized' });
       router.push('/dashboard/documents');
     } catch (error) {
         toast({ variant: 'destructive', title: 'Update Failed' });
@@ -163,88 +163,92 @@ export default function EditDocumentPage() {
   if (isLoading || !isMounted) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!documentRecord) return <div className="text-center py-20 italic">Record not found.</div>;
 
-  const selectKey = `doc-type-edit-${watchType || 'loading'}`;
+  // DYNAMIC STABLE KEY: Ensures re-sync only when required to prevent input flicker
+  const selectKey = `doc-type-v4-${id}`;
 
   return (
-    <div className="max-w-2xl mx-auto space-y-6 text-left">
+    <div className="max-w-2xl mx-auto space-y-6 text-left animate-in fade-in duration-500">
       <div className="flex items-center gap-4">
         <Button variant="outline" size="icon" asChild><Link href="/dashboard/documents"><ArrowLeft className="h-4 w-4" /></Link></Button>
         <h1 className="text-2xl font-bold font-headline">Edit Audit Record</h1>
       </div>
 
-      <Card className="shadow-lg border-none">
-        <CardHeader className="bg-primary/5 border-b">
-          <CardTitle>Update Details</CardTitle>
-          <CardDescription>Modify metadata or replace the attached file.</CardDescription>
+      <Card className="shadow-2xl border-none overflow-hidden rounded-[2rem]">
+        <CardHeader className="bg-primary/5 border-b pb-6 px-8 pt-8">
+          <CardTitle className="text-xl font-headline flex items-center gap-2 text-primary">
+            <ShieldCheck className="h-5 w-5" /> Update Registry Details
+          </CardTitle>
+          <CardDescription className="text-base font-medium">Modify metadata or replace the attached legal file.</CardDescription>
         </CardHeader>
-        <CardContent className="pt-8">
+        <CardContent className="pt-8 px-8 pb-8">
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 text-left">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-8 text-left">
               <FormField control={form.control} name="title" render={({ field }) => (
-                <FormItem><FormLabel className="font-bold">Document Title</FormLabel><FormControl><Input className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground px-1">Document Title</FormLabel><FormControl><Input className="h-12 bg-muted/5 border-2 rounded-xl focus:bg-background transition-all" {...field} /></FormControl><FormMessage /></FormItem>
               )} />
               
               <FormField control={form.control} name="documentType" render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="font-bold">Document Type</FormLabel>
+                  <FormLabel className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground px-1">Document Classification</FormLabel>
                   <Select key={selectKey} onValueChange={(val) => { field.onChange(val); localStorage.setItem('last_doc_type', val); }} value={field.value}>
-                    <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
-                    <SelectContent>
-                      {['Tenancy Agreement', 'Inventory', 'Gas Safety Certificate', 'Electrical Certificate', 'EPC', 'Insurance', 'Deposit Protection', 'Licence', 'Correspondence', 'Invoice'].map(type => <SelectItem key={type} value={type}>{type}</SelectItem>)}
+                    <FormControl><SelectTrigger className="h-12 bg-muted/5 border-2 rounded-xl focus:bg-background"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
+                    <SelectContent className="rounded-xl">
+                      {['Tenancy Agreement', 'Inventory', 'Gas Safety Certificate', 'Electrical Certificate', 'EPC', 'Insurance', 'Deposit Protection', 'Licence', 'Correspondence', 'Invoice'].map(type => <SelectItem key={type} value={type} className="rounded-lg">{type}</SelectItem>)}
                     </SelectContent>
                   </Select>
                   <FormMessage />
                 </FormItem>
               )} />
 
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                 <FormField control={form.control} name="issueDate" render={({ field }) => (
-                  <FormItem><FormLabel className="font-bold">Issue Date</FormLabel><FormControl><Input type="date" className="h-11" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground px-1">Issue Date</FormLabel><FormControl><Input type="date" className="h-12 bg-muted/5 border-2 rounded-xl" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>
                 )} />
                 <FormField control={form.control} name="expiryDate" render={({ field }) => (
-                  <FormItem><FormLabel className="font-bold">Expiry Date</FormLabel><FormControl><Input type="date" className="h-11" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>
+                  <FormItem><FormLabel className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground px-1">Expiry Date</FormLabel><FormControl><Input type="date" className="h-12 bg-muted/5 border-2 rounded-xl" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} /></FormControl><FormMessage /></FormItem>
                 )} />
               </div>
 
               <FormField control={form.control} name="sharedWithTenant" render={({ field }) => (
-                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-xl border p-4 bg-primary/5">
-                  <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} /></FormControl>
-                  <div className="space-y-1 leading-none"><FormLabel className="font-bold">Share with Resident</FormLabel></div>
+                <FormItem className="flex flex-row items-start space-x-3 space-y-0 rounded-2xl border-2 p-5 bg-primary/5 border-primary/10 hover:border-primary/30 transition-all cursor-pointer">
+                  <FormControl><Checkbox checked={field.value} onCheckedChange={field.onChange} className="mt-1" /></FormControl>
+                  <div className="space-y-1 text-left"><FormLabel className="font-bold text-sm text-primary">Share with Resident</FormLabel><FormDescription className="text-xs leading-tight">If enabled, the verified resident can download this from their hub.</FormDescription></div>
                 </FormItem>
               )} />
 
               <div className="space-y-4">
-                  <FormLabel className="font-bold">Attached File</FormLabel>
+                  <FormLabel className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground px-1">Evidence Attachment</FormLabel>
                   {selectedFile ? (
-                      <div className="flex items-center justify-between p-4 border rounded-xl bg-primary/5">
-                          <div className="flex items-center gap-3 min-w-0"><FileText className="h-5 w-5 text-primary" /><span className="text-sm font-bold truncate">{selectedFile.name}</span></div>
-                          <Button type="button" variant="ghost" size="icon" onClick={() => setSelectedFile(null)}><X className="h-4 w-4" /></Button>
+                      <div className="flex items-center justify-between p-5 border-2 rounded-2xl bg-primary/5 border-primary/20 shadow-sm">
+                          <div className="flex items-center gap-4 min-w-0"><div className="p-2.5 rounded-xl bg-primary/10 text-primary"><FileText className="h-6 w-6" /></div><div className="min-w-0"><p className="text-sm font-bold truncate">{selectedFile.name}</p><p className="text-[10px] font-bold uppercase opacity-40">Ready for sync</p></div></div>
+                          <Button type="button" variant="ghost" size="icon" className="hover:bg-destructive/10 hover:text-destructive" onClick={() => setSelectedFile(null)}><X className="h-5 w-5" /></Button>
                       </div>
                   ) : documentRecord.fileUrl ? (
-                      <div className="flex items-center justify-between p-4 border rounded-xl bg-muted/30">
-                          <span className="text-xs font-bold uppercase text-muted-foreground">Current File Attached</span>
+                      <div className="flex items-center justify-between p-5 border-2 rounded-2xl bg-muted/10 shadow-inner">
+                          <div className="flex items-center gap-4"><div className="p-2.5 rounded-xl bg-background border shadow-sm text-muted-foreground"><FileText className="h-6 w-6" /></div><span className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Current vault attachment</span></div>
                           <div className="flex items-center gap-2">
-                              <Button type="button" variant="outline" size="sm" asChild><a href={documentRecord.fileUrl} target="_blank" rel="noopener noreferrer"><ExternalLink className="mr-1 h-3 w-3" /> View</a></Button>
-                              <Button type="button" variant="ghost" size="sm" onClick={() => document.getElementById('edit-file-upload')?.click()}>Replace</Button>
+                              <Button type="button" variant="outline" size="sm" className="h-9 rounded-lg font-bold" asChild><a href={documentRecord.fileUrl} target="_blank" rel="noopener noreferrer"><ExternalLink className="mr-1.5 h-3.5 w-3.5" /> View</a></Button>
+                              <Button type="button" variant="ghost" size="sm" className="h-9 rounded-lg text-primary font-bold" onClick={() => document.getElementById('edit-file-upload')?.click()}>Replace</Button>
                           </div>
                       </div>
                   ) : (
-                      <div className="border-2 border-dashed rounded-xl p-6 text-center cursor-pointer hover:bg-muted/10" onClick={() => document.getElementById('edit-file-upload')?.click()}>
-                          <FileUp className="h-6 w-6 mx-auto text-muted-foreground mb-2 opacity-50" />
-                          <p className="text-xs font-bold">Add file attachment</p>
+                      <div className="border-2 border-dashed rounded-2xl p-10 text-center cursor-pointer hover:bg-muted/10 hover:border-primary/20 transition-all" onClick={() => document.getElementById('edit-file-upload')?.click()}>
+                          <FileUp className="h-10 w-10 mx-auto text-muted-foreground mb-3 opacity-30" />
+                          <p className="text-sm font-bold">Assign new file attachment</p>
+                          <p className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest mt-1">PDF or high-res image</p>
                       </div>
                   )}
                   <input id="edit-file-upload" type="file" className="hidden" onChange={handleFileChange} accept=".pdf,image/*" />
               </div>
               
               <FormField control={form.control} name="notes" render={({ field }) => (
-                <FormItem><FormLabel className="font-bold">Audit Notes</FormLabel><FormControl><Textarea rows={4} className="resize-none" {...field} /></FormControl><FormMessage /></FormItem>
+                <FormItem><FormLabel className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground px-1">Internal Audit Notes</FormLabel><FormControl><Textarea rows={4} className="resize-none border-2 bg-muted/5 rounded-2xl" placeholder="Add specific compliance notes..." {...field} /></FormControl><FormMessage /></FormItem>
               )} />
 
-              <div className="flex justify-end gap-3 pt-4 border-t">
-                  <Button type="button" variant="ghost" asChild className="font-bold uppercase tracking-widest text-xs h-11"><Link href="/dashboard/documents">Cancel</Link></Button>
-                  <Button type="submit" disabled={isSaving} className="h-11 px-10 shadow-lg font-bold uppercase tracking-widest text-xs">
-                    {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : 'Save Changes'}
+              <div className="flex justify-end gap-4 pt-6 border-t">
+                  <Button type="button" variant="ghost" asChild className="font-bold uppercase tracking-widest text-[10px] h-12 px-8"><Link href="/dashboard/documents">Cancel Update</Link></Button>
+                  <Button type="submit" disabled={isSaving} className="h-12 px-12 shadow-2xl font-bold uppercase tracking-widest text-[10px] bg-primary hover:bg-primary/90 rounded-xl transition-all">
+                    {isSaving ? <><Loader2 className="mr-2 h-4 w-4 animate-spin" /> Synchronizing...</> : 'Complete Record Update'}
                   </Button>
               </div>
             </form>
