@@ -114,7 +114,7 @@ interface RentPayment {
   id: string;
   propertyId: string;
   landlordId: string;
-  year: number; // This remains calendar year for database indexing, but UI aggregates by tax year
+  year: number; 
   month: string;
   status: PaymentStatus;
   amountPaid?: number;
@@ -149,7 +149,6 @@ export default function FinancialsPage() {
   useEffect(() => {
     const now = new Date();
     const currentYear = now.getFullYear();
-    // If before April 6, previous tax year is active
     const taxYearStart = (now.getMonth() < 3 || (now.getMonth() === 3 && now.getDate() < 6)) ? currentYear - 1 : currentYear;
     setSelectedTaxYearStart(taxYearStart);
   }, []);
@@ -161,21 +160,21 @@ export default function FinancialsPage() {
   }, [firestore, user]);
   const { data: activeProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
   
-  // 2. Fetch all expenses for this landlord
+  // 2. Fetch all expenses
   const expensesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(collection(firestore, 'expenses'), where('landlordId', '==', user.uid), limit(1000));
   }, [firestore, user]);
   const { data: allExpenses, isLoading: isLoadingExpenses } = useCollection<Expense>(expensesQuery);
 
-  // 3. Fetch rent payments for this landlord
+  // 3. Fetch rent payments
   const rentQuery = useMemoFirebase(() => {
     if (!user || !firestore || !selectedTaxYearStart) return null;
     return query(collection(firestore, 'rentPayments'), where('landlordId', '==', user.uid));
   }, [firestore, user, selectedTaxYearStart]);
   const { data: allRentPayments, isLoading: isLoadingRent } = useCollection<RentPayment>(rentQuery);
 
-  // 4. Fetch maintenance repairs for financial aggregation
+  // 4. Fetch maintenance repairs
   const repairsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(collection(firestore, 'repairs'), where('landlordId', '==', user.uid), limit(500));
@@ -187,12 +186,11 @@ export default function FinancialsPage() {
     return activeProperties?.find(p => p.id === selectedPropertyId);
   }, [activeProperties, selectedPropertyId]);
 
-  // Tax Year Boundary Logic
   const taxBounds = useMemo(() => {
     if (!selectedTaxYearStart) return null;
     return {
-        start: new Date(selectedTaxYearStart, 3, 6), // April 6
-        end: new Date(selectedTaxYearStart + 1, 3, 5, 23, 59, 59) // April 5 next year
+        start: new Date(selectedTaxYearStart, 3, 6),
+        end: new Date(selectedTaxYearStart + 1, 3, 5, 23, 59, 59)
     };
   }, [selectedTaxYearStart]);
 
@@ -227,12 +225,22 @@ export default function FinancialsPage() {
     });
   }, [allRentPayments, selectedPropertyId, selectedTaxYearStart]);
 
-  const displayIncome = useMemo(() => {
-    if (selectedPropertyId !== 'all' && selectedProperty) {
-        return Number(selectedProperty.tenancy?.monthlyRent || 0) * 12;
+  // INTELLIGENT PRE-POPULATED REVENUE CALCULATION
+  const totalExpectedRent = useMemo(() => {
+    if (!selectedTaxYearStart) return 0;
+    
+    if (selectedPropertyId === 'all') {
+        return activeProperties?.reduce((total, prop) => (total + (Number(prop.tenancy?.monthlyRent || 0) * 12)), 0) || 0;
     }
-    return activeProperties?.reduce((total, prop) => (total + (Number(prop.tenancy?.monthlyRent || 0) * 12)), 0) || 0;
-  }, [activeProperties, selectedPropertyId, selectedProperty]);
+    
+    const defaultRent = selectedProperty?.tenancy?.monthlyRent || 0;
+    const paymentsMap = rentPayments.reduce((acc, p) => { acc[p.month] = p; return acc; }, {} as Record<string, RentPayment>);
+    
+    return TAX_MONTHS.reduce((acc, month) => {
+        const amt = paymentsMap[month]?.expectedAmount ?? defaultRent;
+        return acc + Number(amt);
+    }, 0);
+  }, [activeProperties, selectedPropertyId, selectedProperty, rentPayments, selectedTaxYearStart]);
 
   const totalPaidRent = useMemo(() => rentPayments.reduce((acc, p) => acc + (Number(p.amountPaid) || 0), 0), [rentPayments]);
   
@@ -290,20 +298,13 @@ export default function FinancialsPage() {
     doc.text(doc.splitTextToSize(note, 180), 14, finalY);
 
     doc.save(`HMRC-Tax-Report-${selectedTaxYearStart}-${selectedTaxYearStart + 1}.pdf`);
-    
-    // INTERACTION RECOVERY
-    toast({ title: 'Report Generated', description: 'Refreshing ledger context...' });
-    setTimeout(() => {
-        window.location.reload();
-    }, 1500);
+    toast({ title: 'Report Generated' });
   };
 
   function formatAddress(address: Property['address']) {
     if (!address) return 'N/A';
     return [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
   }
-
-  const taxYearKey = selectedTaxYearStart ? `tax-year-${selectedTaxYearStart}` : 'loading';
 
   return (
     <div className="flex flex-col gap-6 max-w-6xl mx-auto text-left">
@@ -326,7 +327,7 @@ export default function FinancialsPage() {
             </div>
             <div className="grid w-full gap-1.5">
                 <Label htmlFor="reporting-year-selector" className="text-xs uppercase font-bold text-muted-foreground">UK Tax Year Cycle (12 Future, 5 Past)</Label>
-                <Select key={taxYearKey} onValueChange={(value) => setSelectedTaxYearStart(Number(value))} value={selectedTaxYearStart ? String(selectedTaxYearStart) : ''}>
+                <Select onValueChange={(value) => setSelectedTaxYearStart(Number(value))} value={selectedTaxYearStart ? String(selectedTaxYearStart) : ''}>
                     <SelectTrigger id="reporting-year-selector" className="h-11">
                         <SelectValue placeholder="Tax Year" />
                     </SelectTrigger>
@@ -343,7 +344,7 @@ export default function FinancialsPage() {
             <Card className="border-none shadow-md overflow-hidden text-left">
                 <div className="h-1 bg-primary w-full" />
                 <CardHeader className="pb-2 px-6"><CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Gross Expected</CardTitle></CardHeader>
-                <CardContent className='px-6 pb-6'><div className="text-2xl font-bold tracking-tight">{formatCurrency(displayIncome)}</div></CardContent>
+                <CardContent className='px-6 pb-6'><div className="text-2xl font-bold tracking-tight">{formatCurrency(totalExpectedRent)}</div></CardContent>
             </Card>
             <Card className="border-none shadow-md overflow-hidden text-left">
                 <div className="h-1 bg-green-500 w-full" />
@@ -418,7 +419,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
     const expCol = collection(firestore, 'expenses');
     addDoc(expCol, { ...data, landlordId: user.uid })
       .then(() => {
-        toast({ title: 'Expense Logged', description: 'Syncing with tax year financials...' });
+        toast({ title: 'Expense Logged' });
         form.reset({ propertyId: selectedPropertyId !== 'all' ? selectedPropertyId : '', expenseType: '', notes: '', date: new Date(), paidBy: 'Landlord', amount: 0 });
       })
       .catch(() => toast({ variant: 'destructive', title: 'Save Failed' }))
@@ -431,117 +432,58 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
   }
 
   return (
-    <div className="space-y-6 text-left">
-        <Card className="mt-6 border-none shadow-lg overflow-hidden">
-            <CardHeader className="bg-primary/5 border-b px-6">
-                <CardTitle className="text-lg">Log New Financial Outgoing</CardTitle>
-                <CardDescription>Select a property and category to record a new allowable expense.</CardDescription>
-            </CardHeader>
-            <CardContent className="pt-8 px-6 pb-8">
-            <Form {...form}>
-                <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
-                <FormField control={form.control} name="propertyId" render={({ field }) => (
-                    <FormItem className='text-left'>
-                        <FormLabel className="font-bold">Target Property</FormLabel>
+    <Card className="mt-6 border-none shadow-lg overflow-hidden text-left">
+        <CardHeader className="bg-primary/5 border-b px-6">
+            <CardTitle className="text-lg">Log New Financial Outgoing</CardTitle>
+            <CardDescription>Record an allowable expense for tax reporting.</CardDescription>
+        </CardHeader>
+        <CardContent className="pt-8 px-6 pb-8">
+        <Form {...form}>
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+            <FormField control={form.control} name="propertyId" render={({ field }) => (
+                <FormItem>
+                    <FormLabel className="font-bold">Target Property</FormLabel>
+                    <Select onValueChange={field.onChange} value={field.value}>
+                    <FormControl><SelectTrigger className="h-11 bg-background"><SelectValue placeholder="Select from portfolio" /></SelectTrigger></FormControl>
+                    <SelectContent>{properties.map(p => (<SelectItem key={p.id} value={p.id}>{formatAddress(p.address)}</SelectItem>))}</SelectContent>
+                    </Select>
+                    <FormMessage />
+                </FormItem>
+            )} />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField control={form.control} name="date" render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="font-bold">Date</FormLabel>
+                      <FormControl><Input type="date" className="h-11" value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} onChange={(e) => field.onChange(e.target.value)} /></FormControl>
+                      <FormMessage />
+                    </FormItem>
+                )} />
+                <FormField control={form.control} name="expenseType" render={({ field }) => (
+                    <FormItem>
+                        <FormLabel className="font-bold">Tax Category</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
-                        <FormControl><SelectTrigger className="h-11 bg-background"><SelectValue placeholder="Select from portfolio" /></SelectTrigger></FormControl>
-                        <SelectContent>{properties.map(p => (<SelectItem key={p.id} value={p.id}>{formatAddress(p.address)}</SelectItem>))}</SelectContent>
+                            <FormControl><SelectTrigger className="h-11"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
+                            <SelectContent>{['Repairs and Maintenance','Utilities','Insurance','Mortgage Interest','Cleaning','Gardening','Letting Agent Fees', 'Other'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}</SelectContent>
                         </Select>
                         <FormMessage />
                     </FormItem>
                 )} />
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField control={form.control} name="date" render={({ field }) => (
-                        <FormItem className='text-left'>
-                          <FormLabel className="font-bold">Date</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="date" 
-                              className="h-11 bg-background" 
-                              value={field.value ? new Date(field.value).toISOString().split('T')[0] : ''} 
-                              onChange={(e) => field.onChange(e.target.value)} 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                    )} />
-                    <FormField control={form.control} name="expenseType" render={({ field }) => (
-                        <FormItem className='text-left'>
-                            <FormLabel className="font-bold">Tax Category</FormLabel>
-                            <Select onValueChange={field.onChange} value={field.value}>
-                                <FormControl><SelectTrigger className="h-11 bg-background"><SelectValue placeholder="Select type" /></SelectTrigger></FormControl>
-                                <SelectContent>
-                                    {['Repairs and Maintenance','Utilities','Insurance','Mortgage Interest','Cleaning','Gardening','Letting Agent Fees', 'Other'].map(t => <SelectItem key={t} value={t}>{t}</SelectItem>)}
-                                </SelectContent>
-                            </Select>
-                            <FormMessage />
-                        </FormItem>
-                    )} />
-                </div>
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                    <FormField control={form.control} name="amount" render={({ field }) => (
-                        <FormItem className='text-left'>
-                          <FormLabel className="font-bold">Amount (£)</FormLabel>
-                          <FormControl>
-                            <Input 
-                              type="number" 
-                              step="0.01" 
-                              className="h-11 bg-background" 
-                              placeholder="0.00" 
-                              {...field} 
-                            />
-                          </FormControl>
-                          <FormMessage />
-                        </FormItem>
-                    )} />
-                    <FormField control={form.control} name="paidBy" render={({ field }) => (
-                      <FormItem className='text-left'>
-                        <FormLabel className="font-bold">Paid By</FormLabel>
-                        <FormControl>
-                          <Input 
-                            placeholder="e.g. Landlord" 
-                            className="h-11 bg-background" 
-                            {...field} 
-                          />
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )} />
-                </div>
-                <FormField control={form.control} name="notes" render={({ field }) => (
-                  <FormItem className='text-left'>
-                    <FormLabel className="font-bold">Audit Notes</FormLabel>
-                    <FormControl>
-                      <Textarea 
-                        placeholder="Details for HMRC records..." 
-                        className="rounded-xl min-h-[100px] bg-background resize-none" 
-                        {...field} 
-                      />
-                    </FormControl>
-                    <FormMessage />
-                  </FormItem>
+            </div>
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                <FormField control={form.control} name="amount" render={({ field }) => (
+                    <FormItem><FormLabel className="font-bold">Amount (£)</FormLabel><FormControl><Input type="number" step="0.01" className="h-11" {...field} /></FormControl><FormMessage /></FormItem>
                 )} />
-                </form>
-            </Form>
-            </CardContent>
-        </Card>
-
-        <div className="flex items-center gap-3 w-full px-1 text-left">
-            <Button asChild variant="outline" className="flex-1 font-bold shadow-sm h-11 px-6 border-primary/20 hover:bg-primary/5 transition-all uppercase tracking-widest text-[10px]">
-                <Link href="/dashboard/expenses/logged">
-                    <History className="mr-2 h-4 w-4 text-primary" /> History Log
-                </Link>
-            </Button>
-            <Button 
-                onClick={form.handleSubmit(onSubmit)} 
-                disabled={isSubmitting} 
-                className="flex-1 font-bold shadow-lg h-11 px-8 bg-primary hover:bg-primary/90 transition-all uppercase tracking-widest text-[10px]"
-            >
+                <FormField control={form.control} name="paidBy" render={({ field }) => (<FormItem><FormLabel className="font-bold">Paid By</FormLabel><FormControl><Input className="h-11" {...field} /></FormControl><FormMessage /></FormItem>)} />
+            </div>
+            <FormField control={form.control} name="notes" render={({ field }) => (<FormItem><FormLabel className="font-bold">Audit Notes</FormLabel><FormControl><Textarea className="rounded-xl min-h-[100px] resize-none" {...field} /></FormControl><FormMessage /></FormItem>)} />
+            <Button type="submit" disabled={isSubmitting} className="w-full font-bold shadow-lg h-11 uppercase tracking-widest text-[10px]">
                 {isSubmitting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <PlusCircle className="mr-2 h-4 w-4" />}
                 Log Tax Record
             </Button>
-        </div>
-    </div>
+            </form>
+        </Form>
+        </CardContent>
+    </Card>
   );
 }
 
@@ -549,12 +491,8 @@ function AnnualSummary({ selectedYear, expenses, repairCosts, isLoadingExpenses 
   const expensesByCategory = useMemo(() => {
     const map: Record<string, number> = {};
     expenses.forEach(e => { map[e.expenseType] = (map[e.expenseType] || 0) + (Number(e.amount) || 0); });
-    
     const totalRepairCost = repairCosts.reduce((acc, r) => acc + (Number(r.expectedCost || r.estimatedCost || 0)), 0);
-    if (totalRepairCost > 0) {
-        map['Repairs and Maintenance'] = (map['Repairs and Maintenance'] || 0) + totalRepairCost;
-    }
-
+    if (totalRepairCost > 0) map['Repairs and Maintenance'] = (map['Repairs and Maintenance'] || 0) + totalRepairCost;
     return Object.entries(map).sort(([, a], [, b]) => b - a);
   }, [expenses, repairCosts]);
 
@@ -562,15 +500,13 @@ function AnnualSummary({ selectedYear, expenses, repairCosts, isLoadingExpenses 
     <Card className="mt-6 border-none shadow-lg overflow-hidden text-left">
         <CardHeader className="bg-primary/5 border-b border-primary/10 px-6">
             <CardTitle className="text-lg">Tax Year Audit: {selectedYear}/{ (selectedYear + 1).toString().slice(-2) }</CardTitle>
-            <CardDescription>Consolidated outgoings grouped by HMRC categories.</CardDescription>
+            <CardDescription>Consolidated outgoings by HMRC categories.</CardDescription>
         </CardHeader>
-        <CardContent className="pt-0 px-0">
-            {isLoadingExpenses ? (<div className="flex h-48 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>) : expensesByCategory.length === 0 ? (<p className="py-16 text-center text-muted-foreground italic">No tax-allowable outgoings found for this period.</p>) : (
+        <CardContent className="p-0">
+            {isLoadingExpenses ? (<div className="flex h-48 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>) : expensesByCategory.length === 0 ? (<p className="py-16 text-center text-muted-foreground italic">No tax-allowable outgoings for this period.</p>) : (
                 <Table>
-                    <TableHeader className="bg-muted/50">
-                        <TableRow><TableHead className="font-bold text-[10px] uppercase tracking-wider pl-6 py-4">HMRC Category Grouping</TableHead><TableHead className="text-right font-bold text-[10px] uppercase tracking-wider pr-6">Total Outgoing</TableHead></TableRow>
-                    </TableHeader>
-                    <TableBody>{expensesByCategory.map(([name, amount]) => (<TableRow key={name} className="hover:bg-muted/30 transition-colors"><TableCell className="font-bold pl-6 py-4">{name}</TableCell><TableCell className="text-right font-bold pr-6">{formatCurrency(amount)}</TableCell></TableRow>))}</TableBody>
+                    <TableHeader className="bg-muted/50"><TableRow><TableHead className="pl-6 py-4">HMRC Category Grouping</TableHead><TableHead className="text-right pr-6">Total Outgoing</TableHead></TableRow></TableHeader>
+                    <TableBody>{expensesByCategory.map(([name, amount]) => (<TableRow key={name}><TableCell className="font-bold pl-6 py-4">{name}</TableCell><TableCell className="text-right font-bold pr-6">{formatCurrency(amount)}</TableCell></TableRow>))}</TableBody>
                 </Table>
             )}
         </CardContent>
@@ -600,13 +536,10 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
 
   const handleStatusChange = (month: string, calendarYear: number, status: PaymentStatus) => {
     if (!firestore || !user || !selectedProperty) return;
-    
     const rentPaymentId = `${selectedProperty.id}-${calendarYear}-${month}`;
-    const rentPaymentRef = doc(firestore, 'rentPayments', rentPaymentId);
     const row = statement.find(s => s.month === month && s.year === calendarYear);
     const expectedAmount = row?.rent ?? 0;
-    
-    setDoc(rentPaymentRef, { 
+    setDoc(doc(firestore, 'rentPayments', rentPaymentId), { 
         landlordId: user.uid, 
         propertyId: selectedProperty.id, 
         year: calendarYear, 
@@ -614,65 +547,57 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
         status, 
         expectedAmount, 
         amountPaid: status === 'Paid' ? expectedAmount : 0 
-    }, { merge: true }).then(() => {
-        toast({ title: 'Ledger Updated', description: `Rent for ${month} marked as ${status}.` });
-    });
+    }, { merge: true }).then(() => toast({ title: 'Ledger Updated' }));
   };
 
   const handleRentAmountChange = (month: string, calendarYear: number, amount: number) => {
     if (!firestore || !user || !selectedProperty || isNaN(amount)) return;
-
     const rentPaymentId = `${selectedProperty.id}-${calendarYear}-${month}`;
-    const rentPaymentRef = doc(firestore, 'rentPayments', rentPaymentId);
     const row = statement.find(s => s.month === month && s.year === calendarYear);
     const status = row?.status || 'Pending';
-
-    setDoc(rentPaymentRef, {
+    setDoc(doc(firestore, 'rentPayments', rentPaymentId), {
         landlordId: user.uid,
         propertyId: selectedProperty.id,
         year: calendarYear,
         month,
         expectedAmount: amount,
         amountPaid: status === 'Paid' ? amount : 0
-    }, { merge: true }).then(() => {
-        toast({ title: 'Expected Rent Updated', description: `Modified registry for ${month} ${calendarYear}.` });
-    });
+    }, { merge: true }).then(() => toast({ title: 'Expected Rent Updated' }));
   };
 
-  if (!selectedProperty) return <Card className="mt-6 border-dashed bg-muted/5"><CardContent className='py-24 text-center'><div className="bg-background p-4 rounded-full w-fit mx-auto shadow-sm mb-4 border"><Banknote className="h-10 w-10 text-muted-foreground opacity-20" /></div><p className="text-muted-foreground font-medium">Select a property asset to view the monthly rent ledger.</p></CardContent></Card>;
+  if (!selectedProperty) return <Card className="mt-6 border-dashed bg-muted/5"><CardContent className='py-24 text-center'><Banknote className="h-10 w-10 text-muted-foreground opacity-20 mx-auto mb-4" /><p className="text-muted-foreground font-medium">Select a property asset to view the monthly rent ledger.</p></CardContent></Card>;
 
   return (
     <Card className="mt-6 border-none shadow-lg overflow-hidden text-left">
         <CardHeader className="bg-primary/5 border-b border-primary/10 px-6">
             <CardTitle className="text-lg">Rent Ledger: {selectedYear}/{ (selectedYear + 1).toString().slice(-2) }</CardTitle>
-            <CardDescription>Track monthly collection status and adjust expected amounts within the tax year.</CardDescription>
+            <CardDescription>Track monthly collection status and expected rent.</CardDescription>
         </CardHeader>
         <CardContent className='p-0'>{isLoadingPayments ? <div className="p-20 flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : (
             <Table>
                 <TableHeader className="bg-muted/50">
                     <TableRow>
-                        <TableHead className="pl-6 font-bold text-[10px] uppercase tracking-wider py-4">Registry Month & Year</TableHead>
-                        <TableHead className="font-bold text-[10px] uppercase tracking-wider">Expected Rent (£)</TableHead>
-                        <TableHead className="font-bold text-[10px] uppercase tracking-wider pr-6">Collection Status</TableHead>
+                        <TableHead className="pl-6 py-4">Month & Year</TableHead>
+                        <TableHead>Expected Rent (£)</TableHead>
+                        <TableHead className="pr-6">Collection Status</TableHead>
                     </TableRow>
                 </TableHeader>
                 <TableBody>
                     {statement.map((row) => (
-                        <TableRow key={`${row.month}-${row.year}`} className="hover:bg-muted/30 transition-colors">
-                            <TableCell className="font-bold pl-6 py-4">
-                                {row.month} <span className="text-muted-foreground font-medium ml-1">{row.year}</span>
-                            </TableCell>
-                            <TableCell className="font-medium">
+                        <TableRow key={`${row.month}-${row.year}`}>
+                            <TableCell className="font-bold pl-6 py-4">{row.month} <span className="text-muted-foreground font-medium ml-1">{row.year}</span></TableCell>
+                            <TableCell>
                                 <Input 
                                     type="number" 
+                                    key={`rent-input-${row.month}-${row.year}-${row.rent}`}
                                     defaultValue={row.rent} 
-                                    className="w-32 h-9 text-sm font-bold bg-transparent border-dashed border-muted-foreground/30 focus:border-primary"
+                                    className="w-32 h-9 text-sm font-bold bg-transparent border-dashed"
                                     onBlur={(e) => handleRentAmountChange(row.month, row.year, Number(e.target.value))}
                                 />
                             </TableCell>
                             <TableCell className="pr-6">
                                 <Select value={row.status} onValueChange={(v) => handleStatusChange(row.month, row.year, v as PaymentStatus)}>
-                                    <SelectTrigger className="w-[160px] h-9 text-xs font-bold shadow-none bg-background border-2"><SelectValue /></SelectTrigger>
+                                    <SelectTrigger className="w-[160px] h-9 text-xs font-bold"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="Paid">Paid</SelectItem>
                                         <SelectItem value="Partially Paid">Partially Paid</SelectItem>
