@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -48,7 +47,8 @@ import {
   ArrowDownRight,
   Clock,
   ShieldCheck,
-  Calendar
+  Calendar,
+  MapPin
 } from 'lucide-react';
 import { getYear, isAfter, isBefore } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
