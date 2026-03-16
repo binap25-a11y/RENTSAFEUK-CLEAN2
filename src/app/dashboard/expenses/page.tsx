@@ -586,22 +586,25 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
     const defaultRent = selectedProperty?.tenancy?.monthlyRent || 0;
     const paymentsMap = rentPayments?.reduce((acc, p) => { acc[p.month] = p; return acc; }, {} as Record<string, RentPayment>);
     
-    return TAX_MONTHS.map(month => ({ 
-        month, 
-        rent: paymentsMap?.[month]?.expectedAmount ?? defaultRent, 
-        status: paymentsMap?.[month]?.status || 'Pending' 
-    }));
-  }, [selectedProperty, rentPayments]);
+    return TAX_MONTHS.map(month => {
+        const monthIdx = TAX_MONTHS.indexOf(month);
+        const calendarYear = monthIdx >= 9 ? selectedYear + 1 : selectedYear;
+        return { 
+            month, 
+            year: calendarYear,
+            rent: paymentsMap?.[month]?.expectedAmount ?? defaultRent, 
+            status: paymentsMap?.[month]?.status || 'Pending' 
+        };
+    });
+  }, [selectedProperty, rentPayments, selectedYear]);
 
-  const handleStatusChange = (month: string, status: PaymentStatus) => {
+  const handleStatusChange = (month: string, calendarYear: number, status: PaymentStatus) => {
     if (!firestore || !user || !selectedProperty) return;
-    
-    const monthIdx = TAX_MONTHS.indexOf(month);
-    const calendarYear = monthIdx >= 9 ? selectedYear + 1 : selectedYear;
     
     const rentPaymentId = `${selectedProperty.id}-${calendarYear}-${month}`;
     const rentPaymentRef = doc(firestore, 'rentPayments', rentPaymentId);
-    const expectedAmount = statement.find(s => s.month === month)?.rent ?? 0;
+    const row = statement.find(s => s.month === month && s.year === calendarYear);
+    const expectedAmount = row?.rent ?? 0;
     
     setDoc(rentPaymentRef, { 
         landlordId: user.uid, 
@@ -616,26 +619,59 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
     });
   };
 
+  const handleRentAmountChange = (month: string, calendarYear: number, amount: number) => {
+    if (!firestore || !user || !selectedProperty || isNaN(amount)) return;
+
+    const rentPaymentId = `${selectedProperty.id}-${calendarYear}-${month}`;
+    const rentPaymentRef = doc(firestore, 'rentPayments', rentPaymentId);
+    const row = statement.find(s => s.month === month && s.year === calendarYear);
+    const status = row?.status || 'Pending';
+
+    setDoc(rentPaymentRef, {
+        landlordId: user.uid,
+        propertyId: selectedProperty.id,
+        year: calendarYear,
+        month,
+        expectedAmount: amount,
+        amountPaid: status === 'Paid' ? amount : 0
+    }, { merge: true }).then(() => {
+        toast({ title: 'Expected Rent Updated', description: `Modified registry for ${month} ${calendarYear}.` });
+    });
+  };
+
   if (!selectedProperty) return <Card className="mt-6 border-dashed bg-muted/5"><CardContent className='py-24 text-center'><div className="bg-background p-4 rounded-full w-fit mx-auto shadow-sm mb-4 border"><Banknote className="h-10 w-10 text-muted-foreground opacity-20" /></div><p className="text-muted-foreground font-medium">Select a property asset to view the monthly rent ledger.</p></CardContent></Card>;
 
   return (
     <Card className="mt-6 border-none shadow-lg overflow-hidden text-left">
         <CardHeader className="bg-primary/5 border-b border-primary/10 px-6">
             <CardTitle className="text-lg">Rent Ledger: {selectedYear}/{ (selectedYear + 1).toString().slice(-2) }</CardTitle>
-            <CardDescription>Track monthly collection status within the current tax year.</CardDescription>
+            <CardDescription>Track monthly collection status and adjust expected amounts within the tax year.</CardDescription>
         </CardHeader>
         <CardContent className='p-0'>{isLoadingPayments ? <div className="p-20 flex justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div> : (
             <Table>
                 <TableHeader className="bg-muted/50">
-                    <TableRow><TableHead className="pl-6 font-bold text-[10px] uppercase tracking-wider py-4">Registry Month</TableHead><TableHead className="font-bold text-[10px] uppercase tracking-wider">Expected Rent</TableHead><TableHead className="font-bold text-[10px] uppercase tracking-wider pr-6">Collection Status</TableHead></TableRow>
+                    <TableRow>
+                        <TableHead className="pl-6 font-bold text-[10px] uppercase tracking-wider py-4">Registry Month & Year</TableHead>
+                        <TableHead className="font-bold text-[10px] uppercase tracking-wider">Expected Rent (£)</TableHead>
+                        <TableHead className="font-bold text-[10px] uppercase tracking-wider pr-6">Collection Status</TableHead>
+                    </TableRow>
                 </TableHeader>
                 <TableBody>
                     {statement.map((row) => (
-                        <TableRow key={row.month} className="hover:bg-muted/30 transition-colors">
-                            <TableCell className="font-bold pl-6 py-4">{row.month}</TableCell>
-                            <TableCell className="font-medium">{formatCurrency(row.rent)}</TableCell>
+                        <TableRow key={`${row.month}-${row.year}`} className="hover:bg-muted/30 transition-colors">
+                            <TableCell className="font-bold pl-6 py-4">
+                                {row.month} <span className="text-muted-foreground font-medium ml-1">{row.year}</span>
+                            </TableCell>
+                            <TableCell className="font-medium">
+                                <Input 
+                                    type="number" 
+                                    defaultValue={row.rent} 
+                                    className="w-32 h-9 text-sm font-bold bg-transparent border-dashed border-muted-foreground/30 focus:border-primary"
+                                    onBlur={(e) => handleRentAmountChange(row.month, row.year, Number(e.target.value))}
+                                />
+                            </TableCell>
                             <TableCell className="pr-6">
-                                <Select value={row.status} onValueChange={(v) => handleStatusChange(row.month, v as PaymentStatus)}>
+                                <Select value={row.status} onValueChange={(v) => handleStatusChange(row.month, row.year, v as PaymentStatus)}>
                                     <SelectTrigger className="w-[160px] h-9 text-xs font-bold shadow-none bg-background border-2"><SelectValue /></SelectTrigger>
                                     <SelectContent>
                                         <SelectItem value="Paid">Paid</SelectItem>
