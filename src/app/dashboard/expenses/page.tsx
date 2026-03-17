@@ -453,7 +453,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                             </TableHeader>
                             <TableBody>
                                 {statement.map((row) => (
-                                    <TableRow key={`${row.month}-${row.year}`} className="hover:bg-primary/[0.02] transition-all group border-b border-muted/50">
+                                    <TableRow key={`${selectedProperty.id}-${row.month}-${row.year}`} className="hover:bg-primary/[0.02] transition-all group border-b border-muted/50">
                                         <TableCell className="pl-10 py-8 text-left">
                                             <div className="flex flex-col gap-0.5 text-left">
                                                 <span className="text-xl font-bold text-foreground group-hover:text-primary transition-colors">{row.month}</span>
@@ -466,7 +466,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                                                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-primary font-bold text-base opacity-100 transition-opacity">£</span>
                                                     <Input 
                                                         type="number" 
-                                                        key={`rent-input-${row.month}-${row.year}-${row.rent}`}
+                                                        key={`rent-input-${selectedProperty.id}-${row.month}-${row.year}`}
                                                         defaultValue={row.rent} 
                                                         className="h-12 pl-10 pr-4 font-mono text-lg font-bold bg-primary/5 border-2 border-transparent hover:border-primary/20 focus:border-primary rounded-xl transition-all shadow-none text-center"
                                                         onBlur={(e) => handleRentAmountChange(row.month, row.year, Number(e.target.value))}
