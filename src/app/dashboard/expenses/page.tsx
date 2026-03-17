@@ -617,25 +617,33 @@ export default function FinancialsPage() {
   }, [allRentPayments, selectedPropertyId, selectedTaxYearStart]);
 
   const totalExpectedRent = useMemo(() => {
-    if (!selectedTaxYearStart) return 0;
+    if (!selectedTaxYearStart || !activeProperties) return 0;
     
-    if (selectedPropertyId === 'all') {
-        const baseExpected = activeProperties?.reduce((total, prop) => (total + (Number(prop.tenancy?.monthlyRent || 0) * 12)), 0) || 0;
-        const overridesDiff = rentPayments.reduce((acc, p) => {
-            const propBaseRent = activeProperties?.find(prop => prop.id === p.propertyId)?.tenancy?.monthlyRent || 0;
-            return acc + (Number(p.expectedAmount) - Number(propBaseRent));
-        }, 0);
-        return baseExpected + overridesDiff;
-    }
-    
-    const defaultRent = selectedProperty?.tenancy?.monthlyRent || 0;
-    const paymentsMap = rentPayments.reduce((acc, p) => { acc[p.month] = p; return acc; }, {} as Record<string, RentPayment>);
-    
-    return TAX_MONTHS.reduce((acc, month) => {
-        const amt = paymentsMap[month]?.expectedAmount ?? defaultRent;
-        return acc + Number(amt);
-    }, 0);
-  }, [activeProperties, selectedPropertyId, selectedProperty, rentPayments, selectedTaxYearStart]);
+    // Lookup for overrides
+    const paymentsLookup: Record<string, number> = {};
+    rentPayments.forEach(p => {
+        paymentsLookup[`${p.propertyId}-${p.month}-${p.year}`] = Number(p.expectedAmount);
+    });
+
+    let total = 0;
+    const targetProps = selectedPropertyId === 'all' ? activeProperties : activeProperties.filter(p => p.id === selectedPropertyId);
+
+    targetProps.forEach(prop => {
+        TAX_MONTHS.forEach(month => {
+            const monthIdx = TAX_MONTHS.indexOf(month);
+            const calendarYear = monthIdx >= 9 ? selectedTaxYearStart + 1 : selectedTaxYearStart;
+            const key = `${prop.id}-${month}-${calendarYear}`;
+            
+            if (paymentsLookup[key] !== undefined) {
+                total += paymentsLookup[key];
+            } else {
+                total += Number(prop.tenancy?.monthlyRent || 0);
+            }
+        });
+    });
+
+    return total;
+  }, [activeProperties, selectedPropertyId, rentPayments, selectedTaxYearStart]);
 
   const totalPaidRent = useMemo(() => rentPayments.reduce((acc, p) => acc + (Number(p.amountPaid) || 0), 0), [rentPayments]);
   
