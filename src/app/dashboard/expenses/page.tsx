@@ -376,7 +376,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
             <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-primary/5 min-h-[120px]">
                 <CardHeader className="pb-2 px-4 pt-4 sm:px-6 sm:pt-6">
-                    <CardTitle className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                    <CardTitle className="text-[9px] sm:text-[10px] font-black uppercase tracking-tighter text-muted-foreground flex items-center gap-2">
                         <TrendingUp className="h-3.5 w-3.5 text-primary shrink-0" />
                         <span className="truncate">Verified Revenue Collected</span>
                     </CardTitle>
@@ -392,7 +392,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
             
             <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-destructive/5 min-h-[120px]">
                 <CardHeader className="pb-2 px-4 pt-4 sm:px-6 sm:pt-6">
-                    <CardTitle className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-muted-foreground flex items-center gap-2">
+                    <CardTitle className="text-[9px] sm:text-[10px] font-black uppercase tracking-tighter text-muted-foreground flex items-center gap-2">
                         <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
                         <span className="truncate">Total Outstanding Arrears</span>
                     </CardTitle>
@@ -408,7 +408,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
 
             <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-primary/5 min-h-[120px]">
                 <CardHeader className="pb-2 px-4 pt-4 sm:px-6 sm:pt-6">
-                    <CardTitle className="text-[9px] sm:text-[10px] font-black uppercase tracking-wider text-muted-foreground flex items-center justify-between gap-2">
+                    <CardTitle className="text-[9px] sm:text-[10px] font-black uppercase tracking-tighter text-muted-foreground flex items-center justify-between gap-2">
                         <span className="truncate">Portfolio Collection Efficiency</span>
                         <Target className="h-3.5 w-3.5 text-primary opacity-40 shrink-0" />
                     </CardTitle>
@@ -467,7 +467,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                                                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-primary font-bold text-base opacity-100 transition-opacity">£</span>
                                                     <Input 
                                                         type="number" 
-                                                        key={`rent-v5-${row.month}-${row.year}-${row.rent}`}
+                                                        key={`rent-input-${row.month}-${row.year}-${row.rent}`}
                                                         defaultValue={row.rent} 
                                                         className="h-12 pl-10 pr-4 font-mono text-lg font-bold bg-primary/5 border-2 border-transparent hover:border-primary/20 focus:border-primary rounded-xl transition-all shadow-none text-center"
                                                         onBlur={(e) => handleRentAmountChange(row.month, row.year, Number(e.target.value))}
