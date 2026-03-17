@@ -339,7 +339,7 @@ export default function FinancialsPage() {
                 </Select>
             </div>
             <div className="grid w-full gap-1.5 text-left">
-                <Label htmlFor="reporting-year-selector" className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">UK Tax Year Cycle (12 Future, 5 Past)</Label>
+                <Label htmlFor="reporting-year-selector" className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">UK Tax Year Cycle</Label>
                 <Select onValueChange={(value) => setSelectedTaxYearStart(Number(value))} value={selectedTaxYearStart ? String(selectedTaxYearStart) : ''}>
                     <SelectTrigger id="reporting-year-selector" className="h-12 bg-muted/5 rounded-xl border-2">
                         <SelectValue placeholder="Tax Year" />
@@ -720,7 +720,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                                                         type="number" 
                                                         key={`rent-v4-${row.month}-${row.year}-${row.rent}`}
                                                         defaultValue={row.rent} 
-                                                        className="h-12 pl-8 pr-4 font-mono text-lg font-bold bg-primary/5 border-2 border-transparent hover:border-primary/20 focus:border-primary rounded-xl transition-all shadow-none text-center"
+                                                        className="h-12 pl-10 pr-4 font-mono text-lg font-bold bg-primary/5 border-2 border-transparent hover:border-primary/20 focus:border-primary rounded-xl transition-all shadow-none text-center"
                                                         onBlur={(e) => handleRentAmountChange(row.month, row.year, Number(e.target.value))}
                                                     />
                                                 </div>
