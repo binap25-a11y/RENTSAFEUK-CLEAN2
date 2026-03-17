@@ -240,8 +240,11 @@ export default function FinancialsPage() {
     
     if (selectedPropertyId === 'all') {
         const baseExpected = activeProperties?.reduce((total, prop) => (total + (Number(prop.tenancy?.monthlyRent || 0) * 12)), 0) || 0;
-        const overrides = rentPayments.reduce((acc, p) => acc + (Number(p.expectedAmount) - (activeProperties?.find(prop => prop.id === p.propertyId)?.tenancy?.monthlyRent || 0)), 0);
-        return baseExpected + overrides;
+        const overridesDiff = rentPayments.reduce((acc, p) => {
+            const propBaseRent = activeProperties?.find(prop => prop.id === p.propertyId)?.tenancy?.monthlyRent || 0;
+            return acc + (Number(p.expectedAmount) - Number(propBaseRent));
+        }, 0);
+        return baseExpected + overridesDiff;
     }
     
     const defaultRent = selectedProperty?.tenancy?.monthlyRent || 0;
@@ -566,8 +569,8 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
   }, [selectedProperty, rentPayments, selectedYear]);
 
   const collectionStats = useMemo(() => {
-    const totalExpected = statement.reduce((acc, s) => acc + s.rent, 0);
-    const totalCollected = statement.reduce((acc, s) => acc + s.amountPaid, 0);
+    const totalExpected = statement.reduce((acc, s) => acc + Number(s.rent), 0);
+    const totalCollected = statement.reduce((acc, s) => acc + Number(s.amountPaid), 0);
     const remaining = totalExpected - totalCollected;
     const rate = totalExpected > 0 ? (totalCollected / totalExpected) * 100 : 0;
     return { totalExpected, totalCollected, remaining, rate };
@@ -577,7 +580,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
     if (!firestore || !user || !selectedProperty) return;
     const rentPaymentId = `${selectedProperty.id}-${calendarYear}-${month}`;
     const row = statement.find(s => s.month === month && s.year === calendarYear);
-    const expectedAmount = row?.rent ?? 0;
+    const expectedAmount = Number(row?.rent ?? 0);
     
     setDoc(doc(firestore, 'rentPayments', rentPaymentId), { 
         landlordId: user.uid, 
@@ -632,10 +635,10 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                 </CardHeader>
                 <CardContent className="flex items-center justify-between pb-4 px-4 sm:pb-6 sm:px-6">
                     <div className="flex flex-col min-w-0">
-                        <span className="text-2xl sm:text-3xl font-bold text-green-600 tracking-tight truncate">{formatCurrency(collectionStats.totalCollected)}</span>
+                        <span className="text-xl sm:text-2xl font-bold text-green-600 tracking-tighter truncate">{formatCurrency(collectionStats.totalCollected)}</span>
                         <p className="text-[8px] sm:text-[9px] font-bold text-muted-foreground uppercase mt-1 truncate">Confirmed Registry Income</p>
                     </div>
-                    <div className="p-2 sm:p-3.5 rounded-xl sm:rounded-2xl bg-green-50 text-green-600 shadow-inner group-hover:scale-110 transition-transform shrink-0"><ArrowUpRight className="h-5 w-5 sm:h-6 sm:w-6" /></div>
+                    <div className="p-2 sm:p-3 rounded-xl bg-green-50 text-green-600 shadow-inner group-hover:scale-110 transition-transform shrink-0"><ArrowUpRight className="h-5 w-5 sm:h-6 sm:w-6" /></div>
                 </CardContent>
             </Card>
             
@@ -648,10 +651,10 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                 </CardHeader>
                 <CardContent className="flex items-center justify-between pb-4 px-4 sm:pb-6 sm:px-6">
                     <div className="flex flex-col min-w-0">
-                        <span className="text-2xl sm:text-3xl font-bold text-destructive tracking-tight truncate">{formatCurrency(collectionStats.remaining)}</span>
+                        <span className="text-xl sm:text-2xl font-bold text-destructive tracking-tighter truncate">{formatCurrency(collectionStats.remaining)}</span>
                         <p className="text-[8px] sm:text-[9px] font-bold text-muted-foreground uppercase mt-1 truncate">Pending Ledger Balance</p>
                     </div>
-                    <div className="p-2 sm:p-3.5 rounded-xl sm:rounded-2xl bg-destructive/5 text-destructive shadow-inner group-hover:scale-110 transition-transform shrink-0"><ArrowDownRight className="h-5 w-5 sm:h-6 sm:w-6" /></div>
+                    <div className="p-2 sm:p-3 rounded-xl bg-destructive/5 text-destructive shadow-inner group-hover:scale-110 transition-transform shrink-0"><ArrowDownRight className="h-5 w-5 sm:h-6 sm:w-6" /></div>
                 </CardContent>
             </Card>
 
@@ -667,7 +670,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                         <span className="text-xl sm:text-2xl font-black text-primary tracking-tighter shrink-0">{collectionStats.rate.toFixed(1)}%</span>
                         <Badge variant="outline" className="h-5 px-2 text-[7px] sm:text-[8px] font-black uppercase border-primary/20 bg-primary/5 text-primary truncate ml-2">YTD Metric</Badge>
                     </div>
-                    <Progress value={collectionStats.rate} className="h-3 bg-muted shadow-inner rounded-full overflow-hidden" />
+                    <Progress value={collectionStats.rate} className="h-2.5 bg-muted shadow-inner rounded-full overflow-hidden" />
                 </CardContent>
             </Card>
         </div>
@@ -705,7 +708,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                                 {statement.map((row) => (
                                     <TableRow key={`${row.month}-${row.year}`} className="hover:bg-primary/[0.02] transition-all group border-b border-muted/50">
                                         <TableCell className="pl-10 py-8 text-left">
-                                            <div className="flex flex-col gap-0.5">
+                                            <div className="flex flex-col gap-0.5 text-left">
                                                 <span className="text-xl font-bold text-foreground group-hover:text-primary transition-colors">{row.month}</span>
                                                 <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest flex items-center gap-1.5"><Calendar className="h-3 w-3" /> {row.year}</span>
                                             </div>
@@ -716,7 +719,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                                                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-base opacity-40 group-focus-within/input:opacity-100 transition-opacity">£</span>
                                                     <Input 
                                                         type="number" 
-                                                        key={`rent-v3-${row.month}-${row.year}-${row.rent}`}
+                                                        key={`rent-v4-${row.month}-${row.year}-${row.rent}`}
                                                         defaultValue={row.rent} 
                                                         className="h-12 pl-8 pr-4 font-mono text-lg font-bold bg-muted/5 border-2 border-transparent hover:border-muted focus:border-primary rounded-xl transition-all shadow-none text-center"
                                                         onBlur={(e) => handleRentAmountChange(row.month, row.year, Number(e.target.value))}
