@@ -604,6 +604,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
         year: calendarYear,
         month,
         expectedAmount: amount,
+        status,
         amountPaid: status === 'Paid' ? amount : 0
     }, { merge: true }).then(() => toast({ title: 'Fiscal Expectation Adjusted' }));
   };
