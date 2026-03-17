@@ -635,7 +635,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                 <CardContent className="flex items-center justify-between pb-4 px-4 sm:pb-6 sm:px-6">
                     <div className="flex flex-col min-w-0">
                         <span className="text-xl sm:text-2xl font-bold text-green-600 tracking-tighter truncate">{formatCurrency(collectionStats.totalCollected)}</span>
-                        <p className="text-[8px] sm:text-[9px] font-bold text-muted-foreground uppercase mt-1 truncate">Confirmed Registry Income</p>
+                        <p className="text-[8px] sm:text-[9px] font-bold text-muted-foreground uppercase mt-1 truncate leading-tight">Confirmed Registry Income</p>
                     </div>
                     <div className="p-2 sm:p-3 rounded-xl bg-green-50 text-green-600 shadow-inner group-hover:scale-110 transition-transform shrink-0"><ArrowUpRight className="h-5 w-5 sm:h-6 sm:w-6" /></div>
                 </CardContent>
@@ -651,7 +651,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                 <CardContent className="flex items-center justify-between pb-4 px-4 sm:pb-6 sm:px-6">
                     <div className="flex flex-col min-w-0">
                         <span className="text-xl sm:text-2xl font-bold text-destructive tracking-tighter truncate">{formatCurrency(collectionStats.remaining)}</span>
-                        <p className="text-[8px] sm:text-[9px] font-bold text-muted-foreground uppercase mt-1 truncate">Pending Ledger Balance</p>
+                        <p className="text-[8px] sm:text-[9px] font-bold text-muted-foreground uppercase mt-1 truncate leading-tight">Pending Ledger Balance</p>
                     </div>
                     <div className="p-2 sm:p-3 rounded-xl bg-destructive/5 text-destructive shadow-inner group-hover:scale-110 transition-transform shrink-0"><ArrowDownRight className="h-5 w-5 sm:h-6 sm:w-6" /></div>
                 </CardContent>
@@ -715,12 +715,12 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                                         <TableCell>
                                             <div className="flex justify-center">
                                                 <div className="relative max-w-[160px] group/input">
-                                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-muted-foreground font-bold text-base opacity-40 group-focus-within/input:opacity-100 transition-opacity">£</span>
+                                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-primary font-bold text-base opacity-100 transition-opacity">£</span>
                                                     <Input 
                                                         type="number" 
                                                         key={`rent-v4-${row.month}-${row.year}-${row.rent}`}
                                                         defaultValue={row.rent} 
-                                                        className="h-12 pl-8 pr-4 font-mono text-lg font-bold bg-muted/5 border-2 border-transparent hover:border-muted focus:border-primary rounded-xl transition-all shadow-none text-center"
+                                                        className="h-12 pl-8 pr-4 font-mono text-lg font-bold bg-primary/5 border-2 border-transparent hover:border-primary/20 focus:border-primary rounded-xl transition-all shadow-none text-center"
                                                         onBlur={(e) => handleRentAmountChange(row.month, row.year, Number(e.target.value))}
                                                     />
                                                 </div>
