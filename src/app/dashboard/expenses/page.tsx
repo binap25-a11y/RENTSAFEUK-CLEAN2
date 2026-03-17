@@ -619,7 +619,6 @@ export default function FinancialsPage() {
   const totalExpectedRent = useMemo(() => {
     if (!selectedTaxYearStart || !activeProperties) return 0;
     
-    // Lookup for overrides
     const paymentsLookup: Record<string, number> = {};
     rentPayments.forEach(p => {
         paymentsLookup[`${p.propertyId}-${p.month}-${p.year}`] = Number(p.expectedAmount);
