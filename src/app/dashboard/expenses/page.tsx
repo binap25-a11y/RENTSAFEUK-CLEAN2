@@ -466,8 +466,8 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                                                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-primary font-bold text-base opacity-100 transition-opacity">£</span>
                                                     <Input 
                                                         type="number" 
-                                                        key={`rent-input-${selectedProperty.id}-${row.month}-${row.year}`}
-                                                        defaultValue={row.rent} 
+                                                        key={`rent-input-${selectedProperty.id}-${row.month}-${row.year}-${row.rent}`}
+                                                        defaultValue={row.rent || 0} 
                                                         className="h-12 pl-10 pr-4 font-mono text-lg font-bold bg-primary/5 border-2 border-transparent hover:border-primary/20 focus:border-primary rounded-xl transition-all shadow-none text-center"
                                                         onBlur={(e) => handleRentAmountChange(row.month, row.year, Number(e.target.value))}
                                                     />
@@ -561,9 +561,14 @@ export default function FinancialsPage() {
   const { data: allExpenses, isLoading: isLoadingExpenses } = useCollection<Expense>(expensesQuery);
 
   const rentQuery = useMemoFirebase(() => {
-    if (!user || !firestore) return null;
-    return query(collection(firestore, 'rentPayments'), where('landlordId', '==', user.uid));
-  }, [user, firestore]);
+    if (!user || !firestore || !selectedTaxYearStart) return null;
+    // FETCH BOTH YEARS INVOLVED IN THE TAX CYCLE
+    return query(
+        collection(firestore, 'rentPayments'), 
+        where('landlordId', '==', user.uid),
+        where('year', 'in', [selectedTaxYearStart, selectedTaxYearStart + 1])
+    );
+  }, [user, firestore, selectedTaxYearStart]);
   const { data: allRentPayments, isLoading: isLoadingRent } = useCollection<RentPayment>(rentQuery);
 
   const repairsQuery = useMemoFirebase(() => {
