@@ -48,7 +48,8 @@ import {
   Clock,
   ShieldCheck,
   Calendar,
-  MapPin
+  MapPin,
+  Target
 } from 'lucide-react';
 import { getYear, isAfter, isBefore } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -165,28 +166,24 @@ export default function FinancialsPage() {
     setSelectedTaxYearStart(taxYearStart);
   }, []);
 
-  // 1. Fetch properties
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(collection(firestore, 'properties'), where('landlordId', '==', user.uid), where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance']), limit(500));
   }, [firestore, user]);
   const { data: activeProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
   
-  // 2. Fetch all expenses
   const expensesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(collection(firestore, 'expenses'), where('landlordId', '==', user.uid), limit(1000));
   }, [firestore, user]);
   const { data: allExpenses, isLoading: isLoadingExpenses } = useCollection<Expense>(expensesQuery);
 
-  // 3. Fetch rent payments
   const rentQuery = useMemoFirebase(() => {
     if (!user || !firestore || !selectedTaxYearStart) return null;
     return query(collection(firestore, 'rentPayments'), where('landlordId', '==', user.uid));
   }, [firestore, user, selectedTaxYearStart]);
   const { data: allRentPayments, isLoading: isLoadingRent } = useCollection<RentPayment>(rentQuery);
 
-  // 4. Fetch maintenance repairs
   const repairsQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(collection(firestore, 'repairs'), where('landlordId', '==', user.uid), limit(500));
@@ -241,9 +238,7 @@ export default function FinancialsPage() {
     if (!selectedTaxYearStart) return 0;
     
     if (selectedPropertyId === 'all') {
-        // consolidated calculation
         const baseExpected = activeProperties?.reduce((total, prop) => (total + (Number(prop.tenancy?.monthlyRent || 0) * 12)), 0) || 0;
-        // Adjust for specific ledger entries that differ from base
         const overrides = rentPayments.reduce((acc, p) => acc + (Number(p.expectedAmount) - (activeProperties?.find(prop => prop.id === p.propertyId)?.tenancy?.monthlyRent || 0)), 0);
         return baseExpected + overrides;
     }
@@ -627,37 +622,51 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-            <Card className="border-none shadow-xl bg-card text-left overflow-hidden group">
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-primary/5">
                 <CardHeader className="pb-2 px-6 pt-6">
-                    <CardTitle className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">Collected YTD</CardTitle>
+                    <CardTitle className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground flex items-center gap-2">
+                        <TrendingUp className="h-3.5 w-3.5 text-primary" />
+                        Verified Revenue Collected
+                    </CardTitle>
                 </CardHeader>
                 <CardContent className="flex items-center justify-between pb-6 px-6">
-                    <span className="text-3xl font-bold text-green-600 tracking-tight">{formatCurrency(collectionStats.totalCollected)}</span>
-                    <div className="p-3 rounded-2xl bg-green-50 text-green-600 shadow-inner group-hover:scale-110 transition-transform"><ArrowUpRight className="h-6 w-6" /></div>
+                    <div className="flex flex-col">
+                        <span className="text-3xl font-bold text-green-600 tracking-tight">{formatCurrency(collectionStats.totalCollected)}</span>
+                        <p className="text-[9px] font-bold text-muted-foreground uppercase mt-1">Confirmed Registry Income</p>
+                    </div>
+                    <div className="p-3.5 rounded-2xl bg-green-50 text-green-600 shadow-inner group-hover:scale-110 transition-transform"><ArrowUpRight className="h-6 w-6" /></div>
                 </CardContent>
             </Card>
-            <Card className="border-none shadow-xl bg-card text-left overflow-hidden group">
+            
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-destructive/5">
                 <CardHeader className="pb-2 px-6 pt-6">
-                    <CardTitle className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground">Outstanding Balance</CardTitle>
+                    <CardTitle className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground flex items-center gap-2">
+                        <AlertCircle className="h-3.5 w-3.5 text-destructive" />
+                        Total Outstanding Arrears
+                    </CardTitle>
                 </CardHeader>
                 <CardContent className="flex items-center justify-between pb-6 px-6">
-                    <span className="text-3xl font-bold text-destructive tracking-tight">{formatCurrency(collectionStats.remaining)}</span>
-                    <div className="p-3 rounded-2xl bg-destructive/5 text-destructive shadow-inner group-hover:scale-110 transition-transform"><ArrowDownRight className="h-6 w-6" /></div>
+                    <div className="flex flex-col">
+                        <span className="text-3xl font-bold text-destructive tracking-tight">{formatCurrency(collectionStats.remaining)}</span>
+                        <p className="text-[9px] font-bold text-muted-foreground uppercase mt-1">Pending Ledger Balance</p>
+                    </div>
+                    <div className="p-3.5 rounded-2xl bg-destructive/5 text-destructive shadow-inner group-hover:scale-110 transition-transform"><ArrowDownRight className="h-6 w-6" /></div>
                 </CardContent>
             </Card>
-            <Card className="border-none shadow-xl bg-card text-left overflow-hidden">
+
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-primary/5">
                 <CardHeader className="pb-2 px-6 pt-6">
-                    <CardTitle className="text-[10px] font-bold uppercase tracking-[0.3em] text-muted-foreground flex items-center justify-between">
-                        Collection Rate
-                        <span className="text-primary font-bold">{collectionStats.rate.toFixed(1)}%</span>
+                    <CardTitle className="text-[10px] font-black uppercase tracking-[0.3em] text-muted-foreground flex items-center justify-between">
+                        Portfolio Collection Efficiency
+                        <Target className="h-3.5 w-3.5 text-primary opacity-40" />
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="px-6 pb-6 space-y-4">
-                    <Progress value={collectionStats.rate} className="h-2.5 bg-muted shadow-inner" />
-                    <div className="flex items-center gap-2 text-[10px] font-bold uppercase text-muted-foreground">
-                        <ShieldCheck className="h-3.5 w-3.5 text-primary" />
-                        Fiscal Performance Tracking
+                    <div className="flex items-end justify-between">
+                        <span className="text-2xl font-black text-primary tracking-tighter">{collectionStats.rate.toFixed(1)}%</span>
+                        <Badge variant="outline" className="h-5 px-2 text-[8px] font-black uppercase border-primary/20 bg-primary/5 text-primary">YTD Metric</Badge>
                     </div>
+                    <Progress value={collectionStats.rate} className="h-3 bg-muted shadow-inner rounded-full overflow-hidden" />
                 </CardContent>
             </Card>
         </div>
@@ -760,7 +769,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                         <span className="text-2xl font-bold text-destructive tabular-nums tracking-tighter">{formatCurrency(collectionStats.remaining)}</span>
                     </div>
                 </div>
-                <div className="text-center sm:text-right space-y-3 w-full sm:w-auto border-t sm:border-t-0 pt-6 sm:pt-0">
+                <div className="text-center sm:text-right space-3 w-full sm:w-auto border-t sm:border-t-0 pt-6 sm:pt-0">
                     <div className="space-y-1">
                         <span className="text-[10px] font-bold uppercase text-primary tracking-[0.3em] block">Verified Fiscal Position</span>
                         <p className="text-xs text-muted-foreground font-medium">Registry synchronization active for {selectedYear}</p>
