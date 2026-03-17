@@ -49,7 +49,8 @@ import {
   Calendar,
   MapPin,
   Target,
-  ChevronRight
+  ChevronRight,
+  User
 } from 'lucide-react';
 import { getYear, isAfter, isBefore, format, startOfMonth, setDate, isPast } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -132,6 +133,12 @@ interface RentPayment {
   status: PaymentStatus;
   amountPaid?: number;
   expectedAmount: number;
+}
+
+interface Tenant {
+    id: string;
+    name: string;
+    status: string;
 }
 
 const expenseSchema = z.object({
@@ -293,7 +300,7 @@ function AnnualSummary({ selectedYear, expenses, repairCosts, isLoadingExpenses 
   );
 }
 
-function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoadingPayments }: { selectedProperty: Property | undefined, selectedYear: number, rentPayments: RentPayment[] | null, isLoadingPayments: boolean }) {
+function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayments, isLoadingPayments }: { selectedProperty: Property | undefined, activeTenant: Tenant | undefined, selectedYear: number, rentPayments: RentPayment[] | null, isLoadingPayments: boolean }) {
   const { user } = useUser();
   const firestore = useFirestore();
   
@@ -377,7 +384,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                 <CardHeader className="pb-2 px-4 pt-4 sm:px-6 sm:pt-6">
                     <CardTitle className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground flex items-center gap-2">
                         <TrendingUp className="h-3.5 w-3.5 text-primary shrink-0" />
-                        <span className="truncate leading-tight">Verified Revenue Collected</span>
+                        <span className="leading-tight">Verified Revenue Collected</span>
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex items-center justify-between pb-4 px-4 sm:pb-6 sm:px-6">
@@ -393,7 +400,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                 <CardHeader className="pb-2 px-4 pt-4 sm:px-6 sm:pt-6">
                     <CardTitle className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground flex items-center gap-2">
                         <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
-                        <span className="truncate leading-tight">Total Outstanding Arrears</span>
+                        <span className="leading-tight">Total Outstanding Arrears</span>
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex items-center justify-between pb-4 px-4 sm:pb-6 sm:px-6">
@@ -408,7 +415,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
             <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-primary/5 min-h-[120px]">
                 <CardHeader className="pb-2 px-4 pt-4 sm:px-6 sm:pt-6">
                     <CardTitle className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground flex items-center justify-between gap-2">
-                        <span className="truncate leading-tight">Portfolio Collection Efficiency</span>
+                        <span className="leading-tight">Portfolio Collection Efficiency</span>
                         <Target className="h-3.5 w-3.5 text-primary opacity-40 shrink-0" />
                     </CardTitle>
                 </CardHeader>
@@ -433,9 +440,17 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                         {selectedProperty.address.street}
                     </CardDescription>
                 </div>
-                <Badge variant="outline" className="hidden sm:flex h-8 px-4 rounded-xl border-2 font-bold uppercase text-[9px] tracking-widest bg-background shadow-sm">
-                    Registry Active
-                </Badge>
+                <div className="flex items-center gap-2">
+                    {activeTenant && (
+                        <Badge variant="outline" className="h-8 px-4 rounded-xl border-2 font-bold uppercase text-[9px] tracking-widest bg-primary/5 text-primary shadow-sm gap-2">
+                            <User className="h-3 w-3" />
+                            {activeTenant.name}
+                        </Badge>
+                    )}
+                    <Badge variant="outline" className="hidden sm:flex h-8 px-4 rounded-xl border-2 font-bold uppercase text-[9px] tracking-widest bg-background shadow-sm">
+                        Registry Active
+                    </Badge>
+                </div>
             </CardHeader>
             <CardContent className='p-0'>
                 {isLoadingPayments ? (
@@ -457,18 +472,21 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                                         <TableCell className="pl-10 py-8 text-left">
                                             <div className="flex flex-col gap-0.5 text-left">
                                                 <span className="text-xl font-bold text-foreground group-hover:text-primary transition-colors">{row.month}</span>
-                                                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest flex items-center gap-1.5"><Calendar className="h-3 w-3" /> {row.year}</span>
+                                                <div className="flex items-center gap-3">
+                                                    <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest flex items-center gap-1.5"><Calendar className="h-3 w-3" /> {row.year}</span>
+                                                    {activeTenant && <span className="text-[9px] text-primary/60 font-black uppercase tracking-tighter flex items-center gap-1"><User className="h-2.5 w-2.5" /> {activeTenant.name}</span>}
+                                                </div>
                                             </div>
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex justify-center">
-                                                <div className="relative max-w-[160px] group/input">
+                                                <div className="relative w-full max-w-[220px] group/input">
                                                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-primary font-bold text-base opacity-100 transition-opacity">£</span>
                                                     <Input 
                                                         type="number" 
                                                         key={`rent-input-${selectedProperty.id}-${row.month}-${row.year}-${row.rent}`}
                                                         defaultValue={row.rent || 0} 
-                                                        className="h-12 pl-10 pr-4 font-mono text-lg font-bold bg-primary/5 border-2 border-transparent hover:border-primary/20 focus:border-primary rounded-xl transition-all shadow-none text-center"
+                                                        className="h-12 pl-10 pr-4 font-mono text-lg font-bold bg-primary/5 border-2 border-transparent hover:border-primary/20 focus:border-primary rounded-xl transition-all shadow-none text-center w-full"
                                                         onBlur={(e) => handleRentAmountChange(row.month, row.year, Number(e.target.value))}
                                                     />
                                                 </div>
@@ -554,6 +572,13 @@ export default function FinancialsPage() {
   }, [firestore, user]);
   const { data: activeProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
   
+  const tenantsQuery = useMemoFirebase(() => {
+    if (!user || !firestore || !selectedPropertyId || selectedPropertyId === 'all') return null;
+    return query(collection(firestore, 'tenants'), where('propertyId', '==', selectedPropertyId), where('status', '==', 'Active'), limit(1));
+  }, [user, firestore, selectedPropertyId]);
+  const { data: propertyTenants } = useCollection<Tenant>(tenantsQuery);
+  const activeTenant = propertyTenants?.[0];
+
   const expensesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(collection(firestore, 'expenses'), where('landlordId', '==', user.uid), limit(1000));
@@ -789,6 +814,7 @@ export default function FinancialsPage() {
             <TabsContent value="statement" className="animate-in fade-in slide-in-from-top-2 duration-500">
                 <RentStatement 
                     selectedProperty={selectedProperty} 
+                    activeTenant={activeTenant}
                     selectedYear={selectedTaxYearStart || 0} 
                     rentPayments={rentPayments} 
                     isLoadingPayments={isLoading} 
