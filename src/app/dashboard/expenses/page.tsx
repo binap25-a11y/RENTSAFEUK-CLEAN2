@@ -375,9 +375,9 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
             <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-primary/5 min-h-[120px]">
                 <CardHeader className="pb-2 px-4 pt-4 sm:px-6 sm:pt-6">
-                    <CardTitle className="text-[9px] sm:text-[10px] font-black uppercase tracking-tighter text-muted-foreground flex items-center gap-2">
+                    <CardTitle className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground flex items-center gap-2">
                         <TrendingUp className="h-3.5 w-3.5 text-primary shrink-0" />
-                        <span className="truncate">Verified Revenue Collected</span>
+                        <span className="truncate leading-tight">Verified Revenue Collected</span>
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex items-center justify-between pb-4 px-4 sm:pb-6 sm:px-6">
@@ -391,9 +391,9 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
             
             <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-destructive/5 min-h-[120px]">
                 <CardHeader className="pb-2 px-4 pt-4 sm:px-6 sm:pt-6">
-                    <CardTitle className="text-[9px] sm:text-[10px] font-black uppercase tracking-tighter text-muted-foreground flex items-center gap-2">
+                    <CardTitle className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground flex items-center gap-2">
                         <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
-                        <span className="truncate">Total Outstanding Arrears</span>
+                        <span className="truncate leading-tight">Total Outstanding Arrears</span>
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex items-center justify-between pb-4 px-4 sm:pb-6 sm:px-6">
@@ -407,8 +407,8 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
 
             <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-primary/5 min-h-[120px]">
                 <CardHeader className="pb-2 px-4 pt-4 sm:px-6 sm:pt-6">
-                    <CardTitle className="text-[9px] sm:text-[10px] font-black uppercase tracking-tighter text-muted-foreground flex items-center justify-between gap-2">
-                        <span className="truncate">Portfolio Collection Efficiency</span>
+                    <CardTitle className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground flex items-center justify-between gap-2">
+                        <span className="truncate leading-tight">Portfolio Collection Efficiency</span>
                         <Target className="h-3.5 w-3.5 text-primary opacity-40 shrink-0" />
                     </CardTitle>
                 </CardHeader>
@@ -562,7 +562,6 @@ export default function FinancialsPage() {
 
   const rentQuery = useMemoFirebase(() => {
     if (!user || !firestore || !selectedTaxYearStart) return null;
-    // FETCH BOTH YEARS INVOLVED IN THE TAX CYCLE
     return query(
         collection(firestore, 'rentPayments'), 
         where('landlordId', '==', user.uid),
