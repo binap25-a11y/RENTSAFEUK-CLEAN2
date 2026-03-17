@@ -14,11 +14,6 @@ const Input = React.forwardRef<HTMLInputElement, React.ComponentProps<"input">>(
         ref={ref}
         suppressHydrationWarning
         {...props}
-        // This is the correct way to handle this.
-        // The `value` prop from `...props` will be overridden by this one.
-        // For file inputs, we must set value to undefined, as browsers don't allow setting it programmatically.
-        // For other input types, we default to an empty string to prevent uncontrolled component errors.
-        value={type === "file" ? undefined : (props as any).value ?? ""}
       />
     )
   }
