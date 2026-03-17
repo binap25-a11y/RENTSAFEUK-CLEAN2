@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -382,7 +383,7 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
             <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-primary/5 min-h-[120px]">
                 <CardHeader className="pb-2 px-4 pt-4 sm:px-6 sm:pt-6">
-                    <CardTitle className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground flex items-center gap-2">
+                    <CardTitle className="text-[10px] font-black uppercase tracking-tight text-muted-foreground flex items-center gap-2">
                         <TrendingUp className="h-3.5 w-3.5 text-primary shrink-0" />
                         <span className="leading-tight">Verified Revenue Collected</span>
                     </CardTitle>
@@ -398,7 +399,7 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
             
             <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-destructive/5 min-h-[120px]">
                 <CardHeader className="pb-2 px-4 pt-4 sm:px-6 sm:pt-6">
-                    <CardTitle className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground flex items-center gap-2">
+                    <CardTitle className="text-[10px] font-black uppercase tracking-tight text-muted-foreground flex items-center gap-2">
                         <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
                         <span className="leading-tight">Total Outstanding Arrears</span>
                     </CardTitle>
@@ -414,7 +415,7 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
 
             <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-primary/5 min-h-[120px]">
                 <CardHeader className="pb-2 px-4 pt-4 sm:px-6 sm:pt-6">
-                    <CardTitle className="text-[10px] font-black uppercase tracking-tighter text-muted-foreground flex items-center justify-between gap-2">
+                    <CardTitle className="text-[10px] font-black uppercase tracking-tight text-muted-foreground flex items-center justify-between gap-2">
                         <span className="leading-tight">Portfolio Collection Efficiency</span>
                         <Target className="h-3.5 w-3.5 text-primary opacity-40 shrink-0" />
                     </CardTitle>
@@ -480,7 +481,7 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex justify-center">
-                                                <div className="relative w-full max-w-[220px] group/input">
+                                                <div className="relative w-full max-w-[300px] group/input">
                                                     <span className="absolute left-4 top-1/2 -translate-y-1/2 text-primary font-bold text-base opacity-100 transition-opacity">£</span>
                                                     <Input 
                                                         type="number" 
@@ -574,7 +575,13 @@ export default function FinancialsPage() {
   
   const tenantsQuery = useMemoFirebase(() => {
     if (!user || !firestore || !selectedPropertyId || selectedPropertyId === 'all') return null;
-    return query(collection(firestore, 'tenants'), where('propertyId', '==', selectedPropertyId), where('status', '==', 'Active'), limit(1));
+    return query(
+      collection(firestore, 'tenants'), 
+      where('landlordId', '==', user.uid),
+      where('propertyId', '==', selectedPropertyId), 
+      where('status', '==', 'Active'), 
+      limit(1)
+    );
   }, [user, firestore, selectedPropertyId]);
   const { data: propertyTenants } = useCollection<Tenant>(tenantsQuery);
   const activeTenant = propertyTenants?.[0];
@@ -699,7 +706,7 @@ export default function FinancialsPage() {
 
     const baseInsurance = expenses.filter(e => ['Insurance', 'Utilities'].includes(e.expenseType)).reduce((a, b) => a + (Number(b.amount) || 0), 0);
     const baseMaintenance = expenses.filter(e => ['Repairs and Maintenance', 'Cleaning', 'Gardening'].includes(e.expenseType)).reduce((a, b) => a + (Number(b.amount) || 0), 0);
-    const repairMaintenance = repairCosts.reduce((a, b) => a + (Number(b.expectedCost || b.estimatedCost || 0)), 0);
+    const repairMaintenance = repairCosts.reduce((a, b) => a + (Number(a.expectedCost || a.estimatedCost || 0)), 0);
     const totalMaintenance = baseMaintenance + repairMaintenance;
     const professionalFees = expenses.filter(e => ['Letting Agent Fees'].includes(e.expenseType)).reduce((a, b) => a + (Number(b.amount) || 0), 0);
     const financeCosts = expenses.filter(e => ['Mortgage Interest'].includes(e.expenseType)).reduce((a, b) => a + (Number(b.amount) || 0), 0);
@@ -774,23 +781,23 @@ export default function FinancialsPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all">
                 <div className="h-1 bg-primary w-full opacity-20 group-hover:opacity-100 transition-opacity" />
-                <CardHeader className="pb-2 px-6"><CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Gross Expected</CardTitle></CardHeader>
-                <CardContent className='px-6 pb-6'><div className="text-2xl font-bold tracking-tight text-foreground">{formatCurrency(totalExpectedRent)}</div></CardContent>
+                <CardHeader className="pb-2 px-4"><CardTitle className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground">Gross Expected</CardTitle></CardHeader>
+                <CardContent className='px-4 pb-6'><div className="text-2xl font-bold tracking-tight text-foreground">{formatCurrency(totalExpectedRent)}</div></CardContent>
             </Card>
             <Card className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all">
                 <div className="h-1 bg-green-500 w-full opacity-20 group-hover:opacity-100 transition-opacity" />
-                <CardHeader className="pb-2 px-6"><CardTitle className="text-[10px] font-bold uppercase tracking-widest text-green-600">Verified Income</CardTitle></CardHeader>
-                <CardContent className='px-6 pb-6'><div className="text-2xl font-bold tracking-tight text-foreground">{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(totalPaidRent)}</div></CardContent>
+                <CardHeader className="pb-2 px-4"><CardTitle className="text-[11px] font-bold uppercase tracking-tight text-green-600">Verified Income</CardTitle></CardHeader>
+                <CardContent className='px-4 pb-6'><div className="text-2xl font-bold tracking-tight text-foreground">{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(totalPaidRent)}</div></CardContent>
             </Card>
             <Card className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all">
                 <div className="h-1 bg-destructive w-full opacity-20 group-hover:opacity-100 transition-opacity" />
-                <CardHeader className="pb-2 px-6"><CardTitle className="text-[10px] font-bold uppercase tracking-widest text-destructive">Total Expenses</CardTitle></CardHeader>
-                <CardContent className='px-6 pb-6'><div className="text-2xl font-bold tracking-tight text-foreground">{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(totalExpenses)}</div></CardContent>
+                <CardHeader className="pb-2 px-4"><CardTitle className="text-[11px] font-bold uppercase tracking-tight text-destructive">Total Expenses</CardTitle></CardHeader>
+                <CardContent className='px-4 pb-6'><div className="text-2xl font-bold tracking-tight text-foreground">{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(totalExpenses)}</div></CardContent>
             </Card>
             <Card className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all">
                 <div className="h-1 bg-amber-500 w-full opacity-20 group-hover:opacity-100 transition-opacity" />
-                <CardHeader className="pb-2 px-6"><CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Taxable Position</CardTitle></CardHeader>
-                <CardContent className='px-6 pb-6'><div className={"text-2xl font-bold tracking-tight " + (netIncome < 0 ? "text-destructive" : "text-primary")}>{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(netIncome)}</div></CardContent>
+                <CardHeader className="pb-2 px-4"><CardTitle className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground">Taxable Position</CardTitle></CardHeader>
+                <CardContent className='px-4 pb-6'><div className={"text-2xl font-bold tracking-tight " + (netIncome < 0 ? "text-destructive" : "text-primary")}>{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(netIncome)}</div></CardContent>
             </Card>
         </div>
 

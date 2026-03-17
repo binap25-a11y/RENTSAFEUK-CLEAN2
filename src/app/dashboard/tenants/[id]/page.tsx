@@ -171,6 +171,7 @@ export default function TenantDetailPage() {
 
         const activeTenantsQuery = query(
             collection(firestore, 'tenants'),
+            where('landlordId', '==', user.uid),
             where('propertyId', '==', tenant.propertyId),
             where('status', '==', 'Active'),
             limit(5)
@@ -384,7 +385,7 @@ export default function TenantDetailPage() {
                     <AlertDialogDescription className="text-base font-medium text-center">This will move <strong className="text-foreground">{tenant.name}</strong> to your archives. Access to the Resident Hub will be revoked.</AlertDialogDescription>
                 </AlertDialogHeader>
                 <AlertDialogFooter className="gap-3 mt-6">
-                    <AlertDialogCancel className="rounded-2xl font-bold uppercase text-[10px] h-12 flex-1">Cancel</AlertDialogCancel>
+                    <AlertDialogCancel className="rounded-xl font-bold uppercase text-[10px] h-12 flex-1">Cancel</AlertDialogCancel>
                     <AlertDialogAction onClick={handleDeleteConfirm} disabled={isArchiving} className="bg-destructive text-destructive-foreground hover:bg-destructive/90 rounded-2xl font-bold uppercase text-[10px] h-12 flex-1 shadow-lg">
                         {isArchiving ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : null} Archive Tenant
                     </AlertDialogAction>

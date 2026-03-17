@@ -143,6 +143,7 @@ export default function TenantsPage() {
       // 1. Atomic Verification: Scan for remaining residents
       const activeTenantsQuery = query(
           collection(firestore, 'tenants'),
+          where('landlordId', '==', user.uid),
           where('propertyId', '==', tenantToArchive.propertyId),
           where('status', '==', 'Active'),
           limit(5)
