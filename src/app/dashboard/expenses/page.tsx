@@ -347,22 +347,6 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
     }, { merge: true }).then(() => toast({ title: 'Registry Sync Successful' }));
   };
 
-  const handleRentAmountChange = (month: string, calendarYear: number, amount: number) => {
-    if (!firestore || !user || !selectedProperty) return;
-    const rentPaymentId = `${selectedProperty.id}-${calendarYear}-${month}`;
-    const row = statement.find(s => s.month === month && s.year === calendarYear);
-    
-    setDoc(doc(firestore, 'rentPayments', rentPaymentId), { 
-        landlordId: user.uid, 
-        propertyId: selectedProperty.id, 
-        year: calendarYear, 
-        month, 
-        expectedAmount: amount,
-        status: row?.status || 'Pending',
-        amountPaid: (row?.status === 'Paid') ? amount : (Number(row?.amountPaid) || 0)
-    }, { merge: true }).then(() => toast({ title: 'Rent Amount Overridden' }));
-  };
-
   if (!selectedProperty) return (
     <Card className="mt-6 border-2 border-dashed bg-muted/5 h-[450px] flex items-center justify-center rounded-[2rem]">
         <CardContent className='text-center space-y-6 max-w-xs'>
@@ -380,46 +364,46 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-            <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-primary/5 min-h-[240px] flex flex-col justify-between">
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-primary/5 min-h-[200px] flex flex-col justify-between">
                 <CardHeader className="pb-2 px-6 pt-6 flex-shrink-0">
-                    <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <CardTitle className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                         <TrendingUp className="h-4 w-4 text-primary shrink-0" />
                         <span className="leading-tight">Verified Revenue Collected</span>
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col justify-center pb-6 px-6">
                     <div className="flex flex-col min-w-0">
-                        <span className="text-4xl font-black text-green-600 tracking-tighter leading-none mb-2 break-all">{formatCurrency(collectionStats.totalCollected)}</span>
+                        <span className="text-2xl sm:text-3xl font-black text-green-600 tracking-tighter leading-none mb-2 tabular-nums">{formatCurrency(collectionStats.totalCollected)}</span>
                         <p className="text-[10px] font-bold text-muted-foreground uppercase leading-tight">Confirmed Registry Income</p>
                     </div>
                 </CardContent>
             </Card>
             
-            <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-destructive/5 min-h-[240px] flex flex-col justify-between">
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-destructive/5 min-h-[200px] flex flex-col justify-between">
                 <CardHeader className="pb-2 px-6 pt-6 flex-shrink-0">
-                    <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <CardTitle className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                         <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
                         <span className="leading-tight">Total Outstanding Arrears</span>
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col justify-center pb-6 px-6">
                     <div className="flex flex-col min-w-0">
-                        <span className="text-4xl font-black text-destructive tracking-tighter leading-none mb-2 break-all">{formatCurrency(collectionStats.remaining)}</span>
+                        <span className="text-2xl sm:text-3xl font-black text-destructive tracking-tighter leading-none mb-2 tabular-nums">{formatCurrency(collectionStats.remaining)}</span>
                         <p className="text-[10px] font-bold text-muted-foreground uppercase leading-tight">Pending Ledger Balance</p>
                     </div>
                 </CardContent>
             </Card>
 
-            <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-primary/5 min-h-[240px] flex flex-col justify-between">
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-primary/5 min-h-[200px] flex flex-col justify-between">
                 <CardHeader className="pb-2 px-6 pt-6 flex-shrink-0">
-                    <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground flex items-center justify-between gap-2">
+                    <CardTitle className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center justify-between gap-2">
                         <span className="leading-tight">Portfolio Collection Efficiency</span>
                         <Target className="h-4 w-4 text-primary opacity-40 shrink-0" />
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col justify-center px-6 pb-6 space-y-4">
                     <div className="flex items-end justify-between min-w-0">
-                        <span className="text-4xl font-black text-primary tracking-tighter leading-none">{collectionStats.rate.toFixed(1)}%</span>
+                        <span className="text-2xl sm:text-3xl font-black text-primary tracking-tighter leading-none tabular-nums">{collectionStats.rate.toFixed(1)}%</span>
                         <Badge variant="outline" className="h-5 px-2 text-[8px] font-black uppercase border-primary/20 bg-primary/5 text-primary truncate ml-2">YTD Metric</Badge>
                     </div>
                     <Progress value={collectionStats.rate} className="h-3 bg-muted shadow-inner rounded-full overflow-hidden" />
@@ -470,15 +454,10 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="flex justify-start">
-                                                <Input 
-                                                    type="number"
-                                                    step="0.01"
-                                                    key={`rent-input-${selectedProperty.id}-${row.month}-${row.year}-${row.rent}`}
-                                                    defaultValue={row.rent}
-                                                    onBlur={(e) => handleRentAmountChange(row.month, row.year, Number(e.target.value))}
-                                                    className="w-full max-w-[400px] h-12 text-xl font-bold bg-background border-2 border-primary/20 focus:border-primary transition-all text-left px-4 rounded-xl"
-                                                />
+                                            <div className="flex justify-start items-center h-12">
+                                                <span className="text-xl font-bold text-foreground tabular-nums">
+                                                    {formatCurrency(Number(row.rent))}
+                                                </span>
                                             </div>
                                         </TableCell>
                                         <TableCell>
@@ -769,23 +748,23 @@ export default function FinancialsPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all">
                 <div className="h-1 bg-primary w-full opacity-20 group-hover:opacity-100 transition-opacity" />
-                <CardHeader className="pb-2 px-4"><CardTitle className="text-sm font-bold uppercase tracking-tight text-muted-foreground">Gross Expected</CardTitle></CardHeader>
-                <CardContent className='px-4 pb-6'><div className="text-2xl font-bold tracking-tight text-foreground">{formatCurrency(totalExpectedRent)}</div></CardContent>
+                <CardHeader className="pb-2 px-4"><CardTitle className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground">Gross Expected</CardTitle></CardHeader>
+                <CardContent className='px-4 pb-6'><div className="text-xl font-bold tracking-tight text-foreground tabular-nums">{formatCurrency(totalExpectedRent)}</div></CardContent>
             </Card>
             <Card className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all">
                 <div className="h-1 bg-green-500 w-full opacity-20 group-hover:opacity-100 transition-opacity" />
-                <CardHeader className="pb-2 px-4"><CardTitle className="text-sm font-bold uppercase tracking-tight text-green-600">Verified Income</CardTitle></CardHeader>
-                <CardContent className='px-4 pb-6'><div className="text-2xl font-bold tracking-tight text-foreground">{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(totalPaidRent)}</div></CardContent>
+                <CardHeader className="pb-2 px-4"><CardTitle className="text-[11px] font-bold uppercase tracking-tight text-green-600">Verified Income</CardTitle></CardHeader>
+                <CardContent className='px-4 pb-6'><div className="text-xl font-bold tracking-tight text-foreground tabular-nums">{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(totalPaidRent)}</div></CardContent>
             </Card>
             <Card className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all">
                 <div className="h-1 bg-destructive w-full opacity-20 group-hover:opacity-100 transition-opacity" />
-                <CardHeader className="pb-2 px-4"><CardTitle className="text-sm font-bold uppercase tracking-tight text-destructive">Total Expenses</CardTitle></CardHeader>
-                <CardContent className='px-4 pb-6'><div className="text-2xl font-bold tracking-tight text-foreground">{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(totalExpenses)}</div></CardContent>
+                <CardHeader className="pb-2 px-4"><CardTitle className="text-[11px] font-bold uppercase tracking-tight text-destructive">Total Expenses</CardTitle></CardHeader>
+                <CardContent className='px-4 pb-6'><div className="text-xl font-bold tracking-tight text-foreground tabular-nums">{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(totalExpenses)}</div></CardContent>
             </Card>
             <Card className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all">
                 <div className="h-1 bg-amber-500 w-full opacity-20 group-hover:opacity-100 transition-opacity" />
-                <CardHeader className="pb-2 px-4"><CardTitle className="text-sm font-bold uppercase tracking-tight text-muted-foreground">Taxable Position</CardTitle></CardHeader>
-                <CardContent className='px-4 pb-6'><div className={"text-2xl font-bold tracking-tight " + (netIncome < 0 ? "text-destructive" : "text-primary")}>{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(netIncome)}</div></CardContent>
+                <CardHeader className="pb-2 px-4"><CardTitle className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground">Taxable Position</CardTitle></CardHeader>
+                <CardContent className='px-4 pb-6'><div className={"text-xl font-bold tracking-tight tabular-nums " + (netIncome < 0 ? "text-destructive" : "text-primary")}>{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(netIncome)}</div></CardContent>
             </Card>
         </div>
 
