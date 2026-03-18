@@ -51,7 +51,6 @@ import {
   MapPin,
   Target,
   ChevronRight,
-  User,
   Building2,
   Inbox
 } from 'lucide-react';
@@ -143,6 +142,7 @@ interface Tenant {
     name: string;
     status: string;
     propertyId: string;
+    monthlyRent?: number;
 }
 
 const expenseSchema = z.object({
@@ -304,12 +304,13 @@ function AnnualSummary({ selectedYear, expenses, repairCosts, isLoadingExpenses 
   );
 }
 
-function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoadingPayments }: { selectedProperty: Property | undefined, selectedYear: number, rentPayments: RentPayment[] | null, isLoadingPayments: boolean }) {
+function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayments, isLoadingPayments }: { selectedProperty: Property | undefined, activeTenant: Tenant | undefined, selectedYear: number, rentPayments: RentPayment[] | null, isLoadingPayments: boolean }) {
   const { user } = useUser();
   const firestore = useFirestore();
   
   const statement = useMemo(() => {
-    const defaultRent = selectedProperty?.tenancy?.monthlyRent || 0;
+    // Dynamically pull agreed rent from the active resident if available, otherwise fallback to property baseline
+    const defaultRent = activeTenant?.monthlyRent || selectedProperty?.tenancy?.monthlyRent || 0;
     const paymentsMap = rentPayments?.reduce((acc, p) => { acc[p.month] = p; return acc; }, {} as Record<string, RentPayment>);
     
     return TAX_MONTHS.map(month => {
@@ -323,7 +324,7 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
             status: paymentsMap?.[month]?.status || 'Pending' 
         };
     });
-  }, [selectedProperty, rentPayments, selectedYear]);
+  }, [selectedProperty, activeTenant, rentPayments, selectedYear]);
 
   const collectionStats = useMemo(() => {
     const totalExpected = statement.reduce((acc, s) => acc + Number(s.rent), 0);
@@ -348,23 +349,6 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
         expectedAmount, 
         amountPaid: status === 'Paid' ? expectedAmount : (status === 'Partially Paid' ? (Number(row?.amountPaid) || 0) : 0)
     }, { merge: true }).then(() => toast({ title: 'Registry Sync Successful' }));
-  };
-
-  const handleRentAmountChange = (month: string, calendarYear: number, amount: number) => {
-    if (!firestore || !user || !selectedProperty || isNaN(amount)) return;
-    const rentPaymentId = `${selectedProperty.id}-${calendarYear}-${month}`;
-    const row = statement.find(s => s.month === month && s.year === calendarYear);
-    const status = row?.status || 'Pending';
-    
-    setDoc(doc(firestore, 'rentPayments', rentPaymentId), {
-        landlordId: user.uid,
-        propertyId: selectedProperty.id,
-        year: calendarYear,
-        month,
-        expectedAmount: amount,
-        status,
-        amountPaid: status === 'Paid' ? amount : (Number(row?.amountPaid) || 0)
-    }, { merge: true }).then(() => toast({ title: 'Fiscal Expectation Adjusted' }));
   };
 
   if (!selectedProperty) return (
@@ -477,15 +461,8 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex justify-center">
-                                                <div className="relative w-full max-w-[350px] group/input">
-                                                    <span className="absolute left-4 top-1/2 -translate-y-1/2 text-primary font-bold text-base opacity-100 transition-opacity">£</span>
-                                                    <Input 
-                                                        type="number" 
-                                                        key={`rent-input-${selectedProperty.id}-${row.month}-${row.year}-${row.rent}`}
-                                                        defaultValue={row.rent || 0} 
-                                                        className="h-12 pl-10 pr-4 font-mono text-lg font-bold bg-primary/5 border-2 border-transparent hover:border-primary/20 focus:border-primary rounded-xl transition-all shadow-none text-center w-full"
-                                                        onBlur={(e) => handleRentAmountChange(row.month, row.year, Number(e.target.value))}
-                                                    />
+                                                <div className="text-3xl font-black text-primary tabular-nums tracking-tighter">
+                                                    {formatCurrency(row.rent)}
                                                 </div>
                                             </div>
                                         </TableCell>
@@ -573,7 +550,7 @@ export default function FinancialsPage() {
     if (!user || !firestore || !selectedPropertyId || selectedPropertyId === 'all') return null;
     return query(
       collection(firestore, 'tenants'), 
-      where('landlordId', '==', user.uid),
+      where('landlordId', '==', user.uid), // MANDATORY SECURITY FILTER
       where('propertyId', '==', selectedPropertyId), 
       where('status', '==', 'Active'), 
       limit(1)
@@ -817,6 +794,7 @@ export default function FinancialsPage() {
             <TabsContent value="statement" className="animate-in fade-in slide-in-from-top-2 duration-500">
                 <RentStatement 
                     selectedProperty={selectedProperty} 
+                    activeTenant={activeTenant}
                     selectedYear={selectedTaxYearStart || 0} 
                     rentPayments={rentPayments} 
                     isLoadingPayments={isLoading} 
