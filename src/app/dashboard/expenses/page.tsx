@@ -39,7 +39,6 @@ import {
   History,
   PlusCircle,
   Banknote,
-  RefreshCw,
   CheckCircle2,
   AlertCircle,
   TrendingUp,
@@ -309,7 +308,6 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
   const firestore = useFirestore();
   
   const statement = useMemo(() => {
-    // Dynamically pull agreed rent from the active resident if available, otherwise fallback to property baseline
     const defaultRent = activeTenant?.monthlyRent || selectedProperty?.tenancy?.monthlyRent || 0;
     const paymentsMap = rentPayments?.reduce((acc, p) => { acc[p.month] = p; return acc; }, {} as Record<string, RentPayment>);
     
@@ -368,11 +366,11 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-            <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-primary/5 min-h-[120px]">
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-primary/5 min-h-[160px] flex flex-col justify-between">
                 <CardHeader className="pb-2 px-6 pt-6">
                     <CardTitle className="text-sm font-bold uppercase tracking-tight text-muted-foreground flex items-center gap-2">
                         <TrendingUp className="h-4 w-4 text-primary shrink-0" />
-                        <span>Verified Revenue Collected</span>
+                        <span className="leading-tight">Verified Revenue Collected</span>
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex items-center justify-between pb-6 px-6">
@@ -384,11 +382,11 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                 </CardContent>
             </Card>
             
-            <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-destructive/5 min-h-[120px]">
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-destructive/5 min-h-[160px] flex flex-col justify-between">
                 <CardHeader className="pb-2 px-6 pt-6">
                     <CardTitle className="text-sm font-bold uppercase tracking-tight text-muted-foreground flex items-center gap-2">
                         <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
-                        <span>Total Outstanding Arrears</span>
+                        <span className="leading-tight">Total Outstanding Arrears</span>
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex items-center justify-between pb-6 px-6">
@@ -400,10 +398,10 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                 </CardContent>
             </Card>
 
-            <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-primary/5 min-h-[120px]">
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-primary/5 min-h-[160px] flex flex-col justify-between">
                 <CardHeader className="pb-2 px-6 pt-6">
                     <CardTitle className="text-sm font-bold uppercase tracking-tight text-muted-foreground flex items-center justify-between gap-2">
-                        <span>Portfolio Collection Efficiency</span>
+                        <span className="leading-tight">Portfolio Collection Efficiency</span>
                         <Target className="h-4 w-4 text-primary opacity-40 shrink-0" />
                     </CardTitle>
                 </CardHeader>
@@ -550,7 +548,7 @@ export default function FinancialsPage() {
     if (!user || !firestore || !selectedPropertyId || selectedPropertyId === 'all') return null;
     return query(
       collection(firestore, 'tenants'), 
-      where('landlordId', '==', user.uid), // MANDATORY SECURITY FILTER
+      where('landlordId', '==', user.uid),
       where('propertyId', '==', selectedPropertyId), 
       where('status', '==', 'Active'), 
       limit(1)
