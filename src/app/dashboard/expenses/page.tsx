@@ -49,7 +49,6 @@ import {
   Calendar,
   MapPin,
   Target,
-  ChevronRight,
   Inbox
 } from 'lucide-react';
 import { getYear, isAfter, isBefore, format, startOfMonth, setDate, isPast } from 'date-fns';
@@ -348,6 +347,22 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
     }, { merge: true }).then(() => toast({ title: 'Registry Sync Successful' }));
   };
 
+  const handleRentAmountChange = (month: string, calendarYear: number, amount: number) => {
+    if (!firestore || !user || !selectedProperty) return;
+    const rentPaymentId = `${selectedProperty.id}-${calendarYear}-${month}`;
+    const row = statement.find(s => s.month === month && s.year === calendarYear);
+    
+    setDoc(doc(firestore, 'rentPayments', rentPaymentId), { 
+        landlordId: user.uid, 
+        propertyId: selectedProperty.id, 
+        year: calendarYear, 
+        month, 
+        expectedAmount: amount,
+        status: row?.status || 'Pending',
+        amountPaid: (row?.status === 'Paid') ? amount : (Number(row?.amountPaid) || 0)
+    }, { merge: true }).then(() => toast({ title: 'Rent Amount Overridden' }));
+  };
+
   if (!selectedProperty) return (
     <Card className="mt-6 border-2 border-dashed bg-muted/5 h-[450px] flex items-center justify-center rounded-[2rem]">
         <CardContent className='text-center space-y-6 max-w-xs'>
@@ -367,38 +382,38 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
             <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-primary/5 min-h-[200px] flex flex-col justify-between">
                 <CardHeader className="pb-2 px-6 pt-6 flex-shrink-0">
-                    <CardTitle className="text-sm font-bold uppercase tracking-tight text-muted-foreground flex items-center gap-2">
+                    <CardTitle className="text-[11px] sm:text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                         <TrendingUp className="h-4 w-4 text-primary shrink-0" />
-                        <span className="leading-tight">Verified Revenue Collected</span>
+                        <span className="whitespace-normal">Verified Revenue Collected</span>
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col justify-end pb-6 px-6">
                     <div className="flex flex-col min-w-0">
-                        <span className="text-2xl font-black text-green-600 tracking-tighter truncate leading-none mb-2">{formatCurrency(collectionStats.totalCollected)}</span>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase leading-tight">Confirmed Registry Income</p>
+                        <span className="text-3xl font-black text-green-600 tracking-tighter leading-none mb-2">{formatCurrency(collectionStats.totalCollected)}</span>
+                        <p className="text-[9px] font-bold text-muted-foreground uppercase leading-tight">Confirmed Registry Income</p>
                     </div>
                 </CardContent>
             </Card>
             
             <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-destructive/5 min-h-[200px] flex flex-col justify-between">
                 <CardHeader className="pb-2 px-6 pt-6 flex-shrink-0">
-                    <CardTitle className="text-sm font-bold uppercase tracking-tight text-muted-foreground flex items-center gap-2">
+                    <CardTitle className="text-[11px] sm:text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                         <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
-                        <span className="leading-tight">Total Outstanding Arrears</span>
+                        <span className="whitespace-normal">Total Outstanding Arrears</span>
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col justify-end pb-6 px-6">
                     <div className="flex flex-col min-w-0">
-                        <span className="text-2xl font-black text-destructive tracking-tighter truncate leading-none mb-2">{formatCurrency(collectionStats.remaining)}</span>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase leading-tight">Pending Ledger Balance</p>
+                        <span className="text-3xl font-black text-destructive tracking-tighter leading-none mb-2">{formatCurrency(collectionStats.remaining)}</span>
+                        <p className="text-[9px] font-bold text-muted-foreground uppercase leading-tight">Pending Ledger Balance</p>
                     </div>
                 </CardContent>
             </Card>
 
             <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-primary/5 min-h-[200px] flex flex-col justify-between">
                 <CardHeader className="pb-2 px-6 pt-6 flex-shrink-0">
-                    <CardTitle className="text-sm font-bold uppercase tracking-tight text-muted-foreground flex items-center justify-between gap-2">
-                        <span className="leading-tight">Portfolio Collection Efficiency</span>
+                    <CardTitle className="text-[11px] sm:text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center justify-between gap-2">
+                        <span className="whitespace-normal">Portfolio Collection Efficiency</span>
                         <Target className="h-4 w-4 text-primary opacity-40 shrink-0" />
                     </CardTitle>
                 </CardHeader>
@@ -438,7 +453,7 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                             <TableHeader className="bg-muted/30">
                                 <TableRow>
                                     <TableHead className="pl-10 py-6 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Accounting Period</TableHead>
-                                    <TableHead className="font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground text-center">Rent Amount</TableHead>
+                                    <TableHead className="font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground text-left">Rent Amount (£)</TableHead>
                                     <TableHead className="font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Audit Status</TableHead>
                                     <TableHead className="pr-10 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground text-right">Management Action</TableHead>
                                 </TableRow>
@@ -455,10 +470,15 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                                             </div>
                                         </TableCell>
                                         <TableCell>
-                                            <div className="flex justify-center">
-                                                <div className="text-2xl font-black text-primary tabular-nums tracking-tighter bg-primary/5 px-6 py-2 rounded-xl border-2 border-transparent group-hover:border-primary/20 transition-all">
-                                                    {formatCurrency(row.rent)}
-                                                </div>
+                                            <div className="flex justify-start">
+                                                <Input 
+                                                    type="number"
+                                                    step="0.01"
+                                                    key={`rent-input-${selectedProperty.id}-${row.month}-${row.year}-${row.rent}`}
+                                                    defaultValue={row.rent}
+                                                    onBlur={(e) => handleRentAmountChange(row.month, row.year, Number(e.target.value))}
+                                                    className="w-full max-w-[280px] h-12 text-lg font-bold bg-background border-2 border-primary/20 focus:border-primary transition-all text-left px-4 rounded-xl"
+                                                />
                                             </div>
                                         </TableCell>
                                         <TableCell>
