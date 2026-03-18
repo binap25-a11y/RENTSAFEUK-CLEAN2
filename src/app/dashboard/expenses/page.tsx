@@ -51,7 +51,9 @@ import {
   MapPin,
   Target,
   ChevronRight,
-  User
+  User,
+  Building2,
+  Inbox
 } from 'lucide-react';
 import { getYear, isAfter, isBefore, format, startOfMonth, setDate, isPast } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -140,6 +142,7 @@ interface Tenant {
     id: string;
     name: string;
     status: string;
+    propertyId: string;
 }
 
 const expenseSchema = z.object({
@@ -382,48 +385,48 @@ function RentStatement({ selectedProperty, selectedYear, rentPayments, isLoading
     <div className="space-y-8 animate-in fade-in duration-700">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
             <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-primary/5 min-h-[120px]">
-                <CardHeader className="pb-2 px-4 pt-4 sm:px-6 sm:pt-6">
-                    <CardTitle className="text-[11px] font-black uppercase tracking-tight text-muted-foreground flex items-center gap-2">
-                        <TrendingUp className="h-3.5 w-3.5 text-primary shrink-0" />
-                        <span className="leading-tight">Verified Revenue Collected</span>
+                <CardHeader className="pb-2 px-6 pt-6">
+                    <CardTitle className="text-sm font-bold uppercase tracking-tight text-muted-foreground flex items-center gap-2">
+                        <TrendingUp className="h-4 w-4 text-primary shrink-0" />
+                        <span>Verified Revenue Collected</span>
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="flex items-center justify-between pb-4 px-4 sm:pb-6 sm:px-6">
+                <CardContent className="flex items-center justify-between pb-6 px-6">
                     <div className="flex flex-col min-w-0">
-                        <span className="text-xl sm:text-2xl font-bold text-green-600 tracking-tighter truncate">{formatCurrency(collectionStats.totalCollected)}</span>
-                        <p className="text-[8px] sm:text-[9px] font-bold text-muted-foreground uppercase mt-1 truncate leading-tight">Confirmed Registry Income</p>
+                        <span className="text-2xl font-bold text-green-600 tracking-tighter truncate">{formatCurrency(collectionStats.totalCollected)}</span>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1">Confirmed Registry Income</p>
                     </div>
-                    <div className="p-2 sm:p-3 rounded-xl bg-green-50 text-green-600 shadow-inner group-hover:scale-110 transition-transform shrink-0"><ArrowUpRight className="h-5 w-5 sm:h-6 sm:w-6" /></div>
+                    <div className="p-3 rounded-xl bg-green-50 text-green-600 shadow-inner group-hover:scale-110 transition-transform shrink-0"><ArrowUpRight className="h-6 w-6" /></div>
                 </CardContent>
             </Card>
             
             <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-destructive/5 min-h-[120px]">
-                <CardHeader className="pb-2 px-4 pt-4 sm:px-6 sm:pt-6">
-                    <CardTitle className="text-[11px] font-black uppercase tracking-tight text-muted-foreground flex items-center gap-2">
-                        <AlertCircle className="h-3.5 w-3.5 text-destructive shrink-0" />
-                        <span className="leading-tight">Total Outstanding Arrears</span>
+                <CardHeader className="pb-2 px-6 pt-6">
+                    <CardTitle className="text-sm font-bold uppercase tracking-tight text-muted-foreground flex items-center gap-2">
+                        <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+                        <span>Total Outstanding Arrears</span>
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="flex items-center justify-between pb-4 px-4 sm:pb-6 sm:px-6">
+                <CardContent className="flex items-center justify-between pb-6 px-6">
                     <div className="flex flex-col min-w-0">
-                        <span className="text-xl sm:text-2xl font-bold text-destructive tracking-tighter truncate">{formatCurrency(collectionStats.remaining)}</span>
-                        <p className="text-[8px] sm:text-[9px] font-bold text-muted-foreground uppercase mt-1 truncate leading-tight">Pending Ledger Balance</p>
+                        <span className="text-2xl font-bold text-destructive tracking-tighter truncate">{formatCurrency(collectionStats.remaining)}</span>
+                        <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1">Pending Ledger Balance</p>
                     </div>
-                    <div className="p-2 sm:p-3 rounded-xl bg-destructive/5 text-destructive shadow-inner group-hover:scale-110 transition-transform shrink-0"><ArrowDownRight className="h-5 w-5 sm:h-6 sm:w-6" /></div>
+                    <div className="p-3 rounded-xl bg-destructive/5 text-destructive shadow-inner group-hover:scale-110 transition-transform shrink-0"><ArrowDownRight className="h-6 w-6" /></div>
                 </CardContent>
             </Card>
 
             <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-primary/5 min-h-[120px]">
-                <CardHeader className="pb-2 px-4 pt-4 sm:px-6 sm:pt-6">
-                    <CardTitle className="text-[11px] font-black uppercase tracking-tight text-muted-foreground flex items-center justify-between gap-2">
-                        <span className="leading-tight">Portfolio Collection Efficiency</span>
-                        <Target className="h-3.5 w-3.5 text-primary opacity-40 shrink-0" />
+                <CardHeader className="pb-2 px-6 pt-6">
+                    <CardTitle className="text-sm font-bold uppercase tracking-tight text-muted-foreground flex items-center justify-between gap-2">
+                        <span>Portfolio Collection Efficiency</span>
+                        <Target className="h-4 w-4 text-primary opacity-40 shrink-0" />
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="px-4 pb-4 sm:px-6 sm:pb-6 space-y-4">
+                <CardContent className="px-6 pb-6 space-y-4">
                     <div className="flex items-end justify-between min-w-0">
-                        <span className="text-xl sm:text-2xl font-black text-primary tracking-tighter shrink-0">{collectionStats.rate.toFixed(1)}%</span>
-                        <Badge variant="outline" className="h-5 px-2 text-[7px] sm:text-[8px] font-black uppercase border-primary/20 bg-primary/5 text-primary truncate ml-2">YTD Metric</Badge>
+                        <span className="text-2xl font-black text-primary tracking-tighter shrink-0">{collectionStats.rate.toFixed(1)}%</span>
+                        <Badge variant="outline" className="h-5 px-2 text-[8px] font-black uppercase border-primary/20 bg-primary/5 text-primary truncate ml-2">YTD Metric</Badge>
                     </div>
                     <Progress value={collectionStats.rate} className="h-2.5 bg-muted shadow-inner rounded-full overflow-hidden" />
                 </CardContent>
