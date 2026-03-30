@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -364,46 +363,46 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-            <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-primary/5 min-h-[200px] flex flex-col justify-between">
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-primary/5 min-h-[180px] flex flex-col justify-between">
                 <CardHeader className="pb-2 px-6 pt-6 flex-shrink-0">
-                    <CardTitle className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                         <TrendingUp className="h-4 w-4 text-primary shrink-0" />
                         <span className="leading-tight">Verified Revenue Collected</span>
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col justify-center pb-6 px-6">
                     <div className="flex flex-col min-w-0">
-                        <span className="text-2xl sm:text-3xl font-black text-green-600 tracking-tighter leading-none mb-2 tabular-nums">{formatCurrency(collectionStats.totalCollected)}</span>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase leading-tight">Confirmed Registry Income</p>
+                        <span className="text-2xl font-black text-green-600 tracking-tighter leading-none mb-2 tabular-nums">{formatCurrency(collectionStats.totalCollected)}</span>
+                        <p className="text-[9px] font-bold text-muted-foreground uppercase leading-tight">Confirmed Registry Income</p>
                     </div>
                 </CardContent>
             </Card>
             
-            <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-destructive/5 min-h-[200px] flex flex-col justify-between">
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-destructive/5 min-h-[180px] flex flex-col justify-between">
                 <CardHeader className="pb-2 px-6 pt-6 flex-shrink-0">
-                    <CardTitle className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
                         <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
                         <span className="leading-tight">Total Outstanding Arrears</span>
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col justify-center pb-6 px-6">
                     <div className="flex flex-col min-w-0">
-                        <span className="text-2xl sm:text-3xl font-black text-destructive tracking-tighter leading-none mb-2 tabular-nums">{formatCurrency(collectionStats.remaining)}</span>
-                        <p className="text-[10px] font-bold text-muted-foreground uppercase leading-tight">Pending Ledger Balance</p>
+                        <span className="text-2xl font-black text-destructive tracking-tighter leading-none mb-2 tabular-nums">{formatCurrency(collectionStats.remaining)}</span>
+                        <p className="text-[9px] font-bold text-muted-foreground uppercase leading-tight">Pending Ledger Balance</p>
                     </div>
                 </CardContent>
             </Card>
 
-            <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-primary/5 min-h-[200px] flex flex-col justify-between">
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-primary/5 min-h-[180px] flex flex-col justify-between">
                 <CardHeader className="pb-2 px-6 pt-6 flex-shrink-0">
-                    <CardTitle className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center justify-between gap-2">
+                    <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center justify-between gap-2">
                         <span className="leading-tight">Portfolio Collection Efficiency</span>
                         <Target className="h-4 w-4 text-primary opacity-40 shrink-0" />
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col justify-center px-6 pb-6 space-y-4">
                     <div className="flex items-end justify-between min-w-0">
-                        <span className="text-2xl sm:text-3xl font-black text-primary tracking-tighter leading-none tabular-nums">{collectionStats.rate.toFixed(1)}%</span>
+                        <span className="text-2xl font-black text-primary tracking-tighter leading-none tabular-nums">{collectionStats.rate.toFixed(1)}%</span>
                         <Badge variant="outline" className="h-5 px-2 text-[8px] font-black uppercase border-primary/20 bg-primary/5 text-primary truncate ml-2">YTD Metric</Badge>
                     </div>
                     <Progress value={collectionStats.rate} className="h-3 bg-muted shadow-inner rounded-full overflow-hidden" />
@@ -499,11 +498,11 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                 <div className="flex gap-12 w-full sm:w-auto">
                     <div className="flex flex-col gap-1 text-left">
                         <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-[0.2em]">Total Accrued</span>
-                        <span className="text-2xl font-bold text-foreground tabular-nums tracking-tighter">{formatCurrency(collectionStats.totalExpected)}</span>
+                        <span className="text-xl font-bold text-foreground tabular-nums tracking-tighter">{formatCurrency(collectionStats.totalExpected)}</span>
                     </div>
                     <div className="flex flex-col gap-1 text-left">
                         <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-[0.2em]">Total Outstanding</span>
-                        <span className="text-2xl font-bold text-destructive tabular-nums tracking-tighter">{formatCurrency(collectionStats.remaining)}</span>
+                        <span className="text-xl font-bold text-destructive tabular-nums tracking-tighter">{formatCurrency(collectionStats.remaining)}</span>
                     </div>
                 </div>
                 <div className="text-center sm:text-right space-y-3 w-full sm:w-auto border-t sm:border-t-0 pt-0 sm:pt-0">

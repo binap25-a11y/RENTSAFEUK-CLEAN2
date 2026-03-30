@@ -237,7 +237,7 @@ export default function ViewInspectionPage() {
                         </h4>
                         <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
                             {inspection.photoUrls.map((url: string, idx: number) => (
-                                <Link key={idx} href={url} target="_blank" className="relative aspect-square rounded-xl overflow-hidden border shadow-sm hover:scale-105 transition-transform group">
+                                <Link key={idx} href={url} target="_blank" className="relative block aspect-square rounded-xl overflow-hidden border shadow-sm hover:scale-105 transition-transform group">
                                     <Image src={url} alt={`Evidence ${idx + 1}`} fill className="object-cover" unoptimized />
                                 </Link>
                             ))}
