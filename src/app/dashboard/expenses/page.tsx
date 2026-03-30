@@ -363,49 +363,42 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-            <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-primary/5 min-h-[220px] flex flex-col justify-between">
-                <CardHeader className="pb-2 px-6 pt-6 flex-shrink-0">
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-primary/5 min-h-[200px] flex flex-col justify-between">
+                <CardHeader className="pb-2 px-6 pt-6 shrink-0">
                     <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                        <TrendingUp className="h-4 w-4 text-primary shrink-0" />
+                        <TrendingUp className="h-4 w-4 text-primary" />
                         <span className="leading-tight">Verified Revenue Collected</span>
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col justify-center pb-6 px-6">
-                    <div className="flex flex-col min-w-0">
-                        <span className="text-xl sm:text-2xl font-black text-green-600 tracking-tighter leading-none mb-2 tabular-nums">{formatCurrency(collectionStats.totalCollected)}</span>
-                        <p className="text-[9px] font-bold text-muted-foreground uppercase leading-tight">Confirmed Registry Income</p>
-                    </div>
+                    <span className="text-xl sm:text-2xl font-black text-green-600 tracking-tight leading-none mb-1 tabular-nums">{formatCurrency(collectionStats.totalCollected)}</span>
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase">Confirmed Registry Income</p>
                 </CardContent>
             </Card>
             
-            <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-destructive/5 min-h-[220px] flex flex-col justify-between">
-                <CardHeader className="pb-2 px-6 pt-6 flex-shrink-0">
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-destructive/5 min-h-[200px] flex flex-col justify-between">
+                <CardHeader className="pb-2 px-6 pt-6 shrink-0">
                     <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
-                        <AlertCircle className="h-4 w-4 text-destructive shrink-0" />
+                        <AlertCircle className="h-4 w-4 text-destructive" />
                         <span className="leading-tight">Total Outstanding Arrears</span>
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col justify-center pb-6 px-6">
-                    <div className="flex flex-col min-w-0">
-                        <span className="text-xl sm:text-2xl font-black text-destructive tracking-tighter leading-none mb-2 tabular-nums">{formatCurrency(collectionStats.remaining)}</span>
-                        <p className="text-[9px] font-bold text-muted-foreground uppercase leading-tight">Pending Ledger Balance</p>
-                    </div>
+                    <span className="text-xl sm:text-2xl font-black text-destructive tracking-tight leading-none mb-1 tabular-nums">{formatCurrency(collectionStats.remaining)}</span>
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase">Pending Ledger Balance</p>
                 </CardContent>
             </Card>
 
-            <Card className="border-none shadow-xl bg-card text-left overflow-hidden group ring-1 ring-primary/5 min-h-[220px] flex flex-col justify-between">
-                <CardHeader className="pb-2 px-6 pt-6 flex-shrink-0">
-                    <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center justify-between gap-2">
-                        <span className="leading-tight">Portfolio Collection Efficiency</span>
-                        <Target className="h-4 w-4 text-primary opacity-40 shrink-0" />
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-primary/5 min-h-[200px] flex flex-col justify-between">
+                <CardHeader className="pb-2 px-6 pt-6 shrink-0">
+                    <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                        <Target className="h-4 w-4 text-primary" />
+                        <span className="leading-tight">Collection Efficiency</span>
                     </CardTitle>
                 </CardHeader>
-                <CardContent className="flex-1 flex flex-col justify-center px-6 pb-6 space-y-4">
-                    <div className="flex items-end justify-between min-w-0">
-                        <span className="text-xl sm:text-2xl font-black text-primary tracking-tighter leading-none tabular-nums">{collectionStats.rate.toFixed(1)}%</span>
-                        <Badge variant="outline" className="h-5 px-2 text-[8px] font-black uppercase border-primary/20 bg-primary/5 text-primary truncate ml-2">YTD Metric</Badge>
-                    </div>
-                    <Progress value={collectionStats.rate} className="h-3 bg-muted shadow-inner rounded-full overflow-hidden" />
+                <CardContent className="flex-1 flex flex-col justify-center px-6 pb-6 space-y-3">
+                    <span className="text-xl sm:text-2xl font-black text-primary tracking-tight leading-none tabular-nums">{collectionStats.rate.toFixed(1)}%</span>
+                    <Progress value={collectionStats.rate} className="h-2 bg-muted shadow-inner" />
                 </CardContent>
             </Card>
         </div>
@@ -420,11 +413,6 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                         <MapPin className="h-3.5 w-3.5 text-primary" />
                         {selectedProperty.address.street}
                     </CardDescription>
-                </div>
-                <div className="flex items-center gap-2">
-                    <Badge variant="outline" className="hidden sm:flex h-8 px-4 rounded-xl border-2 font-bold uppercase text-[9px] tracking-widest bg-background shadow-sm">
-                        Registry Active
-                    </Badge>
                 </div>
             </CardHeader>
             <CardContent className='p-0'>
@@ -446,15 +434,13 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                                     <TableRow key={`${selectedProperty.id}-${row.month}-${row.year}`} className="hover:bg-primary/[0.02] transition-all group border-b border-muted/50">
                                         <TableCell className="pl-10 py-8 text-left">
                                             <div className="flex flex-col gap-0.5 text-left">
-                                                <span className="text-xl font-bold text-foreground group-hover:text-primary transition-colors">{row.month}</span>
-                                                <div className="flex items-center gap-3">
-                                                    <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest flex items-center gap-1.5"><Calendar className="h-3 w-3" /> {row.year}</span>
-                                                </div>
+                                                <span className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">{row.month}</span>
+                                                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest flex items-center gap-1.5"><Calendar className="h-3 w-3" /> {row.year}</span>
                                             </div>
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex justify-start items-center h-12">
-                                                <span className="text-xl font-bold text-foreground tabular-nums">
+                                                <span className="text-lg font-black text-foreground tabular-nums">
                                                     {formatCurrency(Number(row.rent))}
                                                 </span>
                                             </div>
@@ -505,15 +491,9 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                         <span className="text-xl font-bold text-destructive tabular-nums tracking-tighter">{formatCurrency(collectionStats.remaining)}</span>
                     </div>
                 </div>
-                <div className="text-center sm:text-right space-y-3 w-full sm:w-auto border-t sm:border-t-0 pt-0 sm:pt-0">
-                    <div className="space-y-1">
-                        <span className="text-[10px] font-bold uppercase text-primary tracking-[0.3em] block">Verified Fiscal Position</span>
-                        <p className="text-xs text-muted-foreground font-medium">Registry synchronization active for {selectedYear}</p>
-                    </div>
-                    <Badge className="bg-primary text-primary-foreground font-bold tracking-tight h-10 px-6 rounded-xl shadow-lg hover:bg-primary/90 transition-all text-sm">
-                        Portfolio Collection: {collectionStats.rate.toFixed(0)}%
-                    </Badge>
-                </div>
+                <Badge className="bg-primary text-primary-foreground font-bold tracking-tight h-10 px-6 rounded-xl shadow-lg text-sm">
+                    Collection Index: {collectionStats.rate.toFixed(0)}%
+                </Badge>
             </CardFooter>
         </Card>
     </div>
@@ -620,90 +600,29 @@ export default function FinancialsPage() {
 
   const totalExpectedRent = useMemo(() => {
     if (!selectedTaxYearStart || !activeProperties) return 0;
-    
     const paymentsLookup: Record<string, number> = {};
-    rentPayments.forEach(p => {
-        paymentsLookup[`${p.propertyId}-${p.month}-${p.year}`] = Number(p.expectedAmount);
-    });
-
+    rentPayments.forEach(p => { paymentsLookup[`${p.propertyId}-${p.month}-${p.year}`] = Number(p.expectedAmount); });
     let total = 0;
     const targetProps = selectedPropertyId === 'all' ? activeProperties : activeProperties.filter(p => p.id === selectedPropertyId);
-
     targetProps.forEach(prop => {
         TAX_MONTHS.forEach(month => {
             const monthIdx = TAX_MONTHS.indexOf(month);
             const calendarYear = monthIdx >= 9 ? selectedTaxYearStart + 1 : selectedTaxYearStart;
             const key = `${prop.id}-${month}-${calendarYear}`;
-            
-            if (paymentsLookup[key] !== undefined) {
-                total += paymentsLookup[key];
-            } else {
-                total += Number(prop.tenancy?.monthlyRent || 0);
-            }
+            total += paymentsLookup[key] !== undefined ? paymentsLookup[key] : Number(prop.tenancy?.monthlyRent || 0);
         });
     });
-
     return total;
   }, [activeProperties, selectedPropertyId, rentPayments, selectedTaxYearStart]);
 
   const totalPaidRent = useMemo(() => rentPayments.reduce((acc, p) => acc + (Number(p.amountPaid) || 0), 0), [rentPayments]);
-  
   const totalExpenses = useMemo(() => {
       const baseTotal = expenses.reduce((acc, expense) => acc + (Number(expense.amount) || 0), 0);
       const repairTotal = repairCosts.reduce((acc, r) => acc + (Number(r.expectedCost || r.estimatedCost || 0)), 0);
       return baseTotal + repairTotal;
   }, [expenses, repairCosts]);
-
   const netIncome = totalPaidRent - totalExpenses;
-  
   const isLoading = isLoadingProperties || isLoadingExpenses || isLoadingRent || isLoadingRepairs || !selectedTaxYearStart;
-
-  const generateHMRCPDF = async () => {
-    if (!selectedTaxYearStart || !taxBounds) return;
-    
-    const doc = new jsPDF();
-    doc.setFontSize(20);
-    doc.text(`HMRC Tax Report - ${selectedTaxYearStart}/${(selectedTaxYearStart + 1).toString().slice(-2)}`, 14, 22);
-    doc.setFontSize(10);
-    doc.text(`Generated for: ${user?.displayName || user?.email}`, 14, 30);
-    doc.text(`Portfolio Scope: ${selectedPropertyId === 'all' ? 'Entire Portfolio' : formatAddress(selectedProperty?.address as any)}`, 14, 36);
-    doc.setLineWidth(0.5);
-    doc.line(14, 40, 200, 40);
-
-    const baseInsurance = expenses.filter(e => ['Insurance', 'Utilities'].includes(e.expenseType)).reduce((a, b) => a + (Number(b.amount) || 0), 0);
-    const baseMaintenance = expenses.filter(e => ['Repairs and Maintenance', 'Cleaning', 'Gardening'].includes(e.expenseType)).reduce((a, b) => a + (Number(b.amount) || 0), 0);
-    const repairMaintenance = repairCosts.reduce((a, b) => a + (Number(a.expectedCost || a.estimatedCost || 0)), 0);
-    const totalMaintenance = baseMaintenance + repairMaintenance;
-    const professionalFees = expenses.filter(e => ['Letting Agent Fees'].includes(e.expenseType)).reduce((a, b) => a + (Number(b.amount) || 0), 0);
-    const financeCosts = expenses.filter(e => ['Mortgage Interest'].includes(e.expenseType)).reduce((a, b) => a + (Number(b.amount) || 0), 0);
-    const otherExpenses = expenses.filter(e => e.expenseType === 'Other').reduce((a, b) => a + (Number(b.amount) || 0), 0);
-
-    const hmrcCategories = [
-        ['Rent received (total for period)', formatCurrency(totalPaidRent)],
-        ['Rates, insurance, ground rents etc.', formatCurrency(baseInsurance)],
-        ['Property repairs and maintenance', formatCurrency(totalMaintenance)],
-        ['Management and professional fees', formatCurrency(professionalFees)],
-        ['Other allowable property expenses', formatCurrency(otherExpenses)],
-        ['Residential finance costs (Ref only)', formatCurrency(financeCosts)],
-    ];
-
-    autoTable(doc, { 
-        startY: 45, 
-        head: [['Standard HMRC Category Grouping', 'Total Amount (£)']], 
-        body: hmrcCategories, 
-        theme: 'striped',
-        headStyles: { fillColor: [33, 114, 249] } 
-    });
-
-    const finalY = (doc as any).lastAutoTable.finalY + 15;
-    doc.setFontSize(9);
-    doc.setTextColor(100);
-    const note = "Note: Residential finance costs (Mortgage Interest) are listed for reference. Under Section 24, these are typically claimed as a 20% basic rate tax reduction rather than direct expenses.";
-    doc.text(doc.splitTextToSize(note, 180), 14, finalY);
-
-    doc.save(`HMRC-Tax-Report-${selectedTaxYearStart}-${selectedTaxYearStart + 1}.pdf`);
-    toast({ title: 'Report Generated' });
-  };
 
   function formatAddress(address: Property['address']) {
     if (!address) return 'N/A';
@@ -722,9 +641,7 @@ export default function FinancialsPage() {
                     <SelectContent className="rounded-xl">
                         <SelectItem value="all">Entire Portfolio (Consolidated)</SelectItem>
                         {activeProperties?.map((prop) => (
-                          <SelectItem key={prop.id} value={prop.id}>
-                            {formatAddress(prop.address)}
-                          </SelectItem>
+                          <SelectItem key={prop.id} value={prop.id}>{formatAddress(prop.address)}</SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
@@ -745,25 +662,25 @@ export default function FinancialsPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all">
+            <Card className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[140px] flex flex-col">
                 <div className="h-1 bg-primary w-full opacity-20 group-hover:opacity-100 transition-opacity" />
-                <CardHeader className="pb-2 px-4"><CardTitle className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground">Gross Expected</CardTitle></CardHeader>
-                <CardContent className='px-4 pb-6'><div className="text-lg font-bold tracking-tight text-foreground tabular-nums">{formatCurrency(totalExpectedRent)}</div></CardContent>
+                <CardHeader className="pb-2 px-4"><CardTitle className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground">Gross Expected</CardTitle></CardHeader>
+                <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className="text-xl font-bold tracking-tight text-foreground tabular-nums">{formatCurrency(totalExpectedRent)}</div></CardContent>
             </Card>
-            <Card className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all">
+            <Card className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[140px] flex flex-col">
                 <div className="h-1 bg-green-500 w-full opacity-20 group-hover:opacity-100 transition-opacity" />
-                <CardHeader className="pb-2 px-4"><CardTitle className="text-[11px] font-bold uppercase tracking-tight text-green-600">Verified Income</CardTitle></CardHeader>
-                <CardContent className='px-4 pb-6'><div className="text-lg font-bold tracking-tight text-foreground tabular-nums">{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(totalPaidRent)}</div></CardContent>
+                <CardHeader className="pb-2 px-4"><CardTitle className="text-[10px] font-bold uppercase tracking-tight text-green-600">Verified Income</CardTitle></CardHeader>
+                <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className="text-xl font-bold tracking-tight text-foreground tabular-nums">{isLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : formatCurrency(totalPaidRent)}</div></CardContent>
             </Card>
-            <Card className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all">
+            <Card className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[140px] flex flex-col">
                 <div className="h-1 bg-destructive w-full opacity-20 group-hover:opacity-100 transition-opacity" />
-                <CardHeader className="pb-2 px-4"><CardTitle className="text-[11px] font-bold uppercase tracking-tight text-destructive">Total Expenses</CardTitle></CardHeader>
-                <CardContent className='px-4 pb-6'><div className="text-lg font-bold tracking-tight text-foreground tabular-nums">{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(totalExpenses)}</div></CardContent>
+                <CardHeader className="pb-2 px-4"><CardTitle className="text-[10px] font-bold uppercase tracking-tight text-destructive">Total Expenses</CardTitle></CardHeader>
+                <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className="text-xl font-bold tracking-tight text-foreground tabular-nums">{isLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : formatCurrency(totalExpenses)}</div></CardContent>
             </Card>
-            <Card className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all">
+            <Card className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[140px] flex flex-col">
                 <div className="h-1 bg-amber-500 w-full opacity-20 group-hover:opacity-100 transition-opacity" />
-                <CardHeader className="pb-2 px-4"><CardTitle className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground">Taxable Position</CardTitle></CardHeader>
-                <CardContent className='px-4 pb-6'><div className={"text-lg font-bold tracking-tight tabular-nums " + (netIncome < 0 ? "text-destructive" : "text-primary")}>{isLoading ? <Loader2 className="h-6 w-6 animate-spin text-primary" /> : formatCurrency(netIncome)}</div></CardContent>
+                <CardHeader className="pb-2 px-4"><CardTitle className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground">Taxable Position</CardTitle></CardHeader>
+                <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className={"text-xl font-bold tracking-tight tabular-nums " + (netIncome < 0 ? "text-destructive" : "text-primary")}>{isLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : formatCurrency(netIncome)}</div></CardContent>
             </Card>
         </div>
 
@@ -773,26 +690,9 @@ export default function FinancialsPage() {
                 <TabsTrigger value="summary" className="font-bold px-8 py-2.5 rounded-lg text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">HMRC Audit</TabsTrigger>
                 <TabsTrigger value="statement" className="font-bold px-8 py-2.5 rounded-lg text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">Rent Ledger</TabsTrigger>
             </TabsList>
-            <TabsContent value="expenses" className="animate-in fade-in slide-in-from-top-2 duration-500">
-                <ExpenseTracker properties={activeProperties || []} selectedPropertyId={selectedPropertyId} />
-            </TabsContent>
-            <TabsContent value="summary" className="animate-in fade-in slide-in-from-top-2 duration-500">
-                <div className="flex justify-end gap-2 mb-4 pt-4">
-                  <Button onClick={generateHMRCPDF} size="sm" variant="outline" className="font-bold text-[10px] uppercase tracking-widest h-11 px-8 rounded-xl border-primary/20 bg-background shadow-lg hover:bg-primary/5">
-                    <PoundSterling className="mr-2 h-4 w-4 text-primary" /> Export HMRC Tax PDF
-                  </Button>
-                </div>
-                <AnnualSummary selectedYear={selectedTaxYearStart || 0} expenses={expenses} repairCosts={repairCosts} isLoadingExpenses={isLoading} />
-            </TabsContent>
-            <TabsContent value="statement" className="animate-in fade-in slide-in-from-top-2 duration-500">
-                <RentStatement 
-                    selectedProperty={selectedProperty} 
-                    activeTenant={activeTenant}
-                    selectedYear={selectedTaxYearStart || 0} 
-                    rentPayments={rentPayments} 
-                    isLoadingPayments={isLoading} 
-                />
-            </TabsContent>
+            <TabsContent value="expenses" className="animate-in fade-in slide-in-from-top-2 duration-500"><ExpenseTracker properties={activeProperties || []} selectedPropertyId={selectedPropertyId} /></TabsContent>
+            <TabsContent value="summary" className="animate-in fade-in slide-in-from-top-2 duration-500"><AnnualSummary selectedYear={selectedTaxYearStart || 0} expenses={expenses} repairCosts={repairCosts} isLoadingExpenses={isLoading} /></TabsContent>
+            <TabsContent value="statement" className="animate-in fade-in slide-in-from-top-2 duration-500"><RentStatement selectedProperty={selectedProperty} activeTenant={activeTenant} selectedYear={selectedTaxYearStart || 0} rentPayments={rentPayments} isLoadingPayments={isLoading} /></TabsContent>
         </Tabs>
     </div>
   );
