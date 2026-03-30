@@ -1,43 +1,29 @@
 'use client';
 
-import { supabase } from './supabase';
+import { storage } from '@/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 /**
- * Uploads a property image to Supabase Storage.
- * Uses the 'Images' bucket as requested.
- * Ensure your Supabase 'Images' bucket is PUBLIC or has RLS policies for authenticated uploads.
+ * @fileOverview Firebase Image Upload Library
+ * Replaces Supabase to resolve "Failed to fetch" errors and unify storage on Firebase.
  */
+
 export const uploadPropertyImage = async (file: File, userId: string, propertyId: string): Promise<string> => {
   if (!file) return '';
 
   try {
-    // Generate a unique path: {userId}/{propertyId}/{filename}
     const fileExt = file.name.split('.').pop() || 'jpg';
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-    const filePath = `${userId}/${propertyId}/${fileName}`;
+    // Path structure: images/{userId}/{propertyId}/{fileName}
+    const filePath = `images/${userId}/${propertyId}/${fileName}`;
 
-    console.log(`Initiating media sync to Supabase: ${filePath}`);
+    const storageRef = ref(storage, filePath);
+    const snapshot = await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(snapshot.ref);
 
-    const { data, error } = await supabase.storage
-      .from('Images')
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false
-      });
-
-    if (error) {
-      console.error('Supabase storage error:', error);
-      throw error;
-    }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('Images')
-      .getPublicUrl(filePath);
-
-    console.log(`Media synchronized successfully. URL: ${publicUrl}`);
-    return publicUrl;
+    return downloadURL;
   } catch (err: any) {
-    console.error('Supabase synchronization failed:', err.message);
+    console.error('Firebase image upload failed:', err.message);
     throw new Error(`Upload failed: ${err.message}`);
   }
 };

@@ -1,40 +1,29 @@
 'use client';
 
-import { supabase } from './supabase';
+import { storage } from '@/firebase';
+import { ref, uploadBytes, getDownloadURL } from 'firebase/storage';
 
 /**
- * Uploads a document file to Supabase Storage.
+ * @fileOverview Firebase Document Upload Library
+ * Replaces Supabase to resolve storage connection errors and align with project tech stack.
  */
+
 export const uploadPropertyDocument = async (file: File, userId: string, propertyId: string): Promise<string> => {
   if (!file) return '';
 
   try {
     const fileExt = file.name.split('.').pop() || 'pdf';
     const fileName = `${Date.now()}-${Math.random().toString(36).substring(7)}.${fileExt}`;
-    const filePath = `${userId}/${propertyId}/documents/${fileName}`;
+    // Path structure: documents/{userId}/{propertyId}/{fileName}
+    const filePath = `documents/${userId}/${propertyId}/${fileName}`;
 
-    console.log(`Uploading document to Supabase: ${filePath}`);
+    const storageRef = ref(storage, filePath);
+    const snapshot = await uploadBytes(storageRef, file);
+    const downloadURL = await getDownloadURL(snapshot.ref);
 
-    const { data, error } = await supabase.storage
-      .from('Images') // Assuming 'Images' bucket is used for all property media
-      .upload(filePath, file, {
-        cacheControl: '3600',
-        upsert: false
-      });
-
-    if (error) {
-      console.error('Supabase storage error:', error);
-      throw error;
-    }
-
-    const { data: { publicUrl } } = supabase.storage
-      .from('Images')
-      .getPublicUrl(filePath);
-
-    console.log(`Document uploaded successfully. URL: ${publicUrl}`);
-    return publicUrl;
+    return downloadURL;
   } catch (err: any) {
-    console.error('Supabase document upload failed:', err.message);
+    console.error('Firebase document upload failed:', err.message);
     throw new Error(`Upload failed: ${err.message}`);
   }
 };
