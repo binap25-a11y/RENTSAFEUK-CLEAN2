@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -53,9 +52,10 @@ import {
   ChevronRight,
   ListFilter,
   Wrench,
-  FileText
+  FileText,
+  Calculator
 } from 'lucide-react';
-import { format, isAfter, isBefore, startOfYear, endOfYear, isPast, setDate, startOfMonth, getYear } from 'date-fns';
+import { format, isAfter, isBefore, startOfYear, endOfYear, isPast, setDate, startOfMonth, getYear, isSameDay } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import {
   Table,
@@ -261,7 +261,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
   );
 }
 
-function AnnualSummary({ selectedYear, expenses, repairCosts, isLoadingExpenses }: { selectedYear: number, expenses: Expense[], repairCosts: MaintenanceRepair[], isLoadingExpenses: boolean }) {
+function AnnualSummary({ selectedYear, expenses, repairCosts, totalPaidRent, isLoadingExpenses }: { selectedYear: number, expenses: Expense[], repairCosts: MaintenanceRepair[], totalPaidRent: number, isLoadingExpenses: boolean }) {
   const expensesByCategory = useMemo(() => {
     const map: Record<string, number> = {};
     expenses.forEach(e => { map[e.expenseType] = (map[e.expenseType] || 0) + (Number(e.amount) || 0); });
@@ -270,34 +270,54 @@ function AnnualSummary({ selectedYear, expenses, repairCosts, isLoadingExpenses 
     return Object.entries(map).sort(([, a], [, b]) => b - a);
   }, [expenses, repairCosts]);
 
+  const totalExpenditure = expensesByCategory.reduce((acc, [, amount]) => acc + amount, 0);
+  const netPosition = totalPaidRent - totalExpenditure;
+
   return (
     <Card className="mt-6 border-none shadow-2xl rounded-[2rem] overflow-hidden text-left bg-card">
         <CardHeader className="bg-primary/5 border-b border-primary/10 px-8 py-8">
-            <CardTitle className="text-xl font-headline flex items-center gap-3 text-foreground"><History className="h-6 w-6 text-primary" /> Calendar Year Audit: {selectedYear}</CardTitle>
-            <CardDescription className="text-base font-medium">Verified consolidated outgoings mapped to reporting categories.</CardDescription>
+            <CardTitle className="text-xl font-headline flex items-center gap-3 text-foreground"><Calculator className="h-6 w-6 text-primary" /> Financial Audit Summary: {selectedYear}</CardTitle>
+            <CardDescription className="text-base font-medium">Pre-taxation briefing consolidated for professional reporting.</CardDescription>
         </CardHeader>
         <CardContent className="p-0">
-            {isLoadingExpenses ? (<div className="flex h-64 items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>) : expensesByCategory.length === 0 ? (<div className="py-24 text-center text-muted-foreground italic flex flex-col items-center gap-4"><div className="p-6 rounded-full bg-muted/20"><AlertCircle className="h-10 w-10 opacity-20" /></div><p className="font-bold text-lg">No allowable data detected.</p></div>) : (
+            {isLoadingExpenses ? (<div className="flex h-64 items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>) : (
                 <div className="overflow-hidden">
                     <Table>
                         <TableHeader className="bg-muted/30">
                             <TableRow>
-                                <TableHead className="pl-8 py-5 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Category</TableHead>
-                                <TableHead className="text-right pr-8 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Audit Total</TableHead>
+                                <TableHead className="pl-8 py-5 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Audit Category</TableHead>
+                                <TableHead className="text-right pr-8 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Total (£)</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
+                            <TableRow className="bg-green-50/30">
+                                <TableCell className="font-bold pl-8 py-6 text-base text-green-700">Total Rental Income (Collected)</TableCell>
+                                <TableCell className="text-right font-bold pr-8 text-lg tabular-nums text-green-700">{formatCurrency(totalPaidRent)}</TableCell>
+                            </TableRow>
                             {expensesByCategory.map(([name, amount]) => (
                                 <TableRow key={name} className="hover:bg-primary/[0.02] transition-colors group">
                                     <TableCell className="font-bold pl-8 py-6 text-base group-hover:text-primary transition-colors">{name}</TableCell>
                                     <TableCell className="text-right font-bold pr-8 text-lg tabular-nums">{formatCurrency(amount)}</TableCell>
                                 </TableRow>
                             ))}
+                            <TableRow className="bg-muted/20 border-t-2">
+                                <TableCell className="font-bold pl-8 py-6 text-base text-muted-foreground">Total Allowable Expenditure</TableCell>
+                                <TableCell className="text-right font-bold pr-8 text-lg tabular-nums text-muted-foreground">{formatCurrency(totalExpenditure)}</TableCell>
+                            </TableRow>
+                            <TableRow className={cn("border-t-2", netPosition >= 0 ? "bg-primary/10" : "bg-destructive/10")}>
+                                <TableCell className={cn("font-black pl-8 py-8 text-lg", netPosition >= 0 ? "text-primary" : "text-destructive")}>Net Taxable Position</TableCell>
+                                <TableCell className={cn("text-right font-black pr-8 text-2xl tabular-nums", netPosition >= 0 ? "text-primary" : "text-destructive")}>{formatCurrency(netPosition)}</TableCell>
+                            </TableRow>
                         </TableBody>
                     </Table>
                 </div>
             )}
         </CardContent>
+        <CardFooter className="p-8 bg-muted/5 border-t">
+            <p className="text-xs text-muted-foreground italic leading-relaxed">
+                * This summary is provided for administrative audit purposes. Please consult with a qualified accountant for official HMRC self-assessment submissions.
+            </p>
+        </CardFooter>
     </Card>
   );
 }
@@ -785,7 +805,7 @@ export default function FinancialsPage() {
             </Card>
             <Card 
                 className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[140px] flex flex-col cursor-pointer"
-                onClick={() => setActiveTab('history')}
+                onClick={() => setActiveTab('summary')}
             >
                 <div className="h-1 bg-amber-500 w-full opacity-20 group-hover:opacity-100 transition-opacity" />
                 <CardHeader className="pb-2 px-4 flex flex-row items-center justify-between">
@@ -805,7 +825,7 @@ export default function FinancialsPage() {
             </TabsList>
             <TabsContent value="expenses" className="animate-in fade-in slide-in-from-top-2 duration-500"><ExpenseTracker properties={activeProperties || []} selectedPropertyId={selectedPropertyId} /></TabsContent>
             <TabsContent value="history" className="animate-in fade-in slide-in-from-top-2 duration-500"><ExpenseHistory selectedYear={selectedYear || 0} expenses={expenses} repairCosts={repairCosts} properties={activeProperties || []} /></TabsContent>
-            <TabsContent value="summary" className="animate-in fade-in slide-in-from-top-2 duration-500"><AnnualSummary selectedYear={selectedYear || 0} expenses={expenses} repairCosts={repairCosts} isLoadingExpenses={isLoading} /></TabsContent>
+            <TabsContent value="summary" className="animate-in fade-in slide-in-from-top-2 duration-500"><AnnualSummary selectedYear={selectedYear || 0} expenses={expenses} repairCosts={repairCosts} totalPaidRent={totalPaidRent} isLoadingExpenses={isLoading} /></TabsContent>
             <TabsContent value="statement" className="animate-in fade-in slide-in-from-top-2 duration-500"><RentStatement selectedProperty={selectedProperty} activeTenant={activeTenant} selectedYear={selectedYear || 0} rentPayments={rentPayments} isLoadingPayments={isLoading} /></TabsContent>
         </Tabs>
     </div>
