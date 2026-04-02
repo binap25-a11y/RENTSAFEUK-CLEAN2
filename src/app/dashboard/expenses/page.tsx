@@ -324,7 +324,7 @@ function AnnualSummary({ selectedYear, expenses, repairCosts, totalPaidRent, isL
 function ExpenseHistory({ selectedYear, expenses, repairCosts, properties }: { selectedYear: number, expenses: Expense[], repairCosts: MaintenanceRepair[], properties: Property[] }) {
     const propertyMap = useMemo(() => {
         return properties.reduce((acc, p) => {
-            acc[p.id] = p.address.street;
+            acc[p.id] = [p.address.nameOrNumber, p.address.street, p.address.city, p.address.postcode].filter(Boolean).join(', ');
             return acc;
         }, {} as Record<string, string>);
     }, [properties]);
@@ -336,7 +336,7 @@ function ExpenseHistory({ selectedYear, expenses, repairCosts, properties }: { s
             category: e.expenseType,
             description: e.notes || e.expenseType,
             amount: e.amount, 
-            property: propertyMap[e.propertyId] || 'Property',
+            property: propertyMap[e.propertyId] || 'Property Context Missing',
             isRepair: false 
         }));
         const repairs = repairCosts.map(r => ({ 
@@ -345,7 +345,7 @@ function ExpenseHistory({ selectedYear, expenses, repairCosts, properties }: { s
             category: 'Repairs and Maintenance',
             description: r.title,
             amount: r.expectedCost || r.estimatedCost || 0, 
-            property: propertyMap[r.propertyId] || 'Property',
+            property: propertyMap[r.propertyId] || 'Property Context Missing',
             isRepair: true 
         }));
         return [...exps, ...repairs].sort((a, b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0));
@@ -359,7 +359,7 @@ function ExpenseHistory({ selectedYear, expenses, repairCosts, properties }: { s
             </CardHeader>
             <CardContent className="p-0">
                 {!allTransactions.length ? (
-                    <div className="py-24 text-center text-muted-foreground">No transactions found for this period.</div>
+                    <div className="py-24 text-center text-muted-foreground italic">No transactions found for this period.</div>
                 ) : (
                     <div className="w-full overflow-hidden">
                         {/* Desktop View */}
@@ -368,7 +368,7 @@ function ExpenseHistory({ selectedYear, expenses, repairCosts, properties }: { s
                                 <TableHeader className="bg-muted/30">
                                     <TableRow>
                                         <TableHead className="pl-8 py-5 font-bold uppercase text-[10px] tracking-widest">Date</TableHead>
-                                        <TableHead className="font-bold uppercase text-[10px] tracking-widest">Property</TableHead>
+                                        <TableHead className="font-bold uppercase text-[10px] tracking-widest min-w-[200px]">Property (Full Address)</TableHead>
                                         <TableHead className="font-bold uppercase text-[10px] tracking-widest">Expense Detail</TableHead>
                                         <TableHead className="text-right pr-8 font-bold uppercase text-[10px] tracking-widest">Amount</TableHead>
                                     </TableRow>
@@ -377,7 +377,9 @@ function ExpenseHistory({ selectedYear, expenses, repairCosts, properties }: { s
                                     {allTransactions.map(t => (
                                         <TableRow key={t.id} className="hover:bg-muted/10 transition-colors">
                                             <TableCell className="pl-8 py-6 text-xs font-bold text-muted-foreground tabular-nums whitespace-nowrap">{t.date ? format(t.date, 'dd/MM/yy') : 'N/A'}</TableCell>
-                                            <TableCell className="text-xs font-bold text-foreground whitespace-nowrap">{t.property}</TableCell>
+                                            <TableCell className="text-xs font-bold text-foreground py-6 leading-relaxed max-w-[250px]">
+                                                {t.property}
+                                            </TableCell>
                                             <TableCell className="py-6">
                                                 <div className="flex flex-col gap-2 text-left min-w-[200px]">
                                                     <div className="flex flex-wrap items-center gap-2">
@@ -403,14 +405,18 @@ function ExpenseHistory({ selectedYear, expenses, repairCosts, properties }: { s
                                     <div className={cn("absolute left-0 top-0 bottom-0 w-1", t.isRepair ? "bg-destructive" : "bg-primary")} />
                                     <CardContent className="p-4 space-y-3 text-left pl-5">
                                         <div className="flex justify-between items-start gap-4">
-                                            <div className="space-y-1">
+                                            <div className="space-y-1 min-w-0">
                                                 <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{t.date ? format(t.date, 'dd MMM yyyy') : 'N/A'}</p>
-                                                <p className="text-xs font-black text-primary uppercase">{t.property}</p>
+                                                <div className="flex items-start gap-1 mt-1">
+                                                    <MapPin className="h-3 w-3 text-primary shrink-0 mt-0.5" />
+                                                    <p className="text-[10px] font-black text-primary uppercase leading-tight break-words">{t.property}</p>
+                                                </div>
                                             </div>
-                                            <span className="text-base font-black tabular-nums">{formatCurrency(t.amount)}</span>
+                                            <span className="text-base font-black tabular-nums shrink-0">{formatCurrency(t.amount)}</span>
                                         </div>
                                         <div className="space-y-2">
-                                            <Badge variant={t.isRepair ? "destructive" : "secondary"} className="h-auto py-1 text-[8px] uppercase font-bold px-2 rounded-md border shadow-none">
+                                            <Badge variant={t.isRepair ? "destructive" : "secondary"} className="h-auto py-1 text-[8px] uppercase font-bold px-2 rounded-md border shadow-none inline-flex items-center">
+                                                {t.isRepair ? <Wrench className="h-2.5 w-2.5 mr-1" /> : <FileText className="h-2.5 w-2.5 mr-1" />}
                                                 {t.category}
                                             </Badge>
                                             <p className="text-sm font-medium text-foreground leading-snug break-words">"{t.description}"</p>
@@ -651,7 +657,7 @@ export default function FinancialsPage() {
     if (!user || !firestore || !selectedPropertyId || selectedPropertyId === 'all') return null;
     return query(
       collection(firestore, 'tenants'), 
-      where('landlordId', '==', user.uid), // SECURITY CONTEXT FIX
+      where('landlordId', '==', user.uid),
       where('propertyId', '==', selectedPropertyId), 
       where('status', '==', 'Active'), 
       limit(1)
