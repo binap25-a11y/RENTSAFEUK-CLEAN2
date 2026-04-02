@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -235,18 +236,18 @@ export default function MaintenanceLoggedPage() {
                 <div className="space-y-2 text-left">
                     <Label htmlFor="property-filter" className="text-sm font-semibold flex items-center gap-2"><Filter className="h-3.5 w-3.5" />Selected Property</Label>
                     <Select value={selectedPropertyFilter} onValueChange={setSelectedPropertyFilter}>
-                        <SelectTrigger id="property-filter" className="w-full bg-background">
+                        <SelectTrigger id="property-filter" className="w-full bg-background h-11">
                             <SelectValue placeholder={isLoadingProperties ? "Loading..." : "Choose filter"} />
                         </SelectTrigger>
-                        <SelectContent>
-                            <SelectItem value="all">All Properties</SelectItem>
-                            {properties?.map(prop => (<SelectItem key={prop.id} value={prop.id}>{formatAddress(prop.address)}</SelectItem>))}
+                        <SelectContent className="rounded-xl border-2 shadow-2xl">
+                            <SelectItem value="all" className="py-3 font-bold">All Properties</SelectItem>
+                            {properties?.map(prop => (<SelectItem key={prop.id} value={prop.id} className="py-3 font-medium">{formatAddress(prop.address)}</SelectItem>))}
                         </SelectContent>
                     </Select>
                 </div>
                 <div className="space-y-2 text-left">
                     <Label htmlFor="search-logs" className="text-sm font-semibold flex items-center gap-2"><Search className="h-3.5 w-3.5" />Search Issue Title</Label>
-                    <Input id="search-logs" placeholder="e.g., 'Leaking'..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="bg-background" />
+                    <Input id="search-logs" placeholder="e.g., 'Leaking'..." value={searchTerm} onChange={e => setSearchTerm(e.target.value)} className="bg-background h-11" />
                 </div>
             </div>
         </CardContent>
@@ -277,16 +278,16 @@ export default function MaintenanceLoggedPage() {
                                         <TableCell className="text-left">
                                             <Select value={log.status} onValueChange={(v) => handleStatusChange(log.id, v)}>
                                                 <SelectTrigger className={cn(
-                                                    "w-[140px] h-8 text-xs font-bold bg-background",
+                                                    "w-[160px] h-9 text-xs font-bold bg-background shadow-sm border-2",
                                                     log.status === 'Open' && "border-primary text-primary"
                                                 )}>
                                                     <SelectValue />
                                                 </SelectTrigger>
-                                                <SelectContent>
-                                                    <SelectItem value="Open">Open</SelectItem>
-                                                    <SelectItem value="In Progress">In Progress</SelectItem>
-                                                    <SelectItem value="Completed">Completed</SelectItem>
-                                                    <SelectItem value="Cancelled">Cancelled</SelectItem>
+                                                <SelectContent className="rounded-xl border-2 shadow-2xl min-w-[180px]">
+                                                    <SelectItem value="Open" className="py-3 font-bold cursor-pointer">Open</SelectItem>
+                                                    <SelectItem value="In Progress" className="py-3 font-bold cursor-pointer">In Progress</SelectItem>
+                                                    <SelectItem value="Completed" className="py-3 font-bold cursor-pointer">Completed</SelectItem>
+                                                    <SelectItem value="Cancelled" className="py-3 font-bold cursor-pointer">Cancelled</SelectItem>
                                                 </SelectContent>
                                             </Select>
                                         </TableCell>
@@ -303,7 +304,7 @@ export default function MaintenanceLoggedPage() {
                             return (
                                 <Card key={log.id} className="overflow-hidden shadow-sm border-muted/60 text-left">
                                     <CardHeader className="pb-3 text-left"><div className="flex justify-between items-start text-left"><div className="space-y-1 text-left"><Badge variant={getPriorityVariant(log.priority)} className="mb-1 text-[10px] font-bold uppercase">{log.priority}</Badge><CardTitle className="text-lg font-bold text-left"><Link href={`/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`} className="hover:underline">{log.title}</Link></CardTitle><CardDescription className="flex items-center gap-1.5 mt-1 text-xs font-medium text-left"><AlertCircle className="h-3 w-3 text-primary" />{propertyMap[log.propertyId] || 'Assigned Property'}</CardDescription></div><DropdownMenu><DropdownMenuTrigger asChild><Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 -mt-2"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="w-40"><DropdownMenuItem asChild><Link href={`/dashboard/maintenance/${log.id}?propertyId=${log.propertyId}`}><Eye className="mr-2 h-4 w-4" /> View Details</Link></DropdownMenuItem><DropdownMenuItem asChild><Link href={`/dashboard/maintenance/${log.id}/edit?propertyId=${log.propertyId}`}><Edit className="mr-2 h-4 w-4" /> Edit Log</Link></DropdownMenuItem><DropdownMenuSeparator /><DropdownMenuItem onClick={() => setLogToCancel(log)}><XCircle className="mr-2 h-4 w-4" /> Cancel Log</DropdownMenuItem><DropdownMenuItem onClick={() => setLogToDelete(log)} className="text-destructive"><Trash2 className="mr-2 h-4 w-4" /> Delete Permanently</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div></CardHeader>
-                                    <CardContent className="pb-3 border-t pt-3 bg-muted/5 text-left"><div className="flex items-center justify-between text-sm mb-3"><span className="text-muted-foreground font-bold uppercase text-[10px] tracking-widest text-left">Status</span><Select value={log.status} onValueChange={(v) => handleStatusChange(log.id, v)}><SelectTrigger className="w-[140px] h-9 bg-background"><SelectValue /></SelectTrigger><SelectContent><SelectItem value="Open">Open</SelectItem><SelectItem value="In Progress">In Progress</SelectItem><SelectItem value="Completed">Completed</SelectItem><SelectItem value="Cancelled">Cancelled</SelectItem></SelectContent></Select></div><div className="flex items-center justify-between text-xs text-muted-foreground font-medium text-left"><span className="flex items-center gap-1.5 text-left"><Calendar className="h-3.5 w-3.5" />Reported</span><span className="font-bold text-foreground">{date ? format(date, 'dd/MM/yyyy') : 'Recently'}</span></div></CardContent>
+                                    <CardContent className="pb-3 border-t pt-3 bg-muted/5 text-left"><div className="flex items-center justify-between text-sm mb-3"><span className="text-muted-foreground font-bold uppercase text-[10px] tracking-widest text-left">Status</span><Select value={log.status} onValueChange={(v) => handleStatusChange(log.id, v)}><SelectTrigger className="w-[160px] h-10 bg-background border-2"><SelectValue /></SelectTrigger><SelectContent className="rounded-xl border-2 shadow-2xl"><SelectItem value="Open" className="py-3 font-bold">Open</SelectItem><SelectItem value="In Progress" className="py-3 font-bold">In Progress</SelectItem><SelectItem value="Completed" className="py-3 font-bold">Completed</SelectItem><SelectItem value="Cancelled" className="py-3 font-bold">Cancelled</SelectItem></SelectContent></Select></div><div className="flex items-center justify-between text-xs text-muted-foreground font-medium text-left"><span className="flex items-center gap-1.5 text-left"><Calendar className="h-3.5 w-3.5" />Reported</span><span className="font-bold text-foreground">{date ? format(date, 'dd/MM/yyyy') : 'Recently'}</span></div></CardContent>
                                 </Card>
                             );
                         })}

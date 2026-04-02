@@ -324,7 +324,8 @@ function AnnualSummary({ selectedYear, expenses, repairCosts, totalPaidRent, isL
 function ExpenseHistory({ selectedYear, expenses, repairCosts, properties }: { selectedYear: number, expenses: Expense[], repairCosts: MaintenanceRepair[], properties: Property[] }) {
     const propertyMap = useMemo(() => {
         return properties.reduce((acc, p) => {
-            acc[p.id] = [p.address.nameOrNumber, p.address.street, p.address.city, p.address.postcode].filter(Boolean).join(', ');
+            const addr = [p.address.nameOrNumber, p.address.street, p.address.city, p.address.postcode].filter(Boolean).join(', ');
+            acc[p.id] = addr;
             return acc;
         }, {} as Record<string, string>);
     }, [properties]);
@@ -362,7 +363,7 @@ function ExpenseHistory({ selectedYear, expenses, repairCosts, properties }: { s
                     <div className="py-24 text-center text-muted-foreground italic">No transactions found for this period.</div>
                 ) : (
                     <div className="w-full">
-                        {/* Desktop View - Fixed Grid */}
+                        {/* Desktop View - Fixed Grid, No Scroll */}
                         <div className="hidden md:block">
                             <Table className='w-full table-fixed'>
                                 <TableHeader className="bg-muted/30">
@@ -599,11 +600,11 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                                                     )}>
                                                         <SelectValue />
                                                     </SelectTrigger>
-                                                    <SelectContent align="end" className="rounded-xl p-1 shadow-2xl">
-                                                        <SelectItem value="Paid" className="text-green-600 font-bold rounded-lg focus:bg-green-50 focus:text-green-700 py-2.5">Mark as Paid</SelectItem>
-                                                        <SelectItem value="Partially Paid" className="rounded-lg py-2.5">Partially Paid</SelectItem>
-                                                        <SelectItem value="Unpaid" className="text-destructive font-bold rounded-lg focus:bg-destructive/5 focus:text-destructive py-2.5">Unpaid / Overdue</SelectItem>
-                                                        <SelectItem value="Pending" className="rounded-lg py-2.5">Payment Pending</SelectItem>
+                                                    <SelectContent align="end" className="rounded-xl p-1 shadow-2xl min-w-[200px] border-2">
+                                                        <SelectItem value="Paid" className="text-green-600 font-bold rounded-lg focus:bg-green-50 focus:text-green-700 py-3 cursor-pointer">Mark as Paid</SelectItem>
+                                                        <SelectItem value="Partially Paid" className="rounded-lg py-3 cursor-pointer font-medium">Partially Paid</SelectItem>
+                                                        <SelectItem value="Unpaid" className="text-destructive font-bold rounded-lg focus:bg-destructive/5 focus:text-destructive py-3 cursor-pointer">Unpaid / Overdue</SelectItem>
+                                                        <SelectItem value="Pending" className="rounded-lg py-3 cursor-pointer font-medium">Payment Pending</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </TableCell>
@@ -643,14 +644,14 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                                             <div className="space-y-1">
                                                 <Label className="text-[9px] uppercase font-bold text-muted-foreground">Action</Label>
                                                 <Select value={row.status} onValueChange={(v) => handleStatusChange(row.month, row.year, v as PaymentStatus)}>
-                                                    <SelectTrigger className="w-full h-10 text-xs font-bold bg-background shadow-none border-2">
+                                                    <SelectTrigger className="w-full h-11 text-xs font-bold bg-background shadow-none border-2">
                                                         <SelectValue />
                                                     </SelectTrigger>
-                                                    <SelectContent className="rounded-xl">
-                                                        <SelectItem value="Paid">Mark as Paid</SelectItem>
-                                                        <SelectItem value="Partially Paid">Partially Paid</SelectItem>
-                                                        <SelectItem value="Unpaid">Unpaid / Overdue</SelectItem>
-                                                        <SelectItem value="Pending">Payment Pending</SelectItem>
+                                                    <SelectContent className="rounded-xl border-2 shadow-2xl min-w-[200px]">
+                                                        <SelectItem value="Paid" className="py-3 font-bold text-green-600">Mark as Paid</SelectItem>
+                                                        <SelectItem value="Partially Paid" className="py-3 font-medium">Partially Paid</SelectItem>
+                                                        <SelectItem value="Unpaid" className="py-3 font-bold text-destructive">Unpaid / Overdue</SelectItem>
+                                                        <SelectItem value="Pending" className="py-3 font-medium">Payment Pending</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -830,10 +831,10 @@ export default function FinancialsPage() {
                     <SelectTrigger id="financial-scope-selector" className="h-12 bg-muted/5 rounded-xl border-2">
                         <SelectValue placeholder={isLoadingProperties ? "Syncing..." : "All Properties"} />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl">
-                        <SelectItem value="all">Entire Portfolio (Consolidated)</SelectItem>
+                    <SelectContent className="rounded-xl border-2 shadow-2xl">
+                        <SelectItem value="all" className="py-3 font-bold">Entire Portfolio (Consolidated)</SelectItem>
                         {activeProperties?.map((prop) => (
-                          <SelectItem key={prop.id} value={prop.id}>{formatAddress(prop.address)}</SelectItem>
+                          <SelectItem key={prop.id} value={prop.id} className="py-3 font-medium">{formatAddress(prop.address)}</SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
@@ -844,9 +845,9 @@ export default function FinancialsPage() {
                     <SelectTrigger id="reporting-year-selector" className="h-12 bg-muted/5 rounded-xl border-2">
                         <SelectValue placeholder="Year" />
                     </SelectTrigger>
-                    <SelectContent className="rounded-xl">
+                    <SelectContent className="rounded-xl border-2 shadow-2xl max-h-80">
                         {yearsRange.map(year => (
-                            <SelectItem key={year} value={String(year)}>{year}</SelectItem>
+                            <SelectItem key={year} value={String(year)} className="py-3 font-bold">{year}</SelectItem>
                         ))}
                     </SelectContent>
                 </Select>
