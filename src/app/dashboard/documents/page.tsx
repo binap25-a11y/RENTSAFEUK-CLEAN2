@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -10,6 +9,7 @@ import {
   CardTitle,
   CardDescription,
   CardContent,
+  CardFooter,
 } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
@@ -245,7 +245,7 @@ export default function DocumentsPage() {
       <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
          <Card 
             className={cn(
-                "border-none shadow-md overflow-hidden relative cursor-pointer hover:shadow-lg transition-all",
+                "border-none shadow-md overflow-hidden relative cursor-pointer hover:shadow-xl transition-all",
                 statusFilter === 'Expired' && "ring-2 ring-destructive"
             )}
             onClick={() => setStatusFilter('Expired')}
@@ -262,7 +262,7 @@ export default function DocumentsPage() {
          </Card>
          <Card 
             className={cn(
-                "border-none shadow-md overflow-hidden relative cursor-pointer hover:shadow-lg transition-all",
+                "border-none shadow-md overflow-hidden relative cursor-pointer hover:shadow-xl transition-all",
                 statusFilter === 'Expiring Soon' && "ring-2 ring-yellow-500"
             )}
             onClick={() => setStatusFilter('Expiring Soon')}
@@ -279,7 +279,7 @@ export default function DocumentsPage() {
          </Card>
           <Card 
             className={cn(
-                "border-none shadow-md overflow-hidden relative cursor-pointer hover:shadow-lg transition-all",
+                "border-none shadow-md overflow-hidden relative cursor-pointer hover:shadow-xl transition-all",
                 statusFilter === 'Valid' && "ring-2 ring-green-500"
             )}
             onClick={() => setStatusFilter('Valid')}
@@ -350,10 +350,10 @@ export default function DocumentsPage() {
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end" className="w-48">
-                                                <DropdownMenuItem asChild><Link href={`/dashboard/documents/${docItem.id}/edit?propertyId=${docItem.propertyId}`}><Edit className="mr-2 h-4 w-4" /> Edit Record</Link></DropdownMenuItem>
-                                                {docItem.fileUrl && <DropdownMenuItem asChild><a href={docItem.fileUrl} target="_blank" rel="noopener noreferrer"><Download className="mr-2 h-4 w-4" /> Download</a></DropdownMenuItem>}
+                                                <DropdownMenuItem asChild><Link href={`/dashboard/documents/${docItem.id}/edit?propertyId=${docItem.propertyId}`} onClick={e => e.stopPropagation()}><Edit className="mr-2 h-4 w-4" /> Edit Record</Link></DropdownMenuItem>
+                                                {docItem.fileUrl && <DropdownMenuItem asChild><a href={docItem.fileUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}><Download className="mr-2 h-4 w-4" /> Download</a></DropdownMenuItem>}
                                                 <DropdownMenuSeparator />
-                                                <DropdownMenuItem className="text-destructive font-bold" onClick={() => setDocumentToDelete(docItem)}>
+                                                <DropdownMenuItem className="text-destructive font-bold" onClick={(e) => { e.stopPropagation(); setDocumentToDelete(docItem); }}>
                                                     <Trash2 className="mr-2 h-4 w-4" /> Delete Record
                                                 </DropdownMenuItem>
                                             </DropdownMenuContent>
@@ -413,7 +413,7 @@ export default function DocumentsPage() {
                                 </TableCell>
                                 <TableCell className="text-left"><Badge variant={getStatusVariant(docItem.status)} className="text-[10px] font-bold uppercase px-3 py-1 rounded-lg tracking-tighter">{docItem.status}</Badge></TableCell>
                                 <TableCell className="text-xs font-bold tabular-nums text-muted-foreground text-left">{docItem.expiryDateObj ? format(docItem.expiryDateObj, 'dd/MM/yyyy') : 'Permanent'}</TableCell>
-                                <TableCell className="text-right pr-8" onClick={e => e.stopPropagation()}><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-2"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="rounded-xl p-1 shadow-2xl border-2"><DropdownMenuItem asChild className="rounded-lg"><Link href={`/dashboard/documents/${docItem.id}/edit?propertyId=${docItem.propertyId}`} className="cursor-pointer"><Edit className="mr-2 h-4 w-4" /> Edit Record Details</Link></DropdownMenuItem>{docItem.fileUrl && (<DropdownMenuItem asChild className="rounded-lg"><a href={docItem.fileUrl} target="_blank" rel="noopener noreferrer" className="cursor-pointer"><Download className="mr-2 h-4 w-4" /> Download Attachment</a></DropdownMenuItem>)}<DropdownMenuSeparator /><DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10 rounded-lg cursor-pointer font-bold" onClick={() => setDocumentToDelete(docItem)}><Trash2 className="mr-2 h-4 w-4" /> Delete Audit Record</DropdownMenuItem></DropdownMenuContent></DropdownMenu></TableCell>
+                                <TableCell className="text-right pr-8" onClick={e => e.stopPropagation()}><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-2"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="rounded-xl p-1 shadow-2xl border-2"><DropdownMenuItem asChild className="rounded-lg"><Link href={`/dashboard/documents/${docItem.id}/edit?propertyId=${docItem.propertyId}`} className="cursor-pointer" onClick={e => e.stopPropagation()}><Edit className="mr-2 h-4 w-4" /> Edit Record Details</Link></DropdownMenuItem>{docItem.fileUrl && (<DropdownMenuItem asChild className="rounded-lg"><a href={docItem.fileUrl} target="_blank" rel="noopener noreferrer" className="cursor-pointer" onClick={e => e.stopPropagation()}><Download className="mr-2 h-4 w-4" /> Download Attachment</a></DropdownMenuItem>)}<DropdownMenuSeparator /><DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10 rounded-lg cursor-pointer font-bold" onClick={(e) => { e.stopPropagation(); setDocumentToDelete(docItem); }}><Trash2 className="mr-2 h-4 w-4" /> Delete Audit Record</DropdownMenuItem></DropdownMenuContent></DropdownMenu></TableCell>
                                 </TableRow>
                             ))}
                             </TableBody>
