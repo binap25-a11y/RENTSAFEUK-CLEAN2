@@ -286,27 +286,27 @@ function AnnualSummary({ selectedYear, expenses, repairCosts, totalPaidRent, isL
                     <Table className="w-full table-fixed">
                         <TableHeader className="bg-muted/30">
                             <TableRow>
-                                <TableHead className="w-[70%] pl-8 py-5 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Audit Category</TableHead>
-                                <TableHead className="w-[30%] text-right pr-8 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Total (£)</TableHead>
+                                <TableHead className="w-[65%] pl-8 py-5 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Audit Category</TableHead>
+                                <TableHead className="w-[35%] text-right pr-8 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Total (£)</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
-                            <TableRow className="bg-green-50/30">
-                                <TableCell className="font-bold pl-8 py-6 text-base text-green-700 truncate">Total Rental Income (Collected)</TableCell>
+                            <TableRow className="bg-green-50/30 border-b">
+                                <TableCell className="font-bold pl-8 py-6 text-base text-green-700 leading-tight">Total Rental Income (Collected)</TableCell>
                                 <TableCell className="text-right font-bold pr-8 text-lg tabular-nums text-green-700">{formatCurrency(totalPaidRent)}</TableCell>
                             </TableRow>
                             {expensesByCategory.map(([name, amount]) => (
-                                <TableRow key={name} className="hover:bg-primary/[0.02] transition-colors group">
-                                    <TableCell className="font-bold pl-8 py-6 text-base group-hover:text-primary transition-colors truncate">{name}</TableCell>
+                                <TableRow key={name} className="hover:bg-primary/[0.02] transition-colors group border-b">
+                                    <TableCell className="font-bold pl-8 py-6 text-base group-hover:text-primary transition-colors leading-tight">{name}</TableCell>
                                     <TableCell className="text-right font-bold pr-8 text-lg tabular-nums">{formatCurrency(amount)}</TableCell>
                                 </TableRow>
                             ))}
                             <TableRow className="bg-muted/20 border-t-2">
-                                <TableCell className="font-bold pl-8 py-6 text-base text-muted-foreground truncate">Total Allowable Expenditure</TableCell>
+                                <TableCell className="font-bold pl-8 py-6 text-base text-muted-foreground leading-tight">Total Allowable Expenditure</TableCell>
                                 <TableCell className="text-right font-bold pr-8 text-lg tabular-nums text-muted-foreground">{formatCurrency(totalExpenditure)}</TableCell>
                             </TableRow>
                             <TableRow className={cn("border-t-2", netPosition >= 0 ? "bg-primary/10" : "bg-destructive/10")}>
-                                <TableCell className={cn("font-black pl-8 py-8 text-lg truncate", netPosition >= 0 ? "text-primary" : "text-destructive")}>Net Taxable Position</TableCell>
+                                <TableCell className={cn("font-black pl-8 py-8 text-lg leading-tight", netPosition >= 0 ? "text-primary" : "text-destructive")}>Net Taxable Position</TableCell>
                                 <TableCell className={cn("text-right font-black pr-8 text-2xl tabular-nums", netPosition >= 0 ? "text-primary" : "text-destructive")}>{formatCurrency(netPosition)}</TableCell>
                             </TableRow>
                         </TableBody>
@@ -365,14 +365,13 @@ function ExpenseHistory({ selectedYear, expenses, repairCosts, properties }: { s
                     <div className="py-24 text-center text-muted-foreground italic">No transactions found for this period.</div>
                 ) : (
                     <div className="w-full">
-                        {/* Desktop View - Fixed Grid, No Scroll */}
                         <div className="hidden md:block">
                             <Table className='w-full table-fixed'>
                                 <TableHeader className="bg-muted/30">
                                     <TableRow>
-                                        <TableHead className="w-[15%] pl-6 py-5 font-bold uppercase text-[10px] tracking-widest">Date</TableHead>
-                                        <TableHead className="w-[30%] font-bold uppercase text-[10px] tracking-widest">Property</TableHead>
-                                        <TableHead className="w-[40%] font-bold uppercase text-[10px] tracking-widest">Expense Detail</TableHead>
+                                        <TableHead className="w-[12%] pl-6 py-5 font-bold uppercase text-[10px] tracking-widest">Date</TableHead>
+                                        <TableHead className="w-[28%] font-bold uppercase text-[10px] tracking-widest">Property</TableHead>
+                                        <TableHead className="w-[45%] font-bold uppercase text-[10px] tracking-widest">Expense Detail</TableHead>
                                         <TableHead className="w-[15%] text-right pr-6 font-bold uppercase text-[10px] tracking-widest">Amount</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -403,7 +402,6 @@ function ExpenseHistory({ selectedYear, expenses, repairCosts, properties }: { s
                             </Table>
                         </div>
 
-                        {/* Mobile View - Card List */}
                         <div className="grid gap-4 md:hidden p-4 bg-muted/5">
                             {allTransactions.map(t => (
                                 <Card key={t.id} className="shadow-sm border-none overflow-hidden relative text-left">
@@ -555,7 +553,6 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                     <div className="p-32 flex flex-col items-center gap-4"><Loader2 className="h-12 w-12 animate-spin text-primary" /><p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Ledger...</p></div>
                 ) : (
                     <>
-                        {/* Desktop View - Fixed Grid, No Scroll */}
                         <div className="hidden md:block">
                             <Table className="w-full table-fixed">
                                 <TableHeader className="bg-muted/30">
@@ -616,7 +613,6 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                             </Table>
                         </div>
 
-                        {/* Mobile View - Card List */}
                         <div className="md:hidden grid gap-4 p-4 bg-muted/5">
                             {statement.map((row) => (
                                 <Card key={`${selectedProperty.id}-${row.month}-${row.year}`} className="shadow-sm border-none overflow-hidden relative text-left">
