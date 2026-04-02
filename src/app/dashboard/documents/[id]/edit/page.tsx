@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -91,6 +90,14 @@ export default function EditDocumentPage() {
 
   const form = useForm<DocumentFormValues>({
     resolver: zodResolver(documentSchema),
+    defaultValues: {
+      title: '',
+      documentType: '',
+      issueDate: new Date(),
+      expiryDate: '',
+      notes: '',
+      sharedWithTenant: false,
+    }
   });
 
   const docRef = useMemoFirebase(() => {
@@ -106,12 +113,11 @@ export default function EditDocumentPage() {
 
   useEffect(() => {
     if (documentRecord && isMounted) {
-      // SELECTION MEMORY HANDSHAKE: Last used selection takes precedence during batch updates
       const sessionPreference = localStorage.getItem('last_doc_type');
       
       form.reset({
-        title: documentRecord.title,
-        documentType: sessionPreference || documentRecord.documentType,
+        title: documentRecord.title || '',
+        documentType: sessionPreference || documentRecord.documentType || '',
         issueDate: toDate(documentRecord.issueDate) || new Date(),
         expiryDate: toDate(documentRecord.expiryDate) || '',
         notes: documentRecord.notes || '',
@@ -139,7 +145,6 @@ export default function EditDocumentPage() {
         fileUrl = await uploadPropertyDocument(selectedFile, user.uid, propertyId);
       }
 
-      // SUBMISSION PERSISTENCE: Strictly lock the selection for subsequent triage
       localStorage.setItem('last_doc_type', data.documentType);
 
       const updateData = {
@@ -163,7 +168,6 @@ export default function EditDocumentPage() {
   if (isLoading || !isMounted) return <div className="flex h-64 items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-primary" /></div>;
   if (!documentRecord) return <div className="text-center py-20 italic">Record not found.</div>;
 
-  // DYNAMIC STABLE KEY: Ensures re-sync only when required to prevent input flicker
   const selectKey = `doc-type-v4-${id}`;
 
   return (

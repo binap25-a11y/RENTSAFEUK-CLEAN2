@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -118,10 +117,19 @@ export default function EditMaintenancePage() {
     const form = useForm<MaintenanceFormValues>({
         resolver: zodResolver(maintenanceEditSchema),
         defaultValues: {
-            reportedBy: 'Landlord',
-            status: 'Open',
+            propertyId: '',
+            title: '',
+            description: '',
+            category: '',
+            otherCategoryDetails: '',
             priority: 'Routine',
-            expectedCost: 0
+            status: 'Open',
+            reportedBy: 'Landlord',
+            reportedDate: new Date(),
+            contractorName: '',
+            contractorPhone: '',
+            expectedCost: 0,
+            notes: '',
         }
     });
 
@@ -160,7 +168,6 @@ export default function EditMaintenancePage() {
 
     useEffect(() => {
         if (maintenanceLog && !isLoadingProps) {
-            // SELECTION MEMORY HANDSHAKE: Use session preferences during multi-edit triage
             const storedProp = localStorage.getItem('last_repair_prop');
             const storedCat = localStorage.getItem('last_repair_cat');
             const storedPrio = localStorage.getItem('last_repair_prio');
@@ -186,7 +193,6 @@ export default function EditMaintenancePage() {
         }
     }, [maintenanceLog, form, propertyIdFromUrl, isLoadingProps]);
 
-    // REACTIVE KEY: Ensures all Selects re-sync when registry data or preferences change
     const dataKey = maintenanceLog ? `registry-loaded-${localStorage.getItem('last_repair_status')}-${localStorage.getItem('last_repair_cat')}` : 'registry-pending';
 
     async function handleFormSubmit(data: MaintenanceFormValues) {
