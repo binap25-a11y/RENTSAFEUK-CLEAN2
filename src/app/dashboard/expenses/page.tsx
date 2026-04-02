@@ -430,7 +430,7 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-            <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-primary/5 min-h-[160px] flex flex-col justify-between">
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-primary/5 min-h-[140px] flex flex-col justify-between">
                 <CardHeader className="pb-2 px-5 pt-5 shrink-0">
                     <CardTitle className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground flex items-center gap-2 leading-tight">
                         <TrendingUp className="h-3.5 w-3.5 text-primary" />
@@ -443,7 +443,7 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                 </CardContent>
             </Card>
             
-            <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-destructive/5 min-h-[160px] flex flex-col justify-between">
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-destructive/5 min-h-[140px] flex flex-col justify-between">
                 <CardHeader className="pb-2 px-5 pt-5 shrink-0">
                     <CardTitle className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground flex items-center gap-2 leading-tight">
                         <AlertCircle className="h-3.5 w-3.5 text-destructive" />
@@ -456,7 +456,7 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                 </CardContent>
             </Card>
 
-            <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-primary/5 min-h-[160px] flex flex-col justify-between">
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-primary/5 min-h-[140px] flex flex-col justify-between">
                 <CardHeader className="pb-2 px-5 pt-5 shrink-0">
                     <CardTitle className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground flex items-center gap-2 leading-tight">
                         <Target className="h-3.5 w-3.5 text-primary" />
@@ -735,7 +735,7 @@ export default function FinancialsPage() {
             >
                 <div className="h-1 bg-primary w-full opacity-20 group-hover:opacity-100 transition-opacity" />
                 <CardHeader className="pb-2 px-4 flex flex-row items-center justify-between">
-                    <CardTitle className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground leading-tight">Gross Expected</CardTitle>
+                    <CardTitle className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground leading-tight">Gross Expected</CardTitle>
                     <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </CardHeader>
                 <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className="text-lg font-black tracking-tighter text-foreground tabular-nums">{formatCurrency(totalExpectedRent)}</div></CardContent>
@@ -776,11 +776,11 @@ export default function FinancialsPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="pt-4">
-            <TabsList className="bg-muted/50 p-1 h-auto rounded-[1.25rem] w-full sm:w-auto flex flex-wrap sm:flex-nowrap gap-1 border shadow-inner">
-                <TabsTrigger value="expenses" className="flex-1 sm:flex-none font-bold px-6 py-2.5 rounded-lg text-[9px] sm:text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">Expense Tracker</TabsTrigger>
-                <TabsTrigger value="history" className="flex-1 sm:flex-none font-bold px-6 py-2.5 rounded-lg text-[9px] sm:text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">Expense History</TabsTrigger>
-                <TabsTrigger value="summary" className="flex-1 sm:flex-none font-bold px-6 py-2.5 rounded-lg text-[9px] sm:text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">Audit Summary</TabsTrigger>
-                <TabsTrigger value="statement" className="flex-1 sm:flex-none font-bold px-6 py-2.5 rounded-lg text-[9px] sm:text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all">Rent Ledger</TabsTrigger>
+            <TabsList className="grid grid-cols-2 md:grid-cols-4 bg-muted/50 p-1 h-auto rounded-[1.25rem] w-full gap-1 border shadow-inner">
+                <TabsTrigger value="expenses" className="font-bold px-2 py-2.5 rounded-lg text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all whitespace-normal text-center h-full">Expense Tracker</TabsTrigger>
+                <TabsTrigger value="history" className="font-bold px-2 py-2.5 rounded-lg text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all whitespace-normal text-center h-full">Expense History</TabsTrigger>
+                <TabsTrigger value="summary" className="font-bold px-2 py-2.5 rounded-lg text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all whitespace-normal text-center h-full">Audit Summary</TabsTrigger>
+                <TabsTrigger value="statement" className="font-bold px-2 py-2.5 rounded-lg text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all whitespace-normal text-center h-full">Rent Ledger</TabsTrigger>
             </TabsList>
             <TabsContent value="expenses" className="animate-in fade-in slide-in-from-top-2 duration-500"><ExpenseTracker properties={activeProperties || []} selectedPropertyId={selectedPropertyId} /></TabsContent>
             <TabsContent value="history" className="animate-in fade-in slide-in-from-top-2 duration-500"><ExpenseHistory selectedYear={selectedYear || 0} expenses={expenses} repairCosts={repairCosts} properties={activeProperties || []} /></TabsContent>
