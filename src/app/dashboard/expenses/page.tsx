@@ -551,65 +551,115 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                 {isLoadingPayments ? (
                     <div className="p-32 flex flex-col items-center gap-4"><Loader2 className="h-12 w-12 animate-spin text-primary" /><p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Ledger...</p></div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader className="bg-muted/30">
-                                <TableRow>
-                                    <TableHead className="pl-10 py-6 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Period</TableHead>
-                                    <TableHead className="font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground text-left">Rent Amount (£)</TableHead>
-                                    <TableHead className="font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Status</TableHead>
-                                    <TableHead className="pr-10 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground text-right">Action</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {statement.map((row) => (
-                                    <TableRow key={`${selectedProperty.id}-${row.month}-${row.year}`} className="hover:bg-primary/[0.02] transition-all group border-b border-muted/50">
-                                        <TableCell className="pl-10 py-8 text-left">
-                                            <div className="flex flex-col gap-0.5 text-left">
-                                                <span className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">{row.month}</span>
-                                                <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest flex items-center gap-1.5"><Calendar className="h-3 w-3" /> {row.year}</span>
+                    <>
+                        {/* Desktop View Table */}
+                        <div className="hidden md:block overflow-x-auto">
+                            <Table>
+                                <TableHeader className="bg-muted/30">
+                                    <TableRow>
+                                        <TableHead className="pl-10 py-6 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Period</TableHead>
+                                        <TableHead className="font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground text-left">Rent Amount (£)</TableHead>
+                                        <TableHead className="font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Status</TableHead>
+                                        <TableHead className="pr-10 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground text-right">Action</TableHead>
+                                    </TableRow>
+                                </TableHeader>
+                                <TableBody>
+                                    {statement.map((row) => (
+                                        <TableRow key={`${selectedProperty.id}-${row.month}-${row.year}`} className="hover:bg-primary/[0.02] transition-all group border-b border-muted/50">
+                                            <TableCell className="pl-10 py-8 text-left">
+                                                <div className="flex flex-col gap-0.5 text-left">
+                                                    <span className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">{row.month}</span>
+                                                    <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest flex items-center gap-1.5"><Calendar className="h-3 w-3" /> {row.year}</span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <div className="flex justify-start items-center h-12">
+                                                    <span className="text-lg font-black text-foreground tabular-nums tracking-tighter">
+                                                        {formatCurrency(Number(row.rent))}
+                                                    </span>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell>
+                                                <Badge 
+                                                    variant={row.status === 'Paid' ? 'default' : row.status === 'Unpaid' ? 'destructive' : 'secondary'}
+                                                    className={cn(
+                                                        "text-[9px] uppercase font-bold px-4 h-7 gap-2 shadow-sm rounded-lg",
+                                                        row.status === 'Paid' && "bg-green-100 text-green-800 border-green-200"
+                                                    )}
+                                                >
+                                                    {row.status === 'Paid' ? <CheckCircle2 className="h-3.5 w-3.5" /> : row.status === 'Pending' ? <Clock className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />}
+                                                    {row.status}
+                                                </Badge>
+                                            </TableCell>
+                                            <TableCell className="pr-10 text-right">
+                                                <Select value={row.status} onValueChange={(v) => handleStatusChange(row.month, row.year, v as PaymentStatus)}>
+                                                    <SelectTrigger className={cn(
+                                                        "w-[180px] h-11 text-xs font-bold ml-auto shadow-md rounded-xl border-2 transition-all",
+                                                        row.status === 'Paid' ? "border-green-200 bg-green-50/30" : "bg-background"
+                                                    )}>
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent align="end" className="rounded-xl p-1 shadow-2xl">
+                                                        <SelectItem value="Paid" className="text-green-600 font-bold rounded-lg focus:bg-green-50 focus:text-green-700 py-2.5">Mark as Paid</SelectItem>
+                                                        <SelectItem value="Partially Paid" className="rounded-lg py-2.5">Partially Paid</SelectItem>
+                                                        <SelectItem value="Unpaid" className="text-destructive font-bold rounded-lg focus:bg-destructive/5 focus:text-destructive py-2.5">Unpaid / Overdue</SelectItem>
+                                                        <SelectItem value="Pending" className="rounded-lg py-2.5">Payment Pending</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+
+                        {/* Mobile View Card List (Ensures 100% visibility without scrolling) */}
+                        <div className="md:hidden grid gap-4 p-4 bg-muted/5">
+                            {statement.map((row) => (
+                                <Card key={`${selectedProperty.id}-${row.month}-${row.year}`} className="shadow-sm border-none overflow-hidden relative">
+                                    <div className={cn(
+                                        "absolute left-0 top-0 bottom-0 w-1",
+                                        row.status === 'Paid' ? "bg-green-500" : row.status === 'Unpaid' ? "bg-destructive" : "bg-primary"
+                                    )} />
+                                    <CardContent className="p-4 space-y-4 pl-5">
+                                        <div className="flex justify-between items-start">
+                                            <div className="text-left">
+                                                <p className="text-base font-bold text-foreground">{row.month}</p>
+                                                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">{row.year}</p>
                                             </div>
-                                        </TableCell>
-                                        <TableCell>
-                                            <div className="flex justify-start items-center h-12">
-                                                <span className="text-lg font-black text-foreground tabular-nums tracking-tighter">
-                                                    {formatCurrency(Number(row.rent))}
-                                                </span>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell>
+                                            <span className="text-base font-black tabular-nums">{formatCurrency(Number(row.rent))}</span>
+                                        </div>
+                                        <div className="flex flex-col gap-3">
                                             <Badge 
                                                 variant={row.status === 'Paid' ? 'default' : row.status === 'Unpaid' ? 'destructive' : 'secondary'}
                                                 className={cn(
-                                                    "text-[9px] uppercase font-bold px-4 h-7 gap-2 shadow-sm rounded-lg",
+                                                    "w-fit text-[8px] uppercase font-bold px-3 h-6 gap-1.5 shadow-sm rounded-md",
                                                     row.status === 'Paid' && "bg-green-100 text-green-800 border-green-200"
                                                 )}
                                             >
-                                                {row.status === 'Paid' ? <CheckCircle2 className="h-3.5 w-3.5" /> : row.status === 'Pending' ? <Clock className="h-3.5 w-3.5" /> : <AlertCircle className="h-3.5 w-3.5" />}
+                                                {row.status === 'Paid' ? <CheckCircle2 className="h-3 w-3" /> : row.status === 'Pending' ? <Clock className="h-3 w-3" /> : <AlertCircle className="h-3 w-3" />}
                                                 {row.status}
                                             </Badge>
-                                        </TableCell>
-                                        <TableCell className="pr-10 text-right">
-                                            <Select value={row.status} onValueChange={(v) => handleStatusChange(row.month, row.year, v as PaymentStatus)}>
-                                                <SelectTrigger className={cn(
-                                                    "w-[180px] h-11 text-xs font-bold ml-auto shadow-md rounded-xl border-2 transition-all",
-                                                    row.status === 'Paid' ? "border-green-200 bg-green-50/30" : "bg-background"
-                                                )}>
-                                                    <SelectValue />
-                                                </SelectTrigger>
-                                                <SelectContent align="end" className="rounded-xl p-1 shadow-2xl">
-                                                    <SelectItem value="Paid" className="text-green-600 font-bold rounded-lg focus:bg-green-50 focus:text-green-700 py-2.5">Mark as Paid</SelectItem>
-                                                    <SelectItem value="Partially Paid" className="rounded-lg py-2.5">Partially Paid</SelectItem>
-                                                    <SelectItem value="Unpaid" className="text-destructive font-bold rounded-lg focus:bg-destructive/5 focus:text-destructive py-2.5">Unpaid / Overdue</SelectItem>
-                                                    <SelectItem value="Pending" className="rounded-lg py-2.5">Payment Pending</SelectItem>
-                                                </SelectContent>
-                                            </Select>
-                                        </TableCell>
-                                    </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
-                    </div>
+                                            <div className="space-y-1">
+                                                <Label className="text-[9px] uppercase font-bold text-muted-foreground">Action</Label>
+                                                <Select value={row.status} onValueChange={(v) => handleStatusChange(row.month, row.year, v as PaymentStatus)}>
+                                                    <SelectTrigger className="w-full h-10 text-xs font-bold bg-background shadow-none border-2">
+                                                        <SelectValue />
+                                                    </SelectTrigger>
+                                                    <SelectContent className="rounded-xl">
+                                                        <SelectItem value="Paid">Mark as Paid</SelectItem>
+                                                        <SelectItem value="Partially Paid">Partially Paid</SelectItem>
+                                                        <SelectItem value="Unpaid">Unpaid / Overdue</SelectItem>
+                                                        <SelectItem value="Pending">Payment Pending</SelectItem>
+                                                    </SelectContent>
+                                                </Select>
+                                            </div>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
+                    </>
                 )}
             </CardContent>
             <CardFooter className="bg-primary/5 border-t py-10 px-10 flex flex-col sm:flex-row justify-between items-center gap-8">
@@ -828,7 +878,7 @@ export default function FinancialsPage() {
             </Card>
             <Card 
                 className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[140px] h-auto flex flex-col cursor-pointer"
-                onClick={() => setActiveTab('expenses')}
+                onClick={() => setActiveTab('history')}
             >
                 <div className="h-1 bg-destructive w-full opacity-20 group-hover:opacity-100 transition-opacity" />
                 <CardHeader className="pb-2 px-4 flex flex-row items-center justify-between">
