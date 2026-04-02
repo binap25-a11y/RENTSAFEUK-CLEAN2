@@ -300,7 +300,7 @@ function AnnualSummary({ selectedYear, expenses, repairCosts, isLoadingExpenses 
   );
 }
 
-function TransactionHistory({ selectedYear, expenses, repairCosts, properties }: { selectedYear: number, expenses: Expense[], repairCosts: MaintenanceRepair[], properties: Property[] }) {
+function ExpenseHistory({ selectedYear, expenses, repairCosts, properties }: { selectedYear: number, expenses: Expense[], repairCosts: MaintenanceRepair[], properties: Property[] }) {
     const propertyMap = useMemo(() => {
         return properties.reduce((acc, p) => {
             acc[p.id] = p.address.street;
@@ -331,7 +331,7 @@ function TransactionHistory({ selectedYear, expenses, repairCosts, properties }:
     return (
         <Card className="mt-6 border-none shadow-2xl rounded-[2rem] overflow-hidden text-left bg-card">
             <CardHeader className="bg-primary/5 border-b border-primary/10 px-8 py-8">
-                <CardTitle className="text-xl font-headline flex items-center gap-3 text-foreground"><ListFilter className="h-6 w-6 text-primary" /> Historical Audit Ledger</CardTitle>
+                <CardTitle className="text-xl font-headline flex items-center gap-3 text-foreground"><ListFilter className="h-6 w-6 text-primary" /> Historical Expense Ledger</CardTitle>
                 <CardDescription className="text-base font-medium">Detailed list of individual transactions for {selectedYear}.</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
@@ -778,13 +778,13 @@ export default function FinancialsPage() {
         <Tabs value={activeTab} onValueChange={setActiveTab} className="pt-4">
             <TabsList className="bg-muted/50 p-1 h-auto rounded-[1rem] w-full sm:w-auto overflow-x-auto justify-start sm:justify-center">
                 <TabsTrigger value="expenses" className="font-bold px-8 py-2.5 rounded-lg text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">Expense Tracker</TabsTrigger>
+                <TabsTrigger value="history" className="font-bold px-8 py-2.5 rounded-lg text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">Expense History</TabsTrigger>
                 <TabsTrigger value="summary" className="font-bold px-8 py-2.5 rounded-lg text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">Audit Summary</TabsTrigger>
-                <TabsTrigger value="history" className="font-bold px-8 py-2.5 rounded-lg text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">Transaction History</TabsTrigger>
                 <TabsTrigger value="statement" className="font-bold px-8 py-2.5 rounded-lg text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">Rent Ledger</TabsTrigger>
             </TabsList>
             <TabsContent value="expenses" className="animate-in fade-in slide-in-from-top-2 duration-500"><ExpenseTracker properties={activeProperties || []} selectedPropertyId={selectedPropertyId} /></TabsContent>
+            <TabsContent value="history" className="animate-in fade-in slide-in-from-top-2 duration-500"><ExpenseHistory selectedYear={selectedYear || 0} expenses={expenses} repairCosts={repairCosts} properties={activeProperties || []} /></TabsContent>
             <TabsContent value="summary" className="animate-in fade-in slide-in-from-top-2 duration-500"><AnnualSummary selectedYear={selectedYear || 0} expenses={expenses} repairCosts={repairCosts} isLoadingExpenses={isLoading} /></TabsContent>
-            <TabsContent value="history" className="animate-in fade-in slide-in-from-top-2 duration-500"><TransactionHistory selectedYear={selectedYear || 0} expenses={expenses} repairCosts={repairCosts} properties={activeProperties || []} /></TabsContent>
             <TabsContent value="statement" className="animate-in fade-in slide-in-from-top-2 duration-500"><RentStatement selectedProperty={selectedProperty} activeTenant={activeTenant} selectedYear={selectedYear || 0} rentPayments={rentPayments} isLoadingPayments={isLoading} /></TabsContent>
         </Tabs>
     </div>
