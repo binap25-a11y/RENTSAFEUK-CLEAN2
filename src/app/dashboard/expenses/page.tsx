@@ -403,7 +403,7 @@ function ExpenseHistory({ selectedYear, expenses, repairCosts, properties }: { s
                         {/* Mobile View */}
                         <div className="grid gap-4 md:hidden p-4 bg-muted/5">
                             {allTransactions.map(t => (
-                                <Card key={t.id} className="shadow-sm border-none overflow-hidden relative">
+                                <Card key={t.id} className="shadow-sm border-none overflow-hidden relative text-left">
                                     <div className={cn("absolute left-0 top-0 bottom-0 w-1", t.isRepair ? "bg-destructive" : "bg-primary")} />
                                     <CardContent className="p-4 space-y-3 text-left pl-5">
                                         <div className="flex justify-between items-start gap-4">
@@ -417,7 +417,7 @@ function ExpenseHistory({ selectedYear, expenses, repairCosts, properties }: { s
                                             <span className="text-base font-black tabular-nums shrink-0">{formatCurrency(t.amount)}</span>
                                         </div>
                                         <div className="space-y-2">
-                                            <Badge variant={t.isRepair ? "destructive" : "secondary"} className="h-auto py-1 text-[8px] uppercase font-bold px-2 rounded-md border shadow-none inline-flex items-center">
+                                            <Badge variant={t.isRepair ? "destructive" : "secondary"} className="h-auto py-1 text-[8px] uppercase font-bold px-2 rounded-md border shadow-none inline-flex items-center whitespace-normal">
                                                 {t.isRepair ? <Wrench className="h-2.5 w-2.5 mr-1" /> : <FileText className="h-2.5 w-2.5 mr-1" />}
                                                 {t.category}
                                             </Badge>
@@ -616,7 +616,7 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                         {/* Mobile View Card List (Ensures 100% visibility without scrolling) */}
                         <div className="md:hidden grid gap-4 p-4 bg-muted/5">
                             {statement.map((row) => (
-                                <Card key={`${selectedProperty.id}-${row.month}-${row.year}`} className="shadow-sm border-none overflow-hidden relative">
+                                <Card key={`${selectedProperty.id}-${row.month}-${row.year}`} className="shadow-sm border-none overflow-hidden relative text-left">
                                     <div className={cn(
                                         "absolute left-0 top-0 bottom-0 w-1",
                                         row.status === 'Paid' ? "bg-green-500" : row.status === 'Unpaid' ? "bg-destructive" : "bg-primary"
