@@ -136,6 +136,12 @@ export default function LoggedExpensesPage() {
   const [selectedYear, setSelectedYear] = useState(0);
   const [searchTerm, setSearchTerm] = useState('');
 
+  // 100-year audit range
+  const yearsRange = useMemo(() => {
+    const current = new Date().getFullYear();
+    return Array.from({ length: 101 }, (_, i) => (current + 50) - i);
+  }, []);
+
   // UseEffect to set initial year on client side only to prevent hydration mismatch
   useEffect(() => {
     setSelectedYear(getYear(new Date()));
@@ -279,13 +285,13 @@ export default function LoggedExpensesPage() {
                     </Select>
                 </div>
                 <div className="space-y-2">
-                    <Label htmlFor="year-filter">Reporting Year (12 Future, 5 Past)</Label>
+                    <Label htmlFor="year-filter">Audit Year</Label>
                     <Select value={selectedYear ? String(selectedYear) : ''} onValueChange={(v) => setSelectedYear(Number(v))}>
                         <SelectTrigger id="year-filter">
                             <SelectValue placeholder="Year" />
                         </SelectTrigger>
                         <SelectContent>
-                            {Array.from({ length: 18 }, (_, i) => (new Date().getFullYear() + 12) - i).map(year => (
+                            {yearsRange.map(year => (
                                 <SelectItem key={year} value={String(year)}>{year}</SelectItem>
                             ))}
                         </SelectContent>

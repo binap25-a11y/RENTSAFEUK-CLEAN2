@@ -50,7 +50,8 @@ import {
   MapPin,
   Target,
   Inbox,
-  ChevronRight
+  ChevronRight,
+  ListFilter
 } from 'lucide-react';
 import { format, isAfter, isBefore, startOfYear, endOfYear, isPast } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -76,7 +77,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 
-// Standard Calendar Months (Standard Jan-Dec cycle)
+// Standard Calendar Months
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'
 ];
@@ -299,6 +300,75 @@ function AnnualSummary({ selectedYear, expenses, repairCosts, isLoadingExpenses 
   );
 }
 
+function TransactionHistory({ selectedYear, expenses, repairCosts, properties }: { selectedYear: number, expenses: Expense[], repairCosts: MaintenanceRepair[], properties: Property[] }) {
+    const propertyMap = useMemo(() => {
+        return properties.reduce((acc, p) => {
+            acc[p.id] = p.address.street;
+            return acc;
+        }, {} as Record<string, string>);
+    }, [properties]);
+
+    const allTransactions = useMemo(() => {
+        const exps = expenses.map(e => ({ 
+            id: e.id, 
+            date: safeToDate(e.date), 
+            type: e.expenseType, 
+            amount: e.amount, 
+            property: propertyMap[e.propertyId] || 'Property',
+            isRepair: false 
+        }));
+        const repairs = repairCosts.map(r => ({ 
+            id: r.id, 
+            date: safeToDate(r.reportedDate), 
+            type: `Repair: ${r.title}`, 
+            amount: r.expectedCost || r.estimatedCost || 0, 
+            property: propertyMap[r.propertyId] || 'Property',
+            isRepair: true 
+        }));
+        return [...exps, ...repairs].sort((a, b) => (b.date?.getTime() || 0) - (a.date?.getTime() || 0));
+    }, [expenses, repairCosts, propertyMap]);
+
+    return (
+        <Card className="mt-6 border-none shadow-2xl rounded-[2rem] overflow-hidden text-left bg-card">
+            <CardHeader className="bg-primary/5 border-b border-primary/10 px-8 py-8">
+                <CardTitle className="text-xl font-headline flex items-center gap-3 text-foreground"><ListFilter className="h-6 w-6 text-primary" /> Historical Audit Ledger</CardTitle>
+                <CardDescription className="text-base font-medium">Detailed list of individual transactions for {selectedYear}.</CardDescription>
+            </CardHeader>
+            <CardContent className="p-0">
+                {!allTransactions.length ? (
+                    <div className="py-24 text-center text-muted-foreground">No transactions found for this period.</div>
+                ) : (
+                    <div className="overflow-x-auto">
+                        <Table>
+                            <TableHeader className="bg-muted/30">
+                                <TableRow>
+                                    <TableHead className="pl-8 py-5 font-bold uppercase text-[10px] tracking-widest">Date</TableHead>
+                                    <TableHead className="font-bold uppercase text-[10px] tracking-widest">Property</TableHead>
+                                    <TableHead className="font-bold uppercase text-[10px] tracking-widest">Transaction Detail</TableHead>
+                                    <TableHead className="text-right pr-8 font-bold uppercase text-[10px] tracking-widest">Amount</TableHead>
+                                </TableRow>
+                            </TableHeader>
+                            <TableBody>
+                                {allTransactions.map(t => (
+                                    <TableRow key={t.id} className="hover:bg-muted/10 transition-colors">
+                                        <TableCell className="pl-8 py-5 text-sm font-medium text-muted-foreground">{t.date ? format(t.date, 'dd/MM/yyyy') : 'N/A'}</TableCell>
+                                        <TableCell className="text-sm font-bold text-foreground">{t.property}</TableCell>
+                                        <TableCell className="text-sm font-medium">
+                                            {t.isRepair ? <Badge variant="secondary" className="mr-2 h-4 text-[8px] uppercase">Repair</Badge> : null}
+                                            {t.type}
+                                        </TableCell>
+                                        <TableCell className="text-right pr-8 font-black text-foreground tabular-nums">{formatCurrency(t.amount)}</TableCell>
+                                    </TableRow>
+                                ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                )}
+            </CardContent>
+        </Card>
+    );
+}
+
 function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayments, isLoadingPayments }: { selectedProperty: Property | undefined, activeTenant: Tenant | undefined, selectedYear: number, rentPayments: RentPayment[] | null, isLoadingPayments: boolean }) {
   const { user } = useUser();
   const firestore = useFirestore();
@@ -362,33 +432,33 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
             <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-primary/5 min-h-[200px] flex flex-col justify-between">
                 <CardHeader className="pb-2 px-5 pt-5 shrink-0">
-                    <CardTitle className="text-sm font-bold uppercase tracking-tight text-muted-foreground flex items-center gap-2 leading-tight">
+                    <CardTitle className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground flex items-center gap-2 leading-tight">
                         <TrendingUp className="h-3.5 w-3.5 text-primary" />
                         <span>Verified Revenue Collected</span>
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col justify-center pb-5 px-5">
                     <span className="text-lg font-black text-green-600 tracking-tight leading-none mb-1 tabular-nums">{formatCurrency(collectionStats.totalCollected)}</span>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase">Confirmed Registry Income</p>
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase">Confirmed Registry Income</p>
                 </CardContent>
             </Card>
             
             <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-destructive/5 min-h-[200px] flex flex-col justify-between">
                 <CardHeader className="pb-2 px-5 pt-5 shrink-0">
-                    <CardTitle className="text-sm font-bold uppercase tracking-tight text-muted-foreground flex items-center gap-2 leading-tight">
+                    <CardTitle className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground flex items-center gap-2 leading-tight">
                         <AlertCircle className="h-3.5 w-3.5 text-destructive" />
                         <span>Total Outstanding Arrears</span>
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col justify-center pb-5 px-5">
                     <span className="text-lg font-black text-destructive tracking-tight leading-none mb-1 tabular-nums">{formatCurrency(collectionStats.remaining)}</span>
-                    <p className="text-[10px] font-bold text-muted-foreground uppercase">Pending Ledger Balance</p>
+                    <p className="text-[9px] font-bold text-muted-foreground uppercase">Pending Ledger Balance</p>
                 </CardContent>
             </Card>
 
             <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-primary/5 min-h-[200px] flex flex-col justify-between">
                 <CardHeader className="pb-2 px-5 pt-5 shrink-0">
-                    <CardTitle className="text-sm font-bold uppercase tracking-tight text-muted-foreground flex items-center gap-2 leading-tight">
+                    <CardTitle className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground flex items-center gap-2 leading-tight">
                         <Target className="h-3.5 w-3.5 text-primary" />
                         <span>Collection Efficiency</span>
                     </CardTitle>
@@ -437,7 +507,7 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex justify-start items-center h-12">
-                                                <span className="text-lg font-bold text-foreground tabular-nums">
+                                                <span className="text-lg font-black text-foreground tabular-nums tracking-tighter">
                                                     {formatCurrency(Number(row.rent))}
                                                 </span>
                                             </div>
@@ -508,7 +578,7 @@ export default function FinancialsPage() {
     setSelectedYear(new Date().getFullYear());
   }, []);
 
-  // Standard range for professional reporting: 50 years future, 50 years past.
+  // Professional 100-year reporting range
   const yearsRange = useMemo(() => {
     const current = new Date().getFullYear();
     return Array.from({ length: 101 }, (_, i) => (current + 50) - i);
@@ -524,7 +594,7 @@ export default function FinancialsPage() {
     if (!user || !firestore || !selectedPropertyId || selectedPropertyId === 'all') return null;
     return query(
       collection(firestore, 'tenants'), 
-      where('landlordId', '==', user.uid), // MANDATORY SECURITY FILTER
+      where('landlordId', '==', user.uid), // SECURITY CONTEXT
       where('propertyId', '==', selectedPropertyId), 
       where('status', '==', 'Active'), 
       limit(1)
@@ -665,10 +735,10 @@ export default function FinancialsPage() {
             >
                 <div className="h-1 bg-primary w-full opacity-20 group-hover:opacity-100 transition-opacity" />
                 <CardHeader className="pb-2 px-4 flex flex-row items-center justify-between">
-                    <CardTitle className="text-sm font-bold uppercase tracking-tight text-muted-foreground leading-tight">Gross Expected</CardTitle>
+                    <CardTitle className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground leading-tight">Gross Expected</CardTitle>
                     <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </CardHeader>
-                <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className="text-lg font-bold tracking-tight text-foreground tabular-nums">{formatCurrency(totalExpectedRent)}</div></CardContent>
+                <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className="text-lg font-black tracking-tighter text-foreground tabular-nums">{formatCurrency(totalExpectedRent)}</div></CardContent>
             </Card>
             <Card 
                 className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[180px] flex flex-col cursor-pointer"
@@ -676,10 +746,10 @@ export default function FinancialsPage() {
             >
                 <div className="h-1 bg-green-500 w-full opacity-20 group-hover:opacity-100 transition-opacity" />
                 <CardHeader className="pb-2 px-4 flex flex-row items-center justify-between">
-                    <CardTitle className="text-sm font-bold uppercase tracking-tight text-green-600 leading-tight">Verified Income</CardTitle>
+                    <CardTitle className="text-[11px] font-bold uppercase tracking-tight text-green-600 leading-tight">Verified Income</CardTitle>
                     <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </CardHeader>
-                <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className="text-lg font-bold tracking-tight text-foreground tabular-nums">{isLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : formatCurrency(totalPaidRent)}</div></CardContent>
+                <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className="text-lg font-black tracking-tighter text-foreground tabular-nums">{isLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : formatCurrency(totalPaidRent)}</div></CardContent>
             </Card>
             <Card 
                 className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[180px] flex flex-col cursor-pointer"
@@ -687,21 +757,21 @@ export default function FinancialsPage() {
             >
                 <div className="h-1 bg-destructive w-full opacity-20 group-hover:opacity-100 transition-opacity" />
                 <CardHeader className="pb-2 px-4 flex flex-row items-center justify-between">
-                    <CardTitle className="text-sm font-bold uppercase tracking-tight text-destructive leading-tight">Total Expenses</CardTitle>
+                    <CardTitle className="text-[11px] font-bold uppercase tracking-tight text-destructive leading-tight">Total Expenses</CardTitle>
                     <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </CardHeader>
-                <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className="text-lg font-bold tracking-tight text-foreground tabular-nums">{isLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : formatCurrency(totalExpenses)}</div></CardContent>
+                <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className="text-lg font-black tracking-tighter text-foreground tabular-nums">{isLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : formatCurrency(totalExpenses)}</div></CardContent>
             </Card>
             <Card 
                 className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[180px] flex flex-col cursor-pointer"
-                onClick={() => setActiveTab('summary')}
+                onClick={() => setActiveTab('history')}
             >
                 <div className="h-1 bg-amber-500 w-full opacity-20 group-hover:opacity-100 transition-opacity" />
                 <CardHeader className="pb-2 px-4 flex flex-row items-center justify-between">
-                    <CardTitle className="text-sm font-bold uppercase tracking-tight text-muted-foreground leading-tight">Taxable Position</CardTitle>
+                    <CardTitle className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground leading-tight">Taxable Position</CardTitle>
                     <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </CardHeader>
-                <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className={"text-lg font-bold tracking-tight tabular-nums " + (netIncome < 0 ? "text-destructive" : "text-primary")}>{isLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : formatCurrency(netIncome)}</div></CardContent>
+                <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className={"text-lg font-black tracking-tighter tabular-nums " + (netIncome < 0 ? "text-destructive" : "text-primary")}>{isLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : formatCurrency(netIncome)}</div></CardContent>
             </Card>
         </div>
 
@@ -709,10 +779,12 @@ export default function FinancialsPage() {
             <TabsList className="bg-muted/50 p-1 h-auto rounded-[1rem] w-full sm:w-auto overflow-x-auto justify-start sm:justify-center">
                 <TabsTrigger value="expenses" className="font-bold px-8 py-2.5 rounded-lg text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">Expense Tracker</TabsTrigger>
                 <TabsTrigger value="summary" className="font-bold px-8 py-2.5 rounded-lg text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">Audit Summary</TabsTrigger>
+                <TabsTrigger value="history" className="font-bold px-8 py-2.5 rounded-lg text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">Transaction History</TabsTrigger>
                 <TabsTrigger value="statement" className="font-bold px-8 py-2.5 rounded-lg text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">Rent Ledger</TabsTrigger>
             </TabsList>
             <TabsContent value="expenses" className="animate-in fade-in slide-in-from-top-2 duration-500"><ExpenseTracker properties={activeProperties || []} selectedPropertyId={selectedPropertyId} /></TabsContent>
             <TabsContent value="summary" className="animate-in fade-in slide-in-from-top-2 duration-500"><AnnualSummary selectedYear={selectedYear || 0} expenses={expenses} repairCosts={repairCosts} isLoadingExpenses={isLoading} /></TabsContent>
+            <TabsContent value="history" className="animate-in fade-in slide-in-from-top-2 duration-500"><TransactionHistory selectedYear={selectedYear || 0} expenses={expenses} repairCosts={repairCosts} properties={activeProperties || []} /></TabsContent>
             <TabsContent value="statement" className="animate-in fade-in slide-in-from-top-2 duration-500"><RentStatement selectedProperty={selectedProperty} activeTenant={activeTenant} selectedYear={selectedYear || 0} rentPayments={rentPayments} isLoadingPayments={isLoading} /></TabsContent>
         </Tabs>
     </div>
