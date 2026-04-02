@@ -361,44 +361,46 @@ function ExpenseHistory({ selectedYear, expenses, repairCosts, properties }: { s
                 {!allTransactions.length ? (
                     <div className="py-24 text-center text-muted-foreground italic">No transactions found for this period.</div>
                 ) : (
-                    <div className="w-full overflow-hidden">
+                    <div className="w-full">
                         {/* Desktop View */}
-                        <div className="hidden md:block overflow-x-auto">
-                            <Table>
+                        <div className="hidden md:block">
+                            <Table className='w-full'>
                                 <TableHeader className="bg-muted/30">
                                     <TableRow>
-                                        <TableHead className="pl-8 py-5 font-bold uppercase text-[10px] tracking-widest">Date</TableHead>
-                                        <TableHead className="font-bold uppercase text-[10px] tracking-widest min-w-[200px]">Property (Full Address)</TableHead>
-                                        <TableHead className="font-bold uppercase text-[10px] tracking-widest">Expense Detail</TableHead>
-                                        <TableHead className="text-right pr-8 font-bold uppercase text-[10px] tracking-widest">Amount</TableHead>
+                                        <TableHead className="w-[10%] pl-8 py-5 font-bold uppercase text-[10px] tracking-widest">Date</TableHead>
+                                        <TableHead className="w-[30%] font-bold uppercase text-[10px] tracking-widest">Property</TableHead>
+                                        <TableHead className="w-[45%] font-bold uppercase text-[10px] tracking-widest">Expense Detail</TableHead>
+                                        <TableHead className="w-[15%] text-right pr-8 font-bold uppercase text-[10px] tracking-widest">Amount</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {allTransactions.map(t => (
                                         <TableRow key={t.id} className="hover:bg-muted/10 transition-colors">
-                                            <TableCell className="pl-8 py-6 text-xs font-bold text-muted-foreground tabular-nums whitespace-nowrap">{t.date ? format(t.date, 'dd/MM/yy') : 'N/A'}</TableCell>
-                                            <TableCell className="text-xs font-bold text-foreground py-6 leading-relaxed max-w-[250px]">
-                                                {t.property}
+                                            <TableCell className="pl-8 py-6 text-xs font-bold text-muted-foreground tabular-nums whitespace-nowrap align-top">{t.date ? format(t.date, 'dd/MM/yy') : 'N/A'}</TableCell>
+                                            <TableCell className="py-6 align-top">
+                                                <p className="text-xs font-bold text-foreground leading-relaxed break-words">
+                                                    {t.property}
+                                                </p>
                                             </TableCell>
-                                            <TableCell className="py-6">
-                                                <div className="flex flex-col gap-2 text-left min-w-[200px]">
+                                            <TableCell className="py-6 align-top">
+                                                <div className="flex flex-col gap-2 text-left">
                                                     <div className="flex flex-wrap items-center gap-2">
-                                                        <Badge variant={t.isRepair ? "destructive" : "secondary"} className="h-auto py-1 text-[9px] uppercase font-black px-2.5 rounded-lg shadow-sm border-2 inline-flex items-center">
+                                                        <Badge variant={t.isRepair ? "destructive" : "secondary"} className="h-auto py-1 text-[9px] uppercase font-black px-2.5 rounded-lg shadow-sm border-2 inline-flex items-center whitespace-normal text-center">
                                                             {t.isRepair ? <Wrench className="h-3 w-3 mr-1.5" /> : <FileText className="h-3 w-3 mr-1.5" />}
-                                                            <span className="leading-none">{t.category}</span>
+                                                            <span className="leading-tight">{t.category}</span>
                                                         </Badge>
                                                     </div>
-                                                    <p className="text-sm font-bold text-foreground leading-relaxed whitespace-normal break-words">{t.description}</p>
+                                                    <p className="text-sm font-bold text-foreground leading-relaxed break-words">{t.description}</p>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="text-right pr-8 font-black text-foreground tabular-nums text-base whitespace-nowrap">{formatCurrency(t.amount)}</TableCell>
+                                            <TableCell className="text-right pr-8 font-black text-foreground tabular-nums text-base whitespace-nowrap align-top">{formatCurrency(t.amount)}</TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
                             </Table>
                         </div>
 
-                        {/* Mobile View - Card-based for absolute visibility */}
+                        {/* Mobile View */}
                         <div className="grid gap-4 md:hidden p-4 bg-muted/5">
                             {allTransactions.map(t => (
                                 <Card key={t.id} className="shadow-sm border-none overflow-hidden relative">
@@ -493,7 +495,7 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
   return (
     <div className="space-y-8 animate-in fade-in duration-700 text-left">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-            <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-primary/5 min-h-[140px] flex flex-col justify-between">
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-primary/5 min-h-[140px] h-auto flex flex-col justify-between">
                 <CardHeader className="pb-2 px-5 pt-5 shrink-0">
                     <CardTitle className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground flex items-center gap-2 leading-tight">
                         <TrendingUp className="h-3.5 w-3.5 text-primary" />
@@ -506,7 +508,7 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                 </CardContent>
             </Card>
             
-            <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-destructive/5 min-h-[140px] flex flex-col justify-between">
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-destructive/5 min-h-[140px] h-auto flex flex-col justify-between">
                 <CardHeader className="pb-2 px-5 pt-5 shrink-0">
                     <CardTitle className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground flex items-center gap-2 leading-tight">
                         <AlertCircle className="h-3.5 w-3.5 text-destructive" />
@@ -519,7 +521,7 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                 </CardContent>
             </Card>
 
-            <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-primary/5 min-h-[140px] flex flex-col justify-between">
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-primary/5 min-h-[140px] h-auto flex flex-col justify-between">
                 <CardHeader className="pb-2 px-5 pt-5 shrink-0">
                     <CardTitle className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground flex items-center gap-2 leading-tight">
                         <Target className="h-3.5 w-3.5 text-primary" />
@@ -803,7 +805,7 @@ export default function FinancialsPage() {
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card 
-                className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[140px] flex flex-col cursor-pointer"
+                className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[140px] h-auto flex flex-col cursor-pointer"
                 onClick={() => setActiveTab('statement')}
             >
                 <div className="h-1 bg-primary w-full opacity-20 group-hover:opacity-100 transition-opacity" />
@@ -814,7 +816,7 @@ export default function FinancialsPage() {
                 <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className="text-lg font-black tracking-tighter text-foreground tabular-nums">{formatCurrency(totalExpectedRent)}</div></CardContent>
             </Card>
             <Card 
-                className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[140px] flex flex-col cursor-pointer"
+                className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[140px] h-auto flex flex-col cursor-pointer"
                 onClick={() => setActiveTab('statement')}
             >
                 <div className="h-1 bg-green-500 w-full opacity-20 group-hover:opacity-100 transition-opacity" />
@@ -825,7 +827,7 @@ export default function FinancialsPage() {
                 <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className="text-lg font-black tracking-tighter text-foreground tabular-nums">{isLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : formatCurrency(totalPaidRent)}</div></CardContent>
             </Card>
             <Card 
-                className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[140px] flex flex-col cursor-pointer"
+                className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[140px] h-auto flex flex-col cursor-pointer"
                 onClick={() => setActiveTab('expenses')}
             >
                 <div className="h-1 bg-destructive w-full opacity-20 group-hover:opacity-100 transition-opacity" />
@@ -836,7 +838,7 @@ export default function FinancialsPage() {
                 <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className="text-lg font-black tracking-tighter text-foreground tabular-nums">{isLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : formatCurrency(totalExpenses)}</div></CardContent>
             </Card>
             <Card 
-                className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[140px] flex flex-col cursor-pointer"
+                className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[140px] h-auto flex flex-col cursor-pointer"
                 onClick={() => setActiveTab('summary')}
             >
                 <div className="h-1 bg-amber-500 w-full opacity-20 group-hover:opacity-100 transition-opacity" />
