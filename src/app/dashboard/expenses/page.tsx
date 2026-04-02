@@ -709,6 +709,16 @@ export default function FinancialsPage() {
 
   return (
     <div className="flex flex-col gap-6 max-w-6xl mx-auto text-left animate-in fade-in duration-500">
+        <div className="flex flex-col gap-2 p-6 rounded-3xl bg-primary/5 border border-primary/10">
+            <div className="flex items-center gap-3">
+                <div className="p-2 rounded-xl bg-primary text-primary-foreground">
+                    <PoundSterling className="h-6 w-6" />
+                </div>
+                <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Financial Ledger</h1>
+            </div>
+            <p className="text-muted-foreground font-medium text-lg ml-1">Consolidated revenue, expenditure, and tax position for your portfolio.</p>
+        </div>
+
         <div className="flex flex-col gap-4 max-w-md bg-card p-6 rounded-2xl border shadow-lg ring-1 ring-primary/5">
             <div className="grid w-full gap-1.5 text-left">
                 <Label htmlFor="financial-scope-selector" className="text-[10px] uppercase font-bold text-muted-foreground tracking-widest px-1">Registry View</Label>
