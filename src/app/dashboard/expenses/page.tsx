@@ -76,7 +76,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 
-// Standard Calendar Months
+// Standard Calendar Months (Standard Jan-Dec cycle)
 const MONTHS = [
   'January', 'February', 'March', 'April', 'May', 'June', 'July', 'August', 'September', 'October', 'November', 'December'
 ];
@@ -360,41 +360,41 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-            <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-primary/5 min-h-[180px] flex flex-col justify-between">
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-primary/5 min-h-[200px] flex flex-col justify-between">
                 <CardHeader className="pb-2 px-5 pt-5 shrink-0">
-                    <CardTitle className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground flex items-center gap-2 leading-tight">
+                    <CardTitle className="text-sm font-bold uppercase tracking-tight text-muted-foreground flex items-center gap-2 leading-tight">
                         <TrendingUp className="h-3.5 w-3.5 text-primary" />
                         <span>Verified Revenue Collected</span>
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col justify-center pb-5 px-5">
-                    <span className="text-xl font-black text-green-600 tracking-tight leading-none mb-1 tabular-nums">{formatCurrency(collectionStats.totalCollected)}</span>
-                    <p className="text-[8px] font-bold text-muted-foreground uppercase">Confirmed Registry Income</p>
+                    <span className="text-lg font-black text-green-600 tracking-tight leading-none mb-1 tabular-nums">{formatCurrency(collectionStats.totalCollected)}</span>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase">Confirmed Registry Income</p>
                 </CardContent>
             </Card>
             
-            <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-destructive/5 min-h-[180px] flex flex-col justify-between">
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-destructive/5 min-h-[200px] flex flex-col justify-between">
                 <CardHeader className="pb-2 px-5 pt-5 shrink-0">
-                    <CardTitle className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground flex items-center gap-2 leading-tight">
+                    <CardTitle className="text-sm font-bold uppercase tracking-tight text-muted-foreground flex items-center gap-2 leading-tight">
                         <AlertCircle className="h-3.5 w-3.5 text-destructive" />
                         <span>Total Outstanding Arrears</span>
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col justify-center pb-5 px-5">
-                    <span className="text-xl font-black text-destructive tracking-tight leading-none mb-1 tabular-nums">{formatCurrency(collectionStats.remaining)}</span>
-                    <p className="text-[8px] font-bold text-muted-foreground uppercase">Pending Ledger Balance</p>
+                    <span className="text-lg font-black text-destructive tracking-tight leading-none mb-1 tabular-nums">{formatCurrency(collectionStats.remaining)}</span>
+                    <p className="text-[10px] font-bold text-muted-foreground uppercase">Pending Ledger Balance</p>
                 </CardContent>
             </Card>
 
-            <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-primary/5 min-h-[180px] flex flex-col justify-between">
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-primary/5 min-h-[200px] flex flex-col justify-between">
                 <CardHeader className="pb-2 px-5 pt-5 shrink-0">
-                    <CardTitle className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground flex items-center gap-2 leading-tight">
+                    <CardTitle className="text-sm font-bold uppercase tracking-tight text-muted-foreground flex items-center gap-2 leading-tight">
                         <Target className="h-3.5 w-3.5 text-primary" />
                         <span>Collection Efficiency</span>
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col justify-center px-5 pb-5 space-y-3">
-                    <span className="text-xl font-black text-primary tracking-tight leading-none tabular-nums">{collectionStats.rate.toFixed(1)}%</span>
+                    <span className="text-lg font-black text-primary tracking-tight leading-none tabular-nums">{collectionStats.rate.toFixed(1)}%</span>
                     <Progress value={collectionStats.rate} className="h-2 bg-muted shadow-inner" />
                 </CardContent>
             </Card>
@@ -437,7 +437,7 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                                         </TableCell>
                                         <TableCell>
                                             <div className="flex justify-start items-center h-12">
-                                                <span className="text-lg font-black text-foreground tabular-nums">
+                                                <span className="text-lg font-bold text-foreground tabular-nums">
                                                     {formatCurrency(Number(row.rent))}
                                                 </span>
                                             </div>
@@ -508,6 +508,12 @@ export default function FinancialsPage() {
     setSelectedYear(new Date().getFullYear());
   }, []);
 
+  // Standard range for professional reporting: 50 years future, 50 years past.
+  const yearsRange = useMemo(() => {
+    const current = new Date().getFullYear();
+    return Array.from({ length: 101 }, (_, i) => (current + 50) - i);
+  }, []);
+
   const propertiesQuery = useMemoFirebase(() => {
     if (!user || !firestore) return null;
     return query(collection(firestore, 'properties'), where('landlordId', '==', user.uid), where('status', 'in', ['Vacant', 'Occupied', 'Under Maintenance']), limit(500));
@@ -518,7 +524,7 @@ export default function FinancialsPage() {
     if (!user || !firestore || !selectedPropertyId || selectedPropertyId === 'all') return null;
     return query(
       collection(firestore, 'tenants'), 
-      where('landlordId', '==', user.uid),
+      where('landlordId', '==', user.uid), // MANDATORY SECURITY FILTER
       where('propertyId', '==', selectedPropertyId), 
       where('status', '==', 'Active'), 
       limit(1)
@@ -644,7 +650,7 @@ export default function FinancialsPage() {
                         <SelectValue placeholder="Year" />
                     </SelectTrigger>
                     <SelectContent className="rounded-xl">
-                        {Array.from({ length: 18 }, (_, i) => (new Date().getFullYear() + 5) - i).map(year => (
+                        {yearsRange.map(year => (
                             <SelectItem key={year} value={String(year)}>{year}</SelectItem>
                         ))}
                     </SelectContent>
@@ -654,48 +660,48 @@ export default function FinancialsPage() {
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card 
-                className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[140px] flex flex-col cursor-pointer"
+                className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[180px] flex flex-col cursor-pointer"
                 onClick={() => setActiveTab('statement')}
             >
                 <div className="h-1 bg-primary w-full opacity-20 group-hover:opacity-100 transition-opacity" />
                 <CardHeader className="pb-2 px-4 flex flex-row items-center justify-between">
-                    <CardTitle className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground leading-tight">Gross Expected</CardTitle>
+                    <CardTitle className="text-sm font-bold uppercase tracking-tight text-muted-foreground leading-tight">Gross Expected</CardTitle>
                     <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </CardHeader>
-                <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className="text-xl font-bold tracking-tight text-foreground tabular-nums">{formatCurrency(totalExpectedRent)}</div></CardContent>
+                <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className="text-lg font-bold tracking-tight text-foreground tabular-nums">{formatCurrency(totalExpectedRent)}</div></CardContent>
             </Card>
             <Card 
-                className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[140px] flex flex-col cursor-pointer"
+                className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[180px] flex flex-col cursor-pointer"
                 onClick={() => setActiveTab('statement')}
             >
                 <div className="h-1 bg-green-500 w-full opacity-20 group-hover:opacity-100 transition-opacity" />
                 <CardHeader className="pb-2 px-4 flex flex-row items-center justify-between">
-                    <CardTitle className="text-[11px] font-bold uppercase tracking-tight text-green-600 leading-tight">Verified Income</CardTitle>
+                    <CardTitle className="text-sm font-bold uppercase tracking-tight text-green-600 leading-tight">Verified Income</CardTitle>
                     <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </CardHeader>
-                <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className="text-xl font-bold tracking-tight text-foreground tabular-nums">{isLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : formatCurrency(totalPaidRent)}</div></CardContent>
+                <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className="text-lg font-bold tracking-tight text-foreground tabular-nums">{isLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : formatCurrency(totalPaidRent)}</div></CardContent>
             </Card>
             <Card 
-                className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[140px] flex flex-col cursor-pointer"
+                className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[180px] flex flex-col cursor-pointer"
                 onClick={() => setActiveTab('expenses')}
             >
                 <div className="h-1 bg-destructive w-full opacity-20 group-hover:opacity-100 transition-opacity" />
                 <CardHeader className="pb-2 px-4 flex flex-row items-center justify-between">
-                    <CardTitle className="text-[11px] font-bold uppercase tracking-tight text-destructive leading-tight">Total Expenses</CardTitle>
+                    <CardTitle className="text-sm font-bold uppercase tracking-tight text-destructive leading-tight">Total Expenses</CardTitle>
                     <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </CardHeader>
-                <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className="text-xl font-bold tracking-tight text-foreground tabular-nums">{isLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : formatCurrency(totalExpenses)}</div></CardContent>
+                <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className="text-lg font-bold tracking-tight text-foreground tabular-nums">{isLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : formatCurrency(totalExpenses)}</div></CardContent>
             </Card>
             <Card 
-                className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[140px] flex flex-col cursor-pointer"
+                className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[180px] flex flex-col cursor-pointer"
                 onClick={() => setActiveTab('summary')}
             >
                 <div className="h-1 bg-amber-500 w-full opacity-20 group-hover:opacity-100 transition-opacity" />
                 <CardHeader className="pb-2 px-4 flex flex-row items-center justify-between">
-                    <CardTitle className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground leading-tight">Taxable Position</CardTitle>
+                    <CardTitle className="text-sm font-bold uppercase tracking-tight text-muted-foreground leading-tight">Taxable Position</CardTitle>
                     <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </CardHeader>
-                <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className={"text-xl font-bold tracking-tight tabular-nums " + (netIncome < 0 ? "text-destructive" : "text-primary")}>{isLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : formatCurrency(netIncome)}</div></CardContent>
+                <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className={"text-lg font-bold tracking-tight tabular-nums " + (netIncome < 0 ? "text-destructive" : "text-primary")}>{isLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : formatCurrency(netIncome)}</div></CardContent>
             </Card>
         </div>
 
