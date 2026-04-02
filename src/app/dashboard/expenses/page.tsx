@@ -51,7 +51,9 @@ import {
   Target,
   Inbox,
   ChevronRight,
-  ListFilter
+  ListFilter,
+  Wrench,
+  FileText
 } from 'lucide-react';
 import { format, isAfter, isBefore, startOfYear, endOfYear, isPast, setDate, startOfMonth, getYear } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -312,7 +314,8 @@ function ExpenseHistory({ selectedYear, expenses, repairCosts, properties }: { s
         const exps = expenses.map(e => ({ 
             id: e.id, 
             date: safeToDate(e.date), 
-            type: e.expenseType, 
+            category: e.expenseType,
+            description: e.notes || e.expenseType,
             amount: e.amount, 
             property: propertyMap[e.propertyId] || 'Property',
             isRepair: false 
@@ -320,7 +323,8 @@ function ExpenseHistory({ selectedYear, expenses, repairCosts, properties }: { s
         const repairs = repairCosts.map(r => ({ 
             id: r.id, 
             date: safeToDate(r.reportedDate), 
-            type: `Repair: ${r.title}`, 
+            category: 'Repairs and Maintenance',
+            description: r.title,
             amount: r.expectedCost || r.estimatedCost || 0, 
             property: propertyMap[r.propertyId] || 'Property',
             isRepair: true 
@@ -344,20 +348,27 @@ function ExpenseHistory({ selectedYear, expenses, repairCosts, properties }: { s
                                 <TableRow>
                                     <TableHead className="pl-8 py-5 font-bold uppercase text-[10px] tracking-widest">Date</TableHead>
                                     <TableHead className="font-bold uppercase text-[10px] tracking-widest">Property</TableHead>
-                                    <TableHead className="font-bold uppercase text-[10px] tracking-widest">Transaction Detail</TableHead>
+                                    <TableHead className="font-bold uppercase text-[10px] tracking-widest">Expense Detail</TableHead>
                                     <TableHead className="text-right pr-8 font-bold uppercase text-[10px] tracking-widest">Amount</TableHead>
                                 </TableRow>
                             </TableHeader>
                             <TableBody>
                                 {allTransactions.map(t => (
                                     <TableRow key={t.id} className="hover:bg-muted/10 transition-colors">
-                                        <TableCell className="pl-8 py-5 text-sm font-medium text-muted-foreground">{t.date ? format(t.date, 'dd/MM/yyyy') : 'N/A'}</TableCell>
-                                        <TableCell className="text-sm font-bold text-foreground">{t.property}</TableCell>
-                                        <TableCell className="text-sm font-medium">
-                                            {t.isRepair ? <Badge variant="secondary" className="mr-2 h-4 text-[8px] uppercase">Repair</Badge> : null}
-                                            {t.type}
+                                        <TableCell className="pl-8 py-6 text-xs font-bold text-muted-foreground tabular-nums">{t.date ? format(t.date, 'dd/MM/yy') : 'N/A'}</TableCell>
+                                        <TableCell className="text-xs font-bold text-foreground">{t.property}</TableCell>
+                                        <TableCell className="py-6">
+                                            <div className="flex flex-col gap-1 text-left">
+                                                <div className="flex items-center gap-2">
+                                                    <Badge variant={t.isRepair ? "destructive" : "secondary"} className="h-4 text-[8px] uppercase font-black px-1.5 rounded-sm">
+                                                        {t.isRepair ? <Wrench className="h-2 w-2 mr-1" /> : <FileText className="h-2 w-2 mr-1" />}
+                                                        {t.category}
+                                                    </Badge>
+                                                </div>
+                                                <p className="text-sm font-bold text-foreground leading-tight">{t.description}</p>
+                                            </div>
                                         </TableCell>
-                                        <TableCell className="text-right pr-8 font-black text-foreground tabular-nums">{formatCurrency(t.amount)}</TableCell>
+                                        <TableCell className="text-right pr-8 font-black text-foreground tabular-nums text-base">{formatCurrency(t.amount)}</TableCell>
                                     </TableRow>
                                 ))}
                             </TableBody>
