@@ -820,13 +820,13 @@ export default function FinancialsPage() {
             <TabsList className="grid grid-cols-2 md:grid-cols-4 bg-muted/50 p-1 h-auto rounded-[1.25rem] w-full gap-1 border shadow-inner">
                 <TabsTrigger value="expenses" className="font-bold px-2 py-2.5 rounded-lg text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all whitespace-normal text-center h-full">Expense Tracker</TabsTrigger>
                 <TabsTrigger value="history" className="font-bold px-2 py-2.5 rounded-lg text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all whitespace-normal text-center h-full">Expense History</TabsTrigger>
-                <TabsTrigger value="summary" className="font-bold px-2 py-2.5 rounded-lg text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all whitespace-normal text-center h-full">Audit Summary</TabsTrigger>
                 <TabsTrigger value="statement" className="font-bold px-2 py-2.5 rounded-lg text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all whitespace-normal text-center h-full">Rent Ledger</TabsTrigger>
+                <TabsTrigger value="summary" className="font-bold px-2 py-2.5 rounded-lg text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground data-[state=active]:shadow-md transition-all whitespace-normal text-center h-full">Audit Summary</TabsTrigger>
             </TabsList>
             <TabsContent value="expenses" className="animate-in fade-in slide-in-from-top-2 duration-500"><ExpenseTracker properties={activeProperties || []} selectedPropertyId={selectedPropertyId} /></TabsContent>
             <TabsContent value="history" className="animate-in fade-in slide-in-from-top-2 duration-500"><ExpenseHistory selectedYear={selectedYear || 0} expenses={expenses} repairCosts={repairCosts} properties={activeProperties || []} /></TabsContent>
-            <TabsContent value="summary" className="animate-in fade-in slide-in-from-top-2 duration-500"><AnnualSummary selectedYear={selectedYear || 0} expenses={expenses} repairCosts={repairCosts} totalPaidRent={totalPaidRent} isLoadingExpenses={isLoading} /></TabsContent>
             <TabsContent value="statement" className="animate-in fade-in slide-in-from-top-2 duration-500"><RentStatement selectedProperty={selectedProperty} activeTenant={activeTenant} selectedYear={selectedYear || 0} rentPayments={rentPayments} isLoadingPayments={isLoading} /></TabsContent>
+            <TabsContent value="summary" className="animate-in fade-in slide-in-from-top-2 duration-500"><AnnualSummary selectedYear={selectedYear || 0} expenses={expenses} repairCosts={repairCosts} totalPaidRent={totalPaidRent} isLoadingExpenses={isLoading} /></TabsContent>
         </Tabs>
     </div>
   );
