@@ -371,7 +371,7 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col justify-center pb-6 px-6">
-                    <span className="text-xl sm:text-2xl font-black text-green-600 tracking-tight leading-none mb-1 tabular-nums">{formatCurrency(collectionStats.totalCollected)}</span>
+                    <span className="text-xl font-black text-green-600 tracking-tight leading-none mb-1 tabular-nums">{formatCurrency(collectionStats.totalCollected)}</span>
                     <p className="text-[9px] font-bold text-muted-foreground uppercase">Confirmed Registry Income</p>
                 </CardContent>
             </Card>
@@ -384,7 +384,7 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col justify-center pb-6 px-6">
-                    <span className="text-xl sm:text-2xl font-black text-destructive tracking-tight leading-none mb-1 tabular-nums">{formatCurrency(collectionStats.remaining)}</span>
+                    <span className="text-xl font-black text-destructive tracking-tight leading-none mb-1 tabular-nums">{formatCurrency(collectionStats.remaining)}</span>
                     <p className="text-[9px] font-bold text-muted-foreground uppercase">Pending Ledger Balance</p>
                 </CardContent>
             </Card>
@@ -397,7 +397,7 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col justify-center px-6 pb-6 space-y-3">
-                    <span className="text-xl sm:text-2xl font-black text-primary tracking-tight leading-none tabular-nums">{collectionStats.rate.toFixed(1)}%</span>
+                    <span className="text-xl font-black text-primary tracking-tight leading-none tabular-nums">{collectionStats.rate.toFixed(1)}%</span>
                     <Progress value={collectionStats.rate} className="h-2 bg-muted shadow-inner" />
                 </CardContent>
             </Card>
@@ -505,6 +505,7 @@ export default function FinancialsPage() {
   const firestore = useFirestore();
   const [selectedPropertyId, setSelectedPropertyId] = useState('all');
   const [selectedTaxYearStart, setSelectedTaxYearStart] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState('expenses');
 
   useEffect(() => {
     const now = new Date();
@@ -662,29 +663,53 @@ export default function FinancialsPage() {
         </div>
 
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
-            <Card className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[140px] flex flex-col">
+            <Card 
+                className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[140px] flex flex-col cursor-pointer"
+                onClick={() => setActiveTab('statement')}
+            >
                 <div className="h-1 bg-primary w-full opacity-20 group-hover:opacity-100 transition-opacity" />
-                <CardHeader className="pb-2 px-4"><CardTitle className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground">Gross Expected</CardTitle></CardHeader>
+                <CardHeader className="pb-2 px-4 flex flex-row items-center justify-between">
+                    <CardTitle className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground">Gross Expected</CardTitle>
+                    <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                </CardHeader>
                 <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className="text-xl font-bold tracking-tight text-foreground tabular-nums">{formatCurrency(totalExpectedRent)}</div></CardContent>
             </Card>
-            <Card className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[140px] flex flex-col">
+            <Card 
+                className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[140px] flex flex-col cursor-pointer"
+                onClick={() => setActiveTab('statement')}
+            >
                 <div className="h-1 bg-green-500 w-full opacity-20 group-hover:opacity-100 transition-opacity" />
-                <CardHeader className="pb-2 px-4"><CardTitle className="text-[10px] font-bold uppercase tracking-tight text-green-600">Verified Income</CardTitle></CardHeader>
+                <CardHeader className="pb-2 px-4 flex flex-row items-center justify-between">
+                    <CardTitle className="text-[10px] font-bold uppercase tracking-tight text-green-600">Verified Income</CardTitle>
+                    <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                </CardHeader>
                 <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className="text-xl font-bold tracking-tight text-foreground tabular-nums">{isLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : formatCurrency(totalPaidRent)}</div></CardContent>
             </Card>
-            <Card className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[140px] flex flex-col">
+            <Card 
+                className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[140px] flex flex-col cursor-pointer"
+                onClick={() => setActiveTab('expenses')}
+            >
                 <div className="h-1 bg-destructive w-full opacity-20 group-hover:opacity-100 transition-opacity" />
-                <CardHeader className="pb-2 px-4"><CardTitle className="text-[10px] font-bold uppercase tracking-tight text-destructive">Total Expenses</CardTitle></CardHeader>
+                <CardHeader className="pb-2 px-4 flex flex-row items-center justify-between">
+                    <CardTitle className="text-[10px] font-bold uppercase tracking-tight text-destructive">Total Expenses</CardTitle>
+                    <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                </CardHeader>
                 <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className="text-xl font-bold tracking-tight text-foreground tabular-nums">{isLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : formatCurrency(totalExpenses)}</div></CardContent>
             </Card>
-            <Card className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[140px] flex flex-col">
+            <Card 
+                className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[140px] flex flex-col cursor-pointer"
+                onClick={() => setActiveTab('summary')}
+            >
                 <div className="h-1 bg-amber-500 w-full opacity-20 group-hover:opacity-100 transition-opacity" />
-                <CardHeader className="pb-2 px-4"><CardTitle className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground">Taxable Position</CardTitle></CardHeader>
+                <CardHeader className="pb-2 px-4 flex flex-row items-center justify-between">
+                    <CardTitle className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground">Taxable Position</CardTitle>
+                    <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
+                </CardHeader>
                 <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className={"text-xl font-bold tracking-tight tabular-nums " + (netIncome < 0 ? "text-destructive" : "text-primary")}>{isLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : formatCurrency(netIncome)}</div></CardContent>
             </Card>
         </div>
 
-        <Tabs defaultValue="expenses" className="pt-4">
+        <Tabs value={activeTab} onValueChange={setActiveTab} className="pt-4">
             <TabsList className="bg-muted/50 p-1 h-auto rounded-[1rem] w-full sm:w-auto overflow-x-auto justify-start sm:justify-center">
                 <TabsTrigger value="expenses" className="font-bold px-8 py-2.5 rounded-lg text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">Expense Tracker</TabsTrigger>
                 <TabsTrigger value="summary" className="font-bold px-8 py-2.5 rounded-lg text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">HMRC Audit</TabsTrigger>
