@@ -3,6 +3,7 @@
 
 import Link from 'next/link';
 import { useState, useMemo, useEffect } from 'react';
+import { useRouter } from 'next/navigation';
 import {
   Card,
   CardHeader,
@@ -43,7 +44,9 @@ import {
   Download,
   FileText,
   AlertCircle,
-  Users
+  Users,
+  LayoutGrid,
+  List
 } from 'lucide-react';
 import { format, isBefore, addDays } from 'date-fns';
 import {
@@ -72,6 +75,7 @@ import {
   AlertDialogTitle,
 } from '@/components/ui/alert-dialog';
 import { toast } from '@/hooks/use-toast';
+import { cn } from '@/lib/utils';
 
 interface Property {
   id: string;
@@ -123,15 +127,16 @@ const toDate = (val: any): Date | null => {
 export default function DocumentsPage() {
     const { user } = useUser();
     const firestore = useFirestore();
+    const router = useRouter();
     const [selectedPropertyId, setSelectedPropertyId] = useState<string>('all');
     const [searchTerm, setSearchTerm] = useState('');
     const [statusFilter, setStatusFilter] = useState('All');
+    const [view, setView] = useState<'grid' | 'list'>('grid');
     const [today, setToday] = useState<Date | null>(null);
     const [documentToDelete, setDocumentToDelete] = useState<DocumentRecord | null>(null);
 
     useEffect(() => { setToday(new Date()); }, []);
 
-    // 1. Fetch active properties using flat root collection
     const propertiesQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
         return query(
@@ -143,7 +148,6 @@ export default function DocumentsPage() {
     }, [firestore, user]);
     const { data: activeProperties, isLoading: isLoadingProperties } = useCollection<Property>(propertiesQuery);
     
-    // 2. Fetch all documents for this landlord using high-performance flat query
     const documentsQuery = useMemoFirebase(() => {
         if (!user || !firestore) return null;
         return query(
@@ -195,8 +199,16 @@ export default function DocumentsPage() {
         } catch (e) { toast({ variant: 'destructive', title: 'Error', description: 'Could not delete the record.' }); } finally { setDocumentToDelete(null); }
     };
 
+    const handleDocumentClick = (docItem: DocumentRecord) => {
+        if (docItem.fileUrl) {
+            window.open(docItem.fileUrl, '_blank');
+        } else {
+            router.push(`/dashboard/documents/${docItem.id}/edit?propertyId=${docItem.propertyId}`);
+        }
+    };
+
   return (
-    <div className="flex flex-col gap-8 max-w-6xl mx-auto text-left">
+    <div className="flex flex-col gap-8 max-w-6xl mx-auto text-left animate-in fade-in duration-500">
       <div className="flex flex-col gap-2 p-6 rounded-3xl bg-primary/5 border border-primary/10">
         <div className="flex items-center gap-3">
             <div className="p-2 rounded-xl bg-primary text-primary-foreground">
@@ -217,15 +229,27 @@ export default function DocumentsPage() {
             onChange={e => setSearchTerm(e.target.value)} 
           />
         </div>
-        <Button asChild size="lg" className="w-full sm:w-auto font-bold shadow-md h-11 px-8 rounded-xl shrink-0">
-          <Link href="/dashboard/documents/upload">
-            <PlusCircle className="mr-2 h-5 w-5" /> Log New Document
-          </Link>
-        </Button>
+        <div className="flex items-center gap-2 w-full sm:w-auto">
+            <div className="flex items-center rounded-xl bg-muted p-1 border">
+                <Button variant={view === 'grid' ? 'secondary' : 'ghost'} size="sm" className="h-9 px-3 rounded-lg" onClick={() => setView('grid')}><LayoutGrid className="h-4 w-4" /></Button>
+                <Button variant={view === 'list' ? 'secondary' : 'ghost'} size="sm" className="h-9 px-3 rounded-lg" onClick={() => setView('list')}><List className="h-4 w-4" /></Button>
+            </div>
+            <Button asChild size="lg" className="flex-1 sm:flex-initial font-bold shadow-md h-11 px-8 rounded-xl shrink-0">
+                <Link href="/dashboard/documents/upload">
+                    <PlusCircle className="mr-2 h-5 w-5" /> Log New Document
+                </Link>
+            </Button>
+        </div>
       </div>
 
-      <div className="grid gap-4 md:grid-cols-3">
-         <Card className="border-none shadow-md overflow-hidden relative">
+      <div className="grid gap-4 grid-cols-1 sm:grid-cols-3">
+         <Card 
+            className={cn(
+                "border-none shadow-md overflow-hidden relative cursor-pointer hover:shadow-lg transition-all",
+                statusFilter === 'Expired' && "ring-2 ring-destructive"
+            )}
+            onClick={() => setStatusFilter('Expired')}
+         >
             <div className="h-1 bg-destructive w-full absolute top-0" />
             <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Expired</CardTitle>
@@ -233,10 +257,16 @@ export default function DocumentsPage() {
             </CardHeader>
             <CardContent>
                 <div className="text-3xl font-bold text-destructive">{today ? expiredCount : '-'}</div>
-                <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1">Needs immediate attention</p>
+                <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1">Needs attention</p>
             </CardContent>
          </Card>
-         <Card className="border-none shadow-md overflow-hidden relative">
+         <Card 
+            className={cn(
+                "border-none shadow-md overflow-hidden relative cursor-pointer hover:shadow-lg transition-all",
+                statusFilter === 'Expiring Soon' && "ring-2 ring-yellow-500"
+            )}
+            onClick={() => setStatusFilter('Expiring Soon')}
+         >
             <div className="h-1 bg-yellow-500 w-full absolute top-0" />
             <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Expiring Soon</CardTitle>
@@ -247,7 +277,13 @@ export default function DocumentsPage() {
                 <p className="text-[10px] font-bold text-muted-foreground uppercase mt-1">Due in 90 days</p>
             </CardContent>
          </Card>
-          <Card className="border-none shadow-md overflow-hidden relative">
+          <Card 
+            className={cn(
+                "border-none shadow-md overflow-hidden relative cursor-pointer hover:shadow-lg transition-all",
+                statusFilter === 'Valid' && "ring-2 ring-green-500"
+            )}
+            onClick={() => setStatusFilter('Valid')}
+          >
             <div className="h-1 bg-green-500 w-full absolute top-0" />
             <CardHeader className="flex flex-row items-center justify-between pb-2">
                 <CardTitle className="text-xs font-bold uppercase tracking-widest text-muted-foreground">Valid</CardTitle>
@@ -289,31 +325,102 @@ export default function DocumentsPage() {
           ) : filteredDocuments.length === 0 ? (
             <div className="text-center py-32 text-muted-foreground border-2 border-dashed rounded-[2rem] bg-muted/5 flex flex-col items-center justify-center gap-4 mx-2"><div className="p-6 rounded-full bg-background shadow-xl"><Search className="h-12 w-12 text-primary/20" /></div><div><p className="font-bold text-lg text-foreground">No Records Found</p><p className="text-sm max-w-xs mx-auto mt-1">No documents match your current filter criteria.</p></div></div>
           ) : (
-            <div className="hidden rounded-[1.5rem] border-2 border-muted md:block overflow-hidden shadow-sm bg-background">
-              <Table>
-                <TableHeader className="bg-muted/30"><TableRow><TableHead className="font-bold text-[10px] uppercase tracking-wider pl-8 py-4">Document Title</TableHead><TableHead className="font-bold text-[10px] uppercase tracking-wider">Property</TableHead><TableHead className="font-bold text-[10px] uppercase tracking-wider text-center">Privacy</TableHead><TableHead className="font-bold text-[10px] uppercase tracking-wider">Compliance Status</TableHead><TableHead className="font-bold text-[10px] uppercase tracking-wider">Expiry Date</TableHead><TableHead className="text-right font-bold text-[10px] uppercase tracking-wider pr-8">Actions</TableHead></TableRow></TableHeader>
-                <TableBody>
-                  {filteredDocuments.map((docItem) => (
-                    <TableRow key={docItem.id} className="hover:bg-muted/20 transition-all group">
-                      <TableCell className="py-5 pl-8 text-left"><div className="flex items-center gap-4"><div className="p-3 rounded-2xl bg-primary/5 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors shadow-sm"><FileText className="h-5 w-5" /></div><div className="text-left"><p className="font-bold text-sm text-foreground">{docItem.title}</p><p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-0.5">{docItem.documentType}</p></div></div></TableCell>
-                      <TableCell className="text-xs text-muted-foreground font-medium max-w-[150px] truncate text-left">{propertyMap[docItem.propertyId] || 'Assigned Property'}</TableCell>
-                      <TableCell className="text-center">
-                        {docItem.sharedWithTenant ? (
-                          <Badge variant="default" className="bg-green-100 text-green-800 border-green-200 text-[8px] uppercase gap-1 font-bold h-5 px-2">
-                            <Users className="h-2.5 w-2.5" /> Shared
-                          </Badge>
-                        ) : (
-                          <Badge variant="outline" className="text-[8px] uppercase font-bold h-5 px-2 opacity-40">Private</Badge>
-                        )}
-                      </TableCell>
-                      <TableCell className="text-left"><Badge variant={getStatusVariant(docItem.status)} className="text-[10px] font-bold uppercase px-3 py-1 rounded-lg tracking-tighter">{docItem.status}</Badge></TableCell>
-                      <TableCell className="text-xs font-bold tabular-nums text-muted-foreground text-left">{docItem.expiryDateObj ? format(docItem.expiryDateObj, 'dd/MM/yyyy') : 'No Expiry'}</TableCell>
-                      <TableCell className="text-right pr-8"><div className="flex justify-end gap-2 opacity-0 group-hover:opacity-100 transition-opacity">{docItem.fileUrl ? (<Button variant="secondary" size="icon" className="h-9 w-9 rounded-xl shadow-sm hover:scale-110 transition-transform" title="View File" asChild><Link href={docItem.fileUrl} target="_blank"><Eye className="h-4 w-4" /></Link></Button>) : (<Badge variant="outline" className="h-9 px-3 border-dashed text-[9px] font-bold uppercase tracking-widest opacity-40 bg-muted/10">No Attachment</Badge>)}<DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-2"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="rounded-xl p-1 shadow-2xl border-2"><DropdownMenuItem asChild className="rounded-lg"><Link href={`/dashboard/documents/${docItem.id}/edit?propertyId=${docItem.propertyId}`} className="cursor-pointer"><Edit className="mr-2 h-4 w-4" /> Edit Record Details</Link></DropdownMenuItem>{docItem.fileUrl && (<DropdownMenuItem asChild className="rounded-lg"><a href={docItem.fileUrl} target="_blank" rel="noopener noreferrer" className="cursor-pointer"><Download className="mr-2 h-4 w-4" /> Download Attachment</a></DropdownMenuItem>)}<DropdownMenuSeparator /><DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10 rounded-lg cursor-pointer font-bold" onClick={() => setDocumentToDelete(docItem)}><Trash2 className="mr-2 h-4 w-4" /> Delete Audit Record</DropdownMenuItem></DropdownMenuContent></DropdownMenu></div></TableCell>
-                    </TableRow>
-                  ))}
-                </TableBody>
-              </Table>
-            </div>
+            <>
+                {view === 'grid' ? (
+                    <div className="grid gap-6 grid-cols-1 sm:grid-cols-2 lg:grid-cols-3">
+                        {filteredDocuments.map((docItem) => (
+                            <Card 
+                                key={docItem.id} 
+                                className="group relative shadow-md border-none overflow-hidden transition-all hover:shadow-xl hover:scale-[1.02] cursor-pointer"
+                                onClick={() => handleDocumentClick(docItem)}
+                            >
+                                <div className={cn(
+                                    "h-1.5 w-full",
+                                    docItem.status === 'Expired' ? "bg-destructive" : docItem.status === 'Expiring Soon' ? "bg-yellow-500" : "bg-green-500"
+                                )} />
+                                <CardHeader className="pb-3 text-left">
+                                    <div className="flex justify-between items-start mb-2">
+                                        <Badge variant={getStatusVariant(docItem.status)} className="text-[8px] uppercase font-black px-2 h-5">
+                                            {docItem.status}
+                                        </Badge>
+                                        <DropdownMenu>
+                                            <DropdownMenuTrigger asChild>
+                                                <Button variant="ghost" size="icon" className="h-8 w-8 -mr-2 -mt-2" onClick={e => e.stopPropagation()}>
+                                                    <MoreVertical className="h-4 w-4" />
+                                                </Button>
+                                            </DropdownMenuTrigger>
+                                            <DropdownMenuContent align="end" className="w-48">
+                                                <DropdownMenuItem asChild><Link href={`/dashboard/documents/${docItem.id}/edit?propertyId=${docItem.propertyId}`}><Edit className="mr-2 h-4 w-4" /> Edit Record</Link></DropdownMenuItem>
+                                                {docItem.fileUrl && <DropdownMenuItem asChild><a href={docItem.fileUrl} target="_blank" rel="noopener noreferrer"><Download className="mr-2 h-4 w-4" /> Download</a></DropdownMenuItem>}
+                                                <DropdownMenuSeparator />
+                                                <DropdownMenuItem className="text-destructive font-bold" onClick={() => setDocumentToDelete(docItem)}>
+                                                    <Trash2 className="mr-2 h-4 w-4" /> Delete Record
+                                                </DropdownMenuItem>
+                                            </DropdownMenuContent>
+                                        </DropdownMenu>
+                                    </div>
+                                    <CardTitle className="text-lg font-bold leading-tight group-hover:text-primary transition-colors">{docItem.title}</CardTitle>
+                                    <CardDescription className="text-[10px] font-bold uppercase tracking-widest">{docItem.documentType}</CardDescription>
+                                </CardHeader>
+                                <CardContent className="space-y-4 pb-6">
+                                    <div className="flex items-start gap-3 p-3 rounded-xl bg-muted/20 border text-left">
+                                        <div className="p-2 rounded-lg bg-background shadow-sm mt-0.5"><Users className="h-3 w-3 text-muted-foreground" /></div>
+                                        <div className="min-w-0">
+                                            <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-tight">Property Asset</p>
+                                            <p className="text-xs font-bold truncate">{propertyMap[docItem.propertyId] || 'Assigned Property'}</p>
+                                        </div>
+                                    </div>
+                                    <div className="flex items-center justify-between text-[10px] font-bold text-muted-foreground uppercase px-1">
+                                        <span className="flex items-center gap-1.5"><Clock className="h-3 w-3" /> Expiry</span>
+                                        <span className={cn("tabular-nums", docItem.status === 'Expired' && "text-destructive")}>
+                                            {docItem.expiryDateObj ? format(docItem.expiryDateObj, 'dd/MM/yyyy') : 'Permanent'}
+                                        </span>
+                                    </div>
+                                </CardContent>
+                                <CardFooter className="pt-0 pb-4 justify-center">
+                                    {docItem.fileUrl ? (
+                                        <div className="flex items-center gap-1.5 text-[9px] font-bold text-primary uppercase tracking-[0.2em] animate-pulse">
+                                            <Eye className="h-3 w-3" /> Click to View Audit File
+                                        </div>
+                                    ) : (
+                                        <div className="text-[9px] font-bold text-muted-foreground/40 uppercase tracking-[0.2em]">Metadata Record Only</div>
+                                    )}
+                                </CardFooter>
+                            </Card>
+                        ))}
+                    </div>
+                ) : (
+                    <div className="rounded-[1.5rem] border-2 border-muted overflow-hidden shadow-sm bg-background">
+                        <Table>
+                            <TableHeader className="bg-muted/30"><TableRow><TableHead className="font-bold text-[10px] uppercase tracking-wider pl-8 py-4">Document Title</TableHead><TableHead className="font-bold text-[10px] uppercase tracking-wider">Property</TableHead><TableHead className="font-bold text-[10px] uppercase tracking-wider text-center">Privacy</TableHead><TableHead className="font-bold text-[10px] uppercase tracking-wider">Status</TableHead><TableHead className="font-bold text-[10px] uppercase tracking-wider">Expiry</TableHead><TableHead className="text-right font-bold text-[10px] uppercase tracking-wider pr-8">Actions</TableHead></TableRow></TableHeader>
+                            <TableBody>
+                            {filteredDocuments.map((docItem) => (
+                                <TableRow 
+                                    key={docItem.id} 
+                                    className="hover:bg-muted/20 transition-all group cursor-pointer"
+                                    onClick={() => handleDocumentClick(docItem)}
+                                >
+                                <TableCell className="py-5 pl-8 text-left"><div className="flex items-center gap-4"><div className="p-3 rounded-2xl bg-primary/5 text-primary group-hover:bg-primary group-hover:text-primary-foreground transition-colors shadow-sm"><FileText className="h-5 w-5" /></div><div className="text-left"><p className="font-bold text-sm text-foreground">{docItem.title}</p><p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mt-0.5">{docItem.documentType}</p></div></div></TableCell>
+                                <TableCell className="text-xs text-muted-foreground font-medium max-w-[150px] truncate text-left">{propertyMap[docItem.propertyId] || 'Assigned Property'}</TableCell>
+                                <TableCell className="text-center">
+                                    {docItem.sharedWithTenant ? (
+                                    <Badge variant="default" className="bg-green-100 text-green-800 border-green-200 text-[8px] uppercase gap-1 font-bold h-5 px-2">
+                                        <Users className="h-2.5 w-2.5" /> Shared
+                                    </Badge>
+                                    ) : (
+                                    <Badge variant="outline" className="text-[8px] uppercase font-bold h-5 px-2 opacity-40">Private</Badge>
+                                    )}
+                                </TableCell>
+                                <TableCell className="text-left"><Badge variant={getStatusVariant(docItem.status)} className="text-[10px] font-bold uppercase px-3 py-1 rounded-lg tracking-tighter">{docItem.status}</Badge></TableCell>
+                                <TableCell className="text-xs font-bold tabular-nums text-muted-foreground text-left">{docItem.expiryDateObj ? format(docItem.expiryDateObj, 'dd/MM/yyyy') : 'Permanent'}</TableCell>
+                                <TableCell className="text-right pr-8" onClick={e => e.stopPropagation()}><DropdownMenu><DropdownMenuTrigger asChild><Button variant="outline" size="icon" className="h-9 w-9 rounded-xl border-2"><MoreVertical className="h-4 w-4" /></Button></DropdownMenuTrigger><DropdownMenuContent align="end" className="rounded-xl p-1 shadow-2xl border-2"><DropdownMenuItem asChild className="rounded-lg"><Link href={`/dashboard/documents/${docItem.id}/edit?propertyId=${docItem.propertyId}`} className="cursor-pointer"><Edit className="mr-2 h-4 w-4" /> Edit Record Details</Link></DropdownMenuItem>{docItem.fileUrl && (<DropdownMenuItem asChild className="rounded-lg"><a href={docItem.fileUrl} target="_blank" rel="noopener noreferrer" className="cursor-pointer"><Download className="mr-2 h-4 w-4" /> Download Attachment</a></DropdownMenuItem>)}<DropdownMenuSeparator /><DropdownMenuItem className="text-destructive focus:text-destructive focus:bg-destructive/10 rounded-lg cursor-pointer font-bold" onClick={() => setDocumentToDelete(docItem)}><Trash2 className="mr-2 h-4 w-4" /> Delete Audit Record</DropdownMenuItem></DropdownMenuContent></DropdownMenu></TableCell>
+                                </TableRow>
+                            ))}
+                            </TableBody>
+                        </Table>
+                    </div>
+                )}
+            </>
           )}
         </CardContent>
       </Card>
