@@ -378,14 +378,14 @@ function ExpenseHistory({ selectedYear, expenses, repairCosts, properties }: { s
                                         <TableCell className="pl-8 py-6 text-xs font-bold text-muted-foreground tabular-nums">{t.date ? format(t.date, 'dd/MM/yy') : 'N/A'}</TableCell>
                                         <TableCell className="text-xs font-bold text-foreground">{t.property}</TableCell>
                                         <TableCell className="py-6">
-                                            <div className="flex flex-col gap-1 text-left">
+                                            <div className="flex flex-col gap-2 text-left max-w-sm">
                                                 <div className="flex items-center gap-2">
-                                                    <Badge variant={t.isRepair ? "destructive" : "secondary"} className="h-4 text-[8px] uppercase font-black px-1.5 rounded-sm">
-                                                        {t.isRepair ? <Wrench className="h-2 w-2 mr-1" /> : <FileText className="h-2 w-2 mr-1" />}
+                                                    <Badge variant={t.isRepair ? "destructive" : "secondary"} className="h-5 text-[8px] uppercase font-black px-2 rounded-md shadow-sm border-2">
+                                                        {t.isRepair ? <Wrench className="h-2.5 w-2.5 mr-1.5" /> : <FileText className="h-2.5 w-2.5 mr-1.5" />}
                                                         {t.category}
                                                     </Badge>
                                                 </div>
-                                                <p className="text-sm font-bold text-foreground leading-tight">{t.description}</p>
+                                                <p className="text-sm font-bold text-foreground leading-relaxed whitespace-normal break-words">{t.description}</p>
                                             </div>
                                         </TableCell>
                                         <TableCell className="text-right pr-8 font-black text-foreground tabular-nums text-base">{formatCurrency(t.amount)}</TableCell>
