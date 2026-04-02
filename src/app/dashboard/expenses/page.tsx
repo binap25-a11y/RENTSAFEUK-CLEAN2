@@ -218,7 +218,9 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                     <FormLabel className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground px-1">Target Property</FormLabel>
                     <Select onValueChange={field.onChange} value={field.value}>
                     <FormControl><SelectTrigger className="h-12 bg-muted/5 border-2 rounded-xl"><SelectValue placeholder="Select from portfolio" /></SelectTrigger></FormControl>
-                    <SelectContent className="rounded-xl">{properties.map(p => (<SelectItem key={p.id} value={p.id} className="rounded-lg">{formatAddress(p.address)}</SelectItem>))}</SelectContent>
+                    <SelectContent className="rounded-xl border-2 shadow-2xl">
+                      {properties.map(p => (<SelectItem key={p.id} value={p.id} className="rounded-lg py-3 font-medium">{formatAddress(p.address)}</SelectItem>))}
+                    </SelectContent>
                     </Select>
                     <FormMessage />
                 </FormItem>
@@ -236,7 +238,7 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
                         <FormLabel className="font-bold uppercase text-[10px] tracking-widest text-muted-foreground px-1">Category</FormLabel>
                         <Select onValueChange={field.onChange} value={field.value}>
                             <FormControl><SelectTrigger className="h-12 bg-muted/5 border-2 rounded-xl"><SelectValue placeholder="Select grouping" /></SelectTrigger></FormControl>
-                            <SelectContent className="rounded-xl">{['Repairs and Maintenance','Utilities','Insurance','Mortgage Interest','Cleaning','Gardening','Letting Agent Fees', 'Other'].map(t => <SelectItem key={t} value={t} className="rounded-lg">{t}</SelectItem>)}</SelectContent>
+                            <SelectContent className="rounded-xl border-2 shadow-2xl">{['Repairs and Maintenance','Utilities','Insurance','Mortgage Interest','Cleaning','Gardening','Letting Agent Fees', 'Other'].map(t => <SelectItem key={t} value={t} className="rounded-lg py-3 font-medium">{t}</SelectItem>)}</SelectContent>
                         </Select>
                         <FormMessage />
                     </FormItem>
@@ -368,16 +370,16 @@ function ExpenseHistory({ selectedYear, expenses, repairCosts, properties }: { s
                             <Table className='w-full table-fixed'>
                                 <TableHeader className="bg-muted/30">
                                     <TableRow>
-                                        <TableHead className="w-[10%] pl-8 py-5 font-bold uppercase text-[10px] tracking-widest">Date</TableHead>
-                                        <TableHead className="w-[30%] font-bold uppercase text-[10px] tracking-widest">Property</TableHead>
+                                        <TableHead className="w-[12%] pl-6 py-5 font-bold uppercase text-[10px] tracking-widest">Date</TableHead>
+                                        <TableHead className="w-[28%] font-bold uppercase text-[10px] tracking-widest">Property</TableHead>
                                         <TableHead className="w-[45%] font-bold uppercase text-[10px] tracking-widest">Expense Detail</TableHead>
-                                        <TableHead className="w-[15%] text-right pr-8 font-bold uppercase text-[10px] tracking-widest">Amount</TableHead>
+                                        <TableHead className="w-[15%] text-right pr-6 font-bold uppercase text-[10px] tracking-widest">Amount</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {allTransactions.map(t => (
                                         <TableRow key={t.id} className="hover:bg-muted/10 transition-colors">
-                                            <TableCell className="pl-8 py-6 text-xs font-bold text-muted-foreground tabular-nums whitespace-nowrap align-top">{t.date ? format(t.date, 'dd/MM/yy') : 'N/A'}</TableCell>
+                                            <TableCell className="pl-6 py-6 text-xs font-bold text-muted-foreground tabular-nums whitespace-nowrap align-top">{t.date ? format(t.date, 'dd/MM/yy') : 'N/A'}</TableCell>
                                             <TableCell className="py-6 align-top">
                                                 <p className="text-xs font-bold text-foreground leading-relaxed break-words">
                                                     {t.property}
@@ -394,7 +396,7 @@ function ExpenseHistory({ selectedYear, expenses, repairCosts, properties }: { s
                                                     <p className="text-sm font-bold text-foreground leading-relaxed break-words">{t.description}</p>
                                                 </div>
                                             </TableCell>
-                                            <TableCell className="text-right pr-8 font-black text-foreground tabular-nums text-base whitespace-nowrap align-top">{formatCurrency(t.amount)}</TableCell>
+                                            <TableCell className="text-right pr-6 font-black text-foreground tabular-nums text-base whitespace-nowrap align-top">{formatCurrency(t.amount)}</TableCell>
                                         </TableRow>
                                     ))}
                                 </TableBody>
@@ -558,16 +560,16 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                             <Table className="w-full table-fixed">
                                 <TableHeader className="bg-muted/30">
                                     <TableRow>
-                                        <TableHead className="w-[20%] pl-10 py-6 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Period</TableHead>
+                                        <TableHead className="w-[15%] pl-6 py-6 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Period</TableHead>
                                         <TableHead className="w-[25%] font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground text-left">Rent Amount (£)</TableHead>
                                         <TableHead className="w-[25%] font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Status</TableHead>
-                                        <TableHead className="w-[30%] pr-10 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground text-right">Action</TableHead>
+                                        <TableHead className="w-[35%] pr-6 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground text-right">Action</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
                                     {statement.map((row) => (
                                         <TableRow key={`${selectedProperty.id}-${row.month}-${row.year}`} className="hover:bg-primary/[0.02] transition-all group border-b border-muted/50">
-                                            <TableCell className="pl-10 py-8 text-left">
+                                            <TableCell className="pl-6 py-8 text-left">
                                                 <div className="flex flex-col gap-0.5 text-left">
                                                     <span className="text-lg font-bold text-foreground group-hover:text-primary transition-colors truncate">{row.month}</span>
                                                     <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest flex items-center gap-1.5"><Calendar className="h-3 w-3" /> {row.year}</span>
@@ -592,19 +594,19 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                                                     {row.status}
                                                 </Badge>
                                             </TableCell>
-                                            <TableCell className="pr-10 text-right">
+                                            <TableCell className="pr-6 text-right">
                                                 <Select value={row.status} onValueChange={(v) => handleStatusChange(row.month, row.year, v as PaymentStatus)}>
                                                     <SelectTrigger className={cn(
-                                                        "w-full max-w-[180px] h-11 text-xs font-bold ml-auto shadow-md rounded-xl border-2 transition-all",
+                                                        "w-full h-11 text-xs font-bold ml-auto shadow-md rounded-xl border-2 transition-all",
                                                         row.status === 'Paid' ? "border-green-200 bg-green-50/30" : "bg-background"
                                                     )}>
                                                         <SelectValue />
                                                     </SelectTrigger>
-                                                    <SelectContent align="end" className="rounded-xl p-1 shadow-2xl min-w-[200px] border-2">
-                                                        <SelectItem value="Paid" className="text-green-600 font-bold rounded-lg focus:bg-green-50 focus:text-green-700 py-3 cursor-pointer">Mark as Paid</SelectItem>
-                                                        <SelectItem value="Partially Paid" className="rounded-lg py-3 cursor-pointer font-medium">Partially Paid</SelectItem>
-                                                        <SelectItem value="Unpaid" className="text-destructive font-bold rounded-lg focus:bg-destructive/5 focus:text-destructive py-3 cursor-pointer">Unpaid / Overdue</SelectItem>
-                                                        <SelectItem value="Pending" className="rounded-lg py-3 cursor-pointer font-medium">Payment Pending</SelectItem>
+                                                    <SelectContent align="end" className="rounded-xl p-1 shadow-2xl min-w-[220px] border-2">
+                                                        <SelectItem value="Paid" className="text-green-600 font-bold rounded-lg focus:bg-green-50 focus:text-green-700 py-3.5 cursor-pointer">Mark as Paid</SelectItem>
+                                                        <SelectItem value="Partially Paid" className="rounded-lg py-3.5 cursor-pointer font-bold">Partially Paid</SelectItem>
+                                                        <SelectItem value="Unpaid" className="text-destructive font-bold rounded-lg focus:bg-destructive/5 focus:text-destructive py-3.5 cursor-pointer">Unpaid / Overdue</SelectItem>
+                                                        <SelectItem value="Pending" className="rounded-lg py-3.5 cursor-pointer font-bold">Payment Pending</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </TableCell>
@@ -647,11 +649,11 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                                                     <SelectTrigger className="w-full h-11 text-xs font-bold bg-background shadow-none border-2">
                                                         <SelectValue />
                                                     </SelectTrigger>
-                                                    <SelectContent className="rounded-xl border-2 shadow-2xl min-w-[200px]">
-                                                        <SelectItem value="Paid" className="py-3 font-bold text-green-600">Mark as Paid</SelectItem>
-                                                        <SelectItem value="Partially Paid" className="py-3 font-medium">Partially Paid</SelectItem>
-                                                        <SelectItem value="Unpaid" className="py-3 font-bold text-destructive">Unpaid / Overdue</SelectItem>
-                                                        <SelectItem value="Pending" className="py-3 font-medium">Payment Pending</SelectItem>
+                                                    <SelectContent className="rounded-xl border-2 shadow-2xl min-w-[220px]">
+                                                        <SelectItem value="Paid" className="py-3.5 font-bold text-green-600">Mark as Paid</SelectItem>
+                                                        <SelectItem value="Partially Paid" className="py-3.5 font-bold">Partially Paid</SelectItem>
+                                                        <SelectItem value="Unpaid" className="py-3.5 font-bold text-destructive">Unpaid / Overdue</SelectItem>
+                                                        <SelectItem value="Pending" className="py-3.5 font-bold">Payment Pending</SelectItem>
                                                     </SelectContent>
                                                 </Select>
                                             </div>
@@ -857,7 +859,7 @@ export default function FinancialsPage() {
         <div className="grid grid-cols-1 gap-4 sm:grid-cols-2 lg:grid-cols-4">
             <Card 
                 className="border-none shadow-md overflow-hidden text-left bg-card group hover:shadow-xl transition-all min-h-[140px] h-auto flex flex-col cursor-pointer"
-                onClick={() => setActiveTab('statement')}
+                onClick={() => setActiveTab('expenses')}
             >
                 <div className="h-1 bg-primary w-full opacity-20 group-hover:opacity-100 transition-opacity" />
                 <CardHeader className="pb-2 px-4 flex flex-row items-center justify-between">
