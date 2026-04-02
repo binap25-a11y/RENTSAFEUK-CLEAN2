@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -48,7 +49,8 @@ import {
   Calendar,
   MapPin,
   Target,
-  Inbox
+  Inbox,
+  ChevronRight
 } from 'lucide-react';
 import { getYear, isAfter, isBefore, format, startOfMonth, setDate, isPast } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -365,9 +367,9 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
             <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-primary/5 min-h-[200px] flex flex-col justify-between">
                 <CardHeader className="pb-2 px-6 pt-6 shrink-0">
-                    <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <CardTitle className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 leading-tight">
                         <TrendingUp className="h-4 w-4 text-primary" />
-                        <span className="leading-tight">Verified Revenue Collected</span>
+                        <span>Verified Revenue Collected</span>
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col justify-center pb-6 px-6">
@@ -378,9 +380,9 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
             
             <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-destructive/5 min-h-[200px] flex flex-col justify-between">
                 <CardHeader className="pb-2 px-6 pt-6 shrink-0">
-                    <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <CardTitle className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 leading-tight">
                         <AlertCircle className="h-4 w-4 text-destructive" />
-                        <span className="leading-tight">Total Outstanding Arrears</span>
+                        <span>Total Outstanding Arrears</span>
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col justify-center pb-6 px-6">
@@ -391,9 +393,9 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
 
             <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-primary/5 min-h-[200px] flex flex-col justify-between">
                 <CardHeader className="pb-2 px-6 pt-6 shrink-0">
-                    <CardTitle className="text-[10px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2">
+                    <CardTitle className="text-[11px] font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 leading-tight">
                         <Target className="h-4 w-4 text-primary" />
-                        <span className="leading-tight">Collection Efficiency</span>
+                        <span>Portfolio Collection Efficiency</span>
                     </CardTitle>
                 </CardHeader>
                 <CardContent className="flex-1 flex flex-col justify-center px-6 pb-6 space-y-3">
@@ -669,7 +671,7 @@ export default function FinancialsPage() {
             >
                 <div className="h-1 bg-primary w-full opacity-20 group-hover:opacity-100 transition-opacity" />
                 <CardHeader className="pb-2 px-4 flex flex-row items-center justify-between">
-                    <CardTitle className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground">Gross Expected</CardTitle>
+                    <CardTitle className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground leading-tight">Gross Expected</CardTitle>
                     <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </CardHeader>
                 <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className="text-xl font-bold tracking-tight text-foreground tabular-nums">{formatCurrency(totalExpectedRent)}</div></CardContent>
@@ -680,7 +682,7 @@ export default function FinancialsPage() {
             >
                 <div className="h-1 bg-green-500 w-full opacity-20 group-hover:opacity-100 transition-opacity" />
                 <CardHeader className="pb-2 px-4 flex flex-row items-center justify-between">
-                    <CardTitle className="text-[10px] font-bold uppercase tracking-tight text-green-600">Verified Income</CardTitle>
+                    <CardTitle className="text-[11px] font-bold uppercase tracking-tight text-green-600 leading-tight">Verified Income</CardTitle>
                     <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </CardHeader>
                 <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className="text-xl font-bold tracking-tight text-foreground tabular-nums">{isLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : formatCurrency(totalPaidRent)}</div></CardContent>
@@ -691,7 +693,7 @@ export default function FinancialsPage() {
             >
                 <div className="h-1 bg-destructive w-full opacity-20 group-hover:opacity-100 transition-opacity" />
                 <CardHeader className="pb-2 px-4 flex flex-row items-center justify-between">
-                    <CardTitle className="text-[10px] font-bold uppercase tracking-tight text-destructive">Total Expenses</CardTitle>
+                    <CardTitle className="text-[11px] font-bold uppercase tracking-tight text-destructive leading-tight">Total Expenses</CardTitle>
                     <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </CardHeader>
                 <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className="text-xl font-bold tracking-tight text-foreground tabular-nums">{isLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : formatCurrency(totalExpenses)}</div></CardContent>
@@ -702,7 +704,7 @@ export default function FinancialsPage() {
             >
                 <div className="h-1 bg-amber-500 w-full opacity-20 group-hover:opacity-100 transition-opacity" />
                 <CardHeader className="pb-2 px-4 flex flex-row items-center justify-between">
-                    <CardTitle className="text-[10px] font-bold uppercase tracking-tight text-muted-foreground">Taxable Position</CardTitle>
+                    <CardTitle className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground leading-tight">Taxable Position</CardTitle>
                     <ChevronRight className="h-3 w-3 text-muted-foreground opacity-0 group-hover:opacity-100 transition-opacity" />
                 </CardHeader>
                 <CardContent className='px-4 pb-6 flex-1 flex flex-col justify-center'><div className={"text-xl font-bold tracking-tight tabular-nums " + (netIncome < 0 ? "text-destructive" : "text-primary")}>{isLoading ? <Loader2 className="h-5 w-5 animate-spin text-primary" /> : formatCurrency(netIncome)}</div></CardContent>
