@@ -53,7 +53,7 @@ import {
   ChevronRight,
   ListFilter
 } from 'lucide-react';
-import { format, isAfter, isBefore, startOfYear, endOfYear, isPast } from 'date-fns';
+import { format, isAfter, isBefore, startOfYear, endOfYear, isPast, setDate, startOfMonth } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import {
   Table,
@@ -430,7 +430,7 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
   return (
     <div className="space-y-8 animate-in fade-in duration-700">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
-            <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-primary/5 min-h-[200px] flex flex-col justify-between">
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-primary/5 min-h-[180px] flex flex-col justify-between">
                 <CardHeader className="pb-2 px-5 pt-5 shrink-0">
                     <CardTitle className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground flex items-center gap-2 leading-tight">
                         <TrendingUp className="h-3.5 w-3.5 text-primary" />
@@ -443,7 +443,7 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                 </CardContent>
             </Card>
             
-            <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-destructive/5 min-h-[200px] flex flex-col justify-between">
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-destructive/5 min-h-[180px] flex flex-col justify-between">
                 <CardHeader className="pb-2 px-5 pt-5 shrink-0">
                     <CardTitle className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground flex items-center gap-2 leading-tight">
                         <AlertCircle className="h-3.5 w-3.5 text-destructive" />
@@ -456,7 +456,7 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                 </CardContent>
             </Card>
 
-            <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-primary/5 min-h-[200px] flex flex-col justify-between">
+            <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-primary/5 min-h-[180px] flex flex-col justify-between">
                 <CardHeader className="pb-2 px-5 pt-5 shrink-0">
                     <CardTitle className="text-[11px] font-bold uppercase tracking-tight text-muted-foreground flex items-center gap-2 leading-tight">
                         <Target className="h-3.5 w-3.5 text-primary" />
@@ -776,11 +776,11 @@ export default function FinancialsPage() {
         </div>
 
         <Tabs value={activeTab} onValueChange={setActiveTab} className="pt-4">
-            <TabsList className="bg-muted/50 p-1 h-auto rounded-[1rem] w-full sm:w-auto overflow-x-auto justify-start sm:justify-center">
-                <TabsTrigger value="expenses" className="font-bold px-8 py-2.5 rounded-lg text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">Expense Tracker</TabsTrigger>
-                <TabsTrigger value="history" className="font-bold px-8 py-2.5 rounded-lg text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">Expense History</TabsTrigger>
-                <TabsTrigger value="summary" className="font-bold px-8 py-2.5 rounded-lg text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">Audit Summary</TabsTrigger>
-                <TabsTrigger value="statement" className="font-bold px-8 py-2.5 rounded-lg text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all">Rent Ledger</TabsTrigger>
+            <TabsList className="bg-muted/50 p-1 h-auto rounded-[1rem] w-full sm:w-auto overflow-x-auto flex flex-nowrap justify-start sm:justify-center no-scrollbar">
+                <TabsTrigger value="expenses" className="font-bold px-6 py-2.5 rounded-lg text-[9px] sm:text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all shrink-0">Expense Tracker</TabsTrigger>
+                <TabsTrigger value="history" className="font-bold px-6 py-2.5 rounded-lg text-[9px] sm:text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all shrink-0">Expense History</TabsTrigger>
+                <TabsTrigger value="summary" className="font-bold px-6 py-2.5 rounded-lg text-[9px] sm:text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all shrink-0">Audit Summary</TabsTrigger>
+                <TabsTrigger value="statement" className="font-bold px-6 py-2.5 rounded-lg text-[9px] sm:text-[10px] uppercase tracking-widest data-[state=active]:bg-primary data-[state=active]:text-primary-foreground transition-all shrink-0">Rent Ledger</TabsTrigger>
             </TabsList>
             <TabsContent value="expenses" className="animate-in fade-in slide-in-from-top-2 duration-500"><ExpenseTracker properties={activeProperties || []} selectedPropertyId={selectedPropertyId} /></TabsContent>
             <TabsContent value="history" className="animate-in fade-in slide-in-from-top-2 duration-500"><ExpenseHistory selectedYear={selectedYear || 0} expenses={expenses} repairCosts={repairCosts} properties={activeProperties || []} /></TabsContent>
