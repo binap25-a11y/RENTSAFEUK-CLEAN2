@@ -1,3 +1,4 @@
+
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -35,16 +36,12 @@ import { Label } from '@/components/ui/label';
 import { 
   PoundSterling, 
   Loader2, 
-  History,
   PlusCircle,
   Banknote,
   CheckCircle2,
   AlertCircle,
   TrendingUp,
-  ArrowUpRight,
-  ArrowDownRight,
   Clock,
-  ShieldCheck,
   Calendar,
   MapPin,
   Target,
@@ -53,9 +50,11 @@ import {
   ListFilter,
   Wrench,
   FileText,
-  Calculator
+  Calculator,
+  ShieldCheck,
+  History
 } from 'lucide-react';
-import { format, isAfter, isBefore, startOfYear, endOfYear, isPast, setDate, startOfMonth, getYear, isSameDay } from 'date-fns';
+import { format, isAfter, isBefore, startOfYear, endOfYear, setDate, startOfMonth, getYear, isSameDay } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
 import {
   Table,
@@ -314,7 +313,7 @@ function AnnualSummary({ selectedYear, expenses, repairCosts, totalPaidRent, isL
             )}
         </CardContent>
         <CardFooter className="p-8 bg-muted/5 border-t">
-            <p className="text-xs text-muted-foreground italic leading-relaxed">
+            <p className="text-xs text-muted-foreground italic leading-relaxed text-left">
                 * This summary is provided for administrative audit purposes. Please consult with a qualified accountant for official HMRC self-assessment submissions.
             </p>
         </CardFooter>
@@ -362,37 +361,64 @@ function ExpenseHistory({ selectedYear, expenses, repairCosts, properties }: { s
                 {!allTransactions.length ? (
                     <div className="py-24 text-center text-muted-foreground">No transactions found for this period.</div>
                 ) : (
-                    <div className="overflow-x-auto">
-                        <Table>
-                            <TableHeader className="bg-muted/30">
-                                <TableRow>
-                                    <TableHead className="pl-8 py-5 font-bold uppercase text-[10px] tracking-widest">Date</TableHead>
-                                    <TableHead className="font-bold uppercase text-[10px] tracking-widest">Property</TableHead>
-                                    <TableHead className="font-bold uppercase text-[10px] tracking-widest">Expense Detail</TableHead>
-                                    <TableHead className="text-right pr-8 font-bold uppercase text-[10px] tracking-widest">Amount</TableHead>
-                                </TableRow>
-                            </TableHeader>
-                            <TableBody>
-                                {allTransactions.map(t => (
-                                    <TableRow key={t.id} className="hover:bg-muted/10 transition-colors">
-                                        <TableCell className="pl-8 py-6 text-xs font-bold text-muted-foreground tabular-nums">{t.date ? format(t.date, 'dd/MM/yy') : 'N/A'}</TableCell>
-                                        <TableCell className="text-xs font-bold text-foreground">{t.property}</TableCell>
-                                        <TableCell className="py-6">
-                                            <div className="flex flex-col gap-2 text-left max-w-sm">
-                                                <div className="flex items-center gap-2">
-                                                    <Badge variant={t.isRepair ? "destructive" : "secondary"} className="h-5 text-[8px] uppercase font-black px-2 rounded-md shadow-sm border-2">
-                                                        {t.isRepair ? <Wrench className="h-2.5 w-2.5 mr-1.5" /> : <FileText className="h-2.5 w-2.5 mr-1.5" />}
-                                                        {t.category}
-                                                    </Badge>
-                                                </div>
-                                                <p className="text-sm font-bold text-foreground leading-relaxed whitespace-normal break-words">{t.description}</p>
-                                            </div>
-                                        </TableCell>
-                                        <TableCell className="text-right pr-8 font-black text-foreground tabular-nums text-base">{formatCurrency(t.amount)}</TableCell>
+                    <div className="w-full overflow-hidden">
+                        {/* Desktop View */}
+                        <div className="hidden md:block overflow-x-auto">
+                            <Table>
+                                <TableHeader className="bg-muted/30">
+                                    <TableRow>
+                                        <TableHead className="pl-8 py-5 font-bold uppercase text-[10px] tracking-widest">Date</TableHead>
+                                        <TableHead className="font-bold uppercase text-[10px] tracking-widest">Property</TableHead>
+                                        <TableHead className="font-bold uppercase text-[10px] tracking-widest">Expense Detail</TableHead>
+                                        <TableHead className="text-right pr-8 font-bold uppercase text-[10px] tracking-widest">Amount</TableHead>
                                     </TableRow>
-                                ))}
-                            </TableBody>
-                        </Table>
+                                </TableHeader>
+                                <TableBody>
+                                    {allTransactions.map(t => (
+                                        <TableRow key={t.id} className="hover:bg-muted/10 transition-colors">
+                                            <TableCell className="pl-8 py-6 text-xs font-bold text-muted-foreground tabular-nums whitespace-nowrap">{t.date ? format(t.date, 'dd/MM/yy') : 'N/A'}</TableCell>
+                                            <TableCell className="text-xs font-bold text-foreground whitespace-nowrap">{t.property}</TableCell>
+                                            <TableCell className="py-6">
+                                                <div className="flex flex-col gap-2 text-left min-w-[200px]">
+                                                    <div className="flex flex-wrap items-center gap-2">
+                                                        <Badge variant={t.isRepair ? "destructive" : "secondary"} className="h-auto py-1 text-[9px] uppercase font-black px-2.5 rounded-lg shadow-sm border-2 inline-flex items-center">
+                                                            {t.isRepair ? <Wrench className="h-3 w-3 mr-1.5" /> : <FileText className="h-3 w-3 mr-1.5" />}
+                                                            <span className="leading-none">{t.category}</span>
+                                                        </Badge>
+                                                    </div>
+                                                    <p className="text-sm font-bold text-foreground leading-relaxed whitespace-normal break-words">{t.description}</p>
+                                                </div>
+                                            </TableCell>
+                                            <TableCell className="text-right pr-8 font-black text-foreground tabular-nums text-base whitespace-nowrap">{formatCurrency(t.amount)}</TableCell>
+                                        </TableRow>
+                                    ))}
+                                </TableBody>
+                            </Table>
+                        </div>
+
+                        {/* Mobile View - Card-based for absolute visibility */}
+                        <div className="grid gap-4 md:hidden p-4 bg-muted/5">
+                            {allTransactions.map(t => (
+                                <Card key={t.id} className="shadow-sm border-none overflow-hidden relative">
+                                    <div className={cn("absolute left-0 top-0 bottom-0 w-1", t.isRepair ? "bg-destructive" : "bg-primary")} />
+                                    <CardContent className="p-4 space-y-3 text-left pl-5">
+                                        <div className="flex justify-between items-start gap-4">
+                                            <div className="space-y-1">
+                                                <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest">{t.date ? format(t.date, 'dd MMM yyyy') : 'N/A'}</p>
+                                                <p className="text-xs font-black text-primary uppercase">{t.property}</p>
+                                            </div>
+                                            <span className="text-base font-black tabular-nums">{formatCurrency(t.amount)}</span>
+                                        </div>
+                                        <div className="space-y-2">
+                                            <Badge variant={t.isRepair ? "destructive" : "secondary"} className="h-auto py-1 text-[8px] uppercase font-bold px-2 rounded-md border shadow-none">
+                                                {t.category}
+                                            </Badge>
+                                            <p className="text-sm font-medium text-foreground leading-snug break-words">"{t.description}"</p>
+                                        </div>
+                                    </CardContent>
+                                </Card>
+                            ))}
+                        </div>
                     </div>
                 )}
             </CardContent>
@@ -459,7 +485,7 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
   );
 
   return (
-    <div className="space-y-8 animate-in fade-in duration-700">
+    <div className="space-y-8 animate-in fade-in duration-700 text-left">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6 mt-6">
             <Card className="border-none shadow-xl bg-card text-left overflow-hidden ring-1 ring-primary/5 min-h-[140px] flex flex-col justify-between">
                 <CardHeader className="pb-2 px-5 pt-5 shrink-0">
@@ -609,7 +635,7 @@ export default function FinancialsPage() {
     setSelectedYear(new Date().getFullYear());
   }, []);
 
-  // Professional 100-year reporting range
+  // Dynamic 100-year reporting range
   const yearsRange = useMemo(() => {
     const current = new Date().getFullYear();
     return Array.from({ length: 101 }, (_, i) => (current + 50) - i);
@@ -625,7 +651,7 @@ export default function FinancialsPage() {
     if (!user || !firestore || !selectedPropertyId || selectedPropertyId === 'all') return null;
     return query(
       collection(firestore, 'tenants'), 
-      where('landlordId', '==', user.uid), // SECURITY CONTEXT
+      where('landlordId', '==', user.uid), // SECURITY CONTEXT FIX
       where('propertyId', '==', selectedPropertyId), 
       where('status', '==', 'Active'), 
       limit(1)
