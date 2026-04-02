@@ -370,9 +370,9 @@ function ExpenseHistory({ selectedYear, expenses, repairCosts, properties }: { s
                             <Table className='w-full table-fixed'>
                                 <TableHeader className="bg-muted/30">
                                     <TableRow>
-                                        <TableHead className="w-[12%] pl-6 py-5 font-bold uppercase text-[10px] tracking-widest">Date</TableHead>
-                                        <TableHead className="w-[28%] font-bold uppercase text-[10px] tracking-widest">Property</TableHead>
-                                        <TableHead className="w-[45%] font-bold uppercase text-[10px] tracking-widest">Expense Detail</TableHead>
+                                        <TableHead className="w-[15%] pl-6 py-5 font-bold uppercase text-[10px] tracking-widest">Date</TableHead>
+                                        <TableHead className="w-[30%] font-bold uppercase text-[10px] tracking-widest">Property</TableHead>
+                                        <TableHead className="w-[40%] font-bold uppercase text-[10px] tracking-widest">Expense Detail</TableHead>
                                         <TableHead className="w-[15%] text-right pr-6 font-bold uppercase text-[10px] tracking-widest">Amount</TableHead>
                                     </TableRow>
                                 </TableHeader>
@@ -388,9 +388,9 @@ function ExpenseHistory({ selectedYear, expenses, repairCosts, properties }: { s
                                             <TableCell className="py-6 align-top">
                                                 <div className="flex flex-col gap-2 text-left">
                                                     <div className="flex flex-wrap items-center gap-2">
-                                                        <Badge variant={t.isRepair ? "destructive" : "secondary"} className="h-auto py-1 text-[9px] uppercase font-black px-2.5 rounded-lg shadow-sm border-2 inline-flex items-center whitespace-normal text-center">
-                                                            {t.isRepair ? <Wrench className="h-3 w-3 mr-1.5" /> : <FileText className="h-3 w-3 mr-1.5" />}
-                                                            <span className="leading-tight">{t.category}</span>
+                                                        <Badge variant={t.isRepair ? "destructive" : "secondary"} className="h-auto py-1 text-[9px] uppercase font-black px-2.5 rounded-lg shadow-sm border-2 flex items-center whitespace-normal text-center min-w-[120px]">
+                                                            {t.isRepair ? <Wrench className="h-3 w-3 mr-1.5 shrink-0" /> : <FileText className="h-3 w-3 mr-1.5 shrink-0" />}
+                                                            <span className="leading-tight flex-1">{t.category}</span>
                                                         </Badge>
                                                     </div>
                                                     <p className="text-sm font-bold text-foreground leading-relaxed break-words">{t.description}</p>
@@ -560,8 +560,8 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                             <Table className="w-full table-fixed">
                                 <TableHeader className="bg-muted/30">
                                     <TableRow>
-                                        <TableHead className="w-[20%] pl-6 py-6 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Period</TableHead>
-                                        <TableHead className="w-[25%] font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground text-left">Rent Amount (£)</TableHead>
+                                        <TableHead className="w-[25%] pl-6 py-6 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Period</TableHead>
+                                        <TableHead className="w-[20%] font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground text-left">Rent Amount (£)</TableHead>
                                         <TableHead className="w-[25%] font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Status</TableHead>
                                         <TableHead className="w-[30%] pr-6 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground text-right">Action</TableHead>
                                     </TableRow>
