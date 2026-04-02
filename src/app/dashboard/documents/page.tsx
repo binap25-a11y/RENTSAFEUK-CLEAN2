@@ -219,22 +219,22 @@ export default function DocumentsPage() {
         <p className="text-muted-foreground font-medium text-lg ml-1">Manage legal compliance and shared files across your estate.</p>
       </div>
 
-      <div className="flex flex-col sm:flex-row items-center justify-between gap-4 bg-card p-4 rounded-2xl shadow-sm border">
-        <div className="relative w-full sm:max-w-md">
+      <div className="flex flex-col gap-4 bg-card p-6 rounded-2xl shadow-sm border">
+        <div className="relative w-full">
           <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
           <Input 
             placeholder="Search document titles..." 
-            className="pl-10 h-11 bg-background border-muted rounded-xl focus-visible:ring-primary" 
+            className="pl-10 h-12 bg-background border-muted rounded-xl focus-visible:ring-primary text-lg" 
             value={searchTerm} 
             onChange={e => setSearchTerm(e.target.value)} 
           />
         </div>
-        <div className="flex items-center gap-2 w-full sm:w-auto">
+        <div className="flex flex-col sm:flex-row items-center justify-between gap-4">
             <div className="flex items-center rounded-xl bg-muted p-1 border">
                 <Button variant={view === 'grid' ? 'secondary' : 'ghost'} size="sm" className="h-9 px-3 rounded-lg" onClick={() => setView('grid')}><LayoutGrid className="h-4 w-4" /></Button>
                 <Button variant={view === 'list' ? 'secondary' : 'ghost'} size="sm" className="h-9 px-3 rounded-lg" onClick={() => setView('list')}><List className="h-4 w-4" /></Button>
             </div>
-            <Button asChild size="lg" className="flex-1 sm:flex-initial font-bold shadow-md h-11 px-8 rounded-xl shrink-0">
+            <Button asChild size="lg" className="w-full sm:w-auto font-bold shadow-lg h-11 px-10 rounded-xl bg-primary hover:bg-primary/90">
                 <Link href="/dashboard/documents/upload">
                     <PlusCircle className="mr-2 h-5 w-5" /> Log New Document
                 </Link>
@@ -350,7 +350,7 @@ export default function DocumentsPage() {
                                                 </Button>
                                             </DropdownMenuTrigger>
                                             <DropdownMenuContent align="end" className="w-48">
-                                                <DropdownMenuItem asChild><Link href={`/dashboard/documents/${docItem.id}/edit?propertyId=${docItem.propertyId}`} onClick={e => e.stopPropagation()}><Edit className="mr-2 h-4 w-4" /> Edit Record</Link></DropdownMenuItem>
+                                                <DropdownMenuItem asChild><Link href={`/dashboard/documents/${docItem.id}/edit?propertyId=${docItem.propertyId}`} onClick={e => e.stopPropagation()}><Edit className="mr-2 h-4 w-4" /> Edit Record Details</Link></DropdownMenuItem>
                                                 {docItem.fileUrl && <DropdownMenuItem asChild><a href={docItem.fileUrl} target="_blank" rel="noopener noreferrer" onClick={e => e.stopPropagation()}><Download className="mr-2 h-4 w-4" /> Download</a></DropdownMenuItem>}
                                                 <DropdownMenuSeparator />
                                                 <DropdownMenuItem className="text-destructive font-bold" onClick={(e) => { e.stopPropagation(); setDocumentToDelete(docItem); }}>
