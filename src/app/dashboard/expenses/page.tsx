@@ -370,8 +370,8 @@ function ExpenseHistory({ selectedYear, expenses, repairCosts, properties }: { s
                             <Table className='w-full table-fixed'>
                                 <TableHeader className="bg-muted/30">
                                     <TableRow>
-                                        <TableHead className="w-[15%] pl-6 py-5 font-bold uppercase text-[10px] tracking-widest">Date</TableHead>
-                                        <TableHead className="w-[25%] font-bold uppercase text-[10px] tracking-widest">Property</TableHead>
+                                        <TableHead className="w-[12%] pl-6 py-5 font-bold uppercase text-[10px] tracking-widest">Date</TableHead>
+                                        <TableHead className="w-[28%] font-bold uppercase text-[10px] tracking-widest">Property</TableHead>
                                         <TableHead className="w-[45%] font-bold uppercase text-[10px] tracking-widest">Expense Detail</TableHead>
                                         <TableHead className="w-[15%] text-right pr-6 font-bold uppercase text-[10px] tracking-widest">Amount</TableHead>
                                     </TableRow>
@@ -616,7 +616,7 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                             </Table>
                         </div>
 
-                        {/* Mobile View - Card List, Zero Scroll */}
+                        {/* Mobile View - Card List */}
                         <div className="md:hidden grid gap-4 p-4 bg-muted/5">
                             {statement.map((row) => (
                                 <Card key={`${selectedProperty.id}-${row.month}-${row.year}`} className="shadow-sm border-none overflow-hidden relative text-left">
