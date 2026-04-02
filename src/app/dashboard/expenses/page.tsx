@@ -370,8 +370,8 @@ function ExpenseHistory({ selectedYear, expenses, repairCosts, properties }: { s
                             <Table className='w-full table-fixed'>
                                 <TableHeader className="bg-muted/30">
                                     <TableRow>
-                                        <TableHead className="w-[12%] pl-6 py-5 font-bold uppercase text-[10px] tracking-widest">Date</TableHead>
-                                        <TableHead className="w-[28%] font-bold uppercase text-[10px] tracking-widest">Property</TableHead>
+                                        <TableHead className="w-[15%] pl-6 py-5 font-bold uppercase text-[10px] tracking-widest">Date</TableHead>
+                                        <TableHead className="w-[25%] font-bold uppercase text-[10px] tracking-widest">Property</TableHead>
                                         <TableHead className="w-[45%] font-bold uppercase text-[10px] tracking-widest">Expense Detail</TableHead>
                                         <TableHead className="w-[15%] text-right pr-6 font-bold uppercase text-[10px] tracking-widest">Amount</TableHead>
                                     </TableRow>
@@ -560,10 +560,10 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                             <Table className="w-full table-fixed">
                                 <TableHeader className="bg-muted/30">
                                     <TableRow>
-                                        <TableHead className="w-[15%] pl-6 py-6 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Period</TableHead>
+                                        <TableHead className="w-[20%] pl-6 py-6 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Period</TableHead>
                                         <TableHead className="w-[25%] font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground text-left">Rent Amount (£)</TableHead>
                                         <TableHead className="w-[25%] font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Status</TableHead>
-                                        <TableHead className="w-[35%] pr-6 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground text-right">Action</TableHead>
+                                        <TableHead className="w-[30%] pr-6 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground text-right">Action</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -571,7 +571,7 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                                         <TableRow key={`${selectedProperty.id}-${row.month}-${row.year}`} className="hover:bg-primary/[0.02] transition-all group border-b border-muted/50">
                                             <TableCell className="pl-6 py-8 text-left">
                                                 <div className="flex flex-col gap-0.5 text-left">
-                                                    <span className="text-lg font-bold text-foreground group-hover:text-primary transition-colors truncate">{row.month}</span>
+                                                    <span className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">{row.month}</span>
                                                     <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest flex items-center gap-1.5"><Calendar className="h-3 w-3" /> {row.year}</span>
                                                 </div>
                                             </TableCell>
