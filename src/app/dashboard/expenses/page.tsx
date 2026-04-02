@@ -281,30 +281,30 @@ function AnnualSummary({ selectedYear, expenses, repairCosts, totalPaidRent, isL
         <CardContent className="p-0">
             {isLoadingExpenses ? (<div className="flex h-64 items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>) : (
                 <div className="overflow-hidden">
-                    <Table>
+                    <Table className="w-full table-fixed">
                         <TableHeader className="bg-muted/30">
                             <TableRow>
-                                <TableHead className="pl-8 py-5 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Audit Category</TableHead>
-                                <TableHead className="text-right pr-8 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Total (£)</TableHead>
+                                <TableHead className="w-[70%] pl-8 py-5 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Audit Category</TableHead>
+                                <TableHead className="w-[30%] text-right pr-8 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Total (£)</TableHead>
                             </TableRow>
                         </TableHeader>
                         <TableBody>
                             <TableRow className="bg-green-50/30">
-                                <TableCell className="font-bold pl-8 py-6 text-base text-green-700">Total Rental Income (Collected)</TableCell>
+                                <TableCell className="font-bold pl-8 py-6 text-base text-green-700 truncate">Total Rental Income (Collected)</TableCell>
                                 <TableCell className="text-right font-bold pr-8 text-lg tabular-nums text-green-700">{formatCurrency(totalPaidRent)}</TableCell>
                             </TableRow>
                             {expensesByCategory.map(([name, amount]) => (
                                 <TableRow key={name} className="hover:bg-primary/[0.02] transition-colors group">
-                                    <TableCell className="font-bold pl-8 py-6 text-base group-hover:text-primary transition-colors">{name}</TableCell>
+                                    <TableCell className="font-bold pl-8 py-6 text-base group-hover:text-primary transition-colors truncate">{name}</TableCell>
                                     <TableCell className="text-right font-bold pr-8 text-lg tabular-nums">{formatCurrency(amount)}</TableCell>
                                 </TableRow>
                             ))}
                             <TableRow className="bg-muted/20 border-t-2">
-                                <TableCell className="font-bold pl-8 py-6 text-base text-muted-foreground">Total Allowable Expenditure</TableCell>
+                                <TableCell className="font-bold pl-8 py-6 text-base text-muted-foreground truncate">Total Allowable Expenditure</TableCell>
                                 <TableCell className="text-right font-bold pr-8 text-lg tabular-nums text-muted-foreground">{formatCurrency(totalExpenditure)}</TableCell>
                             </TableRow>
                             <TableRow className={cn("border-t-2", netPosition >= 0 ? "bg-primary/10" : "bg-destructive/10")}>
-                                <TableCell className={cn("font-black pl-8 py-8 text-lg", netPosition >= 0 ? "text-primary" : "text-destructive")}>Net Taxable Position</TableCell>
+                                <TableCell className={cn("font-black pl-8 py-8 text-lg truncate", netPosition >= 0 ? "text-primary" : "text-destructive")}>Net Taxable Position</TableCell>
                                 <TableCell className={cn("text-right font-black pr-8 text-2xl tabular-nums", netPosition >= 0 ? "text-primary" : "text-destructive")}>{formatCurrency(netPosition)}</TableCell>
                             </TableRow>
                         </TableBody>
@@ -362,9 +362,9 @@ function ExpenseHistory({ selectedYear, expenses, repairCosts, properties }: { s
                     <div className="py-24 text-center text-muted-foreground italic">No transactions found for this period.</div>
                 ) : (
                     <div className="w-full">
-                        {/* Desktop View */}
+                        {/* Desktop View - Fixed Grid */}
                         <div className="hidden md:block">
-                            <Table className='w-full'>
+                            <Table className='w-full table-fixed'>
                                 <TableHeader className="bg-muted/30">
                                     <TableRow>
                                         <TableHead className="w-[10%] pl-8 py-5 font-bold uppercase text-[10px] tracking-widest">Date</TableHead>
@@ -400,7 +400,7 @@ function ExpenseHistory({ selectedYear, expenses, repairCosts, properties }: { s
                             </Table>
                         </div>
 
-                        {/* Mobile View */}
+                        {/* Mobile View - Card List */}
                         <div className="grid gap-4 md:hidden p-4 bg-muted/5">
                             {allTransactions.map(t => (
                                 <Card key={t.id} className="shadow-sm border-none overflow-hidden relative text-left">
@@ -552,15 +552,15 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                     <div className="p-32 flex flex-col items-center gap-4"><Loader2 className="h-12 w-12 animate-spin text-primary" /><p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Ledger...</p></div>
                 ) : (
                     <>
-                        {/* Desktop View Table */}
-                        <div className="hidden md:block overflow-x-auto">
-                            <Table>
+                        {/* Desktop View - Fixed Grid, No Scroll */}
+                        <div className="hidden md:block">
+                            <Table className="w-full table-fixed">
                                 <TableHeader className="bg-muted/30">
                                     <TableRow>
-                                        <TableHead className="pl-10 py-6 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Period</TableHead>
-                                        <TableHead className="font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground text-left">Rent Amount (£)</TableHead>
-                                        <TableHead className="font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Status</TableHead>
-                                        <TableHead className="pr-10 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground text-right">Action</TableHead>
+                                        <TableHead className="w-[20%] pl-10 py-6 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Period</TableHead>
+                                        <TableHead className="w-[25%] font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground text-left">Rent Amount (£)</TableHead>
+                                        <TableHead className="w-[25%] font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground">Status</TableHead>
+                                        <TableHead className="w-[30%] pr-10 font-bold uppercase text-[10px] tracking-[0.2em] text-muted-foreground text-right">Action</TableHead>
                                     </TableRow>
                                 </TableHeader>
                                 <TableBody>
@@ -568,7 +568,7 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                                         <TableRow key={`${selectedProperty.id}-${row.month}-${row.year}`} className="hover:bg-primary/[0.02] transition-all group border-b border-muted/50">
                                             <TableCell className="pl-10 py-8 text-left">
                                                 <div className="flex flex-col gap-0.5 text-left">
-                                                    <span className="text-lg font-bold text-foreground group-hover:text-primary transition-colors">{row.month}</span>
+                                                    <span className="text-lg font-bold text-foreground group-hover:text-primary transition-colors truncate">{row.month}</span>
                                                     <span className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest flex items-center gap-1.5"><Calendar className="h-3 w-3" /> {row.year}</span>
                                                 </div>
                                             </TableCell>
@@ -594,7 +594,7 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                                             <TableCell className="pr-10 text-right">
                                                 <Select value={row.status} onValueChange={(v) => handleStatusChange(row.month, row.year, v as PaymentStatus)}>
                                                     <SelectTrigger className={cn(
-                                                        "w-[180px] h-11 text-xs font-bold ml-auto shadow-md rounded-xl border-2 transition-all",
+                                                        "w-full max-w-[180px] h-11 text-xs font-bold ml-auto shadow-md rounded-xl border-2 transition-all",
                                                         row.status === 'Paid' ? "border-green-200 bg-green-50/30" : "bg-background"
                                                     )}>
                                                         <SelectValue />
@@ -613,7 +613,7 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                             </Table>
                         </div>
 
-                        {/* Mobile View Card List (Ensures 100% visibility without scrolling) */}
+                        {/* Mobile View - Card List, Zero Scroll */}
                         <div className="md:hidden grid gap-4 p-4 bg-muted/5">
                             {statement.map((row) => (
                                 <Card key={`${selectedProperty.id}-${row.month}-${row.year}`} className="shadow-sm border-none overflow-hidden relative text-left">
