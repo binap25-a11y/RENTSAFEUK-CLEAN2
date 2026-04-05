@@ -1,6 +1,6 @@
 'use client';
 
-import jsPDF from 'jspdf';
+import { jsPDF } from 'jspdf';
 import autoTable from 'jspdf-autotable';
 import { format } from 'date-fns';
 
@@ -100,14 +100,14 @@ export const generateEmergencyPDF = async (data: any, propertyAddress: string) =
 
   doc.setTextColor(0);
   doc.setFont('helvetica', 'bold');
-  doc.text('Contact Phone:', 14, finalY);
+  doc.text('Contact Phone Number:', 14, finalY);
   doc.setFont('helvetica', 'normal');
-  doc.text(data.nonEmergencyPhone || 'N/A', 70, finalY);
+  doc.text(data.nonEmergencyPhone || 'N/A', 75, finalY);
   finalY += 7;
   doc.setFont('helvetica', 'bold');
   doc.text('Contact Email:', 14, finalY);
   doc.setFont('helvetica', 'normal');
-  doc.text(data.nonEmergencyEmail || 'N/A', 70, finalY);
+  doc.text(data.nonEmergencyEmail || 'N/A', 75, finalY);
   finalY += 15;
 
   // --- MANAGEMENT DETAILS ---

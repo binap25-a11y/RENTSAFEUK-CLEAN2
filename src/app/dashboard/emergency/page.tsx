@@ -1,7 +1,7 @@
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
+import { useUser, useAuth, useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collection, query, where, doc, getDoc, setDoc, limit } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -270,7 +270,7 @@ export default function LandlordEmergencyConfigPage() {
                         <CardContent className="pt-8 space-y-10">
                             <div className="space-y-6">
                                 <h3 className="text-xs font-bold uppercase tracking-widest text-destructive flex items-center gap-2 border-b pb-2">
-                                    <ShieldAlert className="h-4 w-4" /> STEP 1 – IMMEDIATE DANGER (FIXED)
+                                    <ShieldAlert className="h-4 w-4" /> STEP 1 – IMMEDIATE DANGER
                                 </h3>
                                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
                                     <div className="p-4 rounded-xl border bg-destructive/5 text-center">
@@ -296,7 +296,7 @@ export default function LandlordEmergencyConfigPage() {
 
                             <div className="space-y-6">
                                 <h3 className="text-xs font-bold uppercase tracking-widest text-orange-600 flex items-center gap-2 border-b pb-2">
-                                    <Phone className="h-4 w-4" /> STEP 2 – URGENT EMERGENCIES (24/7)
+                                    <Phone className="h-4 w-4" /> STEP 2 – URGENT PROPERTY EMERGENCIES (24/7)
                                 </h3>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                     <div className="space-y-2 text-left">
@@ -312,11 +312,11 @@ export default function LandlordEmergencyConfigPage() {
 
                             <div className="space-y-6">
                                 <h3 className="text-xs font-bold uppercase tracking-widest text-green-600 flex items-center gap-2 border-b pb-2">
-                                    <Clock className="h-4 w-4" /> 3. NON-EMERGENCY REPAIRS
+                                    <Clock className="h-4 w-4" /> 🟢 NON-EMERGENCY REPAIRS
                                 </h3>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                     <div className="space-y-2 text-left">
-                                        <Label className="text-[10px] font-bold uppercase">Office Phone</Label>
+                                        <Label className="text-[10px] font-bold uppercase">Contact Phone Number</Label>
                                         <Input value={formData.nonEmergencyPhone} onChange={e => setFormData({...formData, nonEmergencyPhone: e.target.value})} className="h-11" />
                                     </div>
                                     <div className="space-y-2 text-left">

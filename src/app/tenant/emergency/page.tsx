@@ -18,7 +18,8 @@ import {
   Info,
   ChevronRight,
   Download,
-  Home
+  Home,
+  Clock
 } from 'lucide-react';
 import { generateEmergencyPDF } from '@/lib/generate-emergency-pdf';
 
@@ -216,7 +217,7 @@ export default function TenantEmergencyPage() {
                     <div className="p-4 rounded-xl bg-muted/20 flex items-center gap-4 text-left">
                         <div className="p-2.5 rounded-full bg-green-100 text-green-600 shrink-0"><Phone className="h-4 w-4" /></div>
                         <div className="min-w-0">
-                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-0.5">Office Phone</p>
+                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-0.5">Contact Phone Number</p>
                             <p className="font-bold text-sm">{emergencyData?.nonEmergencyPhone || 'N/A'}</p>
                         </div>
                     </div>
