@@ -187,7 +187,7 @@ export default function TenantEmergencyPage() {
             <CardContent className="pt-6 space-y-6">
                 <div className="p-5 rounded-2xl bg-muted/20 border-2 border-dashed text-left">
                     <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1">Emergency Repair Contact</p>
-                    <p className="text-lg font-bold">{emergencyData?.emergencyRepairContact || 'Property Support Team'}</p>
+                    <p className="text-lg font-bold break-words leading-tight">{emergencyData?.emergencyRepairContact || 'Property Support Team'}</p>
                     <a href={`tel:${emergencyData?.emergencyRepairPhone}`} className="text-2xl font-black text-primary hover:underline block mt-2 tabular-nums">
                         {emergencyData?.emergencyRepairPhone || 'N/A'}
                     </a>
@@ -223,7 +223,7 @@ export default function TenantEmergencyPage() {
                     </div>
                     <div className="p-4 rounded-xl bg-muted/20 flex items-center gap-4 text-left">
                         <div className="p-2.5 rounded-full bg-green-100 text-green-600 shrink-0"><Mail className="h-4 w-4" /></div>
-                        <div className="min-w-0">
+                        <div className="min-w-0 overflow-hidden">
                             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-0.5">Reporting Email</p>
                             <p className="font-bold text-sm truncate">{emergencyData?.nonEmergencyEmail || 'N/A'}</p>
                         </div>

@@ -79,8 +79,14 @@ export const generateEmergencyPDF = async (data: any, propertyAddress: string) =
   doc.setFont('helvetica', 'bold');
   doc.text('Emergency Repair Contact:', 14, finalY);
   doc.setFont('helvetica', 'normal');
-  doc.text(data.emergencyRepairContact || 'Property Support', 75, finalY);
-  finalY += 7;
+  
+  // Handled with maxWidth to ensure long names wrap instead of overlapping
+  const contactName = data.emergencyRepairContact || 'Property Support';
+  const splitContact = doc.splitTextToSize(contactName, 120);
+  doc.text(splitContact, 75, finalY);
+  
+  finalY += (splitContact.length * 5) + 2;
+  
   doc.setFont('helvetica', 'bold');
   doc.text('Emergency Phone:', 14, finalY);
   doc.setFont('helvetica', 'normal');
