@@ -34,7 +34,8 @@ import {
   Users,
   Inbox,
   Wrench,
-  UserMinus
+  UserMinus,
+  Download
 } from 'lucide-react';
 import { useUser, useAuth, useFirestore, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
 import { doc, updateDoc, collection, query, where, getDocs, limit, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -60,6 +61,7 @@ import { cn } from '@/lib/utils';
 import { safeToDate } from '@/lib/date-utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { notifyTenantOfMessage } from '@/app/actions/notifications';
+import { generateChatPDF } from '@/lib/generate-chat-pdf';
 
 interface Property {
     id: string;
@@ -124,6 +126,7 @@ export default function PropertyDetailPage() {
   const [isMediaUpdating, setIsMediaUpdating] = useState(false);
   const [newReply, setNewReply] = useState('');
   const [isSendingReply, setIsSendingReply] = useState(false);
+  const [isExportingChat, setIsExportingChat] = useState(false);
   const [activeTab, setActiveTab] = useState('overview');
   const [selectedTenantId, setSelectedTenantId] = useState<string>('');
 
@@ -201,6 +204,25 @@ export default function PropertyDetailPage() {
     }
   }, [messages, activeTab]);
 
+  const currentResident = useMemo(() => activeTenants?.find(t => t.id === selectedTenantId), [activeTenants, selectedTenantId]);
+
+  const handleDownloadChat = async () => {
+    if (!messages.length || !property || !user || isExportingChat) return;
+    setIsExportingChat(true);
+    try {
+        const address = [property.address.nameOrNumber, property.address.street, property.address.city, property.address.postcode].filter(Boolean).join(', ');
+        const tenantName = currentResident?.name || 'Resident';
+        const landlordName = user.displayName || 'Landlord';
+        
+        await generateChatPDF(messages, address, tenantName, landlordName, user.uid);
+        toast({ title: 'Audit Trail Exported' });
+    } catch (err) {
+        toast({ variant: 'destructive', title: 'Export Failed' });
+    } finally {
+        setIsExportingChat(false);
+    }
+  };
+
   const handleSendReply = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newReply.trim() || !user || !property || isSendingReply || !selectedTenantId) return;
@@ -271,12 +293,10 @@ export default function PropertyDetailPage() {
     if (!firestore || !user || !property || !activeTenants) return;
     setIsEndingTenancy(true);
     try {
-      // 1. Archive all active tenants for this property
       const batchPromises = activeTenants.map(t => 
         updateDoc(doc(firestore, 'tenants', t.id), { status: 'Archived' })
       );
       
-      // 2. Update the property record to Vacant
       const propUpdatePromise = updateDoc(doc(firestore, 'properties', propertyId), {
         status: 'Vacant',
         tenantId: '',
@@ -432,7 +452,13 @@ export default function PropertyDetailPage() {
                                     )}
                                 </div>
                             </div>
-                            <Badge variant="outline" className="h-6 text-[8px] uppercase font-bold tracking-widest bg-background border-2 shadow-sm px-3">Live Sync</Badge>
+                            <div className="flex items-center gap-2">
+                                <Button variant="outline" size="sm" onClick={handleDownloadChat} disabled={isExportingChat || messages.length === 0} className="h-8 font-bold uppercase tracking-widest text-[9px] gap-1.5 px-3 border-primary/20">
+                                    {isExportingChat ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
+                                    Export Ledger
+                                </Button>
+                                <Badge variant="outline" className="h-6 text-[8px] uppercase font-bold tracking-widest bg-background border-2 shadow-sm px-3">Live Sync</Badge>
+                            </div>
                         </CardHeader>
                         <CardContent className="flex-1 p-0 overflow-hidden relative bg-muted/5">
                             <ScrollArea className="h-full">
@@ -451,6 +477,9 @@ export default function PropertyDetailPage() {
                                             const prevMsg = messages[idx - 1];
                                             const showDateDivider = !prevMsg || !isSameDay(date, safeToDate(prevMsg.timestamp) || new Date());
                                             
+                                            // Dynamic sender resolution for visual clarity
+                                            const residentName = currentResident?.name || msg.senderName || 'Resident';
+
                                             return (
                                                 <div key={msg.id} className="space-y-4">
                                                     {showDateDivider && (
@@ -485,7 +514,7 @@ export default function PropertyDetailPage() {
                                                         <div className="flex items-center gap-2 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
                                                             <Clock className="h-2.5 w-2.5" />
                                                             {format(date, 'HH:mm')}
-                                                            {!isMe && <span className="ml-1 text-primary font-bold">Resident: {msg.senderName}</span>}
+                                                            {!isMe && <span className="ml-1 text-primary font-bold">Resident: {residentName}</span>}
                                                         </div>
                                                     </div>
                                                 </div>

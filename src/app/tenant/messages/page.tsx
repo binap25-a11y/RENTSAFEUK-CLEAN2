@@ -24,7 +24,8 @@ import {
   Building2,
   History,
   ChevronDown,
-  RefreshCw
+  RefreshCw,
+  Download
 } from 'lucide-react';
 import { useUser, useFirestore, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
 import { query, where, limit, addDoc, collection, onSnapshot, orderBy, serverTimestamp, doc, getDoc } from 'firebase/firestore';
@@ -34,6 +35,7 @@ import Link from 'next/link';
 import { useToast } from '@/hooks/use-toast';
 import { notifyLandlordOfMessage } from '@/app/actions/notifications';
 import { safeToDate } from '@/lib/date-utils';
+import { generateChatPDF } from '@/lib/generate-chat-pdf';
 
 interface Message {
     id: string;
@@ -53,9 +55,11 @@ export default function TenantMessagesPage() {
   const { toast } = useToast();
   
   const [tenantContext, setTenantContext] = useState<any>(null);
+  const [propertyData, setPropertyData] = useState<any>(null);
   const [isLoadingContext, setIsLoadingContext] = useState(true);
   const [newMessage, setNewMessage] = useState('');
   const [isSending, setIsSending] = useState(false);
+  const [isExportingChat, setIsExportingChat] = useState(false);
   
   const scrollRef = useRef<HTMLDivElement>(null);
   const topRef = useRef<HTMLDivElement>(null);
@@ -70,15 +74,19 @@ export default function TenantMessagesPage() {
     const tenantsCol = collection(firestore, 'tenants');
     const q = query(tenantsCol, where('email', '==', userEmail), limit(1));
 
-    const unsub = onSnapshot(q, (snap) => {
+    const unsub = onSnapshot(q, async (snap) => {
         if (!snap.empty) {
             const data = snap.docs[0].data();
             setTenantContext({ 
                 landlordId: data.landlordId, 
                 propertyId: data.propertyId, 
                 tenantId: snap.docs[0].id,
-                email: data.email
+                email: data.email,
+                name: data.name
             });
+
+            const pSnap = await getDoc(doc(firestore, 'properties', data.propertyId));
+            if (pSnap.exists()) setPropertyData(pSnap.data());
         }
         setIsLoadingContext(false);
     }, (error) => {
@@ -91,7 +99,6 @@ export default function TenantMessagesPage() {
   const messagesQuery = useMemoFirebase(() => {
     if (!tenantContext || !user || !user.email || !firestore) return null;
     const userEmail = user.email.toLowerCase().trim();
-    // Simplified query to avoid index errors during indexing periods
     return query(
         collection(firestore, 'messages'),
         where('propertyId', '==', tenantContext.propertyId),
@@ -103,7 +110,6 @@ export default function TenantMessagesPage() {
 
   const { data: rawMessages, isLoading: isLoadingMessages, error: messagesError } = useCollection<Message>(messagesQuery);
 
-  // In-memory sorting to resolve index precondition hazards
   const messages = useMemo(() => {
     if (!rawMessages) return [];
     return [...rawMessages].sort((a, b) => {
@@ -131,13 +137,30 @@ export default function TenantMessagesPage() {
     }
   }, [messages]);
 
+  const handleDownloadChat = async () => {
+    if (!messages.length || !tenantContext || !user || isExportingChat) return;
+    setIsExportingChat(true);
+    try {
+        const address = propertyData ? [propertyData.address?.nameOrNumber, propertyData.address?.street, propertyData.address?.city, propertyData.address?.postcode].filter(Boolean).join(', ') : 'Assigned Property';
+        const tenantName = tenantContext.name || user.displayName || 'Resident';
+        const landlordName = 'Management';
+        
+        await generateChatPDF(messages, address, tenantName, landlordName, user.uid);
+        toast({ title: 'Audit Trail Exported' });
+    } catch (err) {
+        toast({ variant: 'destructive', title: 'Export Failed' });
+    } finally {
+        setIsExportingChat(false);
+    }
+  };
+
   const handleSendMessage = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!newMessage.trim() || !tenantContext || !user || isSending) return;
 
     setIsSending(true);
     const messageContent = newMessage.trim();
-    const senderName = user.displayName || 'Resident';
+    const senderName = user.displayName || tenantContext.name || 'Resident';
 
     try {
         const msgCol = collection(firestore, 'messages');
@@ -157,7 +180,6 @@ export default function TenantMessagesPage() {
         setNewMessage('');
         toast({ title: 'Message Sent' });
 
-        // ASYNC NOTIFICATION HANDSHAKE: Notify Landlord via Email
         try {
             const [landlordSnap, propertySnap] = await Promise.all([
                 getDoc(doc(firestore, 'users', tenantContext.landlordId)),
@@ -183,7 +205,7 @@ export default function TenantMessagesPage() {
         console.error("Transmission failure:", error);
         toast({ variant: 'destructive', title: 'Transmission Failed' });
     } finally {
-        setIsSendingReply ? setIsSending(false) : setIsSending(false);
+        setIsSending(false);
     }
   };
 
@@ -239,11 +261,12 @@ export default function TenantMessagesPage() {
               </p>
           </div>
           <div className="flex items-center gap-2">
+              <Button variant="outline" size="sm" onClick={handleDownloadChat} disabled={isExportingChat || messages.length === 0} className="font-bold uppercase tracking-widest text-[9px] h-9 px-4 border-primary/20 bg-background shadow-sm">
+                  {isExportingChat ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
+                  Download PDF
+              </Button>
               <Button variant="outline" size="sm" onClick={scrollToTop} className="font-bold uppercase tracking-widest text-[9px] h-9 px-4 border-primary/20 bg-background shadow-sm">
                   <History className="h-3.5 w-3.5 mr-1.5" /> Full History
-              </Button>
-              <Button variant="outline" size="sm" onClick={scrollToBottom} className="font-bold uppercase tracking-widest text-[9px] h-9 px-4 border-primary/20 bg-background shadow-sm md:hidden">
-                  <ChevronDown className="h-3.5 w-3.5" />
               </Button>
           </div>
       </div>
@@ -299,6 +322,9 @@ export default function TenantMessagesPage() {
                                 const prevMsg = messages[idx - 1];
                                 const showDateDivider = !prevMsg || !isSameDay(date, safeToDate(prevMsg.timestamp) || new Date());
                                 
+                                // Display tenant's actual name for their own messages
+                                const residentName = tenantContext.name || user.displayName || 'Resident';
+
                                 return (
                                     <div key={msg.id} className="space-y-4 text-left">
                                         {showDateDivider && (
@@ -321,7 +347,11 @@ export default function TenantMessagesPage() {
                                             <div className="flex items-center gap-1.5 text-[9px] font-bold uppercase tracking-widest text-muted-foreground/60 px-1">
                                                 <Clock className="h-2.5 w-2.5" />
                                                 {format(date, 'HH:mm')}
-                                                {!isMe && <span className="ml-1 opacity-60 font-bold text-primary">From: Management</span>}
+                                                {!isMe ? (
+                                                    <span className="ml-1 opacity-60 font-bold text-primary">From: Management</span>
+                                                ) : (
+                                                    <span className="ml-1 opacity-60 font-bold text-primary">Resident: {residentName}</span>
+                                                )}
                                             </div>
                                         </div>
                                     </div>
