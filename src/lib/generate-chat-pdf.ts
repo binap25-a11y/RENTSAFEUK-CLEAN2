@@ -7,6 +7,7 @@ import { format } from 'date-fns';
 /**
  * @fileOverview Professional Chat Audit PDF Engine
  * Generates a chronological ledger of messages between management and residents.
+ * Explicitly includes the full legal name of the tenant for audit compliance.
  */
 
 interface ChatMessage {
@@ -44,23 +45,27 @@ export const generateChatPDF = async (
   // --- CONTEXT DETAILS ---
   doc.setTextColor(0);
   doc.setFontSize(12);
+  
+  // Property Address
   doc.setFont('helvetica', 'bold');
   doc.text('Property Asset:', 14, finalY);
   doc.setFont('helvetica', 'normal');
   const splitAddress = doc.splitTextToSize(propertyAddress, 140);
-  doc.text(splitAddress, 50, finalY);
+  doc.text(splitAddress, 55, finalY);
   finalY += (splitAddress.length * 7) + 5;
 
+  // Tenant Full Name (Explicitly requested)
   doc.setFont('helvetica', 'bold');
-  doc.text('Resident:', 14, finalY);
+  doc.text('Tenant Full Name:', 14, finalY);
   doc.setFont('helvetica', 'normal');
-  doc.text(tenantName, 50, finalY);
+  doc.text(tenantName, 55, finalY);
   finalY += 7;
 
+  // Landlord/Management Identity
   doc.setFont('helvetica', 'bold');
   doc.text('Management:', 14, finalY);
   doc.setFont('helvetica', 'normal');
-  doc.text(landlordName, 50, finalY);
+  doc.text(landlordName, 55, finalY);
   finalY += 15;
 
   // --- MESSAGE TABLE ---
@@ -72,15 +77,15 @@ export const generateChatPDF = async (
     } catch (e) {}
 
     const isMe = m.senderId === currentUserId;
-    const role = isMe ? 'Sent by You' : 'Received';
-    const identity = `${m.senderName} (${role})`;
+    // When exporting, we clarify the sender's role relative to the ledger
+    const identity = m.senderId === currentUserId ? `${m.senderName} (You)` : m.senderName;
 
     return [dateStr, identity, m.content];
   });
 
   autoTable(doc, {
     startY: finalY,
-    head: [['Date/Time', 'Participant Identity', 'Message Content']],
+    head: [['Date/Time', 'Sender Identity', 'Message Content']],
     body: tableRows,
     theme: 'grid',
     headStyles: { fillColor: [167, 209, 171], textColor: [0, 0, 0], fontStyle: 'bold' },
