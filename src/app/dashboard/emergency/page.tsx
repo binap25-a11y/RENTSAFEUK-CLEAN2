@@ -85,7 +85,10 @@ export default function LandlordEmergencyConfigPage() {
   const filteredProperties = useMemo(() => {
     if (!properties) return [];
     const term = searchTerm.toLowerCase();
-    return properties.filter(p => [p.address.street, p.address.postcode].filter(Boolean).join(' ').toLowerCase().includes(term));
+    return properties.filter(p => {
+        const fullAddr = [p.address.nameOrNumber, p.address.street, p.address.postcode].filter(Boolean).join(' ').toLowerCase();
+        return fullAddr.includes(term);
+    });
   }, [properties, searchTerm]);
 
   // Load existing configuration for selected property
@@ -168,7 +171,7 @@ export default function LandlordEmergencyConfigPage() {
                         <div className="relative">
                             <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
                             <Input 
-                                placeholder="Search by street..." 
+                                placeholder="Search address or postcode..." 
                                 className="pl-8 h-10" 
                                 value={searchTerm}
                                 onChange={(e) => setSearchTerm(e.target.value)}
@@ -192,7 +195,9 @@ export default function LandlordEmergencyConfigPage() {
                                         onClick={() => setSelectedPropertyId(p.id)}
                                     >
                                         <div className="min-w-0 text-left">
-                                            <p className="font-bold text-sm truncate">{p.address.street}</p>
+                                            <p className="font-bold text-sm truncate">
+                                                {[p.address.nameOrNumber, p.address.street].filter(Boolean).join(' ')}
+                                            </p>
                                             <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-tight">{p.address.postcode}</p>
                                         </div>
                                         <ChevronRight className="h-4 w-4 text-muted-foreground" />
@@ -226,11 +231,11 @@ export default function LandlordEmergencyConfigPage() {
                                 </CardTitle>
                                 <div className="flex gap-2">
                                     <Button variant="outline" size="sm" onClick={handleExport} disabled={isExporting} className="font-bold uppercase text-[10px] tracking-widest h-9 px-4">
-                                        {isExporting ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <Download className="h-3 w-3 mr-1.5" />}
+                                        {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
                                         Export PDF
                                     </Button>
                                     <Button size="sm" onClick={handleSave} disabled={isSaving} className="font-bold uppercase text-[10px] tracking-widest h-9 px-6 shadow-lg">
-                                        {isSaving ? <Loader2 className="h-3 w-3 animate-spin mr-1.5" /> : <Save className="h-3 w-3 mr-1.5" />}
+                                        {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
                                         Save Changes
                                     </Button>
                                 </div>
