@@ -79,7 +79,14 @@ export const generateHMRCPDF = async (
 
   doc.text(`NET TAXABLE POSITION:`, 120, finalY + 21);
   doc.setFontSize(14);
-  doc.setTextColor(netPosition >= 0 ? [33, 114, 249] : [239, 68, 68]);
+  
+  // High-performance color scaling: Pass individual R, G, B values to avoid argument validation errors
+  if (netPosition >= 0) {
+    doc.setTextColor(33, 114, 249);
+  } else {
+    doc.setTextColor(239, 68, 68);
+  }
+  
   doc.text(`£${netPosition.toLocaleString(undefined, { minimumFractionDigits: 2 })}`, 190, finalY + 21, { align: 'right' });
 
   doc.setTextColor(0);
