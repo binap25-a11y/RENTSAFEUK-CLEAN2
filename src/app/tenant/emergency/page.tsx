@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -18,7 +17,8 @@ import {
   AlertTriangle,
   Info,
   ChevronRight,
-  Download
+  Download,
+  Home
 } from 'lucide-react';
 import { generateEmergencyPDF } from '@/lib/generate-emergency-pdf';
 
@@ -32,6 +32,7 @@ export default function TenantEmergencyPage() {
   const firestore = useFirestore();
   
   const [tenantContext, setTenantContext] = useState<any>(null);
+  const [propertyData, setPropertyData] = useState<any>(null);
   const [emergencyData, setEmergencyInfo] = useState<any>(null);
   const [isLoading, setIsLoading] = useState(true);
   const [isExporting, setIsExporting] = useState(false);
@@ -53,6 +54,13 @@ export default function TenantEmergencyPage() {
             
             setTenantContext({ ...tData, id: snap.docs[0].id });
 
+            // Fetch property details for full address
+            const propRef = doc(firestore, 'properties', pId);
+            const propSnap = await getDoc(propRef);
+            if (propSnap.exists()) {
+                setPropertyData(propSnap.data());
+            }
+
             // Fetch emergency config for this specific property
             const configRef = doc(firestore, 'emergencyInfo', pId);
             const configSnap = await getDoc(configRef);
@@ -67,11 +75,17 @@ export default function TenantEmergencyPage() {
     return () => unsub();
   }, [user, isUserLoading, firestore]);
 
+  const propertyAddress = propertyData ? [
+    propertyData.address?.nameOrNumber,
+    propertyData.address?.street,
+    propertyData.address?.city,
+    propertyData.address?.postcode
+  ].filter(Boolean).join(', ') : 'Assigned Property';
+
   const handleExport = async () => {
     if (!emergencyData || !tenantContext) return;
     setIsExporting(true);
-    // Real property address mapping would be better here, using placeholder for now
-    await generateEmergencyPDF(emergencyData, "Your Assigned Property");
+    await generateEmergencyPDF(emergencyData, propertyAddress);
     setIsExporting(false);
   };
 
@@ -101,7 +115,10 @@ export default function TenantEmergencyPage() {
           <h1 className="text-3xl font-bold font-headline text-destructive flex items-center gap-3">
             <ShieldAlert className="h-8 w-8" /> Emergency Information
           </h1>
-          <p className="text-muted-foreground font-medium text-lg ml-1">Critical instructions for your safety and property security.</p>
+          <p className="text-muted-foreground font-medium text-lg ml-1 flex items-center gap-2">
+            <Home className="h-4 w-4 opacity-40" />
+            {propertyAddress}
+          </p>
         </div>
         <Button variant="outline" className="font-bold uppercase tracking-widest text-[10px] h-10 px-6 gap-2 bg-background shadow-md border-primary/20" onClick={handleExport} disabled={isExporting || !emergencyData}>
             {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5 text-primary" />}

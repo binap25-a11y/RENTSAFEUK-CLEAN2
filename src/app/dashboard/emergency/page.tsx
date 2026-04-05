@@ -137,12 +137,12 @@ export default function LandlordEmergencyConfigPage() {
     const prop = properties?.find(p => p.id === selectedPropertyId);
     if (!prop) return;
     setIsExporting(true);
-    const addr = [prop.address.nameOrNumber, prop.address.street, prop.address.city].filter(Boolean).join(', ');
+    const addr = [prop.address.nameOrNumber, prop.address.street, prop.address.city, prop.address.postcode].filter(Boolean).join(', ');
     await generateEmergencyPDF(formData, addr);
     setIsExporting(false);
   };
 
-  const formatAddress = (address: Property['address']) => [address.nameOrNumber, address.street, address.city].filter(Boolean).join(', ');
+  const formatAddress = (address: Property['address']) => [address.nameOrNumber, address.street, address.city, address.postcode].filter(Boolean).join(', ');
 
   return (
     <div className="max-w-6xl mx-auto space-y-8 text-left animate-in fade-in duration-500">
