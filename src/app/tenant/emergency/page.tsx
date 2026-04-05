@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useEffect, useState } from 'react';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collection, query, where, doc, getDoc, onSnapshot, limit } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -63,11 +64,30 @@ export default function TenantEmergencyPage() {
 
             // Fetch emergency config for this specific property
             const configRef = doc(firestore, 'emergencyInfo', pId);
-            const configSnap = await getDoc(configRef);
-            
-            if (configSnap.exists()) {
-                setEmergencyInfo(configSnap.data());
-            }
+            getDoc(configRef)
+                .then(configSnap => {
+                    if (configSnap.exists()) {
+                        setEmergencyInfo(configSnap.data());
+                    }
+                })
+                .catch(async (err) => {
+                    if (err.code === 'permission-denied') {
+                        const permissionError = new FirestorePermissionError({
+                            path: configRef.path,
+                            operation: 'get'
+                        });
+                        errorEmitter.emit('permission-error', permissionError);
+                    }
+                });
+        }
+        setIsLoading(false);
+    }, async (error) => {
+        if (error.code === 'permission-denied') {
+            const permissionError = new FirestorePermissionError({
+                path: 'tenants',
+                operation: 'list'
+            });
+            errorEmitter.emit('permission-error', permissionError);
         }
         setIsLoading(false);
     });

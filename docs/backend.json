@@ -85,6 +85,23 @@
         "expiryDate": { "type": "string", "format": "date" },
         "sharedWithTenant": { "type": "boolean", "default": false }
       }
+    },
+    "EmergencyProcedure": {
+      "title": "Emergency Procedure",
+      "type": "object",
+      "properties": {
+        "landlordId": { "type": "string" },
+        "landlordName": { "type": "string" },
+        "landlordAddress": { "type": "string" },
+        "landlordPhone": { "type": "string" },
+        "landlordEmail": { "type": "string" },
+        "emergencyRepairContact": { "type": "string" },
+        "emergencyRepairPhone": { "type": "string" },
+        "nonEmergencyPhone": { "type": "string" },
+        "nonEmergencyEmail": { "type": "string" },
+        "localAuthorityInfo": { "type": "string" },
+        "lastUpdated": { "type": "string", "format": "date-time" }
+      }
     }
   },
   "auth": {
@@ -98,6 +115,7 @@
     "/messages/{messageId}": { "schema": { "$ref": "#/backend/entities/Message" }, "description": "Secure Chat Registry" },
     "/repairs/{repairId}": { "schema": { "$ref": "#/backend/entities/Repair" }, "description": "Maintenance History" },
     "/documents/{documentId}": { "schema": { "$ref": "#/backend/entities/Document" }, "description": "Compliance Audit Trail" },
+    "/emergencyInfo/{propertyId}": { "schema": { "$ref": "#/backend/entities/EmergencyProcedure" }, "description": "Property Safety Protocols" },
     "/rentPayments/{id}": { "schema": { "type": "object" }, "description": "Rental Ledger" },
     "/expenses/{id}": { "schema": { "type": "object" }, "description": "Expense Ledger" },
     "/contractors/{id}": { "schema": { "type": "object" }, "description": "Contractor Directory" },

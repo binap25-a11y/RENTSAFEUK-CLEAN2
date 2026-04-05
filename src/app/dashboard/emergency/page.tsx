@@ -1,7 +1,8 @@
+
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collection, query, where, doc, getDoc, setDoc, limit } from 'firebase/firestore';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle, CardFooter } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
@@ -98,43 +99,66 @@ export default function LandlordEmergencyConfigPage() {
 
     const loadConfig = async () => {
         const configRef = doc(firestore, 'emergencyInfo', selectedPropertyId);
-        const snap = await getDoc(configRef);
-        
-        if (snap.exists()) {
-            setFormData(snap.data() as EmergencyInfo);
-        } else {
-            // Pre-fill from landlord profile if possible
-            setFormData({
-                landlordName: user.displayName || '',
-                landlordEmail: user.email || '',
-                landlordAddress: '',
-                landlordPhone: '',
-                emergencyRepairContact: '',
-                emergencyRepairPhone: '',
-                nonEmergencyPhone: '',
-                nonEmergencyEmail: user.email || '',
-                localAuthorityInfo: ''
+        getDoc(configRef)
+            .then(snap => {
+                if (snap.exists()) {
+                    setFormData(snap.data() as EmergencyInfo);
+                } else {
+                    // Pre-fill from landlord profile
+                    setFormData({
+                        landlordName: user.displayName || '',
+                        landlordEmail: user.email || '',
+                        landlordAddress: '',
+                        landlordPhone: '',
+                        emergencyRepairContact: '',
+                        emergencyRepairPhone: '',
+                        nonEmergencyPhone: '',
+                        nonEmergencyEmail: user.email || '',
+                        localAuthorityInfo: ''
+                    });
+                }
+            })
+            .catch(async (error) => {
+                if (error.code === 'permission-denied') {
+                    const permissionError = new FirestorePermissionError({
+                        path: configRef.path,
+                        operation: 'get'
+                    });
+                    errorEmitter.emit('permission-error', permissionError);
+                }
             });
-        }
     };
 
     loadConfig();
   }, [selectedPropertyId, firestore, user]);
 
   const handleSave = async () => {
-    if (!selectedPropertyId || !firestore) return;
+    if (!selectedPropertyId || !firestore || !user) return;
     setIsSaving(true);
-    try {
-        await setDoc(doc(firestore, 'emergencyInfo', selectedPropertyId), {
-            ...formData,
-            lastUpdated: new Date().toISOString()
-        }, { merge: true });
-        toast({ title: "Registry Updated", description: "Emergency procedures saved for this asset." });
-    } catch (e) {
-        toast({ variant: 'destructive', title: "Sync Failed" });
-    } finally {
-        setIsSaving(false);
-    }
+    
+    const docRef = doc(firestore, 'emergencyInfo', selectedPropertyId);
+    const savePayload = {
+        ...formData,
+        landlordId: user.uid,
+        lastUpdated: new Date().toISOString()
+    };
+
+    setDoc(docRef, savePayload, { merge: true })
+        .then(() => {
+            toast({ title: "Registry Updated", description: "Emergency procedures saved for this asset." });
+        })
+        .catch(async (serverError) => {
+            const permissionError = new FirestorePermissionError({
+                path: docRef.path,
+                operation: 'write',
+                requestResourceData: savePayload
+            });
+            errorEmitter.emit('permission-error', permissionError);
+            toast({ variant: 'destructive', title: "Sync Failed" });
+        })
+        .finally(() => {
+            setIsSaving(false);
+        });
   };
 
   const handleExport = async () => {

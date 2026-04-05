@@ -4,9 +4,9 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RENTSAFEUK SECURITY GOVERNANCE v20.10
+     * RENTSAFEUK SECURITY GOVERNANCE v20.11
      * Synchronized with high-performance composite indexes for messaging and audit trails.
-     * Hardened permissions for message deletion and read-receipt updates.
+     * Added explicit permissions for Emergency Procedures registry.
      */
 
     function isSignedIn() {
@@ -87,6 +87,7 @@ service cloud.firestore {
       // recipients can mark messages as read.
       allow update: if isSignedIn() && (
         request.auth.uid == resource.data.landlordId || 
+        request.auth.uid == resource.data.get('tenantUid', '') ||
         resource.data.get('tenantEmail', '').lower() == userEmail()
       ) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
 
@@ -120,6 +121,20 @@ service cloud.firestore {
         resource.data.propertyId != null
       );
       allow create, update, delete: if isSignedIn() && (resource == null || resource.data.landlordId == request.auth.uid);
+    }
+
+    // --- Emergency Procedures ---
+    match /emergencyInfo/{propertyId} {
+      allow read: if isSignedIn() && (
+        resource == null ||
+        resource.data.landlordId == request.auth.uid ||
+        request.auth.uid in get(/databases/$(database)/documents/properties/$(propertyId)).data.get('activeTenantUids', []) ||
+        get(/databases/$(database)/documents/properties/$(propertyId)).data.get('tenantEmail', "").lower() == userEmail()
+      );
+      allow write: if isSignedIn() && (
+        (resource == null && get(/databases/$(database)/documents/properties/$(propertyId)).data.landlordId == request.auth.uid) ||
+        resource.data.landlordId == request.auth.uid
+      );
     }
 
     // --- Financial Ledger ---
