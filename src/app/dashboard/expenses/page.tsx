@@ -314,10 +314,6 @@ function AnnualSummary({
                 <CardTitle className="text-xl font-headline flex items-center gap-3 text-foreground"><Calculator className="h-6 w-6 text-primary" /> Financial Audit Summary: {selectedYear}</CardTitle>
                 <CardDescription className="text-base font-medium">Pre-taxation briefing consolidated for professional reporting.</CardDescription>
             </div>
-            <Button onClick={handleExportHMRC} disabled={isExporting || isLoadingExpenses} className="shadow-lg font-bold uppercase tracking-widest text-[10px] h-11 px-6 rounded-xl">
-                {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
-                HMRC Self Assessment PDF
-            </Button>
         </CardHeader>
         <CardContent className="p-0">
             {isLoadingExpenses ? (<div className="flex h-64 items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>) : (
@@ -353,10 +349,16 @@ function AnnualSummary({
                 </div>
             )}
         </CardContent>
-        <CardFooter className="p-8 bg-muted/5 border-t">
-            <p className="text-xs text-muted-foreground italic leading-relaxed text-left">
+        <CardFooter className="p-8 bg-muted/5 border-t flex flex-col gap-8">
+            <p className="text-xs text-muted-foreground italic leading-relaxed text-left w-full">
                 * This summary is provided for administrative audit purposes. Please consult with a qualified accountant for official HMRC self-assessment submissions.
             </p>
+            <div className="w-full flex justify-end">
+                <Button onClick={handleExportHMRC} disabled={isExporting || isLoadingExpenses} className="shadow-lg font-bold uppercase tracking-widest text-[10px] h-12 px-8 rounded-xl bg-primary hover:bg-primary/90">
+                    {isExporting ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Download className="h-4 w-4 mr-2" />}
+                    HMRC Self Assessment PDF
+                </Button>
+            </div>
         </CardFooter>
     </Card>
   );
