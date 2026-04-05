@@ -1,4 +1,3 @@
-
 'use client';
 
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -52,7 +51,8 @@ import {
   FileText,
   Calculator,
   ShieldCheck,
-  History
+  History,
+  Download
 } from 'lucide-react';
 import { format, isAfter, isBefore, startOfYear, endOfYear, setDate, startOfMonth, getYear, isSameDay } from 'date-fns';
 import { toast } from '@/hooks/use-toast';
@@ -77,6 +77,7 @@ import { safeToDate } from '@/lib/date-utils';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
+import { generateHMRCPDF } from '@/lib/generate-hmrc-pdf';
 
 // Standard Calendar Months
 const MONTHS = [
@@ -262,7 +263,25 @@ function ExpenseTracker({ properties, selectedPropertyId }: { properties: Proper
   );
 }
 
-function AnnualSummary({ selectedYear, expenses, repairCosts, totalPaidRent, isLoadingExpenses }: { selectedYear: number, expenses: Expense[], repairCosts: MaintenanceRepair[], totalPaidRent: number, isLoadingExpenses: boolean }) {
+function AnnualSummary({ 
+    selectedYear, 
+    expenses, 
+    repairCosts, 
+    totalPaidRent, 
+    isLoadingExpenses, 
+    landlordName, 
+    propertyAddress 
+}: { 
+    selectedYear: number, 
+    expenses: Expense[], 
+    repairCosts: MaintenanceRepair[], 
+    totalPaidRent: number, 
+    isLoadingExpenses: boolean,
+    landlordName: string,
+    propertyAddress: string
+}) {
+  const [isExporting, setIsExporting] = useState(false);
+
   const expensesByCategory = useMemo(() => {
     const map: Record<string, number> = {};
     expenses.forEach(e => { map[e.expenseType] = (map[e.expenseType] || 0) + (Number(e.amount) || 0); });
@@ -274,11 +293,31 @@ function AnnualSummary({ selectedYear, expenses, repairCosts, totalPaidRent, isL
   const totalExpenditure = expensesByCategory.reduce((acc, [, amount]) => acc + amount, 0);
   const netPosition = totalPaidRent - totalExpenditure;
 
+  const handleExportHMRC = async () => {
+    if (isExporting) return;
+    setIsExporting(true);
+    try {
+        await generateHMRCPDF(selectedYear, landlordName, totalPaidRent, expenses, repairCosts, propertyAddress);
+        toast({ title: 'HMRC Briefing Generated' });
+    } catch (err) {
+        console.error(err);
+        toast({ variant: 'destructive', title: 'Export Failed' });
+    } finally {
+        setIsExporting(false);
+    }
+  };
+
   return (
     <Card className="mt-6 border-none shadow-2xl rounded-[2rem] overflow-hidden text-left bg-card">
-        <CardHeader className="bg-primary/5 border-b border-primary/10 px-8 py-8">
-            <CardTitle className="text-xl font-headline flex items-center gap-3 text-foreground"><Calculator className="h-6 w-6 text-primary" /> Financial Audit Summary: {selectedYear}</CardTitle>
-            <CardDescription className="text-base font-medium">Pre-taxation briefing consolidated for professional reporting.</CardDescription>
+        <CardHeader className="bg-primary/5 border-b border-primary/10 px-8 py-8 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
+            <div className="text-left">
+                <CardTitle className="text-xl font-headline flex items-center gap-3 text-foreground"><Calculator className="h-6 w-6 text-primary" /> Financial Audit Summary: {selectedYear}</CardTitle>
+                <CardDescription className="text-base font-medium">Pre-taxation briefing consolidated for professional reporting.</CardDescription>
+            </div>
+            <Button onClick={handleExportHMRC} disabled={isExporting || isLoadingExpenses} className="shadow-lg font-bold uppercase tracking-widest text-[10px] h-11 px-6 rounded-xl">
+                {isExporting ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : <Download className="mr-2 h-4 w-4" />}
+                HMRC Self Assessment PDF
+            </Button>
         </CardHeader>
         <CardContent className="p-0">
             {isLoadingExpenses ? (<div className="flex h-64 items-center justify-center"><Loader2 className="h-10 w-10 animate-spin text-primary" /></div>) : (
@@ -909,7 +948,17 @@ export default function FinancialsPage() {
             <TabsContent value="expenses" className="animate-in fade-in slide-in-from-top-2 duration-500"><ExpenseTracker properties={activeProperties || []} selectedPropertyId={selectedPropertyId} /></TabsContent>
             <TabsContent value="history" className="animate-in fade-in slide-in-from-top-2 duration-500"><ExpenseHistory selectedYear={selectedYear || 0} expenses={expenses} repairCosts={repairCosts} properties={activeProperties || []} /></TabsContent>
             <TabsContent value="statement" className="animate-in fade-in slide-in-from-top-2 duration-500"><RentStatement selectedProperty={selectedProperty} activeTenant={activeTenant} selectedYear={selectedYear || 0} rentPayments={rentPayments} isLoadingPayments={isLoading} /></TabsContent>
-            <TabsContent value="summary" className="animate-in fade-in slide-in-from-top-2 duration-500"><AnnualSummary selectedYear={selectedYear || 0} expenses={expenses} repairCosts={repairCosts} totalPaidRent={totalPaidRent} isLoadingExpenses={isLoading} /></TabsContent>
+            <TabsContent value="summary" className="animate-in fade-in slide-in-from-top-2 duration-500">
+                <AnnualSummary 
+                    selectedYear={selectedYear || 0} 
+                    expenses={expenses} 
+                    repairCosts={repairCosts} 
+                    totalPaidRent={totalPaidRent} 
+                    isLoadingExpenses={isLoading}
+                    landlordName={user?.displayName || 'Management'}
+                    propertyAddress={selectedPropertyId === 'all' ? 'Entire Portfolio' : formatAddress(selectedProperty?.address!)}
+                />
+            </TabsContent>
         </Tabs>
     </div>
   );
