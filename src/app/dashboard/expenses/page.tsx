@@ -719,26 +719,11 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                     </>
                 )}
             </CardContent>
-            <CardFooter className="bg-primary/5 border-t py-10 px-10 flex flex-col sm:flex-row justify-between items-center gap-8">
-                <div className="flex gap-12 w-full sm:w-auto">
-                    <div className="flex flex-col gap-1 text-left">
-                        <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-[0.2em]">Total Accrued</span>
-                        <span className="text-xl font-bold text-foreground tabular-nums tracking-tighter">{formatCurrency(collectionStats.totalExpected)}</span>
-                    </div>
-                    <div className="flex flex-col gap-1 text-left">
-                        <span className="text-[10px] font-bold uppercase text-muted-foreground tracking-[0.2em]">Total Outstanding</span>
-                        <span className="text-xl font-bold text-destructive tabular-nums tracking-tighter">{formatCurrency(collectionStats.remaining)}</span>
-                    </div>
-                </div>
-                <div className="flex flex-col sm:flex-row items-center gap-4">
-                    <Badge className="bg-primary text-primary-foreground font-bold tracking-tight h-10 px-6 rounded-xl shadow-lg text-sm whitespace-nowrap min-w-fit">
-                        Collection Index: {collectionStats.rate.toFixed(0)}%
-                    </Badge>
-                    <Button onClick={handleExportStatement} disabled={isExporting || isLoadingPayments} className="font-bold uppercase tracking-widest text-[10px] h-10 px-6 rounded-xl shadow-md gap-2">
-                        {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
-                        Download Rental Statement
-                    </Button>
-                </div>
+            <CardFooter className="bg-muted/5 border-t py-6 px-10 flex justify-end">
+                <Button onClick={handleExportStatement} disabled={isExporting || isLoadingPayments} className="font-bold uppercase tracking-widest text-[10px] h-11 px-8 rounded-xl shadow-lg gap-2 bg-primary hover:bg-primary/90 text-primary-foreground">
+                    {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                    Download Rental Statement
+                </Button>
             </CardFooter>
         </Card>
     </div>
