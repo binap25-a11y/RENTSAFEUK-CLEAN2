@@ -22,7 +22,8 @@ import {
   MessageSquare, 
   LogOut, 
   Loader2,
-  Home
+  Home,
+  ShieldAlert
 } from 'lucide-react';
 import { useUser, useAuth } from '@/firebase';
 import { signOut } from 'firebase/auth';
@@ -65,6 +66,7 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
     { href: '/tenant/maintenance', label: 'Repairs', icon: Wrench },
     { href: '/tenant/documents', label: 'Documents', icon: Files },
     { href: '/tenant/messages', label: 'Messages', icon: MessageSquare },
+    { href: '/tenant/emergency', label: 'Emergency Info', icon: ShieldAlert },
   ];
 
   return (

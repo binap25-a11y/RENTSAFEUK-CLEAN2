@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -25,6 +26,7 @@ import {
   HardHat,
   MessageSquare,
   Newspaper,
+  ShieldAlert,
 } from 'lucide-react';
 import * as React from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
@@ -85,6 +87,7 @@ const menuItems = [
   { href: '/dashboard/expenses', label: 'Financials', icon: CreditCard },
   { href: '/dashboard/reminders', label: 'Reminders', icon: Bell },
   { href: '/dashboard/messages', label: 'Communication Hub', icon: MessageSquare },
+  { href: '/dashboard/emergency', label: 'Emergency Procedures', icon: ShieldAlert },
   { href: '/dashboard/news', label: 'News and Law Updates', icon: Newspaper },
 ];
 
