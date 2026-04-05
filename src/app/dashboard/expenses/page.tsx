@@ -78,6 +78,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { cn } from '@/lib/utils';
 import { generateHMRCPDF } from '@/lib/generate-hmrc-pdf';
+import { generateRentPDF } from '@/lib/generate-rent-pdf';
 
 // Standard Calendar Months
 const MONTHS = [
@@ -479,6 +480,7 @@ function ExpenseHistory({ selectedYear, expenses, repairCosts, properties }: { s
 function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayments, isLoadingPayments }: { selectedProperty: Property | undefined, activeTenant: Tenant | undefined, selectedYear: number, rentPayments: RentPayment[] | null, isLoadingPayments: boolean }) {
   const { user } = useUser();
   const firestore = useFirestore();
+  const [isExporting, setIsExporting] = useState(false);
   
   const statement = useMemo(() => {
     const defaultRent = activeTenant?.monthlyRent || selectedProperty?.tenancy?.monthlyRent || 0;
@@ -518,6 +520,21 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
         expectedAmount, 
         amountPaid: status === 'Paid' ? expectedAmount : (status === 'Partially Paid' ? (Number(row?.amountPaid) || 0) : 0)
     }, { merge: true }).then(() => toast({ title: 'Registry Sync Successful' }));
+  };
+
+  const handleExportStatement = async () => {
+    if (!selectedProperty || isExporting) return;
+    setIsExporting(true);
+    try {
+        const addr = [selectedProperty.address.nameOrNumber, selectedProperty.address.street, selectedProperty.address.city, selectedProperty.address.postcode].filter(Boolean).join(', ');
+        await generateRentPDF(selectedYear, addr, activeTenant?.name || 'Assigned Resident', statement, collectionStats);
+        toast({ title: 'Rental Statement Generated' });
+    } catch (err) {
+        console.error(err);
+        toast({ variant: 'destructive', title: 'Export Failed' });
+    } finally {
+        setIsExporting(false);
+    }
   };
 
   if (!selectedProperty) return (
@@ -713,9 +730,15 @@ function RentStatement({ selectedProperty, activeTenant, selectedYear, rentPayme
                         <span className="text-xl font-bold text-destructive tabular-nums tracking-tighter">{formatCurrency(collectionStats.remaining)}</span>
                     </div>
                 </div>
-                <Badge className="bg-primary text-primary-foreground font-bold tracking-tight h-10 px-6 rounded-xl shadow-lg text-sm">
-                    Collection Index: {collectionStats.rate.toFixed(0)}%
-                </Badge>
+                <div className="flex flex-col sm:flex-row items-center gap-4">
+                    <Badge className="bg-primary text-primary-foreground font-bold tracking-tight h-10 px-6 rounded-xl shadow-lg text-sm whitespace-nowrap min-w-fit">
+                        Collection Index: {collectionStats.rate.toFixed(0)}%
+                    </Badge>
+                    <Button onClick={handleExportStatement} disabled={isExporting || isLoadingPayments} className="font-bold uppercase tracking-widest text-[10px] h-10 px-6 rounded-xl shadow-md gap-2">
+                        {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5" />}
+                        Download Rental Statement
+                    </Button>
+                </div>
             </CardFooter>
         </Card>
     </div>
