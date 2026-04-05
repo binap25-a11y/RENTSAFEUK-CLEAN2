@@ -19,7 +19,8 @@ import {
   ChevronRight,
   Download,
   Home,
-  Clock
+  Clock,
+  ShieldCheck
 } from 'lucide-react';
 import { generateEmergencyPDF } from '@/lib/generate-emergency-pdf';
 import { cn } from '@/lib/utils';
@@ -133,7 +134,7 @@ export default function TenantEmergencyPage() {
   return (
     <div className="max-w-4xl mx-auto space-y-8 text-left animate-in fade-in duration-500">
       <div className="flex flex-col md:flex-row md:items-center justify-between gap-4">
-        <div className="space-y-1">
+        <div className="space-y-1 text-left">
           <h1 className="text-3xl font-bold font-headline text-destructive flex items-center gap-3">
             <ShieldAlert className="h-8 w-8" /> Emergency Information
           </h1>
@@ -189,7 +190,7 @@ export default function TenantEmergencyPage() {
                 <div className="p-5 rounded-2xl bg-muted/20 border-2 border-dashed text-left overflow-hidden">
                     <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-widest mb-1">Emergency Repair Contact</p>
                     <p className="text-lg font-bold break-words leading-tight">{emergencyData?.emergencyRepairContact || 'Property Support Team'}</p>
-                    <a href={`tel:${emergencyData?.emergencyRepairPhone}`} className="text-2xl font-black text-primary hover:underline block mt-2 tabular-nums break-all">
+                    <a href={`tel:${emergencyData?.emergencyRepairPhone}`} className="text-xl font-black text-primary hover:underline block mt-2 tabular-nums whitespace-nowrap overflow-hidden text-ellipsis">
                         {emergencyData?.emergencyRepairPhone || 'N/A'}
                     </a>
                 </div>
