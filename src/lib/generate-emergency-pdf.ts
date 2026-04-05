@@ -35,8 +35,9 @@ export const generateEmergencyPDF = async (data: any, propertyAddress: string) =
   doc.setFont('helvetica', 'bold');
   doc.text('Property Address:', 14, finalY);
   doc.setFont('helvetica', 'normal');
-  doc.text(propertyAddress, 14, finalY + 7);
-  finalY += 20;
+  const splitAddress = doc.splitTextToSize(propertyAddress, 180);
+  doc.text(splitAddress, 14, finalY + 7);
+  finalY += (splitAddress.length * 7) + 10;
 
   // --- STEP 1: IMMEDIATE DANGER ---
   doc.setFillColor(239, 68, 68);
@@ -80,7 +81,6 @@ export const generateEmergencyPDF = async (data: any, propertyAddress: string) =
   doc.text('Emergency Repair Contact:', 14, finalY);
   doc.setFont('helvetica', 'normal');
   
-  // Handled with maxWidth to ensure long names wrap instead of overlapping
   const contactName = data.emergencyRepairContact || 'Property Support';
   const splitContact = doc.splitTextToSize(contactName, 120);
   doc.text(splitContact, 75, finalY);
@@ -131,7 +131,8 @@ export const generateEmergencyPDF = async (data: any, propertyAddress: string) =
   finalY += 5;
   doc.text(`Email: ${data.landlordEmail || 'N/A'}`, 14, finalY);
   finalY += 5;
-  doc.text(`Correspondence: ${data.landlordAddress || 'Refer to registry'}`, 14, finalY, { maxWidth: 180 });
+  const splitLAddress = doc.splitTextToSize(`Correspondence: ${data.landlordAddress || 'Refer to registry'}`, 180);
+  doc.text(splitLAddress, 14, finalY);
 
   // --- FOOTER ---
   doc.setFontSize(8);
