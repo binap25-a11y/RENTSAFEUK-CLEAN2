@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -9,6 +8,7 @@ import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
 import { Textarea } from '@/components/ui/textarea';
+import { ScrollArea } from '@/components/ui/scroll-area';
 import { 
   ShieldAlert, 
   Loader2, 
@@ -159,9 +159,9 @@ export default function LandlordEmergencyConfigPage() {
       <div className="grid gap-8 lg:grid-cols-3">
         {/* Property Selector Column */}
         <div className="space-y-4">
-            <Card className="shadow-md border-none overflow-hidden h-fit">
-                <CardHeader className="bg-muted/30 border-b">
-                    <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground">Select Property</CardTitle>
+            <Card className="shadow-md border-none overflow-hidden h-fit text-left">
+                <CardHeader className="bg-muted/30 border-b text-left">
+                    <CardTitle className="text-sm font-bold uppercase tracking-widest text-muted-foreground text-left">Select Property</CardTitle>
                 </CardHeader>
                 <CardContent className="p-0">
                     <div className="p-4 border-b">
@@ -217,8 +217,8 @@ export default function LandlordEmergencyConfigPage() {
                 </div>
             ) : (
                 <div className="space-y-6">
-                    <Card className="shadow-xl border-none overflow-hidden">
-                        <CardHeader className="bg-primary/5 border-b pb-6">
+                    <Card className="shadow-xl border-none overflow-hidden text-left">
+                        <CardHeader className="bg-primary/5 border-b pb-6 text-left">
                             <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-4">
                                 <CardTitle className="text-xl font-headline flex items-center gap-2">
                                     <Building2 className="h-5 w-5 text-primary" /> 
@@ -292,7 +292,7 @@ export default function LandlordEmergencyConfigPage() {
                                 </div>
                             </div>
 
-                            <div className="space-y-6">
+                            <div className="space-y-6 text-left">
                                 <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 border-b pb-2">
                                     <AlertTriangle className="h-4 w-4" /> 4. Serious Property Issues
                                 </h3>
