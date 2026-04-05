@@ -34,7 +34,8 @@ import {
   RefreshCw,
   Users,
   Inbox,
-  Wrench
+  Wrench,
+  UserMinus
 } from 'lucide-react';
 import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
 import { doc, updateDoc, collection, query, where, getDocs, limit, addDoc, serverTimestamp } from 'firebase/firestore';
@@ -118,6 +119,8 @@ export default function PropertyDetailPage() {
   
   const [isDeleting, setIsDeleting] = useState(false);
   const [isArchiving, setIsArchiving] = useState(false);
+  const [isEndTenancyDialogOpen, setIsEndTenancyDialogOpen] = useState(false);
+  const [isEndingTenancy, setIsEndingTenancy] = useState(false);
   const [isMediaUpdating, setIsMediaUpdating] = useState(false);
   const [newReply, setNewReply] = useState('');
   const [isSendingReply, setIsSendingReply] = useState(false);
@@ -215,7 +218,7 @@ export default function PropertyDetailPage() {
             tenantEmail: targetTenant.email.toLowerCase().trim(),
             senderId: user.uid,
             senderName: user.displayName || 'Management',
-            content: newReply.trim(),
+            content: replyContent.trim(),
             timestamp: serverTimestamp(),
             read: false
         });
@@ -255,6 +258,39 @@ export default function PropertyDetailPage() {
     } catch (e) { toast({ variant: 'destructive', title: 'Action Failed' }); } finally { setIsArchiving(false); }
   };
 
+  const handleEndTenancyConfirm = async () => {
+    if (!firestore || !user || !property || !activeTenants) return;
+    setIsEndingTenancy(true);
+    try {
+      // 1. Archive all active tenants for this property
+      const batchPromises = activeTenants.map(t => 
+        updateDoc(doc(firestore, 'tenants', t.id), { status: 'Archived' })
+      );
+      
+      // 2. Update the property record to Vacant
+      const propUpdatePromise = updateDoc(doc(firestore, 'properties', propertyId), {
+        status: 'Vacant',
+        tenantId: '',
+        tenantEmail: '',
+        activeTenantUids: [],
+        tenantEmails: []
+      });
+
+      await Promise.all([...batchPromises, propUpdatePromise]);
+      
+      toast({ 
+        title: 'Tenancy Ended', 
+        description: 'All residents have been archived and the property is now marked as Vacant.' 
+      });
+      setIsEndTenancyDialogOpen(false);
+    } catch (e) {
+      console.error("End tenancy failed:", e);
+      toast({ variant: 'destructive', title: 'Action Failed' });
+    } finally {
+      setIsEndingTenancy(false);
+    }
+  };
+
   const formatDateDivider = (date: Date) => {
     if (isToday(date)) return 'Today';
     if (isYesterday(date)) return 'Yesterday';
@@ -288,6 +324,14 @@ export default function PropertyDetailPage() {
                     <DropdownMenuContent align="end" className="w-56 p-1">
                         <DropdownMenuItem asChild><Link href={`/dashboard/properties/${property.id}/edit`}><Edit className="mr-2 h-4 w-4" /> Edit Record</Link></DropdownMenuItem>
                         <DropdownMenuItem onClick={() => identityInputRef.current?.click()} disabled={isMediaUpdating}><Upload className="mr-2 h-4 w-4" /> Update Identity</DropdownMenuItem>
+                        {property.status === 'Occupied' && (
+                          <>
+                            <DropdownMenuSeparator />
+                            <DropdownMenuItem onClick={() => setIsEndTenancyDialogOpen(true)} className="text-amber-600 font-bold">
+                              <UserMinus className="mr-2 h-4 w-4" /> End Tenancy
+                            </DropdownMenuItem>
+                          </>
+                        )}
                         <DropdownMenuSeparator />
                         <DropdownMenuItem onClick={() => setIsDeleting(true)} className="text-destructive font-bold"><Trash2 className="mr-2 h-4 w-4" /> Archive Asset</DropdownMenuItem>
                     </DropdownMenuContent>
@@ -507,6 +551,26 @@ export default function PropertyDetailPage() {
             </Card>
           </div>
         </div>
+
+        <AlertDialog open={isEndTenancyDialogOpen} onOpenChange={setIsEndTenancyDialogOpen}>
+            <AlertDialogContent className="rounded-2xl border-none shadow-2xl text-left">
+            <AlertDialogHeader className="text-left">
+                <AlertDialogTitle className="text-xl font-headline flex items-center gap-2">
+                  <UserMinus className="h-6 w-6 text-amber-600" />
+                  End Tenancy?
+                </AlertDialogTitle>
+                <AlertDialogDescription className="text-base font-medium">
+                  This will archive all active residents for <strong>{property.address.street}</strong> and mark the property as Vacant. Access to the Resident Hub will be revoked for all tenants.
+                </AlertDialogDescription>
+            </AlertDialogHeader>
+            <AlertDialogFooter className="gap-3 mt-4">
+                <AlertDialogCancel className="rounded-xl font-bold uppercase tracking-widest text-[10px] h-11">Cancel</AlertDialogCancel>
+                <AlertDialogAction className="bg-amber-600 text-white hover:bg-amber-700 rounded-xl font-bold uppercase tracking-widest text-[10px] h-11 px-8 shadow-lg" onClick={handleEndTenancyConfirm} disabled={isEndingTenancy}>
+                    {isEndingTenancy ? <Loader2 className="mr-2 h-4 w-4 animate-spin" /> : null} Confirm & Reset Asset
+                </AlertDialogAction>
+            </AlertDialogFooter>
+            </AlertDialogContent>
+        </AlertDialog>
 
         <AlertDialog open={isDeleting} onOpenChange={setIsDeleting}>
             <AlertDialogContent className="rounded-2xl border-none shadow-2xl text-left">
