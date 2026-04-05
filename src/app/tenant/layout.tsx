@@ -16,7 +16,6 @@ import {
   SidebarMenuButton,
 } from '@/components/ui/sidebar';
 import { 
-  LayoutDashboard, 
   Wrench, 
   Files, 
   MessageSquare, 
@@ -34,6 +33,7 @@ import { UserNav } from '@/components/dashboard/user-nav';
 /**
  * @fileOverview Resident Portal Layout
  * Handles mounting states and secure role verification for verified residents.
+ * Re-shaken to resolve ChunkLoadError in development environments.
  */
 
 export default function TenantLayout({ children }: { children: React.ReactNode }) {
@@ -56,7 +56,10 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
   if (!isMounted || isUserLoading || !user) {
     return (
       <div className="flex h-screen w-full items-center justify-center bg-background">
-        <Loader2 className="h-10 w-10 animate-spin text-primary" />
+        <div className="flex flex-col items-center gap-4">
+          <Loader2 className="h-10 w-10 animate-spin text-primary" />
+          <p className="text-xs font-bold uppercase tracking-widest text-muted-foreground animate-pulse">Syncing Portal...</p>
+        </div>
       </div>
     );
   }
@@ -68,6 +71,13 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
     { href: '/tenant/messages', label: 'Messages', icon: MessageSquare },
     { href: '/tenant/emergency', label: 'Emergency Info', icon: ShieldAlert },
   ];
+
+  const handleSignOut = async () => {
+    if (auth) {
+      await signOut(auth);
+      window.location.href = '/';
+    }
+  };
 
   return (
     <SidebarProvider>
@@ -95,7 +105,7 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
         <SidebarFooter className="border-t p-4">
            <SidebarMenu>
               <SidebarMenuItem>
-                <SidebarMenuButton onClick={() => signOut(auth)}>
+                <SidebarMenuButton onClick={handleSignOut}>
                   <LogOut className="h-4 w-4" />
                   <span>Sign Out</span>
                 </SidebarMenuButton>
