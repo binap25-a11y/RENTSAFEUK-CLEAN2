@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useRef, useMemo } from 'react';
@@ -90,7 +89,7 @@ export default function TenantMessagesPage() {
   }, [user, isUserLoading, firestore]);
 
   const messagesQuery = useMemoFirebase(() => {
-    if (!tenantContext || !user || !firestore || !user.email) return null;
+    if (!tenantContext || !user || !user.email || !firestore) return null;
     const userEmail = user.email.toLowerCase().trim();
     // Simplified query to avoid index errors during indexing periods
     return query(
@@ -158,6 +157,7 @@ export default function TenantMessagesPage() {
         setNewMessage('');
         toast({ title: 'Message Sent' });
 
+        // ASYNC NOTIFICATION HANDSHAKE: Notify Landlord via Email
         try {
             const [landlordSnap, propertySnap] = await Promise.all([
                 getDoc(doc(firestore, 'users', tenantContext.landlordId)),
@@ -165,7 +165,7 @@ export default function TenantMessagesPage() {
             ]);
 
             const landlordEmail = landlordSnap.data()?.email;
-            const propertyAddress = propertySnap.data()?.address?.street || 'your property';
+            const propertyAddress = [propertySnap.data()?.address?.nameOrNumber, propertySnap.data()?.address?.street].filter(Boolean).join(' ') || 'your property';
 
             if (landlordEmail) {
                 await notifyLandlordOfMessage(

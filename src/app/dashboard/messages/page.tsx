@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect, useTransition } from 'react';
@@ -64,6 +63,7 @@ import {
   DialogDescription,
   DialogFooter,
 } from '@/components/ui/dialog';
+import { notifyTenantOfMessage } from '@/app/actions/notifications';
 
 interface Message {
     id: string;
@@ -226,6 +226,9 @@ export default function CommunicationHubPage() {
   const handleSendReply = async () => {
     if (!firestore || !user || !replyingTo || !replyContent.trim()) return;
     setIsSendingReply(true);
+    const content = replyContent.trim();
+    const senderName = user.displayName || 'Management';
+
     try {
         await addDoc(collection(firestore, 'messages'), {
             landlordId: user.uid,
@@ -234,15 +237,24 @@ export default function CommunicationHubPage() {
             tenantUid: replyingTo.tenantUid || replyingTo.senderId,
             tenantEmail: replyingTo.tenantEmail || '',
             senderId: user.uid,
-            senderName: user.displayName || 'Management',
-            content: replyContent.trim(),
+            senderName: senderName,
+            content: content,
             timestamp: serverTimestamp(),
             read: false
         });
         if (!replyingTo.read) {
             updateDocumentNonBlocking(doc(firestore, 'messages', replyingTo.id), { read: true });
         }
+        
         toast({ title: 'Reply Sent' });
+
+        // ASYNC NOTIFICATION: Notify tenant of reply
+        if (replyingTo.tenantEmail) {
+            const propertyAddress = propertyMap[replyingTo.propertyId] || 'your property';
+            notifyTenantOfMessage(replyingTo.tenantEmail, senderName, content, propertyAddress)
+                .catch(err => console.warn("Tenant notification failed:", err.message));
+        }
+
         setReplyContent('');
         setReplyingTo(null);
     } catch (err) {

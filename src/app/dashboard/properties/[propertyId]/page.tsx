@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useParams, useRouter, useSearchParams } from 'next/navigation';
@@ -60,6 +59,7 @@ import { Input } from '@/components/ui/input';
 import { cn } from '@/lib/utils';
 import { safeToDate } from '@/lib/date-utils';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { notifyTenantOfMessage } from '@/app/actions/notifications';
 
 interface Property {
     id: string;
@@ -209,6 +209,9 @@ export default function PropertyDetailPage() {
     if (!targetTenant) return;
 
     setIsSendingReply(true);
+    const content = newReply.trim();
+    const senderName = user.displayName || 'Management';
+
     try {
         await addDoc(collection(firestore, 'messages'), {
             landlordId: user.uid,
@@ -217,11 +220,17 @@ export default function PropertyDetailPage() {
             tenantUid: targetTenant.userId || '',
             tenantEmail: targetTenant.email.toLowerCase().trim(),
             senderId: user.uid,
-            senderName: user.displayName || 'Management',
-            content: replyContent.trim(),
+            senderName: senderName,
+            content: content,
             timestamp: serverTimestamp(),
             read: false
         });
+        
+        // ASYNC NOTIFICATION: Notify tenant of message
+        const propertyAddr = [property.address.nameOrNumber, property.address.street].filter(Boolean).join(' ') || 'your property';
+        notifyTenantOfMessage(targetTenant.email, senderName, content, propertyAddr)
+            .catch(err => console.warn("Tenant notification failed:", err.message));
+
         setNewReply('');
         toast({ title: 'Message Sent' });
     } catch (error) {
