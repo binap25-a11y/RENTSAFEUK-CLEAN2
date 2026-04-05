@@ -54,7 +54,7 @@ export const generateChatPDF = async (
   doc.text(splitAddress, 55, finalY);
   finalY += (splitAddress.length * 7) + 5;
 
-  // Tenant Full Name (Explicitly requested)
+  // Tenant Full Name (Registry ID)
   doc.setFont('helvetica', 'bold');
   doc.text('Tenant Full Name:', 14, finalY);
   doc.setFont('helvetica', 'normal');
@@ -76,9 +76,8 @@ export const generateChatPDF = async (
       dateStr = isNaN(d.getTime()) ? 'N/A' : format(d, 'dd/MM/yyyy HH:mm');
     } catch (e) {}
 
-    const isMe = m.senderId === currentUserId;
-    // When exporting, we clarify the sender's role relative to the ledger
-    const identity = m.senderId === currentUserId ? `${m.senderName} (You)` : m.senderName;
+    // Use the name provided in the mapped message object for professional clarity
+    const identity = m.senderName;
 
     return [dateStr, identity, m.content];
   });

@@ -214,7 +214,13 @@ export default function PropertyDetailPage() {
         const tenantName = currentResident?.name || 'Resident';
         const landlordName = user.displayName || 'Landlord';
         
-        await generateChatPDF(messages, address, tenantName, landlordName, user.uid);
+        // Map messages to ensure the sender identity column in the PDF uses correct full names
+        const pdfMessages = messages.map(m => ({
+            ...m,
+            senderName: m.senderId === user.uid ? landlordName : tenantName
+        }));
+
+        await generateChatPDF(pdfMessages, address, tenantName, landlordName, user.uid);
         toast({ title: 'Audit Trail Exported' });
     } catch (err) {
         toast({ variant: 'destructive', title: 'Export Failed' });
@@ -377,7 +383,7 @@ export default function PropertyDetailPage() {
                         {property.imageUrl ? (
                             <Image src={property.imageUrl} alt="Asset" fill className="object-cover" priority unoptimized />
                         ) : (
-                            <div className="w-full h-full flex items-center justify-center bg-primary/5"><Home className="h-16 w-16 text-primary/10" /></div>
+                            <div className="w-full h-full flex items-center justify-center bg-primary/5"><Home className="w-16 h-16 text-primary/10" /></div>
                         )}
                         {isMediaUpdating && <div className="absolute inset-0 bg-black/40 flex items-center justify-center"><Loader2 className="h-8 w-8 animate-spin text-white" /></div>}
                     </div>

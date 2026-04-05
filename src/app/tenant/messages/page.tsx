@@ -145,7 +145,13 @@ export default function TenantMessagesPage() {
         const tenantName = tenantContext.name || user.displayName || 'Resident';
         const landlordName = 'Management';
         
-        await generateChatPDF(messages, address, tenantName, landlordName, user.uid);
+        // Map messages to ensure the sender identity column in the PDF uses correct full names
+        const pdfMessages = messages.map(m => ({
+            ...m,
+            senderName: m.senderId === user.uid ? tenantName : landlordName
+        }));
+
+        await generateChatPDF(pdfMessages, address, tenantName, landlordName, user.uid);
         toast({ title: 'Audit Trail Exported' });
     } catch (err) {
         toast({ variant: 'destructive', title: 'Export Failed' });
