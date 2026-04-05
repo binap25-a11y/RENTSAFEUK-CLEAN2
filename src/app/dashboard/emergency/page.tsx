@@ -301,7 +301,7 @@ export default function LandlordEmergencyConfigPage() {
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                     <div className="space-y-2 text-left">
                                         <Label className="text-[10px] font-bold uppercase">Emergency Repair Contact</Label>
-                                        <Input placeholder="e.g. Acme Maintenance" value={formData.emergencyRepairContact} onChange={e => setFormData({...formData, emergencyRepairContact: e.target.value})} className="h-11" />
+                                        <Input value={formData.emergencyRepairContact} onChange={e => setFormData({...formData, emergencyRepairContact: e.target.value})} className="h-11" />
                                     </div>
                                     <div className="space-y-2 text-left">
                                         <Label className="text-[10px] font-bold uppercase">Emergency Phone</Label>
