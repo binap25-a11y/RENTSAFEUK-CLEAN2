@@ -121,3 +121,35 @@ export async function notifyLandlordOfMaintenance(
   console.log(`Issue: ${maintenanceTitle} (${maintenanceCategory})`);
   return { success: true, provider: 'console' };
 }
+
+export async function notifyTenantOfLawUpdate(
+  tenantEmail: string,
+  updateTitle: string,
+  updateBrief: string
+) {
+  const resend = getResendClient();
+  const timestamp = new Date().toISOString();
+
+  console.log(`[Law Update Notification] Notifying ${tenantEmail} at ${timestamp}`);
+
+  if (resend) {
+    try {
+      await resend.emails.send({
+        from: 'RentSafeUK <onboarding@resend.dev>',
+        to: tenantEmail,
+        subject: `Legal Update for Residents: ${updateTitle}`,
+        text: `Important Management Briefing:\n\n${updateBrief}\n\nPlease check your RentSafeUK Resident Hub for full details on how this may affect your tenancy.`
+      });
+      return { success: true, provider: 'resend' };
+    } catch (error: any) {
+      console.error(`[Resend Failure] ${error.message}`);
+      return { success: false, error: error.message };
+    }
+  }
+
+  console.log('--- LAW UPDATE EMAIL SIMULATION (RESEND_API_KEY MISSING) ---');
+  console.log(`To: ${tenantEmail}`);
+  console.log(`Subject: ${updateTitle}`);
+  console.log(`Brief: ${updateBrief}`);
+  return { success: true, provider: 'console' };
+}
