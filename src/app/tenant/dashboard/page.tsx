@@ -22,7 +22,7 @@ import {
   Clock,
   CheckCircle2
 } from 'lucide-react';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collection, query, where, limit, getDocs, doc, updateDoc, getDoc, arrayUnion, onSnapshot } from 'firebase/firestore';
 import { format } from 'date-fns';
 
@@ -156,10 +156,21 @@ export default function TenantDashboard() {
         limit(5)
     );
 
-    const unsub = onSnapshot(q, (snap) => {
+    const unsub = onSnapshot(q, 
+      (snap) => {
         setActiveRepairs(snap.docs.map(d => ({ id: d.id, ...d.data() })));
         setIsLoadingRepairs(false);
-    });
+      },
+      async (err) => {
+        setIsLoadingRepairs(false);
+        if (err.code === 'permission-denied') {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'repairs',
+            operation: 'list'
+          }));
+        }
+      }
+    );
 
     return () => unsub();
   }, [context, firestore]);

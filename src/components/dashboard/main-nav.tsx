@@ -30,7 +30,7 @@ import {
 } from 'lucide-react';
 import * as React from 'react';
 import { Collapsible, CollapsibleContent, CollapsibleTrigger } from '@/components/ui/collapsible';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collection, query, where, onSnapshot, limit } from 'firebase/firestore';
 import { Badge } from '@/components/ui/badge';
 
@@ -105,7 +105,7 @@ export function MainNav() {
     if (activeParent && !openItems.includes(activeParent.href)) {
       setOpenItems(prev => [...prev, activeParent.href]);
     }
-  }, [pathname]);
+  }, [pathname, openItems]);
 
   // Real-time unread count listener for Landlord Messages
   React.useEffect(() => {
@@ -118,13 +118,23 @@ export function MainNav() {
         limit(100)
     );
 
-    const unsub = onSnapshot(q, (snap) => {
+    const unsub = onSnapshot(q, 
+      (snap) => {
         const unreadFromTenants = snap.docs.filter(d => {
             const data = d.data();
             return data.senderId !== user.uid && data.read !== true;
         });
         setUnreadCount(unreadFromTenants.length);
-    });
+      },
+      async (err) => {
+        if (err.code === 'permission-denied') {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: 'messages',
+            operation: 'list'
+          }));
+        }
+      }
+    );
 
     return () => unsub();
   }, [user, firestore]);
@@ -181,7 +191,7 @@ export function MainNav() {
               tooltip={label}
             >
               <Link href={href} onClick={handleLinkClick} className="flex items-center justify-between w-full text-left">
-                <div className="flex items-center gap-2 min-w-0">
+                <div className="flex items-center gap-2 min-w-0 text-left">
                     <Icon className="shrink-0" />
                     <span className="truncate">{label}</span>
                 </div>

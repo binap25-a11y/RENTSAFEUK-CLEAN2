@@ -8,7 +8,7 @@ import { Card, CardContent, CardHeader, CardTitle, CardDescription } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { PlusCircle, Bed, Bath, Loader2, LayoutGrid, List, Eye, Home, Search, AlertCircle } from 'lucide-react';
-import { useUser, useFirestore, useCollection, useMemoFirebase } from '@/firebase';
+import { useUser, useFirestore, useCollection, useMemoFirebase, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collection, query, where, doc, updateDoc, onSnapshot } from 'firebase/firestore';
 import { toast } from '@/hooks/use-toast';
 import { useMemo, useState, useEffect } from 'react';
@@ -57,14 +57,28 @@ export default function PropertiesPage() {
     if (!user || !firestore || !properties || properties.length === 0) return;
     
     // Subscribe to maintenance counts for each property, including landlordId filter for security compliance
-    const unsubs = properties.map(p => onSnapshot(query(
+    const unsubs = properties.map(p => {
+      const q = query(
         collection(firestore, 'repairs'), 
         where('landlordId', '==', user.uid),
         where('propertyId', '==', p.id), 
         where('status', 'in', ['Open', 'In Progress'])
-    ), (snap) => {
-        setOpenMaintenanceMap(prev => ({ ...prev, [p.id]: snap.size }));
-    }));
+      );
+
+      return onSnapshot(q, 
+        (snap) => {
+          setOpenMaintenanceMap(prev => ({ ...prev, [p.id]: snap.size }));
+        },
+        async (err) => {
+          if (err.code === 'permission-denied') {
+            errorEmitter.emit('permission-error', new FirestorePermissionError({
+              path: 'repairs',
+              operation: 'list'
+            }));
+          }
+        }
+      );
+    });
     
     return () => unsubs.forEach(u => u());
   }, [user, properties, firestore]);
@@ -93,7 +107,7 @@ export default function PropertiesPage() {
   };
   
   return (
-    <div className="flex flex-col gap-8 max-w-6xl mx-auto">
+    <div className="flex flex-col gap-8 max-w-6xl mx-auto text-left">
         <div className="flex justify-between items-center">
             <div className="space-y-1">
                 <h1 className="text-3xl font-bold font-headline text-primary">My Properties</h1>

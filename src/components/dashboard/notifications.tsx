@@ -25,9 +25,10 @@ import {
   MapPin, 
   X,
   History,
-  CheckCircle2
+  CheckCircle2,
+  AlertCircle
 } from 'lucide-react';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { collection, query, where, onSnapshot, limit } from 'firebase/firestore';
 import { format, isBefore, addDays, setDate, startOfMonth, isPast, isFuture } from 'date-fns';
 import { safeToDate } from '@/lib/date-utils';
@@ -95,13 +96,22 @@ export function Notifications() {
     const qMsgs = query(collection(firestore, 'messages'), where('landlordId', '==', user.uid), limit(20));
     const qRepairs = query(collection(firestore, 'repairs'), where('landlordId', '==', user.uid), where('status', '==', 'Open'), limit(20));
 
-    const unsubProps = onSnapshot(qProps, (snap) => setAllProperties(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-    const unsubDocs = onSnapshot(qDocs, (snap) => setAllDocuments(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-    const unsubInsp = onSnapshot(qInsp, (snap) => setAllInspections(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-    const unsubTenants = onSnapshot(qTenants, (snap) => setAllTenants(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-    const unsubRent = onSnapshot(qRent, (snap) => setAllRentPayments(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-    const unsubMsgs = onSnapshot(qMsgs, (snap) => setAllMessages(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
-    const unsubRepairs = onSnapshot(qRepairs, (snap) => setAllRepairs(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+    const handleError = (path: string) => async (err: any) => {
+      if (err.code === 'permission-denied') {
+        errorEmitter.emit('permission-error', new FirestorePermissionError({
+          path,
+          operation: 'list'
+        }));
+      }
+    };
+
+    const unsubProps = onSnapshot(qProps, (snap) => setAllProperties(snap.docs.map(d => ({ id: d.id, ...d.data() }))), handleError('properties'));
+    const unsubDocs = onSnapshot(qDocs, (snap) => setAllDocuments(snap.docs.map(d => ({ id: d.id, ...d.data() }))), handleError('documents'));
+    const unsubInsp = onSnapshot(qInsp, (snap) => setAllInspections(snap.docs.map(d => ({ id: d.id, ...d.data() }))), handleError('inspections'));
+    const unsubTenants = onSnapshot(qTenants, (snap) => setAllTenants(snap.docs.map(d => ({ id: d.id, ...d.data() }))), handleError('tenants'));
+    const unsubRent = onSnapshot(qRent, (snap) => setAllRentPayments(snap.docs.map(d => ({ id: d.id, ...d.data() }))), handleError('rentPayments'));
+    const unsubMsgs = onSnapshot(qMsgs, (snap) => setAllMessages(snap.docs.map(d => ({ id: d.id, ...d.data() }))), handleError('messages'));
+    const unsubRepairs = onSnapshot(qRepairs, (snap) => setAllRepairs(snap.docs.map(d => ({ id: d.id, ...d.data() }))), handleError('repairs'));
 
     setIsLoading(false);
 
@@ -237,7 +247,7 @@ export function Notifications() {
       <DropdownMenuContent className="w-80 md:w-96 text-left p-0 overflow-hidden shadow-2xl border-none rounded-2xl" align="end" forceMount>
         <DropdownMenuLabel className="p-4 bg-muted/30 border-b">
           <div className="flex items-center justify-between">
-            <div className="space-y-0.5">
+            <div className="space-y-0.5 text-left">
                 <p className="text-sm font-bold leading-none">Portfolio Alerts</p>
                 <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">{notificationCount} pending tasks</p>
             </div>
@@ -278,18 +288,18 @@ export function Notifications() {
                         )}>
                             <reminder.icon className="h-4 w-4" />
                         </div>
-                        <div className="flex-1 min-w-0 pr-6">
+                        <div className="flex-1 min-w-0 pr-6 text-left">
                             <div className="flex items-center gap-2 mb-1">
                                 <p className="font-bold text-sm truncate leading-none">{reminder.description}</p>
                                 <Badge variant={reminder.status === 'Expired' || reminder.status === 'Overdue' || reminder.status === 'Emergency' ? 'destructive' : 'secondary'} className="text-[8px] h-4 px-1.5 uppercase font-bold tracking-tighter">
                                     {reminder.status}
                                 </Badge>
                             </div>
-                            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-bold uppercase tracking-tight mb-1 truncate">
+                            <div className="flex items-center gap-1.5 text-[10px] text-muted-foreground font-bold uppercase tracking-tight mb-1 truncate text-left">
                                 <MapPin className="h-3 w-3 shrink-0" />
                                 {reminder.address}
                             </div>
-                            <p className="text-[10px] text-muted-foreground font-medium flex items-center gap-1.5">
+                            <p className="text-[10px] text-muted-foreground font-medium flex items-center gap-1.5 text-left">
                                 <CalendarClock className="h-3 w-3" />
                                 Ref: {format(reminder.dueDate, 'PPP')}
                             </p>

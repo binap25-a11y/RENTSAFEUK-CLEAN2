@@ -4,9 +4,8 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RENTSAFEUK SECURITY GOVERNANCE v20.11
-     * Synchronized with high-performance composite indexes for messaging and audit trails.
-     * Added explicit permissions for Emergency Procedures registry.
+     * RENTSAFEUK SECURITY GOVERNANCE v20.13
+     * Synchronized with high-performance cross-collection lookups for Resident Hub accessibility.
      */
 
     function isSignedIn() {
@@ -66,7 +65,8 @@ service cloud.firestore {
       
       allow update: if isSignedIn() && (
         resource.data.landlordId == request.auth.uid ||
-        resource.data.email.lower() == userEmail()
+        resource.data.email.lower() == userEmail() ||
+        resource.data.userId == request.auth.uid
       );
       
       allow delete: if isSignedIn() && resource.data.landlordId == request.auth.uid;
@@ -75,8 +75,9 @@ service cloud.firestore {
     // --- Communication (Messages) ---
     match /messages/{messageId} {
       allow read, list: if isSignedIn() && (
-        request.auth.uid == resource.data.landlordId || 
-        request.auth.uid == resource.data.get('tenantUid', '') ||
+        resource.data.landlordId == request.auth.uid || 
+        resource.data.get('tenantUid', '') == request.auth.uid ||
+        resource.data.get('senderId', '') == request.auth.uid ||
         resource.data.get('tenantEmail', '').lower() == userEmail()
       );
       
@@ -84,25 +85,27 @@ service cloud.firestore {
         request.resource.data.senderId == request.auth.uid
       );
 
-      // recipients can mark messages as read.
       allow update: if isSignedIn() && (
-        request.auth.uid == resource.data.landlordId || 
-        request.auth.uid == resource.data.get('tenantUid', '') ||
+        resource.data.landlordId == request.auth.uid || 
+        resource.data.get('tenantUid', '') == request.auth.uid ||
         resource.data.get('tenantEmail', '').lower() == userEmail()
       ) && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['read']);
 
-      // Landlords can delete messages from their registry
-      allow delete: if isSignedIn() && request.auth.uid == resource.data.landlordId;
+      allow delete: if isSignedIn() && (resource.data.landlordId == request.auth.uid || resource.data.senderId == request.auth.uid);
     }
 
     // --- Maintenance (Repairs) ---
     match /repairs/{repairId} {
       allow get, list: if isSignedIn() && (
-        resource == null ||
         resource.data.landlordId == request.auth.uid ||
         resource.data.tenantId == request.auth.uid ||
         resource.data.reportedBy == request.auth.uid ||
-        resource.data.get('tenantEmail', '').lower() == userEmail()
+        resource.data.get('tenantEmail', '').lower() == userEmail() ||
+        (resource.data.propertyId != null && exists(/databases/$(database)/documents/properties/$(resource.data.propertyId)) && (
+          request.auth.uid in get(/databases/$(database)/documents/properties/$(resource.data.propertyId)).data.get('activeTenantUids', []) ||
+          userEmail() in get(/databases/$(database)/documents/properties/$(resource.data.propertyId)).data.get('tenantEmails', []) ||
+          get(/databases/$(database)/documents/properties/$(resource.data.propertyId)).data.landlordId == request.auth.uid
+        ))
       );
       
       allow create: if isSignedIn();
@@ -116,9 +119,13 @@ service cloud.firestore {
     // --- Documents ---
     match /documents/{id} {
       allow get, list: if isSignedIn() && (
-        resource == null ||
         resource.data.landlordId == request.auth.uid ||
-        resource.data.propertyId != null
+        (resource.data.get('sharedWithTenant', false) == true && 
+         resource.data.propertyId != null && exists(/databases/$(database)/documents/properties/$(resource.data.propertyId)) && (
+           request.auth.uid in get(/databases/$(database)/documents/properties/$(resource.data.propertyId)).data.get('activeTenantUids', []) ||
+           userEmail() in get(/databases/$(database)/documents/properties/$(resource.data.propertyId)).data.get('tenantEmails', []) ||
+           get(/databases/$(database)/documents/properties/$(resource.data.propertyId)).data.landlordId == request.auth.uid
+         ))
       );
       allow create, update, delete: if isSignedIn() && (resource == null || resource.data.landlordId == request.auth.uid);
     }
@@ -128,8 +135,11 @@ service cloud.firestore {
       allow read: if isSignedIn() && (
         resource == null ||
         resource.data.landlordId == request.auth.uid ||
-        request.auth.uid in get(/databases/$(database)/documents/properties/$(propertyId)).data.get('activeTenantUids', []) ||
-        get(/databases/$(database)/documents/properties/$(propertyId)).data.get('tenantEmail', "").lower() == userEmail()
+        exists(/databases/$(database)/documents/properties/$(propertyId)) && (
+          request.auth.uid in get(/databases/$(database)/documents/properties/$(propertyId)).data.get('activeTenantUids', []) ||
+          get(/databases/$(database)/documents/properties/$(propertyId)).data.get('tenantEmail', "").lower() == userEmail() ||
+          userEmail() in get(/databases/$(database)/documents/properties/$(propertyId)).data.get('tenantEmails', [])
+        )
       );
       allow write: if isSignedIn() && (
         (resource == null && get(/databases/$(database)/documents/properties/$(propertyId)).data.landlordId == request.auth.uid) ||

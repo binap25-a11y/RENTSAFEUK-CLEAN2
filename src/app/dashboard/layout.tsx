@@ -1,3 +1,4 @@
+
 'use client';
 
 import Link from 'next/link';
@@ -14,7 +15,7 @@ import { MainNav } from '@/components/dashboard/main-nav';
 import { UserNav } from '@/components/dashboard/user-nav';
 import { Logo } from '@/components/icons';
 import { Loader2, Search, Share2, RefreshCw } from 'lucide-react';
-import { useUser, useFirestore } from '@/firebase';
+import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
 import { useRouter, usePathname } from 'next/navigation';
 import { useEffect, useState } from 'react';
 import { doc, onSnapshot } from 'firebase/firestore';
@@ -111,11 +112,21 @@ export default function DashboardLayout({
     if (!isMounted || !user || !firestore) return;
 
     const userRef = doc(firestore, 'users', user.uid);
-    const unsub = onSnapshot(userRef, (snap) => {
+    const unsub = onSnapshot(userRef, 
+      (snap) => {
         if (snap.exists()) {
             setUserRole(snap.data().role);
         }
-    });
+      },
+      async (err) => {
+        if (err.code === 'permission-denied') {
+          errorEmitter.emit('permission-error', new FirestorePermissionError({
+            path: userRef.path,
+            operation: 'get'
+          }));
+        }
+      }
+    );
     return () => unsub();
   }, [isMounted, user, firestore]);
 
