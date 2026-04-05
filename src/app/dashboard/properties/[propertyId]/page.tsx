@@ -36,7 +36,7 @@ import {
   Wrench,
   UserMinus
 } from 'lucide-react';
-import { useUser, useFirestore, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
+import { useUser, useAuth, useFirestore, useDoc, useCollection, useMemoFirebase, updateDocumentNonBlocking } from '@/firebase';
 import { doc, updateDoc, collection, query, where, getDocs, limit, addDoc, serverTimestamp } from 'firebase/firestore';
 import { useToast } from '@/hooks/use-toast';
 import { useState, useRef, useEffect, useMemo } from 'react';
@@ -464,7 +464,7 @@ export default function PropertyDetailPage() {
                                                         <div className="flex items-center gap-2 group/msg w-full">
                                                             <div className={cn(
                                                                 "p-3.5 rounded-2xl text-sm font-medium shadow-sm leading-relaxed flex-1",
-                                                                isMe ? "bg-primary text-primary-foreground rounded-tr-none order-1" : "bg-white text-foreground rounded-tl-none border border-muted order-2"
+                                                                isMe ? "bg-primary text-primary-foreground rounded-tr-none order-1" : "bg-white text-black rounded-tl-none border border-muted order-2"
                                                             )}>
                                                                 {msg.content}
                                                             </div>

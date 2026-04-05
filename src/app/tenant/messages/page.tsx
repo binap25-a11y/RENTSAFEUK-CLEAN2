@@ -183,7 +183,7 @@ export default function TenantMessagesPage() {
         console.error("Transmission failure:", error);
         toast({ variant: 'destructive', title: 'Transmission Failed' });
     } finally {
-        setIsSending(false);
+        setIsSendingReply ? setIsSending(false) : setIsSending(false);
     }
   };
 
@@ -314,7 +314,7 @@ export default function TenantMessagesPage() {
                                         <div className={cn("flex flex-col gap-1.5 max-w-[85%] sm:max-w-[70%]", isMe ? "ml-auto items-end" : "mr-auto items-start")}>
                                             <div className={cn(
                                                 "p-4 rounded-2xl text-sm font-medium shadow-md leading-relaxed",
-                                                isMe ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-white text-foreground rounded-tl-none border-2 border-muted"
+                                                isMe ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-white text-black rounded-tl-none border-2 border-muted"
                                             )}>
                                                 {msg.content}
                                             </div>
