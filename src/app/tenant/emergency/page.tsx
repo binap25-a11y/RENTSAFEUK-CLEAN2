@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useEffect, useState } from 'react';
@@ -26,6 +25,7 @@ import { generateEmergencyPDF } from '@/lib/generate-emergency-pdf';
 /**
  * @fileOverview Resident Emergency Information Page
  * Provides critical safety instructions and contact details for the tenant's specific property.
+ * STEP 1 protocols are hardcoded for UK compliance.
  */
 
 export default function TenantEmergencyPage() {
@@ -135,7 +135,7 @@ export default function TenantEmergencyPage() {
           <h1 className="text-3xl font-bold font-headline text-destructive flex items-center gap-3">
             <ShieldAlert className="h-8 w-8" /> Emergency Information
           </h1>
-          <p className="text-muted-foreground font-medium text-lg ml-1 flex items-center gap-2">
+          <p className="text-muted-foreground font-medium text-lg ml-1 flex items-center gap-2 text-left">
             <Home className="h-4 w-4 opacity-40" />
             {propertyAddress}
           </p>
@@ -147,7 +147,7 @@ export default function TenantEmergencyPage() {
       </div>
 
       {/* STEP 1: IMMEDIATE DANGER */}
-      <Card className="border-none shadow-2xl overflow-hidden ring-4 ring-destructive/10">
+      <Card className="border-none shadow-2xl overflow-hidden ring-4 ring-destructive/10 text-left">
         <CardHeader className="bg-destructive text-white pb-6 text-center">
           <CardTitle className="text-2xl font-headline tracking-tight uppercase">STEP 1 – IMMEDIATE DANGER (ACT FIRST)</CardTitle>
           <CardDescription className="text-white/80 font-medium italic">In any situation involving risk to life or serious safety, contact emergency services first.</CardDescription>
@@ -155,17 +155,17 @@ export default function TenantEmergencyPage() {
         <CardContent className="grid gap-4 sm:grid-cols-3 p-6">
             <a href="tel:0800111999" className="flex flex-col items-center justify-center p-6 rounded-[2rem] bg-orange-50 border-2 border-orange-100 hover:scale-[1.02] transition-transform text-center group">
                 <div className="p-4 rounded-full bg-orange-100 text-orange-600 mb-3 group-hover:bg-orange-600 group-hover:text-white transition-colors"><Flame className="h-8 w-8" /></div>
-                <p className="text-sm font-black uppercase text-orange-800 leading-tight">Gas Leak / CO</p>
+                <p className="text-sm font-black uppercase text-orange-800 leading-tight">Gas Leak</p>
                 <p className="text-xs font-bold text-orange-600 mt-1">0800 111 999</p>
             </a>
             <a href="tel:105" className="flex flex-col items-center justify-center p-6 rounded-[2rem] bg-blue-50 border-2 border-blue-100 hover:scale-[1.02] transition-transform text-center group">
                 <div className="p-4 rounded-full bg-blue-100 text-blue-600 mb-3 group-hover:bg-blue-600 group-hover:text-white transition-colors"><Zap className="h-8 w-8" /></div>
-                <p className="text-sm font-black uppercase text-blue-800 leading-tight">Power Cut</p>
+                <p className="text-sm font-black uppercase text-blue-800 leading-tight">Electric Emergency</p>
                 <p className="text-xs font-bold text-blue-600 mt-1">Call 105</p>
             </a>
             <a href="tel:999" className="flex flex-col items-center justify-center p-6 rounded-[2rem] bg-destructive/5 border-2 border-destructive/10 hover:scale-[1.02] transition-transform text-center group">
                 <div className="p-4 rounded-full bg-destructive/10 text-destructive mb-3 group-hover:bg-destructive group-hover:text-white transition-colors"><Ambulance className="h-8 w-8" /></div>
-                <p className="text-sm font-black uppercase text-destructive leading-tight">Emergency</p>
+                <p className="text-sm font-black uppercase text-destructive leading-tight">Emergency Services</p>
                 <p className="text-xs font-bold text-destructive mt-1">Call 999</p>
             </a>
         </CardContent>
@@ -179,7 +179,7 @@ export default function TenantEmergencyPage() {
         <Card className="shadow-lg border-none overflow-hidden text-left">
             <CardHeader className="bg-orange-500 text-white pb-6">
                 <CardTitle className="text-lg font-headline uppercase flex items-center gap-2">
-                    <Phone className="h-5 w-5" /> 2. URGENT EMERGENCIES (24/7)
+                    <Phone className="h-5 w-5" /> 🟠 STEP 2 – URGENT PROPERTY EMERGENCIES (24/7)
                 </CardTitle>
                 <CardDescription className="text-white/80">Issues affecting basic survival or property security.</CardDescription>
             </CardHeader>
@@ -194,7 +194,7 @@ export default function TenantEmergencyPage() {
                 <div className="space-y-2">
                     <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Urgency Examples:</p>
                     <ul className="grid grid-cols-1 gap-2">
-                        {['Burst pipes / Major leaks', 'Total loss of power', 'No heating (winter)', 'Security breach (broken locks)'].map(item => (
+                        {['Burst pipes / major water leaks', 'Total loss of electricity (internal issue)', 'No heating or hot water (especially in winter)', 'Broken doors/windows affecting security.'].map(item => (
                             <li key={item} className="flex items-center gap-2 text-xs font-bold text-foreground">
                                 <ChevronRight className="h-3.5 w-3.5 text-orange-500" /> {item}
                             </li>
@@ -207,9 +207,9 @@ export default function TenantEmergencyPage() {
         <Card className="shadow-lg border-none overflow-hidden text-left">
             <CardHeader className="bg-green-600 text-white pb-6">
                 <CardTitle className="text-lg font-headline uppercase flex items-center gap-2">
-                    <Clock className="h-5 w-5" /> NON-EMERGENCY REPAIRS
+                    <Clock className="h-5 w-5" /> 🟢 NON-EMERGENCY REPAIRS
                 </CardTitle>
-                <CardDescription className="text-white/80">Routine maintenance during business hours.</CardDescription>
+                <CardDescription className="text-white/80">Routine maintenance during working hours.</CardDescription>
             </CardHeader>
             <CardContent className="pt-6 space-y-6">
                 <div className="grid gap-4">
@@ -223,7 +223,7 @@ export default function TenantEmergencyPage() {
                     <div className="p-4 rounded-xl bg-muted/20 flex items-center gap-4 text-left">
                         <div className="p-2.5 rounded-full bg-green-100 text-green-600 shrink-0"><Mail className="h-4 w-4" /></div>
                         <div className="min-w-0">
-                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-0.5">Contact Email</p>
+                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-0.5">Reporting Email</p>
                             <p className="font-bold text-sm truncate">{emergencyData?.nonEmergencyEmail || 'N/A'}</p>
                         </div>
                     </div>
@@ -231,7 +231,7 @@ export default function TenantEmergencyPage() {
                 <div className="space-y-2">
                     <p className="text-[10px] font-black text-muted-foreground uppercase tracking-widest px-1">Routine Items:</p>
                     <ul className="grid grid-cols-1 gap-2">
-                        {['Dripping taps', 'Internal minor repairs', 'General maintenance', 'Cosmetic issues'].map(item => (
+                        {['Dripping taps', 'Minor repairs', 'General maintenance'].map(item => (
                             <li key={item} className="flex items-center gap-2 text-xs font-bold text-foreground">
                                 <ChevronRight className="h-3.5 w-3.5 text-green-600" /> {item}
                             </li>
@@ -245,34 +245,35 @@ export default function TenantEmergencyPage() {
       <div className="grid gap-6 sm:grid-cols-2">
           <Card className="shadow-md border-none overflow-hidden bg-primary/5 text-left">
               <CardHeader className="pb-2">
-                  <CardTitle className="text-xs font-bold uppercase tracking-[0.2em] text-primary">💧 Water Emergency</CardTitle>
+                  <CardTitle className="text-xs font-bold uppercase tracking-[0.2em] text-primary">💧 WATER EMERGENCY</CardTitle>
               </CardHeader>
               <CardContent className="pb-6">
                   <p className="text-xs font-medium leading-relaxed text-muted-foreground">
-                      For external water issues (mains supply), contact your local supplier. Check your latest bill for direct emergency lines.
+                      Contact your local water supplier. Emergency contact details are available on your latest water supply bill.
                   </p>
               </CardContent>
           </Card>
           <Card className="shadow-md border-none overflow-hidden bg-primary/5 text-left">
               <CardHeader className="pb-2">
-                  <CardTitle className="text-xs font-bold uppercase tracking-[0.2em] text-primary">🏛️ Serious Issues</CardTitle>
+                  <CardTitle className="text-xs font-bold uppercase tracking-[0.2em] text-primary">🏛️ LOCAL AUTHORITY (SERIOUS ISSUES)</CardTitle>
               </CardHeader>
               <CardContent className="pb-6">
                   <p className="text-xs font-medium leading-relaxed text-muted-foreground">
-                      {emergencyData?.localAuthorityInfo || 'Contact your local authority for serious health and safety issues that remain unresolved by management.'}
+                      {emergencyData?.localAuthorityInfo || 'If required, contact your local authority for serious property health and safety issues.'}
                   </p>
               </CardContent>
           </Card>
       </div>
 
-      <Card className="border-none shadow-sm bg-muted/10">
+      <Card className="border-none shadow-sm bg-muted/10 text-left">
           <CardContent className="p-6 flex items-start gap-4 text-left">
               <Info className="h-5 w-5 text-muted-foreground shrink-0 mt-0.5" />
-              <div className="space-y-1">
-                  <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Legal Identity Ref</p>
+              <div className="space-y-1 text-left">
+                  <p className="text-[10px] font-bold uppercase text-muted-foreground tracking-widest">Management Record</p>
                   <p className="text-xs font-medium text-muted-foreground">
-                      Landlord: <strong>{emergencyData?.landlordName || 'Verified Management'}</strong> • Registered Correspondence: <strong>{emergencyData?.landlordAddress || 'On Registry'}</strong>
+                      Landlord: <strong>{emergencyData?.landlordName || 'Verified Management'}</strong> • Email: <strong>{emergencyData?.landlordEmail || 'On Registry'}</strong>
                   </p>
+                  <p className="text-[10px] text-muted-foreground mt-1">Correspondence: {emergencyData?.landlordAddress || 'Refer to registry'}</p>
               </div>
           </CardContent>
       </Card>

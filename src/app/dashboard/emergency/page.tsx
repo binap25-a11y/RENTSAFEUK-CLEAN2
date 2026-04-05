@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useMemo, useEffect } from 'react';
@@ -23,7 +22,10 @@ import {
   Search,
   ChevronRight,
   AlertTriangle,
-  Clock
+  Clock,
+  Flame,
+  Zap,
+  Ambulance
 } from 'lucide-react';
 import { toast } from '@/hooks/use-toast';
 import { generateEmergencyPDF } from '@/lib/generate-emergency-pdf';
@@ -93,7 +95,6 @@ export default function LandlordEmergencyConfigPage() {
     });
   }, [properties, searchTerm]);
 
-  // Load existing configuration for selected property
   useEffect(() => {
     if (!selectedPropertyId || !firestore || !user) return;
 
@@ -104,7 +105,6 @@ export default function LandlordEmergencyConfigPage() {
                 if (snap.exists()) {
                     setFormData(snap.data() as EmergencyInfo);
                 } else {
-                    // Pre-fill from landlord profile
                     setFormData({
                         landlordName: user.displayName || '',
                         landlordEmail: user.email || '',
@@ -185,7 +185,6 @@ export default function LandlordEmergencyConfigPage() {
       </div>
 
       <div className="grid gap-8 lg:grid-cols-3">
-        {/* Property Selector Column */}
         <div className="space-y-4">
             <Card className="shadow-md border-none overflow-hidden h-fit text-left">
                 <CardHeader className="bg-muted/30 border-b text-left">
@@ -235,7 +234,6 @@ export default function LandlordEmergencyConfigPage() {
             </Card>
         </div>
 
-        {/* Configuration Form Column */}
         <div className="lg:col-span-2 space-y-6">
             {!selectedPropertyId ? (
                 <div className="h-full min-h-[400px] border-2 border-dashed rounded-[2rem] bg-muted/5 flex flex-col items-center justify-center gap-4 text-center p-8">
@@ -260,7 +258,7 @@ export default function LandlordEmergencyConfigPage() {
                                         Export PDF
                                     </Button>
                                     <Button size="sm" onClick={handleSave} disabled={isSaving} className="font-bold uppercase text-[10px] tracking-widest h-9 px-6 shadow-lg">
-                                        {isSaving ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
+                                        {isSaving ? <Loader2 className="mr-2 h-4 w-4 animate-spin mr-1.5" /> : <Save className="h-3.5 w-3.5 mr-1.5" />}
                                         Save Changes
                                     </Button>
                                 </div>
@@ -271,8 +269,66 @@ export default function LandlordEmergencyConfigPage() {
                         </CardHeader>
                         <CardContent className="pt-8 space-y-10">
                             <div className="space-y-6">
+                                <h3 className="text-xs font-bold uppercase tracking-widest text-destructive flex items-center gap-2 border-b pb-2">
+                                    <ShieldAlert className="h-4 w-4" /> STEP 1 – IMMEDIATE DANGER (FIXED)
+                                </h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-3 gap-4">
+                                    <div className="p-4 rounded-xl border bg-destructive/5 text-center">
+                                        <Flame className="h-5 w-5 mx-auto mb-2 text-destructive" />
+                                        <p className="text-[10px] font-bold uppercase text-muted-foreground">Gas Leak</p>
+                                        <p className="text-sm font-bold">0800 111 999</p>
+                                    </div>
+                                    <div className="p-4 rounded-xl border bg-destructive/5 text-center">
+                                        <Zap className="h-5 w-5 mx-auto mb-2 text-destructive" />
+                                        <p className="text-[10px] font-bold uppercase text-muted-foreground">Electric</p>
+                                        <p className="text-sm font-bold">Call 105</p>
+                                    </div>
+                                    <div className="p-4 rounded-xl border bg-destructive/5 text-center">
+                                        <Ambulance className="h-5 w-5 mx-auto mb-2 text-destructive" />
+                                        <p className="text-[10px] font-bold uppercase text-muted-foreground">Emergency</p>
+                                        <p className="text-sm font-bold">Call 999</p>
+                                    </div>
+                                </div>
+                                <div className="bg-destructive/10 p-3 rounded-lg text-[10px] font-bold text-destructive uppercase text-center border border-destructive/20">
+                                    Protocol: Do NOT contact landlord first in these situations.
+                                </div>
+                            </div>
+
+                            <div className="space-y-6">
+                                <h3 className="text-xs font-bold uppercase tracking-widest text-orange-600 flex items-center gap-2 border-b pb-2">
+                                    <Phone className="h-4 w-4" /> STEP 2 – URGENT EMERGENCIES (24/7)
+                                </h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                    <div className="space-y-2 text-left">
+                                        <Label className="text-[10px] font-bold uppercase">Emergency Repair Contact</Label>
+                                        <Input placeholder="e.g. Acme Maintenance" value={formData.emergencyRepairContact} onChange={e => setFormData({...formData, emergencyRepairContact: e.target.value})} className="h-11" />
+                                    </div>
+                                    <div className="space-y-2 text-left">
+                                        <Label className="text-[10px] font-bold uppercase">Emergency Phone</Label>
+                                        <Input placeholder="07XXX XXXXXX" value={formData.emergencyRepairPhone} onChange={e => setFormData({...formData, emergencyRepairPhone: e.target.value})} className="h-11" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-6">
+                                <h3 className="text-xs font-bold uppercase tracking-widest text-green-600 flex items-center gap-2 border-b pb-2">
+                                    <Clock className="h-4 w-4" /> 3. NON-EMERGENCY REPAIRS
+                                </h3>
+                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
+                                    <div className="space-y-2 text-left">
+                                        <Label className="text-[10px] font-bold uppercase">Office Phone</Label>
+                                        <Input value={formData.nonEmergencyPhone} onChange={e => setFormData({...formData, nonEmergencyPhone: e.target.value})} className="h-11" />
+                                    </div>
+                                    <div className="space-y-2 text-left">
+                                        <Label className="text-[10px] font-bold uppercase">Reporting Email</Label>
+                                        <Input value={formData.nonEmergencyEmail} onChange={e => setFormData({...formData, nonEmergencyEmail: e.target.value})} className="h-11" />
+                                    </div>
+                                </div>
+                            </div>
+
+                            <div className="space-y-6 border-t pt-8">
                                 <h3 className="text-xs font-bold uppercase tracking-widest text-primary flex items-center gap-2 border-b pb-2">
-                                    <MapPin className="h-4 w-4" /> 1. Management Identity
+                                    <Building2 className="h-4 w-4" /> 4. MANAGEMENT IDENTITY
                                 </h3>
                                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
                                     <div className="space-y-2 text-left">
@@ -290,44 +346,12 @@ export default function LandlordEmergencyConfigPage() {
                                 </div>
                             </div>
 
-                            <div className="space-y-6">
-                                <h3 className="text-xs font-bold uppercase tracking-widest text-orange-600 flex items-center gap-2 border-b pb-2">
-                                    <Phone className="h-4 w-4" /> 2. Urgent Repair Contacts (24/7)
-                                </h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                    <div className="space-y-2 text-left">
-                                        <Label className="text-[10px] font-bold uppercase">Service Provider Name</Label>
-                                        <Input placeholder="e.g. Acme Maintenance" value={formData.emergencyRepairContact} onChange={e => setFormData({...formData, emergencyRepairContact: e.target.value})} className="h-11" />
-                                    </div>
-                                    <div className="space-y-2 text-left">
-                                        <Label className="text-[10px] font-bold uppercase">Emergency Phone</Label>
-                                        <Input placeholder="07XXX XXXXXX" value={formData.emergencyRepairPhone} onChange={e => setFormData({...formData, emergencyRepairPhone: e.target.value})} className="h-11" />
-                                    </div>
-                                </div>
-                            </div>
-
-                            <div className="space-y-6">
-                                <h3 className="text-xs font-bold uppercase tracking-widest text-green-600 flex items-center gap-2 border-b pb-2">
-                                    <Clock className="h-4 w-4" /> 3. Non-Emergency (Working Hours)
-                                </h3>
-                                <div className="grid grid-cols-1 sm:grid-cols-2 gap-6">
-                                    <div className="space-y-2 text-left">
-                                        <Label className="text-[10px] font-bold uppercase">Office Phone</Label>
-                                        <Input value={formData.nonEmergencyPhone} onChange={e => setFormData({...formData, nonEmergencyPhone: e.target.value})} className="h-11" />
-                                    </div>
-                                    <div className="space-y-2 text-left">
-                                        <Label className="text-[10px] font-bold uppercase">Reporting Email</Label>
-                                        <Input value={formData.nonEmergencyEmail} onChange={e => setFormData({...formData, nonEmergencyEmail: e.target.value})} className="h-11" />
-                                    </div>
-                                </div>
-                            </div>
-
                             <div className="space-y-6 text-left">
                                 <h3 className="text-xs font-bold uppercase tracking-widest text-muted-foreground flex items-center gap-2 border-b pb-2">
-                                    <AlertTriangle className="h-4 w-4" /> 4. Serious Property Issues
+                                    <AlertTriangle className="h-4 w-4" /> 5. LOCAL AUTHORITY (SERIOUS ISSUES)
                                 </h3>
                                 <div className="space-y-2 text-left">
-                                    <Label className="text-[10px] font-bold uppercase">Local Authority Contact Info</Label>
+                                    <Label className="text-[10px] font-bold uppercase">Council / Authority Contact Info</Label>
                                     <Textarea 
                                         rows={3} 
                                         placeholder="Specific council contact details for health & safety issues..." 
@@ -339,9 +363,9 @@ export default function LandlordEmergencyConfigPage() {
                             </div>
                         </CardContent>
                         <CardFooter className="bg-muted/10 border-t p-6 flex flex-col items-center justify-center text-center">
-                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-4">Live Preview State</p>
-                            <div className="bg-destructive/10 text-destructive p-4 rounded-xl border-2 border-destructive/20 text-xs font-bold w-full max-w-sm">
-                                🔴 Step 1 Actions are pre-configured by UK Law
+                            <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest mb-4">Registry Integrity</p>
+                            <div className="bg-primary/10 text-primary p-4 rounded-xl border-2 border-primary/20 text-xs font-bold w-full max-w-sm">
+                                🔒 Safety protocols are synchronized with the Resident Hub
                             </div>
                         </CardFooter>
                     </Card>
