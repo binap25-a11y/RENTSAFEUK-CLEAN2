@@ -18,7 +18,6 @@ import {
   Send,
   ExternalLink,
   Loader2,
-  Search,
   Users
 } from 'lucide-react';
 import { generateLawUpdatePDF } from '@/lib/generate-law-update-pdf';
@@ -106,16 +105,6 @@ export default function NewsPage() {
               <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">News & Law Updates</h1>
               <p className="text-muted-foreground font-medium text-sm">Stay informed on legislative changes affecting the UK private rented sector.</p>
             </div>
-          </div>
-          <div className="flex items-center gap-2">
-            <Button variant="outline" size="sm" onClick={handleDownloadPDF} disabled={isExporting} className="font-bold uppercase text-[9px] tracking-widest h-9 px-4 gap-2 bg-background shadow-sm border-primary/20">
-              {isExporting ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5 text-primary" />}
-              Download PDF
-            </Button>
-            <Button size="sm" onClick={() => setIsShareOpen(true)} className="font-bold uppercase text-[9px] tracking-widest h-9 px-4 gap-2 shadow-md">
-              <Send className="h-3.5 w-3.5" />
-              Share with Tenant
-            </Button>
           </div>
         </div>
       </div>
@@ -301,11 +290,32 @@ export default function NewsPage() {
             </div>
           </div>
 
-          <div className="w-full border-t border-primary/10 pt-6">
-            <h4 className="text-sm font-bold uppercase tracking-[0.2em] text-muted-foreground mb-2">Why This Matters</h4>
-            <p className="text-sm italic font-medium text-muted-foreground leading-relaxed">
-              "This legislation represents the largest reform to the private rental sector in over 30 years and will significantly change how landlords manage tenancies. Professional digital records and audit trails like those in RentSafeUK will become essential for legal compliance."
-            </p>
+          <div className="w-full space-y-6">
+            <div className="flex flex-col sm:flex-row items-center gap-4 pt-6 border-t border-primary/10">
+              <Button 
+                variant="outline" 
+                onClick={handleDownloadPDF} 
+                disabled={isExporting} 
+                className="w-full sm:w-auto font-bold uppercase text-[10px] tracking-widest h-12 px-6 gap-2 bg-background shadow-md border-primary/20"
+              >
+                {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4 text-primary" />}
+                The Renters’ Rights Act Information Sheet 2026
+              </Button>
+              <Button 
+                onClick={() => setIsShareOpen(true)} 
+                className="w-full sm:w-auto font-bold uppercase text-[10px] tracking-widest h-12 px-8 gap-2 shadow-lg"
+              >
+                <Send className="h-4 w-4" />
+                Share with Tenant
+              </Button>
+            </div>
+
+            <div className="w-full border-t border-primary/10 pt-6">
+              <h4 className="text-sm font-bold uppercase tracking-[0.2em] text-muted-foreground mb-2">Why This Matters</h4>
+              <p className="text-sm italic font-medium text-muted-foreground leading-relaxed">
+                "This legislation represents the largest reform to the private rental sector in over 30 years and will significantly change how landlords manage tenancies. Professional digital records and audit trails like those in RentSafeUK will become essential for legal compliance."
+              </p>
+            </div>
           </div>
         </CardFooter>
       </Card>
