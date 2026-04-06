@@ -54,6 +54,7 @@ interface Property {
 /**
  * @fileOverview Global Compliance Timeline Widget
  * Visualizes legal certificate expirations across a 12-month rolling window.
+ * Enhanced for high legibility and professional audit standards.
  */
 
 export function ComplianceTimeline() {
@@ -184,15 +185,15 @@ export function ComplianceTimeline() {
                                     key={doc.id}
                                     href={`/dashboard/documents/${doc.id}/edit?propertyId=${doc.propertyId}`}
                                     className={cn(
-                                        "block p-2 rounded-xl border text-[10px] font-bold transition-all hover:scale-[1.03] shadow-sm",
-                                        isPastDue ? "bg-destructive/5 border-destructive/20 text-destructive" : "bg-white border-muted-foreground/10 text-foreground hover:border-primary/30"
+                                        "block p-3 rounded-xl border text-xs transition-all hover:scale-[1.03] shadow-sm",
+                                        isPastDue ? "bg-destructive/5 border-destructive/20 text-destructive font-bold" : "bg-white border-muted-foreground/10 text-foreground font-semibold hover:border-primary/30"
                                     )}
                                 >
                                     <div className="flex items-center justify-between gap-1 mb-1">
-                                        <span className="truncate max-w-[100px]">{doc.documentType}</span>
-                                        {isPastDue && <AlertTriangle className="h-3 w-3 shrink-0" />}
+                                        <span className="truncate max-w-[110px] leading-tight">{doc.documentType}</span>
+                                        {isPastDue && <AlertTriangle className="h-3.5 w-3.5 shrink-0" />}
                                     </div>
-                                    <p className="opacity-60 truncate font-medium text-[9px] uppercase tracking-tighter">
+                                    <p className="text-muted-foreground truncate font-medium text-[10px] uppercase tracking-tight mt-1 opacity-90">
                                         {propertyMap[doc.propertyId] || 'Assigned Asset'}
                                     </p>
                                 </Link>
