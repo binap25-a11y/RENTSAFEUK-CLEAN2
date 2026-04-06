@@ -38,6 +38,7 @@ import { notifyTenantOfLawUpdate } from '@/app/actions/notifications';
  * @fileOverview News and Law Updates Page
  * Provides professional briefings on UK rental legislation changes.
  * Initial Content: Renters’ Rights Act 2026.
+ * Supports PDF generation and email sharing with attachments.
  */
 
 export default function NewsPage() {
@@ -66,7 +67,8 @@ export default function NewsPage() {
   const handleDownloadPDF = async () => {
     setIsExporting(true);
     try {
-      await generateLawUpdatePDF(updateTitle, updateBody);
+      const doc = await generateLawUpdatePDF(updateTitle, updateBody);
+      doc.save(`Renters-Rights-Act-2026.pdf`);
       toast({ title: 'Briefing Downloaded' });
     } catch (err) {
       toast({ variant: 'destructive', title: 'Export Failed' });
@@ -82,12 +84,25 @@ export default function NewsPage() {
 
     setIsSending(true);
     try {
-      await notifyTenantOfLawUpdate(tenant.email, updateTitle, updateBody);
-      toast({ title: 'Update Shared', description: `Briefing sent to ${tenant.name}.` });
+      // 1. Generate the PDF instance
+      const doc = await generateLawUpdatePDF(updateTitle, updateBody);
+      
+      // 2. Extract base64 content for server action
+      // Note: We remove the data:application/pdf;base64, prefix for Resend
+      const pdfBase64 = doc.output('datauristring').split(',')[1];
+
+      // 3. Dispatch notification with attachment
+      await notifyTenantOfLawUpdate(tenant.email, updateTitle, updateBody, pdfBase64);
+      
+      toast({ 
+        title: 'Update Shared', 
+        description: `Information sheet sent as attachment to ${tenant.name}.` 
+      });
       setIsShareOpen(false);
       setSelectedTenantId(null);
     } catch (err) {
-      toast({ variant: 'destructive', title: 'Send Failed' });
+      console.error("Sharing failed:", err);
+      toast({ variant: 'destructive', title: 'Send Failed', description: 'Could not generate or attach the briefing PDF.' });
     } finally {
       setIsSending(false);
     }
@@ -329,7 +344,7 @@ export default function NewsPage() {
               Share Law Update
             </DialogTitle>
             <DialogDescription>
-              Select an active resident to notify them of this legislative briefing via email.
+              Select an active resident to notify them of this legislative briefing via email. The information sheet will be sent as a PDF attachment.
             </DialogDescription>
           </DialogHeader>
           <div className="py-6 space-y-4">

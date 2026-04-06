@@ -5,7 +5,7 @@ import { Resend } from 'resend';
 /**
  * @fileOverview Server-side notification actions.
  * Dispatches email notifications using the Resend service.
- * Automatically switches between console logging and live delivery based on API key presence.
+ * Supports attachments for legal briefings and information sheets.
  */
 
 // Helper to resolve the Resend client at runtime
@@ -31,12 +31,11 @@ export async function notifyLandlordOfMessage(
   if (resend) {
     try {
       await resend.emails.send({
-        from: 'RentSafeUK <onboarding@resend.dev>', // Note: Replace with verified domain in production
+        from: 'RentSafeUK <onboarding@resend.dev>',
         to: landlordEmail,
         subject: `New Message: ${propertyAddress}`,
         text: `Resident Alert: ${tenantName} has sent a new message regarding the property at ${propertyAddress}.\n\nMessage Content:\n"${messageContent}"\n\nLog in to the RentSafeUK executive dashboard to reply.`
       });
-      console.log(`[Resend Success] Message notification dispatched to ${landlordEmail}`);
       return { success: true, provider: 'resend' };
     } catch (error: any) {
       console.error(`[Resend Failure] ${error.message}`);
@@ -44,11 +43,6 @@ export async function notifyLandlordOfMessage(
     }
   }
 
-  // Fallback: Simulation mode if API key is missing
-  console.log('--- LANDLORD EMAIL SIMULATION (RESEND_API_KEY MISSING) ---');
-  console.log(`To: ${landlordEmail}`);
-  console.log(`Sender: ${tenantName}`);
-  console.log(`Body: ${messageContent}`);
   return { success: true, provider: 'console' };
 }
 
@@ -59,10 +53,6 @@ export async function notifyTenantOfMessage(
   propertyAddress: string
 ) {
   const resend = getResendClient();
-  const timestamp = new Date().toISOString();
-
-  console.log(`[Registry Notification] Initiating message alert for tenant ${tenantEmail} at ${timestamp}`);
-
   if (resend) {
     try {
       await resend.emails.send({
@@ -71,19 +61,11 @@ export async function notifyTenantOfMessage(
         subject: `New Message from Landlord: ${propertyAddress}`,
         text: `Management Alert: ${landlordName} has sent you a new message regarding ${propertyAddress}.\n\nMessage Content:\n"${messageContent}"\n\nLog in to your RentSafeUK Resident Hub to reply.`
       });
-      console.log(`[Resend Success] Message notification dispatched to tenant ${tenantEmail}`);
       return { success: true, provider: 'resend' };
     } catch (error: any) {
-      console.error(`[Resend Failure] ${error.message}`);
       return { success: false, error: error.message };
     }
   }
-
-  // Fallback: Simulation mode
-  console.log('--- TENANT EMAIL SIMULATION (RESEND_API_KEY MISSING) ---');
-  console.log(`To: ${tenantEmail}`);
-  console.log(`From: ${landlordName}`);
-  console.log(`Body: ${messageContent}`);
   return { success: true, provider: 'console' };
 }
 
@@ -95,10 +77,6 @@ export async function notifyLandlordOfMaintenance(
   propertyAddress: string
 ) {
   const resend = getResendClient();
-  const timestamp = new Date().toISOString();
-
-  console.log(`[Registry Notification] Initiating repair alert for ${landlordEmail} at ${timestamp}`);
-
   if (resend) {
     try {
       await resend.emails.send({
@@ -107,25 +85,19 @@ export async function notifyLandlordOfMaintenance(
         subject: `Repair Request: ${propertyAddress}`,
         text: `Maintenance Alert: ${tenantName} has reported a new ${maintenanceCategory} issue regarding ${propertyAddress}.\n\nIssue: ${maintenanceTitle}\n\nReview the details and assign a contractor via your RentSafeUK dashboard.`
       });
-      console.log(`[Resend Success] Maintenance notification dispatched to ${landlordEmail}`);
       return { success: true, provider: 'resend' };
     } catch (error: any) {
-      console.error(`[Resend Failure] ${error.message}`);
       return { success: false, error: error.message };
     }
   }
-
-  // Fallback: Simulation mode
-  console.log('--- MAINTENANCE SIMULATION (RESEND_API_KEY MISSING) ---');
-  console.log(`To: ${landlordEmail}`);
-  console.log(`Issue: ${maintenanceTitle} (${maintenanceCategory})`);
   return { success: true, provider: 'console' };
 }
 
 export async function notifyTenantOfLawUpdate(
   tenantEmail: string,
   updateTitle: string,
-  updateBrief: string
+  updateBrief: string,
+  attachmentBase64?: string
 ) {
   const resend = getResendClient();
   const timestamp = new Date().toISOString();
@@ -138,7 +110,13 @@ export async function notifyTenantOfLawUpdate(
         from: 'RentSafeUK <onboarding@resend.dev>',
         to: tenantEmail,
         subject: `Legal Update for Residents: ${updateTitle}`,
-        text: `Important Management Briefing:\n\n${updateBrief}\n\nPlease check your RentSafeUK Resident Hub for full details on how this may affect your tenancy.`
+        text: `Important Management Briefing:\n\n${updateBrief}\n\nPlease find the attached professional information sheet for full details on how this may affect your tenancy.`,
+        attachments: attachmentBase64 ? [
+          {
+            filename: 'Renters-Rights-Act-Information-Sheet.pdf',
+            content: attachmentBase64,
+          }
+        ] : []
       });
       return { success: true, provider: 'resend' };
     } catch (error: any) {
@@ -149,7 +127,6 @@ export async function notifyTenantOfLawUpdate(
 
   console.log('--- LAW UPDATE EMAIL SIMULATION (RESEND_API_KEY MISSING) ---');
   console.log(`To: ${tenantEmail}`);
-  console.log(`Subject: ${updateTitle}`);
-  console.log(`Brief: ${updateBrief}`);
+  console.log(`Attachment Included: ${!!attachmentBase64}`);
   return { success: true, provider: 'console' };
 }

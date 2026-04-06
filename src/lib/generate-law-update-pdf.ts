@@ -6,6 +6,7 @@ import { format } from 'date-fns';
 /**
  * @fileOverview Legal Briefing PDF Engine
  * Generates a professional summary of legislative updates for landlords and tenants.
+ * Returns the jsPDF instance to allow both saving and base64 extraction.
  */
 
 export const generateLawUpdatePDF = async (title: string, content: string) => {
@@ -46,7 +47,5 @@ export const generateLawUpdatePDF = async (title: string, content: string) => {
     { align: 'center' }
   );
 
-  const safeTitle = title.replace(/[^\w\s-]/g, '').replace(/\s+/g, '-');
-  doc.save(`Legal-Update-${safeTitle}.pdf`);
   return doc;
 };
