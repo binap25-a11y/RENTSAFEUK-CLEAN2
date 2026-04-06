@@ -27,7 +27,7 @@ const getResendClient = () => {
   return null;
 };
 
-// SENDER IDENTITY: Updated to user's verified address
+// SENDER IDENTITY: Verified address provided by user
 const SENDER_EMAIL = 'binap25@googlemail.com';
 
 export async function notifyLandlordOfMessage(
@@ -43,8 +43,8 @@ export async function notifyLandlordOfMessage(
       const { data, error } = await resend.emails.send({
         from: SENDER_EMAIL,
         to: landlordEmail.trim().toLowerCase(),
-        subject: `New Message: ${propertyAddress}`,
-        text: `Resident Alert: ${tenantName} has sent a new message regarding the property at ${propertyAddress}.\n\nMessage Content:\n"${messageContent}"\n\nLog in to the RentSafeUK executive dashboard to reply.`
+        subject: `Resident Alert: ${propertyAddress}`,
+        text: `Message Notification: ${tenantName} has sent a new message regarding ${propertyAddress}.\n\nMessage Content:\n"${messageContent}"\n\nLog in to the RentSafeUK dashboard to respond.`
       });
       
       if (!error) return { success: true, provider: 'resend', id: data?.id };
@@ -76,8 +76,8 @@ export async function notifyTenantOfMessage(
       const { data, error } = await resend.emails.send({
         from: SENDER_EMAIL,
         to: tenantEmail.trim().toLowerCase(),
-        subject: `New Message from Landlord: ${propertyAddress}`,
-        text: `Management Alert: ${landlordName} has sent you a new message regarding ${propertyAddress}.\n\nMessage Content:\n"${messageContent}"\n\nLog in to your RentSafeUK Resident Hub to reply.`
+        subject: `Management Alert: ${propertyAddress}`,
+        text: `Communication Notification: ${landlordName} has sent you a new message regarding ${propertyAddress}.\n\nMessage Content:\n"${messageContent}"\n\nLog in to your Resident Hub to view and reply.`
       });
       if (!error) return { success: true, provider: 'resend', id: data?.id };
       
@@ -107,8 +107,8 @@ export async function notifyLandlordOfMaintenance(
       const { data, error } = await resend.emails.send({
         from: SENDER_EMAIL,
         to: landlordEmail.trim().toLowerCase(),
-        subject: `Repair Request: ${propertyAddress}`,
-        text: `Maintenance Alert: ${tenantName} has reported a new ${maintenanceCategory} issue regarding ${propertyAddress}.\n\nIssue: ${maintenanceTitle}\n\nReview the details and assign a contractor via your RentSafeUK dashboard.`
+        subject: `Maintenance Request: ${propertyAddress}`,
+        text: `Repair Alert: ${tenantName} has reported a new ${maintenanceCategory} issue regarding ${propertyAddress}.\n\nIssue: ${maintenanceTitle}\n\nReview the details in your RentSafeUK maintenance history.`
       });
       if (!error) return { success: true, provider: 'resend', id: data?.id };
       
@@ -132,15 +132,14 @@ export async function notifyTenantOfLawUpdate(
   attachmentBase64?: string
 ) {
   const resend = getResendClient();
-  const timestamp = new Date().toISOString();
 
   if (resend) {
     try {
       const { data, error } = await resend.emails.send({
         from: SENDER_EMAIL,
         to: tenantEmail.trim().toLowerCase(),
-        subject: `Legal Update for Residents: ${updateTitle}`,
-        text: `Important Management Briefing:\n\n${updateBrief}\n\nPlease find the attached professional information sheet for full details on how this may affect your tenancy.`,
+        subject: `Legal Briefing: ${updateTitle}`,
+        text: `Important Legislative Update:\n\n${updateBrief}\n\nPlease find the attached information sheet for detailed guidance on how these changes affect your tenancy.`,
         attachments: attachmentBase64 ? [
           {
             filename: 'Renters-Rights-Act-Information-Sheet.pdf',
@@ -163,6 +162,5 @@ export async function notifyTenantOfLawUpdate(
   console.log(`From: ${SENDER_EMAIL}`);
   console.log(`Title: ${updateTitle}`);
   console.log(`Attachment Provided: ${!!attachmentBase64}`);
-  console.log(`Timestamp: ${timestamp}`);
   return { success: true, provider: 'console' };
 }
