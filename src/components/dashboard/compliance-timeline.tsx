@@ -54,7 +54,7 @@ interface Property {
 /**
  * @fileOverview Global Compliance Timeline Widget
  * Visualizes legal certificate expirations across a 12-month rolling window.
- * Enhanced for maximum visibility and professional legibility.
+ * Enhanced for maximum visibility with high-contrast black text.
  */
 
 export function ComplianceTimeline() {
@@ -188,27 +188,35 @@ export function ComplianceTimeline() {
                                     href={`/dashboard/documents/${doc.id}/edit?propertyId=${doc.propertyId}`}
                                     className={cn(
                                         "block p-4 rounded-xl border-2 transition-all hover:scale-[1.03] shadow-md",
-                                        isPastDue ? "bg-destructive/5 border-destructive/20 text-destructive font-bold" : "bg-white border-muted-foreground/10 text-foreground font-semibold hover:border-primary/40"
+                                        isPastDue ? "bg-destructive/10 border-destructive/40" : "bg-white border-muted-foreground/10 hover:border-primary/40"
                                     )}
                                 >
                                     <div className="flex items-start justify-between gap-3 mb-2">
-                                        <span className="text-sm font-bold leading-tight break-words flex-1">
+                                        <span className={cn(
+                                            "text-sm font-bold leading-tight break-words flex-1",
+                                            isPastDue ? "text-destructive" : "text-foreground"
+                                        )}>
                                             {doc.documentType}
                                         </span>
                                         {isPastDue ? (
                                             <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-destructive" />
                                         ) : (
-                                            <Clock className="h-3.5 w-3.5 shrink-0 mt-0.5 text-muted-foreground opacity-40" />
+                                            <Clock className="h-3.5 w-3.5 shrink-0 mt-0.5 text-primary" />
                                         )}
                                     </div>
                                     <p className={cn(
-                                        "text-xs font-bold uppercase tracking-tight leading-relaxed",
-                                        isPastDue ? "text-destructive/80" : "text-muted-foreground"
+                                        "text-xs font-bold uppercase tracking-tight leading-relaxed flex items-start gap-1.5",
+                                        isPastDue ? "text-destructive" : "text-foreground"
                                     )}>
-                                        <MapPin className="h-3 w-3 inline-block mr-1 mb-0.5 opacity-50" />
-                                        {propertyMap[doc.propertyId] || 'Assigned Asset'}
+                                        <MapPin className={cn("h-3 w-3 shrink-0 mt-0.5", isPastDue ? "text-destructive" : "text-primary")} />
+                                        <span className="flex-1 break-words">
+                                            {propertyMap[doc.propertyId] || 'Assigned Asset'}
+                                        </span>
                                     </p>
-                                    <p className="text-[10px] mt-2 font-bold opacity-40 uppercase tracking-widest">
+                                    <p className={cn(
+                                        "text-[10px] mt-2 font-black uppercase tracking-widest",
+                                        isPastDue ? "text-destructive" : "text-foreground"
+                                    )}>
                                         Exp: {format(safeToDate(doc.expiryDate)!, 'dd/MM/yy')}
                                     </p>
                                 </Link>
