@@ -89,7 +89,6 @@ export default function NewsPage() {
       const doc = await generateLawUpdatePDF(updateTitle, updateBody);
       
       // 2. Extract base64 content for server action
-      // Note: We remove the data:application/pdf;base64, prefix for Resend
       const pdfBase64 = doc.output('datauristring').split(',')[1];
 
       // 3. Dispatch notification with attachment
@@ -97,9 +96,9 @@ export default function NewsPage() {
       
       if (result.success) {
         toast({ 
-          title: 'Update Shared', 
+          title: result.provider === 'console' ? 'Simulation Successful' : 'Update Shared', 
           description: result.provider === 'console' 
-            ? `Simulation: Email logged to console (No API Key).` 
+            ? `Simulation: Briefing PDF logged to terminal (No valid API Key detected).` 
             : `Information sheet sent as attachment to ${tenant.name}.` 
         });
         setIsShareOpen(false);
@@ -108,7 +107,7 @@ export default function NewsPage() {
         toast({ 
           variant: 'destructive', 
           title: 'Send Failed', 
-          description: result.error || 'The email service encountered an error.' 
+          description: `${result.error}. Please ensure RESEND_API_KEY is correctly set in your environment.` 
         });
       }
     } catch (err) {
