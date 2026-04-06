@@ -54,7 +54,7 @@ interface Property {
 /**
  * @fileOverview Global Compliance Timeline Widget
  * Visualizes legal certificate expirations across a 12-month rolling window.
- * Enhanced for maximum visibility with high-contrast black text.
+ * Enhanced for maximum visibility with high-contrast black text and brand consistency.
  */
 
 export function ComplianceTimeline() {
@@ -140,16 +140,16 @@ export function ComplianceTimeline() {
     <Card className="border-none shadow-lg overflow-hidden text-left bg-card">
       <CardHeader className="bg-primary/5 border-b flex flex-col sm:flex-row sm:items-center justify-between gap-4 py-6 px-6">
         <div className="text-left space-y-1">
-          <CardTitle className="text-lg font-headline flex items-center gap-2">
+          <CardTitle className="text-lg font-headline flex items-center gap-2 text-foreground">
             <CalendarDays className="h-5 w-5 text-primary" />
             Compliance Roadmap
           </CardTitle>
-          <CardDescription className="text-xs font-medium">12-month rolling visual audit trail</CardDescription>
+          <CardDescription className="text-xs font-bold text-muted-foreground uppercase tracking-widest">12-month rolling visual audit trail</CardDescription>
         </div>
         {criticalCount > 0 && (
-            <Badge variant="destructive" className="animate-pulse gap-1.5 font-bold uppercase text-[9px] h-7 px-3 shadow-lg">
-                <FileWarning className="h-3.5 w-3.5" />
-                {criticalCount} Critical Fixes Required
+            <Badge variant="destructive" className="animate-pulse gap-1.5 font-bold uppercase text-[10px] h-8 px-4 shadow-lg">
+                <FileWarning className="h-4 w-4" />
+                {criticalCount} Overdue Certificates
             </Badge>
         )}
       </CardHeader>
@@ -160,24 +160,25 @@ export function ComplianceTimeline() {
               const isCurrent = idx === 0;
               return (
                 <div key={idx} className={cn(
-                    "flex-1 min-w-[280px] rounded-2xl border-2 transition-all group",
-                    isCurrent ? "bg-primary/[0.03] border-primary/20 ring-1 ring-primary/10" : "bg-muted/5 border-muted/50"
+                    "flex-1 min-w-[300px] rounded-[2rem] border-2 transition-all group",
+                    isCurrent ? "bg-primary/[0.03] border-primary/30 ring-4 ring-primary/5 shadow-inner" : "bg-muted/5 border-muted/50"
                 )}>
                   <div className={cn(
-                      "p-4 border-b-2 flex flex-col text-left",
+                      "p-5 border-b-2 flex flex-col text-left",
                       isCurrent ? "bg-primary/10 border-primary/10" : "bg-muted/30 border-muted/20"
                   )}>
-                    <span className={cn("text-xs font-black uppercase tracking-[0.2em]", isCurrent ? "text-primary" : "text-muted-foreground/60")}>
+                    <span className={cn("text-[10px] font-black uppercase tracking-[0.3em]", isCurrent ? "text-primary" : "text-muted-foreground")}>
                         {month.year}
                     </span>
-                    <span className={cn("text-base font-black uppercase tracking-tight", isCurrent ? "text-primary" : "text-muted-foreground")}>
+                    <span className={cn("text-lg font-black uppercase tracking-tight", isCurrent ? "text-primary" : "text-foreground")}>
                         {month.label}
                     </span>
                   </div>
-                  <div className="p-4 space-y-4 min-h-[240px]">
+                  <div className="p-5 space-y-4 min-h-[280px]">
                     {month.expirations.length === 0 ? (
-                        <div className="h-full flex items-center justify-center py-16 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <ShieldCheck className="h-12 w-12" />
+                        <div className="h-full flex flex-col items-center justify-center py-20 opacity-10 group-hover:opacity-30 transition-opacity">
+                            <ShieldCheck className="h-12 w-12 text-primary" />
+                            <p className="text-[10px] font-black uppercase tracking-widest mt-2">All Clear</p>
                         </div>
                     ) : (
                         month.expirations.map(doc => {
@@ -187,38 +188,43 @@ export function ComplianceTimeline() {
                                     key={doc.id}
                                     href={`/dashboard/documents/${doc.id}/edit?propertyId=${doc.propertyId}`}
                                     className={cn(
-                                        "block p-4 rounded-xl border-2 transition-all hover:scale-[1.03] shadow-md",
-                                        isPastDue ? "bg-destructive/10 border-destructive/40" : "bg-white border-muted-foreground/10 hover:border-primary/40"
+                                        "block p-5 rounded-2xl border-2 transition-all hover:scale-[1.03] shadow-lg",
+                                        isPastDue ? "bg-destructive/5 border-destructive/40" : "bg-background border-muted-foreground/10 hover:border-primary/40"
                                     )}
                                 >
-                                    <div className="flex items-start justify-between gap-3 mb-2">
+                                    <div className="flex items-start justify-between gap-3 mb-3">
                                         <span className={cn(
-                                            "text-sm font-bold leading-tight break-words flex-1",
+                                            "text-sm font-black leading-tight break-words flex-1 uppercase tracking-tight",
                                             isPastDue ? "text-destructive" : "text-foreground"
                                         )}>
                                             {doc.documentType}
                                         </span>
                                         {isPastDue ? (
-                                            <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5 text-destructive" />
+                                            <AlertTriangle className="h-5 w-5 shrink-0 text-destructive" />
                                         ) : (
-                                            <Clock className="h-3.5 w-3.5 shrink-0 mt-0.5 text-primary" />
+                                            <Clock className="h-5 w-5 shrink-0 text-primary" />
                                         )}
                                     </div>
-                                    <p className={cn(
-                                        "text-xs font-bold uppercase tracking-tight leading-relaxed flex items-start gap-1.5",
-                                        isPastDue ? "text-destructive" : "text-foreground"
-                                    )}>
-                                        <MapPin className={cn("h-3 w-3 shrink-0 mt-0.5", isPastDue ? "text-destructive" : "text-primary")} />
-                                        <span className="flex-1 break-words">
-                                            {propertyMap[doc.propertyId] || 'Assigned Asset'}
-                                        </span>
-                                    </p>
-                                    <p className={cn(
-                                        "text-[10px] mt-2 font-black uppercase tracking-widest",
-                                        isPastDue ? "text-destructive" : "text-foreground"
-                                    )}>
-                                        Exp: {format(safeToDate(doc.expiryDate)!, 'dd/MM/yy')}
-                                    </p>
+                                    <div className="space-y-3">
+                                        <p className={cn(
+                                            "text-[11px] font-bold leading-snug flex items-start gap-2",
+                                            isPastDue ? "text-destructive" : "text-foreground"
+                                        )}>
+                                            <MapPin className={cn("h-3.5 w-3.5 shrink-0 mt-0.5", isPastDue ? "text-destructive" : "text-primary")} />
+                                            <span className="flex-1 break-words">
+                                                {propertyMap[doc.propertyId] || 'Assigned Asset'}
+                                            </span>
+                                        </p>
+                                        <div className="flex items-center justify-between pt-2 border-t border-muted/50">
+                                            <span className="text-[10px] font-black uppercase tracking-widest text-muted-foreground">Expiry</span>
+                                            <span className={cn(
+                                                "text-xs font-black tabular-nums",
+                                                isPastDue ? "text-destructive" : "text-foreground"
+                                            )}>
+                                                {format(safeToDate(doc.expiryDate)!, 'dd/MM/yyyy')}
+                                            </span>
+                                        </div>
+                                    </div>
                                 </Link>
                             );
                         })
