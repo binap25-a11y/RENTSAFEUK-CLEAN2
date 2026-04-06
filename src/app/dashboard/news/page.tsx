@@ -1,3 +1,4 @@
+
 'use client';
 
 import { useState } from 'react';
@@ -92,17 +93,27 @@ export default function NewsPage() {
       const pdfBase64 = doc.output('datauristring').split(',')[1];
 
       // 3. Dispatch notification with attachment
-      await notifyTenantOfLawUpdate(tenant.email, updateTitle, updateBody, pdfBase64);
+      const result = await notifyTenantOfLawUpdate(tenant.email.trim().toLowerCase(), updateTitle, updateBody, pdfBase64);
       
-      toast({ 
-        title: 'Update Shared', 
-        description: `Information sheet sent as attachment to ${tenant.name}.` 
-      });
-      setIsShareOpen(false);
-      setSelectedTenantId(null);
+      if (result.success) {
+        toast({ 
+          title: 'Update Shared', 
+          description: result.provider === 'console' 
+            ? `Simulation: Email logged to console (No API Key).` 
+            : `Information sheet sent as attachment to ${tenant.name}.` 
+        });
+        setIsShareOpen(false);
+        setSelectedTenantId(null);
+      } else {
+        toast({ 
+          variant: 'destructive', 
+          title: 'Send Failed', 
+          description: result.error || 'The email service encountered an error.' 
+        });
+      }
     } catch (err) {
       console.error("Sharing failed:", err);
-      toast({ variant: 'destructive', title: 'Send Failed', description: 'Could not generate or attach the briefing PDF.' });
+      toast({ variant: 'destructive', title: 'Process Failed', description: 'Could not generate or attach the briefing PDF.' });
     } finally {
       setIsSending(false);
     }
@@ -380,7 +391,7 @@ export default function NewsPage() {
               disabled={!selectedTenantId || isSending} 
               className="px-8 shadow-lg font-bold uppercase tracking-widest text-[10px]"
             >
-              {isSending ? <Loader2 className="h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
+              {isSending ? <Loader2 className="mr-2 h-4 w-4 animate-spin mr-2" /> : <Send className="h-4 w-4 mr-2" />}
               Send Briefing
             </Button>
           </DialogFooter>

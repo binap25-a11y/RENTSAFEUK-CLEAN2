@@ -1,3 +1,4 @@
+
 'use server';
 
 import { Resend } from 'resend';
@@ -11,7 +12,7 @@ import { Resend } from 'resend';
 // Helper to resolve the Resend client at runtime
 const getResendClient = () => {
   const apiKey = process.env.RESEND_API_KEY;
-  if (!apiKey || apiKey.includes('re_')) {
+  if (apiKey && apiKey.startsWith('re_')) {
     return new Resend(apiKey);
   }
   return null;
@@ -30,15 +31,19 @@ export async function notifyLandlordOfMessage(
 
   if (resend) {
     try {
-      await resend.emails.send({
+      const { data, error } = await resend.emails.send({
         from: 'RentSafeUK <onboarding@resend.dev>',
         to: landlordEmail,
         subject: `New Message: ${propertyAddress}`,
         text: `Resident Alert: ${tenantName} has sent a new message regarding the property at ${propertyAddress}.\n\nMessage Content:\n"${messageContent}"\n\nLog in to the RentSafeUK executive dashboard to reply.`
       });
-      return { success: true, provider: 'resend' };
+      if (error) {
+        console.error(`[Resend API Error] ${error.message}`);
+        return { success: false, error: error.message };
+      }
+      return { success: true, provider: 'resend', id: data?.id };
     } catch (error: any) {
-      console.error(`[Resend Failure] ${error.message}`);
+      console.error(`[Resend Exception] ${error.message}`);
       return { success: false, error: error.message };
     }
   }
@@ -55,13 +60,14 @@ export async function notifyTenantOfMessage(
   const resend = getResendClient();
   if (resend) {
     try {
-      await resend.emails.send({
+      const { data, error } = await resend.emails.send({
         from: 'RentSafeUK <onboarding@resend.dev>',
         to: tenantEmail,
         subject: `New Message from Landlord: ${propertyAddress}`,
         text: `Management Alert: ${landlordName} has sent you a new message regarding ${propertyAddress}.\n\nMessage Content:\n"${messageContent}"\n\nLog in to your RentSafeUK Resident Hub to reply.`
       });
-      return { success: true, provider: 'resend' };
+      if (error) return { success: false, error: error.message };
+      return { success: true, provider: 'resend', id: data?.id };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
@@ -79,13 +85,14 @@ export async function notifyLandlordOfMaintenance(
   const resend = getResendClient();
   if (resend) {
     try {
-      await resend.emails.send({
+      const { data, error } = await resend.emails.send({
         from: 'RentSafeUK <onboarding@resend.dev>',
-        to: landlordEmail,
+        to: tenantEmail,
         subject: `Repair Request: ${propertyAddress}`,
         text: `Maintenance Alert: ${tenantName} has reported a new ${maintenanceCategory} issue regarding ${propertyAddress}.\n\nIssue: ${maintenanceTitle}\n\nReview the details and assign a contractor via your RentSafeUK dashboard.`
       });
-      return { success: true, provider: 'resend' };
+      if (error) return { success: false, error: error.message };
+      return { success: true, provider: 'resend', id: data?.id };
     } catch (error: any) {
       return { success: false, error: error.message };
     }
@@ -106,7 +113,7 @@ export async function notifyTenantOfLawUpdate(
 
   if (resend) {
     try {
-      await resend.emails.send({
+      const { data, error } = await resend.emails.send({
         from: 'RentSafeUK <onboarding@resend.dev>',
         to: tenantEmail,
         subject: `Legal Update for Residents: ${updateTitle}`,
@@ -118,14 +125,19 @@ export async function notifyTenantOfLawUpdate(
           }
         ] : []
       });
-      return { success: true, provider: 'resend' };
+      if (error) {
+        console.error(`[Resend API Error] ${error.message}`);
+        return { success: false, error: error.message };
+      }
+      console.log(`[Resend Success] Law update sent to ${tenantEmail}`, data);
+      return { success: true, provider: 'resend', id: data?.id };
     } catch (error: any) {
-      console.error(`[Resend Failure] ${error.message}`);
+      console.error(`[Resend Exception] ${error.message}`);
       return { success: false, error: error.message };
     }
   }
 
-  console.log('--- LAW UPDATE EMAIL SIMULATION (RESEND_API_KEY MISSING) ---');
+  console.log('--- LAW UPDATE EMAIL SIMULATION (RESEND_API_KEY MISSING OR INVALID) ---');
   console.log(`To: ${tenantEmail}`);
   console.log(`Attachment Included: ${!!attachmentBase64}`);
   return { success: true, provider: 'console' };
