@@ -15,7 +15,8 @@ const getResendClient = () => {
   const apiKey = process.env.RESEND_API_KEY;
   
   // Handshake verification: Ensure key exists and follows Resend format
-  if (apiKey && apiKey.startsWith('re_') && apiKey.length > 20) {
+  // Live key provided: re_BUNPTmDk_C6FXqn7mcv6zFpuEcJrdjxXe
+  if (apiKey && apiKey.startsWith('re_')) {
     try {
       return new Resend(apiKey);
     } catch (e) {
@@ -27,7 +28,7 @@ const getResendClient = () => {
 };
 
 // SENDER IDENTITY: Updated to user's verified address
-const SENDER_EMAIL = 'RentSafeUK <binap25@googlemail.com>';
+const SENDER_EMAIL = 'binap25@googlemail.com';
 
 export async function notifyLandlordOfMessage(
   landlordEmail: string, 
