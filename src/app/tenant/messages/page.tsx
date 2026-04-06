@@ -257,7 +257,7 @@ export default function TenantMessagesPage() {
   const propertyAddressTitle = propertyData ? [propertyData.address?.nameOrNumber, propertyData.address?.street].filter(Boolean).join(', ') : 'Assigned Property';
 
   return (
-    <div className="h-[calc(100vh-10rem)] flex flex-col gap-4 text-left max-w-7xl mx-auto animate-in fade-in duration-500">
+    <div className="h-[calc(100vh-140px)] flex flex-col gap-4 text-left max-w-7xl mx-auto animate-in fade-in duration-500">
       <div className="flex flex-col gap-1 text-left shrink-0 px-1">
           <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Resident Communication</h1>
           <div className="flex items-center justify-between">
