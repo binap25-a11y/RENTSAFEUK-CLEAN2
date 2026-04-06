@@ -30,6 +30,9 @@ const getResendClient = () => {
   return null;
 };
 
+// SENDER IDENTITY
+const SENDER_EMAIL = 'RentSafeUK <binap25@googlemail.com>';
+
 export async function notifyLandlordOfMessage(
   landlordEmail: string, 
   tenantName: string, 
@@ -41,8 +44,8 @@ export async function notifyLandlordOfMessage(
   if (resend) {
     try {
       const { data, error } = await resend.emails.send({
-        from: 'RentSafeUK <onboarding@resend.dev>',
-        to: landlordEmail,
+        from: SENDER_EMAIL,
+        to: landlordEmail.trim().toLowerCase(),
         subject: `New Message: ${propertyAddress}`,
         text: `Resident Alert: ${tenantName} has sent a new message regarding the property at ${propertyAddress}.\n\nMessage Content:\n"${messageContent}"\n\nLog in to the RentSafeUK executive dashboard to reply.`
       });
@@ -59,6 +62,7 @@ export async function notifyLandlordOfMessage(
   console.log('--- EMAIL SIMULATION ---');
   console.log(`Type: Landlord Message Alert`);
   console.log(`To: ${landlordEmail}`);
+  console.log(`From: ${SENDER_EMAIL}`);
   console.log(`Content: ${messageContent}`);
   return { success: true, provider: 'console' };
 }
@@ -73,8 +77,8 @@ export async function notifyTenantOfMessage(
   if (resend) {
     try {
       const { data, error } = await resend.emails.send({
-        from: 'RentSafeUK <onboarding@resend.dev>',
-        to: tenantEmail,
+        from: SENDER_EMAIL,
+        to: tenantEmail.trim().toLowerCase(),
         subject: `New Message from Landlord: ${propertyAddress}`,
         text: `Management Alert: ${landlordName} has sent you a new message regarding ${propertyAddress}.\n\nMessage Content:\n"${messageContent}"\n\nLog in to your RentSafeUK Resident Hub to reply.`
       });
@@ -89,6 +93,7 @@ export async function notifyTenantOfMessage(
   console.log('--- EMAIL SIMULATION ---');
   console.log(`Type: Tenant Message Alert`);
   console.log(`To: ${tenantEmail}`);
+  console.log(`From: ${SENDER_EMAIL}`);
   return { success: true, provider: 'console' };
 }
 
@@ -103,8 +108,8 @@ export async function notifyLandlordOfMaintenance(
   if (resend) {
     try {
       const { data, error } = await resend.emails.send({
-        from: 'RentSafeUK <onboarding@resend.dev>',
-        to: landlordEmail,
+        from: SENDER_EMAIL,
+        to: landlordEmail.trim().toLowerCase(),
         subject: `Repair Request: ${propertyAddress}`,
         text: `Maintenance Alert: ${tenantName} has reported a new ${maintenanceCategory} issue regarding ${propertyAddress}.\n\nIssue: ${maintenanceTitle}\n\nReview the details and assign a contractor via your RentSafeUK dashboard.`
       });
@@ -119,6 +124,7 @@ export async function notifyLandlordOfMaintenance(
   console.log('--- EMAIL SIMULATION ---');
   console.log(`Type: Maintenance Alert`);
   console.log(`To: ${landlordEmail}`);
+  console.log(`From: ${SENDER_EMAIL}`);
   return { success: true, provider: 'console' };
 }
 
@@ -134,8 +140,8 @@ export async function notifyTenantOfLawUpdate(
   if (resend) {
     try {
       const { data, error } = await resend.emails.send({
-        from: 'RentSafeUK <onboarding@resend.dev>',
-        to: tenantEmail,
+        from: SENDER_EMAIL,
+        to: tenantEmail.trim().toLowerCase(),
         subject: `Legal Update for Residents: ${updateTitle}`,
         text: `Important Management Briefing:\n\n${updateBrief}\n\nPlease find the attached professional information sheet for full details on how this may affect your tenancy.`,
         attachments: attachmentBase64 ? [
@@ -157,6 +163,7 @@ export async function notifyTenantOfLawUpdate(
   // DEFINITIVE FALLBACK: Log to terminal for developer verification
   console.log('--- LAW UPDATE EMAIL SIMULATION ---');
   console.log(`Recipient: ${tenantEmail}`);
+  console.log(`From: ${SENDER_EMAIL}`);
   console.log(`Title: ${updateTitle}`);
   console.log(`Attachment Provided: ${!!attachmentBase64}`);
   console.log(`Timestamp: ${timestamp}`);
