@@ -1,4 +1,3 @@
-
 'use client';
 
 import { useState, useEffect, useMemo } from 'react';
@@ -28,6 +27,7 @@ import {
 import Link from 'next/link';
 import { format, isBefore, addDays, getYear } from 'date-fns';
 import { PortfolioAnalytics } from '@/components/dashboard/portfolio-analytics';
+import { ComplianceTimeline } from '@/components/dashboard/compliance-timeline';
 import { safeToDate } from '@/lib/date-utils';
 import { cn } from '@/lib/utils';
 
@@ -248,6 +248,9 @@ export default function DashboardPage() {
           </Card>
         </Link>
       </div>
+
+      {/* COMPLIANCE ROADMAP - Visual Timeline */}
+      <ComplianceTimeline />
 
       {/* Portfolio Financial Summary */}
       <Card className="border-none shadow-lg overflow-hidden bg-primary/5 border border-primary/10">
