@@ -1,8 +1,6 @@
-
 'use client';
 
 import { useMemo, useState, useEffect } from 'react';
-import Link from 'next/link';
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -24,26 +22,30 @@ import {
   RefreshCw, 
   MapPin, 
   X,
-  History,
   CheckCircle2,
-  AlertCircle
+  AlertCircle,
+  FileText
 } from 'lucide-react';
 import { useUser, useFirestore, errorEmitter, FirestorePermissionError } from '@/firebase';
-import { collection, query, where, onSnapshot, limit } from 'firebase/firestore';
+import { collection, query, where, onSnapshot, limit, doc, getDoc } from 'firebase/firestore';
 import { format, isBefore, addDays, setDate, startOfMonth, isPast, isFuture } from 'date-fns';
 import { safeToDate } from '@/lib/date-utils';
 import { cn } from '@/lib/utils';
 
 /**
- * @fileOverview Dashboard Notification Bell
- * Aggregates alerts from across the portfolio including compliance, rent, and messages.
- * Includes property address mapping and dismissal logic.
+ * @fileOverview Universal Notification Bell
+ * Aggregates alerts for both Landlords and Tenants.
+ * Landlord: Compliance, Rent, Maintenance Requests, Messages.
+ * Tenant: Repair Updates, Shared Docs, Management Messages, Inspections.
  */
 
 export function Notifications() {
   const { user } = useUser();
   const firestore = useFirestore();
 
+  const [userRole, setUserRole] = useState<'landlord' | 'tenant' | null>(null);
+  const [tenantPropertyId, setTenantPropertyId] = useState<string | null>(null);
+  
   const [allProperties, setAllProperties] = useState<any[]>([]);
   const [allDocuments, setAllDocuments] = useState<any[]>([]);
   const [allInspections, setAllInspections] = useState<any[]>([]);
@@ -54,16 +56,46 @@ export function Notifications() {
   const [isLoading, setIsLoading] = useState(false);
   const [dismissedIds, setDismissedIds] = useState<Set<string>>(new Set());
 
-  // HYDRATION HANDSHAKE: Load dismissed alerts from local session
+  // 1. Role Discovery & Handshake
+  useEffect(() => {
+    if (!user || !firestore) return;
+    
+    const resolveRole = async () => {
+        setIsLoading(true);
+        try {
+            const userRef = doc(firestore, 'users', user.uid);
+            const userSnap = await getDoc(userRef);
+            if (userSnap.exists()) {
+                const role = userSnap.data().role;
+                setUserRole(role);
+
+                // If tenant, find their assigned property
+                if (role === 'tenant') {
+                    const tenantsCol = collection(firestore, 'tenants');
+                    const q = query(tenantsCol, where('email', '==', user.email?.toLowerCase().trim()), limit(1));
+                    const unsub = onSnapshot(q, (snap) => {
+                        if (!snap.empty) {
+                            setTenantPropertyId(snap.docs[0].data().propertyId);
+                        }
+                    });
+                    return () => unsub();
+                }
+            }
+        } catch (e) {
+            console.error("Notification role resolution failed:", e);
+        } finally {
+            setIsLoading(false);
+        }
+    };
+    resolveRole();
+  }, [user, firestore]);
+
+  // 2. Local Persistence Handshake
   useEffect(() => {
     if (typeof window !== 'undefined') {
       const saved = localStorage.getItem('dismissed_notifications');
       if (saved) {
-        try {
-            setDismissedIds(new Set(JSON.parse(saved)));
-        } catch (e) {
-            console.error("Failed to parse dismissed alerts", e);
-        }
+        try { setDismissedIds(new Set(JSON.parse(saved))); } catch (e) {}
       }
     }
   }, []);
@@ -82,49 +114,46 @@ export function Notifications() {
     localStorage.setItem('dismissed_notifications', JSON.stringify(Array.from(newDismissed)));
   };
 
+  // 3. Real-time Registry Sync
   useEffect(() => {
-    if (!user || !firestore) return;
+    if (!user || !firestore || !userRole) return;
 
-    setIsLoading(true);
-    
-    // Root Collection discovery queries
-    const qProps = query(collection(firestore, 'properties'), where('landlordId', '==', user.uid), limit(100));
-    const qDocs = query(collection(firestore, 'documents'), where('landlordId', '==', user.uid), limit(50));
-    const qInsp = query(collection(firestore, 'inspections'), where('landlordId', '==', user.uid), limit(50));
-    const qTenants = query(collection(firestore, 'tenants'), where('landlordId', '==', user.uid), where('status', '==', 'Active'));
-    const qRent = query(collection(firestore, 'rentPayments'), where('landlordId', '==', user.uid), limit(50));
-    const qMsgs = query(collection(firestore, 'messages'), where('landlordId', '==', user.uid), limit(20));
-    const qRepairs = query(collection(firestore, 'repairs'), where('landlordId', '==', user.uid), where('status', '==', 'Open'), limit(20));
-
+    const listeners: (() => void)[] = [];
     const handleError = (path: string) => async (err: any) => {
       if (err.code === 'permission-denied') {
-        errorEmitter.emit('permission-error', new FirestorePermissionError({
-          path,
-          operation: 'list'
-        }));
+        errorEmitter.emit('permission-error', new FirestorePermissionError({ path, operation: 'list' }));
       }
     };
 
-    const unsubProps = onSnapshot(qProps, (snap) => setAllProperties(snap.docs.map(d => ({ id: d.id, ...d.data() }))), handleError('properties'));
-    const unsubDocs = onSnapshot(qDocs, (snap) => setAllDocuments(snap.docs.map(d => ({ id: d.id, ...d.data() }))), handleError('documents'));
-    const unsubInsp = onSnapshot(qInsp, (snap) => setAllInspections(snap.docs.map(d => ({ id: d.id, ...d.data() }))), handleError('inspections'));
-    const unsubTenants = onSnapshot(qTenants, (snap) => setAllTenants(snap.docs.map(d => ({ id: d.id, ...d.data() }))), handleError('tenants'));
-    const unsubRent = onSnapshot(qRent, (snap) => setAllRentPayments(snap.docs.map(d => ({ id: d.id, ...d.data() }))), handleError('rentPayments'));
-    const unsubMsgs = onSnapshot(qMsgs, (snap) => setAllMessages(snap.docs.map(d => ({ id: d.id, ...d.data() }))), handleError('messages'));
-    const unsubRepairs = onSnapshot(qRepairs, (snap) => setAllRepairs(snap.docs.map(d => ({ id: d.id, ...d.data() }))), handleError('repairs'));
+    if (userRole === 'landlord') {
+        const qProps = query(collection(firestore, 'properties'), where('landlordId', '==', user.uid), limit(100));
+        const qDocs = query(collection(firestore, 'documents'), where('landlordId', '==', user.uid), limit(50));
+        const qInsp = query(collection(firestore, 'inspections'), where('landlordId', '==', user.uid), limit(50));
+        const qTenants = query(collection(firestore, 'tenants'), where('landlordId', '==', user.uid), where('status', '==', 'Active'));
+        const qMsgs = query(collection(firestore, 'messages'), where('landlordId', '==', user.uid), limit(20));
+        const qRepairs = query(collection(firestore, 'repairs'), where('landlordId', '==', user.uid), where('status', '==', 'Open'), limit(20));
 
-    setIsLoading(false);
+        listeners.push(onSnapshot(qProps, (s) => setAllProperties(s.docs.map(d => ({ id: d.id, ...d.data() }))), handleError('properties')));
+        listeners.push(onSnapshot(qDocs, (s) => setAllDocuments(s.docs.map(d => ({ id: d.id, ...d.data() }))), handleError('documents')));
+        listeners.push(onSnapshot(qInsp, (s) => setAllInspections(s.docs.map(d => ({ id: d.id, ...d.data() }))), handleError('inspections')));
+        listeners.push(onSnapshot(qTenants, (s) => setAllTenants(s.docs.map(d => ({ id: d.id, ...d.data() }))), handleError('tenants')));
+        listeners.push(onSnapshot(qMsgs, (s) => setAllMessages(s.docs.map(d => ({ id: d.id, ...d.data() }))), handleError('messages')));
+        listeners.push(onSnapshot(qRepairs, (s) => setAllRepairs(s.docs.map(d => ({ id: d.id, ...d.data() }))), handleError('repairs')));
+    } else if (userRole === 'tenant' && tenantPropertyId) {
+        // Tenant Mode: Focus on their property
+        const qDocs = query(collection(firestore, 'documents'), where('propertyId', '==', tenantPropertyId), where('sharedWithTenant', '==', true), limit(20));
+        const qMsgs = query(collection(firestore, 'messages'), where('propertyId', '==', tenantPropertyId), where('tenantUid', '==', user.uid), limit(20));
+        const qRepairs = query(collection(firestore, 'repairs'), where('propertyId', '==', tenantPropertyId), limit(20));
+        const qInsp = query(collection(firestore, 'inspections'), where('propertyId', '==', tenantPropertyId), where('status', '==', 'Scheduled'), limit(10));
 
-    return () => {
-        unsubProps();
-        unsubDocs();
-        unsubInsp();
-        unsubTenants();
-        unsubRent();
-        unsubMsgs();
-        unsubRepairs();
-    };
-  }, [user, firestore]);
+        listeners.push(onSnapshot(qDocs, (s) => setAllDocuments(s.docs.map(d => ({ id: d.id, ...d.data() }))), handleError('documents')));
+        listeners.push(onSnapshot(qMsgs, (s) => setAllMessages(s.docs.map(d => ({ id: d.id, ...d.data() }))), handleError('messages')));
+        listeners.push(onSnapshot(qRepairs, (s) => setAllRepairs(s.docs.map(d => ({ id: d.id, ...d.data() }))), handleError('repairs')));
+        listeners.push(onSnapshot(qInsp, (s) => setAllInspections(s.docs.map(d => ({ id: d.id, ...d.data() }))), handleError('inspections')));
+    }
+
+    return () => listeners.forEach(u => u());
+  }, [user, firestore, userRole, tenantPropertyId]);
 
   const propertyMap = useMemo(() => {
     return allProperties.reduce((acc, p) => {
@@ -135,102 +164,37 @@ export function Notifications() {
 
   const allReminders = useMemo(() => {
     const today = new Date();
-    
-    const documentReminders = allDocuments
-        .map((doc) => {
-          const expiry = safeToDate(doc.expiryDate);
-          if (!expiry) return null;
-          const ninetyDaysFromNow = addDays(today, 90);
-          let status = 'Valid';
-          if (isBefore(expiry, today)) status = 'Expired';
-          else if (isBefore(expiry, ninetyDaysFromNow)) status = 'Expiring Soon';
-          return { ...doc, expiryDate: expiry, status };
-        })
-        .filter((doc): doc is NonNullable<typeof doc> => doc !== null && (doc.status === 'Expired' || doc.status === 'Expiring Soon'))
-        .map((doc) => ({
-          id: `doc-${doc.id}`,
-          description: doc.title,
-          address: propertyMap[doc.propertyId] || 'Assigned Property',
-          dueDate: doc.expiryDate,
-          status: doc.status,
-          icon: FileWarning,
-          href: `/dashboard/documents?propertyId=${doc.propertyId}`
-        }));
+    const reminders: any[] = [];
 
-    const inspectionReminders = allInspections
-        .map((insp) => {
-          const scheduled = safeToDate(insp.scheduledDate);
-          if (!scheduled || insp.status !== 'Scheduled') return null;
-          return { ...insp, scheduledDate: scheduled };
-        })
-        .filter((insp): insp is NonNullable<typeof insp> => insp !== null && isFuture(insp.scheduledDate))
-        .map((insp) => ({
-          id: `insp-${insp.id}`,
-          description: insp.inspectionType || insp.type || 'Inspection',
-          address: propertyMap[insp.propertyId] || 'Assigned Property',
-          dueDate: insp.scheduledDate,
-          status: 'Scheduled',
-          icon: CalendarClock,
-          href: `/dashboard/inspections`
-        }));
+    if (userRole === 'landlord') {
+        // 1. Compliance (Landlord)
+        allDocuments.forEach(doc => {
+            const expiry = safeToDate(doc.expiryDate);
+            if (!expiry) return;
+            const status = isBefore(expiry, today) ? 'Expired' : (isBefore(expiry, addDays(today, 90)) ? 'Expiring Soon' : 'Valid');
+            if (status !== 'Valid') reminders.push({ id: `doc-${doc.id}`, description: doc.title, address: propertyMap[doc.propertyId] || 'Asset', dueDate: expiry, status, icon: FileWarning, href: `/dashboard/documents?propertyId=${doc.propertyId}` });
+        });
+        // 2. Repairs (Landlord)
+        allRepairs.forEach(r => reminders.push({ id: `repair-${r.id}`, description: `New Request: ${r.title}`, address: propertyMap[r.propertyId] || 'Asset', dueDate: safeToDate(r.reportedDate) || today, status: r.priority, icon: Wrench, href: `/dashboard/maintenance/${r.id}?propertyId=${r.propertyId}` }));
+        // 3. Messages (Landlord)
+        allMessages.filter(m => m.senderId !== user?.uid && !m.read).forEach(m => reminders.push({ id: `msg-${m.id}`, description: `From ${m.senderName}`, address: propertyMap[m.propertyId] || 'Asset', dueDate: safeToDate(m.timestamp) || today, status: 'New', icon: MessageSquare, href: `/dashboard/properties/${m.propertyId}?tab=messages` }));
+    } else if (userRole === 'tenant') {
+        // 1. Shared Documents (Tenant)
+        allDocuments.forEach(doc => reminders.push({ id: `doc-${doc.id}`, description: `New Document Shared: ${doc.title}`, address: 'Compliance Vault', dueDate: safeToDate(doc.issueDate) || today, status: 'Shared', icon: FileText, href: '/tenant/documents' }));
+        // 2. Messages (Tenant)
+        allMessages.filter(m => m.senderId !== user?.uid && !m.read).forEach(m => reminders.push({ id: `msg-${m.id}`, description: `New Message from Management`, address: 'Support Channel', dueDate: safeToDate(m.timestamp) || today, status: 'Unread', icon: MessageSquare, href: '/tenant/messages' }));
+        // 3. Inspections (Tenant)
+        allInspections.forEach(i => reminders.push({ id: `insp-${i.id}`, description: `Upcoming ${i.type || 'Visit'}`, address: 'Property Visit', dueDate: safeToDate(i.scheduledDate) || today, status: 'Scheduled', icon: CalendarClock, href: '/tenant/dashboard' }));
+        // 4. Repairs (Tenant Status Change)
+        allRepairs.filter(r => r.status === 'In Progress').forEach(r => reminders.push({ id: `rep-upd-${r.id}`, description: `Repair Status: ${r.status}`, address: r.title, dueDate: today, status: 'Updating', icon: Wrench, href: '/tenant/dashboard' }));
+    }
 
-    const messageAlerts = allMessages
-        .filter(msg => msg.senderId !== user?.uid && msg.read !== true)
-        .map((msg) => ({
-            id: `msg-${msg.id}`,
-            description: `Message from ${msg.senderName}`,
-            address: propertyMap[msg.propertyId] || 'Assigned Property',
-            dueDate: safeToDate(msg.timestamp) || today,
-            status: 'New',
-            icon: MessageSquare,
-            href: `/dashboard/properties/${msg.propertyId}?tab=messages`
-        }));
-
-    const repairAlerts = allRepairs.map((repair) => ({
-        id: `repair-${repair.id}`,
-        description: `New Request: ${repair.title}`,
-        address: propertyMap[repair.propertyId] || 'Assigned Property',
-        dueDate: safeToDate(repair.reportedDate) || today,
-        status: repair.priority,
-        icon: Wrench,
-        href: `/dashboard/maintenance/${repair.id}?propertyId=${repair.propertyId}`
-    }));
-
-    const rentReminders = allTenants
-        .filter(t => t.status === 'Active' && t.rentDueDay)
-        .map((tenant) => {
-            const currentMonthName = format(today, 'MMMM');
-            const currentYear = today.getFullYear();
-            const isPaid = allRentPayments.some(p => p.propertyId === tenant.propertyId && p.month === currentMonthName && p.year === currentYear && p.status === 'Paid');
-            
-            if (isPaid) return null;
-
-            let dueDate = setDate(startOfMonth(today), tenant.rentDueDay!);
-            const daysToDueLimit = addDays(today, 3);
-            if (isFuture(dueDate) && isBefore(daysToDueLimit, dueDate)) return null;
-
-            return {
-                id: `rent-${tenant.id}-${currentMonthName}`,
-                description: `Rent due for ${tenant.name}`,
-                address: propertyMap[tenant.propertyId] || 'Assigned Property',
-                dueDate: dueDate,
-                status: isPast(dueDate) && dueDate.getDate() !== today.getDate() ? 'Overdue' : 'Due Soon',
-                icon: Banknote,
-                href: `/dashboard/expenses`
-            };
-        })
-        .filter((r): r is NonNullable<typeof r> => r !== null);
-
-    return [...documentReminders, ...inspectionReminders, ...rentReminders, ...messageAlerts, ...repairAlerts]
+    return reminders
         .filter(r => !dismissedIds.has(r.id))
         .sort((a, b) => b.dueDate.getTime() - a.dueDate.getTime());
-  }, [allDocuments, allInspections, allTenants, allRentPayments, allMessages, allRepairs, propertyMap, user, dismissedIds]);
+  }, [allDocuments, allInspections, allTenants, allRentPayments, allMessages, allRepairs, propertyMap, user, userRole, dismissedIds]);
 
   const notificationCount = allReminders.length;
-
-  const handleNotificationClick = (href: string) => {
-    window.location.href = href;
-  };
 
   return (
     <DropdownMenu>
@@ -248,12 +212,12 @@ export function Notifications() {
         <DropdownMenuLabel className="p-4 bg-muted/30 border-b">
           <div className="flex items-center justify-between">
             <div className="space-y-0.5 text-left">
-                <p className="text-sm font-bold leading-none">Portfolio Alerts</p>
-                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">{notificationCount} pending tasks</p>
+                <p className="text-sm font-bold leading-none">Activity Feed</p>
+                <p className="text-[10px] text-muted-foreground uppercase font-bold tracking-widest">{notificationCount} pending items</p>
             </div>
             <div className="flex items-center gap-1">
                 <Button variant="ghost" size="sm" className="h-8 text-[10px] font-bold uppercase tracking-widest text-primary hover:bg-primary/10" onClick={clearAllNotifications}>
-                    Dismiss All
+                    Clear All
                 </Button>
                 <Button variant="ghost" size="icon" className="h-8 w-8 text-muted-foreground" onClick={() => window.location.reload()}>
                     <RefreshCw className="h-3.5 w-3.5" />
@@ -268,8 +232,8 @@ export function Notifications() {
                     <CheckCircle2 className="h-10 w-10 text-primary opacity-20" />
                   </div>
                   <div>
-                    <p className="font-bold text-foreground">Registry Clear</p>
-                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">You're all caught up with your portfolio alerts and reminders.</p>
+                    <p className="font-bold text-foreground">All Caught Up</p>
+                    <p className="text-xs text-muted-foreground mt-1 leading-relaxed">No new notifications in your portfolio audit trail.</p>
                   </div>
               </div>
             ) : (
@@ -278,7 +242,7 @@ export function Notifications() {
                     <div 
                         key={reminder.id} 
                         className="relative group transition-all hover:bg-muted/30 flex items-start p-4 gap-4 cursor-pointer"
-                        onClick={() => handleNotificationClick(reminder.href)}
+                        onClick={() => window.location.href = reminder.href}
                     >
                         <div className={cn(
                             "p-2.5 rounded-xl shrink-0 mt-0.5",
@@ -289,9 +253,9 @@ export function Notifications() {
                             <reminder.icon className="h-4 w-4" />
                         </div>
                         <div className="flex-1 min-w-0 pr-6 text-left">
-                            <div className="flex items-center gap-2 mb-1">
-                                <p className="font-bold text-sm truncate leading-none">{reminder.description}</p>
-                                <Badge variant={reminder.status === 'Expired' || reminder.status === 'Overdue' || reminder.status === 'Emergency' ? 'destructive' : 'secondary'} className="text-[8px] h-4 px-1.5 uppercase font-bold tracking-tighter">
+                            <div className="flex items-center gap-2 mb-1 text-left">
+                                <p className="font-bold text-sm truncate leading-none text-left">{reminder.description}</p>
+                                <Badge variant={reminder.status === 'Expired' || reminder.status === 'Overdue' ? 'destructive' : 'secondary'} className="text-[8px] h-4 px-1.5 uppercase font-bold tracking-tighter">
                                     {reminder.status}
                                 </Badge>
                             </div>
@@ -301,7 +265,7 @@ export function Notifications() {
                             </div>
                             <p className="text-[10px] text-muted-foreground font-medium flex items-center gap-1.5 text-left">
                                 <CalendarClock className="h-3 w-3" />
-                                Ref: {format(reminder.dueDate, 'PPP')}
+                                {format(reminder.dueDate, 'd MMM yyyy')}
                             </p>
                         </div>
                         <Button 
@@ -320,12 +284,9 @@ export function Notifications() {
               </div>
             )}
         </div>
-        {notificationCount > 0 && (
-            <DropdownMenuSeparator className="m-0" />
-        )}
         <div className="p-3 bg-muted/5">
             <Button variant="link" className="w-full text-[10px] font-bold uppercase tracking-widest text-primary h-auto p-0" asChild>
-                <Link href="/dashboard/reminders">View Full Task Registry</Link>
+                <Link href={userRole === 'tenant' ? "/tenant/dashboard" : "/dashboard/reminders"}>View Activity History</Link>
             </Button>
         </div>
       </DropdownMenuContent>

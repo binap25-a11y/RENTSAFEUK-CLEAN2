@@ -1,4 +1,3 @@
-
 'use client';
 
 import Link from 'next/link';
@@ -29,11 +28,12 @@ import { signOut } from 'firebase/auth';
 import { useEffect, useState } from 'react';
 import { Logo } from '@/components/icons';
 import { UserNav } from '@/components/dashboard/user-nav';
+import { Notifications } from '@/components/dashboard/notifications';
 
 /**
  * @fileOverview Resident Portal Layout
  * Handles mounting states and secure role verification for verified residents.
- * Re-shaken to resolve ChunkLoadError in development environments.
+ * Includes the universal Notification Hub for real-time resident updates.
  */
 
 export default function TenantLayout({ children }: { children: React.ReactNode }) {
@@ -119,7 +119,10 @@ export default function TenantLayout({ children }: { children: React.ReactNode }
             <SidebarTrigger className="md:hidden" />
             <h2 className="text-sm font-bold uppercase tracking-widest text-muted-foreground hidden sm:block text-left">RentSafeUK Resident Portal</h2>
           </div>
-          <UserNav />
+          <div className="flex items-center gap-2">
+            <Notifications />
+            <UserNav />
+          </div>
         </header>
         <main className="flex-1 overflow-y-auto p-4 sm:p-6 lg:p-8 bg-muted/20">
           <div className="mx-auto max-w-7xl w-full pb-20">
