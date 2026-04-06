@@ -3,6 +3,7 @@
 import { useMemo, useState, useEffect } from 'react';
 import { Card, CardContent, CardHeader, CardTitle, CardDescription, CardFooter } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Button } from '@/components/ui/button';
 import { ScrollArea, ScrollBar } from '@/components/ui/scroll-area';
 import { 
   ShieldCheck, 
@@ -206,7 +207,7 @@ export function ComplianceTimeline() {
           <ScrollBar orientation="horizontal" />
         </ScrollArea>
       </CardContent>
-      <CardFooter className="bg-muted/5 border-t py-4 px-6 justify-between items-center">
+      <CardFooter className="bg-muted/5 border-t py-4 px-6 flex items-center justify-between">
           <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
               <Clock className="h-3.5 w-3.5" />
               Registry updated: {format(new Date(), 'HH:mm')}
