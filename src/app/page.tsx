@@ -6,7 +6,7 @@ import { Logo, GoogleIcon } from '@/components/icons';
 import { useEffect, useState } from 'react';
 import { useRouter } from 'next/navigation';
 import {
-  signInWithRedirect,
+  signInWithPopup,
   GoogleAuthProvider,
 } from 'firebase/auth';
 import { useUser, useAuth, useFirestore, createUserNonBlocking, signInNonBlocking, type UserRole } from '@/firebase';
@@ -142,10 +142,17 @@ export default function LoginPage() {
       setIsProcessing(true);
       setAuthError(null);
       const provider = new GoogleAuthProvider();
-      signInWithRedirect(auth, provider).catch(() => {
+      // Use signInWithPopup instead of signInWithRedirect for better stability
+      // following the Firebase Dynamic Links deprecation.
+      signInWithPopup(auth, provider)
+        .then(() => {
+            // Successful sign-in will trigger the useEffect above
+        })
+        .catch((error) => {
+          console.error("Google Sign-in failed:", error.message);
           setAuthError('Unable to connect with Google.');
           setIsProcessing(false);
-      });
+        });
     }
   };
 
