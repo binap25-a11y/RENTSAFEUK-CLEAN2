@@ -291,19 +291,19 @@ export default function NewsPage() {
           </div>
 
           <div className="w-full space-y-6">
-            <div className="flex flex-col sm:flex-row items-center gap-4 pt-6 border-t border-primary/10">
+            <div className="flex flex-col items-center gap-4 pt-6 border-t border-primary/10">
               <Button 
                 variant="outline" 
                 onClick={handleDownloadPDF} 
                 disabled={isExporting} 
-                className="w-full sm:w-auto font-bold uppercase text-[10px] tracking-widest h-12 px-6 gap-2 bg-background shadow-md border-primary/20"
+                className="w-full font-bold uppercase text-[10px] tracking-widest h-12 px-6 gap-2 bg-background shadow-md border-primary/20"
               >
                 {isExporting ? <Loader2 className="h-4 w-4 animate-spin" /> : <Download className="h-4 w-4 text-primary" />}
                 The Renters’ Rights Act Information Sheet 2026
               </Button>
               <Button 
                 onClick={() => setIsShareOpen(true)} 
-                className="w-full sm:w-auto font-bold uppercase text-[10px] tracking-widest h-12 px-8 gap-2 shadow-lg"
+                className="w-full font-bold uppercase text-[10px] tracking-widest h-12 px-8 gap-2 shadow-lg"
               >
                 <Send className="h-4 w-4" />
                 Share with Tenant
