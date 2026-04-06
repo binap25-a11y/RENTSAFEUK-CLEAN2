@@ -145,7 +145,6 @@ export default function TenantMessagesPage() {
         const tenantName = tenantContext.name || user.displayName || 'Resident';
         const landlordName = 'Management';
         
-        // Map messages to ensure the sender identity column in the PDF uses correct full names
         const pdfMessages = messages.map(m => ({
             ...m,
             senderName: m.senderId === user.uid ? tenantName : landlordName
@@ -216,7 +215,6 @@ export default function TenantMessagesPage() {
   };
 
   const scrollToTop = () => topRef.current?.scrollIntoView({ behavior: 'smooth' });
-  const scrollToBottom = () => scrollRef.current?.scrollIntoView({ behavior: 'smooth' });
 
   const formatDateDivider = (date: Date) => {
     try {
@@ -256,24 +254,17 @@ export default function TenantMessagesPage() {
     );
   }
 
+  const propertyAddressTitle = propertyData ? [propertyData.address?.nameOrNumber, propertyData.address?.street].filter(Boolean).join(', ') : 'Assigned Property';
+
   return (
-    <div className="h-[calc(100vh-12rem)] flex flex-col gap-4 text-left max-w-7xl mx-auto animate-in fade-in duration-500">
-      <div className="flex items-center justify-between shrink-0">
-          <div className="flex flex-col gap-1 text-left">
-              <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Resident Communication</h1>
-              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.3em] flex items-center gap-1.5 px-1">
+    <div className="h-[calc(100vh-10rem)] flex flex-col gap-4 text-left max-w-7xl mx-auto animate-in fade-in duration-500">
+      <div className="flex flex-col gap-1 text-left shrink-0 px-1">
+          <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Resident Communication</h1>
+          <div className="flex items-center justify-between">
+              <p className="text-[10px] text-muted-foreground font-bold uppercase tracking-[0.3em] flex items-center gap-1.5">
                   <ShieldCheck className="h-3.5 w-3.5 text-green-600" />
-                  Audit Trail Verified
+                  Audit Trail Verified • {propertyAddressTitle}
               </p>
-          </div>
-          <div className="flex items-center gap-2">
-              <Button variant="outline" size="sm" onClick={handleDownloadChat} disabled={isExportingChat || messages.length === 0} className="font-bold uppercase tracking-widest text-[9px] h-9 px-4 border-primary/20 bg-background shadow-sm">
-                  {isExportingChat ? <Loader2 className="h-3.5 w-3.5 animate-spin mr-1.5" /> : <Download className="h-3.5 w-3.5 mr-1.5" />}
-                  Download PDF
-              </Button>
-              <Button variant="outline" size="sm" onClick={scrollToTop} className="font-bold uppercase tracking-widest text-[9px] h-9 px-4 border-primary/20 bg-background shadow-sm">
-                  <History className="h-3.5 w-3.5 mr-1.5" /> Full History
-              </Button>
           </div>
       </div>
 
@@ -311,24 +302,21 @@ export default function TenantMessagesPage() {
                             <div className="py-24 text-center px-10 border-2 border-dashed border-destructive/20 rounded-[2rem] bg-destructive/5 mx-4">
                                 <AlertCircle className="h-12 w-12 text-destructive/20 mx-auto mb-4" />
                                 <p className="text-sm font-bold text-destructive">Registry Standby</p>
-                                <p className="text-xs text-muted-foreground mt-1 max-w-[320px] mx-auto font-medium">The chronological communication audit is temporarily establishing high-performance indexes. Please wait 2 minutes.</p>
+                                <p className="text-xs text-muted-foreground mt-1 max-w-[320px] mx-auto font-medium">Establishing high-performance communication indexes. Please wait 2 minutes.</p>
                                 <Button variant="outline" className="mt-6 h-9" onClick={() => window.location.reload()}><RefreshCw className="mr-2 h-3.5 w-3.5" /> Retry Sync</Button>
                             </div>
                         ) : !messages?.length ? (
                             <div className="py-24 text-center px-10 border-2 border-dashed rounded-[2rem] bg-muted/10 mx-4">
                                 <MessageSquare className="h-12 w-12 text-muted-foreground/10 mx-auto mb-4" />
                                 <p className="text-sm font-bold text-foreground">Registry Handshake Established</p>
-                                <p className="text-xs text-muted-foreground mt-1 max-w-[240px] mx-auto font-medium">Your chat history is private and chronologically recorded for professional property management.</p>
+                                <p className="text-xs text-muted-foreground mt-1 max-w-[240px] mx-auto font-medium">Your chat history is private and recorded for professional property management.</p>
                             </div>
                         ) : (
                             messages.map((msg, idx) => {
                                 const isMe = msg.senderId === user?.uid;
                                 const date = safeToDate(msg.timestamp) || new Date();
-                                
                                 const prevMsg = messages[idx - 1];
                                 const showDateDivider = !prevMsg || !isSameDay(date, safeToDate(prevMsg.timestamp) || new Date());
-                                
-                                // Display tenant's actual name for their own messages
                                 const residentName = tenantContext.name || user.displayName || 'Resident';
 
                                 return (
@@ -370,7 +358,7 @@ export default function TenantMessagesPage() {
             </ScrollArea>
         </CardContent>
 
-        <CardFooter className="p-4 border-t bg-background shadow-inner shrink-0">
+        <CardFooter className="p-4 border-t bg-background shadow-inner shrink-0 flex flex-col gap-4">
             <form onSubmit={handleSendMessage} className="flex w-full items-center gap-3">
                 <Input 
                     placeholder="Type a verified message to management..." 
@@ -383,6 +371,27 @@ export default function TenantMessagesPage() {
                     {isSending ? <Loader2 className="h-5 w-5 animate-spin" /> : <Send className="h-5 w-5" />}
                 </Button>
             </form>
+            
+            <div className="flex items-center justify-between gap-3 pt-2 border-t border-dashed w-full">
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={handleDownloadChat} 
+                    disabled={isExportingChat || messages.length === 0} 
+                    className="flex-1 font-bold uppercase tracking-widest text-[9px] h-10 px-4 border-primary/20 bg-background shadow-sm gap-2"
+                >
+                    {isExportingChat ? <Loader2 className="h-3.5 w-3.5 animate-spin" /> : <Download className="h-3.5 w-3.5 text-primary" />}
+                    Download Chat
+                </Button>
+                <Button 
+                    variant="outline" 
+                    size="sm" 
+                    onClick={scrollToTop} 
+                    className="flex-1 font-bold uppercase tracking-widest text-[9px] h-10 px-4 border-primary/20 bg-background shadow-sm gap-2"
+                >
+                    <History className="h-3.5 w-3.5 text-primary" /> View History Top
+                </Button>
+            </div>
         </CardFooter>
       </Card>
     </div>
