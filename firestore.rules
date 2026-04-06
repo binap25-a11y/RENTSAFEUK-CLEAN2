@@ -4,7 +4,7 @@ service cloud.firestore {
   match /databases/{database}/documents {
 
     /**
-     * RENTSAFEUK SECURITY GOVERNANCE v20.13
+     * RENTSAFEUK SECURITY GOVERNANCE v20.14
      * Synchronized with high-performance cross-collection lookups for Resident Hub accessibility.
      */
 
@@ -160,7 +160,19 @@ service cloud.firestore {
 
     // --- General Audits ---
     match /contractors/{id} { allow read, write, list: if isSignedIn() && (resource == null || resource.data.landlordId == request.auth.uid); }
-    match /inspections/{id} { allow read, write, list: if isSignedIn() && (resource == null || resource.data.landlordId == request.auth.uid); }
+    
+    match /inspections/{id} { 
+      allow get, list: if isSignedIn() && (
+        resource.data.landlordId == request.auth.uid ||
+        (resource.data.propertyId != null && exists(/databases/$(database)/documents/properties/$(resource.data.propertyId)) && (
+          request.auth.uid in get(/databases/$(database)/documents/properties/$(resource.data.propertyId)).data.get('activeTenantUids', []) ||
+          userEmail() in get(/databases/$(database)/documents/properties/$(resource.data.propertyId)).data.get('tenantEmails', []) ||
+          get(/databases/$(database)/documents/properties/$(resource.data.propertyId)).data.landlordId == request.auth.uid
+        ))
+      );
+      allow create, update, delete: if isSignedIn() && (resource == null || resource.data.landlordId == request.auth.uid); 
+    }
+
     match /screenings/{id} { allow read, write, list: if isSignedIn() && (resource == null || resource.data.landlordId == request.auth.uid); }
     match /checklists/{id} { allow read, write, list: if isSignedIn() && (resource == null || resource.data.landlordId == request.auth.uid); }
   }
