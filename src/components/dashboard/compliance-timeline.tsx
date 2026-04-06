@@ -155,27 +155,27 @@ export function ComplianceTimeline() {
       </CardHeader>
       <CardContent className="p-0">
         <ScrollArea className="w-full">
-          <div className="flex p-6 gap-4 min-w-[1200px]">
+          <div className="flex p-6 gap-4 min-w-[1400px]">
             {timelineData.map((month, idx) => {
               const isCurrent = idx === 0;
               return (
                 <div key={idx} className={cn(
-                    "flex-1 min-w-[180px] rounded-2xl border-2 transition-all group",
+                    "flex-1 min-w-[240px] rounded-2xl border-2 transition-all group",
                     isCurrent ? "bg-primary/[0.03] border-primary/20 ring-1 ring-primary/10" : "bg-muted/5 border-muted/50"
                 )}>
                   <div className={cn(
-                      "p-3 border-b-2 flex items-center justify-between",
+                      "p-4 border-b-2 flex items-center justify-between",
                       isCurrent ? "bg-primary/10 border-primary/10" : "bg-muted/30 border-muted/20"
                   )}>
-                    <span className={cn("text-xs font-black uppercase tracking-widest", isCurrent ? "text-primary" : "text-muted-foreground")}>
+                    <span className={cn("text-sm font-black uppercase tracking-widest", isCurrent ? "text-primary" : "text-muted-foreground")}>
                         {month.label}
                     </span>
-                    <span className="text-[9px] font-bold opacity-40">{month.year}</span>
+                    <span className="text-[10px] font-bold opacity-40">{month.year}</span>
                   </div>
-                  <div className="p-3 space-y-2 min-h-[180px]">
+                  <div className="p-4 space-y-3 min-h-[220px]">
                     {month.expirations.length === 0 ? (
-                        <div className="h-full flex items-center justify-center py-10 opacity-10 group-hover:opacity-20 transition-opacity">
-                            <ShieldCheck className="h-8 w-8" />
+                        <div className="h-full flex items-center justify-center py-12 opacity-10 group-hover:opacity-20 transition-opacity">
+                            <ShieldCheck className="h-10 w-10" />
                         </div>
                     ) : (
                         month.expirations.map(doc => {
@@ -185,15 +185,18 @@ export function ComplianceTimeline() {
                                     key={doc.id}
                                     href={`/dashboard/documents/${doc.id}/edit?propertyId=${doc.propertyId}`}
                                     className={cn(
-                                        "block p-3 rounded-xl border text-xs transition-all hover:scale-[1.03] shadow-sm",
-                                        isPastDue ? "bg-destructive/5 border-destructive/20 text-destructive font-bold" : "bg-white border-muted-foreground/10 text-foreground font-semibold hover:border-primary/30"
+                                        "block p-4 rounded-xl border transition-all hover:scale-[1.03] shadow-md",
+                                        isPastDue ? "bg-destructive/5 border-destructive/20 text-destructive font-bold" : "bg-white border-muted-foreground/20 text-foreground font-semibold hover:border-primary/40"
                                     )}
                                 >
-                                    <div className="flex items-center justify-between gap-1 mb-1">
-                                        <span className="truncate max-w-[110px] leading-tight">{doc.documentType}</span>
-                                        {isPastDue && <AlertTriangle className="h-3.5 w-3.5 shrink-0" />}
+                                    <div className="flex items-start justify-between gap-2 mb-1.5">
+                                        <span className="text-sm leading-tight break-words">{doc.documentType}</span>
+                                        {isPastDue && <AlertTriangle className="h-4 w-4 shrink-0 mt-0.5" />}
                                     </div>
-                                    <p className="text-muted-foreground truncate font-medium text-[10px] uppercase tracking-tight mt-1 opacity-90">
+                                    <p className={cn(
+                                        "truncate text-[11px] font-bold uppercase tracking-tight opacity-80",
+                                        isPastDue ? "text-destructive" : "text-muted-foreground"
+                                    )}>
                                         {propertyMap[doc.propertyId] || 'Assigned Asset'}
                                     </p>
                                 </Link>
@@ -209,7 +212,7 @@ export function ComplianceTimeline() {
         </ScrollArea>
       </CardContent>
       <CardFooter className="bg-muted/5 border-t py-4 px-6 flex items-center justify-between">
-          <p className="text-[9px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
+          <p className="text-[10px] font-bold text-muted-foreground uppercase tracking-widest flex items-center gap-2">
               <Clock className="h-3.5 w-3.5" />
               Registry updated: {format(new Date(), 'HH:mm')}
           </p>
