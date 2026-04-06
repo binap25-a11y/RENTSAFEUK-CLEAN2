@@ -434,7 +434,7 @@ export default function PropertyDetailPage() {
                     )}
                 </TabsContent>
                 <TabsContent value="messages" className="pt-4">
-                    <Card className="shadow-lg border-none overflow-hidden flex flex-col h-[800px] bg-card">
+                    <Card className="shadow-lg border-none overflow-hidden flex flex-col h-[900px] bg-card">
                         <CardHeader className="bg-muted/10 border-b py-4 px-6 flex flex-row items-center justify-between shrink-0">
                             <div className="flex items-center gap-3">
                                 <div className="h-10 w-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-lg">
@@ -461,12 +461,12 @@ export default function PropertyDetailPage() {
                             <div className="flex items-center gap-2">
                                 <Button variant="outline" size="sm" onClick={handleDownloadChat} disabled={isExportingChat || messages.length === 0} className="h-8 font-bold uppercase tracking-widest text-[9px] gap-1.5 px-3 border-primary/20">
                                     {isExportingChat ? <Loader2 className="h-3 w-3 animate-spin" /> : <Download className="h-3 w-3" />}
-                                    Export Ledger
+                                    Download Chat
                                 </Button>
                                 <Badge variant="outline" className="h-6 text-[8px] uppercase font-bold tracking-widest bg-background border-2 shadow-sm px-3">Live Sync</Badge>
                             </div>
                         </CardHeader>
-                        <CardContent className="flex-1 p-0 overflow-hidden relative bg-muted/5">
+                        <CardContent className="flex-1 p-0 overflow-hidden relative bg-muted/5 min-h-[600px]">
                             <ScrollArea className="h-full">
                                 <div className="p-6 space-y-6">
                                     <div ref={topRef} className="h-1" />
@@ -495,7 +495,7 @@ export default function PropertyDetailPage() {
                                                             <div className="h-px flex-1 bg-border" />
                                                         </div>
                                                     )}
-                                                    <div className={cn("flex flex-col gap-1.5 max-w-[85%] sm:max-w-[75%]", isMe ? "ml-auto items-end" : "mr-auto items-start")}>
+                                                    <div className={cn("flex flex-col gap-1.5 max-w-[85%] sm:max-w-[80%]", isMe ? "ml-auto items-end" : "mr-auto items-start")}>
                                                         <div className="flex items-center gap-2 group/msg w-full">
                                                             <div className={cn(
                                                                 "p-3.5 rounded-2xl text-sm font-medium shadow-sm leading-relaxed flex-1",

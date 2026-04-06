@@ -257,7 +257,7 @@ export default function TenantMessagesPage() {
   const propertyAddressTitle = propertyData ? [propertyData.address?.nameOrNumber, propertyData.address?.street].filter(Boolean).join(', ') : 'Assigned Property';
 
   return (
-    <div className="h-[calc(100vh-140px)] flex flex-col gap-4 text-left max-w-7xl mx-auto animate-in fade-in duration-500">
+    <div className="min-h-[850px] flex flex-col gap-4 text-left max-w-7xl mx-auto animate-in fade-in duration-500">
       <div className="flex flex-col gap-1 text-left shrink-0 px-1">
           <h1 className="text-3xl font-bold font-headline text-primary tracking-tight">Resident Communication</h1>
           <div className="flex items-center justify-between">
@@ -268,7 +268,7 @@ export default function TenantMessagesPage() {
           </div>
       </div>
 
-      <Card className="flex-1 overflow-hidden shadow-2xl border-none flex flex-col bg-card">
+      <Card className="flex-1 min-h-[750px] overflow-hidden shadow-2xl border-none flex flex-col bg-card">
         <CardHeader className="border-b bg-muted/10 py-4 px-6 flex flex-row items-center justify-between shrink-0">
             <div className="flex items-center gap-3">
                 <div className="h-10 w-10 rounded-xl bg-primary text-primary-foreground flex items-center justify-center shadow-lg">
@@ -291,7 +291,7 @@ export default function TenantMessagesPage() {
             )}
         </CardHeader>
         
-        <CardContent className="flex-1 p-0 overflow-hidden relative bg-muted/5">
+        <CardContent className="flex-1 p-0 overflow-hidden relative bg-muted/5 min-h-[500px]">
             <ScrollArea className="h-full">
                 <div className="p-6">
                     <div ref={topRef} className="h-1" />
@@ -331,7 +331,7 @@ export default function TenantMessagesPage() {
                                                 <div className="h-px flex-1 bg-border" />
                                             </div>
                                         )}
-                                        <div className={cn("flex flex-col gap-1.5 max-w-[85%] sm:max-w-[70%]", isMe ? "ml-auto items-end" : "mr-auto items-start")}>
+                                        <div className={cn("flex flex-col gap-1.5 max-w-[85%] sm:max-w-[80%]", isMe ? "ml-auto items-end" : "mr-auto items-start")}>
                                             <div className={cn(
                                                 "p-4 rounded-2xl text-sm font-medium shadow-md leading-relaxed",
                                                 isMe ? "bg-primary text-primary-foreground rounded-tr-none" : "bg-white text-black rounded-tl-none border-2 border-muted"
