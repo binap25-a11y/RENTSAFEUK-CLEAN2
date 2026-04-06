@@ -12,7 +12,8 @@ import {
   Loader2, 
   ChevronRight,
   CalendarDays,
-  FileWarning
+  FileWarning,
+  MapPin
 } from 'lucide-react';
 import { 
   useUser, 
