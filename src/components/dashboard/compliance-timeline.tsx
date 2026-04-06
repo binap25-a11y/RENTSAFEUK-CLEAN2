@@ -46,7 +46,9 @@ interface DocumentRecord {
 interface Property {
   id: string;
   address: {
+    nameOrNumber?: string;
     street: string;
+    city: string;
     postcode: string;
   };
 }
@@ -54,7 +56,7 @@ interface Property {
 /**
  * @fileOverview Global Compliance Timeline Widget
  * Visualizes legal certificate expirations across a 12-month rolling window.
- * Enhanced for maximum visibility with high-contrast black text and brand consistency.
+ * Enhanced for maximum visibility with high-contrast black text and full property addresses.
  */
 
 export function ComplianceTimeline() {
@@ -85,7 +87,14 @@ export function ComplianceTimeline() {
   const propertyMap = useMemo(() => {
     if (!properties) return {};
     return properties.reduce((acc, p) => {
-      acc[p.id] = p.address?.street || 'Assigned Asset';
+      const addr = [
+        p.address?.nameOrNumber,
+        p.address?.street,
+        p.address?.city,
+        p.address?.postcode
+      ].filter(Boolean).join(', ');
+      
+      acc[p.id] = addr || 'Assigned Asset';
       return acc;
     }, {} as Record<string, string>);
   }, [properties]);
