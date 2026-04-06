@@ -14,12 +14,8 @@ import { Resend } from 'resend';
 const getResendClient = () => {
   const apiKey = process.env.RESEND_API_KEY;
   
-  // PROTOTYPE HANDSHAKE:
-  // We only initialize if the key looks like a real Resend key (starts with 're_')
-  // and is not a common placeholder value.
-  const isPlaceholder = !apiKey || apiKey.includes('YOUR_API_KEY') || apiKey.length < 10;
-  
-  if (apiKey && apiKey.startsWith('re_') && !isPlaceholder) {
+  // Handshake verification: Ensure key exists and follows Resend format
+  if (apiKey && apiKey.startsWith('re_') && apiKey.length > 20) {
     try {
       return new Resend(apiKey);
     } catch (e) {
@@ -30,7 +26,7 @@ const getResendClient = () => {
   return null;
 };
 
-// SENDER IDENTITY
+// SENDER IDENTITY: Updated to user's verified address
 const SENDER_EMAIL = 'RentSafeUK <binap25@googlemail.com>';
 
 export async function notifyLandlordOfMessage(
