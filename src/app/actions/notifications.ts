@@ -15,7 +15,6 @@ const getResendClient = () => {
   const apiKey = process.env.RESEND_API_KEY;
   
   // Handshake verification: Ensure key exists and follows Resend format
-  // Live key provided: re_BUNPTmDk_C6FXqn7mcv6zFpuEcJrdjxXe
   if (apiKey && apiKey.startsWith('re_')) {
     try {
       return new Resend(apiKey);
@@ -76,8 +75,8 @@ export async function notifyTenantOfMessage(
       const { data, error } = await resend.emails.send({
         from: SENDER_EMAIL,
         to: tenantEmail.trim().toLowerCase(),
-        subject: `Management Alert: ${propertyAddress}`,
-        text: `Communication Notification: ${landlordName} has sent you a new message regarding ${propertyAddress}.\n\nMessage Content:\n"${messageContent}"\n\nLog in to your Resident Hub to view and reply.`
+        subject: `New Message from Landlord: ${propertyAddress}`,
+        text: `Management Alert: ${landlordName} has sent you a new message regarding ${propertyAddress}.\n\nMessage Content:\n"${messageContent}"\n\nLog in to your RentSafeUK Resident Hub to reply.`
       });
       if (!error) return { success: true, provider: 'resend', id: data?.id };
       
